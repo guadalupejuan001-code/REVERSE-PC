@@ -1,0 +1,46 @@
+name: REVERSE-PC symbolic computer experiment
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  executable-space:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: e2778d962af22f6f1a0794058dd4685fc2573966
+          path: deps/mundo-x
+          persist-credentials: false
+      - name: Verify pinned Ether source
+        run: |
+          test "$(git -C deps/mundo-x rev-parse HEAD)" = e2778d962af22f6f1a0794058dd4685fc2573966
+          test -f deps/mundo-x/native/include/mundo_x/quantum_runtime.hpp
+      - name: Build real QuantumRuntime-backed computer
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+          cmake --build build --parallel 2
+      - name: Test both programs, persistence and rollback
+        run: ctest --test-dir build --output-on-failure
+      - name: Produce reproducible evidence
+        run: |
+          ./build/reverse_pc demo evidence
+          python3 -m json.tool evidence/report.json > evidence/report-pretty.json
+          ./build/reverse_pc run examples/inspect.xi evidence/program-a.rvp evidence/inspected-a.rvp > evidence/reloaded-observation.jsonl
+          git -C deps/mundo-x rev-parse HEAD > evidence/upstream-commit.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: REVERSE-PC-Two-Programs-Evidence
+          path: evidence/
+          retention-days: 30
+          if-no-files-found: warn
