@@ -141,7 +141,8 @@ std::string records(const std::string& raw) {
 }
 std::string section(const char* name,const Runtime& state,
                     const std::string& output,const fs::path& file) {
-  const auto memory=state.memory().stats(),core=state.core().stats();
+  const auto memory=state.memory().stats();
+  const auto core=state.core().stats();
   std::ostringstream out;
   out<<"{\"name\":"<<quoted(name)
      <<",\"state_file\":"<<quoted(file.string())
