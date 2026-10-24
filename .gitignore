@@ -1,0 +1,7 @@
+/build/
+/deps/
+/evidence/
+/resultados/
+/reverse-pc-results/
+*.pending
+__pycache__/
