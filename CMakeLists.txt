@@ -33,3 +33,20 @@ if(BUILD_TESTING AND Python3_Interpreter_FOUND)
     "$<TARGET_FILE:reverse_pc>" "${CMAKE_CURRENT_BINARY_DIR}/experiment")
   set_tests_properties(reverse_pc_two_programs PROPERTIES TIMEOUT 100)
 endif()
+
+# C++-only universality witness, using the same pinned Mundo X upstream as
+# the main REVERSE-PC runtime. This is deliberately not a second quantum engine.
+add_executable(reverse_pc_universality src/universality_probe.cpp)
+target_include_directories(reverse_pc_universality PRIVATE
+  "${ETHER_SOURCE_DIR}/native/include")
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(reverse_pc_universality PRIVATE -O2 -Wall -Wextra -Wpedantic)
+endif()
+if(BUILD_TESTING)
+  add_test(NAME reverse_pc_universality_gates
+           COMMAND reverse_pc_universality --self-test)
+  add_test(NAME reverse_pc_universality_resources
+           COMMAND reverse_pc_universality --profile)
+  set_tests_properties(reverse_pc_universality_gates
+    reverse_pc_universality_resources PROPERTIES TIMEOUT 150)
+endif()
