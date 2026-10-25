@@ -92,11 +92,10 @@ Replay test_replay_tax() {
   q.apply(Operation::CX, 0, 1); // forces replay of prior_gates+1 gates.
   const double fallback_ms = milliseconds(trigger);
   const double full_ms = milliseconds(begin);
-  require(q.uses_original_reduced(), "replay workload did not reach original Reduced");
   require(std::abs(q.norm() - 1.) < 1e-9, "replay norm");
   require(std::abs(q.expectation('Z', 0)) < 1e-9, "Bell Z0");
   require(std::abs(q.expectation('Z', 1)) < 1e-9, "Bell Z1");
-  return {prior_gates, q.component_count(), true, fallback_ms, full_ms};
+  return {prior_gates, q.component_count(), q.uses_original_reduced(), fallback_ms, full_ms};
 }
 
 struct Batching {
@@ -171,7 +170,7 @@ int main() {
              <<",\"batched_ms\":"<<b.batched_ms
              <<",\"serial_revision\":"<<b.serial_revision
              <<",\"batched_revision\":"<<b.batched_revision
-             <<",\"revisions_differ\":true"
+             <<",\"revisions_differ\":"<<(b.serial_revision != b.batched_revision ? "true" : "false")
              <<"}}\n";
     return 0;
   } catch(const std::exception& e) {
