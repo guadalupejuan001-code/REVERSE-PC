@@ -215,3 +215,15 @@ if(BUILD_TESTING)
   add_test(NAME reverse_pc_born_sampling COMMAND reverse_pc_born_sampling)
   set_tests_properties(reverse_pc_born_sampling PROPERTIES TIMEOUT 120)
 endif()
+
+add_executable(reverse_pc_clifford_cosets tests/clifford_cosets.cpp)
+target_include_directories(reverse_pc_clifford_cosets PRIVATE "${ETHER_SOURCE_DIR}/native/include")
+if(BUILD_TESTING)
+  add_test(NAME reverse_pc_clifford_cosets COMMAND reverse_pc_clifford_cosets)
+  set_tests_properties(reverse_pc_clifford_cosets PROPERTIES TIMEOUT 300)
+endif()
+
+# Identical integrated probe with only the new coset certificate disabled.
+add_executable(reverse_pc_coset_reference_large tests/integrated_large.cpp)
+target_compile_definitions(reverse_pc_coset_reference_large PRIVATE REVERSE_PC_COSET_REFERENCE=1)
+target_include_directories(reverse_pc_coset_reference_large PRIVATE "${ETHER_SOURCE_DIR}/native/include")

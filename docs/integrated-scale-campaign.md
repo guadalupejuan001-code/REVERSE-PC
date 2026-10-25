@@ -71,6 +71,11 @@ No se reconstruye un vector global de amplitudes.
 
 ## Cómo interpretar las medidas
 
+Esta sección conserva las mediciones de PR #13,
+`6b8cecc9345db8c56c9034e62b164c93f8afcffd`. La
+[certificación posterior de cosets](unchanged-cosets.md) tiene su comparación
+independiente, incluida una pareja completa de inversión con el mismo programa.
+
 Los tiempos internos usan `steady_clock`. La fase `noncliff_ms` del adversarial
 incluye snapshots de verificación antes de cada intento; `T_gate_ms` aísla cada
 T admitida y `T_rejection_ms` el intento rechazado. Se publican ambos, junto con

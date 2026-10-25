@@ -57,7 +57,8 @@ static ReducedExactTRepresentation tensor_state(
 // Clifford conjugation preserves orthogonality of the current Pauli cosets.
 // Canonicalization is deferred to non-Clifford expansion/observation rather
 // than rebuilding an echelon basis for every Clifford instruction.
-void clifford_current(ExactExperimentOp op, std::size_t a, std::size_t b = 0) {
+void clifford_current(ExactExperimentOp op, std::size_t a, std::size_t b = 0,
+                      bool skip_unchanged_cosets = true) {
   check(a);
   if (op == ExactExperimentOp::CX || op == ExactExperimentOp::CZ) {
     check(b);
@@ -66,15 +67,47 @@ void clifford_current(ExactExperimentOp op, std::size_t a, std::size_t b = 0) {
   ExactExperimentGate gate{op, narrow(a), narrow(b)};
   auto next_base = base_;
   update_base(next_base, gate);
+  bool changes = !skip_unchanged_cosets;
+  if (!changes) {
+    // Certify commutation with every stored Pauli, including phase changes.
+    // The tableau still changes: only the coefficient map can be preserved.
+    for (const auto& entry : components_) {
+      const bool xa = word_test(entry.first.x, a),
+                 za = word_test(entry.first.z, a);
+      switch (op) {
+        case ExactExperimentOp::H:
+          changes = xa || za;
+          break;
+        case ExactExperimentOp::S:
+        case ExactExperimentOp::Z:
+          changes = xa;
+          break;
+        case ExactExperimentOp::X:
+          changes = za;
+          break;
+        case ExactExperimentOp::CX:
+          changes = xa || word_test(entry.first.z, b);
+          break;
+        case ExactExperimentOp::CZ:
+          changes = xa || word_test(entry.first.x, b);
+          break;
+        default:
+          changes = true;
+      }
+      if (changes) break;
+    }
+  }
   ComponentMap next;
-  next.reserve(components_.size());
-  for (const auto& entry : components_) {
-    auto p = conjugate({entry.first.x, entry.first.z, 0}, gate);
-    next.emplace(PauliKey{p.x, p.z}, entry.second * phase_unit(p.phase));
+  if (changes) {
+    next.reserve(components_.size());
+    for (const auto& entry : components_) {
+      auto p = conjugate({entry.first.x, entry.first.z, 0}, gate);
+      next.emplace(PauliKey{p.x, p.z}, entry.second * phase_unit(p.phase));
+    }
   }
   auto next_cache = std::make_shared<IntegrationBasisCache>();
   base_ = std::move(next_base);
-  components_ = std::move(next);
+  if (changes) components_ = std::move(next);
   integration_basis_ = std::move(next_cache);
   circuit_.clear();
   base_circuit_.clear();

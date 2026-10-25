@@ -366,9 +366,13 @@ class QuantumBlock {
       auto& c = std::get<AdaptiveReduced>(value_);
       c.apply(adaptive, a, b);
       c.discard_unneeded_history();
-    } else if (fast_)
+    } else if (fast_) {
+#ifdef REVERSE_PC_COSET_REFERENCE
+      std::get<R>(value_).clifford_current(op, a, b, false);
+#else
       std::get<R>(value_).clifford_current(op, a, b);
-    else {
+#endif
+    } else {
       auto& c = std::get<R>(value_);
       switch (op) {
         case Op::H:

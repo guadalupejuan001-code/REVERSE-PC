@@ -17,6 +17,9 @@
 - El [muestreo Born](born-sampling.md) compara el umbral double por palabras,
   hasta 17 en el caso subnormal extremo, conservando el RNG histórico de 1/2.
   Elimina la cuantización de 53 bits y publica también su sobrecoste de CPU.
+- La [certificación de cosets](unchanged-cosets.md) evita reconstruir un mapa
+  que una Clifford deja idéntico. Compara 24 casos de 128–1000 qubits con
+  256/65536 coeficientes, conserva la referencia y prueba 67 fallos de asignación.
 
 El [contrato vigente](unified-authority.md) sustituye las propuestas de integración
 que figuraban antes en este archivo. El historial sigue disponible en Git y en
@@ -37,10 +40,12 @@ genérico altamente entrelazado con un número arbitrario de T.
 
 ## Prioridad siguiente: inversas y estructura de Reduced
 
-1. Medir por separado base, canonicalización, hashing, ordenación, asignaciones
-   y copias en la inversión del caso adversarial de 65536 coeficientes. La cola
-   de inversión es mucho más costosa que las T admitidas y conserva residuos
-   no nulos de redondeo; no resolverla recortando amplitudes por tolerancia.
+1. Perfilar las copias de tableau y cachés que quedan tras certificar cosets.
+   A 1000 qubits, 96 CZ que conmutan aún realizan 384 asignaciones y unos
+   24,7 MB de tráfico acumulado para esos candidatos. En una pareja completa,
+   la inversión baja de 29,44 a 2,95 s, pero el pico RSS sube de 197 a 213 MiB.
+   La inversión conserva residuos no nulos de redondeo; no resolverlos
+   recortando amplitudes por tolerancia ni suponiendo ahorro global de RAM.
 2. Ensayar un certificado algebraico de fases/inversas o coeficientes exactos
    para identidades Clifford+T. Demostrar que el ahorro no cambia fases,
    revisiones, RNG ni snapshots, y medir también el coste en circuitos sin
