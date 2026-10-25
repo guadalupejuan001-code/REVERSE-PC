@@ -10,6 +10,33 @@ expected={'exact_t_experiment.hpp':'89be6b63b9787d9ef9fe9ace7d9b507b1586a14e887c
 replacements={'exact_t_experiment.hpp':[(
     '    ReducedExactTRepresentation out(product.size());',
     '    ReducedExactTRepresentation out(product.size(), max_components);') ]}
+# Whole-program candidates are never published until parsing, observations,
+# memory mutations and all gates succeed. Standalone InfiniteCore keeps its
+# original strong per-operation guarantee; only the private runtime candidate
+# may mutate uniquely owned metadata in place.
+expected.update({
+    'infinite_core.hpp':'ff18ec11360f90387ee86a8ca6aa42e8841cfa56fa74d27a7efc88024abe7791',
+    'quantum_runtime.hpp':'ed721c2e6d45037ac34784437abfd61265d62917fb8e45bd67fbd92aa5fda64f',
+})
+replacements['infinite_core.hpp']=[(
+    '    const auto normalized = normalize_gates(gates);\n    require_next_revision();\n    auto candidate = std::make_shared<State>(*state_);',
+    '    const auto normalized = normalize_gates(gates);\n    require_next_revision();\n'
+    '    if (program_candidate_ && state_.unique()) {\n'
+    '      for (const auto& gate : normalized) apply_physical_gate(*state_, gate);\n'
+    '      ++state_->revision;\n'
+    '      return;\n'
+    '    }\n'
+    '    auto candidate = std::make_shared<State>(*state_);'),(
+    '  Background background_;',
+    '  friend class QuantumRuntime;\n'
+    '  bool program_candidate_ = false;\n'
+    '  Background background_;')]
+replacements['quantum_runtime.hpp']=[(
+    '    auto candidate_core = core_;',
+    '    auto candidate_core = core_;\n    candidate_core.program_candidate_ = true;'),(
+    '        candidate_core, &candidate_memory, program, require_matching_background);',
+    '        candidate_core, &candidate_memory, program, require_matching_background);\n'
+    '    candidate_core.program_candidate_ = false;')]
 diffs=[]
 for name,digest in expected.items():
     raw=(source/name).read_bytes()

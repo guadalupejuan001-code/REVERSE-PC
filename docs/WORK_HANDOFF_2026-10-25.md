@@ -3,6 +3,15 @@
 > Fuente de verdad: código y pruebas reales de GitHub. Nunca confundir qubits
 > **lógicos simulados** con hardware cuántico ni memoria lógica con RAM física.
 
+## Continuación en Work
+
+Los hallazgos históricos de este archivo ya tienen implementaciones posteriores:
+[separación dinámica](dynamic-refactorization.md), [historial/transferencia](history-and-transfer.md)
+y [candidatos XI](xi-program-candidates.md). La dependencia sigue fijada y las
+extensiones de compilación son explícitas, con hash y diff. Consulte
+[NEXT_ITERATION_2026-10-25.md](NEXT_ITERATION_2026-10-25.md) para el estado real
+y el siguiente PR de integración; no repita las métricas iniciales como actuales.
+
 ## Repositorios y revisiones
 
 - Proyecto: https://github.com/guadalupejuan001-code/REVERSE-PC

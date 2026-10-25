@@ -123,3 +123,12 @@ Las cancelaciones exactas no acumulan entradas redundantes. Un producto de
 qubits puede transferirse directamente al Reduced canónico con el presupuesto
 de componentes conservado; los bloques entrelazados mantienen el replay.
 [Resultados, corrección de compatibilidad y límites](docs/history-and-transfer.md).
+
+## Transacciones XI con revisiones conservadas
+
+El candidato privado de un programa reutiliza metadatos de propiedad exclusiva
+sin agrupar instrucciones. Se compara con el código fijado original mediante
+transcripts idénticos de salidas, errores, snapshots y RNG, hasta 4.096 activos.
+[Contrato, mediciones y límites](docs/xi-program-candidates.md).
+
+[Siguiente iteración de integración](docs/NEXT_ITERATION_2026-10-25.md).

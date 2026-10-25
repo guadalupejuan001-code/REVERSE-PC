@@ -69,6 +69,10 @@ jobs:
           git show e8a04e029adbeae3fc9bd963374d93d61f24f524:src/adaptive_reduced.hpp > build/resource-baseline/adaptive_reduced.hpp
           g++ -std=c++17 -O3 -DNDEBUG -Ibuild/resource-baseline -Ideps/mundo-x/native/include tests/resource_probe.cpp -o build/resource-baseline/probe
           python3 scripts/compare-resources.py build/resource-baseline/probe build/reverse_pc_resource_probe > evidence/resource-comparison.json
+      - name: Verify XI contract against unmodified pinned code and compare resources
+        run: |
+          python3 tests/compare_runtime.py build/reverse_pc_runtime_reference build/reverse_pc_runtime_contract | tee evidence/xi-contract.json
+          python3 scripts/compare-runtime-resources.py build/reverse_pc_runtime_reference build/reverse_pc_runtime_contract > evidence/xi-resources.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
