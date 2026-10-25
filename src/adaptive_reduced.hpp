@@ -4,8 +4,8 @@
 // Stores independent entangled blocks as small dense vectors. It does NOT
 // expand their tensor product. A cross-block CX/CZ first checks exact
 // single-qubit eigenstate identities; otherwise blocks are joined when small.
-// Once a join exceeds the configured dense-block limit, the full recorded
-// circuit is replayed into the original ReducedExactTRepresentation backend.
+// Above the dense-block limit, product states transfer directly into Reduced;
+// entangled blocks retain canonical replay as the compatibility fallback.
 // No pruning, measurement, qubit truncation, or change to Mundo X is used.
 #include "mundo_x/exact_t_experiment.hpp"
 
@@ -71,7 +71,7 @@ class AdaptiveReduced {
     }
     if (op != Operation::CX && op != Operation::CZ) {
       // Record first to avoid a partially updated state on allocation failure.
-      history_.push_back(gate);
+      record(gate);
       apply_single(blocks_[owner_[a]], local(owner_[a], a), op);
       ++gates_;
       return;
@@ -84,7 +84,7 @@ class AdaptiveReduced {
       Block candidate = blocks_[first];
       apply_pair(candidate, local(first, a), local(first, b), op);
       auto factors = refactor(std::move(candidate));
-      history_.push_back(gate);
+      record(gate);
       blocks_[first] = std::move(factors.front());
       for (std::size_t i = 1; i < factors.size(); ++i)
         blocks_.push_back(std::move(factors[i])); // capacity reserved to n_
@@ -99,14 +99,14 @@ class AdaptiveReduced {
     const int target_axis = eigen(blocks_[second], local(second, b),
                                   op == Operation::CX ? 'X' : 'Z');
     if (control_z != 0) {
-      history_.push_back(gate);
+      record(gate);
       if (control_z == -1) apply_single(blocks_[second], local(second, b),
                                        op == Operation::CX ? Operation::X : Operation::Z);
       ++gates_;
       return;
     }
     if (target_axis != 0) {
-      history_.push_back(gate);
+      record(gate);
       if (target_axis == -1)
         apply_single(blocks_[first], local(first, a), Operation::Z);
       ++gates_;
@@ -117,13 +117,40 @@ class AdaptiveReduced {
     if (width > max_block_) {
       // Fallback uses the ORIGINAL canonical Reduced algorithm, with all
       // gates replayed from the same |0...0> initial state.
-      auto next = std::make_unique<Reduced>(n_, max_components_);
-      for (const auto& old : history_) apply_reduced(*next, old);
-      apply_reduced(*next, gate);
+      std::unique_ptr<Reduced> next;
+      bool imported = false;
+#ifdef REVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT
+      // Only a true product is imported: the pinned backend has no general
+      // entangled-block import API. Keep replay as a compatibility fallback
+      // if the product's chosen basis exceeds the requested component budget.
+      if (blocks_.size() == n_) {
+        std::vector<Reduced::ProductPair> product(n_);
+        for (const auto& block : blocks_)
+          product[block.ids[0]] = {block.psi[0], block.psi[1]};
+        try {
+          next = std::make_unique<Reduced>(Reduced::from_product(product, max_components_));
+          apply_reduced(*next, gate);
+          imported = true;
+        } catch (const std::length_error&) {
+          next.reset(); // A different canonical replay basis may fit the cap.
+        } catch (const std::runtime_error&) {
+          next.reset(); // The gate itself may have exceeded the component cap.
+        }
+      }
+#endif
+      std::size_t replayed = 0;
+      if (!next) {
+        next = std::make_unique<Reduced>(n_, max_components_);
+        for (const auto& old : history_) { apply_reduced(*next, old); ++replayed; }
+        apply_reduced(*next, gate);
+      }
       reduced_ = std::move(next);
-      history_.clear();
-      blocks_.clear();
-      owner_.clear();
+      imported_product_ = imported;
+      replayed_gates_ = replayed;
+      // clear() alone retains old capacities; release the obsolete containers.
+      std::vector<Gate>().swap(history_);
+      std::vector<Block>().swap(blocks_);
+      std::vector<std::size_t>().swap(owner_);
       ++gates_;
       return;
     }
@@ -148,7 +175,7 @@ class AdaptiveReduced {
             blocks_[first].psi[i] * blocks_[second].psi[j];
     apply_pair(merged, local(first, a),
                blocks_[first].ids.size() + local(second, b), op);
-    history_.push_back(gate);
+    record(gate);
     blocks_[first] = std::move(merged);
     blocks_.erase(blocks_.begin() + static_cast<std::ptrdiff_t>(second));
     refresh_owners();
@@ -157,6 +184,10 @@ class AdaptiveReduced {
 
   std::size_t qubits() const { return n_; }
   std::size_t gate_count() const { return gates_; }
+  std::size_t history_size() const { return history_.size(); }
+  std::size_t history_capacity_bytes() const { return history_.capacity() * sizeof(Gate); }
+  std::size_t replayed_gate_count() const { return replayed_gates_; }
+  bool imported_product() const { return imported_product_; }
   bool uses_original_reduced() const { return static_cast<bool>(reduced_); }
   std::size_t block_count() const { return blocks_.size(); }
   std::size_t max_block_width() const {
@@ -341,11 +372,26 @@ class AdaptiveReduced {
 
   static constexpr double kEigenTolerance = 0.;
   std::size_t n_, max_block_, max_components_;
-  std::size_t gates_ = 0;
+  std::size_t gates_ = 0, replayed_gates_ = 0;
+  bool imported_product_ = false;
   std::vector<Block> blocks_;
   std::vector<std::size_t> owner_;
   std::vector<Gate> history_;
   std::unique_ptr<Reduced> reduced_;
+
+  void record(Gate gate) {
+    const bool pair = gate.operation == Operation::CX || gate.operation == Operation::CZ;
+    if (!pair) gate.b = 0;
+    const bool exact_inverse = pair || gate.operation == Operation::X || gate.operation == Operation::Z;
+    if (exact_inverse && !history_.empty()) {
+      const auto& previous = history_.back();
+      if (previous.operation == gate.operation && previous.a == gate.a && previous.b == gate.b) {
+        history_.pop_back();
+        return;
+      }
+    }
+    history_.push_back(gate);
+  }
 
   void check(std::size_t q) const {
     if (q >= n_) throw std::out_of_range("qubit out of bounds");
