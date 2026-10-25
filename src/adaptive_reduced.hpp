@@ -56,6 +56,8 @@ class AdaptiveReduced {
   }
 
   void apply(Operation op, std::size_t a, std::size_t b = 0) {
+    if (static_cast<unsigned>(op) > static_cast<unsigned>(Operation::CZ))
+      throw std::invalid_argument("invalid adaptive operation");
     check(a);
     if (op == Operation::CX || op == Operation::CZ) {
       check(b);
@@ -77,8 +79,16 @@ class AdaptiveReduced {
 
     const auto first = owner_[a], second = owner_[b];
     if (first == second) {
+      // Work on a local candidate: factoring may allocate, so neither the
+      // quantum state nor the replay log commits if allocation fails.
+      Block candidate = blocks_[first];
+      apply_pair(candidate, local(first, a), local(first, b), op);
+      auto factors = refactor(std::move(candidate));
       history_.push_back(gate);
-      apply_pair(blocks_[first], local(first, a), local(first, b), op);
+      blocks_[first] = std::move(factors.front());
+      for (std::size_t i = 1; i < factors.size(); ++i)
+        blocks_.push_back(std::move(factors[i])); // capacity reserved to n_
+      refresh_owners();
       ++gates_;
       return;
     }
@@ -123,6 +133,12 @@ class AdaptiveReduced {
     merged.ids = blocks_[first].ids;
     merged.ids.insert(merged.ids.end(), blocks_[second].ids.begin(),
                       blocks_[second].ids.end());
+    // Remember the merge tree's cuts, including partitions with no singleton
+    // factor (for example, a product of two Bell pairs).
+    merged.cuts = blocks_[first].cuts;
+    const auto shift = blocks_[first].ids.size();
+    for (const auto cut : blocks_[second].cuts) merged.cuts.push_back(cut << shift);
+    merged.cuts.push_back((std::size_t{1} << shift) - 1);
     const auto left = blocks_[first].psi.size();
     const auto right = blocks_[second].psi.size();
     merged.psi.resize(left * right);
@@ -163,7 +179,8 @@ class AdaptiveReduced {
                       + blocks_.capacity() * sizeof(Block);
     for (const auto& block : blocks_)
       bytes += block.ids.capacity() * sizeof(std::size_t)
-            + block.psi.capacity() * sizeof(Complex);
+            + block.psi.capacity() * sizeof(Complex)
+            + block.cuts.capacity() * sizeof(std::size_t);
     return bytes;
   }
   double expectation(char axis, std::size_t q) const {
@@ -172,7 +189,14 @@ class AdaptiveReduced {
     if (axis != 'Z' && axis != 'X')
       throw std::invalid_argument("factorized expectation supports Z or X");
     const auto idx = owner_[q];
-    return expectation_local(blocks_[idx], local(idx, q), axis);
+    double out = expectation_local(blocks_[idx], local(idx, q), axis);
+    for (std::size_t i = 0; i < blocks_.size(); ++i) {
+      if (i == idx) continue;
+      double norm = 0.;
+      for (auto value : blocks_[i].psi) norm += std::norm(value);
+      out *= norm;
+    }
+    return out;
   }
   double norm() const {
     if (reduced_) return reduced_->sparse_norm();
@@ -203,7 +227,117 @@ class AdaptiveReduced {
   struct Block {
     std::vector<std::size_t> ids;
     std::vector<Complex> psi;
+    std::vector<std::size_t> cuts;
   };
+
+  static std::size_t gather(std::size_t value, std::size_t mask) {
+    std::size_t out = 0;
+    for (std::size_t bit = 1; mask; bit <<= 1) {
+      const auto lowest = mask & (~mask + 1);
+      if (value & lowest) out |= bit;
+      mask ^= lowest;
+    }
+    return out;
+  }
+
+  static std::vector<std::size_t> indices(std::size_t mask) {
+    std::vector<std::size_t> out{0};
+    while (mask) {
+      const auto bit = mask & (~mask + 1);
+      const auto size = out.size();
+      out.resize(size * 2);
+      for (std::size_t i = 0; i < size; ++i) out[size + i] = out[i] | bit;
+      mask ^= bit;
+    }
+    return out;
+  }
+
+  // A conservative rank-one certificate. No tolerance and no squared residual:
+  // every reconstructed complex amplitude must equal the stored double value.
+  // This can miss separability through rounding, but cannot prune a residual.
+  static bool split(const Block& block, std::size_t mask, std::size_t pivot, const std::vector<std::size_t>& witnesses, Block& a, Block& b) {
+    const auto full = (std::size_t{1} << block.ids.size()) - 1;
+    std::size_t width = 0;
+    for (auto bits = mask; bits; bits &= bits - 1) ++width;
+    // Normalize the smaller factor. In particular, peeling a definite qubit
+    // from a large GHZ block must not normalize the entire remaining vector.
+    if (width > block.ids.size() - width) mask = full ^ mask;
+    const auto other = full ^ mask;
+    // Cheap necessary rank-one checks. Failure only skips a candidate; full
+    // reconstruction below is still required before accepting any split.
+    for (const auto sample : witnesses) {
+      const auto cross_a = (sample & mask) | (pivot & other);
+      const auto cross_b = (pivot & mask) | (sample & other);
+      if (block.psi[sample] * block.psi[pivot] != block.psi[cross_a] * block.psi[cross_b])
+        return false;
+    }
+    for (std::size_t bit = 0; bit < block.ids.size(); ++bit)
+      ((mask >> bit) & 1 ? a.ids : b.ids).push_back(block.ids[bit]);
+    a.psi.resize(std::size_t{1} << a.ids.size());
+    b.psi.resize(std::size_t{1} << b.ids.size());
+    const auto ai = indices(mask), bi = indices(other);
+    const auto row = pivot & mask, column = pivot & other;
+    double row_norm = 0.;
+    for (std::size_t i = 0; i < a.psi.size(); ++i) {
+      a.psi[i] = block.psi[ai[i] | column];
+      row_norm = std::hypot(row_norm, std::abs(a.psi[i]));
+    }
+    if (!(row_norm > 0.) || !std::isfinite(row_norm)) return false;
+    for (auto& value : a.psi) value /= row_norm;
+    const auto divisor = a.psi[gather(row, mask)];
+    for (std::size_t j = 0; j < b.psi.size(); ++j)
+      b.psi[j] = divisor == Complex{1., 0.} ? block.psi[row | bi[j]]
+                 : block.psi[row | bi[j]] / divisor;
+    for (std::size_t j = 0; j < b.psi.size(); ++j)
+      for (std::size_t i = 0; i < a.psi.size(); ++i)
+        if (a.psi[i] * b.psi[j] != block.psi[ai[i] | bi[j]])
+          return false;
+    for (const auto cut : block.cuts) {
+      for (auto pair : {std::make_pair(&a, mask), std::make_pair(&b, other)}) {
+        const auto projected = gather(cut & pair.second, pair.second);
+        const auto limit = (std::size_t{1} << pair.first->ids.size()) - 1;
+        if (projected && projected != limit &&
+            std::find(pair.first->cuts.begin(), pair.first->cuts.end(), projected)
+              == pair.first->cuts.end()) pair.first->cuts.push_back(projected);
+      }
+    }
+    return true;
+  }
+  static std::vector<Block> refactor(Block block) {
+    if (block.ids.size() < 2) {
+      std::vector<Block> out;
+      out.push_back(std::move(block));
+      return out;
+    }
+    std::size_t pivot = 0, last = 0;
+    std::vector<std::size_t> witnesses;
+    witnesses.reserve(9);
+    for (std::size_t i = 0; i < block.psi.size(); ++i) {
+      if (std::abs(block.psi[i]) > std::abs(block.psi[pivot])) pivot = i;
+      if (block.psi[i] != Complex{}) {
+        if (witnesses.size() < 8) witnesses.push_back(i);
+        last = i;
+      }
+    }
+    witnesses.push_back(last);
+    // Candidate count is bounded by singletons plus the merge tree, rather
+    // than an exhaustive exponential search over all possible bipartitions.
+    auto candidates = block.cuts;
+    for (std::size_t bit = 0; bit < block.ids.size(); ++bit)
+      candidates.push_back(std::size_t{1} << bit);
+    for (const auto mask : candidates) {
+      Block left, right;
+      if (!split(block, mask, pivot, witnesses, left, right)) continue;
+      auto out = refactor(std::move(left));
+      auto rest = refactor(std::move(right));
+      out.reserve(out.size() + rest.size());
+      for (auto& factor : rest) out.push_back(std::move(factor));
+      return out;
+    }
+    std::vector<Block> out;
+    out.push_back(std::move(block));
+    return out;
+  }
 
   static constexpr double kEigenTolerance = 0.;
   std::size_t n_, max_block_, max_components_;
@@ -283,10 +417,10 @@ class AdaptiveReduced {
     double norm_sq = 0., plus = 0., minus = 0.;
     if (axis == 'Z') {
       for (std::size_t i = 0; i < block.psi.size(); ++i) {
-        const double p = std::norm(block.psi[i]);
-        norm_sq += p;
-        if (i & mask) plus += p;
-        else minus += p;
+        const auto value = block.psi[i];
+        norm_sq += std::norm(value);
+        if (i & mask) { if (value != Complex{}) plus = 1.; }
+        else { if (value != Complex{}) minus = 1.; }
       }
       if (plus <= kEigenTolerance * kEigenTolerance * norm_sq) return +1;
       if (minus <= kEigenTolerance * kEigenTolerance * norm_sq) return -1;
@@ -295,8 +429,8 @@ class AdaptiveReduced {
         if (i & mask) continue;
         const Complex a = block.psi[i], b = block.psi[i | mask];
         norm_sq += std::norm(a) + std::norm(b);
-        plus += std::norm(a - b);
-        minus += std::norm(a + b);
+        if (a != b) plus = 1.;
+        if (a != -b) minus = 1.;
       }
       if (plus <= kEigenTolerance * kEigenTolerance * norm_sq) return +1;
       if (minus <= kEigenTolerance * kEigenTolerance * norm_sq) return -1;
