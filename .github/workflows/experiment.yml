@@ -51,6 +51,18 @@ jobs:
           cmake -S . -B build-sanitized -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=OFF -DCMAKE_CXX_FLAGS="-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=undefined" -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
           cmake --build build-sanitized --target reverse_pc_factorized --parallel 2
           ./build-sanitized/reverse_pc_factorized --self-test | tee evidence/factorized-sanitizers.json
+      - name: Capture architecture bottlenecks and verify JSON
+        run: |
+          ./build/reverse_pc_architecture_audit | tee evidence/architecture-bottlenecks.json
+          python3 -m json.tool evidence/architecture-bottlenecks.json > /dev/null
+      - name: Validate architecture audit under ASan and UBSan
+        env:
+          ASAN_OPTIONS: detect_leaks=1:abort_on_error=1
+          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+        run: |
+          cmake -S . -B build-audit-sanitized -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=OFF -DCMAKE_CXX_FLAGS="-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=undefined" -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build-audit-sanitized --target reverse_pc_architecture_audit --parallel 2
+          ./build-audit-sanitized/reverse_pc_architecture_audit | tee evidence/architecture-asan.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
