@@ -41,6 +41,11 @@ se comparte como caché inmutable y se invalida al cambiar el tableau. La
 inicialización es segura para observaciones concurrentes de copias de sesión.
 Una caché no es una segunda autoridad del estado.
 
+La [campaña grande](integrated-scale-campaign.md) mide los costes de esas rutas
+con circuitos iguales y publica resultados de 128/256/512/1000 qubits. Incluye
+una fachada opcional de consultas paralelas de solo lectura, acotada a ocho
+trabajadores, con resultados y límites explícitos.
+
 ## Probabilidades, bytes y precisión
 
 El determinismo es una propiedad algebraica separada del número redondeado de

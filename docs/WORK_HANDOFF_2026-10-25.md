@@ -10,7 +10,7 @@ Los hallazgos históricos de este archivo ya tienen implementaciones posteriores
 y [candidatos XI](xi-program-candidates.md). La dependencia sigue fijada y las
 extensiones de compilación son explícitas, con hash y diff. Consulte
 [NEXT_ITERATION_2026-10-25.md](NEXT_ITERATION_2026-10-25.md) para el estado real
-y el siguiente PR de integración; no repita las métricas iniciales como actuales.
+y la campaña integrada de 128–1000 qubits; no repita las métricas iniciales como actuales.
 
 ## Repositorios y revisiones
 

@@ -11,6 +11,7 @@ option(REVERSE_PC_ALLOW_UNPINNED_ETHER "Research-only: bypass upstream pin" OFF)
 if(NOT EXISTS "${ETHER_SOURCE_DIR}/native/include/mundo_x/quantum_runtime.hpp")
   message(FATAL_ERROR "Missing upstream QuantumRuntime. Run scripts/setup-ether.sh")
 endif()
+
 find_package(Git REQUIRED)
 execute_process(COMMAND "${GIT_EXECUTABLE}" rev-parse HEAD
   WORKING_DIRECTORY "${ETHER_SOURCE_DIR}" OUTPUT_VARIABLE ETHER_HEAD
@@ -77,7 +78,7 @@ endif()
 
 
 # New adaptive product/block factorization over the original pinned Reduced backend.
-# The existing runtime and universality executable are intentionally unchanged.
+# These standalone benchmarks remain available beside the integrated XI path.
 add_executable(reverse_pc_factorized src/factorization_benchmark.cpp)
 target_include_directories(reverse_pc_factorized PRIVATE
   "${ETHER_SOURCE_DIR}/native/include")
@@ -191,4 +192,20 @@ if(BUILD_TESTING)
     add_test(NAME reverse_pc_integrated_cli COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/integrated_cli.py" "$<TARGET_FILE:reverse_pc>" "${CMAKE_CURRENT_BINARY_DIR}/integrated-cli")
   endif()
   set_tests_properties(reverse_pc_integrated_cli PROPERTIES TIMEOUT 600)
+endif()
+
+# Large circuits share the XI source and build flags with the preserved main.
+add_executable(reverse_pc_integrated_large tests/integrated_large.cpp)
+target_include_directories(reverse_pc_integrated_large PRIVATE "${ETHER_SOURCE_DIR}/native/include")
+if(REVERSE_PC_BUILD_PREVIOUS_MAIN_REFERENCE)
+  add_executable(reverse_pc_legacy_large tests/integrated_large.cpp)
+  target_compile_definitions(reverse_pc_legacy_large PRIVATE REVERSE_PC_LEGACY_LARGE=1)
+  target_include_directories(reverse_pc_legacy_large BEFORE PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/previous-main-compat" "${ETHER_SOURCE_DIR}/native/include")
+endif()
+add_executable(reverse_pc_parallel_observation tests/parallel_observation.cpp)
+target_include_directories(reverse_pc_parallel_observation PRIVATE "${ETHER_SOURCE_DIR}/native/include")
+if(BUILD_TESTING)
+  add_test(NAME reverse_pc_parallel_observation COMMAND reverse_pc_parallel_observation 4)
+  add_test(NAME reverse_pc_integrated_matrix COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/scripts/integrated-matrix.py" "$<TARGET_FILE:reverse_pc_integrated_large>")
+  set_tests_properties(reverse_pc_parallel_observation reverse_pc_integrated_matrix PROPERTIES TIMEOUT 600)
 endif()
