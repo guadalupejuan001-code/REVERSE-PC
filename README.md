@@ -19,6 +19,8 @@ XI ejecuta todas esas operaciones con rollback conjunto de núcleo, memoria,
 RNG, revisiones y salida.
 
 [Contrato completo, precisión y capacidades pendientes](docs/unified-authority.md).
+El [muestreo Born binario](docs/born-sampling.md) conserva las probabilidades
+double representables, incluidas subnormales, y la secuencia histórica de 1/2.
 
 ## Compilar y ejecutar
 

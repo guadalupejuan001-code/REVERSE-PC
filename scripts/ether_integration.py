@@ -2,7 +2,7 @@
 def configure(expected,replacements):
     expected.update({'infinite_program.hpp':'32c652d6e6e9f4ff93d5f8a7b84ff5f0f3be0533ad54a2c78b29eaa32c3be890','inverse_memory.hpp':'d24303e5ac839354a4af8b7446bfb7d4e13f52c24b2f82c9b0efa549c6650657'})
     replacements['infinite_core.hpp'] += [
-        ('#include "mundo_x/ether_core.hpp"','#include "mundo_x/ether_core.hpp"\n#include "integration/quantum_block.hpp"'),
+        ('#include "mundo_x/ether_core.hpp"','#include "mundo_x/ether_core.hpp"\n#include "integration/quantum_block.hpp"\n#include "integration/born_sampling.hpp"'),
         ('    std::size_t max_active_qubits = 4096;', '    std::size_t max_reduced_components = 65536;\n    std::size_t max_dense_block = 8;\n    bool fast_reduced_clifford = true;\n    bool factor_pair_shortcuts = true;\n    bool direct_ether_phases = true;\n    std::size_t max_active_qubits = 4096;'),
         ('    state_ = std::make_shared<State>();','    if (!limits.max_reduced_components || limits.max_dense_block > 14) throw std::invalid_argument("integrated representation limits");\n    state_ = std::make_shared<State>();'),
         ('    CompactCore core;','    reverse_pc::QuantumBlock core;'),

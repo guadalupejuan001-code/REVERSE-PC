@@ -14,6 +14,9 @@
   Las extensiones verifican los encabezados y CI publica el diff compilado.
 - Se conservan la auditoría recuperada de PR #5 y las pruebas históricas,
   incluidos 175 casos de equivalencia XI con el runtime original.
+- El [muestreo Born](born-sampling.md) compara el umbral double por palabras,
+  hasta 17 en el caso subnormal extremo, conservando el RNG histórico de 1/2.
+  Elimina la cuantización de 53 bits y publica también su sobrecoste de CPU.
 
 El [contrato vigente](unified-authority.md) sustituye las propuestas de integración
 que figuraban antes en este archivo. El historial sigue disponible en Git y en

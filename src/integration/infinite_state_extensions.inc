@@ -90,9 +90,7 @@ void refresh_payload(State& state) const {
   state.tableau_bytes = bytes;
 }
 static bool sample_one(PortableRng& rng, double probability, double zero) {
-  if (probability == .5 && zero == .5) return (rng() & 1U) != 0;
-  const auto u = static_cast<double>(rng() >> 11) * 0x1.0p-53;
-  return probability > .5 ? !(u < zero) : u < probability;
+  return reverse_pc::sample_born_one(rng, probability, zero);
 }
 int pulled_eigen(const State& state,
                  const EtherCore::Observable& pulled) const {
