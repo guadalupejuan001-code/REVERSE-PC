@@ -116,3 +116,10 @@ pequeños. Se recuperaron las suites pendientes del PR #5.
 [Implementación, mediciones y costes](docs/dynamic-refactorization.md).
 La búsqueda tiene sobrecoste en algunos circuitos entrelazados; los resultados
 no son una ventaja universal ni describen hardware cuántico.
+
+## Historial compacto y fallback desde el estado actual
+
+Las cancelaciones exactas no acumulan entradas redundantes. Un producto de
+qubits puede transferirse directamente al Reduced canónico con el presupuesto
+de componentes conservado; los bloques entrelazados mantienen el replay.
+[Resultados, corrección de compatibilidad y límites](docs/history-and-transfer.md).

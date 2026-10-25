@@ -19,6 +19,18 @@ endif()
 if(NOT REVERSE_PC_ALLOW_UNPINNED_ETHER AND NOT ETHER_HEAD STREQUAL EXPECTED_ETHER_SHA)
   message(FATAL_ERROR "Unreviewed upstream source: ${ETHER_HEAD}; expected ${EXPECTED_ETHER_SHA}")
 endif()
+# The checkout stays byte-for-byte pinned. An explicit, hash-checked local
+# compatibility extension fixes the import factory's lost component limit.
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
+execute_process(COMMAND "${Python3_EXECUTABLE}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/scripts/prepare-ether-compat.py"
+  "${ETHER_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/ether-compat"
+  RESULT_VARIABLE COMPAT_STATUS)
+if(NOT COMPAT_STATUS EQUAL 0)
+  message(FATAL_ERROR "Failed to prepare reviewed Ether compatibility extension")
+endif()
+include_directories(BEFORE "${CMAKE_CURRENT_BINARY_DIR}/ether-compat")
+add_compile_definitions(REVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1)
 add_executable(reverse_pc src/reverse_pc.cpp)
 target_include_directories(reverse_pc PRIVATE "${ETHER_SOURCE_DIR}/native/include")
 target_compile_definitions(reverse_pc PRIVATE REVERSE_PC_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
@@ -102,3 +114,10 @@ endif()
 
 add_executable(reverse_pc_resource_probe tests/resource_probe.cpp)
 target_include_directories(reverse_pc_resource_probe PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${ETHER_SOURCE_DIR}/native/include")
+
+add_executable(reverse_pc_history_transfer tests/history_transfer.cpp)
+target_include_directories(reverse_pc_history_transfer PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src" "${ETHER_SOURCE_DIR}/native/include")
+if(BUILD_TESTING)
+  add_test(NAME reverse_pc_history_transfer COMMAND reverse_pc_history_transfer)
+  set_tests_properties(reverse_pc_history_transfer PROPERTIES TIMEOUT 180)
+endif()

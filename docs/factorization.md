@@ -14,9 +14,10 @@ sobre el backend Reduced original de Mundo X, sin cambiarlo.
 - En los demás casos se fusionan los bloques y se aplica la puerta completa
   sobre el vector resultante.
 - Si la fusión superaría `max_dense_block` (predeterminado 14 qubits),
-  se reproduce **el programa completo** en `ReducedExactTRepresentation`
-  original, con el límite de componentes configurado; una falla del
-  retroceso no compromete el nuevo estado.
+  se importa directamente el producto actual cuando todos los bloques son
+  de un qubit; para bloques entrelazados o si la importación no cabe, se
+  conserva el replay canónico del historial compactado. Una falla no confirma
+  el estado. Véase [contrato y extensión local de compatibilidad](history-and-transfer.md).
 - No hay truncamiento ni poda de contribuciones. Una simplificación
   requiere residual vectorial exactamente cero en la representación de
   punto flotante. Si hay diferencias, incluso diminutas, se fusionan
@@ -73,5 +74,6 @@ producto o bloques pequeños**. Para entrelazamiento que atraviesa el límite
 de bloque, vuelve a Reduced, conservando su complejidad y sus límites.
 No hace eficientes los circuitos cuánticos arbitrarios, no ejecuta
 hardware cuántico y no demuestra ventaja frente a otros simuladores.
-El coste de reproducir un historial largo durante el retroceso puede
-ser significativo y deberá medirse por separado.
+El replay de bloques entrelazados puede seguir dependiendo de la longitud del
+historial; el nuevo caso producto evita ese coste. Las mediciones y los
+límites están en [historial y transferencia](history-and-transfer.md).

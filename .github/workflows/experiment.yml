@@ -53,6 +53,8 @@ jobs:
           ./build/reverse_pc_rigorous_reduced | tee evidence/rigorous-reduced.json
           python3 tests/rigor_cli.py ./build/reverse_pc build/rigor_data | tee evidence/rigorous-cli.json
           ./build/reverse_pc_refactorization | tee evidence/refactorization.json
+          ./build/reverse_pc_history_transfer | tee evidence/history-transfer.json
+          cp build/ether-compat/changes.diff evidence/ether-compat.diff
       - name: Full regression suites with ASan and UBSan
         env:
           ASAN_OPTIONS: detect_leaks=1:abort_on_error=1

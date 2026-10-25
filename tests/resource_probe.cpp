@@ -13,17 +13,17 @@ using Clock=std::chrono::steady_clock;
 double ms(Clock::time_point t){return std::chrono::duration<double,std::milli>(Clock::now()-t).count();}
 int main(int argc,char** argv){try{
   std::string mode=argc>1?argv[1]:"uncompute";
-  std::size_t n=mode=="uncompute"?32:mode=="history"?4:mode=="replay"?3:mode=="entangled"?14:mode=="random"?8:1000;
+  std::size_t n=mode=="uncompute"?32:mode=="history"?4:(mode=="replay" || mode=="replay_noncancelling")?3:mode=="entangled"?14:mode=="random"?8:1000;
   auto start=Clock::now();
-  AdaptiveReduced q(n,mode=="replay"?1:14);
+  AdaptiveReduced q(n,(mode=="replay" || mode=="replay_noncancelling")?1:14);
   double trigger=0;
   if(mode=="uncompute"){
     q.apply(Operation::H,0);
     for(unsigned b=1;b<=20;++b){q.apply(Operation::CX,0,b);q.apply(Operation::CX,0,b);}
   }else if(mode=="history"){
     for(unsigned i=0;i<50000;++i)q.apply(Operation::X,0);
-  }else if(mode=="replay"){
-    for(unsigned i=0;i<20000;++i)q.apply(Operation::X,0);
+  }else if(mode=="replay" || mode=="replay_noncancelling"){
+    for(unsigned i=0;i<20000;++i)q.apply(mode=="replay"?Operation::X:Operation::S,0);
     q.apply(Operation::H,0);auto t=Clock::now();q.apply(Operation::CX,0,1);trigger=ms(t);
   }else if(mode=="entangled"){
     q.apply(Operation::H,0);

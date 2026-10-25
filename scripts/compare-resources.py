@@ -3,7 +3,7 @@
 import argparse, json, math, platform, statistics, subprocess
 p=argparse.ArgumentParser();p.add_argument('baseline');p.add_argument('candidate');p.add_argument('--repeats',type=int,default=21);a=p.parse_args()
 report={'platform':platform.platform(),'repeats':a.repeats,'warmups_per_case':1,'timing':'native steady_clock; construction and execution; oracle excluded','memory':'Linux /proc/self/status VmRSS and VmHWM, KiB, per exec; allocator and library overhead included. getrusage lifetime high water also retained separately because it may include pre-exec launcher RSS','cases':{}}
-for case in ['uncompute','history','replay','entangled','random','product']:
+for case in ['uncompute','history','replay','replay_noncancelling','entangled','random','product']:
     rows={label:[] for label in ['baseline','candidate']}
     def run(label):
         return json.loads(subprocess.check_output([getattr(a,label),case],text=True))
