@@ -125,6 +125,27 @@ int main() {
            "inverse sequence failed trial " + std::to_string(trial));
       ++tested;
     }
+    // A hard component budget must reject further growth without mutating
+    // the representation or silently pruning amplitudes.
+    Q limited(12, 256);
+    for (unsigned i = 0; i < 12; ++i) limited.hadamard(i);
+    for (unsigned i = 0; i < 11; ++i) limited.cnot(i, i + 1);
+    for (unsigned i = 0; i < 8; ++i) limited.phase_t(i);
+    need(limited.component_count() == 256, "limit fixture failed to saturate");
+    const auto saved = limited.dense_from_reduced();
+    bool rejected = false;
+    try { limited.phase_t(8); }
+    catch (const std::runtime_error&) { rejected = true; }
+    need(rejected, "component limit silently exceeded");
+    need(limited.component_count() == 256, "limit exception altered component count");
+    need(error_phase(limited.dense_from_reduced(), saved) < TOL,
+         "limit exception damaged quantum state");
+
+    rejected = false;
+    try { limited.cnot(12, 0); }
+    catch (const std::out_of_range&) { rejected = true; }
+    need(rejected, "out-of-range gate was accepted");
+
     // Profile precisely the structured circuit family in the original report.
     const auto begin = Clock::now();
     std::cout << std::setprecision(15)
@@ -132,9 +153,10 @@ int main() {
               << "\"seed\":20261025,\"random_circuits\":" << tested
               << ",\"max_amplitude_error\":" << max_error
               << ",\"max_random_components\":" << max_components
+              << ",\"component_limit_rejected_without_mutation\":true"
               << ",\"profile\":[";
     bool first = true;
-    for (unsigned n : {8u, 10u, 12u, 14u}) {
+    for (unsigned n : {8u, 10u, 12u, 14u, 16u}) {
       const auto start = Clock::now();
       Q q(n, 65536);
       for (unsigned i = 0; i < n; ++i) q.hadamard(i);
