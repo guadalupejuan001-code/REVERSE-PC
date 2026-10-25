@@ -68,3 +68,19 @@ if(BUILD_TESTING)
   set_tests_properties(reverse_pc_factorized_differential
     reverse_pc_factorized_speed_and_precision PROPERTIES TIMEOUT 180)
 endif()
+
+
+# Characterization-only architecture audit (no changes to either engine).
+add_executable(reverse_pc_architecture_audit tests/architecture_bottleneck_probe.cpp)
+target_include_directories(reverse_pc_architecture_audit PRIVATE
+  "${CMAKE_CURRENT_SOURCE_DIR}/src"
+  "${ETHER_SOURCE_DIR}/native/include")
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(reverse_pc_architecture_audit PRIVATE
+    -O2 -Wall -Wextra -Wpedantic)
+endif()
+if(BUILD_TESTING)
+  add_test(NAME reverse_pc_architecture_characterization
+    COMMAND reverse_pc_architecture_audit)
+  set_tests_properties(reverse_pc_architecture_characterization PROPERTIES TIMEOUT 120)
+endif()
