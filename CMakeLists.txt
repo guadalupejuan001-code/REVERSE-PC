@@ -50,3 +50,21 @@ if(BUILD_TESTING)
   set_tests_properties(reverse_pc_universality_gates
     reverse_pc_universality_resources PROPERTIES TIMEOUT 150)
 endif()
+
+
+# New adaptive product/block factorization over the original pinned Reduced backend.
+# The existing runtime and universality executable are intentionally unchanged.
+add_executable(reverse_pc_factorized src/factorization_benchmark.cpp)
+target_include_directories(reverse_pc_factorized PRIVATE
+  "${ETHER_SOURCE_DIR}/native/include")
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(reverse_pc_factorized PRIVATE -O2 -Wall -Wextra -Wpedantic)
+endif()
+if(BUILD_TESTING)
+  add_test(NAME reverse_pc_factorized_differential
+    COMMAND reverse_pc_factorized --self-test)
+  add_test(NAME reverse_pc_factorized_speed_and_precision
+    COMMAND reverse_pc_factorized --benchmark)
+  set_tests_properties(reverse_pc_factorized_differential
+    reverse_pc_factorized_speed_and_precision PROPERTIES TIMEOUT 180)
+endif()
