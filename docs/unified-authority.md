@@ -63,9 +63,11 @@ compensadas. Las amplitudes y coeficientes siguen siendo IEEE double, no
 aritmética simbólica de precisión ilimitada.
 
 Las mediciones generales usan la probabilidad de Born; 1/2 conserva el muestreo
-binario y la secuencia RNG históricos. Las demás probabilidades usan un
-uniforme de 53 bits derivado del mismo RNG portable. Las fases relativas se
-conservan; los tableaus fijan una fase global convencional, como el núcleo
+binario y la secuencia RNG históricos. Las demás comparan palabras del RNG
+portable con la expansión binaria del double recibido, incluyendo subnormales,
+en un máximo de 17 palabras. Se evita la cuantización de un uniforme de 53 bits;
+véanse la [demostración, pruebas y costes](born-sampling.md). Las fases relativas
+se conservan; los tableaus fijan una fase global convencional, como el núcleo
 Clifford original.
 
 ## Transacciones y persistencia
