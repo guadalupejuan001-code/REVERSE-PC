@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.16)
 project(REVERSE_PC LANGUAGES CXX)
+find_package(Threads REQUIRED)
+link_libraries(Threads::Threads)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -24,7 +26,8 @@ endif()
 # only inside QuantumRuntime's unpublished whole-program candidate.
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
-  "${CMAKE_CURRENT_SOURCE_DIR}/scripts/prepare-ether-compat.py")
+  "${CMAKE_CURRENT_SOURCE_DIR}/scripts/prepare-ether-compat.py"
+  "${CMAKE_CURRENT_SOURCE_DIR}/scripts/ether_integration.py")
 execute_process(COMMAND "${Python3_EXECUTABLE}"
   "${CMAKE_CURRENT_SOURCE_DIR}/scripts/prepare-ether-compat.py"
   "${ETHER_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/ether-compat"
@@ -37,7 +40,8 @@ include_directories("${CMAKE_CURRENT_SOURCE_DIR}/src")
 # New overlay headers can shadow previously tracked upstream include paths.
 # A script fingerprint in compile flags invalidates those existing objects too.
 file(SHA256 "${CMAKE_CURRENT_SOURCE_DIR}/scripts/prepare-ether-compat.py" ETHER_COMPAT_SCRIPT_SHA)
-add_compile_definitions(REVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1
+file(SHA256 "${CMAKE_CURRENT_SOURCE_DIR}/scripts/ether_integration.py" ETHER_INTEGRATION_SHA)
+add_compile_definitions(REVERSE_PC_INTEGRATION_SHA="${ETHER_INTEGRATION_SHA}" REVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1
   REVERSE_PC_ETHER_EXTENSION_SHA="${ETHER_COMPAT_SCRIPT_SHA}")
 add_executable(reverse_pc src/reverse_pc.cpp)
 target_include_directories(reverse_pc PRIVATE "${ETHER_SOURCE_DIR}/native/include")
@@ -146,4 +150,45 @@ target_include_directories(reverse_pc_state_transfer PRIVATE "${ETHER_SOURCE_DIR
 if(BUILD_TESTING)
   add_test(NAME reverse_pc_state_transfer COMMAND reverse_pc_state_transfer)
   set_tests_properties(reverse_pc_state_transfer PROPERTIES TIMEOUT 240)
+endif()
+
+# Rebuild the immediately previous main with its exact verified extensions,
+# rather than calling the unoptimized raw upstream a "previous main" baseline.
+option(REVERSE_PC_BUILD_PREVIOUS_MAIN_REFERENCE "Build comparison/migration reference from preserved git history" ${BUILD_TESTING})
+if(REVERSE_PC_BUILD_PREVIOUS_MAIN_REFERENCE)
+  set(REVERSE_PC_PREVIOUS_MAIN "0d8926bd65b01877eeef6e3172259284f8944a88")
+  execute_process(COMMAND "${GIT_EXECUTABLE}" show "${REVERSE_PC_PREVIOUS_MAIN}:scripts/prepare-ether-compat.py" WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" OUTPUT_VARIABLE PREVIOUS_COMPAT RESULT_VARIABLE PREVIOUS_STATUS)
+  if(NOT PREVIOUS_STATUS EQUAL 0)
+    message(FATAL_ERROR "Previous-main reference needs git history; fetch it or disable REVERSE_PC_BUILD_PREVIOUS_MAIN_REFERENCE")
+  endif()
+  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/previous-main-compat.py" "${PREVIOUS_COMPAT}")
+  execute_process(COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_BINARY_DIR}/previous-main-compat.py" "${ETHER_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/previous-main-compat" RESULT_VARIABLE PREVIOUS_STATUS)
+  if(NOT PREVIOUS_STATUS EQUAL 0)
+    message(FATAL_ERROR "Previous-main compatibility verification failed")
+  endif()
+  execute_process(COMMAND "${GIT_EXECUTABLE}" show "${REVERSE_PC_PREVIOUS_MAIN}:src/reverse_pc.cpp" WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}" OUTPUT_VARIABLE PREVIOUS_CLI RESULT_VARIABLE PREVIOUS_STATUS)
+  if(NOT PREVIOUS_STATUS EQUAL 0)
+    message(FATAL_ERROR "Previous CLI source unavailable")
+  endif()
+  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/previous-main-cli.cpp" "${PREVIOUS_CLI}")
+  add_executable(reverse_pc_previous_cli "${CMAKE_CURRENT_BINARY_DIR}/previous-main-cli.cpp")
+  target_compile_definitions(reverse_pc_previous_cli PRIVATE REVERSE_PC_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
+  target_include_directories(reverse_pc_previous_cli BEFORE PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/previous-main-compat" "${ETHER_SOURCE_DIR}/native/include")
+endif()
+
+add_executable(reverse_pc_integrated_correctness tests/integrated_correctness.cpp)
+target_include_directories(reverse_pc_integrated_correctness PRIVATE "${ETHER_SOURCE_DIR}/native/include")
+if(BUILD_TESTING)
+  add_test(NAME reverse_pc_integrated_correctness COMMAND reverse_pc_integrated_correctness)
+  set_tests_properties(reverse_pc_integrated_correctness PROPERTIES TIMEOUT 300)
+endif()
+
+
+if(BUILD_TESTING)
+  if(TARGET reverse_pc_previous_cli)
+    add_test(NAME reverse_pc_integrated_cli COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/integrated_cli.py" "$<TARGET_FILE:reverse_pc>" "${CMAKE_CURRENT_BINARY_DIR}/integrated-cli" "$<TARGET_FILE:reverse_pc_previous_cli>")
+  else()
+    add_test(NAME reverse_pc_integrated_cli COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/integrated_cli.py" "$<TARGET_FILE:reverse_pc>" "${CMAKE_CURRENT_BINARY_DIR}/integrated-cli")
+  endif()
+  set_tests_properties(reverse_pc_integrated_cli PROPERTIES TIMEOUT 600)
 endif()

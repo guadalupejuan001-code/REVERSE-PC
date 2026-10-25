@@ -1,134 +1,93 @@
 # REVERSE-PC
 
-**El espacio lógico como medio de computación, no como una imagen.**
+Computadora de software para computación cuántica simulada: espacio lógico por
+reglas, componentes compactos y una autoridad de estado compartida por XI,
+Ether e Inverse Ether Memory. Ejecuta en CPU clásica.
 
-Este proyecto investiga la arquitectura que nació en Mundo X: el espacio
-lógico guarda estados, aplica reglas y produce observaciones sin
-materializar automáticamente todas sus direcciones.
+## Arquitectura integrada
 
-El primer experimento reutiliza el **QuantumRuntime, InfiniteCore e
-Inverse Ether Memory originales de Mundo X**. No hay un segundo núcleo
-inventado ni un renderizador.
+InfiniteCore posee una tabla de direcciones y componentes. Cada componente
+contiene exactamente una representación activa: CompactCore para Clifford,
+AdaptiveReduced para bloques pequeños o Reduced para estados no-Clifford
+anchos. T/T† promueven el estado **actual**, sin reproducir el historial.
+Los componentes conectados se combinan mediante transferencias y tensores.
 
-## Experimento: un estado, dos programas
+Ether mantiene el marco global y propaga los observables hacia atrás sobre el
+mismo estado. InverseMemory conserva reglas, bytes y enlaces explícitos;
+un byte no determinista devuelve un handle y no se mide automáticamente.
+XI ejecuta todas esas operaciones con rollback conjunto de núcleo, memoria,
+RNG, revisiones y salida.
 
-Arrancamos con dos bytes clásicos (5 y 10) y un tercer byte lógico (5)
-vinculado expresamente a los qubits 100...107. Guardamos una instantánea
-completa. A partir de ella ejecutamos dos programas XI diferentes:
+[Contrato completo, precisión y capacidades pendientes](docs/unified-authority.md).
 
-| | Programa A | Programa B |
-| --- | --- | --- |
-| Transformación | CNOT local, q100 controla q101 | HAll: regla global de Ether |
-| Resultado del byte vinculado | 5 a **7** | **Indeterminado**, devuelve un handle |
-| Probabilidad Z=1 en dirección lógica de 64 cifras | **0** | **0.5** |
-| Almacenamiento de todo el espacio | No | No |
-| Modifica los bytes clásicos iniciales | No | No |
-
-CNOT calcula realmente un XOR controlado entre dos bits representados
-en el núcleo. HAll aplica realmente una regla global a la simulación;
-su efecto se comprueba en una dirección lejana sin materializarla.
-
-Ambos programas parten del **mismo estado inicial**. Comprobamos además
-repetibilidad, instantáneas binarias persistentes, lectura tras
-restauración, cancelación de operaciones reversibles y rollback tras
-una instrucción inválida.
-
-## Ejecución en Linux
-
-Requisitos: Git, CMake, compilador C++17 y Python 3.
-
-~~~sh
-bash scripts/setup-ether.sh
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
-cmake --build build -j 2
-ctest --test-dir build --output-on-failure
-./build/reverse_pc demo resultados
-./build/reverse_pc run examples/inspect.xi resultados/program-a.rvp resultados/a-inspected.rvp
-~~~
-
-La demostración crea resultados/report.json y tres archivos de estado:
-initial.rvp, program-a.rvp y program-b.rvp. Con el comando run puedes
-cargar cualquier estado compatible, ejecutar un nuevo programa XI y
-guardar el resultado; la memoria y el registro cuántico se guardan juntos.
-
-## GitHub Actions
-
-Si solo tienes Android, abre la pestaña **Actions** de este repositorio
-y selecciona **REVERSE-PC symbolic computer experiment**. Las pruebas
-se ejecutan en el servidor y publican el reporte como artefacto descargable.
-No necesitas programar una APK para comprobar el principio computacional.
-
-## Revisión del backend
-
-Dependencia fijada:
-guadalupejuan001-code/mundo-X@e2778d962af22f6f1a0794058dd4685fc2573966.
-
-El script de instalación y CMake verifican esa revisión exacta. REVERSE-PC
-mantiene su código y arquitectura propios, pero no duplica los archivos
-fuente del núcleo Ether.
-
-## Límites reales
-
-Este experimento utiliza **simulación de qubits Clifford por software**
-y memoria lógica por reglas. No constituye hardware cuántico, RAM física
-infinita, una CPU de propósito general completa, ni demuestra ventaja
-en velocidad frente a procesadores actuales.
-
-El backend MIL/Reduced de 1.000 qubits de Mundo X es independiente y
-**todavía no participa en REVERSE-PC**. Tampoco hay ejecución condicional
-dependiente de datos, instrucciones de aritmética general ni una GPU.
-La siguiente etapa es precisamente construirlas y evaluarlas.
-
-Consulta docs/architecture.md para los criterios de investigación.
-
-
-## Adaptive Reduced: factorización de estados separables
-
-REVERSE-PC incorpora un ejecutable nuevo, `reverse_pc_factorized`, que
-conserva por separado los bloques de qubits independientes en lugar de
-expandir todas las combinaciones. Detecta algunos casos donde CX/CZ no
-entrelazan, fusiona bloques cuando sí lo hacen y vuelve al Reduced canónico
-si un bloque supera el límite establecido.
+## Compilar y ejecutar
 
 ```sh
-./build/reverse_pc_factorized --self-test
-./build/reverse_pc_factorized --benchmark
-./build/reverse_pc_factorized --run 4 examples/factorized-small.qxi
+bash scripts/setup-ether.sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
+cmake --build build --parallel 2
+ctest --test-dir build --output-on-failure
+./build/reverse_pc init initial.rvp
+./build/reverse_pc run examples/integrated-128.xi initial.rvp active.rvp
+./build/reverse_pc run examples/integrated-128-continue.xi active.rvp continued.rvp
 ```
 
-La prueba diferencial genera 260 circuitos aleatorios contra un oráculo
-vectorial independiente; el benchmark ejecuta la **misma secuencia**
-H/CNOT/T en Reduced y en la implementación factorizada (8–16 qubits),
-comprueba amplitudes y reporta medianas y bytes estimados.
-También prueba un producto de 1.000 qubits sin construir un vector denso.
+El ejemplo ejecuta entrelazamiento de 128 qubits, T/T†, Ether, memoria enlazada,
+observación, guardado y continuación. `qstats` informa los tipos de componente,
+coeficientes, amplitudes locales, payload estimado y norma.
 
-**Alcance:** la optimización existe en la nueva ruta factorized, no dentro
-del ejecutable XI `reverse_pc`; no modifica Mundo X. No elimina el coste
-exponencial de circuitos arbitrarios. Detalles: [docs/factorization.md](docs/factorization.md).
+RVPC2 guarda el estado actual y conserva también la revisión de memoria.
+Se aceptan archivos RVPC1 anteriores. La prueba genera un RVPC1 con el código
+y extensiones preservados de main anterior para comprobar la migración real.
+En C++, la pareja durable usa `core_snapshot()` y
+`memory_persistent_snapshot()`, con restauración conjunta.
 
-## Separación dinámica de bloques
+## Pruebas y escala
 
-AdaptiveReduced recupera factores tras deshacer entrelazamiento, con una
-comprobación de reconstrucción completa sin tolerancias. Incluye recuperación
-de dos pares Bell, 1.000 factores lógicos y pruebas que conservan residuos
-pequeños. Se recuperaron las suites pendientes del PR #5.
+Se conservan las pruebas históricas, la auditoría recuperada de PR #5,
+oráculos densos independientes, reversibilidad, fuzzing de snapshots y
+ASan/UBSan/LeakSanitizer en CI. La comparación Clifford histórica conserva
+salidas, errores, snapshots y RNG idénticos en los 175 casos anteriores.
 
-[Implementación, mediciones y costes](docs/dynamic-refactorization.md).
-La búsqueda tiene sobrecoste en algunos circuitos entrelazados; los resultados
-no son una ventaja universal ni describen hardware cuántico.
+La ruta integrada se prueba con operaciones reales en 128, 256, 512 y 1000
+qubits. La prueba CLI recorre esos tamaños y su modo `--hard` guarda/restaura
+un grafo distribuido de 1000 qubits con 16 T independientes y 65536
+coeficientes; la T 17 se rechaza sin sobrescribir estado ni archivos.
 
-## Historial compacto y fallback desde el estado actual
+```sh
+./build/reverse_pc_integrated_correctness
+python3 tests/integrated_cli.py ./build/reverse_pc output ./build/reverse_pc_previous_cli --hard
+```
 
-Las cancelaciones exactas no acumulan entradas redundantes. Un producto de
-qubits puede transferirse directamente al Reduced canónico con el presupuesto
-de componentes conservado; los bloques entrelazados mantienen el replay.
-[Resultados, corrección de compatibilidad y límites](docs/history-and-transfer.md).
+[Prueba de persistencia local](docs/measurements/integrated-cli-local.json).
+La campaña de rendimiento ampliada documenta por separado profundidad,
+entrelazamiento, T, presupuestos, tiempo y RSS; no se identifica un registro
+separable grande con un circuito genérico altamente entrelazado.
 
-## Transacciones XI con revisiones conservadas
+## Límites y dependencia
 
-El candidato privado de un programa reutiliza metadatos de propiedad exclusiva
-sin agrupar instrucciones. Se compara con el código fijado original mediante
-transcripts idénticos de salidas, errores, snapshots y RNG, hasta 4.096 activos.
-[Contrato, mediciones y límites](docs/xi-program-candidates.md).
+- Mundo X permanece fijado a `e2778d962af22f6f1a0794058dd4685fc2573966`.
+  Las extensiones de compilación verifican SHA-256 de los encabezados; el
+  checkout original no se modifica. CI publica el diff utilizado.
+- Reduced admite componentes de hasta 1000 qubits; el presupuesto
+  predeterminado es de 65536 coeficientes, con rechazo atómico al excederlo.
+- Los vectores densos integrados son **locales**, de 8 qubits por defecto y
+  hasta 14 configurables. No se crea un vector de 2^1000 amplitudes.
+- Norma, amplitudes y observables usan precisión flotante explícita; no se
+  podan contribuciones no nulas para aparentar una mejora.
+- Payload lógico, memoria residente y dominio de direcciones son métricas
+  distintas. Las ventajas dependen del circuito y de su estructura.
+- Faltan partición/democión general de componentes Reduced grandes y control
+  clásico de flujo XI. No se afirma rendimiento universal ni hardware cuántico.
 
-[Siguiente iteración de integración](docs/NEXT_ITERATION_2026-10-25.md).
+## Informes anteriores y herramientas conservadas
+
+- [Transferencias desde el estado actual](docs/current-state-transfer.md).
+- [Factorización AdaptiveReduced y benchmark independiente](docs/factorization.md).
+- [Separación de bloques: resultados y sobrecostes GHZ](docs/dynamic-refactorization.md).
+- [Historial compacto y fallback de productos](docs/history-and-transfer.md).
+- [Transacciones XI con revisiones conservadas](docs/xi-program-candidates.md).
+- [Estado actualizado y siguiente iteración](docs/NEXT_ITERATION_2026-10-25.md).
+
+Los informes anteriores conservan sus condiciones y revisiones originales.
+Sus números particulares no se extrapolan a todos los programas.
