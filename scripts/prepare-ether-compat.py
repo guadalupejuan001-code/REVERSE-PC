@@ -38,10 +38,13 @@ replacements['quantum_runtime.hpp']=[(
     '        candidate_core, &candidate_memory, program, require_matching_background);\n'
     '    candidate_core.program_candidate_ = false;')]
 replacements['exact_t_experiment.hpp'] += [
-    ('#include <array>', '#include <array>\n#include <memory>\n#include "integration/state_io.hpp"'),
+    ('#include <array>', '#include <array>\n#include <memory>\n#include <mutex>\n#include "integration/state_io.hpp"'),
     ('  std::size_t n_;\n  std::size_t max_components_;', '#include "integration/reduced_state_extensions.inc"\n  std::size_t n_;\n  std::size_t max_components_;'),
-    ('    base_ = std::move(next_base);', '    base_ = std::move(next_base);\n    integration_basis_.reset();'),
+    ('    CompactCore next_base = base_;', '    auto next_integration_cache = std::make_shared<IntegrationBasisCache>();\n    CompactCore next_base = base_;'),
+    ('    base_ = std::move(next_base);', '    base_ = std::move(next_base);\n    integration_basis_ = std::move(next_integration_cache);'),
 ]
+from ether_integration import configure
+configure(expected,replacements)
 diffs=[]
 for name,digest in expected.items():
     raw=(source/name).read_bytes()

@@ -56,6 +56,10 @@ jobs:
           ./build/reverse_pc_history_transfer | tee evidence/history-transfer.json
           ./build/reverse_pc_state_transfer | tee evidence/current-state-transfer.json
           cp build/ether-compat/changes.diff evidence/ether-compat.diff
+      - name: Integrated authority, Born probabilities, XI and durable state
+        run: |
+          ./build/reverse_pc_integrated_correctness | tee evidence/integrated-correctness.json
+          python3 tests/integrated_cli.py ./build/reverse_pc evidence/integrated-cli ./build/reverse_pc_previous_cli --hard | tee evidence/integrated-cli.json
       - name: Full regression suites with ASan and UBSan
         env:
           ASAN_OPTIONS: detect_leaks=1:abort_on_error=1
@@ -64,6 +68,7 @@ jobs:
           cmake -S . -B build-full-sanitized -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON -DCMAKE_CXX_FLAGS="-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=undefined" -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
           cmake --build build-full-sanitized --parallel 2
           ctest --test-dir build-full-sanitized --output-on-failure -E "speed_and_precision|universality_resources"
+          python3 tests/integrated_cli.py ./build-full-sanitized/reverse_pc evidence/integrated-cli-sanitized ./build-full-sanitized/reverse_pc_previous_cli --hard > evidence/integrated-cli-sanitized.json
       - name: Compare the same workloads against the preserved main baseline
         run: |
           mkdir -p build/resource-baseline

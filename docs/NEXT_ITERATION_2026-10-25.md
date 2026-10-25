@@ -1,4 +1,19 @@
-# Próxima iteración: una autoridad cuántica programable
+# Integración: estado actualizado y siguientes límites
+
+## Integración implementada
+
+La ruta XI ya usa los componentes CompactCore/AdaptiveReduced/Reduced de una
+sola tabla InfiniteCore, con T/T† físicas bajo Ether, memoria enlazada,
+transacciones y RVPC2 con revisiones/RNG. Véase el
+[contrato vigente](unified-authority.md). Las propuestas de la sección de
+historial siguiente describen el punto de partida anterior y ya no significan
+que la ruta XI siga separada.
+
+La siguiente campaña compara 128/256/512/1000 qubits, profundidad, crecimiento
+adversarial, memoria residente y costes de observación. Siguen pendientes la
+factorización/democión general de Reduced grande y el control de flujo XI.
+
+## Historial anterior a la integración
 
 ## Estado entregado
 

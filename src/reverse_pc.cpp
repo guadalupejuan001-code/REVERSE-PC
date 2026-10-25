@@ -68,14 +68,14 @@ std::uint64_t read64(std::istream& in) {
 // Single-file persistent snapshot: core + inverse memory must be restored
 // together. The FNV-1a checksum detects accidental corruption, not attacks.
 void save_state(const fs::path& filename,const Runtime& state) {
-  const auto core=state.core_snapshot(),memory=state.memory_snapshot();
+  const auto core=state.core_snapshot(),memory=state.memory_persistent_snapshot();
   check(core.size()<=MAX_BYTES && memory.size()<=MAX_BYTES &&
         core.size()<=MAX_BYTES-memory.size(),"state exceeds 32 MiB");
   if(!filename.parent_path().empty())fs::create_directories(filename.parent_path());
   const fs::path pending=filename.string()+".pending";
   std::ofstream out(pending,std::ios::binary|std::ios::trunc);
   check(bool(out),"cannot write state");
-  out.write("RVPC1",5);
+  out.write("RVPC2",5);
   write64(out,core.size());
   write64(out,memory.size());
   write64(out,fnv(core,memory));
@@ -90,7 +90,7 @@ Runtime load_state(const fs::path& filename) {
   check(bool(in),"cannot open state "+filename.string());
   char magic[5]={};
   in.read(magic,5);
-  check(in.gcount()==5 && std::string(magic,5)=="RVPC1","invalid REVERSE-PC state header");
+  check(in.gcount()==5 && (std::string(magic,5)=="RVPC1" || std::string(magic,5)=="RVPC2"),"invalid REVERSE-PC state header");
   const auto n_core=read64(in),n_mem=read64(in),digest=read64(in);
   check(n_core<=MAX_BYTES && n_mem<=MAX_BYTES &&
         n_core<=MAX_BYTES-n_mem,"state violates size limit");
@@ -103,7 +103,7 @@ Runtime load_state(const fs::path& filename) {
   check(in.peek()==EOF && fnv(core,memory)==digest,"invalid state payload/checksum");
   Runtime result;
   result.restore(core,memory);
-  check(result.core_snapshot()==core && result.memory_snapshot()==memory,
+  check(result.core_snapshot()==core && (std::string(magic,5)=="RVPC2" ? result.memory_persistent_snapshot() : result.memory_snapshot())==memory,
         "upstream snapshot changed during restoration");
   return result;
 }
@@ -287,7 +287,8 @@ void run(const fs::path& program,const fs::path& state_path,
   std::cerr<<"REVERSE_PC_RUN_PASS saved="<<destination.string()<<"\n";
 }
 void help(){
-  std::cout<<"REVERSE-PC / Ether experiment 0.1\n"
+  std::cout<<"REVERSE-PC / integrated Ether computer 0.2\n"
+           <<"reverse_pc init STATE_OUTPUT.rvp\n"
            <<"reverse_pc demo [directory]\n"
            <<"reverse_pc run PROGRAM.xi STATE_INPUT.rvp STATE_OUTPUT.rvp\n"
            <<"reverse_pc --help\n";
@@ -298,7 +299,8 @@ int main(int argc,char** argv) {
   try{
     if(argc==1||std::string(argv[1])=="--help"){help();return 0;}
     const std::string cmd=argv[1];
-    if(cmd=="demo"&&argc<=3)
+    if(cmd=="init"&&argc==3) { Runtime initial; save_state(argv[2],initial); }
+    else if(cmd=="demo"&&argc<=3)
       experiment(argc==3?fs::path(argv[2]):fs::path("reverse-pc-results"));
     else if(cmd=="run"&&argc==5)
       run(argv[2],argv[3],argv[4]);

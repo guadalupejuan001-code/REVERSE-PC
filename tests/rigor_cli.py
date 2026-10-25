@@ -41,7 +41,7 @@ source = (out / "initial.rvp").read_bytes()
 a = (out / "program-a.rvp").read_bytes()
 b = (out / "program-b.rvp").read_bytes()
 source_sha = sha(source)
-assert source.startswith(b"RVPC1")
+assert source[:5] in (b"RVPC1",b"RVPC2")
 assert len(source) < (1 << 20), "unexpected snapshot size"
 
 # Property-based check: random sequences of basis-preserving X/CNOT gates

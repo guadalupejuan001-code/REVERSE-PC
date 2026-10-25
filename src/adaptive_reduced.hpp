@@ -55,7 +55,141 @@ class AdaptiveReduced {
     }
   }
 
+  AdaptiveReduced(const AdaptiveReduced& other)
+      : n_(other.n_),
+        max_block_(other.max_block_),
+        max_components_(other.max_components_),
+        gates_(other.gates_),
+        replayed_gates_(other.replayed_gates_),
+        imported_product_(other.imported_product_),
+        blocks_(other.blocks_),
+        owner_(other.owner_),
+        history_(other.history_),
+        reduced_(other.reduced_ ? std::make_unique<Reduced>(*other.reduced_)
+                                : nullptr) {
+    blocks_.reserve(n_);
+  }
+  AdaptiveReduced(AdaptiveReduced&&) noexcept = default;
+  AdaptiveReduced& operator=(AdaptiveReduced&&) noexcept = default;
+  AdaptiveReduced& operator=(const AdaptiveReduced& other) {
+    if (this != &other) {
+      AdaptiveReduced next(other);
+      *this = std::move(next);
+    }
+    return *this;
+  }
+  static AdaptiveReduced from_dense(std::size_t n,
+                                    const std::vector<Complex>& values,
+                                    std::size_t cap = 65536) {
+    if (n > 14 || values.size() != (std::size_t{1} << n))
+      throw std::invalid_argument("adaptive local import width");
+    AdaptiveReduced out(n, n, cap);
+    Block block;
+    for (std::size_t i = 0; i < n; ++i) block.ids.push_back(i);
+    double norm = 0.;
+    for (auto v : values) {
+      if (!std::isfinite(v.real()) || !std::isfinite(v.imag()))
+        throw std::invalid_argument("nonfinite amplitude");
+      norm += std::norm(v);
+    }
+    if (!(norm > 0.) || !std::isfinite(norm)) throw std::invalid_argument("zero/nonfinite local state norm");
+    block.psi = values;
+    out.blocks_ = refactor(std::move(block));
+    out.blocks_.reserve(n);
+    out.refresh_owners();
+    return out;
+  }
+  std::vector<Reduced::ProductPair> product_state() const {
+    if (reduced_ || blocks_.size() != n_)
+      throw std::logic_error("not a singleton product");
+    std::vector<Reduced::ProductPair> product(n_);
+    for (const auto& b : blocks_) product[b.ids[0]] = {b.psi[0], b.psi[1]};
+    return product;
+  }
+  std::string local_snapshot() const {
+    if (n_ > 14 || max_block_ < n_ || reduced_)
+      throw std::logic_error("not a local persistent Adaptive state");
+    state_io::Writer w;
+    w.data = "ADL1";
+    w.u64(n_);
+    w.u64(gates_);
+    w.u64(blocks_.size());
+    for (const auto& b : blocks_) {
+      w.u64(b.ids.size());
+      for (auto id : b.ids) w.u64(id);
+      w.u64(b.cuts.size());
+      for (auto cut : b.cuts) w.u64(cut);
+      for (auto v : b.psi) w.complex(v);
+    }
+    return w.finish();
+  }
+  static AdaptiveReduced from_local_snapshot(const std::string& saved,
+                                             std::size_t cap,
+                                             std::size_t dense) {
+    state_io::Reader r(saved);
+    r.require(4);
+    if (saved.substr(0, 4) != "ADL1")
+      throw std::invalid_argument("Adaptive local snapshot version");
+    r.at = 4;
+    auto n = r.u64();
+    if (n == 0 || n > dense || n > 14)
+      throw std::length_error("Adaptive restore width");
+    AdaptiveReduced out(n, n, cap);
+    out.gates_ = r.u64();
+    auto count = r.u64();
+    if (count == 0 || count > n)
+      throw std::invalid_argument("Adaptive factor count");
+    out.blocks_.clear();
+    std::vector<bool> used(n, false);
+    for (std::size_t i = 0; i < count; ++i) {
+      Block b;
+      auto width = r.u64();
+      if (width == 0 || width > n)
+        throw std::invalid_argument("Adaptive factor width");
+      b.ids.reserve(width);
+      for (std::size_t k = 0; k < width; ++k) {
+        auto id = r.u64();
+        if (id >= n || used[id])
+          throw std::invalid_argument("Adaptive duplicate wire");
+        used[id] = true;
+        b.ids.push_back(id);
+      }
+      auto cuts = r.u64();
+      if (cuts > 2 * width) throw std::length_error("Adaptive cut budget");
+      auto full = (std::size_t{1} << width) - 1;
+      b.cuts.reserve(cuts);
+      for (std::size_t k = 0; k < cuts; ++k) {
+        auto cut = r.u64();
+        if (!cut || cut >= full)
+          throw std::invalid_argument("Adaptive invalid cut");
+        b.cuts.push_back(cut);
+      }
+      auto size = std::size_t{1} << width;
+      r.require(size * 16);
+      b.psi.resize(size);
+      double norm = 0;
+      for (auto& v : b.psi) {
+        v = r.complex();
+        norm += std::norm(v);
+      }
+      if (!(norm > 0.) || !std::isfinite(norm))
+        throw std::invalid_argument("Adaptive norm");
+      out.blocks_.push_back(std::move(b));
+    }
+    if (std::find(used.begin(), used.end(), false) != used.end())
+      throw std::invalid_argument("Adaptive incomplete partition");
+    r.done();
+    out.refresh_owners();
+    return out;
+  }
+  void discard_unneeded_history() {
+    if (max_block_ < n_ || reduced_)
+      throw std::logic_error("replay history still required");
+    std::vector<Gate>().swap(history_);
+  }
+
   void apply(Operation op, std::size_t a, std::size_t b = 0) {
+    if(gates_==std::numeric_limits<std::size_t>::max())throw std::overflow_error("adaptive gate counter overflow");
     if (static_cast<unsigned>(op) > static_cast<unsigned>(Operation::CZ))
       throw std::invalid_argument("invalid adaptive operation");
     check(a);

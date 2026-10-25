@@ -1,4 +1,19 @@
-# REVERSE-PC — arquitectura y próximos experimentos
+# Arquitectura integrada de REVERSE-PC
+
+La autoridad cuántica es InfiniteCore: una tabla de direcciones y componentes
+con un único payload activo por componente. CompactCore representa Clifford;
+AdaptiveReduced conserva factores pequeños; Reduced admite estados
+no-Clifford anchos. Ether define el marco global y propaga observables sobre
+esa misma autoridad. InverseMemory conserva reglas clásicas y enlaces, no
+una copia del registro cuántico.
+
+XI admite T/T†, observación y transacciones conjuntas. RVPC2 persiste la
+revisión de memoria además de los datos, núcleo, RNG y Ether, y acepta RVPC1.
+El [contrato actual](unified-authority.md) detalla transferencias, precisión,
+presupuestos, compatibilidad y las capacidades que aún faltan.
+
+## Diseño y experimento iniciales, conservados como historial
+
 
 ## La arquitectura que se está ensayando
 
