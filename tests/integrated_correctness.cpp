@@ -57,9 +57,16 @@ int main() {
       Runtime::CoreLimits frame_limits;
       frame_limits.max_dense_block = trial % 2 ? 8 : 0;
       frame_limits.direct_ether_phases = trial % 4 < 2;
-      Runtime r(Runtime::Background::Zero, frame_limits, {});
+      const auto background = trial & 4 ? Runtime::Background::BellPairs
+                                        : Runtime::Background::Zero;
+      Runtime r(background, frame_limits, {});
       std::vector<C> v(1u << width);
       v[0] = 1.;
+      if (background == Runtime::Background::BellPairs)
+        for (unsigned q = 0; q < width; q += 2) {
+          dense(v, {'H', q});
+          dense(v, {'C', q, q + 1});
+        }
       for (unsigned q = 0; q < 4; ++q) {
         r.execute(text({'H', q}));
         dense(v, {'H', q});

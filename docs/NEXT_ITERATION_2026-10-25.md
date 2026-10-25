@@ -1,100 +1,96 @@
-# Integración: estado actualizado y siguientes límites
+# REVERSE-PC: entrega integrada y siguiente iteración
 
-## Integración implementada
+## Estado actual
 
-La ruta XI ya usa los componentes CompactCore/AdaptiveReduced/Reduced de una
-sola tabla InfiniteCore, con T/T† físicas bajo Ether, memoria enlazada,
-transacciones y RVPC2 con revisiones/RNG. Véase el
-[contrato vigente](unified-authority.md). Las propuestas de la sección de
-historial siguiente describen el punto de partida anterior y ya no significan
-que la ruta XI siga separada.
+- PR #11: transferencia del estado actual de tableau/amplitudes al Reduced
+  canónico, tensores y snapshots sin replay. Fusionada con CI verde.
+- PR #12: una autoridad InfiniteCore con payload CompactCore/AdaptiveReduced/
+  Reduced; XI T/T†, fases físicas bajo Ether, Born general, memoria enlazada,
+  rollback conjunto y RVPC2 con revisiones/RNG. Fusionada con CI verde.
+- La campaña posterior añade 60 circuitos completos de 128/256/512/1000 qubits,
+  40 casos cortos bajo sanitizadores, comparaciones repetidas y observación
+  paralela de solo lectura. Véanse [método y resultados](integrated-scale-campaign.md).
+- El checkout Mundo X sigue en `e2778d962af22f6f1a0794058dd4685fc2573966`.
+  Las extensiones verifican los encabezados y CI publica el diff compilado.
+- Se conservan la auditoría recuperada de PR #5 y las pruebas históricas,
+  incluidos 175 casos de equivalencia XI con el runtime original.
 
-La siguiente campaña compara 128/256/512/1000 qubits, profundidad, crecimiento
-adversarial, memoria residente y costes de observación. Siguen pendientes la
-factorización/democión general de Reduced grande y el control de flujo XI.
+El [contrato vigente](unified-authority.md) sustituye las propuestas de integración
+que figuraban antes en este archivo. El historial sigue disponible en Git y en
+[WORK_HANDOFF](WORK_HANDOFF_2026-10-25.md). XI ya no tiene un backend Reduced
+separado de la sesión que usa Ether y memoria.
 
-## Historial anterior a la integración
+## Qué demuestran las pruebas grandes
 
-## Estado entregado
+Un programa XI crea y transforma más de 100 qubits, combina Clifford/T/T†,
+observa mediante Ether y memoria, guarda, restaura y continúa. Un grafo de 1000
+qubits presenta entropía 500 entre mitades antes de T, admite 16 T independientes
+con 65536 coeficientes y rechaza la siguiente sin corrupción. La prueba CLI
+persiste ese estado en un archivo RVPC2 de unos 18 MB y continúa ejecutándolo.
 
-- PR #8: separación dinámica, recuperación de factores, auditoría PR #5
-  conciliada y comparaciones con RSS real. Fusión tras CI verde.
-- PR #9: cancelaciones exactas, transferencia de productos sin replay,
-  liberación de capacidades y límite de componentes importado. Fusión tras CI.
-- Candidatos XI: eliminación de copias redundantes dentro de una transacción
-  privada, conservando revisiones y contrato original; ver su PR y CI.
-- El checkout Mundo X conserva e2778d962af22f6f1a0794058dd4685fc2573966.
-  El código compilado incluye las extensiones locales explícitas de
-  `prepare-ether-compat.py`; CI publica el diff completo.
+Los circuitos separados toleran miles de T al conservar factores locales. Son
+una familia distinta. No se ha demostrado simulación eficiente de un circuito
+genérico altamente entrelazado con un número arbitrario de T.
 
-Los ejecutables `reverse_pc` y `reverse_pc_factorized` **siguen siendo dos
-rutas**, no una sesión unificada. No hay conversión implícita entre sus estados.
+## Prioridad siguiente: inversas y estructura de Reduced
 
-## Lo que revela el código fijado
+1. Medir por separado base, canonicalización, hashing, ordenación, asignaciones
+   y copias en la inversión del caso adversarial de 65536 coeficientes. La cola
+   de inversión es mucho más costosa que las T admitidas y conserva residuos
+   no nulos de redondeo; no resolverla recortando amplitudes por tolerancia.
+2. Ensayar un certificado algebraico de fases/inversas o coeficientes exactos
+   para identidades Clifford+T. Demostrar que el ahorro no cambia fases,
+   revisiones, RNG ni snapshots, y medir también el coste en circuitos sin
+   cancelaciones. El certificado no debe convertirse en un historial ilimitado.
+3. Detectar cortes separables y permitir partición/democión de Reduced grandes
+   mediante pruebas exactas o certificados suficientes. Conservar un camino
+   que rechace/no divida si no puede demostrar la separación. El GHZ que se
+   fusiona y separa repetidamente debe seguir como caso negativo.
+4. Evaluar claves Pauli y cachés de observación actuales por K y ancho. Cualquier
+   caché debe ser derivada, acotada e invalidable; nunca una segunda autoridad.
+   Comparar tiempos y RSS tanto con consultas repetidas como con mutación frecuente.
 
-| Límite real | Consecuencia para la integración |
-| --- | --- |
-| InfiniteCore::Component guarda un CompactCore y sus ids | El lugar natural de promoción es el componente conectado, no otra copia global del registro |
-| InverseMemory lee y escribe mediante un InfiniteCore concreto | Hace falta un contrato de observación/puertas, manteniendo las asociaciones explícitas de ocho bits |
-| Reduced admite from_product, phase y controlled_phase, pero no importar bloques arbitrarios ni snapshots completos | Falta una transferencia general con base estabilizadora, coeficientes, fase, norma y presupuesto |
-| InfiniteCore conjuga puertas físicas mediante el marco Ether Clifford | Una T promovida debe actuar sobre el Pauli conjugado, no aplicarse a una dirección interna ignorando el marco |
-| dense_from_reduced reconstruye su base mediante base_circuit_ | Importar solo base_.packed_state no basta para mantener el oráculo denso y la persistencia |
-| MXIM1 guarda fondo, overrides y bindings, pero no la revisión de memoria | La restauración actual recupera esos datos y reinicia ese contador; definir una versión nueva antes de prometer que persiste |
-| XI actual es una secuencia de órdenes sin saltos dependientes de bytes | Todavía falta control de flujo; no afirmar programación universal demostrada |
+## Programabilidad y límites
 
-## Diseño propuesto y siguiente PR pequeño
+- Añadir control clásico de flujo XI por etapas: etiquetas/saltos y operaciones
+  sobre bytes deterministas, presupuesto de pasos y rollback de todo el programa.
+  Un handle cuántico no se convierte en booleano mediante una medición implícita.
+- Diseñar transferencia entre componentes que excedan el ancho Reduced de 1000,
+  manteniendo el fondo Ether y las correlaciones. Rechazar mientras no exista
+  una representación admitida: no dividir un estado entrelazado por conveniencia.
+- Evaluar formato de transporte incremental antes de ampliar los topes actuales
+  (núcleo mixto 64 MiB, contenedor CLI combinado 32 MiB). Los límites del dueño
+  receptor deben seguir siendo autoritativos al restaurar.
+- La observación paralela es opcional y acotada a 8 trabajadores. No habilitar
+  escritores concurrentes sobre una sesión sin un contrato transaccional nuevo.
 
-1. Definir una interfaz de registro para gates, Pauli, determinismo de bits,
-   límites y estado persistente. InverseMemory debe consultar esa interfaz
-   sin medir automáticamente ni decidir que una probabilidad casi 0/1 es clásica.
-2. Mantener una sola tabla de direcciones/componentes en InfiniteCore, con
-   una variante de payload: CompactCore o AdaptiveReduced/Reduced. El fondo y
-   marco Ether siguen siendo simbólicos. Un componente tiene **un** dueño de
-   amplitudes; no se sincronizan dos registros divergentes.
-3. Primer PR de integración: transferencia validada de **un componente
-   estabilizador finito** al Reduced canónico, sin replay del programa y sin
-   construir 2^n global. Conservar un camino original de comparación.
-   Resolver primero la reconstrucción densa de su base para los oráculos pequeños.
-4. Ampliar después a productos de bloques entrelazados, con presupuesto de
-   componentes y picos temporales explícitos. Si una conversión no cabe,
-   conservar el estado anterior; nunca podar amplitudes para hacerla caber.
-5. Introducir la T física como combinación I/Pauli en el marco Ether. Solo
-   después conectar `t` y `tdg` a XI y verificar equivalencia del marco antes y
-   después de HAll/CZNeighbors. No interpretar T sobre el marco equivocado.
-6. Persistencia versionada del estado activo, índices, coeficientes, norma,
-   fase necesaria, RNG y revisiones de núcleo/memoria. Mantener lectura RVPC1;
-   comprobar byte a byte y con circuitos continuados después de restaurar.
-7. Añadir saltos y aritmética sobre bytes deterministas con límite de pasos y
-   rollback del programa completo; un handle cuántico no es un bool clásico.
+## Criterios de aceptación para cada cambio
 
-## Criterios de aceptación
+- Oráculos densos independientes de pocos qubits, incluido fondo Bell y Ether;
+  pruebas de fases, normas, ramas raras y probabilidades de ambos proyectores.
+- Misma matriz grande, semilla, compilador y presupuestos; comparaciones
+  alternadas con calentamiento, mediana/p95 y muestras crudas conservadas.
+- RSS real y payload lógico por separado, más picos temporales, componentes,
+  latencia de transferencia/fallback y rechazo atómico al exceder límites.
+- Persistencia/continuación con RNG y revisiones, formatos anteriores,
+  errores inyectados y memoria enlazada que no mida por leer.
+- Todas las suites históricas y nuevas, ASan/UBSan y CI verdes antes de fusionar.
+  Mantener en el informe los casos lentos y las regresiones observadas.
 
-- Igualdad de observables, fase coherente y norma contra oráculo independiente
-  de 2–8 qubits; circuitos aleatorios Clifford+T, inversos y restauraciones.
-- Ejemplos de memoria explícitamente vinculada antes/después de promoción:
-  lectura determinista, handle en superposición y store rechazado sin medición.
-- Copias de sesiones y fallo inyectado durante promoción no cambian la fuente,
-  RNG, revisiones ni asociaciones de memoria.
-- Marco Ether con cono finito validado y límites explícitos; rechazar acciones
-  no soportadas en vez de usar un estado paralelo como respuesta.
-- Mismos programas, compilador, calentamiento, semillas, mediana/p95, RSS y
-  capacidades. Mantener el caso negativo de churn GHZ que hace más trabajo al
-  separar/fusionar; explorar caché de procedencia o separación diferida antes
-  de aumentar el ancho automático.
-- Todas las suites Release y de corrección ASan/UBSan, incluidos los casos
-  originales recuperados de PR #5. Ninguna fusión con CI pendiente o fallida.
-
-## Reproducción actual
+## Reproducir la siguiente sesión
 
 ```sh
 bash scripts/setup-ether.sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
 cmake --build build --parallel 2
 ctest --test-dir build --output-on-failure
-python3 tests/compare_runtime.py build/reverse_pc_runtime_reference build/reverse_pc_runtime_contract
-python3 scripts/compare-runtime-resources.py build/reverse_pc_runtime_reference build/reverse_pc_runtime_contract
+python3 scripts/integrated-matrix.py ./build/reverse_pc_integrated_large \
+  --legacy ./build/reverse_pc_legacy_large --parallel ./build/reverse_pc_parallel_observation \
+  --full --repeats 7 --checkpoint evidence/matrix-checkpoint.json > evidence/matrix.json
+python3 tests/integrated_cli.py ./build/reverse_pc evidence/cli \
+  ./build/reverse_pc_previous_cli --hard
 ```
 
-Los límites de representación y los contadores anteriores son propiedades
-reales del código inspeccionado. Esta hoja de ruta no declara que la sesión
-unificada o el control de flujo estén implementados.
+El baseline se reconstruye desde Git; clonar con historial completo. Los JSON
+locales documentados conservan su compilador, límites y hash de ejecutables;
+CI vuelve a medir sobre su propio runner y publica resultados independientes.

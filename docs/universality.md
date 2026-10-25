@@ -18,11 +18,12 @@ La respuesta tiene varias capas que no deben confundirse:
 3. **Escalabilidad.** El núcleo reducido puede mantener 1.000 qubits lógicos
    para algunos circuitos estructurados. Esto no demuestra que todo
    circuito cuántico universal de 1.000 qubits tenga un coste pequeño.
-4. **Integración con REVERSE-PC.** El ejecutable actual REVERSE-PC usa
-   QuantumRuntime + InfiniteCore, que opera en una familia Clifford.
-   **Todavía no se ha unido el backend Reduced a esa sesión de estado.**
-   Este test no debe atribuir a REVERSE-PC una computación universal
-   integrada que todavía no posee.
+4. **Integración con REVERSE-PC.** XI ya ejecuta Clifford+T bajo una sola
+   autoridad InfiniteCore; véase el [contrato actual](unified-authority.md).
+   Este ejecutable conserva la prueba independiente del Reduced canónico.
+   Su campo `witness_uses_integrated_xi=false` describe el alcance de esa
+   prueba, no una capacidad ausente de XI. El control clásico de flujo sigue
+   pendiente y no se afirma eficiencia para circuitos arbitrarios.
 
 ## Construcción Toffoli exacta
 
@@ -57,8 +58,9 @@ de **esa familia de circuitos** y no una ley general.
 
 ## Uso nativo (sin Python)
 
-Se mantiene una única copia de los algoritmos cuánticos:
-el checkout original y fijado de Mundo X. CMake verifica la revisión.
+Se usa el checkout fijado de Mundo X con extensiones locales verificadas.
+CMake verifica la revisión y los encabezados originales; el diff compilado
+se publica en CI. También se conservan referencias sin esas extensiones.
 
     bash scripts/setup-ether.sh
     cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=ON
@@ -69,8 +71,8 @@ el checkout original y fijado de Mundo X. CMake verifica la revisión.
 
 ## Próxima frontera
 
-Introducir la ejecución de puertas no-Clifford dentro de la
-**misma sesión autoritativa** de REVERSE-PC, no en un motor
-paralelo. Garantizar estado serializable, rollback, compilación,
-control de flujo y límites de recursos. Después comparar contra
-simuladores convencionales, con la misma tarea y precisión.
+La integración, serialización, rollback y límites ya tienen pruebas XI.
+La [campaña grande](integrated-scale-campaign.md) distingue profundidad,
+entrelazamiento y crecimiento de coeficientes. Las siguientes fronteras son
+la partición general de Reduced, el control de flujo y comparaciones externas
+adicionales bajo la misma tarea y precisión.

@@ -60,9 +60,24 @@ python3 tests/integrated_cli.py ./build/reverse_pc output ./build/reverse_pc_pre
 ```
 
 [Prueba de persistencia local](docs/measurements/integrated-cli-local.json).
-La campaña de rendimiento ampliada documenta por separado profundidad,
-entrelazamiento, T, presupuestos, tiempo y RSS; no se identifica un registro
-separable grande con un circuito genérico altamente entrelazado.
+La [campaña medida](docs/integrated-scale-campaign.md) contiene 60 casos grandes,
+hasta 96000 puertas Clifford, grafos con entropía 500 entre mitades antes de T,
+presupuestos de 16 a 65536 coeficientes y comparaciones de mediana/p95.
+A 1000 qubits, 96 Clifford tras seis T pasan de 1114 a 2,10 ms al diferir la
+canonicalización; ocho fases bajo Ether pasan de 97,8 a 14,7 ms. Son tiempos
+de esas etapas. Clifford puro también conserva su comparación, incluidos
+sobrecostes de memoria y una regresión temporal a 128 qubits.
+
+```sh
+python3 scripts/integrated-matrix.py ./build/reverse_pc_integrated_large \
+  --legacy ./build/reverse_pc_legacy_large --parallel ./build/reverse_pc_parallel_observation \
+  --full --repeats 7 --checkpoint evidence/checkpoint.json > evidence/matrix.json
+```
+
+El adversarial de 1000 qubits alcanza unos 197 MiB de pico RSS al verificar
+estado, copias e inversas. Su inversión tarda 33 s en la ejecución documentada;
+el payload lógico de unos 18 MB no representa ese pico físico. No se identifica
+un registro separable grande con un circuito genérico altamente entrelazado.
 
 ## Límites y dependencia
 

@@ -211,7 +211,8 @@ void print_results(bool include_profile) {
             << "\"classical_hardware\":true,"
             << "\"gate_set_approximately_quantum_universal\":true,"
             << "\"gate_set_mathematically_known\":true,"
-            << "\"reverse_pc_universal_runtime_integrated\":false,"
+            << "\"witness_uses_integrated_xi\":false,"
+            << "\"witness_scope\":\"standalone_canonical_Reduced\","
             << "\"arbitrary_circuit_efficiency_proven\":false,"
             << "\"logic\":{\"toffoli_inputs\":" << logic.truth_rows
             << ",\"nand_inputs\":" << logic.nand_rows

@@ -44,7 +44,7 @@ jobs:
         run: |
           mkdir -p evidence
           ./build/reverse_pc_universality --self-test | tee evidence/universality.json
-          grep -q '"reverse_pc_universal_runtime_integrated":false' evidence/universality.json
+          grep -q '"witness_uses_integrated_xi":false' evidence/universality.json
       - name: Profile non-Clifford resource growth without assumptions
         run: |
           ./build/reverse_pc_universality --profile | tee evidence/resources.json
