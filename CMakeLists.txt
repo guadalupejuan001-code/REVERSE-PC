@@ -50,3 +50,27 @@ if(BUILD_TESTING)
   set_tests_properties(reverse_pc_universality_gates
     reverse_pc_universality_resources PROPERTIES TIMEOUT 150)
 endif()
+
+
+# Isolated adversarial tests: do not replace the production core.
+if(BUILD_TESTING AND Python3_Interpreter_FOUND)
+  add_test(NAME reverse_pc_rigorous_cli
+    COMMAND "${Python3_EXECUTABLE}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tests/rigor_cli.py"
+      "$<TARGET_FILE:reverse_pc>"
+      "${CMAKE_CURRENT_BINARY_DIR}/rigor_data")
+  set_tests_properties(reverse_pc_rigorous_cli PROPERTIES TIMEOUT 180)
+endif()
+
+add_executable(reverse_pc_rigorous_reduced tests/rigor_reduced.cpp)
+target_include_directories(reverse_pc_rigorous_reduced PRIVATE
+  "${ETHER_SOURCE_DIR}/native/include")
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+  target_compile_options(reverse_pc_rigorous_reduced PRIVATE
+    -O2 -Wall -Wextra -Wpedantic)
+endif()
+if(BUILD_TESTING)
+  add_test(NAME reverse_pc_rigorous_reduced
+    COMMAND reverse_pc_rigorous_reduced)
+  set_tests_properties(reverse_pc_rigorous_reduced PROPERTIES TIMEOUT 180)
+endif()
