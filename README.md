@@ -105,3 +105,14 @@ También prueba un producto de 1.000 qubits sin construir un vector denso.
 **Alcance:** la optimización existe en la nueva ruta factorized, no dentro
 del ejecutable XI `reverse_pc`; no modifica Mundo X. No elimina el coste
 exponencial de circuitos arbitrarios. Detalles: [docs/factorization.md](docs/factorization.md).
+
+## Separación dinámica de bloques
+
+AdaptiveReduced recupera factores tras deshacer entrelazamiento, con una
+comprobación de reconstrucción completa sin tolerancias. Incluye recuperación
+de dos pares Bell, 1.000 factores lógicos y pruebas que conservan residuos
+pequeños. Se recuperaron las suites pendientes del PR #5.
+
+[Implementación, mediciones y costes](docs/dynamic-refactorization.md).
+La búsqueda tiene sobrecoste en algunos circuitos entrelazados; los resultados
+no son una ventaja universal ni describen hardware cuántico.

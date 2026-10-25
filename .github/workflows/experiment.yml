@@ -15,6 +15,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/checkout@v4
         with:
           repository: guadalupejuan001-code/mundo-X
@@ -43,26 +44,29 @@ jobs:
           ./build/reverse_pc_factorized --benchmark | tee evidence/factorized-benchmark.json
           ./build/reverse_pc_factorized --run 4 examples/factorized-small.qxi | tee evidence/factorized-program.json
           python3 -m json.tool evidence/factorized-benchmark.json > /dev/null
-      - name: Verify adaptive runtime with ASan and UBSan
-        env:
-          ASAN_OPTIONS: detect_leaks=1:abort_on_error=1
-          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
-        run: |
-          cmake -S . -B build-sanitized -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=OFF -DCMAKE_CXX_FLAGS="-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=undefined" -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
-          cmake --build build-sanitized --target reverse_pc_factorized --parallel 2
-          ./build-sanitized/reverse_pc_factorized --self-test | tee evidence/factorized-sanitizers.json
       - name: Capture architecture bottlenecks and verify JSON
         run: |
           ./build/reverse_pc_architecture_audit | tee evidence/architecture-bottlenecks.json
           python3 -m json.tool evidence/architecture-bottlenecks.json > /dev/null
-      - name: Validate architecture audit under ASan and UBSan
+      - name: Restored rigorous audit and dynamic refactorization
+        run: |
+          ./build/reverse_pc_rigorous_reduced | tee evidence/rigorous-reduced.json
+          python3 tests/rigor_cli.py ./build/reverse_pc build/rigor_data | tee evidence/rigorous-cli.json
+          ./build/reverse_pc_refactorization | tee evidence/refactorization.json
+      - name: Full regression suites with ASan and UBSan
         env:
           ASAN_OPTIONS: detect_leaks=1:abort_on_error=1
           UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
         run: |
-          cmake -S . -B build-audit-sanitized -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=OFF -DCMAKE_CXX_FLAGS="-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=undefined" -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
-          cmake --build build-audit-sanitized --target reverse_pc_architecture_audit --parallel 2
-          ./build-audit-sanitized/reverse_pc_architecture_audit | tee evidence/architecture-asan.json
+          cmake -S . -B build-full-sanitized -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=ON -DCMAKE_CXX_FLAGS="-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=undefined" -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build-full-sanitized --parallel 2
+          ctest --test-dir build-full-sanitized --output-on-failure -E "speed_and_precision|universality_resources"
+      - name: Compare the same workloads against the preserved main baseline
+        run: |
+          mkdir -p build/resource-baseline
+          git show e8a04e029adbeae3fc9bd963374d93d61f24f524:src/adaptive_reduced.hpp > build/resource-baseline/adaptive_reduced.hpp
+          g++ -std=c++17 -O3 -DNDEBUG -Ibuild/resource-baseline -Ideps/mundo-x/native/include tests/resource_probe.cpp -o build/resource-baseline/probe
+          python3 scripts/compare-resources.py build/resource-baseline/probe build/reverse_pc_resource_probe > evidence/resource-comparison.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
