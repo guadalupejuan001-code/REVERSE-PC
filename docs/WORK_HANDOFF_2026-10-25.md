@@ -42,7 +42,26 @@ El caso estructurado de 1000 qubits factorizados estimó 194,304 bytes
 y 0.101984 ms, **sin baseline Reduced equivalente**. No extrapolar
 a todos los programas, y no presentar estimaciones como RSS físico.
 
-## Sospechas / limitaciones fundadas en código
+## Resultados medidos en la auditoría de arquitectura
+
+Ejecución reproducible (CMake Release y sanitizadores ASan/UBSan):
+https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40207886872
+
+JSON en el artefacto CI: `evidence/architecture-bottlenecks.json`.
+
+| Prueba | Observación de UNA ejecución de GitHub Actions |
+| --- | --- |
+| 32 qubits, CX/CX deshace el entrelazamiento | Bloque llegó a ancho 14; al procesar q14 (ancho proyectado 15) saltó a Reduced, aunque el estado final es producto de 32 factores. 1.041897 ms en esta prueba |
+| 4 qubits, 50.000 puertas X que se cancelan | Payload estimado pasó de 384 a 1.573.248 bytes. 1.356691 ms en esta prueba |
+| 3 qubits, 20.000 puertas previas antes de fallback | La transición que reconstruye Reduced tardó 15.862728 ms; programa completo 16.304682 ms |
+| QuantumRuntime, 256 activos, 128 puertas X sobre q0 | Individuos: 1.424442 ms; un batch: 0.052469 ms. Mismo observable de estado, pero revisión 129 vs 2: **no son semánticamente idénticos si la revisión importa** |
+
+Seis suites CTest verdes, ASan y UBSan sin fallos observados.
+Estos tiempos cortos son orientativos: repetir en el mismo hardware con
+calentamiento, múltiples semillas y estadísticas para decidir cambios de
+arquitectura. Los bytes son estimaciones del contenedor, no el pico de RSS.
+
+## Hallazgos confirmados y limitaciones fundadas en código
 
 ### P0 — Bloques que no se vuelven a separar
 
