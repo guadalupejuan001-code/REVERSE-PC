@@ -80,3 +80,28 @@ dependiente de datos, instrucciones de aritmética general ni una GPU.
 La siguiente etapa es precisamente construirlas y evaluarlas.
 
 Consulta docs/architecture.md para los criterios de investigación.
+
+
+## Adaptive Reduced: factorización de estados separables
+
+REVERSE-PC incorpora un ejecutable nuevo, `reverse_pc_factorized`, que
+conserva por separado los bloques de qubits independientes en lugar de
+expandir todas las combinaciones. Detecta algunos casos donde CX/CZ no
+entrelazan, fusiona bloques cuando sí lo hacen y vuelve al Reduced canónico
+si un bloque supera el límite establecido.
+
+```sh
+./build/reverse_pc_factorized --self-test
+./build/reverse_pc_factorized --benchmark
+./build/reverse_pc_factorized --run 4 examples/factorized-small.qxi
+```
+
+La prueba diferencial genera 260 circuitos aleatorios contra un oráculo
+vectorial independiente; el benchmark ejecuta la **misma secuencia**
+H/CNOT/T en Reduced y en la implementación factorizada (8–16 qubits),
+comprueba amplitudes y reporta medianas y bytes estimados.
+También prueba un producto de 1.000 qubits sin construir un vector denso.
+
+**Alcance:** la optimización existe en la nueva ruta factorized, no dentro
+del ejecutable XI `reverse_pc`; no modifica Mundo X. No elimina el coste
+exponencial de circuitos arbitrarios. Detalles: [docs/factorization.md](docs/factorization.md).
