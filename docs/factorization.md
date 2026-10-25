@@ -17,9 +17,11 @@ sobre el backend Reduced original de Mundo X, sin cambiarlo.
   se reproduce **el programa completo** en `ReducedExactTRepresentation`
   original, con el límite de componentes configurado; una falla del
   retroceso no compromete el nuevo estado.
-- No hay truncamiento ni poda de contribuciones. La detección de
-  autoestados usa un residual vectorial relativo de 1e-13, para admitir
-  redondeos de punto flotante; por eso no se afirma aritmética exacta real.
+- No hay truncamiento ni poda de contribuciones. Una simplificación
+  requiere residual vectorial exactamente cero en la representación de
+  punto flotante. Si hay diferencias, incluso diminutas, se fusionan
+  bloques en vez de descartar amplitudes. La precisión aritmética sigue
+  estando limitada por el formato double.
 
 La nueva ruta ejecutable es `reverse_pc_factorized`, no el ejecutable
 anterior `reverse_pc`, que conserva sus semánticas XI y estados RVPC1.
