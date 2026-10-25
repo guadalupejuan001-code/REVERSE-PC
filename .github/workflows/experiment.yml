@@ -54,6 +54,7 @@ jobs:
           python3 tests/rigor_cli.py ./build/reverse_pc build/rigor_data | tee evidence/rigorous-cli.json
           ./build/reverse_pc_refactorization | tee evidence/refactorization.json
           ./build/reverse_pc_history_transfer | tee evidence/history-transfer.json
+          ./build/reverse_pc_state_transfer | tee evidence/current-state-transfer.json
           cp build/ether-compat/changes.diff evidence/ether-compat.diff
       - name: Full regression suites with ASan and UBSan
         env:
