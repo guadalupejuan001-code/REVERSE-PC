@@ -43,6 +43,14 @@ jobs:
           ./build/reverse_pc_factorized --benchmark | tee evidence/factorized-benchmark.json
           ./build/reverse_pc_factorized --run 4 examples/factorized-small.qxi | tee evidence/factorized-program.json
           python3 -m json.tool evidence/factorized-benchmark.json > /dev/null
+      - name: Verify adaptive runtime with ASan and UBSan
+        env:
+          ASAN_OPTIONS: detect_leaks=1:abort_on_error=1
+          UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
+        run: |
+          cmake -S . -B build-sanitized -DCMAKE_BUILD_TYPE=Debug -DBUILD_TESTING=OFF -DCMAKE_CXX_FLAGS="-O1 -g -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=undefined" -DCMAKE_EXE_LINKER_FLAGS="-fsanitize=address,undefined"
+          cmake --build build-sanitized --target reverse_pc_factorized --parallel 2
+          ./build-sanitized/reverse_pc_factorized --self-test | tee evidence/factorized-sanitizers.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
