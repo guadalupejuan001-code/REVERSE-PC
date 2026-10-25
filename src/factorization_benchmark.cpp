@@ -307,7 +307,21 @@ void benchmark() {
               << ",\"max_amplitude_error\":" << p.max_error
               << "}";
   }
-  std::cout << "]}\n";
+  const auto large_start = Clock::now();
+  AdaptiveReduced large(1000);
+  for (const auto& g : family(1000)) large.apply(g.operation, g.a, g.b);
+  const double large_ms = milliseconds(large_start);
+  ensure(!large.uses_original_reduced() && large.block_count() == 1000
+         && large.factor_amplitudes() == 2000, "1000q benchmark was not compact");
+  ensure(std::abs(large.norm() - 1.) < 1e-9, "1000q product lost normalization");
+  std::cout << "],\"large_product\":{\"qubits\":1000"
+            << ",\"factor_blocks\":" << large.block_count()
+            << ",\"factor_amplitudes\":" << large.factor_amplitudes()
+            << ",\"factor_payload_bytes\":" << large.estimated_payload_bytes()
+            << ",\"ms\":" << large_ms
+            << ",\"baseline_not_run\":true"
+            << "}}\n";
+
 }
 } // namespace
 
