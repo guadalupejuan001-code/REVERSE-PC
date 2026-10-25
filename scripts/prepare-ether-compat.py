@@ -37,6 +37,11 @@ replacements['quantum_runtime.hpp']=[(
     '        candidate_core, &candidate_memory, program, require_matching_background);',
     '        candidate_core, &candidate_memory, program, require_matching_background);\n'
     '    candidate_core.program_candidate_ = false;')]
+replacements['exact_t_experiment.hpp'] += [
+    ('#include <array>', '#include <array>\n#include <memory>\n#include "integration/state_io.hpp"'),
+    ('  std::size_t n_;\n  std::size_t max_components_;', '#include "integration/reduced_state_extensions.inc"\n  std::size_t n_;\n  std::size_t max_components_;'),
+    ('    base_ = std::move(next_base);', '    base_ = std::move(next_base);\n    integration_basis_.reset();'),
+]
 diffs=[]
 for name,digest in expected.items():
     raw=(source/name).read_bytes()

@@ -33,6 +33,7 @@ if(NOT COMPAT_STATUS EQUAL 0)
   message(FATAL_ERROR "Failed to prepare reviewed Ether compatibility extension")
 endif()
 include_directories(BEFORE "${CMAKE_CURRENT_BINARY_DIR}/ether-compat")
+include_directories("${CMAKE_CURRENT_SOURCE_DIR}/src")
 # New overlay headers can shadow previously tracked upstream include paths.
 # A script fingerprint in compile flags invalidates those existing objects too.
 file(SHA256 "${CMAKE_CURRENT_SOURCE_DIR}/scripts/prepare-ether-compat.py" ETHER_COMPAT_SCRIPT_SHA)
@@ -138,4 +139,11 @@ target_include_directories(reverse_pc_runtime_contract PRIVATE "${ETHER_SOURCE_D
 if(BUILD_TESTING)
   add_test(NAME reverse_pc_xi_runtime_equivalence COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/compare_runtime.py" "$<TARGET_FILE:reverse_pc_runtime_reference>" "$<TARGET_FILE:reverse_pc_runtime_contract>")
   set_tests_properties(reverse_pc_xi_runtime_equivalence PROPERTIES TIMEOUT 180)
+endif()
+
+add_executable(reverse_pc_state_transfer tests/current_state_transfer.cpp)
+target_include_directories(reverse_pc_state_transfer PRIVATE "${ETHER_SOURCE_DIR}/native/include")
+if(BUILD_TESTING)
+  add_test(NAME reverse_pc_state_transfer COMMAND reverse_pc_state_transfer)
+  set_tests_properties(reverse_pc_state_transfer PROPERTIES TIMEOUT 240)
 endif()
