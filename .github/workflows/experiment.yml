@@ -68,6 +68,12 @@ jobs:
         run: |
           ./build/reverse_pc_born_sampling | tee evidence/born-sampling-tests.json
           ./build/reverse_pc_born_sampling --benchmark | tee evidence/born-sampling-resources.json
+      - name: Certified unchanged cosets and allocation traffic
+        run: |
+          ./build/reverse_pc_clifford_cosets | tee evidence/clifford-cosets-tests.json
+          python3 scripts/compare-clifford-cosets.py ./build/reverse_pc_clifford_cosets --repeats 5 --checkpoint evidence/clifford-cosets-checkpoint.json > evidence/clifford-cosets.json
+          ./build/reverse_pc_coset_reference_large 1000 adversarial 17 65536 1 > evidence/coset-reference-integrated.json
+          ./build/reverse_pc_integrated_large 1000 adversarial 17 65536 1 > evidence/coset-optimized-integrated.json
       - name: Full regression suites with ASan and UBSan
         env:
           ASAN_OPTIONS: detect_leaks=1:abort_on_error=1

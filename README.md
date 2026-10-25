@@ -62,7 +62,7 @@ python3 tests/integrated_cli.py ./build/reverse_pc output ./build/reverse_pc_pre
 ```
 
 [Prueba de persistencia local](docs/measurements/integrated-cli-local.json).
-La [campaña medida](docs/integrated-scale-campaign.md) contiene 60 casos grandes,
+La [campaña inicial medida](docs/integrated-scale-campaign.md) contiene 60 casos grandes,
 hasta 96000 puertas Clifford, grafos con entropía 500 entre mitades antes de T,
 presupuestos de 16 a 65536 coeficientes y comparaciones de mediana/p95.
 A 1000 qubits, 96 Clifford tras seis T pasan de 1114 a 2,10 ms al diferir la
@@ -76,10 +76,17 @@ python3 scripts/integrated-matrix.py ./build/reverse_pc_integrated_large \
   --full --repeats 7 --checkpoint evidence/checkpoint.json > evidence/matrix.json
 ```
 
-El adversarial de 1000 qubits alcanza unos 197 MiB de pico RSS al verificar
-estado, copias e inversas. Su inversión tarda 33 s en la ejecución documentada;
-el payload lógico de unos 18 MB no representa ese pico físico. No se identifica
-un registro separable grande con un circuito genérico altamente entrelazado.
+La [certificación posterior de cosets](docs/unchanged-cosets.md) evita reconstruir
+coeficientes que una Clifford deja idénticos, conservando la transformación del
+tableau. A 1000 qubits y 65536 coeficientes, 96 CZ pasan de 1046 a 290 ms y de
+6291936 a 384 asignaciones. Las familias afectadas conservan sus resultados y
+regresiones en el informe.
+
+En una pareja completa con configuración idéntica, la inversión adversarial
+pasa de 29,44 a 2,95 s; el pico total sube de 197 a 213 MiB al incluir copias,
+restauración y comprobaciones. El payload lógico de unos 18 MB no equivale a
+ese pico físico. Los resultados no representan un circuito genérico de 1000
+qubits con un número arbitrario de T.
 
 ## Límites y dependencia
 

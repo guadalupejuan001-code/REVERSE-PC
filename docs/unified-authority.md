@@ -36,7 +36,9 @@ al Reduced. Para otros soportes se usa un cambio de base Clifford, la fase y
 su inversa. Ambos caminos se verifican contra un oráculo vectorial independiente.
 
 Reduced conjuga cosets y base para las instrucciones Clifford sin rehacer una
-eliminación por puerta. La base de observación se calcula cuando se necesita,
+eliminación por puerta. Una [certificación exacta](unchanged-cosets.md) conserva
+el mapa de coeficientes cuando la puerta conmuta con todos sus Paulis; el
+tableau se transforma siempre. La base de observación se calcula cuando se necesita,
 se comparte como caché inmutable y se invalida al cambiar el tableau. La
 inicialización es segura para observaciones concurrentes de copias de sesión.
 Una caché no es una segunda autoridad del estado.

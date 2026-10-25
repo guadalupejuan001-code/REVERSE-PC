@@ -8735,5 +8735,6 @@
   "previous_probe_sha256": "3ec7f6fc8160440fadb7fcd3d4e0f86212cc9004515605378e03715eee61d0e1",
   "complete": true,
   "parallel_measurement": "Fresh subprocesses; one warmup per worker count; 7 interleaved samples, alternating 1/2/4/8 and 8/4/2/1; process RSS/HWM immediately after timed queries and before negative input tests.",
-  "parallel_probe_sha256": "7f3d0b3b086503d72ade14d06eb6913b5f74ee04a43829a542c09aea2b96fe23"
+  "parallel_probe_sha256": "7f3d0b3b086503d72ade14d06eb6913b5f74ee04a43829a542c09aea2b96fe23",
+  "candidate_source_commit": "6b8cecc9345db8c56c9034e62b164c93f8afcffd"
 }
