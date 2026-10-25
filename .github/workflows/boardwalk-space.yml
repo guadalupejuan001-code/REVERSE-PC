@@ -1,0 +1,221 @@
+name: Boardwalk to Space — Android virtual observer
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'boardwalk-space-android/**'
+      - '.github/workflows/boardwalk-space.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'boardwalk-space-android/**'
+      - '.github/workflows/boardwalk-space.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  prove-observer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Verify Earth model and geodetic observer
+        run: |
+          set -euo pipefail
+          mkdir -p boardwalk-evidence/math boardwalk-dist
+          javac -d boardwalk-evidence/math \
+            boardwalk-space-android/app/src/main/java/com/reversepc/boardwalk/ObserverMath.java \
+            boardwalk-space-android/tests/ObserverMathTest.java
+          java -cp boardwalk-evidence/math ObserverMathTest \
+            | tee boardwalk-evidence/geometry.txt
+          grep -q 'BOARDWALK_GEOMETRY_PASS checks=1016' boardwalk-evidence/geometry.txt
+
+      - name: Fetch and validate NASA Blue Marble Earth texture
+        run: |
+          set -euo pipefail
+          bash boardwalk-space-android/scripts/fetch-earth.sh \
+            | tee boardwalk-evidence/earth-texture.txt
+          grep -q 'NASA_BLUE_MARBLE_OK width=1024 height=512' \
+            boardwalk-evidence/earth-texture.txt
+
+      - name: Install Android SDK and emulator
+        run: |
+          set -euo pipefail
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            'platforms;android-35' 'build-tools;35.0.0' 'platform-tools' \
+            'emulator' 'system-images;android-35;default;x86_64'
+
+      - name: Compile and package signed installable APK
+        run: |
+          set -euo pipefail
+          gradle -p boardwalk-space-android --no-daemon --stacktrace \
+             :app:assembleDebug > boardwalk-evidence/gradle.log 2>&1 || {
+                tail -130 boardwalk-evidence/gradle.log
+                exit 1
+             }
+          tail -40 boardwalk-evidence/gradle.log
+          cp boardwalk-space-android/app/build/outputs/apk/debug/app-debug.apk \
+             boardwalk-dist/BOARDWALK-TO-SPACE.apk
+
+      - name: Verify package, offline operation, NASA texture and shader
+        run: |
+          set -euo pipefail
+          APK=boardwalk-dist/BOARDWALK-TO-SPACE.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" \
+             > boardwalk-evidence/signature.txt
+          python3 - <<'PY'
+          import hashlib,json,os,re,subprocess,struct,zipfile
+          from pathlib import Path
+          apk=Path('boardwalk-dist/BOARDWALK-TO-SPACE.apk')
+          build=os.environ['ANDROID_HOME']+'/build-tools/35.0.0/'
+          badge=subprocess.check_output([build+'aapt','dump','badging',str(apk)],text=True)
+          perms=subprocess.check_output([build+'aapt','dump','permissions',str(apk)],text=True)
+          found=re.search(r"package: name='([^']+)' versionCode='([^']+)' versionName='([^']+)'",badge)
+          assert found and found.groups()==('com.reversepc.boardwalk','1','1.0.0'),badge[:700]
+          assert 'uses-permission:' not in perms,perms
+          with zipfile.ZipFile(apk) as z:
+            assert z.testzip() is None
+            paths=set(z.namelist())
+            required={'classes.dex','assets/observer.vert','assets/observer.frag',
+                      'assets/blit.frag','assets/earth_1024.png'}
+            assert required<=paths,(required-paths)
+            image=z.read('assets/earth_1024.png')
+            assert image[:8]==b'\x89PNG\r\n\x1a\n'
+            assert struct.unpack('>II',image[16:24])==(1024,512)
+            shader=z.read('assets/observer.frag').decode()
+            assert '6371.0' in shader and 'void main()' in shader
+          result={'package':found.group(1),'version':found.group(3),
+                  'size_bytes':apk.stat().st_size,
+                  'sha256':hashlib.sha256(apk.read_bytes()).hexdigest(),
+                  'nasa_texture':True,'offline':True,'permissions':[],
+                  'backend':'OpenGL ES 3.0 ray-sphere with approximate single scattering',
+                  'virtual_camera':True,'human_flight_simulation':False,
+                  'physical_rocket_orbit':False}
+          Path('boardwalk-evidence/apk.json').write_text(json.dumps(result,indent=2)+'\n')
+          print(json.dumps(result))
+          PY
+
+      - name: Launch on Android 15 emulator and compare ground to space
+        timeout-minutes: 13
+        run: |
+          set -euo pipefail
+          export PATH="$ANDROID_HOME/platform-tools:$PATH"
+          sudo chmod a+rw /dev/kvm
+          export ANDROID_AVD_HOME="$(mktemp -d /tmp/boardwalk-avd.XXXXXX)"
+          printf 'no\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd \
+            --force -n boardwalk-to-space -p "$ANDROID_AVD_HOME/boardwalk-to-space.avd" \
+            -k 'system-images;android-35;default;x86_64'
+          "$ANDROID_HOME/emulator/emulator" -avd boardwalk-to-space \
+            -no-window -no-audio -no-boot-anim -no-snapshot \
+            -gpu swiftshader_indirect -memory 2048 > boardwalk-evidence/emulator.log 2>&1 &
+          EMU_PID=$!
+          trap 'kill "$EMU_PID" 2>/dev/null || true' EXIT
+          adb start-server
+          ready=false
+          for i in $(seq 1 120); do
+            if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == 1 ]]; then
+              ready=true
+              break
+            fi
+            sleep 2
+          done
+          if [[ "$ready" != true ]]; then
+            tail -100 boardwalk-evidence/emulator.log
+            exit 1
+          fi
+          adb shell input keyevent 82
+          adb install -r boardwalk-dist/BOARDWALK-TO-SPACE.apk
+          adb logcat -c
+          adb shell am start -W -n com.reversepc.boardwalk/.MainActivity \
+            | tee boardwalk-evidence/launch.txt
+          sleep 7
+          # Close Android's first-launch full-screen tutorial if shown.
+          adb shell uiautomator dump /sdcard/boardwalk-first.xml >/dev/null
+          adb exec-out cat /sdcard/boardwalk-first.xml > boardwalk-evidence/first.xml
+          python3 - <<'PY'
+          import re,subprocess,xml.etree.ElementTree as ET
+          root=ET.parse('boardwalk-evidence/first.xml').getroot()
+          for node in root.iter('node'):
+            if node.attrib.get('text')=='Got it':
+              xy=list(map(int,re.findall(r'\d+',node.attrib['bounds'])))
+              subprocess.run(['adb','shell','input','tap',
+                              str((xy[0]+xy[2])//2),str((xy[1]+xy[3])//2)],check=True)
+              print('Dismissed Android immersive notice')
+              break
+          PY
+          sleep 3
+          adb shell screencap -p /sdcard/boardwalk-ground.png
+          adb exec-out cat /sdcard/boardwalk-ground.png > boardwalk-evidence/ground.png
+          adb shell uiautomator dump /sdcard/boardwalk-ui.xml >/dev/null
+          adb exec-out cat /sdcard/boardwalk-ui.xml > boardwalk-evidence/ground-ui.xml
+          python3 - <<'PY'
+          import re,subprocess,xml.etree.ElementTree as ET
+          root=ET.parse('boardwalk-evidence/ground-ui.xml').getroot()
+          all_text=' '.join(n.attrib.get('text','') for n in root.iter('node'))
+          assert 'BOARDWALK' in all_text,all_text[:800]
+          assert '6 m' in all_text,all_text[:800]
+          sliders=[n for n in root.iter('node') if
+                   n.attrib.get('content-desc')=='boardwalk-altitude-slider']
+          assert sliders,'altitude slider not connected to UI'
+          xy=list(map(int,re.findall(r'\d+',sliders[0].attrib['bounds'])))
+          x0=(xy[0]+12);x1=(xy[2]-9);y=(xy[1]+xy[3])//2
+          subprocess.run(['adb','shell','input','swipe',
+                          str(x0),str(y),str(x1),str(y),'500'],check=True)
+          print('Slider moved to far right',x0,x1,y)
+          PY
+          sleep 5
+          adb shell screencap -p /sdcard/boardwalk-space.png
+          adb exec-out cat /sdcard/boardwalk-space.png > boardwalk-evidence/space.png
+          adb shell uiautomator dump /sdcard/boardwalk-space.xml >/dev/null
+          adb exec-out cat /sdcard/boardwalk-space.xml > boardwalk-evidence/space-ui.xml
+          python3 -m pip install --quiet pillow
+          python3 - <<'PY'
+          import re,xml.etree.ElementTree as ET
+          from PIL import Image,ImageChops,ImageStat
+          a=Image.open('boardwalk-evidence/ground.png').convert('RGB')
+          b=Image.open('boardwalk-evidence/space.png').convert('RGB')
+          assert a.size==b.size and a.width>=320 and a.height>=480
+          root=ET.parse('boardwalk-evidence/space-ui.xml').getroot()
+          txt=' '.join(n.attrib.get('text','') for n in root.iter('node'))
+          assert re.search(r'(3[0-9]{2}|400)(\.\d+)? km',txt),txt[:1100]
+          strip=(25,int(a.height*.43),a.width-25,int(a.height*.71))
+          crop_a=a.crop(strip);crop_b=b.crop(strip)
+          colors_a=len(set(crop_a.resize((80,65)).getdata()))
+          colors_b=len(set(crop_b.resize((80,65)).getdata()))
+          difference=ImageStat.Stat(ImageChops.difference(crop_a,crop_b)).mean
+          assert colors_a>70 and colors_b>70,('unrendered image',colors_a,colors_b)
+          assert max(difference)>14,('no visible change in atmosphere/globe',difference)
+          print('BOARDWALK_SPACE_ANDROID_PASS '
+                f'size={a.size} colors_ground={colors_a} colors_space={colors_b} '
+                f'difference={difference} horizon_formula_verified=1')
+          PY
+          adb logcat -d > boardwalk-evidence/logcat.txt
+          if grep -E 'FATAL EXCEPTION|Shader:|Offscreen buffer:|Boardwalk GPU failed' \
+                 boardwalk-evidence/logcat.txt | grep -E 'com.reversepc.boardwalk|Shader:|Offscreen buffer:|Boardwalk GPU failed'; then
+            echo 'Native Android scene failed'
+            exit 1
+          fi
+
+      - name: Preserve APK, screenshots and actual Android evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: BOARDWALK-TO-SPACE-ANDROID-APK
+          path: |
+            boardwalk-dist/**
+            boardwalk-evidence/**
+          if-no-files-found: warn
+          retention-days: 30
