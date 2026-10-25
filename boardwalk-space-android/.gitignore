@@ -1,0 +1,6 @@
+# Downloaded from NASA by scripts/fetch-earth.sh
+app/src/main/assets/earth_1024.png
+.gradle/
+build/
+app/build/
+local.properties
