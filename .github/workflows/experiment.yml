@@ -37,6 +37,12 @@ jobs:
           python3 -m json.tool evidence/report.json > evidence/report-pretty.json
           ./build/reverse_pc run examples/inspect.xi evidence/program-a.rvp evidence/inspected-a.rvp > evidence/reloaded-observation.jsonl
           git -C deps/mundo-x rev-parse HEAD > evidence/upstream-commit.txt
+      - name: Run and publish adaptive factorization comparisons
+        run: |
+          ./build/reverse_pc_factorized --self-test | tee evidence/factorized-tests.json
+          ./build/reverse_pc_factorized --benchmark | tee evidence/factorized-benchmark.json
+          ./build/reverse_pc_factorized --run 4 examples/factorized-small.qxi | tee evidence/factorized-program.json
+          python3 -m json.tool evidence/factorized-benchmark.json > /dev/null
       - uses: actions/upload-artifact@v4
         if: always()
         with:
