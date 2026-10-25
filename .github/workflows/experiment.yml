@@ -37,6 +37,10 @@ jobs:
           python3 -m json.tool evidence/report.json > evidence/report-pretty.json
           ./build/reverse_pc run examples/inspect.xi evidence/program-a.rvp evidence/inspected-a.rvp > evidence/reloaded-observation.jsonl
           git -C deps/mundo-x rev-parse HEAD > evidence/upstream-commit.txt
+      - name: Publish rigorous test measurements
+        run: |
+          ./build/reverse_pc_rigorous_reduced | tee evidence/rigorous-reduced.json
+          python3 tests/rigor_cli.py ./build/reverse_pc build/rigor_data | tee evidence/rigorous-cli.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
