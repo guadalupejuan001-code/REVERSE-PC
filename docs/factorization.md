@@ -50,6 +50,10 @@ cadena de CNOT vecinos y luego T en todos ellos, para n = 8, 10, 12,
 servidor, informa la mediana de los tiempos y comprueba el estado final
 contra la representación canónica Reduced hasta una fase global.
 
+El informe también ejecuta un caso separable de 1.000 qubits únicamente
+con el motor factorizado, sin extrapolar una comparación con Reduced que no
+se ha ejecutado.
+
 Los tiempos excluyen la reconstrucción del vector denso de verificación.
 Los bytes informados son *estimaciones de payload*, no RAM del proceso.
 Para todos esos circuitos el estado es separable; 2^n componentes no
