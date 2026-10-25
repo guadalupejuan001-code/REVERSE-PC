@@ -20,8 +20,11 @@ if(NOT REVERSE_PC_ALLOW_UNPINNED_ETHER AND NOT ETHER_HEAD STREQUAL EXPECTED_ETHE
   message(FATAL_ERROR "Unreviewed upstream source: ${ETHER_HEAD}; expected ${EXPECTED_ETHER_SHA}")
 endif()
 # The checkout stays byte-for-byte pinned. An explicit, hash-checked local
-# compatibility extension fixes the import factory's lost component limit.
+# compatibility extension fixes product-import limits and reuses metadata
+# only inside QuantumRuntime's unpublished whole-program candidate.
 find_package(Python3 COMPONENTS Interpreter REQUIRED)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+  "${CMAKE_CURRENT_SOURCE_DIR}/scripts/prepare-ether-compat.py")
 execute_process(COMMAND "${Python3_EXECUTABLE}"
   "${CMAKE_CURRENT_SOURCE_DIR}/scripts/prepare-ether-compat.py"
   "${ETHER_SOURCE_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/ether-compat"
@@ -30,7 +33,11 @@ if(NOT COMPAT_STATUS EQUAL 0)
   message(FATAL_ERROR "Failed to prepare reviewed Ether compatibility extension")
 endif()
 include_directories(BEFORE "${CMAKE_CURRENT_BINARY_DIR}/ether-compat")
-add_compile_definitions(REVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1)
+# New overlay headers can shadow previously tracked upstream include paths.
+# A script fingerprint in compile flags invalidates those existing objects too.
+file(SHA256 "${CMAKE_CURRENT_SOURCE_DIR}/scripts/prepare-ether-compat.py" ETHER_COMPAT_SCRIPT_SHA)
+add_compile_definitions(REVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1
+  REVERSE_PC_ETHER_EXTENSION_SHA="${ETHER_COMPAT_SCRIPT_SHA}")
 add_executable(reverse_pc src/reverse_pc.cpp)
 target_include_directories(reverse_pc PRIVATE "${ETHER_SOURCE_DIR}/native/include")
 target_compile_definitions(reverse_pc PRIVATE REVERSE_PC_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}")
@@ -120,4 +127,15 @@ target_include_directories(reverse_pc_history_transfer PRIVATE "${CMAKE_CURRENT_
 if(BUILD_TESTING)
   add_test(NAME reverse_pc_history_transfer COMMAND reverse_pc_history_transfer)
   set_tests_properties(reverse_pc_history_transfer PROPERTIES TIMEOUT 180)
+endif()
+
+# Compile the exact same test source twice; upstream has include precedence
+# only in the reference target, so it remains a separate original-code oracle.
+add_executable(reverse_pc_runtime_reference tests/runtime_contract.cpp)
+target_include_directories(reverse_pc_runtime_reference BEFORE PRIVATE "${ETHER_SOURCE_DIR}/native/include")
+add_executable(reverse_pc_runtime_contract tests/runtime_contract.cpp)
+target_include_directories(reverse_pc_runtime_contract PRIVATE "${ETHER_SOURCE_DIR}/native/include")
+if(BUILD_TESTING)
+  add_test(NAME reverse_pc_xi_runtime_equivalence COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/compare_runtime.py" "$<TARGET_FILE:reverse_pc_runtime_reference>" "$<TARGET_FILE:reverse_pc_runtime_contract>")
+  set_tests_properties(reverse_pc_xi_runtime_equivalence PROPERTIES TIMEOUT 180)
 endif()

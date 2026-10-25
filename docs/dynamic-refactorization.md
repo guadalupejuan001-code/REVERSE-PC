@@ -13,8 +13,8 @@ bloques, igual que los observables no normalizados de Reduced.
 La normalización usa el lado menor de la partición; certificados necesarios
 sobre índices de soporte rechazan pronto muchos candidatos entrelazados. Las
 asignaciones y la separación ocurren sobre un candidato privado antes de
-confirmar el estado y el historial. El árbol tiene como máximo ancho-1 cortes
-por bloque. No se materializa el producto global para recuperar factores.
+confirmar el estado y el historial. Los cortes heredados del árbol forman una búsqueda acotada de
+particiones candidatas por bloque. No se materializa el producto global para recuperar factores.
 
 ## Validación
 
