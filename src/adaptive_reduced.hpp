@@ -83,8 +83,8 @@ class AdaptiveReduced {
       return;
     }
 
-    // These identities preserve block independence exactly in ideal
-    // arithmetic; EPS below accommodates the last-bit roundoff from H gates.
+    // Only simplify exact eigenvectors in the represented floating-point
+    // state. Numerically near-eigenstates must NOT be silently approximated.
     const int control_z = eigen(blocks_[first], local(first, a), 'Z');
     const int target_axis = eigen(blocks_[second], local(second, b),
                                   op == Operation::CX ? 'X' : 'Z');
@@ -205,7 +205,7 @@ class AdaptiveReduced {
     std::vector<Complex> psi;
   };
 
-  static constexpr double kEigenTolerance = 1e-13;
+  static constexpr double kEigenTolerance = 0.;
   std::size_t n_, max_block_, max_components_;
   std::size_t gates_ = 0;
   std::vector<Block> blocks_;
@@ -276,8 +276,8 @@ class AdaptiveReduced {
     }
     return total;
   }
-  // Eigenstate detection by vector residual, not only expectation. Prevents
-  // accidentally classifying a nearly pure state as an exact eigenstate.
+  // Eigenstate detection by a zero vector residual, not an expectation
+  // threshold. Nearby nonzero amplitudes are retained by merging instead.
   static int eigen(const Block& block, std::size_t bit, char axis) {
     const std::size_t mask = std::size_t{1} << bit;
     double norm_sq = 0., plus = 0., minus = 0.;
