@@ -21,7 +21,8 @@ con fondo orbital y el arranque `welcome.... REVERSE.`.
 - Visor de imágenes con decodificación acotada; navegador Android WebView;
   acceso explícito a las aplicaciones instaladas en Android.
 - Preferencias de movimiento/calidad conservadas. El fondo se pausa cuando una
-  ventana está maximizada y cuando Android suspende la actividad.
+  ventana está maximizada, dos ventanas cubren ambos lados o Android suspende
+  la actividad.
 - Importar/exportar archivos mediante el selector Android, exportar respaldo
   ZIP de documentos/programas/memoria/borradores y restaurar RVPC2 validado.
   El ZIP se puede extraer con un gestor de archivos; no se importa como un
