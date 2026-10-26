@@ -710,6 +710,7 @@ public final class DesktopActivity extends Activity {
     // Floating window. The top bar can drag, minimize, maximize and close
     // without leaving REVERSE OS; navigation is a real sidebar.
     private WindowUi window(String title,String subtitle){
+        final boolean fullWorkArea="BBY Q".equals(title);
         if(minimizedWindow!=null){
             minimizedWindow.dismiss();
             minimizedWindow=null;
@@ -791,9 +792,12 @@ public final class DesktopActivity extends Activity {
             margin(sidebar,entry,pos==0?0:3);
             entry.setOnClickListener(v->{dialog.dismiss();go[pos].run();});
         }
-        interior.addView(sidebar,new LinearLayout.LayoutParams(dp(143),-1));
-        View verticalRule=new View(this);verticalRule.setBackgroundColor(0xff46515d);
-        interior.addView(verticalRule,new LinearLayout.LayoutParams(dp(1),-1));
+        if(!fullWorkArea){
+            interior.addView(sidebar,new LinearLayout.LayoutParams(dp(143),-1));
+            View verticalRule=new View(this);
+            verticalRule.setBackgroundColor(0xff46515d);
+            interior.addView(verticalRule,new LinearLayout.LayoutParams(dp(1),-1));
+        }
         LinearLayout body=vertical();
         body.setPadding(dp(13),dp(10),dp(13),dp(10));
         interior.addView(body,new LinearLayout.LayoutParams(0,-1,1f));
@@ -806,9 +810,11 @@ public final class DesktopActivity extends Activity {
             actual.setBackgroundDrawableResource(android.R.color.transparent);
             actual.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
             WindowManager.LayoutParams p=actual.getAttributes();
-            p.width=(int)(getResources().getDisplayMetrics().widthPixels*.78f);
-            p.height=(int)(getResources().getDisplayMetrics().heightPixels*.78f);
-            p.dimAmount=.25f;
+            p.width=(int)(getResources().getDisplayMetrics().widthPixels*
+                (fullWorkArea?.90f:.78f));
+            p.height=(int)(getResources().getDisplayMetrics().heightPixels*
+                (fullWorkArea?.91f:.78f));
+            p.dimAmount=fullWorkArea?.13f:.25f;
             p.gravity=Gravity.CENTER;
             actual.setAttributes(p);
             actual.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
