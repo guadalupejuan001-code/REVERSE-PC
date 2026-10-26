@@ -3,6 +3,8 @@
   <!-- Internet belongs solely to the explicitly opened Android WebView host browser.
        The XI/Ether execution engine stays local and makes no network requests. -->
   <uses-permission android:name="android.permission.INTERNET"/>
+  <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+  <uses-permission android:name="android.permission.REQUEST_DELETE_PACKAGES"/>
   <queries>
     <package android:name="com.android.chrome"/>
     <intent>
@@ -17,6 +19,9 @@
       android:usesCleartextTraffic="false"
       android:supportsRtl="true"
       android:icon="@drawable/ic_reverse">
+    <provider android:name=".PackageContentProvider"
+        android:authorities="${applicationId}.packages"
+        android:exported="false" android:grantUriPermissions="true"/>
     <activity android:name=".BootActivity"
         android:exported="true"
         android:screenOrientation="landscape">

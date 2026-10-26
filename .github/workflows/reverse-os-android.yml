@@ -1,4 +1,4 @@
-name: REVERSE Desktop 1.0 - windows, files and real XI
+name: REVERSE Desktop 1.1 - install programs and desktop integration
 on:
   pull_request:
     branches: [main]
@@ -16,6 +16,8 @@ jobs:
   desktop:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      REVERSE_SIGNING_KEYSTORE: ${{ github.workspace }}/build-signing/reverse-desktop.jks
     steps:
       - uses: actions/checkout@v4
         with:
@@ -42,8 +44,18 @@ jobs:
       - name: Retain development signing identity for subsequent main builds
         uses: actions/cache@v4
         with:
-          path: ~/.android/debug.keystore
-          key: reverse-desktop-debug-signing-v1
+          path: ${{ env.REVERSE_SIGNING_KEYSTORE }}
+          key: reverse-desktop-developer-signing-v2
+      - name: Create the explicit development signing identity when missing
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p "$(dirname "$REVERSE_SIGNING_KEYSTORE")"
+          if [[ ! -f "$REVERSE_SIGNING_KEYSTORE" ]]; then
+            keytool -genkeypair -keystore "$REVERSE_SIGNING_KEYSTORE" -storetype JKS -storepass android -keypass android -alias reverse-desktop -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=REVERSE Desktop Development'
+          fi
+          test -s "$REVERSE_SIGNING_KEYSTORE"
       - name: Prepare pinned native dependencies and SDK
         shell: bash
         run: |
@@ -63,21 +75,24 @@ jobs:
           mkdir -p build/desktop-tests
           javac -d build/desktop-tests "$J/WindowGeometry.java" "$J/WorkspaceFiles.java" "$J/CalculatorCompiler.java" reverse-os-android/tests/DesktopCoreTest.java
           java -cp build/desktop-tests com.reversepc.os.DesktopCoreTest reverse-os-evidence/host > reverse-os-evidence/desktop-core.txt
+          javac -d build/desktop-tests "$J/PackageStaging.java" reverse-os-android/tests/PackageStagingTest.java
+          java -cp build/desktop-tests com.reversepc.os.PackageStagingTest | tee reverse-os-evidence/package-staging.txt
           cat reverse-os-evidence/desktop-core.txt
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
             -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc src/reverse_pc.cpp -o build/reverse_pc
           python3 reverse-os-android/tests/check-calculator.py build/reverse_pc reverse-os-evidence/host | tee reverse-os-evidence/calculator-native.txt
           g++ -std=c++17 -O1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tests/reverse_os_transport.cpp -o build/reverse_os_transport
           build/reverse_os_transport | tee reverse-os-evidence/transport.txt
-      - name: Build both desktop and compatible package editions
+      - name: Build desktop ARM64 x86_64 and the real installer fixture
         shell: bash
         run: |
           set -euo pipefail
-          gradle -p reverse-os-android --no-daemon --stacktrace :app:assembleDesktopDebug :app:assembleClassicDebug > reverse-os-evidence/gradle.log 2>&1 || { tail -160 reverse-os-evidence/gradle.log; exit 1; }
-          cp reverse-os-android/app/build/outputs/apk/desktop/debug/app-desktop-debug.apk reverse-os-dist/REVERSE-Desktop-v1.0.apk
-          cp reverse-os-android/app/build/outputs/apk/classic/debug/app-classic-debug.apk reverse-os-dist/REVERSE-OS-v1.0-compatible.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose reverse-os-dist/REVERSE-Desktop-v1.0.apk > reverse-os-evidence/signature.txt
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging reverse-os-dist/REVERSE-Desktop-v1.0.apk > reverse-os-evidence/package.txt
+          gradle -p reverse-os-android --no-daemon --stacktrace :app:assembleProgramsDebug :fixture:assembleDebug > reverse-os-evidence/gradle.log 2>&1 || { tail -160 reverse-os-evidence/gradle.log; exit 1; }
+          cp reverse-os-android/app/build/outputs/apk/programs/debug/app-programs-debug.apk reverse-os-dist/REVERSE-Desktop-v1.1.apk
+          mkdir -p reverse-os-evidence/fixtures
+          cp reverse-os-android/fixture/build/outputs/apk/debug/fixture-debug.apk reverse-os-evidence/fixtures/Programa-prueba.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs reverse-os-dist/REVERSE-Desktop-v1.1.apk > reverse-os-evidence/signature.txt
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging reverse-os-dist/REVERSE-Desktop-v1.1.apk > reverse-os-evidence/package.txt
           python3 - <<'PY'
           import hashlib,json,zipfile
           from pathlib import Path
@@ -92,7 +107,7 @@ jobs:
           print(reports)
           PY
       - name: Exercise real desktop workflows on Android 15
-        timeout-minutes: 22
+        timeout-minutes: 30
         shell: bash
         run: |
           set -euo pipefail
@@ -113,15 +128,16 @@ jobs:
           adb shell input keyevent 82
           adb shell wm size 720x1600
           adb shell wm density 280
-          adb install -r reverse-os-dist/REVERSE-Desktop-v1.0.apk
+          adb install -r reverse-os-dist/REVERSE-Desktop-v1.1.apk
           adb logcat -c
           python3 -m pip install -q pillow
           python3 reverse-os-android/tests/desktop-extras.py reverse-os-evidence/android
+          python3 reverse-os-android/tests/programs-smoke.py reverse-os-evidence/programs reverse-os-evidence/fixtures/Programa-prueba.apk
       - name: Publish installable APK and real UI evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: REVERSE-DESKTOP-1.0
+          name: REVERSE-DESKTOP-1.1
           path: |
             reverse-os-dist/**
             reverse-os-evidence/**

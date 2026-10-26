@@ -1,4 +1,56 @@
-# REVERSE Desktop 1.0
+# REVERSE Desktop 1.1
+
+## Instalar programas
+
+Aplicaciones ofrece **Instalar APK**, **Importar XI**, búsqueda y un menú por
+programa. Un `.xi` se importa a Programas sin ejecutarlo ni cambiar RVPC2;
+al abrirlo, el mismo intérprete XI lo ejecuta en una ventana de resultados.
+Reabrir el proceso recupera esa ventana sin repetir la ejecución. Se puede
+editar, anclar y quitar un programa importado, conservando la memoria compartida.
+
+Las APK se copian por bloques a una carpeta privada (hasta 512 MiB) y se revisan
+por nombre/versión antes de entregarlas al instalador Android. Android pide
+permitir REVERSE como fuente y confirmar la instalación. Cancelar la vista
+previa elimina la copia temporal. Las apps con acceso de inicio aparecen en el
+gestor; se pueden abrir, anclar al escritorio y a Inicio y encontrar con Buscar.
+Se ejecutan en Android y permiten volver con Atrás/Recientes. Información y
+Desinstalar abren los controles del sistema. Las apps del sistema conservan
+su protección frente a la desinstalación desde este gestor.
+
+El proveedor solo concede lectura temporal de un APK concreto; no expone
+programas, documentos, RVPC2 ni carpetas completas. Los `.xi` aceptan UTF-8,
+hasta 256 KiB, y no sobrescriben nombres existentes. Se mantienen el mismo motor,
+la dependencia fijada y la versión de BBY Q.
+
+`REVERSE-Desktop-v1.1.apk` usa `com.reversepc.desktop.apps`, con nombre visible
+REVERSE Desktop 1.1, para instalarse **junto a 1.0**. La clave de desarrollo de
+1.0 no quedó retenida y no se puede prometer una actualización con esa firma.
+RVPC2 se transfiere exportando/importando desde Ajustes. El respaldo ZIP conserva
+los documentos para extracción; esta versión no restaura un perfil ZIP completo.
+Las próximas compilaciones de esta edición usan una ruta de clave explícita y
+una caché comprobable en CI. Es firma de desarrollo: la caché puede caducar y
+no sustituye un almacén de firma de producción.
+
+CI conserva los 13 recorridos anteriores y añade importación/ejecución XI,
+cancelación de APK, permiso de origen, instalación mediante Android, acceso y
+búsqueda, reinicio y desinstalación. El APK de prueba se instala mediante los
+botones de REVERSE/Android; adb solo instala REVERSE. Se comprueban los bytes
+RVPC2 antes y después. `PackageStagingTest` prueba límites, copia incompleta,
+archivos vacíos, nombres y enlaces usando archivos reales.
+
+Compilar esta edición después de preparar las dependencias fijadas:
+
+```bash
+export REVERSE_SIGNING_KEYSTORE="$PWD/build-signing/reverse-desktop.jks"
+mkdir -p build-signing
+# Crear solo una vez; conservar este archivo privado entre compilaciones.
+keytool -genkeypair -keystore "$REVERSE_SIGNING_KEYSTORE" -storetype JKS \
+  -storepass android -keypass android -alias reverse-desktop -keyalg RSA \
+  -keysize 2048 -validity 10000 -dname 'CN=REVERSE Desktop Development'
+gradle -p reverse-os-android :app:assembleProgramsDebug :fixture:assembleDebug
+```
+
+## Base conservada de Desktop 1.0
 
 Escritorio de trabajo dentro de Android, desarrollado sobre REVERSE OS v0.5
 (`7420e067db6b42d207dd43eab00bdb9942eacafc`). Mantiene el diseño plano en grafito
@@ -67,9 +119,7 @@ Puede importar su RVPC2 desde Ajustes si se exportó previamente.
 
 `REVERSE-OS-v1.0-compatible.apk` conserva `com.reversepc.os`. Solo puede actualizar
 una instalación con la misma firma. No desinstalar una versión anterior para
-resolver una firma distinta sin exportar antes sus datos. La CI conserva la
-clave de desarrollo para futuras compilaciones de la rama principal; estas
-APK son compilaciones de desarrollo, no una distribución de producción.
+resolver una firma distinta sin exportar antes sus datos. La compilación anterior intentaba conservar la clave en una ruta que no existía; su firma no puede darse por conservada. Estas APK son compilaciones de desarrollo, no una distribución de producción.
 
 Compilar ambas ediciones:
 

@@ -78,6 +78,11 @@ public final class DesktopActivity extends Activity {
     private final java.util.Map<String,Runnable> fileRefreshers=new java.util.HashMap<>();
     private final java.util.Map<String,Runnable> draftWriters=new java.util.HashMap<>();
     private static final int IMPORT_FILE=5120,EXPORT_FILE=5121,EXPORT_DESKTOP=5122;
+    private static final int PICK_APK=5130,PICK_XI=5131,INSTALL_APK=5132,INSTALL_SOURCE=5133,UNINSTALL_APP=5134;
+    private LinearLayout pinnedArea;
+    private java.util.List<DesktopPrograms.Entry> programCatalog=java.util.Collections.emptyList();
+    private final java.util.Map<String,Runnable> programRefreshers=new java.util.HashMap<>();
+    private boolean catalogLoading=false,catalogRefreshPending=false;
     private String engineFailure="";
     private TextView statusLabel, clockLabel, statusDetail;
     private final StringBuilder consoleHistory=new StringBuilder(
@@ -173,6 +178,7 @@ public final class DesktopActivity extends Activity {
                     statusLabel.setText("● Listo");
                     statusLabel.setTextColor(ACCENT);
                     statusDetail.setText("");
+                    refreshPrograms();
                     windowLayer.post(this::restoreDesktop);
                 });
             }catch(Throwable fault){
@@ -264,6 +270,7 @@ public final class DesktopActivity extends Activity {
         // traditional desktop columns on the left, not a "quantum menu".
         LinearLayout shortcutGrid=vertical();
         shortcutGrid.setPadding(dp(3),dp(12),dp(3),dp(2));
+        pinnedArea=vertical();shortcutGrid.addView(pinnedArea);
         String[][] icons={{"▤","Archivos"},{"◎","Navegador"},{"▧","Editor"},
             {"⌘","XI Studio"},{">_","Terminal"},{"=","Calculadora"},
             {"◈","Ether Core"},{"⚙","Ajustes"},{"▦","Aplicaciones"},
@@ -620,6 +627,7 @@ public final class DesktopActivity extends Activity {
             else if(key.startsWith("text:"))openText(key.substring(5));
             else if(key.startsWith("image:"))openImage(key.substring(6));
             else if(key.startsWith("files:"))openFiles(key.substring(6));
+            else if(key.startsWith("program:"))openNativeProgram(key.substring(8),false);
             else if(java.util.Arrays.asList(APPLICATIONS).contains(key)&&!key.equals("Editor"))launchApp(key);
         }
         if(!previousFocus.isEmpty())windows.focusExisting(previousFocus);
@@ -648,16 +656,23 @@ public final class DesktopActivity extends Activity {
             }
             list.addView(row);
         }
+        margin(list,touch("Instalar programas",12,true,()->{w.dialog.dismiss();openAndroidApps();}),6);
+        for(DesktopPrograms.Entry entry:programCatalog)if(isPinned(entry.id))margin(list,touch(entry.title+(entry.nativeXi()?" · XI":" · Android"),12,false,()->{w.dialog.dismiss();launchProgram(entry);}),5);
         w.content.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         margin(w.content,touch("Apagar / Reiniciar",11,false,this::openPower),8);
     }
     private void openSearch(){
         WindowUi w=window("Buscar","Aplicaciones y documentos");if(w==null)return;
         EditText field=bbyqField(w.content,"Busca una aplicación o un archivo");
+        field.setContentDescription("BUSQUEDA GLOBAL");
         ScrollView scroll=new ScrollView(this);LinearLayout list=vertical();scroll.addView(list);w.content.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         Runnable refresh=()->{
             String q=field.getText().toString().toLowerCase(Locale.ROOT).trim();list.removeAllViews();
             for(String app:APPLICATIONS)if(app.toLowerCase(Locale.ROOT).contains(q))margin(list,touch(app,12,false,()->{w.dialog.dismiss();launchApp(app);}),5);
+            if(!q.isEmpty())for(DesktopPrograms.Entry entry:programCatalog)if((entry.title+" "+entry.id).toLowerCase(Locale.ROOT).contains(q)){
+                TextView hit=touch(entry.title+(entry.nativeXi()?" · XI":" · Android"),12,false,()->{w.dialog.dismiss();launchProgram(entry);});
+                hit.setContentDescription("RESULTADO PROGRAMA "+entry.id);margin(list,hit,5);
+            }
             if(files!=null&&!q.isEmpty())engine.execute(()->{
                 try{java.util.ArrayList<WorkspaceFiles.Entry> hits=new java.util.ArrayList<>();searchFiles("",q,hits,0);
                     runOnUiThread(()->{if(!w.dialog.isShowing()||!field.getText().toString().toLowerCase(Locale.ROOT).trim().equals(q))return;
@@ -665,7 +680,7 @@ public final class DesktopActivity extends Activity {
                 }catch(Exception ex){Log.w(LOG,"Search",ex);}
             });
         };
-        field.addTextChangedListener(watcher(refresh));refresh.run();
+        field.addTextChangedListener(watcher(refresh));programRefreshers.put(w.dialog.key,refresh);w.dialog.setOnDismissListener(h->programRefreshers.remove(h.key));refresh.run();
     }
     private void searchFiles(String path,String q,List<WorkspaceFiles.Entry> hits,int depth)throws IOException{
         if(depth>6||hits.size()>=40||path.equals("Papelera"))return;
@@ -1048,6 +1063,7 @@ public final class DesktopActivity extends Activity {
     private interface FileAction {void run()throws Exception;}
     private void fileWork(FileAction action,Runnable done){engine.execute(()->{try{action.run();runOnUiThread(()->{if(isDestroyed())return;info("Listo");for(Runnable refresh:new java.util.ArrayList<>(fileRefreshers.values()))if(refresh!=done)refresh.run();if(done!=null)done.run();});}catch(Exception ex){runOnUiThread(()->info(ex.getMessage()));}});}
     private void promptName(String title,String defaultName,java.util.function.Consumer<String> action){
+        if(isFinishing()||isDestroyed())return;
         EditText field=new EditText(this);field.setSingleLine(true);field.setText(defaultName);field.selectAll();
         AlertDialog d=new AlertDialog.Builder(this).setTitle(title).setView(field).setNegativeButton("Cancelar",null).setPositiveButton("Aceptar",null).create();d.show();
         d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{try{String name=WorkspaceFiles.name(field.getText().toString());action.accept(name);d.dismiss();}catch(Exception ex){field.setError(ex.getMessage());}});
@@ -1080,6 +1096,7 @@ public final class DesktopActivity extends Activity {
     private void openFile(String path){
         String ext=path.toLowerCase(Locale.ROOT);
         if(path.startsWith("Programas/")&&ext.endsWith(".xi")){openStudio(0,path.substring(10));return;}
+        if(ext.endsWith(".apk")){engine.execute(()->{try(java.io.InputStream input=new java.io.FileInputStream(files.image(path))){stageApk(input);}catch(Exception e){runOnUiThread(()->info("No se pudo abrir el APK: "+e.getMessage()));}});return;}
         if(ext.matches(".*\\.(png|jpe?g|webp|gif|bmp)$")){openImage(path);return;}
         if(ext.matches(".*\\.(txt|md|json|csv|log|xml|css|js|java|h|cpp|c|py|ini|xi)$")){openText(path);return;}
         info("Este formato se puede copiar, mover y exportar. El editor abre texto e imágenes.");
@@ -1179,20 +1196,127 @@ public final class DesktopActivity extends Activity {
         list.removeAllViews();memory.setText(windows.all().size()+" ventanas abiertas. Pulsa Actualizar para ver la lista.");
     }
     private void openAndroidApps(){
-        WindowUi w=window("Aplicaciones","Aplicaciones instaladas en Android");if(w==null)return;
-        TextView note=label("Se abren en Android. Usa Atrás o Recientes para volver al escritorio.",11,MUTED,false);w.content.addView(note);
+        WindowUi w=window("Aplicaciones","Programas XI y aplicaciones Android");if(w==null)return;
+        LinearLayout controls=horizontal();
+        String[] titles={"Instalar APK","Importar XI","Actualizar"};
+        Runnable[] actions={()->pickProgram(PICK_APK),()->pickProgram(PICK_XI),this::refreshPrograms};
+        for(int i=0;i<titles.length;i++){TextView b=touch(titles[i],11,i==0,actions[i]);b.setPadding(dp(3),0,dp(3),0);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,dp(35),1);p.setMargins(0,0,dp(4),0);controls.addView(b,p);}w.content.addView(controls);
+        if(preferences.contains("install-token")){
+            LinearLayout pending=horizontal();pending.addView(touch("Continuar instalación",10,true,this::continueApkInstall),new LinearLayout.LayoutParams(0,dp(34),1));pending.addView(touch("Cancelar instalación",10,false,()->{clearPendingApk();info("Instalación cancelada");}),new LinearLayout.LayoutParams(0,dp(34),1));margin(w.content,pending,4);
+        }
+        EditText filter=bbyqField(w.content,"Buscar programa");filter.setContentDescription("FILTRAR PROGRAMAS");
+        TextView note=label("XI se ejecuta aquí. Android abre sus aplicaciones; usa Atrás para volver.",10,MUTED,false);margin(w.content,note,3);
         ScrollView scroll=new ScrollView(this);LinearLayout list=vertical();scroll.addView(list);w.content.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
-        engine.execute(()->{try{
-            android.content.pm.PackageManager pm=getPackageManager();Intent query=new Intent(Intent.ACTION_MAIN);query.addCategory(Intent.CATEGORY_LAUNCHER);
-            List<android.content.pm.ResolveInfo> apps=pm.queryIntentActivities(query,0);apps.sort((a,b)->a.loadLabel(pm).toString().compareToIgnoreCase(b.loadLabel(pm).toString()));
-            runOnUiThread(()->{if(!w.dialog.isShowing())return;
-                for(android.content.pm.ResolveInfo app:apps){if(app.activityInfo.packageName.equals(getPackageName()))continue;
-                    String title=app.loadLabel(pm).toString();margin(list,touch(title,12,false,()->{
-                        try{Intent launch=new Intent(Intent.ACTION_MAIN);launch.addCategory(Intent.CATEGORY_LAUNCHER);launch.setClassName(app.activityInfo.packageName,app.activityInfo.name);launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);startActivity(launch);}catch(Exception e){info("No se pudo abrir "+title);}
-                    }),5);
-                }
-            });
-        }catch(Exception ex){runOnUiThread(()->note.setText("No se pudo leer la lista de aplicaciones"));}});
+        Runnable render=()->{
+            if(!w.dialog.isShowing())return;String q=filter.getText().toString().trim().toLowerCase(Locale.ROOT);list.removeAllViews();
+            for(DesktopPrograms.Entry entry:programCatalog){
+                if(!(entry.title+" "+entry.id).toLowerCase(Locale.ROOT).contains(q))continue;
+                LinearLayout row=horizontal();
+                TextView name=touch(entry.title,12,false,()->launchProgram(entry));name.setSingleLine(true);name.setEllipsize(android.text.TextUtils.TruncateAt.END);name.setPadding(dp(8),0,dp(8),0);name.setContentDescription("ABRIR PROGRAMA "+entry.id);row.addView(name,new LinearLayout.LayoutParams(0,dp(38),1));
+                TextView type=label(entry.nativeXi()?" XI ":" Android ",10,MUTED,false);row.addView(type);
+                TextView menu=touch("⋮",16,false,()->{});menu.setPadding(0,0,0,0);menu.setContentDescription("OPCIONES PROGRAMA "+entry.title);menu.setOnClickListener(v->programMenu(entry,menu));row.addView(menu,new LinearLayout.LayoutParams(dp(35),dp(38)));margin(list,row,5);
+            }
+            if(list.getChildCount()==0)margin(list,label(catalogLoading?"Leyendo programas…":"No hay coincidencias",12,MUTED,false),8);
+        };
+        filter.addTextChangedListener(watcher(render));programRefreshers.put(w.dialog.key,render);w.dialog.setOnDismissListener(h->programRefreshers.remove(h.key));render.run();refreshPrograms();
+    }
+    private void refreshPrograms(){
+        if(store==null||isDestroyed())return;if(catalogLoading){catalogRefreshPending=true;return;}catalogLoading=true;
+        engine.execute(()->{try{java.util.List<DesktopPrograms.Entry> found=DesktopPrograms.catalog(this,store);runOnUiThread(()->{
+            catalogLoading=false;if(isDestroyed())return;programCatalog=found;renderPinned();for(Runnable r:new java.util.ArrayList<>(programRefreshers.values()))r.run();if(catalogRefreshPending){catalogRefreshPending=false;refreshPrograms();}
+        });}catch(Exception e){runOnUiThread(()->{catalogLoading=false;Log.e(LOG,"PROGRAM_CATALOG_FAILED",e);});}});
+    }
+    private boolean isPinned(String id){return preferences.getStringSet("program-pins",java.util.Collections.emptySet()).contains(id);}
+    private void togglePin(DesktopPrograms.Entry entry){
+        java.util.Set<String> ids=new java.util.HashSet<>(preferences.getStringSet("program-pins",java.util.Collections.emptySet()));
+        if(!ids.remove(entry.id)){if(ids.size()>=12){info("El escritorio admite hasta 12 accesos personales");return;}ids.add(entry.id);}
+        preferences.edit().putStringSet("program-pins",ids).apply();renderPinned();Log.i(LOG,"PROGRAM_PIN_CHANGED "+entry.id);
+    }
+    private void renderPinned(){
+        if(pinnedArea==null)return;pinnedArea.removeAllViews();LinearLayout row=null;int count=0;
+        for(DesktopPrograms.Entry entry:programCatalog)if(isPinned(entry.id)){
+            if(count++%3==0){row=horizontal();pinnedArea.addView(row);}
+            addDesktopShortcut(row,entry.nativeXi()?"XI":"▦",entry.title,()->launchProgram(entry));View icon=row.getChildAt(row.getChildCount()-1);icon.setContentDescription("ACCESO PROGRAMA "+entry.title);icon.setOnLongClickListener(v->{programMenu(entry,v);return true;});
+        }
+    }
+    private void launchProgram(DesktopPrograms.Entry entry){
+        if(entry.nativeXi()){openNativeProgram(entry.xi,true);return;}
+        try{Intent launch=new Intent(Intent.ACTION_MAIN);launch.addCategory(Intent.CATEGORY_LAUNCHER);launch.setComponent(entry.component);launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);startActivity(launch);Log.i(LOG,"PROGRAM_ANDROID_LAUNCH "+entry.component.getPackageName());}
+        catch(Exception e){info("No se pudo abrir "+entry.title);refreshPrograms();}
+    }
+    private void programMenu(DesktopPrograms.Entry entry,View anchor){
+        android.widget.PopupMenu menu=new android.widget.PopupMenu(this,anchor);
+        String pin=isPinned(entry.id)?"Quitar acceso":"Anclar al escritorio";menu.getMenu().add(pin);
+        if(entry.nativeXi()){menu.getMenu().add("Editar código");if(preferences.getStringSet("installed-xi",java.util.Collections.emptySet()).contains(entry.xi))menu.getMenu().add("Quitar programa");}
+        else{menu.getMenu().add("Información");if(!entry.system)menu.getMenu().add("Desinstalar");}
+        menu.setOnMenuItemClickListener(item->{String choice=item.getTitle().toString();
+            if(choice.equals(pin))togglePin(entry);
+            else if(choice.equals("Editar código"))openStudio(0,entry.xi);
+            else if(choice.equals("Quitar programa"))new AlertDialog.Builder(this).setTitle("Quitar "+entry.title).setMessage("Se quitará el archivo XI. La memoria compartida y tus documentos se conservan.").setNegativeButton("Cancelar",null).setPositiveButton("Quitar",(d,n)->engine.execute(()->{try{
+                store.deleteProgram(entry.xi);java.util.Set<String> installed=new java.util.HashSet<>(preferences.getStringSet("installed-xi",java.util.Collections.emptySet()));installed.remove(entry.xi);java.util.Set<String> pins=new java.util.HashSet<>(preferences.getStringSet("program-pins",java.util.Collections.emptySet()));pins.remove(entry.id);preferences.edit().putStringSet("installed-xi",installed).putStringSet("program-pins",pins).apply();Log.i(LOG,"PROGRAM_XI_REMOVED "+entry.xi);runOnUiThread(this::refreshPrograms);
+            }catch(Exception e){runOnUiThread(()->info(e.getMessage()));}})).show();
+            else try{Intent external=new Intent(choice.equals("Desinstalar")?Intent.ACTION_UNINSTALL_PACKAGE:android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,Uri.parse("package:"+entry.component.getPackageName()));external.putExtra(Intent.EXTRA_RETURN_RESULT,true);startActivityForResult(external,UNINSTALL_APP);}catch(Exception e){info("No se pudo abrir el control de Android");}
+            return true;
+        });menu.show();
+    }
+    private void openNativeProgram(String filename,boolean start){
+        WindowUi w=window(filename.substring(0,filename.length()-3),"Programa XI", "program:"+filename);
+        if(w==null){if(start)info("El programa ya está abierto");return;}
+        TextView output=label(preferences.getString("program-output:"+filename,"Pulsa Ejecutar para iniciar el programa."),12,WHITE,false);output.setTypeface(Typeface.MONOSPACE);output.setTextIsSelectable(true);output.setContentDescription("SALIDA PROGRAMA "+filename);
+        ScrollView scroll=new ScrollView(this);scroll.addView(output);w.content.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        TextView run=touch("Ejecutar",12,true,()->{});margin(w.content,run,6);
+        Runnable execute=()->{run.setEnabled(false);output.setText("Ejecutando…");engine.execute(()->{String display;
+            try{if(store==null)throw new IOException("El núcleo se está preparando");ResultPacket result=ResultPacket.parse(NativeRuntime.execute(store.loadState(),store.readProgram(filename)));store.writeState(result.state);display=pretty(result.output);if(display.length()>48000)display=display.substring(0,48000)+"\n[Salida visible recortada]";preferences.edit().putString("program-output:"+filename,display).apply();Log.i(LOG,"PROGRAM_XI_RUN_OK "+filename);}
+            catch(Exception e){display="No se pudo ejecutar: "+e.getMessage();Log.e(LOG,"PROGRAM_XI_FAILED "+filename,e);}
+            final String value=display;runOnUiThread(()->{if(w.dialog.isShowing()){output.setText(value);run.setEnabled(true);}});
+        });};run.setOnClickListener(v->execute.run());if(start)execute.run();
+    }
+    private void pickProgram(int request){
+        if(request==PICK_APK&&preferences.contains("install-token")){continueApkInstall();return;}
+        Intent select=new Intent(Intent.ACTION_OPEN_DOCUMENT);select.addCategory(Intent.CATEGORY_OPENABLE);select.setType("*/*");
+        try{startActivityForResult(select,request);}catch(Exception e){info("No hay selector de archivos disponible");}
+    }
+    private String selectedName(Uri uri,String fallback){
+        try(android.database.Cursor c=getContentResolver().query(uri,new String[]{android.provider.OpenableColumns.DISPLAY_NAME},null,null,null)){if(c!=null&&c.moveToFirst()&&c.getString(0)!=null)return c.getString(0);}catch(Exception ignored){}return fallback;
+    }
+    private void importXi(Uri uri){
+        engine.execute(()->{try(java.io.InputStream in=getContentResolver().openInputStream(uri)){
+            if(in==null)throw new IOException("El programa no está disponible");String name=selectedName(uri,"programa.xi");if(!name.toLowerCase(Locale.ROOT).endsWith(".xi"))throw new IOException("Elige un programa con extensión .xi");String code=DesktopPrograms.readXi(in);
+            runOnUiThread(()->promptName("Importar programa XI",name,chosen->{final String normalized=SessionStore.normalized(chosen);
+                for(DesktopPrograms.Entry entry:programCatalog)if(normalized.equals(entry.xi))throw new IllegalArgumentException("Ya existe ese programa. Elige otro nombre.");
+                engine.execute(()->{try{if(store.listPrograms().contains(normalized))throw new IOException("Ya existe ese programa. Elige otro nombre para conservarlo.");store.saveProgram(normalized,code);java.util.Set<String> installed=new java.util.HashSet<>(preferences.getStringSet("installed-xi",java.util.Collections.emptySet()));installed.add(normalized);preferences.edit().putStringSet("installed-xi",installed).apply();Log.i(LOG,"PROGRAM_XI_INSTALLED "+normalized);runOnUiThread(()->{info("Programa importado. Ábrelo desde Aplicaciones.");refreshPrograms();});}catch(Exception e){runOnUiThread(()->info(e.getMessage()));}});
+            }));
+        }catch(Exception e){runOnUiThread(()->info("No se pudo importar: "+e.getMessage()));}});
+    }
+    private void stageApk(java.io.InputStream input)throws IOException{
+        if(preferences.contains("install-token"))throw new IOException("Hay una instalación pendiente. Continúa desde Aplicaciones.");
+        java.io.File staged=PackageStaging.stage(PackageContentProvider.root(this),input);
+        try{
+            android.content.pm.PackageInfo archive=getPackageManager().getPackageArchiveInfo(staged.getPath(),0);
+            if(archive==null||archive.applicationInfo==null)throw new IOException("El archivo no es un APK instalable");
+            archive.applicationInfo.sourceDir=staged.getPath();archive.applicationInfo.publicSourceDir=staged.getPath();String title=archive.applicationInfo.loadLabel(getPackageManager()).toString();
+            runOnUiThread(()->{if(isFinishing()||isDestroyed()){staged.delete();return;}new AlertDialog.Builder(this).setTitle("Instalar "+title).setMessage("Android · "+archive.versionName+"\n"+archive.packageName+"\n"+String.format(Locale.ROOT,"%.1f MiB",staged.length()/1048576.0)).setNegativeButton("Cancelar",(d,n)->staged.delete()).setOnCancelListener(d->staged.delete()).setPositiveButton("Continuar",(d,n)->{
+                String old=preferences.getString("install-token","");if(!old.isEmpty())try{PackageStaging.resolve(PackageContentProvider.root(this),old).delete();}catch(Exception ignored){}
+                preferences.edit().putString("install-token",staged.getName()).putString("install-package",archive.packageName).apply();continueApkInstall();
+            }).show();});
+        }catch(Exception e){staged.delete();throw new IOException(e.getMessage(),e);}
+    }
+    private void continueApkInstall(){
+        try{
+            java.io.File staged=PackageStaging.resolve(PackageContentProvider.root(this),preferences.getString("install-token",""));
+            if(!getPackageManager().canRequestPackageInstalls()){
+                info("Permite instalar desde REVERSE en Android y vuelve para continuar.");
+                startActivityForResult(new Intent(android.provider.Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,Uri.parse("package:"+getPackageName())),INSTALL_SOURCE);return;
+            }
+            Uri uri=PackageContentProvider.uri(this,staged.getName());Intent install=new Intent(Intent.ACTION_INSTALL_PACKAGE);install.setDataAndType(uri,"application/vnd.android.package-archive");install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);install.setClipData(android.content.ClipData.newRawUri("APK",uri));install.putExtra(Intent.EXTRA_RETURN_RESULT,true);startActivityForResult(install,INSTALL_APK);
+        }catch(Exception e){clearPendingApk();info("No se pudo iniciar la instalación: "+e.getMessage());}
+    }
+    private void clearPendingApk(){
+        String token=preferences.getString("install-token","");if(!token.isEmpty()){
+            Uri uri=PackageContentProvider.uri(this,token);revokeUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            try{PackageStaging.resolve(PackageContentProvider.root(this),token).delete();}catch(Exception ignored){}
+        }
+        preferences.edit().remove("install-token").remove("install-package").apply();
     }
     private void openSystemPanel(){
         WindowUi w=window("Panel del sistema","Fecha, energía y controles de Android");if(w==null)return;
@@ -1499,8 +1623,13 @@ public final class DesktopActivity extends Activity {
     }
     @Override protected void onActivityResult(int request,int code,Intent intent){
         super.onActivityResult(request,code,intent);
+        if(request==INSTALL_SOURCE){if(getPackageManager().canRequestPackageInstalls())continueApkInstall();else{clearPendingApk();info("Instalación cancelada");}return;}
+        if(request==INSTALL_APK){String target=preferences.getString("install-package","");Log.i(LOG,(code==RESULT_OK?"APK_INSTALL_OK ":"APK_INSTALL_CANCELLED ")+target);clearPendingApk();refreshPrograms();info(code==RESULT_OK?"Aplicación instalada en Android":"La aplicación no se instaló");return;}
+        if(request==UNINSTALL_APP){refreshPrograms();return;}
         if(code!=RESULT_OK||intent==null||intent.getData()==null)return;
         final Uri uri=intent.getData();
+        if(request==PICK_XI){importXi(uri);return;}
+        if(request==PICK_APK){engine.execute(()->{try(java.io.InputStream in=getContentResolver().openInputStream(uri)){if(in==null)throw new IOException("APK no disponible");stageApk(in);}catch(Exception e){runOnUiThread(()->info("No se pudo preparar el APK: "+e.getMessage()));}});return;}
         if(request==IMPORT_FILE){
             fileWork(()->{
                 String name="archivo";try(android.database.Cursor c=getContentResolver().query(uri,new String[]{android.provider.OpenableColumns.DISPLAY_NAME},null,null,null)){
@@ -1606,6 +1735,7 @@ public final class DesktopActivity extends Activity {
     }
     @Override protected void onResume(){
         super.onResume();
+        refreshPrograms();
         if(wallpaper!=null)wallpaper.onResume();
         if(browserView!=null){browserView.onResume();browserView.resumeTimers();}
     }
