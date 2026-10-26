@@ -227,3 +227,15 @@ endif()
 add_executable(reverse_pc_coset_reference_large tests/integrated_large.cpp)
 target_compile_definitions(reverse_pc_coset_reference_large PRIVATE REVERSE_PC_COSET_REFERENCE=1)
 target_include_directories(reverse_pc_coset_reference_large PRIVATE "${ETHER_SOURCE_DIR}/native/include")
+
+
+# First native XI machine profile: local 64-bit registers and conditional
+# execution over the same transactional Ether/InverseMemory authority.
+add_executable(reverse_pc_xi_machine tests/xi_machine_test.cpp)
+target_include_directories(reverse_pc_xi_machine PRIVATE "${ETHER_SOURCE_DIR}/native/include")
+if(BUILD_TESTING)
+  add_test(NAME reverse_pc_xi_machine COMMAND reverse_pc_xi_machine)
+  add_test(NAME reverse_pc_xi_machine_cli COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tests/xi_machine_cli.py" "$<TARGET_FILE:reverse_pc>")
+  set_tests_properties(reverse_pc_xi_machine reverse_pc_xi_machine_cli PROPERTIES TIMEOUT 180)
+endif()

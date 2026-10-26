@@ -60,6 +60,12 @@ jobs:
         run: |
           ./build/reverse_pc_integrated_correctness | tee evidence/integrated-correctness.json
           python3 tests/integrated_cli.py ./build/reverse_pc evidence/integrated-cli ./build/reverse_pc_previous_cli --hard | tee evidence/integrated-cli.json
+      - name: Verify programmable XI over the live integrated core
+        run: |
+          ./build/reverse_pc_xi_machine | tee evidence/xi-machine.json
+          python3 tests/xi_machine_cli.py ./build/reverse_pc | tee evidence/xi-machine-cli.json
+          python3 -m json.tool evidence/xi-machine.json >/dev/null
+          python3 -m json.tool evidence/xi-machine-cli.json >/dev/null
       - name: Large XI circuit matrix and matched performance comparisons
         run: |
           python3 scripts/integrated-matrix.py ./build/reverse_pc_integrated_large --legacy ./build/reverse_pc_legacy_large --parallel ./build/reverse_pc_parallel_observation --full --repeats 5 --checkpoint evidence/integrated-matrix-checkpoint.json > evidence/integrated-matrix.json

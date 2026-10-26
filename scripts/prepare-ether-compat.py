@@ -45,6 +45,26 @@ replacements['exact_t_experiment.hpp'] += [
 ]
 from ether_integration import configure
 configure(expected,replacements)
+# REVERSE-PC's experimental programmable XI profile is explicitly opted in by
+# a first-line marker. Historical XI keeps the original interpreter byte-for-byte.
+replacements['infinite_program.hpp'] += [
+    ('#include <array>',
+     '#include <array>\n#include <map>\n#include <limits>'),
+    ('// This function acts on a private candidate owned by InfiniteSession.',
+     '#include "integration/xi_machine_extension.inc"\n\n'
+     '// This function acts on a private candidate owned by InfiniteSession.'),
+    ('  if (program.size() > max_program_bytes)\n'
+     '    throw std::length_error("program exceeds 16 MiB transport budget");\n'
+     '  ProgramResult result;',
+     """  if (program.rfind(machine_header, 0) == 0 &&
+      (program.size() == sizeof(machine_header) - 1 ||
+       program[sizeof(machine_header) - 1] == '\\n' ||
+       program[sizeof(machine_header) - 1] == '\\r'))
+    return run_machine(core, memory, program, require_matching_background);
+  if (program.size() > max_program_bytes)
+    throw std::length_error("program exceeds 16 MiB transport budget");
+  ProgramResult result;""")
+]
 diffs=[]
 for name,digest in expected.items():
     raw=(source/name).read_bytes()
