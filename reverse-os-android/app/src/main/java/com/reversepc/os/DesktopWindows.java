@@ -35,7 +35,11 @@ public final class DesktopWindows {
     private TextView text(String value,int size){TextView t=new TextView(context);t.setText(value);t.setTextSize(size);t.setTextColor(0xffe9edf0);t.setGravity(Gravity.CENTER_VERTICAL);return t;}
     public List<Handle> all(){return new ArrayList<>(order);}
     public boolean focusExisting(String key){for(Handle h:order)if(h.key.equals(key)){h.show();return true;}return false;}
-    public boolean hasMaximized(){for(Handle h:order)if(!h.minimized&&h.mode==2)return true;return false;}
+    public boolean coversDesktop(){
+        boolean left=false,right=false;
+        for(Handle h:order)if(!h.minimized){if(h.mode==2)return true;if(h.mode==-1)left=true;if(h.mode==1)right=true;}
+        return left&&right;
+    }
     public Handle focused(){return focused;}
     public List<String> savedKeys(){
         ArrayList<String> keys=new ArrayList<>();
