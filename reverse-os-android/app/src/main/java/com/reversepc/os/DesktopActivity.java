@@ -75,6 +75,7 @@ public final class DesktopActivity extends Activity {
     private WorkspaceFiles files;
     private String fileClipboard="",terminalDirectory="Programas";
     private boolean clipboardCut=false,wallpaperRunning=true;
+    private final java.util.Map<String,Runnable> fileRefreshers=new java.util.HashMap<>();
     private final java.util.Map<String,Runnable> draftWriters=new java.util.HashMap<>();
     private static final int IMPORT_FILE=5120,EXPORT_FILE=5121,EXPORT_DESKTOP=5122;
     private String engineFailure="";
@@ -1040,10 +1041,12 @@ public final class DesktopActivity extends Activity {
             ()->newDocument(folder[0].isEmpty()?"Documentos":folder[0]),
             ()->importFile(folder[0]),()->fileWork(()->{if(fileClipboard.isEmpty())throw new IOException("Primero copia o corta un archivo");files.paste(fileClipboard,folder[0],clipboardCut);if(clipboardCut)fileClipboard="";},refresh[0])};
         for(int i=0;i<labels.length;i++){final Runnable action=actions[i];TextView b=touch(labels[i],10,false,action);b.setPadding(dp(2),0,dp(2),0);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,dp(35),1);p.setMargins(0,dp(4),dp(3),dp(4));toolbar.addView(b,p);}
+        fileRefreshers.put(w.dialog.key,refresh[0]);
+        w.dialog.setOnDismissListener(h->fileRefreshers.remove(h.key));
         refresh[0].run();
     }
     private interface FileAction {void run()throws Exception;}
-    private void fileWork(FileAction action,Runnable done){engine.execute(()->{try{action.run();runOnUiThread(()->{if(isDestroyed())return;info("Listo");if(done!=null)done.run();});}catch(Exception ex){runOnUiThread(()->info(ex.getMessage()));}});}
+    private void fileWork(FileAction action,Runnable done){engine.execute(()->{try{action.run();runOnUiThread(()->{if(isDestroyed())return;info("Listo");for(Runnable refresh:new java.util.ArrayList<>(fileRefreshers.values()))if(refresh!=done)refresh.run();if(done!=null)done.run();});}catch(Exception ex){runOnUiThread(()->info(ex.getMessage()));}});}
     private void promptName(String title,String defaultName,java.util.function.Consumer<String> action){
         EditText field=new EditText(this);field.setSingleLine(true);field.setText(defaultName);field.selectAll();
         AlertDialog d=new AlertDialog.Builder(this).setTitle(title).setView(field).setNegativeButton("Cancelar",null).setPositiveButton("Aceptar",null).create();d.show();
@@ -1052,7 +1055,7 @@ public final class DesktopActivity extends Activity {
     private void fileMenu(WorkspaceFiles.Entry entry,String folder,View anchor,Runnable refresh){
         android.widget.PopupMenu menu=new android.widget.PopupMenu(this,anchor);
         if(folder.equals("Papelera")){menu.getMenu().add("Restaurar");menu.getMenu().add("Eliminar definitivamente");}
-        else if(!WorkspaceFiles.parent(entry.path).isEmpty())for(String option:new String[]{"Abrir","Copiar","Cortar","Renombrar","Exportar","A la papelera"})menu.getMenu().add(option);
+        else if(!WorkspaceFiles.parent(entry.path).isEmpty())for(String option:entry.directory?new String[]{"Abrir","Cortar","Renombrar","A la papelera"}:new String[]{"Abrir","Copiar","Cortar","Renombrar","Exportar","A la papelera"})menu.getMenu().add(option);
         else menu.getMenu().add("Abrir");
         menu.setOnMenuItemClickListener(item->{switch(item.getTitle().toString()){
             case "Abrir":if(entry.directory)openFiles(entry.path);else openFile(entry.path);break;
@@ -1119,7 +1122,7 @@ public final class DesktopActivity extends Activity {
         if(files==null)return;
         WindowUi w=window("Imagen","Visor de imágenes","image:"+path);if(w==null)return;
         TextView name=label(path,11,ACCENT,false);w.content.addView(name);
-        android.widget.ImageView image=new android.widget.ImageView(this);image.setAdjustViewBounds(true);image.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);w.content.addView(image,new LinearLayout.LayoutParams(-1,0,1));
+        android.widget.ImageView image=new android.widget.ImageView(this);image.setContentDescription("IMAGEN ABIERTA");image.setAdjustViewBounds(true);image.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);w.content.addView(image,new LinearLayout.LayoutParams(-1,0,1));
         engine.execute(()->{try{
             java.io.File f=files.image(path);android.graphics.BitmapFactory.Options o=new android.graphics.BitmapFactory.Options();o.inJustDecodeBounds=true;
             android.graphics.BitmapFactory.decodeFile(f.getPath(),o);if(o.outWidth<1||o.outHeight<1)throw new IOException("La imagen no es válida");
@@ -1320,6 +1323,7 @@ public final class DesktopActivity extends Activity {
                     return !"http".equalsIgnoreCase(scheme)&&!"https".equalsIgnoreCase(scheme);
                 }
                 @Override public void onPageFinished(WebView w,String url){
+                    Log.i(LOG,"BROWSER_PAGE_READY "+url);
                     if(url.startsWith("https://")&&!url.startsWith("https://reverse.local")){
                         preferences.edit().putString("browser-url",url).apply();if(!field.hasFocus())field.setText(url);
                     }
