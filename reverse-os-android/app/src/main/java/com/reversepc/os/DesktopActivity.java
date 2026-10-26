@@ -476,36 +476,103 @@ public final class DesktopActivity extends Activity {
     private static final class WindowUi {
         final Dialog dialog;
         final LinearLayout content;
-        WindowUi(Dialog dialog,LinearLayout content) {
+        WindowUi(Dialog dialog,LinearLayout content){
             this.dialog=dialog;this.content=content;
         }
     }
+
+    // Floating window. The top bar can drag, minimize, maximize and close
+    // without leaving REVERSE OS; navigation is a real sidebar.
     private WindowUi window(String title,String subtitle){
+        if(minimizedWindow!=null){
+            minimizedWindow.dismiss();
+            minimizedWindow=null;
+            if(minimizedLabel!=null)minimizedLabel.setVisibility(View.GONE);
+        }
         Dialog dialog=new Dialog(this);
         LinearLayout shell=vertical();
-        shell.setBackground(round(0xff0d1a27,0xff466075,23));
+        shell.setBackground(round(0xf6101124,0xff6a5ca9,16));
         shell.setPadding(dp(1),dp(1),dp(1),dp(1));
 
         LinearLayout top=horizontal();
-        top.setPadding(dp(13),dp(12),dp(12),dp(12));
-        TextView dot=label("● ● ●",11,ACCENT,true);
+        top.setBackground(round(0xfa11152a,0,15));
+        top.setPadding(dp(11),dp(7),dp(11),dp(7));
+        TextView dot=label("●",13,0xffa7a0ff,true);
         top.addView(dot);
-        LinearLayout name=vertical();name.setPadding(dp(11),0,0,0);
-        name.addView(label(title,16,WHITE,true));
+        LinearLayout name=vertical();name.setPadding(dp(12),0,0,0);
+        name.addView(label(title,15,WHITE,true));
         name.addView(label(subtitle,10,MUTED,false));
         top.addView(name,new LinearLayout.LayoutParams(0,-2,1f));
-        TextView close=label("×",29,WHITE,false);
+
+        TextView minimize=label("—",19,MUTED,false);
+        minimize.setGravity(Gravity.CENTER);
+        minimize.setContentDescription("MINIMIZAR "+title);
+        top.addView(minimize,new LinearLayout.LayoutParams(dp(38),dp(32)));
+        minimize.setOnClickListener(v->{
+            minimizedWindow=dialog;
+            if(minimizedLabel!=null){
+                minimizedLabel.setText("▣ "+title);
+                minimizedLabel.setVisibility(View.VISIBLE);
+            }
+            dialog.hide();
+        });
+        TextView maximize=label("□",22,WHITE,false);
+        maximize.setGravity(Gravity.CENTER);
+        maximize.setContentDescription("MAXIMIZAR "+title);
+        top.addView(maximize,new LinearLayout.LayoutParams(dp(38),dp(32)));
+        maximize.setOnClickListener(v->{
+            Window actual=dialog.getWindow();
+            if(actual==null)return;
+            WindowManager.LayoutParams p=actual.getAttributes();
+            int width=getResources().getDisplayMetrics().widthPixels;
+            int height=getResources().getDisplayMetrics().heightPixels;
+            boolean enlarged=p.width>(int)(width*.88f);
+            p.width=(int)(width*(enlarged?.78f:.96f));
+            p.height=(int)(height*(enlarged?.78f:.91f));
+            p.gravity=Gravity.CENTER;
+            actual.setAttributes(p);
+        });
+        TextView close=label("×",25,WHITE,false);
         close.setGravity(Gravity.CENTER);
         close.setContentDescription("CERRAR "+title);
-        close.setBackground(round(0xff203346,0,12));
-        top.addView(close,new LinearLayout.LayoutParams(dp(44),dp(40)));
+        close.setBackground(round(0xff272139,0,9));
+        top.addView(close,new LinearLayout.LayoutParams(dp(38),dp(34)));
         close.setOnClickListener(v->dialog.dismiss());
-        shell.addView(top);
-        View hairline=new View(this);hairline.setBackgroundColor(0xff263a4b);
-        shell.addView(hairline,new LinearLayout.LayoutParams(-1,dp(1)));
+        shell.addView(top,new LinearLayout.LayoutParams(-1,dp(51)));
 
-        LinearLayout body=vertical();body.setPadding(dp(14),dp(14),dp(14),dp(14));
-        shell.addView(body,new LinearLayout.LayoutParams(-1,0,1f));
+        View line=new View(this);line.setBackgroundColor(0xff353456);
+        shell.addView(line,new LinearLayout.LayoutParams(-1,dp(1)));
+
+        LinearLayout interior=horizontal();
+        interior.setGravity(Gravity.TOP);
+        LinearLayout sidebar=vertical();
+        sidebar.setPadding(dp(8),dp(12),dp(8),dp(8));
+        sidebar.setBackgroundColor(0xf40b1022);
+        String[] names={"⌂  HOME","▤  FILES","⚙  SETTINGS",">_  TERMINAL","ⓘ  ABOUT"};
+        Runnable[] go={this::openHome,this::openFiles,this::openSettings,
+                       this::openTerminal,this::openAbout};
+        for(int index=0;index<names.length;index++){
+            final int pos=index;
+            TextView entry=label(names[index],11,pos==0?ACCENT:WHITE,false);
+            entry.setPadding(dp(10),dp(12),dp(6),dp(12));
+            if((title.equalsIgnoreCase("HOME")&&pos==0)||
+               (title.equalsIgnoreCase("FILES")&&pos==1)||
+               (title.equalsIgnoreCase("SETTINGS")&&pos==2)||
+               (title.equalsIgnoreCase("TERMINAL")&&pos==3)){
+                entry.setTextColor(ACCENT);
+                entry.setBackground(round(0xff1d2048,0,9));
+            }
+            margin(sidebar,entry,pos==0?0:3);
+            entry.setOnClickListener(v->{dialog.dismiss();go[pos].run();});
+        }
+        interior.addView(sidebar,new LinearLayout.LayoutParams(dp(143),-1));
+        View verticalRule=new View(this);verticalRule.setBackgroundColor(0xff32335e);
+        interior.addView(verticalRule,new LinearLayout.LayoutParams(dp(1),-1));
+        LinearLayout body=vertical();
+        body.setPadding(dp(13),dp(10),dp(13),dp(10));
+        interior.addView(body,new LinearLayout.LayoutParams(0,-1,1f));
+        shell.addView(interior,new LinearLayout.LayoutParams(-1,0,1f));
+
         dialog.setContentView(shell);
         dialog.show();
         Window actual=dialog.getWindow();
@@ -513,25 +580,174 @@ public final class DesktopActivity extends Activity {
             actual.setBackgroundDrawableResource(android.R.color.transparent);
             actual.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
             WindowManager.LayoutParams p=actual.getAttributes();
-            p.width=(int)(getResources().getDisplayMetrics().widthPixels*0.94f);
-            p.height=(int)(getResources().getDisplayMetrics().heightPixels*0.80f);
-            p.dimAmount=0.50f;p.gravity=Gravity.CENTER;
+            p.width=(int)(getResources().getDisplayMetrics().widthPixels*.78f);
+            p.height=(int)(getResources().getDisplayMetrics().heightPixels*.78f);
+            p.dimAmount=.25f;
+            p.gravity=Gravity.CENTER;
             actual.setAttributes(p);
             actual.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+
+            final float[] touchStart={0f,0f};
+            final int[] origin={0,0};
+            top.setOnTouchListener((view,event)->{
+                switch(event.getActionMasked()){
+                    case android.view.MotionEvent.ACTION_DOWN:
+                        touchStart[0]=event.getRawX();
+                        touchStart[1]=event.getRawY();
+                        actual.getDecorView().getLocationOnScreen(origin);
+                        return true;
+                    case android.view.MotionEvent.ACTION_MOVE:
+                        WindowManager.LayoutParams moving=actual.getAttributes();
+                        int maxX=getResources().getDisplayMetrics().widthPixels-dp(180);
+                        int maxY=getResources().getDisplayMetrics().heightPixels-dp(60);
+                        moving.gravity=Gravity.TOP|Gravity.LEFT;
+                        moving.x=Math.max(-dp(30),Math.min(maxX,origin[0]+
+                                      Math.round(event.getRawX()-touchStart[0])));
+                        moving.y=Math.max(0,Math.min(maxY,origin[1]+
+                                      Math.round(event.getRawY()-touchStart[1])));
+                        actual.setAttributes(moving);
+                        return true;
+                    case android.view.MotionEvent.ACTION_UP:return true;
+                    default:return false;
+                }
+            });
         }
         return new WindowUi(dialog,body);
     }
+
+    private void openAbout(){
+        WindowUi w=window("ABOUT","Acerca de REVERSE OS");
+        TextView text=label("REVERSE OS 0.3\n\n"+
+            "Escritorio horizontal con ventanas funcionales, GPU GLES 3 "+
+            "de REVERSE Space Glitch y la computadora XI/Ether.\n\n"+
+            "El fondo orbital representa cálculos gráficos en tiempo real; "+
+            "no es prueba de aceleración cuántica.\n\n"+
+            "Android sigue siendo el sistema operativo anfitrión; "+
+            "XI ejecuta programas y conserva estados RVPC2. "+
+            "Chromium utiliza Android WebView.",13,WHITE,false);
+        margin(w.content,text,9);
+        TextView button=touch("ABRIR ETHER CORE",12,true,()->{
+            w.dialog.dismiss();openMonitor();
+        });
+        margin(w.content,button,17);
+    }
+
     private void appError(LinearLayout parent,String message){
         TextView t=label(message,13,0xffffa5a5,false);
         t.setPadding(dp(12),dp(15),dp(12),dp(15));
         parent.addView(t);
     }
+    // A real program editor inside a floating window; JNI remains the one
+    // authority for execution. A failed program never replaces RVPC2.
     private void openStudio(int tab,String file){
-        Intent editor=new Intent(this,MainActivity.class);
-        editor.putExtra("tab",tab);
-        if(file!=null)editor.putExtra("program",file);
-        startActivity(editor);
-        overridePendingTransition(android.R.anim.fade_in,android.R.anim.fade_out);
+        final String chosen;
+        if(tab==2)chosen="nuevo_"+(System.currentTimeMillis()%100000)+".xi";
+        else chosen=file==null?"01_euclides.xi":SessionStore.normalized(file);
+        WindowUi w=window("XI STUDIO","Editor de programas de REVERSE-PC");
+        TextView filename=label(chosen+"   •  XI SCRIPT",11,ACCENT,true);
+        margin(w.content,filename,1);
+
+        EditText editor=new EditText(this);
+        editor.setTypeface(Typeface.MONOSPACE);
+        editor.setTextColor(WHITE);editor.setHintTextColor(MUTED);
+        editor.setTextSize(12);
+        editor.setGravity(Gravity.TOP|Gravity.START);
+        editor.setSingleLine(false);
+        editor.setInputType(InputType.TYPE_CLASS_TEXT|
+            InputType.TYPE_TEXT_FLAG_MULTI_LINE|
+            InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        editor.setBackground(round(0xff070c19,0xff45406a,10));
+        editor.setPadding(dp(12),dp(8),dp(12),dp(8));
+        editor.setText(tab==2?"#!reverse-pc-machine-v1\nset r0 1\nprint r0\nhalt\n":
+            "#!reverse-pc-machine-v1\n# Cargando...\n");
+        LinearLayout.LayoutParams editP=new LinearLayout.LayoutParams(-1,0,1f);
+        editP.topMargin=dp(8);
+        w.content.addView(editor,editP);
+
+        TextView output=label("Estado: preparando editor...",11,MUTED,false);
+        output.setTypeface(Typeface.MONOSPACE);
+        output.setMaxLines(3);
+        margin(w.content,output,7);
+        LinearLayout buttons=horizontal();
+        TextView save=touch("GUARDAR",11,false,()->{
+            final String data=editor.getText().toString();
+            engine.execute(()->{
+                try{
+                    if(store==null)throw new IllegalStateException("Núcleo no disponible");
+                    store.saveProgram(chosen,data);
+                    runOnUiThread(()->output.setText("Guardado: "+chosen));
+                }catch(Throwable e){
+                    runOnUiThread(()->output.setText("Error: "+e.getMessage()));
+                }
+            });
+        });
+        buttons.addView(save,new LinearLayout.LayoutParams(0,dp(42),1f));
+        TextView run=touch("▶ EJECUTAR",12,true,()->{
+            if(executing){info("XI está ejecutando otro programa");return;}
+            executing=true;
+            final String data=editor.getText().toString();
+            output.setText("EJECUTANDO "+chosen+"...");
+            engine.execute(()->{
+                try{
+                    if(store==null)throw new IllegalStateException(
+                        "Núcleo XI no disponible: "+engineFailure);
+                    store.saveProgram(chosen,data);
+                    long t0=SystemClock.elapsedRealtimeNanos();
+                    ResultPacket packet=ResultPacket.parse(NativeRuntime.execute(
+                        store.loadState(),data));
+                    store.writeState(packet.state);
+                    long elapsed=SystemClock.elapsedRealtimeNanos()-t0;
+                    final String result=pretty(packet.output)+
+                        String.format(Locale.US,"RVPC2 guardado  •  %.2f ms",
+                                      elapsed/1000000.0);
+                    Log.i("ReverseOS","RUN_OK "+chosen+" output="+packet.output.length());
+                    runOnUiThread(()->{
+                        executing=false;
+                        output.setText(result);
+                        consoleHistory.append("$ run "+chosen+"\n"+result+"\n");
+                    });
+                }catch(Throwable error){
+                    Log.e(LOG,"XI studio run failed",error);
+                    runOnUiThread(()->{
+                        executing=false;
+                        output.setText("ERROR: "+error.getMessage()+
+                            "\nEstado RVPC2 anterior conservado");
+                    });
+                }
+            });
+        });
+        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,dp(42),1f);
+        p.leftMargin=dp(8);
+        buttons.addView(run,p);
+        TextView open=touch("ABRIR",11,false,()->{
+            if(store==null){info("Leyendo programas...");return;}
+            List<String> programs=store.listPrograms();
+            if(programs.isEmpty()){info("No hay programas");return;}
+            new AlertDialog.Builder(this)
+                .setTitle("Abrir programa XI")
+                .setItems(programs.toArray(new String[0]),(d,pos)->{
+                    w.dialog.dismiss();openStudio(0,programs.get(pos));
+                }).show();
+        });
+        LinearLayout.LayoutParams opener=new LinearLayout.LayoutParams(dp(73),dp(42));
+        opener.leftMargin=dp(8);
+        buttons.addView(open,opener);
+        margin(w.content,buttons,6);
+
+        engine.execute(()->{
+            if(tab==2)return;
+            try{
+                if(store==null)throw new IllegalStateException("Núcleo no disponible");
+                String code=store.readProgram(chosen);
+                runOnUiThread(()->{
+                    if(!w.dialog.isShowing())return;
+                    editor.setText(code);
+                    output.setText("Listo: "+chosen+" · editando programa XI");
+                });
+            }catch(Throwable error){
+                runOnUiThread(()->output.setText("Error: "+error.getMessage()));
+            }
+        });
     }
 
     // Terminal executes programs through the exact JNI bridge used by the original GUI.
@@ -888,8 +1104,17 @@ public final class DesktopActivity extends Activity {
             .setNegativeButton("CANCELAR",null)
             .setPositiveButton("CERRAR",(d,which)->finish()).show();
     }
+    @Override protected void onResume(){
+        super.onResume();
+        if(wallpaper!=null)wallpaper.onResume();
+    }
+    @Override protected void onPause(){
+        if(wallpaper!=null)wallpaper.onPause();
+        super.onPause();
+    }
     @Override protected void onDestroy(){
         clockHandler.removeCallbacks(tick);
+        if(minimizedWindow!=null){minimizedWindow.dismiss();minimizedWindow=null;}
         engine.shutdown();
         super.onDestroy();
     }
