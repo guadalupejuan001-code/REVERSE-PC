@@ -248,7 +248,8 @@ final class BbyqSchoolBridge {
         promotion=execute(ctx,state,"next");
         if(values(promotion.output)[0]!=2)
             throw new IOException("Operaciones no aprobaron el examen XI");
-        state=audit(ctx,promotion.state);
+        state=language(ctx,promotion.state,1); // initial UI language: Español
+        state=audit(ctx,state);
         state=ResultPacket.parse(NativeRuntime.execute(state,
             asset(ctx,"e008/audit-organism.xi"))).state;
         state=ResultPacket.parse(NativeRuntime.execute(state,
