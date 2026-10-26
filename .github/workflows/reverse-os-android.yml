@@ -1,4 +1,4 @@
-name: REVERSE OS v0.2 — welcome boot, desktop and native XI
+name: REVERSE OS v0.4 — minimal flat landscape desktop
 on:
   pull_request:
     branches: [main]
@@ -79,17 +79,17 @@ jobs:
             }
           tail -35 reverse-os-evidence/gradle.log
           cp reverse-os-android/app/build/outputs/apk/debug/app-debug.apk \
-            reverse-os-dist/REVERSE-OS-v0.2.apk
+            reverse-os-dist/REVERSE-OS-v0.4.apk
       - name: Verify signed package and native libraries
         shell: bash
         run: |
           set -euo pipefail
-          APK=reverse-os-dist/REVERSE-OS-v0.2.apk
+          APK=reverse-os-dist/REVERSE-OS-v0.4.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK" \
             > reverse-os-evidence/signature.txt
           python3 - <<'PY'
           import zipfile,hashlib,json,os,subprocess,re
-          apk="reverse-os-dist/REVERSE-OS-v0.2.apk"
+          apk="reverse-os-dist/REVERSE-OS-v0.4.apk"
           cmd=os.environ["ANDROID_HOME"]+"/build-tools/35.0.0/aapt"
           badging=subprocess.check_output([cmd,"dump","badging",apk],text=True)
           perms=subprocess.check_output([cmd,"dump","permissions",apk],text=True)
@@ -101,7 +101,8 @@ jobs:
               assert z.testzip() is None
               names=set(z.namelist())
               for required in ("classes.dex","lib/arm64-v8a/libreverse_os.so",
-                               "lib/x86_64/libreverse_os.so"):
+                               "lib/x86_64/libreverse_os.so",
+                               "assets/space.vert","assets/space.frag","assets/blit.frag"):
                   assert required in names,required
           b=open(apk,"rb").read()
           obj={"package":"com.reversepc.os","bytes":len(b),"sha256":hashlib.sha256(b).hexdigest(),
@@ -137,14 +138,14 @@ jobs:
             tail -100 reverse-os-evidence/emulator.log;exit 1
           fi
           adb shell input keyevent 82
-          adb install -r reverse-os-dist/REVERSE-OS-v0.2.apk
+          adb install -r reverse-os-dist/REVERSE-OS-v0.4.apk
           adb logcat -c
           adb shell am start -W -n com.reversepc.os/.BootActivity \
             | tee reverse-os-evidence/launch.txt
           # Capture the actual black screen (not a fabricated mock image).
           boot_seen=false
           for i in $(seq 1 25); do
-            if adb logcat -d -s ReverseBoot:I '*:S' | grep -q 'WELCOME_SCREEN_SHOWN Welcome, Mr Reverse'; then
+            if adb logcat -d -s ReverseBoot:I '*:S' | grep -q 'WELCOME_SCREEN_SHOWN welcome.... REVERSE.'; then
               boot_seen=true;break
             fi
             sleep 0.12
@@ -159,12 +160,35 @@ jobs:
           adb exec-out cat /sdcard/reverse-os-desktop.xml > reverse-os-evidence/desktop-ui.xml
           adb shell screencap -p /sdcard/reverse-os-desktop.png
           adb exec-out cat /sdcard/reverse-os-desktop.png > reverse-os-evidence/desktop.png
+          # Check that the actual GLES3 shader changes pixels between frames.
+          sleep 1.4
+          adb shell screencap -p /sdcard/reverse-os-motion.png
+          adb exec-out cat /sdcard/reverse-os-motion.png > reverse-os-evidence/motion.png
+          adb logcat -d -s ReverseGPU:I '*:S' > reverse-os-evidence/gpu-fps.txt
+          grep -q 'REVERSE_GPU_FPS fps=' reverse-os-evidence/gpu-fps.txt
+          python3 -m pip install -q pillow
+          python3 - <<'PY'
+          from PIL import Image,ImageChops
+          from pathlib import Path
+          a=Image.open("reverse-os-evidence/desktop.png").convert("RGB")
+          b=Image.open("reverse-os-evidence/motion.png").convert("RGB")
+          assert a.size==b.size,a.size
+          assert a.width>a.height,("not landscape",a.size)
+          # The center excludes the clock and most launchers: difference must
+          # come from the GPU world, not from time labels or window updates.
+          bounds=(int(a.width*.43),int(a.height*.15),
+                  int(a.width*.76),int(a.height*.78))
+          diff=ImageChops.difference(a.crop(bounds),b.crop(bounds))
+          bbox=diff.getbbox()
+          assert bbox is not None,"orbital wallpaper did not visibly animate"
+          print("REVERSE_GPU_MOTION_PASS minimal_flat=true landscape="+str(a.size)+" center_changed=true")
+          PY
           python3 - <<'PY'
           import re,subprocess,xml.etree.ElementTree as ET
           nodes=list(ET.parse("reverse-os-evidence/desktop-ui.xml").getroot().iter("node"))
           text=" ".join(n.attrib.get("text","") for n in nodes)
-          required=("REVERSE OS","MR REVERSE","XI STUDIO","TERMINAL","FILES","ETHER CORE","CHROMIUM","SETTINGS")
-          assert "REVERSE OS" in text and "MR REVERSE" in text,text[:1800]
+          required=("REVERSE","XI Studio","Terminal","Archivos","Ether Core","Navegador","Ajustes","INICIO")
+          assert "REVERSE" in text and "INICIO" in text,text[:1800]
           if any(label not in text for label in required):
               subprocess.run(["adb","shell","input","swipe","160","465","160","208","400"],check=True)
               subprocess.run(["adb","shell","uiautomator","dump","/sdcard/reverse-os-scroll.xml"],
@@ -178,12 +202,12 @@ jobs:
               nodes=list(ET.fromstring(fresh).iter("node"))
           for label in required:
               assert label in text,(label,text[:1800])
-          match=next(n for n in nodes if n.attrib.get("text")=="XI STUDIO")
+          match=next(n for n in nodes if n.attrib.get("text")=="XI Studio")
           nums=[int(v) for v in re.findall(r"\d+",match.attrib["bounds"])]
           assert len(nums)==4
           subprocess.run(["adb","shell","input","tap",str((nums[0]+nums[2])//2),
                          str((nums[1]+nums[3])//2)],check=True)
-          print("REVERSE_OS_DESKTOP_PASS welcome=true tiles=6")
+          print("REVERSE_OS_DESKTOP_PASS landscape=true flat_ui=true launchers=6 start=true")
           PY
           sleep 3
           adb shell uiautomator dump /sdcard/reverse-os-studio.xml >/dev/null
@@ -192,7 +216,7 @@ jobs:
           import re,subprocess,xml.etree.ElementTree as ET
           nodes=list(ET.parse("reverse-os-evidence/studio-ui.xml").getroot().iter("node"))
           text=" ".join(n.attrib.get("text","") for n in nodes)
-          assert "XI STUDIO" in text,text[:2200]
+          assert "XI Studio" in text,text[:2200]
           assert "01_euclides.xi" in text,text[:2200]
           match=next((n for n in nodes if "EJECUTAR" in n.attrib.get("text","")),None)
           assert match is not None,text[:2200]
@@ -237,8 +261,8 @@ jobs:
           import xml.etree.ElementTree as ET
           content=" ".join(n.attrib.get("text","") for n in ET.parse(
               "reverse-os-evidence/return-ui.xml").getroot().iter("node"))
-          assert "MR REVERSE" in content,content[:1500]
-          print("REVERSE_OS_HOME_RETURN_PASS")
+          assert "REVERSE" in content and "INICIO" in content,content[:1500]
+          print("REVERSE_OS_HOME_RETURN_PASS window_close=true")
           PY
           adb logcat -d > reverse-os-evidence/logcat.txt
           if grep -E 'FATAL EXCEPTION' reverse-os-evidence/logcat.txt | grep -q 'com.reversepc.os'; then

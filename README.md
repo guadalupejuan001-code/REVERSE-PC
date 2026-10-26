@@ -143,3 +143,7 @@ Sus números particulares no se extrapolan a todos los programas.
 ## REVERSE OS — Android desktop v0.2
 
 La interfaz de REVERSE-PC inicia con la pantalla negra "Welcome, Mr Reverse" y abre un escritorio con seis apps y dock: XI Studio, Terminal, Files, Ether Core, Chromium mediante Android WebView y Settings. Los programas XI siguen ejecutándose mediante el mismo QuantumRuntime nativo con persistencia RVPC2. Android continúa siendo el sistema operativo anfitrión; este producto no es aún un kernel arrancable. [Documentación de REVERSE OS](reverse-os-android/README.md).
+
+## REVERSE OS v0.3 — escritorio horizontal y orbital animado
+
+La versión Android adopta una interfaz de escritorio convencional (similar a Windows/macOS) con Inicio, iconos, búsqueda, barra inferior y ventanas flotantes. El fondo violeta orbital sí se anima mediante el motor gráfico GLES3 de Space Glitch V2, adaptado para REVERSE OS. XI Studio y Terminal ejecutan los programas del mismo QuantumRuntime/InverseMemory y conservan el estado RVPC2. Es un entorno Android anfitrión, no un kernel arrancable ni una ejecución de Chromium bajo XI. [Detalles de compilación y pruebas](reverse-os-android/README.md).

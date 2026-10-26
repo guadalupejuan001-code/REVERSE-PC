@@ -33,3 +33,8 @@ There are no second state authorities, hidden machine-learning models, or invent
 - Linux host runs the same C++ quantum owner, tests GCD=21, RVPC2 round-trip, inverse-memory byte persistence, corruption detection and a 128-qubit entangled gate chain.
 - Android CI builds x86_64+ARM64, checks signer/permissions, installs the APK and runs an XI program from the graphical editor in an actual emulator; its output must be a real native result \`r0=21\`.
 - This foundation is a practical UI and runtime environment, not proof of a new physics model or faster graphics.
+
+
+## v0.3: shell horizontal con GPU
+
+La interfaz Android replica los patrones familiares de escritorio (inicio, ventanas, barra de tareas y accesos directos). El fondo orbital animado usa GLSL 300 ES sobre el pipeline GLES3 adaptativo de `space-glitch-android`, sin modificar Ether, InfiniteCore ni su autoridad. Es una prueba de rendimiento gráfico de la GPU anfitriona, no computación cuántica. CI mide FPS reales y verifica cambios entre capturas del fondo. La ejecución de XI permanece en QuantumRuntime y el estado RVPC2 es transaccional.
