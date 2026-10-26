@@ -189,11 +189,14 @@ public final class MainActivity extends Activity {
             public void onTextChanged(CharSequence s,int start,int before,int count){draft=s.toString();}
             public void afterTextChanged(Editable e){}
         });
-        content.addView(editor,new LinearLayout.LayoutParams(-1,dp(320)));
+        // Keep primary actions above the large editor so Android phones never
+        // hide Execute below the keyboard or the fold.
         LinearLayout actions=row();
         flex(actions,button("GUARDAR",false,()->saveDraft()),1);
         flex(actions,button(busy?"EJECUTANDO":"▶ EJECUTAR",true,()->executeProgram(active,draft)),2);
-        margin(content,actions,13);
+        margin(content,actions,0);
+        gap(content,11);
+        content.addView(editor,new LinearLayout.LayoutParams(-1,dp(320)));
         LinearLayout tools=row();
         flex(tools,button("NUEVO",false,this::newProgramDialog),1);
         flex(tools,button("ABRIR",false,()->{tab=2;build();}),1);
