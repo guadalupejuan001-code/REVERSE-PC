@@ -74,7 +74,7 @@ void main() {
 
   vec3 color=vec3(.0024,.0028,.011);
   // Sparse starfield; stable spatial addresses, time-driven only for twinkle.
-  color+=vec3(.31,.30,.70)*starLayer(uv,vec2(78.0,35.0).x,t)*.24;
+  color+=vec3(.31,.30,.70)*starLayer(uv,78.0,t)*.24;
   color+=vec3(.16,.27,.74)*starLayer(uv*1.83,49.0,t)*.18;
 
   // Sparse cosmic arc energy: broad azimuth bands that drift over time.
