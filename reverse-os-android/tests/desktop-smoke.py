@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 import re
+import shlex
 import struct
 import subprocess
 import sys
@@ -15,7 +16,9 @@ OUT=Path(sys.argv[1]);OUT.mkdir(parents=True,exist_ok=True)
 events=[]
 
 def adb(*args, binary=False):
-    return subprocess.check_output(['adb',*map(str,args)],text=not binary,timeout=30)
+    values=list(map(str,args))
+    command=['adb',values[0],' '.join(shlex.quote(x) for x in values[1:])] if values[0] in ('shell','exec-out') else ['adb',*values]
+    return subprocess.check_output(command,text=not binary,timeout=30)
 
 def tree():
     for _ in range(4):
