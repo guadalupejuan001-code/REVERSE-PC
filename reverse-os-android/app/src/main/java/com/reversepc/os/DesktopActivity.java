@@ -527,10 +527,10 @@ public final class DesktopActivity extends Activity {
 
         margin(panel,label("ANIMALES  ·  rasgos simbólicos",12,WHITE,true),9);
         LinearLayout animals=horizontal();
-        bbyqLearningCard(animals,"♟",ACCENT,2,4,0,0,response);
-        bbyqLearningCard(animals,"♞",ACCENT,2,4,0,1,response);
-        bbyqLearningCard(animals,"♧",ACCENT,2,2,0,response);
-        bbyqLearningCard(animals,"◉",ACCENT,2,0,0,1,response);
+        bbyqLearningCard(animals,"🐈",ACCENT,2,4,0,0,response);
+        bbyqLearningCard(animals,"🐕",ACCENT,2,4,0,1,response);
+        bbyqLearningCard(animals,"🐦",ACCENT,2,2,0,response);
+        bbyqLearningCard(animals,"🐟",ACCENT,2,0,0,1,response);
         panel.addView(animals);
 
         margin(panel,label("FIGURAS  ·  esquinas y curvas",12,WHITE,true),9);
