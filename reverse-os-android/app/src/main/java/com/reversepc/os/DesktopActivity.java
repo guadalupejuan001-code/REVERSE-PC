@@ -627,7 +627,7 @@ public final class DesktopActivity extends Activity {
     private void updateWallpaper(){
         if(wallpaper==null||preferences==null)return;
         wallpaper.quality(preferences.getInt("quality",0));
-        boolean run=preferences.getBoolean("motion",true)&&(windows==null||!windows.hasMaximized());
+        boolean run=preferences.getBoolean("motion",true)&&(windows==null||!windows.coversDesktop());
         if(run!=wallpaperRunning){wallpaperRunning=run;wallpaper.motionEnabled(run);}
         if(!run&&fpsLabel!=null)fpsLabel.setText("Pausa");
     }
@@ -1055,7 +1055,7 @@ public final class DesktopActivity extends Activity {
     private void fileMenu(WorkspaceFiles.Entry entry,String folder,View anchor,Runnable refresh){
         android.widget.PopupMenu menu=new android.widget.PopupMenu(this,anchor);
         if(folder.equals("Papelera")){menu.getMenu().add("Restaurar");menu.getMenu().add("Eliminar definitivamente");}
-        else if(!WorkspaceFiles.parent(entry.path).isEmpty())for(String option:entry.directory?new String[]{"Abrir","Cortar","Renombrar","A la papelera"}:new String[]{"Abrir","Copiar","Cortar","Renombrar","Exportar","A la papelera"})menu.getMenu().add(option);
+        else if(!WorkspaceFiles.parent(entry.path).isEmpty())for(String option:entry.directory?new String[]{"Cortar","Renombrar","A la papelera"}:new String[]{"Copiar","Cortar","Renombrar","Exportar","A la papelera"})menu.getMenu().add(option);
         else menu.getMenu().add("Abrir");
         menu.setOnMenuItemClickListener(item->{switch(item.getTitle().toString()){
             case "Abrir":if(entry.directory)openFiles(entry.path);else openFile(entry.path);break;
