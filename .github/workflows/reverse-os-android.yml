@@ -1,7 +1,7 @@
-name: REVERSE OS v0.4 — minimal flat landscape desktop
+name: REVERSE OS v0.5 — native BBY Q XI desktop
 on:
   pull_request:
-    branches: [main]
+    branches: [main, feature/reverse-os-landscape-ether-motion-20261026]
     paths:
       - 'reverse-os-android/**'
       - 'tests/reverse_os_transport.cpp'
@@ -10,7 +10,7 @@ on:
       - 'scripts/ether_integration.py'
       - '.github/workflows/reverse-os-android.yml'
   push:
-    branches: [main]
+    branches: [main, feature/reverse-os-bbyq-native-integration-20261026]
     paths:
       - 'reverse-os-android/**'
       - 'tests/reverse_os_transport.cpp'
@@ -35,6 +35,19 @@ jobs:
           ref: e2778d962af22f6f1a0794058dd4685fc2573966
           path: deps/mundo-x
           persist-credentials: false
+      - name: Checkout pinned BBY Q original XI learner
+        uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/BBY-Q
+          ref: 7dfa6c31247cf609128db78908313a6ce41c0b80
+          path: deps/bbyq
+          persist-credentials: false
+      - name: Bundle the real BBY Q XI programs and observational curriculum
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash reverse-os-android/scripts/prepare-bbyq.sh deps/bbyq
+          test "$(find reverse-os-android/app/src/main/assets/bbyq -name '*.xi' | wc -l)" -eq 24
       - name: JDK 17
         uses: actions/setup-java@v4
         with:
@@ -79,21 +92,22 @@ jobs:
             }
           tail -35 reverse-os-evidence/gradle.log
           cp reverse-os-android/app/build/outputs/apk/debug/app-debug.apk \
-            reverse-os-dist/REVERSE-OS-v0.4.apk
+            reverse-os-dist/REVERSE-OS-v0.5-BBYQ.apk
       - name: Verify signed package and native libraries
         shell: bash
         run: |
           set -euo pipefail
-          APK=reverse-os-dist/REVERSE-OS-v0.4.apk
+          APK=reverse-os-dist/REVERSE-OS-v0.5-BBYQ.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK" \
             > reverse-os-evidence/signature.txt
           python3 - <<'PY'
           import zipfile,hashlib,json,os,subprocess,re
-          apk="reverse-os-dist/REVERSE-OS-v0.4.apk"
+          apk="reverse-os-dist/REVERSE-OS-v0.5-BBYQ.apk"
           cmd=os.environ["ANDROID_HOME"]+"/build-tools/35.0.0/aapt"
           badging=subprocess.check_output([cmd,"dump","badging",apk],text=True)
           perms=subprocess.check_output([cmd,"dump","permissions",apk],text=True)
           assert "package: name='com.reversepc.os'" in badging,badging[:1000]
+          assert "versionCode='5'" in badging,badging[:1000]
           assert "android.permission.INTERNET" in perms,perms
           assert "android.permission.READ_EXTERNAL_STORAGE" not in perms,perms
           assert "android.permission.WRITE_EXTERNAL_STORAGE" not in perms,perms
@@ -102,7 +116,12 @@ jobs:
               names=set(z.namelist())
               for required in ("classes.dex","lib/arm64-v8a/libreverse_os.so",
                                "lib/x86_64/libreverse_os.so",
-                               "assets/space.vert","assets/space.frag","assets/blit.frag"):
+                               "assets/space.vert","assets/space.frag","assets/blit.frag",
+                               "assets/bbyq/e006/learn.xi",
+                               "assets/bbyq/e008/bank-store.xi",
+                               "assets/bbyq/language/readline.xi",
+                               "assets/bbyq/language/speak.xi",
+                               "assets/bbyq/curriculum-v1.txt"):
                   assert required in names,required
           b=open(apk,"rb").read()
           obj={"package":"com.reversepc.os","bytes":len(b),"sha256":hashlib.sha256(b).hexdigest(),
@@ -138,7 +157,7 @@ jobs:
             tail -100 reverse-os-evidence/emulator.log;exit 1
           fi
           adb shell input keyevent 82
-          adb install -r reverse-os-dist/REVERSE-OS-v0.4.apk
+          adb install -r reverse-os-dist/REVERSE-OS-v0.5-BBYQ.apk
           adb logcat -c
           adb shell am start -W -n com.reversepc.os/.BootActivity \
             | tee reverse-os-evidence/launch.txt
@@ -187,7 +206,7 @@ jobs:
           import re,subprocess,xml.etree.ElementTree as ET
           nodes=list(ET.parse("reverse-os-evidence/desktop-ui.xml").getroot().iter("node"))
           text=" ".join(n.attrib.get("text","") for n in nodes)
-          required=("REVERSE","XI Studio","Terminal","Archivos","Ether Core","Navegador","Ajustes","INICIO")
+          required=("REVERSE","XI Studio","Terminal","Archivos","Ether Core","Navegador","Ajustes","BBY Q","INICIO")
           assert "REVERSE" in text and "INICIO" in text,text[:1800]
           if any(label not in text for label in required):
               subprocess.run(["adb","shell","input","swipe","160","465","160","208","400"],check=True)
@@ -207,7 +226,7 @@ jobs:
           assert len(nums)==4
           subprocess.run(["adb","shell","input","tap",str((nums[0]+nums[2])//2),
                          str((nums[1]+nums[3])//2)],check=True)
-          print("REVERSE_OS_DESKTOP_PASS landscape=true flat_ui=true launchers=6 start=true")
+          print("REVERSE_OS_DESKTOP_PASS landscape=true flat_ui=true launchers=7 start=true")
           PY
           sleep 3
           adb shell uiautomator dump /sdcard/reverse-os-studio.xml >/dev/null
