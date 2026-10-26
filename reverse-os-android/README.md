@@ -1,33 +1,46 @@
-# REVERSE OS · native XI workstation (Android)
+# REVERSE OS v0.2 — Welcome, Mr Reverse
 
-This application is an **offline, installable user-space environment** for the actual C++17 REVERSE-PC XI programmable machine. It is **not** a replacement Android kernel or a standalone bootable OS.
+**REVERSE OS v0.2 is an Android-hosted graphical operating environment for the real REVERSE-PC XI machine.** It is not yet a standalone bootable hardware operating system.
 
-## Experience
-- Four mobile-friendly panels: PROGRAMAS (XI editor/run), CONSOLA (shell and execution JSONL), ARCHIVOS (sandboxed .xi files), SISTEMA (real Ether/QuantumRuntime telemetry and RVPC2 import/export).
-- Working examples: Euclidean GCD, Fibonacci, 128-qubit GHZ with non-Clifford T, far-address Ether observation.
-- Native JNI compiles the same reviewed and SHA-256 verified pinned Mundo X headers, REVERSE-PC integration and XI Machine v1 profile. No external cloud AI or fake renderer is involved.
-- Every program runs inside the existing candidate transactional model, without implicitly measuring quantum handles.
-- The resulting mixed quantum+memory snapshot is saved as the **same RVPC2 binary envelope** produced by the original CLI. Android uses AtomicFile to preserve the old snapshot if writing fails.
-- Programs and state are app-private. Users explicitly select any file to import/export via the Android document picker. No INTERNET, sensor or file-management permissions.
+## The startup sequence
 
-## Build (the canonical path)
-1. Checkout REVERSE-PC including history.
-2. Checkout pinned Mundo X at \`deps/mundo-x\` and verify exact commit \`e2778d962af22f6f1a0794058dd4685fc2573966\`.
-3. \`python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat\`
-4. Install Android SDK 35, NDK 27.2, CMake 3.22.1, JDK 17, Gradle 8.9.
-5. \`gradle -p reverse-os-android :app:assembleDebug\`.
+1. Android 12+ platform splash is forced to solid black instead of white.
+2. BootActivity shows **"Welcome, Mr Reverse"**, with the dark REVERSE OS crest. No JNI loading or state restoration delays this screen.
+3. DesktopActivity displays a dark desktop, status, wallpaper, app grid and bottom dock. The desktop is displayed even if native initialization fails; that failure is reported as CORE ERROR with a readable diagnostic.
+4. Six functional apps open from the desktop or dock:
+   - **XI Studio:** program editor and actual native XI execution.
+   - **Terminal:** help, ls, run, core, edit, clear; the run command calls JNI QuantumRuntime.execute() and persists RVPC2 only on success.
+   - **Files:** a sandboxed browser for saved XI programs with editor integration.
+   - **Ether Core:** live native InfiniteCore/Ether/InverseMemory stats.
+   - **Chromium:** Chromium-based **Android System WebView**, not a Chromium executable running on the XI guest. Can open Android Chrome when installed.
+   - **Settings:** reset RVPC2 with confirmation, restart the welcome animation, or close the desktop.
 
-Alternatively, open **Actions → REVERSE OS — native XI Android workstation** and download \`REVERSE-OS-ANDROID-APK\`. Android APK architectures: arm64-v8a (Samsung A16) and x86_64 (Android emulator).
+Everything except intentional browser network access works offline. INTERNET permission supports the browser only. No location, contacts, sensors or broad file-management permissions.
 
-## Host native contract
-\`\`\`sh
-g++ -std=c++17 -O1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
-  tests/reverse_os_transport.cpp -o build/reverse_os_transport
-./build/reverse_os_transport
-\`\`\`
-This test checks native XI GCD, memory, rollback, corruption rejection, 128-qubit quantum state and RVPC2 byte-identical restoration.
+## Architecture
 
-## Honest limitations
-This v0.1 runs as an Android application. Android is responsible for actual process scheduling, hardware, graphics, permissions, keyboard and persistent storage. XI currently executes one bounded program at a time; registers reset for each run, there is no general guest filesystem, process isolation, multitasking, VM drivers or hardware boot path. The console contains sandbox management commands, not a general Unix shell.
+JNI uses the existing QuantumRuntime, XI Machine v1 grammar, hash-verified pinned Mundo X source (commit e2778d962af22f6f1a0794058dd4685fc2573966), and existing REVERSE-PC extensions. This implementation does not copy the core or create a second state authority.
 
-A future release will need a versioned binary ISA, guest filesystem and explicit guest syscalls, process scheduler, memory isolation and independently tested device integration before calling the underlying guest a full OS.
+XI programs operate with 16 signed 64-bit registers, arithmetic, branches, loops, quantum gates H/CX/T/T†, Ether transformations and Inverse Ether Memory. The UI displays interpreter results, not fabricated outputs. RVPC2 preserves quantum state, revisions, RNG and memory.
+
+## Building and verification
+
+The canonical build is GitHub Actions: **REVERSE OS v0.2 — welcome boot, desktop and native XI**.
+
+Requires the full Git checkout and pinned deps/mundo-x, SDK 35, NDK, CMake 3.22.1, JDK 17 and Gradle 8.9.
+
+Generate the hash-verified Ether overlay using scripts/prepare-ether-compat.py, then run Gradle :app:assembleDebug in reverse-os-android.
+
+Output: REVERSE-OS-v0.2.apk, with ARM64 for the Samsung A16 and x86_64 for the emulator.
+
+Android CI checks the build signature and permissions; actual boot log, desktop icons, tap into XI Studio, real Euclid result 21, persisted RVPC2, and return to desktop. GitHub Actions publishes actual screenshots boot.png, desktop.png and result.png.
+
+## Important installation note
+
+Android development APKs are signed by a debug signing key, which may differ between GitHub Actions builds. If Android refuses to upgrade an older debug APK with a signature error, back up your RVPC2 state first, uninstall the old debug version, then install this version. Uninstalling removes app-private programs and state.
+
+## Limitations
+
+Android remains the host OS providing the real kernel, drivers, scheduler, graphics, I/O and WebView. REVERSE-PC is a programmable guest execution environment, not a bootable new OS yet. It lacks a complete guest binary executable format, generalized filesystem/syscall ABI, guest multitasking and guest device drivers. A Chromium binary compiled for conventional operating systems cannot currently run as a native XI guest process.
+
+Roadmap: docs/REVERSE_OS_ENGINEERING_2026-10-26.md and docs/XI_MACHINE_V2_PLAN_2026-10-26.md.
