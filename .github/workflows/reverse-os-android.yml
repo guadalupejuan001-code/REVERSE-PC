@@ -142,10 +142,18 @@ jobs:
           adb shell am start -W -n com.reversepc.os/.BootActivity \
             | tee reverse-os-evidence/launch.txt
           # Capture the actual black screen (not a fabricated mock image).
+          boot_seen=false
+          for i in $(seq 1 25); do
+            if adb logcat -d -s ReverseBoot:I '*:S' | grep -q 'WELCOME_SCREEN_SHOWN Welcome, Mr Reverse'; then
+              boot_seen=true;break
+            fi
+            sleep 0.12
+          done
+          test "$boot_seen" = true
+          adb logcat -d -s ReverseBoot:I '*:S' > reverse-os-evidence/boot-log.txt
+          sleep 0.30
           adb shell screencap -p /sdcard/reverse-os-boot.png
           adb exec-out cat /sdcard/reverse-os-boot.png > reverse-os-evidence/boot.png
-          adb logcat -d -s ReverseBoot:I '*:S' > reverse-os-evidence/boot-log.txt
-          grep -q 'WELCOME_SCREEN_SHOWN Welcome, Mr Reverse' reverse-os-evidence/boot-log.txt
           sleep 4
           adb shell uiautomator dump /sdcard/reverse-os-desktop.xml >/dev/null
           adb exec-out cat /sdcard/reverse-os-desktop.xml > reverse-os-evidence/desktop-ui.xml
