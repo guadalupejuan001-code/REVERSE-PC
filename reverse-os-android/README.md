@@ -1,46 +1,84 @@
-# REVERSE OS v0.2 — Welcome, Mr Reverse
+# REVERSE OS v0.3 — Escritorio horizontal con movimiento real
 
-**REVERSE OS v0.2 is an Android-hosted graphical operating environment for the real REVERSE-PC XI machine.** It is not yet a standalone bootable hardware operating system.
+**REVERSE OS** funciona como un entorno de computadora dentro de Android.
+La interfaz adopta convenciones conocidas de Windows y macOS: escritorio,
+iconos, menú Inicio, búsqueda, barra de tareas y ventanas flotantes.
 
-## The startup sequence
+No reemplaza el kernel de Android; no ejecuta Windows, macOS ni Chromium como
+procesos huéspedes XI.
 
-1. Android 12+ platform splash is forced to solid black instead of white.
-2. BootActivity shows **"Welcome, Mr Reverse"**, with the dark REVERSE OS crest. No JNI loading or state restoration delays this screen.
-3. DesktopActivity displays a dark desktop, status, wallpaper, app grid and bottom dock. The desktop is displayed even if native initialization fails; that failure is reported as CORE ERROR with a readable diagnostic.
-4. Six functional apps open from the desktop or dock:
-   - **XI Studio:** program editor and actual native XI execution.
-   - **Terminal:** help, ls, run, core, edit, clear; the run command calls JNI QuantumRuntime.execute() and persists RVPC2 only on success.
-   - **Files:** a sandboxed browser for saved XI programs with editor integration.
-   - **Ether Core:** live native InfiniteCore/Ether/InverseMemory stats.
-   - **Chromium:** Chromium-based **Android System WebView**, not a Chromium executable running on the XI guest. Can open Android Chrome when installed.
-   - **Settings:** reset RVPC2 with confirmation, restart the welcome animation, or close the desktop.
+## Arranque
 
-Everything except intentional browser network access works offline. INTERNET permission supports the browser only. No location, contacts, sensors or broad file-management permissions.
+1. Pantalla negra: `welcome.... REVERSE.`.
+2. Transición al escritorio panorámico.
+3. Fondo orbital violeta animado con **OpenGL ES 3**, usando el renderizador
+   adaptativo procedente de **REVERSE Space Glitch V2** y un shader propio
+   para REVERSE OS. La CPU no dibuja cada píxel.
+4. Accesos directos: **XI Studio, Terminal, Files, Chromium, Ether Core,
+   Settings**, y barra inferior con Inicio, búsqueda y aplicaciones.
+5. Ventanas con cerrar, minimizar, maximizar y arrastrar; menú lateral
+   con Home, Files, Settings, Terminal y About.
 
-## Architecture
+## Aplicaciones funcionales
 
-JNI uses the existing QuantumRuntime, XI Machine v1 grammar, hash-verified pinned Mundo X source (commit e2778d962af22f6f1a0794058dd4685fc2573966), and existing REVERSE-PC extensions. This implementation does not copy the core or create a second state authority.
+- **XI Studio:** ventana editable de código XI con Guardar y Ejecutar;
+  invoca el mismo `QuantumRuntime.execute()` C++ que la CLI y conserva
+  el archivo RVPC2 solo cuando la ejecución termina correctamente.
+- **Terminal:** `help`, `ls`, `run fichero.xi`, `edit fichero.xi`,
+  `core` y `clear`; salida real del intérprete.
+- **Files:** programas XI privados.
+- **Ether Core:** consultas reales al estado, reglas, qubits y revisiones.
+- **Chromium:** navegador sobre el **WebView de Android**, no un Chromium
+  binario compilado para la arquitectura XI.
+- **Settings:** reinicio, calidad visual **ECO / AUTO / ALTA** y
+  **PAUSA / MOVIMIENTO** del fondo.
 
-XI programs operate with 16 signed 64-bit registers, arithmetic, branches, loops, quantum gates H/CX/T/T†, Ether transformations and Inverse Ether Memory. The UI displays interpreter results, not fabricated outputs. RVPC2 preserves quantum state, revisions, RNG and memory.
+## Qué motor gráfico participa
 
-## Building and verification
+Se revisó `mundo-X/docs/render-engine-inventory.md` y
+`mundo-X/docs/ether-render-x.md`. **Ether Render X** es el núcleo estructural
+objetivo de Mundo X, pero en la revisión indicada aún no disponía de un
+backend Android GLES que sustituyera el renderer de producción.
 
-The canonical build is GitHub Actions: **REVERSE OS v0.2 — welcome boot, desktop and native XI**.
+REVERSE OS utiliza en esta versión la infraestructura verificada de
+**Space Glitch V2** (`SpaceRenderer` adaptado como
+`ReverseOrbitalRenderer`), sin introducir un segundo estado
+cuántico. El shader `space.frag` genera una esfera, anillos y partículas
+mediante reglas compactas evaluadas directamente por la GPU.
 
-Requires the full Git checkout and pinned deps/mundo-x, SDK 35, NDK, CMake 3.22.1, JDK 17 and Gradle 8.9.
+El visualizador **no ejecuta los circuitos cuánticos en la GPU**.
+No afirma aceleración cuántica, una tasa FPS fija ni hardware cuántico.
+La calidad automática ajusta la resolución interna según FPS medidos.
 
-Generate the hash-verified Ether overlay using scripts/prepare-ether-compat.py, then run Gradle :app:assembleDebug in reverse-os-android.
+## Cómo reproducir
 
-Output: REVERSE-OS-v0.2.apk, with ARM64 for the Samsung A16 and x86_64 for the emulator.
+El CI `.github/workflows/reverse-os-android.yml` compila para
+`arm64-v8a` (Galaxy A16) y `x86_64` (emulador). Necesita Java 17,
+SDK Android 35, NDK, Gradle, el checkout de Mundo X en
+`e2778d962af22f6f1a0794058dd4685fc2573966` y el overlay
+comprobado por hashes.
 
-Android CI checks the build signature and permissions; actual boot log, desktop icons, tap into XI Studio, real Euclid result 21, persisted RVPC2, and return to desktop. GitHub Actions publishes actual screenshots boot.png, desktop.png and result.png.
+El artefacto de Actions contiene `REVERSE-OS-v0.3.apk`,
+`boot.png`, `desktop.png`, `motion.png`, `result.png`,
+logs y la medición FPS del renderer.
 
-## Important installation note
+Los criterios obligatorios son:
+- APK firmada con JNI real de XI y bibliotecas para ARM64/x86_64.
+- Inicio visible en horizontal y accesos a las seis aplicaciones.
+- Dos capturas separadas muestran cambio real en el centro del fondo;
+  el log aporta FPS medidos.
+- Abrir XI Studio desde el escritorio, ejecutar Euclides y comprobar
+  `r0 = 21`, RVPC2 guardado y regreso al escritorio.
+- Regresiones de REVERSE-PC sin alteraciones.
 
-Android development APKs are signed by a debug signing key, which may differ between GitHub Actions builds. If Android refuses to upgrade an older debug APK with a signature error, back up your RVPC2 state first, uninstall the old debug version, then install this version. Uninstalling removes app-private programs and state.
+## Limitaciones e instalación
 
-## Limitations
+Es un *shell* Android, no un SO arrancable. Las ventanas son ventanas de
+aplicación del entorno; la planificación de procesos, GPU, teclado y WebView
+dependen del sistema anfitrión. El ejecutor de programas XI sigue siendo
+propio del proyecto REVERSE-PC.
 
-Android remains the host OS providing the real kernel, drivers, scheduler, graphics, I/O and WebView. REVERSE-PC is a programmable guest execution environment, not a bootable new OS yet. It lacks a complete guest binary executable format, generalized filesystem/syscall ABI, guest multitasking and guest device drivers. A Chromium binary compiled for conventional operating systems cannot currently run as a native XI guest process.
-
-Roadmap: docs/REVERSE_OS_ENGINEERING_2026-10-26.md and docs/XI_MACHINE_V2_PLAN_2026-10-26.md.
+Los APK de debug de distintos runners GitHub pueden tener firmas distintas.
+Si Android rechaza la actualización sobre una versión anterior, **exporta
+primero tus programas y estado**, desinstala y reinstala. Desinstalar borra
+el almacenamiento privado.
