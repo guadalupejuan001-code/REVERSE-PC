@@ -44,6 +44,30 @@ y extensiones preservados de main anterior para comprobar la migración real.
 En C++, la pareja durable usa `core_snapshot()` y
 `memory_persistent_snapshot()`, con restauración conjunta.
 
+## Máquina programable XI — perfil de control clásico
+
+La nueva capa de máquina (`#!reverse-pc-machine-v1`) amplía el **mismo** intérprete
+transaccional con 16 registros enteros de 64 bits, aritmética comprobada,
+comparaciones, saltos, ciclos y acceso byte a byte a Inverse Ether Memory.
+Se admiten operandos dinámicos `$r0` en las direcciones de puertas cuánticas
+y términos como `Z:$r0`: un ciclo puede construir realmente un circuito
+de 128 qubits sobre InfiniteCore sin enumerarlo línea por línea.
+
+[Contrato, instrucciones, seguridad, limitaciones y reproducción](docs/xi-programmable-machine.md).
+
+```sh
+./build/reverse_pc init initial.rvp
+./build/reverse_pc run examples/machine-ghz-128.xi initial.rvp machine-state.rvp
+./build/reverse_pc run examples/machine-continue.xi machine-state.rvp continued.rvp
+```
+
+El perfil es **opt-in**: los programas XI anteriores no cambian y conservan su
+gramática, resultados y RNG originales. Los registros son temporales por programa;
+los bytes de InverseMemory y el estado cuántico sí persisten en RVPC2. Un error
+en cualquier punto, incluido el presupuesto de pasos, descarta toda la transacción
+y no publica una salida parcial. Es una primera CPU virtual/ISA de software,
+no hardware físico ni una computadora personal con sistema operativo.
+
 ## Pruebas y escala
 
 Se conservan las pruebas históricas, la auditoría recuperada de PR #5,
