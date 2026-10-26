@@ -4,7 +4,7 @@ on:
     branches: [main]
     paths: ['reverse-os-android/**', 'src/**', 'tests/reverse_os_transport.cpp', '.github/workflows/reverse-os-android.yml']
   push:
-    branches: [main, feature/reverse-os-desktop-complete-20261026]
+    branches: [main]
     paths: ['reverse-os-android/**', 'src/**', '.github/workflows/reverse-os-android.yml']
   workflow_dispatch:
 permissions:
@@ -54,6 +54,7 @@ jobs:
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
             'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' \
             'cmake;3.22.1' platform-tools emulator 'system-images;android-35;default;x86_64'
+          cp "$ANDROID_HOME/platforms/android-35/android.jar" build/android-35.jar
       - name: Real files, geometry and calculator compiler
         shell: bash
         run: |
@@ -130,5 +131,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Android-35-compile-support
-          path: ${{ env.ANDROID_HOME }}/platforms/android-35/android.jar
+          path: build/android-35.jar
           retention-days: 3
