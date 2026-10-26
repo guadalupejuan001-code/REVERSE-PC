@@ -11,7 +11,8 @@ con fondo orbital y el arranque `welcome.... REVERSE.`.
 - Inicio, búsqueda de aplicaciones/documentos, escritorio y panel de ventanas.
 - Hasta doce ventanas, con posiciones y sesión recordadas entre reinicios.
 - Archivos: carpetas, texto, copiar archivos, mover archivos/carpetas, renombrar,
-  papelera y restauración sin sobrescribir destinos existentes.
+  papelera, restauración sin sobrescribir destinos existentes y eliminación
+  definitiva con confirmación.
 - Editor de texto UTF-8 y XI Studio con borradores conservados al cerrar o
   reiniciar. Los borradores no sustituyen el archivo hasta pulsar Guardar.
 - Calculadora: precedencia, paréntesis, signo y seis decimales. La interfaz
@@ -46,7 +47,8 @@ no está incluido. Los archivos en papelera se pueden restaurar a su origen.
 
 El gestor usa vistas no modales; desaparece la limitación anterior de un único
 `Dialog` minimizado. Teclado y cambios de área disponible acotan las ventanas
-sin perder su tamaño normal. La actividad es `singleTask` y el trabajador XI es
+sin perder su tamaño normal. Las barras se ocultan mientras se escribe para
+liberar espacio en el teclado horizontal. La actividad es `singleTask` y el trabajador XI es
 único en el proceso, también durante recreaciones de la pantalla.
 
 Se mantiene la aplicación BBY Q ya incluida en v0.5, con sus fuentes E009
