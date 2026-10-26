@@ -1001,7 +1001,7 @@ public final class DesktopActivity extends Activity {
         sendParams.leftMargin=dp(8);
         inputLine.addView(send,sendParams);
         w.content.addView(inputLine);
-        TextView help=label("help · ls · run nombre.xi · core · edit nombre.xi · clear",10,MUTED,false);
+        TextView help=label("help · bbyq · ls · run nombre.xi · core · edit nombre.xi",10,MUTED,false);
         margin(w.content,help,12);
         scroll.post(()->scroll.fullScroll(View.FOCUS_DOWN));
     }
@@ -1038,7 +1038,10 @@ public final class DesktopActivity extends Activity {
         if(cmd.equals("help")){
             putConsole("help : comandos\nls : listar programas\n"
                 +"run programa.xi : ejecutar en Ether\ncore : estado nativo\n"
-                +"edit programa.xi : abrir estudio XI\nclear : limpiar consola\n\n",output,scroll);
+                +"edit programa.xi : abrir estudio XI\nbbyq : abrir BBY Q\n"
+                +"clear : limpiar consola\n\n",output,scroll);
+        }else if(cmd.equals("bbyq")){
+            w.dialog.dismiss();openBbyq();
         }else if(cmd.equals("edit")){
             if(arg.isEmpty()){putConsole("Falta nombre de archivo.\n",output,scroll);return;}
             w.dialog.dismiss();openStudio(0,SessionStore.normalized(arg));
