@@ -37,6 +37,31 @@ restauración sin ejecución, accesos, búsqueda, exportación/importación bina
 rechazo de un texto renombrado `.rxe`. Las pruebas C++ comparan estado, salida y
 RNG con la ejecución textual y prueban corrupción, saltos, límites y rollback.
 
+## Compilar la edición RXE
+
+Con las dependencias fijadas del repositorio, JDK 17, Gradle 8.9 y el SDK/NDK
+indicados en el workflow, ejecutar desde la raíz de REVERSE-PC. La configuración
+de firma requiere preparar explícitamente la clave también en una máquina local:
+
+```bash
+export REVERSE_SIGNING_KEYSTORE="$PWD/build-signing/reverse-desktop.jks"
+umask 077
+mkdir -p "$(dirname "$REVERSE_SIGNING_KEYSTORE")"
+if [ ! -f "$REVERSE_SIGNING_KEYSTORE" ]; then
+  keytool -genkeypair -keystore "$REVERSE_SIGNING_KEYSTORE" -storetype JKS \
+    -storepass android -keypass android -alias reverse-desktop \
+    -keyalg RSA -keysize 2048 -validity 10000 \
+    -dname "CN=REVERSE Desktop Development"
+fi
+bash reverse-os-android/scripts/prepare-bbyq.sh deps/bbyq
+python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+gradle -p reverse-os-android :app:assembleRxeDebug
+```
+
+El resultado es `reverse-os-android/app/build/outputs/apk/rxe/debug/app-rxe-debug.apk`.
+Conservar la misma clave para actualizar instalaciones firmadas con ella; no se
+incluye en Git ni en los artefactos públicos.
+
 ## Base conservada de Desktop 1.0
 
 
@@ -109,7 +134,8 @@ Puede importar su RVPC2 desde Ajustes si se exportó previamente.
 una instalación con la misma firma. No desinstalar una versión anterior para
 resolver una firma distinta sin exportar antes sus datos. La compilación 1.0 no conservó la clave en la ruta prevista. Estas APK son compilaciones de desarrollo; no debe darse por compatible una firma nueva.
 
-Compilar ambas ediciones:
+Compilar ambas ediciones históricas, después de preparar y exportar la ruta de
+firma como se indica arriba:
 
 ```bash
 bash reverse-os-android/scripts/prepare-bbyq.sh deps/bbyq
