@@ -27,6 +27,8 @@ public final class DesktopCoreTest {
         String folder=fs.trash("Documentos/Árbol");fs.restore(folder);yes(fs.text("Documentos/Árbol/Nota de X.txt").startsWith("Hola"));
         String conflict=fs.trash("Escritorio/Copia.txt");fs.write("Escritorio/Copia.txt",bytes("nuevo"),false);
         reject(()->fs.restore(conflict));yes(fs.text("Escritorio/Copia.txt").equals("nuevo"));yes(fs.text(conflict).equals("Hola, memoria ñ"));
+        fs.eraseTrash(conflict);yes(fs.list("Papelera").isEmpty());yes(fs.trashOrigins().isEmpty());
+        reject(()->fs.eraseTrash("Escritorio/Copia.txt"));yes(fs.text("Escritorio/Copia.txt").equals("nuevo"));
         reject(()->fs.rename("Documentos","roto"));reject(()->fs.mkdir("Documentos/../afuera"));
         reject(()->fs.write("Descargas/error.txt",new byte[WorkspaceFiles.MAX_FILE+1],false));yes(fs.list("Descargas").isEmpty());
         reject(()->fs.write("Programas/nombre inválido.xi",bytes("halt"),false));
