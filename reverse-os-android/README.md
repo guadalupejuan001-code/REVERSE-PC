@@ -91,7 +91,8 @@ La ventana muestra **ESPAÑOL / ENGLISH**. Cambiar de idioma altera
 una preferencia persistente que `school/name.xi` utiliza para
 expresar **el mismo concepto aprendido**, sin instalar dos modelos.
 
-La sección **COLORES Y MÁS** presenta tarjetas visuales:
+Desde el botón **APRENDER** se abre un menú de exploración.
+La sección **COLORES · ANIMALES · NÚMEROS** presenta tarjetas visuales:
 
 - Tonalidades RGB que no son exactamente los colores del entrenamiento.
 - Pictogramas de animales asociados a rasgos simbólicos
@@ -100,7 +101,7 @@ La sección **COLORES Y MÁS** presenta tarjetas visuales:
   numéricos enseñados de manera explícita.
 - Cantidades desde cero hasta nueve, con sus nombres en ambos idiomas.
 
-**SUMAS / RESTAS** aplica operaciones que XI aprendió comparando
+El menú **SUMAS Y RESTAS** aplica operaciones que XI aprendió comparando
 consecuencias de juntar o quitar conjuntos. Las salidas, incluidas
 abstenciones `?`, proceden de `calculate.xi` + `name.xi`.
 
