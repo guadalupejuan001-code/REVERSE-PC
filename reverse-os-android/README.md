@@ -94,6 +94,9 @@ rechazo y conservación del núcleo/memoria. Estas pruebas se ejecutan en host.
 La CI además compila y firma las dos ABI (`arm64-v8a`, `x86_64`), instala la APK
 Desktop en Android 15 y opera la interfaz mediante `adb`: arranque, movimiento
 real del fondo, varias ventanas, arrastre, tamaño, ajuste, archivos, borradores,
-calculadora XI, Euclides y recuperación tras matar/reabrir el proceso. Guarda
+calculadora XI, Euclides y recuperación tras matar/reabrir el proceso. La
+batería ampliada además opera WebView, aplicaciones Android, el acceso Inicio,
+importación de imágenes, exportación de borradores y respaldo ZIP a través del
+selector real de Android. Guarda
 capturas reales, registros y resultados. La prueba en el teléfono físico queda
 fuera de lo que puede comprobar el emulador.
