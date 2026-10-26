@@ -10,7 +10,7 @@ on:
       - 'scripts/ether_integration.py'
       - '.github/workflows/reverse-os-android.yml'
   push:
-    branches: [main, feature/reverse-os-bbyq-native-integration-20261026]
+    branches: [main, feature/reverse-os-bbyq-native-integration-20261026, feature/reverse-os-bbyq-bilingual-development-20261026]
     paths:
       - 'reverse-os-android/**'
       - 'tests/reverse_os_transport.cpp'
@@ -316,6 +316,21 @@ jobs:
             grep -i 'BbyqOS\|BBYQ\|ReverseDesktop' reverse-os-evidence/logcat.txt | tail -70
             echo 'BBY Q XI learning did not complete in Android emulator';exit 1
           fi
+          school_ready=false
+          for i in $(seq 1 140); do
+            if adb logcat -d -s BBYQDevelopment:I '*:S' | grep -q 'BBYQ_SCHOOL_INSTALL_OK'; then
+              school_ready=true;break
+            fi
+            if adb logcat -d -s ReverseDesktop:E '*:S' | grep -q 'BBYQ_INSTALL_FAILED'; then
+              echo 'BBY Q bilingual installation failed';exit 1
+            fi
+            sleep 2
+          done
+          if [[ "$school_ready" != true ]];then
+            adb logcat -d > reverse-os-evidence/logcat.txt
+            grep -i 'BBYQDevelopment\|BBYQ' reverse-os-evidence/logcat.txt | tail -65
+            echo 'Bilingual XI exam not completed';exit 1
+          fi
           adb shell uiautomator dump /sdcard/bbyq-window.xml > /dev/null
           adb exec-out cat /sdcard/bbyq-window.xml > reverse-os-evidence/bbyq-window.xml
           python3 - <<'PY'
@@ -323,6 +338,8 @@ jobs:
           nodes=list(ET.parse("reverse-os-evidence/bbyq-window.xml").getroot().iter("node"))
           text=" ".join(n.attrib.get("text","") for n in nodes)
           assert "BBY Q" in text and "4 bancos Ether" in text,text[:2500]
+          assert "ESPAÑOL" in text and "ENGLISH" in text,text[:2500]
+          assert "22 conceptos" in text,text[:2500]
           field=next((n for n in nodes if n.attrib.get("class")=="android.widget.EditText"),None)
           assert field is not None,text[:2500]
           bounds=[int(v) for v in re.findall(r"\d+",field.attrib["bounds"])]
