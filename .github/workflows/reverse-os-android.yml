@@ -283,6 +283,90 @@ jobs:
           assert "REVERSE" in content and "INICIO" in content,content[:1500]
           print("REVERSE_OS_HOME_RETURN_PASS window_close=true")
           PY
+          # The original desktop UI is back on screen. Launch BBY Q as
+          # a real native XI application and exercise its Ether-trained brain.
+          python3 - <<'PY'
+          import re,subprocess,xml.etree.ElementTree as ET
+          nodes=list(ET.parse("reverse-os-evidence/return-ui.xml").getroot().iter("node"))
+          matches=[n for n in nodes if n.attrib.get("text")=="BBY Q"]
+          assert matches,"BBY Q shortcut missing from REVERSE OS"
+          box=[int(v) for v in re.findall(r"\d+",matches[-1].attrib["bounds"])]
+          assert len(box)==4
+          subprocess.run(["adb","shell","input","tap",str((box[0]+box[2])//2),
+                          str((box[1]+box[3])//2)],check=True)
+          print("BBYQ_DESKTOP_OPEN_TAP")
+          PY
+          bbyq_ready=false
+          for i in $(seq 1 130); do
+            if adb logcat -d -s BbyqOS:I '*:S' | grep -q 'BBYQ_INSTALL_OK'; then
+              bbyq_ready=true;break
+            fi
+            if adb logcat -d -s ReverseDesktop:E '*:S' | grep -q 'BBYQ_INSTALL_FAILED'; then
+              echo 'Real BBY Q installation failed';exit 1
+            fi
+            sleep 2
+          done
+          if [[ "$bbyq_ready" != true ]]; then
+            adb logcat -d > reverse-os-evidence/logcat.txt
+            grep -i 'BbyqOS\|BBYQ\|ReverseDesktop' reverse-os-evidence/logcat.txt | tail -70
+            echo 'BBY Q XI learning did not complete in Android emulator';exit 1
+          fi
+          adb shell uiautomator dump /sdcard/bbyq-window.xml > /dev/null
+          adb exec-out cat /sdcard/bbyq-window.xml > reverse-os-evidence/bbyq-window.xml
+          python3 - <<'PY'
+          import re,subprocess,xml.etree.ElementTree as ET
+          nodes=list(ET.parse("reverse-os-evidence/bbyq-window.xml").getroot().iter("node"))
+          text=" ".join(n.attrib.get("text","") for n in nodes)
+          assert "BBY Q" in text and "4 bancos Ether" in text,text[:2500]
+          field=next((n for n in nodes if n.attrib.get("class")=="android.widget.EditText"),None)
+          assert field is not None,text[:2500]
+          bounds=[int(v) for v in re.findall(r"\d+",field.attrib["bounds"])]
+          assert len(bounds)==4
+          subprocess.run(["adb","shell","input","tap",str((bounds[0]+bounds[2])//2),
+                          str((bounds[1]+bounds[3])//2)],check=True)
+          PY
+          adb shell input text 'cuarto%scontiene%sllave'
+          adb shell input keyevent 4
+          adb shell uiautomator dump /sdcard/bbyq-prompt.xml > /dev/null
+          adb exec-out cat /sdcard/bbyq-prompt.xml > reverse-os-evidence/bbyq-prompt.xml
+          python3 - <<'PY'
+          import re,subprocess,xml.etree.ElementTree as ET
+          nodes=list(ET.parse("reverse-os-evidence/bbyq-prompt.xml").getroot().iter("node"))
+          submit=next((n for n in nodes if n.attrib.get("text")=="ENVIAR"),None)
+          assert submit is not None,[n.attrib.get("text","") for n in nodes][-30:]
+          bounds=[int(v) for v in re.findall(r"\d+",submit.attrib["bounds"])]
+          subprocess.run(["adb","shell","input","tap",str((bounds[0]+bounds[2])//2),
+                          str((bounds[1]+bounds[3])//2)],check=True)
+          PY
+          bbyq_answer=false
+          for i in $(seq 1 45); do
+            if adb logcat -d -s BbyqOS:I '*:S' | grep -Fq 'BBYQ_ANSWER_OK query=cuarto contiene llave result=cuarto contiene llave (via caja).'; then
+              bbyq_answer=true;break
+            fi
+            sleep 2
+          done
+          if [[ "$bbyq_answer" != true ]]; then
+            adb logcat -d > reverse-os-evidence/logcat.txt
+            grep -i 'BbyqOS\|BBYQ' reverse-os-evidence/logcat.txt | tail -50
+            echo 'BBY Q did not reason and speak inside REVERSE OS';exit 1
+          fi
+          adb shell screencap -p /sdcard/bbyq-answer.png
+          adb exec-out cat /sdcard/bbyq-answer.png > reverse-os-evidence/bbyq-answer.png
+          adb shell uiautomator dump /sdcard/bbyq-answer.xml > /dev/null
+          adb exec-out cat /sdcard/bbyq-answer.xml > reverse-os-evidence/bbyq-answer.xml
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          names=" ".join(n.attrib.get("text","") for n in ET.parse(
+              "reverse-os-evidence/bbyq-answer.xml").getroot().iter("node"))
+          assert "BBY Q" in names,names[:1500]
+          assert "cuarto contiene llave (via caja)." in names,names[:2500]
+          print("BBYQ_ANDROID_XI_PASS real_ether=true learned_relation=true")
+          PY
+          adb exec-out run-as com.reversepc.os cat files/session.rvp > reverse-os-evidence/bbyq-session.rvp
+          grep -a -q 'O 42 21' reverse-os-evidence/bbyq-session.rvp
+          grep -a -q 'O 7000000000000000610 4' reverse-os-evidence/bbyq-session.rvp
+          grep -a -q 'O 7100000000000000000 76' reverse-os-evidence/bbyq-session.rvp
+          echo 'BBYQ_SHARED_RVPC_PASS old_desktop_program=true four_models=true'
           adb logcat -d > reverse-os-evidence/logcat.txt
           if grep -E 'FATAL EXCEPTION' reverse-os-evidence/logcat.txt | grep -q 'com.reversepc.os'; then
             echo 'Application fatal error';exit 1
