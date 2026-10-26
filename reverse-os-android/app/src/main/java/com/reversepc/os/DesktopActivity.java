@@ -60,12 +60,21 @@ public final class DesktopActivity extends Activity {
     private static final int BG=0xff131922, CARD=0xff222b36, CARD_BRIGHT=0xff303c47;
     private static final int WHITE=0xfff5f3ef, MUTED=0xffbdc3c8, ACCENT=0xffaec3d2;
     private static final int BLUE=0xffb4c6d4, VIOLET=0xffcbb9cb, AMBER=0xffdec4a6;
-    private final ExecutorService engine=Executors.newSingleThreadExecutor();
+    private static final ExecutorService ENGINE=Executors.newSingleThreadExecutor();
+    private final ExecutorService engine=ENGINE;
     private final Handler clockHandler=new Handler(Looper.getMainLooper());
     private SessionStore store;
     private OrbitalWallpaper wallpaper;
-    private TextView fpsLabel, minimizedLabel;
-    private Dialog minimizedWindow;
+    private TextView fpsLabel;
+    private DesktopWindows windows;
+    private FrameLayout windowLayer;
+    private LinearLayout taskList;
+    private android.content.SharedPreferences preferences;
+    private WorkspaceFiles files;
+    private String fileClipboard="",terminalDirectory="Programas";
+    private boolean clipboardCut=false,wallpaperRunning=true;
+    private final java.util.Map<String,Runnable> draftWriters=new java.util.HashMap<>();
+    private static final int IMPORT_FILE=5120,EXPORT_FILE=5121,EXPORT_DESKTOP=5122;
     private String engineFailure="";
     private TextView statusLabel, clockLabel, statusDetail;
     private final StringBuilder consoleHistory=new StringBuilder(
@@ -146,10 +155,12 @@ public final class DesktopActivity extends Activity {
         getWindow().getDecorView().setSystemUiVisibility(
             View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+        preferences=getSharedPreferences("desktop-v1",MODE_PRIVATE);
         buildDesktop();
         clockHandler.post(tick);
         engine.execute(()->{
             try {
+                files=new WorkspaceFiles(getFilesDir());
                 SessionStore s=new SessionStore(getApplicationContext());
                 String stats=NativeRuntime.inspect(s.loadState());
                 store=s;
@@ -159,6 +170,7 @@ public final class DesktopActivity extends Activity {
                     statusLabel.setText("● Listo");
                     statusLabel.setTextColor(ACCENT);
                     statusDetail.setText("");
+                    windowLayer.post(this::restoreDesktop);
                 });
             }catch(Throwable fault){
                 engineFailure=fault.getClass().getSimpleName()+": "+fault.getMessage();
@@ -183,7 +195,7 @@ public final class DesktopActivity extends Activity {
         try {
             wallpaper=new OrbitalWallpaper(this,new OrbitalWallpaper.Events(){
                 @Override public void onFps(int frames,float scale){
-                    if(fpsLabel!=null)fpsLabel.setText(frames+" fps");
+                    if(fpsLabel!=null)fpsLabel.setText(wallpaperRunning?frames+" fps":"Pausa");
                 }
                 @Override public void onFailure(String error){
                     Log.e(LOG,"GPU fallback: "+error);
@@ -243,24 +255,21 @@ public final class DesktopActivity extends Activity {
         // traditional desktop columns on the left, not a "quantum menu".
         LinearLayout shortcutGrid=vertical();
         shortcutGrid.setPadding(dp(3),dp(12),dp(3),dp(2));
-        LinearLayout row1=horizontal();
-        addDesktopShortcut(row1,"⌘","XI Studio",this::showStudio);
-        addDesktopShortcut(row1,">_","Terminal",this::openTerminal);
-        shortcutGrid.addView(row1);
-        LinearLayout row2=horizontal();
-        addDesktopShortcut(row2,"▤","Archivos",this::openFiles);
-        addDesktopShortcut(row2,"◎","Navegador",this::openBrowser);
-        shortcutGrid.addView(row2);
-        LinearLayout row3=horizontal();
-        addDesktopShortcut(row3,"◈","Ether Core",this::openMonitor);
-        addDesktopShortcut(row3,"⚙","Ajustes",this::openSettings);
-        shortcutGrid.addView(row3);
-        LinearLayout row4=horizontal();
-        addDesktopShortcut(row4,"B","BBY Q",this::openBbyq);
-        shortcutGrid.addView(row4);
-        FrameLayout.LayoutParams gridP=new FrameLayout.LayoutParams(dp(235),-2,
-                                                                  Gravity.TOP|Gravity.LEFT);
-        workspace.addView(shortcutGrid,gridP);
+        String[][] icons={{"▤","Archivos"},{"◎","Navegador"},{"▧","Editor"},
+            {"⌘","XI Studio"},{">_","Terminal"},{"=","Calculadora"},
+            {"◈","Ether Core"},{"⚙","Ajustes"},{"▦","Aplicaciones"},
+            {"♧","Papelera"},{"▣","Ventanas"},{"B","BBY Q"}};
+        for(int i=0;i<icons.length;i+=3){
+            LinearLayout row=horizontal();
+            for(int j=i;j<Math.min(i+3,icons.length);j++){
+                final String app=icons[j][1];addDesktopShortcut(row,icons[j][0],app,()->launchApp(app));
+            }
+            shortcutGrid.addView(row);
+        }
+        ScrollView shortcuts=new ScrollView(this);shortcuts.setFillViewport(false);shortcuts.addView(shortcutGrid);
+        workspace.addView(shortcuts,new FrameLayout.LayoutParams(dp(284),-1,Gravity.TOP|Gravity.LEFT));
+        workspace.setOnLongClickListener(v->{desktopMenu(v);return true;});
+        workspace.setOnContextClickListener(v->{desktopMenu(v);return true;});
 
         LinearLayout identity=vertical();
         identity.setGravity(Gravity.CENTER);
@@ -277,7 +286,11 @@ public final class DesktopActivity extends Activity {
         idP.leftMargin=dp(45);
         workspace.addView(identity,idP);
 
-        system.addView(buildTaskbar(),new LinearLayout.LayoutParams(-1,dp(56)));
+        windowLayer=new FrameLayout(this);
+        workspace.addView(windowLayer,new FrameLayout.LayoutParams(-1,-1));
+        system.addView(buildTaskbar(),new LinearLayout.LayoutParams(-1,dp(52)));
+        windows=new DesktopWindows(this,windowLayer,taskList,preferences,this::updateWallpaper);
+        updateWallpaper();
         setContentView(root);
         Log.i(LOG,"DESKTOP_SHOWN REVERSE OS MR REVERSE landscape");
     }
@@ -287,6 +300,7 @@ public final class DesktopActivity extends Activity {
     // the genuine result produced by XI on the shared Ether RVPC2 state.
     private void openBbyq(){
         WindowUi w=window("BBY Q","Inteligencia simbólica · XI / Ether");
+        if(w==null)return;
         TextView heading=label("BBY Q",21,WHITE,true);
         heading.setLetterSpacing(.05f);
         w.content.addView(heading);
@@ -402,7 +416,7 @@ public final class DesktopActivity extends Activity {
     }
     private EditText bbyqField(LinearLayout parent,String hint){
         EditText field=new EditText(this);
-        field.setSingleLine(true);field.setTextSize(13);
+        field.setSingleLine(true);field.setImeOptions(android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI);field.setTextSize(13);
         field.setTextColor(WHITE);field.setHintTextColor(MUTED);
         field.setHint(hint);
         field.setInputType(InputType.TYPE_CLASS_TEXT|
@@ -505,57 +519,35 @@ public final class DesktopActivity extends Activity {
         TextView sign=label(glyph,22,ACCENT,true);
         sign.setGravity(Gravity.CENTER);
         sign.setBackground(round(0xff2b3a48,0,12));
-        icon.addView(sign,new LinearLayout.LayoutParams(dp(39),dp(39)));
+        icon.addView(sign,new LinearLayout.LayoutParams(dp(34),dp(34)));
         TextView name=label(text,11,WHITE,true);
         name.setGravity(Gravity.CENTER);
         name.setSingleLine(true);
         name.setEllipsize(android.text.TextUtils.TruncateAt.END);
         margin(icon,name,3);
-        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(111),dp(72));
+        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(90),dp(62));
         p.setMargins(dp(1),dp(2),dp(1),dp(2));
         row.addView(icon,p);
     }
 
     private LinearLayout buildTaskbar(){
-        LinearLayout taskbar=horizontal();
-        taskbar.setGravity(Gravity.CENTER_VERTICAL);
-        taskbar.setPadding(dp(8),dp(4),dp(8),dp(4));
-        taskbar.setBackground(round(0xff1c2631,0xff364651,8));
-        addTaskButton(taskbar,"▦","INICIO",this::openStartMenu);
-        addTaskButton(taskbar,"⌕","BUSCAR",this::openSearch);
-        addTaskButton(taskbar,"▤","Archivos",this::openFiles);
-        addTaskButton(taskbar,">_","TERM",this::openTerminal);
-        addTaskButton(taskbar,"B","BBY Q",this::openBbyq);
-
-        LinearLayout center=horizontal();
-        center.setGravity(Gravity.CENTER);
-        TextView orb=label("R",21,WHITE,true);
-        orb.setGravity(Gravity.CENTER);
-
-        orb.setBackground(round(0xff344656,0xff728394,22));
-        orb.setContentDescription("ABRIR REVERSE HOME");
-        orb.setOnClickListener(v->openHome());
-        center.addView(orb,new LinearLayout.LayoutParams(dp(48),dp(46)));
-        taskbar.addView(center,new LinearLayout.LayoutParams(0,-1,1f));
-
-        minimizedLabel=label("▣ Ventana",11,ACCENT,true);
-        minimizedLabel.setPadding(dp(10),dp(6),dp(10),dp(6));
-        minimizedLabel.setVisibility(minimizedWindow==null?View.GONE:View.VISIBLE);
-        minimizedLabel.setOnClickListener(v->{
-            if(minimizedWindow!=null){
-                minimizedWindow.show();
-                minimizedWindow=null;
-                minimizedLabel.setVisibility(View.GONE);
-            }
-        });
-        taskbar.addView(minimizedLabel);
-        fpsLabel=label("Gráficos",10,MUTED,false);
-        taskbar.addView(fpsLabel);
-        TextView systemIcons=label("    ◉   ◖))  ",12,0xffb8b7e9,false);
-        taskbar.addView(systemIcons);
-        clockLabel=label("",13,WHITE,true);
-        taskbar.addView(clockLabel);
-        return taskbar;
+        LinearLayout bar=horizontal();bar.setPadding(dp(5),dp(4),dp(5),dp(4));
+        bar.setBackground(round(0xff1c2631,0xff364651,8));
+        TextView start=touch("R",20,true,this::openStartMenu);start.setContentDescription("INICIO");
+        start.setPadding(0,0,0,0);bar.addView(start,new LinearLayout.LayoutParams(dp(45),-1));
+        TextView search=touch("⌕",21,false,this::openSearch);search.setContentDescription("BUSCAR");
+        search.setPadding(0,0,0,0);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(44),-1);p.leftMargin=dp(5);bar.addView(search,p);
+        TextView home=touch("▤",18,false,this::openFiles);home.setContentDescription("ABRIR ARCHIVOS");
+        home.setPadding(0,0,0,0);LinearLayout.LayoutParams f=new LinearLayout.LayoutParams(dp(44),-1);f.leftMargin=dp(5);bar.addView(home,f);
+        android.widget.HorizontalScrollView strip=new android.widget.HorizontalScrollView(this);strip.setHorizontalScrollBarEnabled(false);
+        taskList=horizontal();strip.addView(taskList);bar.addView(strip,new LinearLayout.LayoutParams(0,-1,1));
+        TextView desktop=touch("▣",16,false,()->windows.showDesktop());desktop.setContentDescription("MOSTRAR ESCRITORIO");
+        desktop.setPadding(0,0,0,0);bar.addView(desktop,new LinearLayout.LayoutParams(dp(42),-1));
+        fpsLabel=label("GPU",10,MUTED,false);fpsLabel.setPadding(dp(8),0,dp(8),0);bar.addView(fpsLabel);
+        clockLabel=label("",12,WHITE,true);clockLabel.setPadding(dp(7),0,dp(7),0);clockLabel.setContentDescription("PANEL DEL SISTEMA");
+        clockLabel.setOnClickListener(v->openSystemPanel());bar.addView(clockLabel);
+        TextView power=touch("⏻",17,false,this::openPower);power.setPadding(0,0,0,0);power.setContentDescription("ENCENDIDO");bar.addView(power,new LinearLayout.LayoutParams(dp(39),-1));
+        return bar;
     }
 
     private void addTaskButton(LinearLayout taskbar,String symbol,String title,
@@ -575,6 +567,7 @@ public final class DesktopActivity extends Activity {
 
     private void openHome(){
         WindowUi w=window("HOME","REVERSE / PERSONAL COMPUTER");
+        if(w==null)return;
         LinearLayout header=vertical();
         header.setGravity(Gravity.CENTER);
         TextView headline=label("Bienvenido a REVERSE",22,WHITE,true);
@@ -599,53 +592,75 @@ public final class DesktopActivity extends Activity {
         w.content.addView(buttons);
     }
 
-    private void openStartMenu(){
-        WindowUi w=window("Inicio","Aplicaciones REVERSE OS");
-        LinearLayout grid=vertical();
-        String[][] shortcuts={{"XI Studio","⌘"},{"Terminal",">_"},{"Archivos","▤"},
-                              {"Navegador","◎"},{"Ether Core","◈"},{"Ajustes","⚙"},
-                              {"BBY Q","B"}};
-        Runnable[] actions={()->openStudio(0,null),this::openTerminal,this::openFiles,
-                            this::openBrowser,this::openMonitor,this::openSettings,
-                            this::openBbyq};
-        for(int index=0;index<shortcuts.length;index++){
-            final int n=index;
-            TextView t=touch(shortcuts[index][1]+"   "+shortcuts[index][0],12,false,()->{
-                w.dialog.dismiss();actions[n].run();
-            });
-            margin(grid,t,7);
+    private static final String[] APPLICATIONS={"Archivos","Navegador","Editor","Calculadora","XI Studio","Terminal","Aplicaciones","Papelera","Ventanas","Ether Core","Ajustes","BBY Q"};
+    private void launchApp(String app){
+        switch(app){
+            case "Archivos":openFiles();break;case "Navegador":openBrowser();break;
+            case "Editor":newDocument("Documentos");break;case "Calculadora":openCalculator();break;
+            case "XI Studio":openStudio(0,null);break;case "Terminal":openTerminal();break;
+            case "Aplicaciones":openAndroidApps();break;case "Papelera":openFiles("Papelera");break;
+            case "Ventanas":openTasks();break;case "Ether Core":openMonitor();break;
+            case "Ajustes":openSettings();break;case "BBY Q":openBbyq();break;
         }
-        ScrollView scroll=new ScrollView(this);
-        scroll.addView(grid);
-        w.content.addView(scroll,new LinearLayout.LayoutParams(-1,0,1f));
     }
-
+    private void restoreDesktop(){
+        if(isDestroyed()||windows==null||!windows.all().isEmpty())return;
+        for(String key:windows.savedKeys()){
+            if(key.startsWith("xi:"))openStudio(0,key.substring(3));
+            else if(key.startsWith("text:"))openText(key.substring(5));
+            else if(key.startsWith("image:"))openImage(key.substring(6));
+            else if(key.startsWith("files:"))openFiles(key.substring(6));
+            else if(java.util.Arrays.asList(APPLICATIONS).contains(key)&&!key.equals("Editor"))launchApp(key);
+        }
+    }
+    private void updateWallpaper(){
+        if(wallpaper==null||preferences==null)return;
+        wallpaper.quality(preferences.getInt("quality",0));
+        boolean run=preferences.getBoolean("motion",true)&&(windows==null||!windows.hasMaximized());
+        if(run!=wallpaperRunning){wallpaperRunning=run;wallpaper.motionEnabled(run);}
+        if(!run&&fpsLabel!=null)fpsLabel.setText("Pausa");
+    }
+    private void desktopMenu(View anchor){
+        android.widget.PopupMenu menu=new android.widget.PopupMenu(this,anchor);
+        for(String name:new String[]{"Nueva nota","Archivos","Ventanas","Mostrar escritorio","Ajustes"})menu.getMenu().add(name);
+        menu.setOnMenuItemClickListener(item->{String name=item.getTitle().toString();
+            if(name.equals("Nueva nota"))newDocument("Escritorio");else if(name.equals("Mostrar escritorio"))windows.showDesktop();else launchApp(name);return true;});menu.show();
+    }
+    private void openStartMenu(){
+        WindowUi w=window("Inicio","Tus aplicaciones");if(w==null)return;
+        ScrollView scroll=new ScrollView(this);LinearLayout list=vertical();scroll.addView(list);
+        for(String app:APPLICATIONS){TextView b=touch(app,13,false,()->{w.dialog.dismiss();launchApp(app);});margin(list,b,6);}
+        w.content.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        margin(w.content,touch("Apagar / Reiniciar",11,false,this::openPower),8);
+    }
     private void openSearch(){
-        WindowUi w=window("Buscar","Buscar aplicaciones");
-        EditText field=new EditText(this);
-        field.setTextColor(WHITE);field.setHintTextColor(MUTED);
-        field.setSingleLine(true);
-        field.setHint("BBY Q, XI, Terminal, Archivos, Navegador...");
-        field.setBackground(round(CARD_BRIGHT,0xff536b79,9));
-        field.setPadding(dp(12),dp(11),dp(12),dp(11));
-        w.content.addView(field);
-        TextView result=label("Escribe un nombre y pulsa BUSCAR.",12,MUTED,false);
-        margin(w.content,result,14);
-        TextView go=touch("BUSCAR",12,true,()->{
-            final String q=field.getText().toString().trim().toLowerCase(Locale.ROOT);
-            Runnable action=null;
-            if(q.contains("bby")||q.contains("bbyq")||q.contains("inteligencia")) action=this::openBbyq;
-            else if(q.contains("xi")||q.contains("studio")||q.contains("program")) action=()->openStudio(0,null);
-            else if(q.contains("term")||q.contains("console")) action=this::openTerminal;
-            else if(q.contains("file")||q.contains("archivo")) action=this::openFiles;
-            else if(q.contains("chrome")||q.contains("web")||q.contains("naveg")) action=this::openBrowser;
-            else if(q.contains("ether")||q.contains("core")||q.contains("quant")) action=this::openMonitor;
-            else if(q.contains("setting")||q.contains("config")) action=this::openSettings;
-            if(action==null){result.setText("No hay ninguna aplicación coincidente.");return;}
-            w.dialog.dismiss();action.run();
-        });
-        margin(w.content,go,10);
+        WindowUi w=window("Buscar","Aplicaciones y documentos");if(w==null)return;
+        EditText field=bbyqField(w.content,"Busca una aplicación o un archivo");
+        ScrollView scroll=new ScrollView(this);LinearLayout list=vertical();scroll.addView(list);w.content.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        Runnable refresh=()->{
+            String q=field.getText().toString().toLowerCase(Locale.ROOT).trim();list.removeAllViews();
+            for(String app:APPLICATIONS)if(app.toLowerCase(Locale.ROOT).contains(q))margin(list,touch(app,12,false,()->{w.dialog.dismiss();launchApp(app);}),5);
+            if(files!=null&&!q.isEmpty())engine.execute(()->{
+                try{java.util.ArrayList<WorkspaceFiles.Entry> hits=new java.util.ArrayList<>();searchFiles("",q,hits,0);
+                    runOnUiThread(()->{if(!w.dialog.isShowing()||!field.getText().toString().toLowerCase(Locale.ROOT).trim().equals(q))return;
+                        for(WorkspaceFiles.Entry e:hits)margin(list,touch(e.path,11,false,()->{w.dialog.dismiss();if(e.directory)openFiles(e.path);else openFile(e.path);}),4);});
+                }catch(Exception ex){Log.w(LOG,"Search",ex);}
+            });
+        };
+        field.addTextChangedListener(watcher(refresh));refresh.run();
     }
+    private void searchFiles(String path,String q,List<WorkspaceFiles.Entry> hits,int depth)throws IOException{
+        if(depth>6||hits.size()>=40||path.equals("Papelera"))return;
+        for(WorkspaceFiles.Entry entry:files.list(path)){
+            if(entry.name.toLowerCase(Locale.ROOT).contains(q)){hits.add(entry);if(hits.size()>=40)return;}
+            if(entry.directory)searchFiles(entry.path,q,hits,depth+1);
+        }
+    }
+    private android.text.TextWatcher watcher(Runnable action){return new android.text.TextWatcher(){
+        public void beforeTextChanged(CharSequence s,int st,int c,int a){}public void onTextChanged(CharSequence s,int st,int b,int c){}
+        public void afterTextChanged(android.text.Editable e){action.run();}
+    };}
+
     private void addTile(LinearLayout row,String glyph,String name,String subtitle,int color,Runnable open){
         LinearLayout cell=vertical();
         cell.setGravity(Gravity.CENTER_VERTICAL);
@@ -700,156 +715,21 @@ public final class DesktopActivity extends Activity {
     }
 
     private static final class WindowUi {
-        final Dialog dialog;
+        final DesktopWindows.Handle dialog;
         final LinearLayout content;
-        WindowUi(Dialog dialog,LinearLayout content){
-            this.dialog=dialog;this.content=content;
-        }
+        WindowUi(DesktopWindows.Handle handle){dialog=handle;content=handle.content;}
     }
-
-    // Floating window. The top bar can drag, minimize, maximize and close
-    // without leaving REVERSE OS; navigation is a real sidebar.
-    private WindowUi window(String title,String subtitle){
-        final boolean fullWorkArea="BBY Q".equals(title);
-        if(minimizedWindow!=null){
-            minimizedWindow.dismiss();
-            minimizedWindow=null;
-            if(minimizedLabel!=null)minimizedLabel.setVisibility(View.GONE);
-        }
-        Dialog dialog=new Dialog(this);
-        LinearLayout shell=vertical();
-        shell.setBackground(round(0xff232c36,0xff45545f,12));
-        shell.setPadding(dp(1),dp(1),dp(1),dp(1));
-
-        LinearLayout top=horizontal();
-        top.setBackground(round(0xff26313b,0,11));
-        top.setPadding(dp(11),dp(7),dp(11),dp(7));
-        TextView dot=label("●",12,0xffcfb8ab,true);
-        top.addView(dot);
-        LinearLayout name=vertical();name.setPadding(dp(12),0,0,0);
-        name.addView(label(title,15,WHITE,true));
-        name.addView(label(subtitle,10,MUTED,false));
-        top.addView(name,new LinearLayout.LayoutParams(0,-2,1f));
-
-        TextView minimize=label("—",19,MUTED,false);
-        minimize.setGravity(Gravity.CENTER);
-        minimize.setContentDescription("MINIMIZAR "+title);
-        top.addView(minimize,new LinearLayout.LayoutParams(dp(38),dp(32)));
-        minimize.setOnClickListener(v->{
-            minimizedWindow=dialog;
-            if(minimizedLabel!=null){
-                minimizedLabel.setText("▣ "+title);
-                minimizedLabel.setVisibility(View.VISIBLE);
-            }
-            dialog.hide();
-        });
-        TextView maximize=label("□",22,WHITE,false);
-        maximize.setGravity(Gravity.CENTER);
-        maximize.setContentDescription("MAXIMIZAR "+title);
-        top.addView(maximize,new LinearLayout.LayoutParams(dp(38),dp(32)));
-        maximize.setOnClickListener(v->{
-            Window actual=dialog.getWindow();
-            if(actual==null)return;
-            WindowManager.LayoutParams p=actual.getAttributes();
-            int width=getResources().getDisplayMetrics().widthPixels;
-            int height=getResources().getDisplayMetrics().heightPixels;
-            boolean enlarged=p.width>(int)(width*.88f);
-            p.width=(int)(width*(enlarged?.78f:.96f));
-            p.height=(int)(height*(enlarged?.78f:.91f));
-            p.gravity=Gravity.CENTER;
-            actual.setAttributes(p);
-        });
-        TextView close=label("×",25,WHITE,false);
-        close.setGravity(Gravity.CENTER);
-        close.setContentDescription("CERRAR "+title);
-        close.setBackground(round(0xff384451,0,7));
-        top.addView(close,new LinearLayout.LayoutParams(dp(38),dp(34)));
-        close.setOnClickListener(v->dialog.dismiss());
-        shell.addView(top,new LinearLayout.LayoutParams(-1,dp(51)));
-
-        View line=new View(this);line.setBackgroundColor(0xff48535d);
-        shell.addView(line,new LinearLayout.LayoutParams(-1,dp(1)));
-
-        LinearLayout interior=horizontal();
-        interior.setGravity(Gravity.TOP);
-        LinearLayout sidebar=vertical();
-        sidebar.setPadding(dp(8),dp(12),dp(8),dp(8));
-        sidebar.setBackgroundColor(0xff1d2731);
-        String[] names={"⌂  Inicio","▤  Archivos","⚙  Ajustes",">_  Terminal","ⓘ  Acerca de"};
-        Runnable[] go={this::openHome,this::openFiles,this::openSettings,
-                       this::openTerminal,this::openAbout};
-        for(int index=0;index<names.length;index++){
-            final int pos=index;
-            TextView entry=label(names[index],11,pos==0?ACCENT:WHITE,false);
-            entry.setPadding(dp(10),dp(12),dp(6),dp(12));
-            if((title.equalsIgnoreCase("HOME")&&pos==0)||
-               (title.equalsIgnoreCase("Archivos")&&pos==1)||
-               (title.equalsIgnoreCase("Ajustes")&&pos==2)||
-               (title.equalsIgnoreCase("Terminal")&&pos==3)){
-                entry.setTextColor(ACCENT);
-                entry.setBackground(round(0xff344451,0,7));
-            }
-            margin(sidebar,entry,pos==0?0:3);
-            entry.setOnClickListener(v->{dialog.dismiss();go[pos].run();});
-        }
-        if(!fullWorkArea){
-            interior.addView(sidebar,new LinearLayout.LayoutParams(dp(143),-1));
-            View verticalRule=new View(this);
-            verticalRule.setBackgroundColor(0xff46515d);
-            interior.addView(verticalRule,new LinearLayout.LayoutParams(dp(1),-1));
-        }
-        LinearLayout body=vertical();
-        body.setPadding(dp(13),dp(10),dp(13),dp(10));
-        interior.addView(body,new LinearLayout.LayoutParams(0,-1,1f));
-        shell.addView(interior,new LinearLayout.LayoutParams(-1,0,1f));
-
-        dialog.setContentView(shell);
-        dialog.show();
-        Window actual=dialog.getWindow();
-        if(actual!=null){
-            actual.setBackgroundDrawableResource(android.R.color.transparent);
-            actual.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
-            WindowManager.LayoutParams p=actual.getAttributes();
-            p.width=(int)(getResources().getDisplayMetrics().widthPixels*
-                (fullWorkArea?.90f:.78f));
-            p.height=(int)(getResources().getDisplayMetrics().heightPixels*
-                (fullWorkArea?.91f:.78f));
-            p.dimAmount=fullWorkArea?.13f:.25f;
-            p.gravity=Gravity.CENTER;
-            actual.setAttributes(p);
-            actual.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
-
-            final float[] touchStart={0f,0f};
-            final int[] origin={0,0};
-            top.setOnTouchListener((view,event)->{
-                switch(event.getActionMasked()){
-                    case android.view.MotionEvent.ACTION_DOWN:
-                        touchStart[0]=event.getRawX();
-                        touchStart[1]=event.getRawY();
-                        actual.getDecorView().getLocationOnScreen(origin);
-                        return true;
-                    case android.view.MotionEvent.ACTION_MOVE:
-                        WindowManager.LayoutParams moving=actual.getAttributes();
-                        int maxX=getResources().getDisplayMetrics().widthPixels-dp(180);
-                        int maxY=getResources().getDisplayMetrics().heightPixels-dp(60);
-                        moving.gravity=Gravity.TOP|Gravity.LEFT;
-                        moving.x=Math.max(-dp(30),Math.min(maxX,origin[0]+
-                                      Math.round(event.getRawX()-touchStart[0])));
-                        moving.y=Math.max(0,Math.min(maxY,origin[1]+
-                                      Math.round(event.getRawY()-touchStart[1])));
-                        actual.setAttributes(moving);
-                        return true;
-                    case android.view.MotionEvent.ACTION_UP:return true;
-                    default:return false;
-                }
-            });
-        }
-        return new WindowUi(dialog,body);
+    private WindowUi window(String title,String subtitle){return window(title,subtitle,title);}
+    private WindowUi window(String title,String subtitle,String key){
+        if(windows.focusExisting(key))return null;
+        if(windows.all().size()>=12){info("Hay 12 ventanas abiertas. Cierra una para continuar.");return null;}
+        return new WindowUi(windows.open(key,title,subtitle));
     }
 
     private void openAbout(){
         WindowUi w=window("ABOUT","Acerca de REVERSE OS");
-        TextView text=label("REVERSE OS 0.4\n\n"+
+        if(w==null)return;
+        TextView text=label("REVERSE OS 1.0\n\n"+
             "Escritorio horizontal con ventanas funcionales, GPU GLES 3 "+
             "de REVERSE Space Glitch y la computadora XI/Ether.\n\n"+
             "El fondo orbital representa cálculos gráficos en tiempo real; "+
@@ -873,9 +753,10 @@ public final class DesktopActivity extends Activity {
     // authority for execution. A failed program never replaces RVPC2.
     private void openStudio(int tab,String file){
         final String chosen;
-        if(tab==2)chosen="nuevo_"+(System.currentTimeMillis()%100000)+".xi";
+        if(tab==2)chosen="nuevo_"+System.currentTimeMillis()+".xi";
         else chosen=file==null?"01_euclides.xi":SessionStore.normalized(file);
-        WindowUi w=window("XI Studio","Editor de programas de REVERSE-PC");
+        WindowUi w=window("XI Studio","Editor de programas de REVERSE-PC","xi:"+chosen);
+        if(w==null)return;
         TextView filename=label(chosen+"   •  XI SCRIPT",11,ACCENT,true);
         margin(w.content,filename,1);
 
@@ -884,7 +765,7 @@ public final class DesktopActivity extends Activity {
         editor.setTextColor(WHITE);editor.setHintTextColor(MUTED);
         editor.setTextSize(12);
         editor.setGravity(Gravity.TOP|Gravity.START);
-        editor.setSingleLine(false);
+        editor.setSingleLine(false);editor.setImeOptions(android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI);
         editor.setInputType(InputType.TYPE_CLASS_TEXT|
             InputType.TYPE_TEXT_FLAG_MULTI_LINE|
             InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
@@ -892,6 +773,14 @@ public final class DesktopActivity extends Activity {
         editor.setPadding(dp(12),dp(8),dp(12),dp(8));
         editor.setText(tab==2?"#!reverse-pc-machine-v1\nset r0 1\nprint r0\nhalt\n":
             "#!reverse-pc-machine-v1\n# Cargando...\n");
+        String draftKey="draft:xi:"+chosen;
+        final String[] baseline={""};final boolean[] ready={tab==2};
+        Runnable persistDraft=()->{if(!ready[0])return;String value=editor.getText().toString();
+            if(value.equals(baseline[0]))preferences.edit().remove(draftKey).apply();else preferences.edit().putString(draftKey,value).apply();};
+        draftWriters.put(w.dialog.key,persistDraft);
+        Runnable deferredDraft=persistDraft;
+        editor.addTextChangedListener(watcher(()->{if(ready[0]){clockHandler.removeCallbacks(deferredDraft);clockHandler.postDelayed(deferredDraft,400);}}));
+        w.dialog.setOnDismissListener(h->{clockHandler.removeCallbacks(deferredDraft);persistDraft.run();draftWriters.remove(h.key);});
         LinearLayout.LayoutParams editP=new LinearLayout.LayoutParams(-1,0,1f);
         editP.topMargin=dp(8);
         w.content.addView(editor,editP);
@@ -907,12 +796,13 @@ public final class DesktopActivity extends Activity {
                 try{
                     if(store==null)throw new IllegalStateException("Núcleo no disponible");
                     store.saveProgram(chosen,data);
-                    runOnUiThread(()->output.setText("Guardado: "+chosen));
+                    runOnUiThread(()->{baseline[0]=data;persistDraft.run();output.setText("Guardado: "+chosen);});
                 }catch(Throwable e){
                     runOnUiThread(()->output.setText("Error: "+e.getMessage()));
                 }
             });
         });
+        w.dialog.saveAction=save::performClick;
         buttons.addView(save,new LinearLayout.LayoutParams(0,dp(42),1f));
         TextView run=touch("▶ EJECUTAR",12,true,()->{
             if(executing){info("XI está ejecutando otro programa");return;}
@@ -935,7 +825,7 @@ public final class DesktopActivity extends Activity {
                     Log.i("ReverseOS","RUN_OK "+chosen+" output="+packet.output.length());
                     runOnUiThread(()->{
                         executing=false;
-                        output.setText(result);
+                        baseline[0]=data;persistDraft.run();output.setText(result);
                         consoleHistory.append("$ run "+chosen+"\n"+result+"\n");
                     });
                 }catch(Throwable error){
@@ -967,13 +857,15 @@ public final class DesktopActivity extends Activity {
         margin(w.content,buttons,6);
 
         engine.execute(()->{
-            if(tab==2)return;
+            if(tab==2){runOnUiThread(()->output.setText("Nuevo programa · borrador conservado al cerrar"));return;}
             try{
                 if(store==null)throw new IllegalStateException("Núcleo no disponible");
-                String code=store.readProgram(chosen);
+                String loaded;
+                try{loaded=store.readProgram(chosen);}catch(IOException e){if(!preferences.contains(draftKey))throw e;loaded="";}
+                final String code=loaded;
                 runOnUiThread(()->{
                     if(!w.dialog.isShowing())return;
-                    editor.setText(code);
+                    baseline[0]=code;editor.setText(preferences.getString(draftKey,code));ready[0]=true;
                     output.setText("Listo: "+chosen+" · editando programa XI");
                 });
             }catch(Throwable error){
@@ -985,6 +877,7 @@ public final class DesktopActivity extends Activity {
     // Terminal executes programs through the exact JNI bridge used by the original GUI.
     private void openTerminal(){
         WindowUi w=window("Terminal","XI SHELL  •  ejecución nativa");
+        if(w==null)return;
         ScrollView scroll=new ScrollView(this);
         TextView output=label(consoleHistory.toString(),12,0xffdddacb,false);
         output.setTypeface(Typeface.MONOSPACE);
@@ -1095,54 +988,244 @@ public final class DesktopActivity extends Activity {
         }else putConsole("Comando no reconocido. Escribe help.\n\n",output,scroll);
     }
 
-    private void openFiles(){
-        WindowUi w=window("Archivos","Aplicaciones XI instaladas");
-        TextView count=label("Leyendo biblioteca privada...",12,MUTED,false);
-        w.content.addView(count);
-        ScrollView scroll=new ScrollView(this);
-        LinearLayout list=vertical();
-        scroll.addView(list);
-        w.content.addView(scroll,new LinearLayout.LayoutParams(-1,0,1f));
-        engine.execute(()->{
-            try{
-                if(store==null)throw new IOException("Núcleo no disponible: "+engineFailure);
-                List<String> paths=store.listPrograms();
-                runOnUiThread(()->{
-                    if(!w.dialog.isShowing())return;
-                    count.setText(paths.size()+" programas .xi • memoria privada");
-                    list.removeAllViews();
-                    for(String path:paths){
-                        LinearLayout file=horizontal();
-                        file.setPadding(dp(12),dp(13),dp(12),dp(13));
-                        file.setBackground(round(CARD,0xff263f50,13));
-                        TextView icon=label("▤",25,AMBER,true);
-                        file.addView(icon);
-                        LinearLayout name=vertical();name.setPadding(dp(11),0,0,0);
-                        name.addView(label(path,13,WHITE,true));
-                        name.addView(label(store.programBytes(path)+" bytes • script XI",10,MUTED,false));
-                        file.addView(name,new LinearLayout.LayoutParams(0,-2,1f));
-                        TextView open=touch("ABRIR",11,false,()->{
-                            w.dialog.dismiss();openStudio(0,path);
-                        });
-                        file.addView(open);
-                        margin(list,file,9);
+    private void openFiles(){openFiles("");}
+    private void openFiles(String initial){
+        if(files==null){info("Los archivos se están preparando");return;}
+        WindowUi w=window("Archivos","Carpetas y documentos","files:"+initial);if(w==null)return;
+        final String[] folder={preferences.getString("folder:"+w.dialog.key,initial)};
+        TextView address=label("",12,ACCENT,true);address.setContentDescription("RUTA DE ARCHIVOS");w.content.addView(address);
+        LinearLayout toolbar=horizontal();w.content.addView(toolbar);
+        ScrollView scroll=new ScrollView(this);LinearLayout list=vertical();scroll.addView(list);w.content.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        TextView status=label("",10,MUTED,false);margin(w.content,status,4);
+        final Runnable[] refresh=new Runnable[1];
+        refresh[0]=()->{
+            preferences.edit().putString("folder:"+w.dialog.key,folder[0]).apply();address.setText("REVERSE / "+folder[0]);list.removeAllViews();status.setText("Leyendo…");
+            engine.execute(()->{try{
+                List<WorkspaceFiles.Entry> entries=files.list(folder[0]);
+                runOnUiThread(()->{if(!w.dialog.isShowing())return;status.setText(entries.size()+" elementos");
+                    for(WorkspaceFiles.Entry e:entries){
+                        LinearLayout row=horizontal();row.setPadding(dp(7),dp(2),dp(7),dp(2));
+                        TextView name=label((e.directory?"▤  ":"▧  ")+e.name,12,WHITE,e.directory);name.setSingleLine(true);name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                        name.setPadding(dp(5),dp(10),dp(5),dp(10));name.setContentDescription("ARCHIVO "+e.name);
+                        Runnable open=()->{if(folder[0].equals("Papelera"))fileMenu(e,folder[0],name,refresh[0]);else if(e.directory){folder[0]=e.path;refresh[0].run();}else openFile(e.path);};
+                        name.setOnClickListener(v->open.run());name.setOnLongClickListener(v->{fileMenu(e,folder[0],name,refresh[0]);return true;});
+                        row.addView(name,new LinearLayout.LayoutParams(0,-2,1));
+                        TextView size=label(e.directory?"Carpeta":e.bytes+" B",10,MUTED,false);row.addView(size);
+                        TextView menu=touch("⋮",15,false,()->fileMenu(e,folder[0],name,refresh[0]));menu.setPadding(0,0,0,0);menu.setContentDescription("OPCIONES "+e.name);row.addView(menu,new LinearLayout.LayoutParams(dp(38),dp(36)));
+                        margin(list,row,3);
                     }
                 });
-            }catch(Throwable err){
-                runOnUiThread(()->{
-                    count.setText("Error de archivos");
-                    appError(list,String.valueOf(err.getMessage()));
-                });
+            }catch(Exception ex){runOnUiThread(()->status.setText("No se pudo abrir: "+ex.getMessage()));}});
+        };
+        String[] labels={"↑","Actualizar","+ Carpeta","+ Texto","Importar","Pegar"};
+        Runnable[] actions={()->{folder[0]=WorkspaceFiles.parent(folder[0]);refresh[0].run();},refresh[0],
+            ()->promptName("Nueva carpeta","Carpeta",name->fileWork(()->files.mkdir(WorkspaceFiles.join(folder[0],name)),refresh[0])),
+            ()->newDocument(folder[0].isEmpty()?"Documentos":folder[0]),
+            ()->importFile(folder[0]),()->fileWork(()->{if(fileClipboard.isEmpty())throw new IOException("Primero copia o corta un archivo");files.paste(fileClipboard,folder[0],clipboardCut);if(clipboardCut)fileClipboard="";},refresh[0])};
+        for(int i=0;i<labels.length;i++){final Runnable action=actions[i];TextView b=touch(labels[i],10,false,action);b.setPadding(dp(2),0,dp(2),0);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,dp(35),1);p.setMargins(0,dp(4),dp(3),dp(4));toolbar.addView(b,p);}
+        refresh[0].run();
+    }
+    private interface FileAction {void run()throws Exception;}
+    private void fileWork(FileAction action,Runnable done){engine.execute(()->{try{action.run();runOnUiThread(()->{if(isDestroyed())return;info("Listo");if(done!=null)done.run();});}catch(Exception ex){runOnUiThread(()->info(ex.getMessage()));}});}
+    private void promptName(String title,String defaultName,java.util.function.Consumer<String> action){
+        EditText field=new EditText(this);field.setSingleLine(true);field.setText(defaultName);field.selectAll();
+        AlertDialog d=new AlertDialog.Builder(this).setTitle(title).setView(field).setNegativeButton("Cancelar",null).setPositiveButton("Aceptar",null).create();d.show();
+        d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{try{String name=WorkspaceFiles.name(field.getText().toString());action.accept(name);d.dismiss();}catch(Exception ex){field.setError(ex.getMessage());}});
+    }
+    private void fileMenu(WorkspaceFiles.Entry entry,String folder,View anchor,Runnable refresh){
+        android.widget.PopupMenu menu=new android.widget.PopupMenu(this,anchor);
+        if(folder.equals("Papelera"))menu.getMenu().add("Restaurar");
+        else if(!WorkspaceFiles.parent(entry.path).isEmpty())for(String option:new String[]{"Abrir","Copiar","Cortar","Renombrar","Exportar","A la papelera"})menu.getMenu().add(option);
+        else menu.getMenu().add("Abrir");
+        menu.setOnMenuItemClickListener(item->{switch(item.getTitle().toString()){
+            case "Abrir":if(entry.directory)openFiles(entry.path);else openFile(entry.path);break;
+            case "Copiar":fileClipboard=entry.path;clipboardCut=false;info("Copiado. Abre el destino y pulsa Pegar.");break;
+            case "Cortar":fileClipboard=entry.path;clipboardCut=true;info("Seleccionado para mover");break;
+            case "Renombrar":promptName("Renombrar",entry.name,n->fileWork(()->files.rename(entry.path,n),refresh));break;
+            case "Exportar":if(entry.directory)info("Abre la carpeta para exportar un archivo");else exportFile(entry.path);break;
+            case "A la papelera":new AlertDialog.Builder(this).setTitle("Mover a la papelera").setMessage(entry.name).setNegativeButton("Cancelar",null).setPositiveButton("Mover",(d,n)->fileWork(()->files.trash(entry.path),refresh)).show();break;
+            case "Restaurar":fileWork(()->files.restore(entry.path),refresh);break;
+        }return true;});menu.show();
+    }
+    private void newDocument(String folder){
+        if(files==null){info("Preparando archivos…");return;}
+        if(folder.equals("Programas")){openStudio(2,null);return;}
+        if(folder.equals("Papelera"))folder="Documentos";
+        final String destination=folder;
+        promptName("Nuevo documento","Nota "+new SimpleDateFormat("HHmmss",Locale.ROOT).format(new Date())+".txt",name->{
+            try{String path=WorkspaceFiles.join(destination,name);fileWork(()->files.write(path,new byte[0],false),()->openText(path));}catch(IOException e){info(e.getMessage());}
+        });
+    }
+    private void openFile(String path){
+        String ext=path.toLowerCase(Locale.ROOT);
+        if(path.startsWith("Programas/")&&ext.endsWith(".xi")){openStudio(0,path.substring(10));return;}
+        if(ext.matches(".*\\.(png|jpe?g|webp|gif|bmp)$")){openImage(path);return;}
+        if(ext.matches(".*\\.(txt|md|json|csv|log|xml|css|js|java|h|cpp|c|py|ini|xi)$")){openText(path);return;}
+        info("Este formato se puede copiar, mover y exportar. El editor abre texto e imágenes.");
+    }
+
+    private void openText(String path){
+        if(files==null){info("Preparando archivos…");return;}
+        WindowUi w=window("Editor","Documento de texto","text:"+path);if(w==null)return;
+        TextView filename=label(path,11,ACCENT,true);w.content.addView(filename);
+        EditText editor=new EditText(this);editor.setTextColor(WHITE);editor.setHintTextColor(MUTED);editor.setTextSize(13);
+        editor.setGravity(Gravity.TOP|Gravity.START);editor.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+        editor.setBackground(round(0xff18232d,0xff415664,7));editor.setPadding(dp(10),dp(8),dp(10),dp(8));editor.setImeOptions(android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI);editor.setEnabled(false);editor.setContentDescription("CONTENIDO DEL DOCUMENTO");
+        LinearLayout.LayoutParams ep=new LinearLayout.LayoutParams(-1,0,1);ep.topMargin=dp(7);w.content.addView(editor,ep);
+        TextView status=label("Cargando…",10,MUTED,false);margin(w.content,status,5);
+        String[] baseline={""};long[] modified={0};boolean[] loading={true};
+        String draftKey="draft:"+path;
+        Runnable persist=()->{if(loading[0])return;String value=editor.getText().toString();
+            if(value.equals(baseline[0]))preferences.edit().remove(draftKey).apply();else preferences.edit().putString(draftKey,value).apply();};
+        draftWriters.put(w.dialog.key,persist);
+        Runnable deferred=()->{persist.run();status.setText(editor.getText().toString().equals(baseline[0])?"Guardado":"Borrador conservado · pulsa Guardar para actualizar el archivo");};
+        editor.addTextChangedListener(watcher(()->{if(loading[0])return;clockHandler.removeCallbacks(deferred);clockHandler.postDelayed(deferred,400);status.setText("Cambios sin guardar");}));
+        Runnable save=()->{
+            if(loading[0])return;String value=editor.getText().toString();
+            fileWork(()->{if(files.modified(path)!=modified[0])throw new IOException("El archivo cambió. Tu borrador se conserva; abre de nuevo el documento.");
+                if(value.getBytes(java.nio.charset.StandardCharsets.UTF_8).length>WorkspaceFiles.MAX_TEXT)throw new IOException("El editor admite hasta 256 KiB");
+                files.write(path,value.getBytes(java.nio.charset.StandardCharsets.UTF_8),true);modified[0]=files.modified(path);
+            },()->{baseline[0]=value;persist.run();status.setText(editor.getText().toString().equals(value)?"Guardado":"Guardado; hay cambios más recientes en el borrador");});
+        };
+        LinearLayout buttons=horizontal();TextView storeButton=touch("GUARDAR",11,true,save);storeButton.setContentDescription("GUARDAR DOCUMENTO");buttons.addView(storeButton,new LinearLayout.LayoutParams(0,dp(38),1));
+        TextView export=touch("EXPORTAR",11,false,()->{persist.run();exportFile(path);});LinearLayout.LayoutParams xp=new LinearLayout.LayoutParams(0,dp(38),1);xp.leftMargin=dp(7);buttons.addView(export,xp);margin(w.content,buttons,5);
+        w.dialog.saveAction=save;w.dialog.setOnDismissListener(h->{clockHandler.removeCallbacks(deferred);persist.run();draftWriters.remove(h.key);});
+        engine.execute(()->{try{String saved=files.text(path);long stamp=files.modified(path);runOnUiThread(()->{
+            if(!w.dialog.isShowing())return;baseline[0]=saved;modified[0]=stamp;editor.setText(preferences.getString(draftKey,saved));loading[0]=false;editor.setEnabled(true);
+            status.setText(editor.getText().toString().equals(saved)?"Guardado":"Borrador recuperado");
+        });}catch(Exception ex){runOnUiThread(()->status.setText("No se pudo leer. El borrador anterior se conserva: "+ex.getMessage()));}});
+    }
+    private void openImage(String path){
+        if(files==null)return;
+        WindowUi w=window("Imagen","Visor de imágenes","image:"+path);if(w==null)return;
+        TextView name=label(path,11,ACCENT,false);w.content.addView(name);
+        android.widget.ImageView image=new android.widget.ImageView(this);image.setAdjustViewBounds(true);image.setScaleType(android.widget.ImageView.ScaleType.FIT_CENTER);w.content.addView(image,new LinearLayout.LayoutParams(-1,0,1));
+        engine.execute(()->{try{
+            java.io.File f=files.image(path);android.graphics.BitmapFactory.Options o=new android.graphics.BitmapFactory.Options();o.inJustDecodeBounds=true;
+            android.graphics.BitmapFactory.decodeFile(f.getPath(),o);if(o.outWidth<1||o.outHeight<1)throw new IOException("La imagen no es válida");
+            int width=o.outWidth,height=o.outHeight;o.inSampleSize=1;while(width/o.inSampleSize>1280||height/o.inSampleSize>1280)o.inSampleSize*=2;
+            o.inJustDecodeBounds=false;android.graphics.Bitmap bitmap=android.graphics.BitmapFactory.decodeFile(f.getPath(),o);if(bitmap==null)throw new IOException("No se pudo leer la imagen");
+            runOnUiThread(()->{if(w.dialog.isShowing()){image.setImageBitmap(bitmap);name.setText(path+" · "+width+" × "+height);}});
+        }catch(Exception ex){runOnUiThread(()->name.setText(ex.getMessage()));}});
+        w.dialog.setOnDismissListener(h->image.setImageDrawable(null));
+    }
+    private void openCalculator(){
+        WindowUi w=window("Calculadora","Operaciones ejecutadas en XI");if(w==null)return;
+        EditText field=bbyqField(w.content,"2.5 * (3 + 1)");field.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        field.setText(preferences.getString("calculator-expression",""));field.setContentDescription("EXPRESIÓN CALCULADORA");
+        TextView result=label(preferences.getString("calculator-result","0"),21,WHITE,true);result.setTextIsSelectable(true);result.setContentDescription("RESULTADO CALCULADORA");margin(w.content,result,5);
+        String[][] keys={{"7","8","9","÷"},{"4","5","6","×"},{"1","2","3","−"},{"0",".","(",")"},{"C","⌫","=","+"}};
+        LinearLayout keypad=vertical();w.content.addView(keypad,new LinearLayout.LayoutParams(-1,0,1));
+        Runnable evaluate=()->{
+            if(executing){info("XI está ocupado");return;}final String expression=field.getText().toString();
+            final String program;try{program=new CalculatorCompiler().compile(expression);}catch(Exception e){result.setText(e.getMessage());return;}
+            executing=true;engine.execute(()->{try{
+                if(store==null)throw new IOException("Núcleo XI no disponible");
+                ResultPacket packet=ResultPacket.parse(NativeRuntime.execute(store.loadState(),program));
+                String answer=null;for(String line:packet.output.split("\n")){if(!line.startsWith("{"))continue;JSONObject j=new JSONObject(line);if("r0".equals(j.optString("register")))answer=CalculatorCompiler.format(j.getLong("value"));}
+                if(answer==null)throw new IOException("XI no devolvió una cantidad");final String value=answer;
+                runOnUiThread(()->{executing=false;result.setText(value);preferences.edit().putString("calculator-expression",expression).putString("calculator-result",value).apply();Log.i(LOG,"CALCULATOR_XI_OK "+expression+"="+value);});
+            }catch(Throwable ex){runOnUiThread(()->{executing=false;result.setText("Revisa la operación o utiliza cantidades menores");});}});
+        };
+        for(String[] row:keys){LinearLayout line=horizontal();for(String key:row){
+            TextView button=touch(key,14,key.equals("="),()->{
+                if(key.equals("="))evaluate.run();else if(key.equals("C"))field.setText("");
+                else if(key.equals("⌫")){int start=Math.max(0,field.getSelectionStart());if(start>0)field.getText().delete(start-1,start);}
+                else{int pos=Math.max(0,field.getSelectionStart());field.getText().insert(pos,key);}
+            });button.setPadding(dp(2),0,dp(2),0);LinearLayout.LayoutParams k=new LinearLayout.LayoutParams(0,-1,1);k.setMargins(dp(2),dp(1),dp(2),dp(1));line.addView(button,k);
+        }keypad.addView(line,new LinearLayout.LayoutParams(-1,0,1));}
+        field.setOnEditorActionListener((v,id,event)->{evaluate.run();return true;});
+        w.dialog.saveAction=evaluate;
+    }
+
+    private void openTasks(){
+        WindowUi w=window("Ventanas","Aplicaciones de este escritorio");if(w==null)return;
+        TextView memory=label("",11,MUTED,false);w.content.addView(memory);
+        ScrollView scroll=new ScrollView(this);LinearLayout list=vertical();scroll.addView(list);w.content.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        Runnable refresh=()->{
+            memory.setText(windows.all().size()+" ventanas · Proceso "+String.format(Locale.ROOT,"%.1f",android.os.Debug.getPss()/1024.0)+" MiB PSS · CPU "+android.os.Process.getElapsedCpuTime()+" ms acumulados");
+            list.removeAllViews();for(DesktopWindows.Handle handle:windows.all()){
+                LinearLayout row=horizontal();TextView title=label(handle.title+(handle.isMinimized()?" · minimizada":" · visible"),12,WHITE,false);row.addView(title,new LinearLayout.LayoutParams(0,dp(38),1));
+                TextView show=touch("Mostrar",10,false,handle::show);show.setPadding(dp(8),0,dp(8),0);row.addView(show,new LinearLayout.LayoutParams(dp(70),dp(34)));
+                TextView close=touch("Cerrar ventana",10,false,()->{handle.dismiss();if(w.dialog.isShowing())openTasksRefresh(list,memory);});close.setPadding(dp(5),0,dp(5),0);row.addView(close,new LinearLayout.LayoutParams(dp(100),dp(34)));margin(list,row,5);
             }
-        });
-        TextView create=touch("+ CREAR NUEVO PROGRAMA",12,true,()->{
-            w.dialog.dismiss();openStudio(2,null);
-        });
-        margin(w.content,create,13);
+        };
+        margin(w.content,touch("Actualizar",11,false,refresh),5);refresh.run();
+    }
+    private void openTasksRefresh(LinearLayout list,TextView memory){
+        list.removeAllViews();memory.setText(windows.all().size()+" ventanas abiertas. Pulsa Actualizar para ver la lista.");
+    }
+    private void openAndroidApps(){
+        WindowUi w=window("Aplicaciones","Aplicaciones instaladas en Android");if(w==null)return;
+        TextView note=label("Se abren en Android. Usa Atrás o Recientes para volver al escritorio.",11,MUTED,false);w.content.addView(note);
+        ScrollView scroll=new ScrollView(this);LinearLayout list=vertical();scroll.addView(list);w.content.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        engine.execute(()->{try{
+            android.content.pm.PackageManager pm=getPackageManager();Intent query=new Intent(Intent.ACTION_MAIN);query.addCategory(Intent.CATEGORY_LAUNCHER);
+            List<android.content.pm.ResolveInfo> apps=pm.queryIntentActivities(query,0);apps.sort((a,b)->a.loadLabel(pm).toString().compareToIgnoreCase(b.loadLabel(pm).toString()));
+            runOnUiThread(()->{if(!w.dialog.isShowing())return;
+                for(android.content.pm.ResolveInfo app:apps){if(app.activityInfo.packageName.equals(getPackageName()))continue;
+                    String title=app.loadLabel(pm).toString();margin(list,touch(title,12,false,()->{
+                        try{Intent launch=new Intent(Intent.ACTION_MAIN);launch.addCategory(Intent.CATEGORY_LAUNCHER);launch.setClassName(app.activityInfo.packageName,app.activityInfo.name);launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);startActivity(launch);}catch(Exception e){info("No se pudo abrir "+title);}
+                    }),5);
+                }
+            });
+        }catch(Exception ex){runOnUiThread(()->note.setText("No se pudo leer la lista de aplicaciones"));}});
+    }
+    private void openSystemPanel(){
+        WindowUi w=window("Panel del sistema","Fecha, energía y controles de Android");if(w==null)return;
+        android.os.BatteryManager battery=(android.os.BatteryManager)getSystemService(BATTERY_SERVICE);int level=battery==null?-1:battery.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY);
+        margin(w.content,label(new SimpleDateFormat("EEEE, d MMMM yyyy",Locale.getDefault()).format(new Date()),18,WHITE,true),4);
+        margin(w.content,label(level>=0&&level<=100?"Batería: "+level+" %":"Batería no disponible",12,MUTED,false),8);
+        for(String[] item:new String[][]{{"Wi-Fi",android.provider.Settings.ACTION_WIFI_SETTINGS},{"Sonido",android.provider.Settings.ACTION_SOUND_SETTINGS},{"Pantalla",android.provider.Settings.ACTION_DISPLAY_SETTINGS}}){
+            margin(w.content,touch(item[0],12,false,()->{try{startActivity(new Intent(item[1]));}catch(Exception e){info("Este ajuste no está disponible");}}),8);
+        }
+        margin(w.content,touch("Ajustes de REVERSE",12,true,this::openSettings),10);
+    }
+    @Override public boolean onKeyDown(int keyCode,android.view.KeyEvent event){
+        if(event.isAltPressed()&&keyCode==android.view.KeyEvent.KEYCODE_TAB){windows.cycle();return true;}
+        if(event.isCtrlPressed()&&keyCode==android.view.KeyEvent.KEYCODE_S){DesktopWindows.Handle h=windows.focused();if(h!=null&&h.saveAction!=null)h.saveAction.run();return true;}
+        if(event.isCtrlPressed()&&event.isAltPressed()&&keyCode==android.view.KeyEvent.KEYCODE_T){openTerminal();return true;}
+        if(event.isMetaPressed()&&keyCode==android.view.KeyEvent.KEYCODE_D){windows.showDesktop();return true;}
+        if(event.isAltPressed()&&keyCode==android.view.KeyEvent.KEYCODE_F4){if(windows.focused()!=null)windows.focused().dismiss();return true;}
+        if(event.isMetaPressed()&&(keyCode==android.view.KeyEvent.KEYCODE_DPAD_LEFT||keyCode==android.view.KeyEvent.KEYCODE_DPAD_RIGHT)){
+            if(windows.focused()!=null)windows.focused().snap(keyCode==android.view.KeyEvent.KEYCODE_DPAD_LEFT?-1:1);return true;
+        }
+        return super.onKeyDown(keyCode,event);
+    }
+    private void importFile(String folder){
+        if(folder.isEmpty()||folder.equals("Papelera"))folder="Descargas";
+        preferences.edit().putString("import-folder",folder).apply();
+        Intent open=new Intent(Intent.ACTION_OPEN_DOCUMENT);open.addCategory(Intent.CATEGORY_OPENABLE);open.setType("*/*");
+        try{startActivityForResult(open,IMPORT_FILE);}catch(Exception ex){info("No hay selector de archivos disponible");}
+    }
+    private void exportFile(String path){
+        preferences.edit().putString("export-path",path).apply();
+        Intent save=new Intent(Intent.ACTION_CREATE_DOCUMENT);save.addCategory(Intent.CATEGORY_OPENABLE);save.setType("application/octet-stream");
+        save.putExtra(Intent.EXTRA_TITLE,path.substring(path.lastIndexOf('/')+1));try{startActivityForResult(save,EXPORT_FILE);}catch(Exception e){info("No hay selector de archivos disponible");}
+    }
+    private byte[] readBounded(Uri uri,int limit)throws IOException{
+        try(InputStream in=getContentResolver().openInputStream(uri);ByteArrayOutputStream out=new ByteArrayOutputStream()){
+            if(in==null)throw new IOException("El archivo no está disponible");byte[] buffer=new byte[8192];int n;
+            while((n=in.read(buffer))!=-1){if(out.size()+n>limit)throw new IOException("El archivo supera el límite de tamaño");out.write(buffer,0,n);}return out.toByteArray();
+        }
+    }
+    private void backupDesktop(){
+        Intent save=new Intent(Intent.ACTION_CREATE_DOCUMENT);save.addCategory(Intent.CATEGORY_OPENABLE);save.setType("application/zip");save.putExtra(Intent.EXTRA_TITLE,"REVERSE-Desktop-respaldo.zip");
+        try{startActivityForResult(save,EXPORT_DESKTOP);}catch(Exception ex){info("No hay selector de archivos disponible");}
+    }
+    private void backupFolder(java.util.zip.ZipOutputStream zip,String path,int depth,int[] count,long[] total)throws IOException{
+        if(depth>10)throw new IOException("Demasiadas carpetas anidadas");
+        for(WorkspaceFiles.Entry e:files.list(path)){
+            if(++count[0]>2048)throw new IOException("El respaldo admite hasta 2.048 elementos");
+            zip.putNextEntry(new java.util.zip.ZipEntry("archivos/"+e.path+(e.directory?"/":"")));
+            if(!e.directory){byte[] data=files.read(e.path);total[0]+=data.length;if(total[0]>64*1024*1024)throw new IOException("El respaldo supera 64 MiB");zip.write(data);}zip.closeEntry();
+            if(e.directory)backupFolder(zip,e.path,depth+1,count,total);
+        }
     }
 
     private void openMonitor(){
         WindowUi w=window("Ether Core","Autoridad compartida XI / Inverse Memory");
+        if(w==null)return;
         TextView state=label("Leyendo núcleo nativo...",12,MUTED,false);
         state.setTypeface(Typeface.MONOSPACE);
         state.setPadding(dp(13),dp(15),dp(13),dp(15));
@@ -1185,6 +1268,7 @@ public final class DesktopActivity extends Activity {
 
     private void openBrowser(){
         WindowUi w=window("Navegador","Android WebView • motor del sistema anfitrión");
+        if(w==null)return;
         LinearLayout address=horizontal();
         TextView back=touch("‹",20,false,()->{});
         TextView forward=touch("›",20,false,()->{});
@@ -1284,6 +1368,9 @@ public final class DesktopActivity extends Activity {
     }
     private void openSettings(){
         WindowUi w=window("Ajustes","Apariencia y funcionamiento");
+        if(w==null)return;
+        LinearLayout settingsBody=vertical();ScrollView settingsScroll=new ScrollView(this);settingsScroll.addView(settingsBody);
+        w.content.addView(settingsScroll,new LinearLayout.LayoutParams(-1,0,1));
         LinearLayout panel=vertical();
         panel.setPadding(dp(16),dp(16),dp(16),dp(16));
         panel.setBackground(round(CARD,0xff29485a,16));
@@ -1293,46 +1380,54 @@ public final class DesktopActivity extends Activity {
                 +"Android proporciona interfaz, procesos, teclado y controladores.\n\n"
                 +"La computadora huésped XI aún no arranca como un sistema operativo independiente.",
                 12,MUTED,false),11);
-        w.content.addView(panel);
+        settingsBody.addView(panel);
         TextView quality=label("FONDO ORBITAL — GPU GLES 3",12,ACCENT,true);
-        margin(w.content,quality,12);
+        margin(settingsBody,quality,12);
         LinearLayout qualityControls=horizontal();
         qualityControls.addView(touch("ECO",11,false,()->{
-            if(wallpaper!=null)wallpaper.quality(1);
+            preferences.edit().putInt("quality",1).apply();updateWallpaper();
             info("Calidad ECO seleccionada");
         }),new LinearLayout.LayoutParams(0,dp(38),1f));
         TextView automatic=touch("AUTO",11,true,()->{
-            if(wallpaper!=null)wallpaper.quality(0);
+            preferences.edit().putInt("quality",0).apply();updateWallpaper();
             info("Calidad adaptativa seleccionada");
         });
         LinearLayout.LayoutParams center=new LinearLayout.LayoutParams(0,dp(38),1f);
         center.leftMargin=dp(7);qualityControls.addView(automatic,center);
         TextView maximum=touch("ALTA",11,false,()->{
-            if(wallpaper!=null)wallpaper.quality(2);
+            preferences.edit().putInt("quality",2).apply();updateWallpaper();
             info("Calidad alta; medir FPS en la barra");
         });
         LinearLayout.LayoutParams right=new LinearLayout.LayoutParams(0,dp(38),1f);
         right.leftMargin=dp(7);qualityControls.addView(maximum,right);
-        margin(w.content,qualityControls,7);
+        margin(settingsBody,qualityControls,7);
         LinearLayout motionControls=horizontal();
         motionControls.addView(touch("⏸ PAUSA",11,false,()->{
-            if(wallpaper!=null)wallpaper.motionEnabled(false);
+            preferences.edit().putBoolean("motion",false).apply();updateWallpaper();
             info("Fondo orbital en pausa");
         }),new LinearLayout.LayoutParams(0,dp(38),1f));
         TextView play=touch("▶ MOVIMIENTO",11,true,()->{
-            if(wallpaper!=null)wallpaper.motionEnabled(true);
+            preferences.edit().putBoolean("motion",true).apply();updateWallpaper();
             info("Fondo orbital animado");
         });
         LinearLayout.LayoutParams motionP=new LinearLayout.LayoutParams(0,dp(38),1f);
         motionP.leftMargin=dp(7);motionControls.addView(play,motionP);
-        margin(w.content,motionControls,7);
+        margin(settingsBody,motionControls,7);
+        margin(settingsBody,touch("USAR COMO ESCRITORIO DE INICIO",12,false,()->{
+            try{
+                android.app.role.RoleManager roles=(android.app.role.RoleManager)getSystemService(android.app.role.RoleManager.class);
+                if(roles!=null&&roles.isRoleAvailable(android.app.role.RoleManager.ROLE_HOME))startActivityForResult(roles.createRequestRoleIntent(android.app.role.RoleManager.ROLE_HOME),5150);
+                else startActivity(new Intent(android.provider.Settings.ACTION_HOME_SETTINGS));
+            }catch(Exception ex){info("Puedes elegir REVERSE en los ajustes de aplicaciones de inicio de Android");}
+        }),12);
+        margin(settingsBody,touch("EXPORTAR RESPALDO DEL ESCRITORIO",12,false,this::backupDesktop),12);
         TextView restart=touch("REINICIAR LA PANTALLA DE BIENVENIDA",12,false,()->{
             w.dialog.dismiss();
             Intent i=new Intent(this,BootActivity.class);
             i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(i);finish();
         });
-        margin(w.content,restart,20);
+        margin(settingsBody,restart,20);
         TextView backup=touch("EXPORTAR MI MEMORIA RVPC2",12,false,()->{
             Intent save=new Intent(Intent.ACTION_CREATE_DOCUMENT);
             save.addCategory(Intent.CATEGORY_OPENABLE);
@@ -1341,7 +1436,7 @@ public final class DesktopActivity extends Activity {
             try{startActivityForResult(save,EXPORT_RVPC);}
             catch(ActivityNotFoundException error){info("No hay gestor de archivos disponible");}
         });
-        margin(w.content,backup,13);
+        margin(settingsBody,backup,13);
         TextView restore=touch("IMPORTAR RVPC2 VALIDADO",12,false,()->{
             Intent open=new Intent(Intent.ACTION_OPEN_DOCUMENT);
             open.addCategory(Intent.CATEGORY_OPENABLE);
@@ -1349,7 +1444,7 @@ public final class DesktopActivity extends Activity {
             try{startActivityForResult(open,IMPORT_RVPC);}
             catch(ActivityNotFoundException error){info("No hay gestor de archivos disponible");}
         });
-        margin(w.content,restore,8);
+        margin(settingsBody,restore,8);
         TextView reset=touch("RESTABLECER NÚCLEO ETHER",12,false,()->{
             new AlertDialog.Builder(this)
                 .setTitle("Reiniciar el estado de la computadora")
@@ -1367,14 +1462,36 @@ public final class DesktopActivity extends Activity {
                     });
                 }).show();
         });
-        margin(w.content,reset,11);
+        margin(settingsBody,reset,11);
         TextView close=touch("CERRAR",12,true,w.dialog::dismiss);
-        margin(w.content,close,16);
+        margin(settingsBody,close,16);
     }
     @Override protected void onActivityResult(int request,int code,Intent intent){
         super.onActivityResult(request,code,intent);
         if(code!=RESULT_OK||intent==null||intent.getData()==null)return;
         final Uri uri=intent.getData();
+        if(request==IMPORT_FILE){
+            fileWork(()->{
+                String name="archivo";try(android.database.Cursor c=getContentResolver().query(uri,new String[]{android.provider.OpenableColumns.DISPLAY_NAME},null,null,null)){
+                    if(c!=null&&c.moveToFirst())name=c.getString(0);
+                }
+                String path=WorkspaceFiles.join(preferences.getString("import-folder","Descargas"),name);files.write(path,readBounded(uri,WorkspaceFiles.MAX_FILE),false);
+                Log.i(LOG,"FILE_IMPORT_OK "+path);
+            },null);return;
+        }else if(request==EXPORT_FILE){
+            fileWork(()->{byte[] data=files.read(preferences.getString("export-path",""));try(OutputStream out=getContentResolver().openOutputStream(uri)){if(out==null)throw new IOException("Destino no disponible");out.write(data);}},null);return;
+        }else if(request==EXPORT_DESKTOP){
+            for(Runnable save:draftWriters.values())save.run();if(windows!=null)windows.save();
+            fileWork(()->{
+                if(store==null||files==null)throw new IOException("El escritorio no está listo");
+                try(OutputStream out=getContentResolver().openOutputStream(uri);java.util.zip.ZipOutputStream zip=new java.util.zip.ZipOutputStream(out)){
+                    byte[] state=store.loadState();NativeRuntime.inspect(state);zip.putNextEntry(new java.util.zip.ZipEntry("session.rvp"));zip.write(state);zip.closeEntry();
+                    zip.putNextEntry(new java.util.zip.ZipEntry("escritorio.json"));zip.write(new JSONObject(preferences.getAll()).toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));zip.closeEntry();
+                    zip.putNextEntry(new java.util.zip.ZipEntry("papelera.json"));zip.write(new JSONObject(files.trashOrigins()).toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));zip.closeEntry();
+                    backupFolder(zip,"",0,new int[]{0},new long[]{0});
+                }
+            },null);return;
+        }
         if(request==EXPORT_RVPC){
             engine.execute(()->{
                 try{
@@ -1433,10 +1550,15 @@ public final class DesktopActivity extends Activity {
                     i.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_NEW_TASK);
                     startActivity(i);finish();
                 }else if(which==1)openSettings();
-                else finish();
+                else {
+                    android.app.role.RoleManager role=getSystemService(android.app.role.RoleManager.class);
+                    if(role!=null&&role.isRoleHeld(android.app.role.RoleManager.ROLE_HOME))startActivity(new Intent(android.provider.Settings.ACTION_HOME_SETTINGS));
+                    else finish();
+                }
             }).show();
     }
     @Override public void onBackPressed(){
+        if(windows!=null&&windows.focused()!=null){windows.focused().dismiss();return;}
         new AlertDialog.Builder(this).setTitle("REVERSE OS")
             .setMessage("¿Cerrar el escritorio?")
             .setNegativeButton("CANCELAR",null)
@@ -1447,13 +1569,17 @@ public final class DesktopActivity extends Activity {
         if(wallpaper!=null)wallpaper.onResume();
     }
     @Override protected void onPause(){
+        for(Runnable save:draftWriters.values())save.run();
+        if(windows!=null)windows.save();
         if(wallpaper!=null)wallpaper.onPause();
         super.onPause();
     }
     @Override protected void onDestroy(){
         clockHandler.removeCallbacks(tick);
-        if(minimizedWindow!=null){minimizedWindow.dismiss();minimizedWindow=null;}
-        engine.shutdown();
+        for(Runnable save:draftWriters.values())save.run();
+        if(windows!=null)windows.release();
+        // The process-wide worker serializes unfinished commits with a new activity.
+        // Android terminates it with the app process; recreation never adds a writer.
         super.onDestroy();
     }
 
