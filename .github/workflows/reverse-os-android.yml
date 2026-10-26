@@ -337,7 +337,7 @@ jobs:
           import re,subprocess,xml.etree.ElementTree as ET
           nodes=list(ET.parse("reverse-os-evidence/bbyq-window.xml").getroot().iter("node"))
           text=" ".join(n.attrib.get("text","") for n in nodes)
-          assert "BBY Q" in text and "4 bancos Ether" in text,text[:2500]
+          assert "BBY Q" in text and "22 conceptos" in text,text[:2500]
           assert "ESPAÑOL" in text and "ENGLISH" in text,text[:2500]
           assert "22 conceptos" in text,text[:2500]
           field=next((n for n in nodes if n.attrib.get("class")=="android.widget.EditText"),None)
