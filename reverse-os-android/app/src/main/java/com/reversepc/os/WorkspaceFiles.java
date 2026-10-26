@@ -9,7 +9,7 @@ import java.util.*;
  * for XI scripts, while RVPC2 remains exclusively owned by SessionStore. */
 public final class WorkspaceFiles {
     public static final int MAX_FILE=8*1024*1024,MAX_TEXT=256*1024;
-    public static final String[] ROOTS={"Escritorio","Documentos","Descargas","Imágenes","Programas","Papelera"};
+    public static final String[] ROOTS={"Escritorio","Documentos","Descargas","Imágenes","Programas","Aplicaciones","Papelera"};
     private final File root,programs,meta;
     public static final class Entry {
         public final String name,path; public final boolean directory;

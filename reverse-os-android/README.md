@@ -1,4 +1,44 @@
-# REVERSE Desktop 1.0
+# REVERSE Desktop RXE 1.1
+
+## Programas propios .rxe
+
+RXE es el formato ejecutable de REVERSE: cabecera, versión de formato y ABI,
+constantes, instrucciones binarias y operandos tipados. El cargador valida todo
+el archivo y entrega el programa a la máquina XI/Ether original. No se instala
+ningún APK para agregar un programa `.rxe` a este entorno.
+
+- **XI Studio → Crear .RXE** compila el código actual sin ejecutarlo y guarda
+  el resultado en Aplicaciones. El código fuente `.xi` se conserva.
+- **Aplicaciones → Agregar .rxe** valida e importa un ejecutable sin ejecutarlo.
+- Abrir un `.rxe` desde Aplicaciones o Archivos lo ejecuta en una ventana de
+  REVERSE. Se puede anclar a escritorio/Inicio, buscar, exportar y recuperar.
+- Restaurar la sesión abre la ventana con la salida guardada; no repite la
+  ejecución automáticamente. El botón Ejecutar permite repetirla expresamente.
+- `Hola-REVERSE.rxe` viene como primer programa: calcula 6×7=42 y conserva RVPC2
+  idéntico. Se conserva también una copia exportable generada por el CLI.
+- Android sigue aportando la interfaz anfitriona. El botón Android conserva
+  el lanzador de apps del teléfono que ya existía en 1.0.
+
+[Especificación y límites de RXE](../docs/RXE_EXECUTABLES.md). Esta versión
+ofrece programas de consola/cómputo XI: no añade todavía syscalls gráficas ni
+memoria aislada por aplicación. Los programas usan el RVPC2 compartido; el motor,
+Mundo X fijado y la versión de BBY Q se conservan.
+
+La aplicación que contiene este entorno se distribuye como
+`REVERSE-Desktop-RXE-v1.1.apk`, paquete `com.reversepc.desktop.rxe`, para instalarse
+junto a 1.0 y conservarla. La clave antigua no fue retenida. Esta edición usa una
+ruta de clave explícita y una caché de desarrollo; la caché puede caducar y no
+sustituye un almacén de firma de producción. RVPC2 se puede exportar/importar con
+Ajustes; el ZIP de respaldo conserva los documentos para extracción, sin una
+restauración completa de perfil en esta versión.
+
+CI conserva los recorridos de Desktop 1.0 y verifica creación/ejecución RXE,
+restauración sin ejecución, accesos, búsqueda, exportación/importación binaria y
+rechazo de un texto renombrado `.rxe`. Las pruebas C++ comparan estado, salida y
+RNG con la ejecución textual y prueban corrupción, saltos, límites y rollback.
+
+## Base conservada de Desktop 1.0
+
 
 Escritorio de trabajo dentro de Android, desarrollado sobre REVERSE OS v0.5
 (`7420e067db6b42d207dd43eab00bdb9942eacafc`). Mantiene el diseño plano en grafito
@@ -67,9 +107,7 @@ Puede importar su RVPC2 desde Ajustes si se exportó previamente.
 
 `REVERSE-OS-v1.0-compatible.apk` conserva `com.reversepc.os`. Solo puede actualizar
 una instalación con la misma firma. No desinstalar una versión anterior para
-resolver una firma distinta sin exportar antes sus datos. La CI conserva la
-clave de desarrollo para futuras compilaciones de la rama principal; estas
-APK son compilaciones de desarrollo, no una distribución de producción.
+resolver una firma distinta sin exportar antes sus datos. La compilación 1.0 no conservó la clave en la ruta prevista. Estas APK son compilaciones de desarrollo; no debe darse por compatible una firma nueva.
 
 Compilar ambas ediciones:
 

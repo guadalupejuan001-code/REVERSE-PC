@@ -78,6 +78,15 @@ public final class DesktopActivity extends Activity {
     private final java.util.Map<String,Runnable> fileRefreshers=new java.util.HashMap<>();
     private final java.util.Map<String,Runnable> draftWriters=new java.util.HashMap<>();
     private static final int IMPORT_FILE=5120,EXPORT_FILE=5121,EXPORT_DESKTOP=5122;
+    private static final int IMPORT_RXE=5140;
+    private LinearLayout rxeShortcuts;
+    private final java.util.Map<String,Runnable> rxeRefreshers=new java.util.HashMap<>();
+    private java.util.List<RxeApp> rxeApps=java.util.Collections.emptyList();
+    private boolean rxeLoading=false,rxeRefreshPending=false;
+    private static final class RxeApp {
+        final String path,title;final int instructions;
+        RxeApp(String path,JSONObject metadata){this.path=path;title=metadata.optString("title",path);instructions=metadata.optInt("instructions");}
+    }
     private String engineFailure="";
     private TextView statusLabel, clockLabel, statusDetail;
     private final StringBuilder consoleHistory=new StringBuilder(
@@ -165,6 +174,7 @@ public final class DesktopActivity extends Activity {
             try {
                 files=new WorkspaceFiles(getFilesDir());
                 SessionStore s=new SessionStore(getApplicationContext());
+                seedRxe();
                 String stats=NativeRuntime.inspect(s.loadState());
                 store=s;
                 Log.i(LOG,"DESKTOP_CORE_READY "+stats);
@@ -173,6 +183,7 @@ public final class DesktopActivity extends Activity {
                     statusLabel.setText("● Listo");
                     statusLabel.setTextColor(ACCENT);
                     statusDetail.setText("");
+                    refreshRxe();
                     windowLayer.post(this::restoreDesktop);
                 });
             }catch(Throwable fault){
@@ -264,6 +275,7 @@ public final class DesktopActivity extends Activity {
         // traditional desktop columns on the left, not a "quantum menu".
         LinearLayout shortcutGrid=vertical();
         shortcutGrid.setPadding(dp(3),dp(12),dp(3),dp(2));
+        rxeShortcuts=vertical();shortcutGrid.addView(rxeShortcuts);
         String[][] icons={{"▤","Archivos"},{"◎","Navegador"},{"▧","Editor"},
             {"⌘","XI Studio"},{">_","Terminal"},{"=","Calculadora"},
             {"◈","Ether Core"},{"⚙","Ajustes"},{"▦","Aplicaciones"},
@@ -620,6 +632,8 @@ public final class DesktopActivity extends Activity {
             else if(key.startsWith("text:"))openText(key.substring(5));
             else if(key.startsWith("image:"))openImage(key.substring(6));
             else if(key.startsWith("files:"))openFiles(key.substring(6));
+            else if(key.startsWith("rxe:"))openRxe(key.substring(4),false);
+            else if(key.equals("Android"))openHostApps();
             else if(java.util.Arrays.asList(APPLICATIONS).contains(key)&&!key.equals("Editor"))launchApp(key);
         }
         if(!previousFocus.isEmpty())windows.focusExisting(previousFocus);
@@ -648,16 +662,21 @@ public final class DesktopActivity extends Activity {
             }
             list.addView(row);
         }
+        for(RxeApp app:rxeApps)if(isRxePinned(app.path))margin(list,touch(app.title+" · RXE",12,false,()->{w.dialog.dismiss();openRxe(app.path,true);}),5);
         w.content.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         margin(w.content,touch("Apagar / Reiniciar",11,false,this::openPower),8);
     }
     private void openSearch(){
         WindowUi w=window("Buscar","Aplicaciones y documentos");if(w==null)return;
         EditText field=bbyqField(w.content,"Busca una aplicación o un archivo");
+        field.setContentDescription("BUSQUEDA GLOBAL");
         ScrollView scroll=new ScrollView(this);LinearLayout list=vertical();scroll.addView(list);w.content.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         Runnable refresh=()->{
             String q=field.getText().toString().toLowerCase(Locale.ROOT).trim();list.removeAllViews();
             for(String app:APPLICATIONS)if(app.toLowerCase(Locale.ROOT).contains(q))margin(list,touch(app,12,false,()->{w.dialog.dismiss();launchApp(app);}),5);
+            if(!q.isEmpty())for(RxeApp app:rxeApps)if((app.title+" "+app.path).toLowerCase(Locale.ROOT).contains(q)){
+                TextView hit=touch(app.title+" · RXE",12,false,()->{w.dialog.dismiss();openRxe(app.path,true);});hit.setContentDescription("RESULTADO RXE "+app.path);margin(list,hit,5);
+            }
             if(files!=null&&!q.isEmpty())engine.execute(()->{
                 try{java.util.ArrayList<WorkspaceFiles.Entry> hits=new java.util.ArrayList<>();searchFiles("",q,hits,0);
                     runOnUiThread(()->{if(!w.dialog.isShowing()||!field.getText().toString().toLowerCase(Locale.ROOT).trim().equals(q))return;
@@ -776,9 +795,11 @@ public final class DesktopActivity extends Activity {
         WindowUi w=window("XI Studio","Editor de programas de REVERSE-PC","xi:"+chosen);
         if(w==null)return;
         TextView filename=label(chosen+"   •  XI SCRIPT",11,ACCENT,true);
-        margin(w.content,filename,1);
+        filename.setSingleLine(true);filename.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        LinearLayout sourceHeader=horizontal();sourceHeader.addView(filename,new LinearLayout.LayoutParams(0,-2,1));margin(w.content,sourceHeader,1);
 
         EditText editor=new EditText(this);
+        editor.setContentDescription("CODIGO XI");
         editor.setTypeface(Typeface.MONOSPACE);
         editor.setTextColor(WHITE);editor.setHintTextColor(MUTED);
         editor.setTextSize(12);
@@ -791,6 +812,7 @@ public final class DesktopActivity extends Activity {
         editor.setPadding(dp(12),dp(8),dp(12),dp(8));
         editor.setText(tab==2?"#!reverse-pc-machine-v1\nset r0 1\nprint r0\nhalt\n":
             "#!reverse-pc-machine-v1\n# Cargando...\n");
+        TextView build=touch("CREAR .RXE",10,true,()->createRxe(editor.getText().toString(),chosen.substring(0,chosen.length()-3)+".rxe"));build.setPadding(dp(5),0,dp(5),0);sourceHeader.addView(build,new LinearLayout.LayoutParams(dp(100),dp(28)));
         String draftKey="draft:xi:"+chosen;
         final String[] baseline={""};final boolean[] ready={tab==2};
         Runnable persistDraft=()->{if(!ready[0])return;String value=editor.getText().toString();
@@ -1023,7 +1045,7 @@ public final class DesktopActivity extends Activity {
                 runOnUiThread(()->{if(!w.dialog.isShowing())return;status.setText(entries.size()+" elementos");
                     for(WorkspaceFiles.Entry e:entries){
                         LinearLayout row=horizontal();row.setPadding(dp(7),dp(2),dp(7),dp(2));
-                        TextView name=label((e.directory?"▤  ":"▧  ")+e.name,12,WHITE,e.directory);name.setSingleLine(true);name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+                        TextView name=label((e.directory?"▤  ":e.path.toLowerCase(Locale.ROOT).endsWith(".rxe")?"RX  ":"▧  ")+e.name,12,WHITE,e.directory);name.setSingleLine(true);name.setEllipsize(android.text.TextUtils.TruncateAt.END);
                         name.setPadding(dp(5),dp(10),dp(5),dp(10));name.setContentDescription("ARCHIVO "+e.name);
                         Runnable open=()->{if(folder[0].equals("Papelera"))fileMenu(e,folder[0],name,refresh[0]);else if(e.directory){folder[0]=e.path;refresh[0].run();}else openFile(e.path);};
                         name.setOnClickListener(v->open.run());name.setOnLongClickListener(v->{fileMenu(e,folder[0],name,refresh[0]);return true;});
@@ -1048,7 +1070,8 @@ public final class DesktopActivity extends Activity {
     private interface FileAction {void run()throws Exception;}
     private void fileWork(FileAction action,Runnable done){engine.execute(()->{try{action.run();runOnUiThread(()->{if(isDestroyed())return;info("Listo");for(Runnable refresh:new java.util.ArrayList<>(fileRefreshers.values()))if(refresh!=done)refresh.run();if(done!=null)done.run();});}catch(Exception ex){runOnUiThread(()->info(ex.getMessage()));}});}
     private void promptName(String title,String defaultName,java.util.function.Consumer<String> action){
-        EditText field=new EditText(this);field.setSingleLine(true);field.setText(defaultName);field.selectAll();
+        if(isFinishing()||isDestroyed())return;
+        EditText field=new EditText(this);field.setContentDescription("NOMBRE DE ARCHIVO");field.setSingleLine(true);field.setText(defaultName);field.selectAll();
         AlertDialog d=new AlertDialog.Builder(this).setTitle(title).setView(field).setNegativeButton("Cancelar",null).setPositiveButton("Aceptar",null).create();d.show();
         d.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v->{try{String name=WorkspaceFiles.name(field.getText().toString());action.accept(name);d.dismiss();}catch(Exception ex){field.setError(ex.getMessage());}});
     }
@@ -1079,6 +1102,7 @@ public final class DesktopActivity extends Activity {
     }
     private void openFile(String path){
         String ext=path.toLowerCase(Locale.ROOT);
+        if(ext.endsWith(".rxe")){openRxe(path,true);return;}
         if(path.startsWith("Programas/")&&ext.endsWith(".xi")){openStudio(0,path.substring(10));return;}
         if(ext.matches(".*\\.(png|jpe?g|webp|gif|bmp)$")){openImage(path);return;}
         if(ext.matches(".*\\.(txt|md|json|csv|log|xml|css|js|java|h|cpp|c|py|ini|xi)$")){openText(path);return;}
@@ -1178,8 +1202,8 @@ public final class DesktopActivity extends Activity {
     private void openTasksRefresh(LinearLayout list,TextView memory){
         list.removeAllViews();memory.setText(windows.all().size()+" ventanas abiertas. Pulsa Actualizar para ver la lista.");
     }
-    private void openAndroidApps(){
-        WindowUi w=window("Aplicaciones","Aplicaciones instaladas en Android");if(w==null)return;
+    private void openHostApps(){
+        WindowUi w=window("Android","Aplicaciones instaladas en Android");if(w==null)return;
         TextView note=label("Se abren en Android. Usa Atrás o Recientes para volver al escritorio.",11,MUTED,false);w.content.addView(note);
         ScrollView scroll=new ScrollView(this);LinearLayout list=vertical();scroll.addView(list);w.content.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         engine.execute(()->{try{
@@ -1193,6 +1217,58 @@ public final class DesktopActivity extends Activity {
                 }
             });
         }catch(Exception ex){runOnUiThread(()->note.setText("No se pudo leer la lista de aplicaciones"));}});
+    }
+    private JSONObject rxeInfo(byte[] image)throws Exception{return new JSONObject(new String(NativeRuntime.inspectRxe(image),java.nio.charset.StandardCharsets.UTF_8));}
+    private void seedRxe()throws Exception{
+        if(preferences.getBoolean("rxe-seeded-v1",false))return;
+        String path="Aplicaciones/Hola-REVERSE.rxe";boolean exists=false;for(WorkspaceFiles.Entry e:files.list("Aplicaciones"))if(e.path.equals(path))exists=true;
+        if(!exists)files.write(path,NativeRuntime.compileRxe("#!reverse-pc-machine-v1\nset r0 6\nmul r0 7\nprint r0\nhalt\n".getBytes(java.nio.charset.StandardCharsets.UTF_8),"Hola REVERSE".getBytes(java.nio.charset.StandardCharsets.UTF_8)),false);
+        preferences.edit().putBoolean("rxe-seeded-v1",true).apply();
+    }
+    private void refreshRxe(){
+        if(files==null||isDestroyed())return;if(rxeLoading){rxeRefreshPending=true;return;}rxeLoading=true;
+        engine.execute(()->{try{java.util.ArrayList<RxeApp> found=new java.util.ArrayList<>();
+            for(WorkspaceFiles.Entry e:files.list("Aplicaciones"))if(!e.directory&&e.path.toLowerCase(Locale.ROOT).endsWith(".rxe"))try{found.add(new RxeApp(e.path,rxeInfo(files.read(e.path))));}catch(Exception invalid){Log.w(LOG,"RXE_CATALOG_REJECT "+e.path,invalid);}
+            runOnUiThread(()->{rxeLoading=false;if(isDestroyed())return;rxeApps=found;renderRxeShortcuts();for(Runnable r:new java.util.ArrayList<>(rxeRefreshers.values()))r.run();if(rxeRefreshPending){rxeRefreshPending=false;refreshRxe();}});
+        }catch(Exception e){runOnUiThread(()->{rxeLoading=false;Log.e(LOG,"RXE_CATALOG_FAILED",e);});}});
+    }
+    private boolean isRxePinned(String path){return preferences.getStringSet("rxe-pins",java.util.Collections.emptySet()).contains(path);}
+    private void pinRxe(RxeApp app){java.util.Set<String> pins=new java.util.HashSet<>(preferences.getStringSet("rxe-pins",java.util.Collections.emptySet()));if(!pins.remove(app.path)){if(pins.size()>=12){info("El escritorio admite hasta 12 accesos personales");return;}pins.add(app.path);}preferences.edit().putStringSet("rxe-pins",pins).apply();renderRxeShortcuts();Log.i(LOG,"RXE_PIN_CHANGED "+app.path);}
+    private void renderRxeShortcuts(){
+        if(rxeShortcuts==null)return;rxeShortcuts.removeAllViews();int count=0;LinearLayout row=null;
+        for(RxeApp app:rxeApps)if(isRxePinned(app.path)){
+            if(count++%3==0){row=horizontal();rxeShortcuts.addView(row);}addDesktopShortcut(row,"RX",app.title,()->openRxe(app.path,true));View icon=row.getChildAt(row.getChildCount()-1);icon.setContentDescription("ACCESO RXE "+app.path);icon.setOnLongClickListener(v->{rxeMenu(app,v);return true;});
+        }
+    }
+    private void openAndroidApps(){
+        WindowUi w=window("Aplicaciones","Ejecutables propios de REVERSE · .rxe");if(w==null)return;
+        LinearLayout toolbar=horizontal();String[] names={"Agregar .rxe","Crear .rxe","Android","Actualizar"};Runnable[] actions={this::pickRxe,()->openStudio(2,null),this::openHostApps,this::refreshRxe};
+        for(int i=0;i<names.length;i++){TextView b=touch(names[i],10,i==0,actions[i]);b.setPadding(dp(2),0,dp(2),0);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,dp(35),1);p.rightMargin=dp(3);toolbar.addView(b,p);}w.content.addView(toolbar);
+        ScrollView scroll=new ScrollView(this);LinearLayout list=vertical();scroll.addView(list);w.content.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        Runnable render=()->{if(!w.dialog.isShowing())return;list.removeAllViews();for(RxeApp app:rxeApps){LinearLayout row=horizontal();TextView name=touch(app.title,12,false,()->openRxe(app.path,true));name.setSingleLine(true);name.setEllipsize(android.text.TextUtils.TruncateAt.END);name.setContentDescription("ABRIR RXE "+app.path);row.addView(name,new LinearLayout.LayoutParams(0,dp(40),1));TextView menu=touch("⋮",16,false,()->{});menu.setPadding(0,0,0,0);menu.setContentDescription("OPCIONES RXE "+app.path);menu.setOnClickListener(v->rxeMenu(app,menu));row.addView(menu,new LinearLayout.LayoutParams(dp(36),dp(40)));margin(list,row,6);}if(list.getChildCount()==0)margin(list,label("Agrega un .rxe o créalo desde XI Studio.",12,MUTED,false),10);};
+        rxeRefreshers.put(w.dialog.key,render);w.dialog.setOnDismissListener(h->rxeRefreshers.remove(h.key));render.run();refreshRxe();
+    }
+    private void rxeMenu(RxeApp app,View anchor){
+        android.widget.PopupMenu menu=new android.widget.PopupMenu(this,anchor);String pin=isRxePinned(app.path)?"Quitar acceso":"Anclar al escritorio";for(String item:new String[]{"Ejecutar",pin,"Exportar","Propiedades","A la papelera"})menu.getMenu().add(item);
+        menu.setOnMenuItemClickListener(item->{String action=item.getTitle().toString();if(action.equals("Ejecutar"))openRxe(app.path,true);else if(action.equals(pin))pinRxe(app);else if(action.equals("Exportar"))exportFile(app.path);else if(action.equals("Propiedades"))new AlertDialog.Builder(this).setTitle(app.title).setMessage("Ejecutable REVERSE .rxe\nABI XI Machine v1\n"+app.instructions+" instrucciones\n"+app.path).setPositiveButton("Cerrar",null).show();else new AlertDialog.Builder(this).setTitle("Mover a la papelera").setMessage(app.title).setNegativeButton("Cancelar",null).setPositiveButton("Mover",(d,n)->fileWork(()->files.trash(app.path),this::refreshRxe)).show();return true;});menu.show();
+    }
+    private void createRxe(String source,String defaultName){
+        promptName("Crear ejecutable .rxe",defaultName,chosen->{String name=chosen.toLowerCase(Locale.ROOT).endsWith(".rxe")?chosen:chosen+".rxe";final String path="Aplicaciones/"+name;final String title=name.substring(0,name.length()-4);
+            engine.execute(()->{try{byte[] binary=NativeRuntime.compileRxe(source.getBytes(java.nio.charset.StandardCharsets.UTF_8),title.getBytes(java.nio.charset.StandardCharsets.UTF_8));files.write(path,binary,false);Log.i(LOG,"RXE_BUILD_OK "+path+" bytes="+binary.length);runOnUiThread(()->{info("Ejecutable creado: "+name);refreshRxe();});}catch(Exception e){runOnUiThread(()->info("No se pudo crear el ejecutable: "+e.getMessage()));}});
+        });
+    }
+    private void openRxe(String path,boolean start){
+        if(files==null){info("Preparando aplicaciones…");return;}
+        engine.execute(()->{try{byte[] image=files.read(path);JSONObject metadata=rxeInfo(image);String title=metadata.getString("title");runOnUiThread(()->{
+            if(isFinishing()||isDestroyed())return;WindowUi w=window(title,"Ejecutable REVERSE .rxe","rxe:"+path);if(w==null)return;
+            TextView output=label(preferences.getString("rxe-output:"+path,"Pulsa Ejecutar para iniciar el programa."),12,WHITE,false);output.setTypeface(Typeface.MONOSPACE);output.setTextIsSelectable(true);output.setContentDescription("SALIDA RXE "+path);ScrollView scroll=new ScrollView(this);scroll.addView(output);w.content.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+            TextView run=touch("Ejecutar",12,true,()->{});margin(w.content,run,6);
+            Runnable execute=()->{run.setEnabled(false);output.setText("Ejecutando…");engine.execute(()->{String text;try{if(store==null)throw new IOException("Núcleo no disponible");byte[] current=files.read(path);ResultPacket result=ResultPacket.parse(NativeRuntime.executeRxe(store.loadState(),current));store.writeState(result.state);text=pretty(result.output);if(text.length()>48000)text=text.substring(0,48000)+"\n[Salida visible recortada]";preferences.edit().putString("rxe-output:"+path,text).apply();Log.i(LOG,"RXE_RUN_OK "+path);}catch(Exception e){text="No se pudo ejecutar: "+e.getMessage()+"\nEstado anterior conservado";Log.e(LOG,"RXE_RUN_FAILED "+path,e);}final String result=text;runOnUiThread(()->{if(w.dialog.isShowing()){output.setText(result);run.setEnabled(true);}});});};run.setOnClickListener(v->execute.run());if(start)execute.run();
+        });}catch(Exception e){runOnUiThread(()->info("Ejecutable rechazado: "+e.getMessage()));}});
+    }
+    private void pickRxe(){Intent select=new Intent(Intent.ACTION_OPEN_DOCUMENT);select.addCategory(Intent.CATEGORY_OPENABLE);select.setType("*/*");try{startActivityForResult(select,IMPORT_RXE);}catch(Exception e){info("No hay selector de archivos disponible");}}
+    private void importRxe(Uri uri){
+        engine.execute(()->{try{byte[] image=readBounded(uri,WorkspaceFiles.MAX_FILE);JSONObject meta=rxeInfo(image);String suggested=meta.getString("title")+".rxe";runOnUiThread(()->promptName("Agregar ejecutable .rxe",suggested,chosen->{String name=chosen.toLowerCase(Locale.ROOT).endsWith(".rxe")?chosen:chosen+".rxe";String path="Aplicaciones/"+name;fileWork(()->{files.write(path,image,false);Log.i(LOG,"RXE_IMPORT_OK "+path);},this::refreshRxe);}));}catch(Exception e){Log.e(LOG,"RXE_IMPORT_REJECTED",e);runOnUiThread(()->info("Archivo rechazado: "+e.getMessage()));}});
     }
     private void openSystemPanel(){
         WindowUi w=window("Panel del sistema","Fecha, energía y controles de Android");if(w==null)return;
@@ -1227,7 +1303,7 @@ public final class DesktopActivity extends Activity {
         String name=path.substring(path.lastIndexOf('/')+1);
         int dot=name.lastIndexOf('.');
         String mime=dot<0?null:android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(name.substring(dot+1).toLowerCase(Locale.ROOT));
-        Intent save=new Intent(Intent.ACTION_CREATE_DOCUMENT);save.addCategory(Intent.CATEGORY_OPENABLE);save.setType(mime==null?"application/octet-stream":mime);
+        Intent save=new Intent(Intent.ACTION_CREATE_DOCUMENT);save.addCategory(Intent.CATEGORY_OPENABLE);save.setType(name.toLowerCase(Locale.ROOT).endsWith(".rxe")?"application/x-reverse-executable":mime==null?"application/octet-stream":mime);
         save.putExtra(Intent.EXTRA_TITLE,name);try{startActivityForResult(save,EXPORT_FILE);}catch(Exception e){info("No hay selector de archivos disponible");}
     }
     private byte[] readBounded(Uri uri,int limit)throws IOException{
@@ -1501,6 +1577,7 @@ public final class DesktopActivity extends Activity {
         super.onActivityResult(request,code,intent);
         if(code!=RESULT_OK||intent==null||intent.getData()==null)return;
         final Uri uri=intent.getData();
+        if(request==IMPORT_RXE){importRxe(uri);return;}
         if(request==IMPORT_FILE){
             fileWork(()->{
                 String name="archivo";try(android.database.Cursor c=getContentResolver().query(uri,new String[]{android.provider.OpenableColumns.DISPLAY_NAME},null,null,null)){
@@ -1606,6 +1683,7 @@ public final class DesktopActivity extends Activity {
     }
     @Override protected void onResume(){
         super.onResume();
+        if(store!=null)refreshRxe();
         if(wallpaper!=null)wallpaper.onResume();
         if(browserView!=null){browserView.onResume();browserView.resumeTimers();}
     }

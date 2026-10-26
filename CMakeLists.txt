@@ -241,6 +241,14 @@ if(BUILD_TESTING)
 endif()
 
 # REVERSE OS cross-platform state transport: Android and CLI use the same RVPC2 bytes.
+add_executable(reverse_pc_rxe tests/rxe_test.cpp)
+target_include_directories(reverse_pc_rxe PRIVATE "${ETHER_SOURCE_DIR}/native/include")
+if(BUILD_TESTING)
+  add_test(NAME reverse_pc_rxe COMMAND reverse_pc_rxe "${CMAKE_CURRENT_SOURCE_DIR}")
+  add_test(NAME reverse_pc_rxe_cli COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/rxe_cli.py" "$<TARGET_FILE:reverse_pc>")
+  set_tests_properties(reverse_pc_rxe PROPERTIES TIMEOUT 180)
+endif()
+
 add_executable(reverse_pc_os_transport tests/reverse_os_transport.cpp)
 target_include_directories(reverse_pc_os_transport PRIVATE "${ETHER_SOURCE_DIR}/native/include")
 if(BUILD_TESTING)

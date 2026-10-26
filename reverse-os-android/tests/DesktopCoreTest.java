@@ -15,7 +15,7 @@ public final class DesktopCoreTest {
     public static void main(String[] args)throws Exception{
         File out=new File(args[0]);out.mkdirs();File privateFiles=new File(out,"files");privateFiles.mkdirs();
         WorkspaceFiles fs=new WorkspaceFiles(privateFiles);
-        yes(fs.list("").size()==6);
+        yes(fs.list("").size()==7);
         fs.mkdir("Documentos/Árbol");fs.write("Documentos/Árbol/Nota de X.txt",bytes("Hola, memoria ñ"),false);
         yes(fs.text("Documentos/Árbol/Nota de X.txt").equals("Hola, memoria ñ"));
         fs.paste("Documentos/Árbol/Nota de X.txt","Descargas",false);

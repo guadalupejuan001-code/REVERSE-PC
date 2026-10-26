@@ -1,4 +1,5 @@
 #include "session.hpp"
+#include "rxe.hpp"
 #include <jni.h>
 #include <exception>
 #include <limits>
@@ -69,4 +70,19 @@ Java_com_reversepc_os_NativeRuntime_inspect(JNIEnv* e,jclass,jbyteArray state){
      <<",\"state_format\":\"RVPC2\"}";
     return e->NewStringUTF(s.str().c_str());
   }catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_compileRxe(JNIEnv* e,jclass,jbyteArray program,jbyteArray title){
+  try{const auto p=bytes(e,program),t=bytes(e,title);return output(e,reverse_pc::rxe::compile(std::string(p.begin(),p.end()),std::string(t.begin(),t.end())));}
+  catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_inspectRxe(JNIEnv* e,jclass,jbyteArray program){
+  try{const auto description=reverse_pc::rxe::describe(bytes(e,program));return output(e,std::vector<std::uint8_t>(description.begin(),description.end()));}
+  catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_executeRxe(JNIEnv* e,jclass,jbyteArray state,jbyteArray program){
+  try{const auto image=reverse_pc::rxe::decode(bytes(e,program));const auto source=reverse_pc::rxe::disassemble(image);auto runtime=reverse_os::restore(bytes(e,state));const auto lines=runtime.execute(source);return output(e,reverse_os::packet(lines,reverse_os::save(runtime)));}
+  catch(const std::exception& x){throw_java(e,x);return nullptr;}
 }

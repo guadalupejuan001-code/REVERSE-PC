@@ -1,5 +1,17 @@
 # REVERSE-PC
 
+## Ejecutables propios RXE
+
+Los programas de REVERSE pueden distribuirse como **`.rxe`**: imágenes binarias
+con cabecera, ABI versionada, constantes, opcodes, operandos tipados y saltos
+resueltos. `reverse_pc compile fuente.xi programa.rxe` genera el ejecutable y
+`reverse_pc run programa.rxe entrada.rvp salida.rvp` lo carga en el mismo
+QuantumRuntime. El escritorio permite crear, abrir, agregar, exportar y anclar
+esos programas. [Formato y límites de RXE](docs/RXE_EXECUTABLES.md).
+
+RXE v1 usa la ABI XI Machine v1 y un cargador que la entrega al intérprete
+transaccional original. No cambia la autoridad de estado ni el snapshot RVPC2.
+
 Computadora de software para computación cuántica simulada: espacio lógico por
 reglas, componentes compactos y una autoridad de estado compartida por XI,
 Ether e Inverse Ether Memory. Ejecuta en CPU clásica.
