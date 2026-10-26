@@ -11,7 +11,7 @@ permissions:
   contents: read
 concurrency:
   group: reverse-desktop-android
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   desktop:
     runs-on: ubuntu-latest
