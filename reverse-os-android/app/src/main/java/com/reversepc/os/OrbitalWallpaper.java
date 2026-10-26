@@ -52,6 +52,12 @@ public final class OrbitalWallpaper extends GLSurfaceView {
         orbital.speed=Math.max(0f,Math.min(2.0f,value));
     }
 
+    public void motionEnabled(boolean enabled){
+        orbital.speed=enabled?.68f:0f;
+        setRenderMode(enabled?RENDERMODE_CONTINUOUSLY:RENDERMODE_WHEN_DIRTY);
+        requestRender();
+    }
+
     public void quality(int mode){
         orbital.profile=Math.max(0,Math.min(2,mode));
     }
