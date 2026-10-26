@@ -20,13 +20,11 @@ public final class DesktopWindows {
     private final ArrayList<Handle> order=new ArrayList<>();
     private final HashSet<String> desktopHidden=new HashSet<>();
     private Handle focused;
-    private int fullWidth,fullHeight;
     private String desktopFocus="";
     public DesktopWindows(Context c,FrameLayout area,LinearLayout tasks,SharedPreferences prefs,Runnable changed){
         context=c;this.area=area;this.tasks=tasks;this.prefs=prefs;this.changed=changed;
         area.addOnLayoutChangeListener((v,l,t,r,b,ol,ot,or,ob)->{
             if(r-l<=0||b-t<=0||(r-l==or-ol&&b-t==ob-ot))return;
-            fullWidth=Math.max(fullWidth,r-l);fullHeight=Math.max(fullHeight,b-t);
             for(Handle h:order){if(h.mode!=0)h.rect.snap(h.mode==2?0:h.mode,area.getWidth(),area.getHeight());else h.rect=h.normal.copy();h.place();}
         });
     }
@@ -52,8 +50,11 @@ public final class DesktopWindows {
             if(h.key.equals("Inicio")||h.key.equals("Buscar")||h.key.equals("Panel del sistema"))continue;
             session.put(h.key);
             try{JSONObject j=new JSONObject();WindowGeometry p=h.normal;
-                j.put("x",p.x/(double)Math.max(1,fullWidth));j.put("y",p.y/(double)Math.max(1,fullHeight));
-                j.put("w",p.width/(double)Math.max(1,fullWidth));j.put("h",p.height/(double)Math.max(1,fullHeight));
+                // Keyboard transitions can temporarily enlarge the work area.
+                // Save normal dimensions in dp, never relative to that viewport.
+                double density=context.getResources().getDisplayMetrics().density;
+                j.put("x_dp",p.x/density);j.put("y_dp",p.y/density);
+                j.put("w_dp",p.width/density);j.put("h_dp",p.height/density);
                 j.put("mode",h.mode);j.put("minimized",h.minimized);edit.putString("window:"+h.key,j.toString());
             }catch(JSONException ignored){}
         }
@@ -115,7 +116,9 @@ public final class DesktopWindows {
             int w=Math.min(aw,Math.max(dp(410),(int)(aw*.74))),height=Math.min(ah,Math.max(dp(225),(int)(ah*.94)));
             rect=new WindowGeometry(Math.min(dp(150)+order.size()*dp(16),aw-w),Math.min(order.size()*dp(12),ah-height),w,height);
             try{JSONObject j=new JSONObject(prefs.getString("window:"+key,"{}"));
-                rect=new WindowGeometry((int)(j.optDouble("x",rect.x/(double)aw)*aw),(int)(j.optDouble("y",rect.y/(double)ah)*ah),
+                if(j.has("w_dp"))rect=new WindowGeometry(dp((float)j.optDouble("x_dp")),dp((float)j.optDouble("y_dp")),
+                    dp((float)j.optDouble("w_dp")),dp((float)j.optDouble("h_dp")));
+                else rect=new WindowGeometry((int)(j.optDouble("x",rect.x/(double)aw)*aw),(int)(j.optDouble("y",rect.y/(double)ah)*ah),
                     (int)(j.optDouble("w",w/(double)aw)*aw),(int)(j.optDouble("h",height/(double)ah)*ah));
                 mode=j.optInt("mode",0);if(mode < -1||mode>2)mode=0;minimized=j.optBoolean("minimized",false);
             }catch(JSONException ignored){}
