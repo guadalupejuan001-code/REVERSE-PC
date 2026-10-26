@@ -1224,8 +1224,11 @@ public final class DesktopActivity extends Activity {
     private void exportFile(String path){exportFile(path,false);}
     private void exportFile(String path,boolean includeDraft){
         preferences.edit().putString("export-path",path).putBoolean("export-draft",includeDraft).apply();
-        Intent save=new Intent(Intent.ACTION_CREATE_DOCUMENT);save.addCategory(Intent.CATEGORY_OPENABLE);save.setType("application/octet-stream");
-        save.putExtra(Intent.EXTRA_TITLE,path.substring(path.lastIndexOf('/')+1));try{startActivityForResult(save,EXPORT_FILE);}catch(Exception e){info("No hay selector de archivos disponible");}
+        String name=path.substring(path.lastIndexOf('/')+1);
+        int dot=name.lastIndexOf('.');
+        String mime=dot<0?null:android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(name.substring(dot+1).toLowerCase(Locale.ROOT));
+        Intent save=new Intent(Intent.ACTION_CREATE_DOCUMENT);save.addCategory(Intent.CATEGORY_OPENABLE);save.setType(mime==null?"application/octet-stream":mime);
+        save.putExtra(Intent.EXTRA_TITLE,name);try{startActivityForResult(save,EXPORT_FILE);}catch(Exception e){info("No hay selector de archivos disponible");}
     }
     private byte[] readBounded(Uri uri,int limit)throws IOException{
         try(InputStream in=getContentResolver().openInputStream(uri);ByteArrayOutputStream out=new ByteArrayOutputStream()){
@@ -1508,7 +1511,11 @@ public final class DesktopActivity extends Activity {
             },null);return;
         }else if(request==EXPORT_FILE){
             fileWork(()->{String path=preferences.getString("export-path","");
-                byte[] data=preferences.getBoolean("export-draft",false)&&preferences.contains("draft:"+path)?preferences.getString("draft:"+path,"").getBytes(java.nio.charset.StandardCharsets.UTF_8):files.read(path);try(OutputStream out=getContentResolver().openOutputStream(uri)){if(out==null)throw new IOException("Destino no disponible");out.write(data);}},null);return;
+                byte[] data=preferences.getBoolean("export-draft",false)&&preferences.contains("draft:"+path)?preferences.getString("draft:"+path,"").getBytes(java.nio.charset.StandardCharsets.UTF_8):files.read(path);
+                try(OutputStream out=getContentResolver().openOutputStream(uri)){if(out==null)throw new IOException("Destino no disponible");out.write(data);}
+                Log.i(LOG,"FILE_EXPORT_OK "+path+" bytes="+data.length);
+                runOnUiThread(()->info("Archivo exportado: "+path.substring(path.lastIndexOf('/')+1)));
+            },null);return;
         }else if(request==EXPORT_DESKTOP){
             for(Runnable save:draftWriters.values())save.run();if(windows!=null)windows.save();
             fileWork(()->{
@@ -1519,6 +1526,8 @@ public final class DesktopActivity extends Activity {
                     zip.putNextEntry(new java.util.zip.ZipEntry("papelera.json"));zip.write(new JSONObject(files.trashOrigins()).toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));zip.closeEntry();
                     backupFolder(zip,"",0,new int[]{0},new long[]{0});
                 }
+                Log.i(LOG,"DESKTOP_BACKUP_OK");
+                runOnUiThread(()->info("Respaldo del escritorio exportado"));
             },null);return;
         }
         if(request==EXPORT_RVPC){

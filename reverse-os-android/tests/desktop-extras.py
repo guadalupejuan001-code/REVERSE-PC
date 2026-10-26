@@ -39,6 +39,7 @@ def wait_public(path,timeout=15):
     until=time.monotonic()+timeout
     while time.monotonic()<until:
         try:
+            adb('shell','test','-f',path)
             data=adb('exec-out','cat',path,binary=True)
             if data:return data
         except subprocess.SubprocessError:pass
@@ -85,6 +86,7 @@ click(text='↑');click(desc='ARCHIVO Documentos');click(desc='ARCHIVO Prueba es
 enter(find(desc='CONTENIDO DEL DOCUMENTO'),'exportar texto actual')
 click(text='EXPORTAR')
 downloads();click(text='Save')
+wait_log('FILE_EXPORT_OK Documentos/Prueba escritorio.txt')
 exported=wait_public('/sdcard/Download/Prueba escritorio.txt')
 assert exported==b'exportar texto actual',exported
 assert file('workspace/Documentos/Prueba escritorio.txt')==b'borrador recuperable','export changed the saved document'
@@ -93,6 +95,7 @@ log_check('SAF_EXPORT_CURRENT_DRAFT_WITHOUT_OVERWRITING_SAVED_FILE_PASS')
 
 launch('Ajustes');tap(scroll_to('EXPORTAR RESPALDO DEL ESCRITORIO','Ajustes'))
 downloads();click(text='Save')
+wait_log('DESKTOP_BACKUP_OK')
 # ZIP footer is written when the provider stream closes.
 until=time.monotonic()+25
 while time.monotonic()<until:
