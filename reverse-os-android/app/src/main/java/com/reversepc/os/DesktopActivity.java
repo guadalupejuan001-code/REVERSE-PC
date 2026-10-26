@@ -53,12 +53,15 @@ import java.util.concurrent.Executors;
  */
 public final class DesktopActivity extends Activity {
     private static final String LOG = "ReverseDesktop";
-    private static final int BG=0xff070d15, CARD=0xff111e2d, CARD_BRIGHT=0xff1a2b3c;
-    private static final int WHITE=0xfff1f6f9, MUTED=0xff9caebf, ACCENT=0xff42e8cc;
-    private static final int BLUE=0xff76adff, VIOLET=0xffd5abff, AMBER=0xffffce7d;
+    private static final int BG=0xff040612, CARD=0xff0e1428, CARD_BRIGHT=0xff1b2441;
+    private static final int WHITE=0xfff7f7ff, MUTED=0xffa4a4c6, ACCENT=0xffa0a7ff;
+    private static final int BLUE=0xff80b4ff, VIOLET=0xffd3a5ff, AMBER=0xffffce9d;
     private final ExecutorService engine=Executors.newSingleThreadExecutor();
     private final Handler clockHandler=new Handler(Looper.getMainLooper());
     private SessionStore store;
+    private OrbitalWallpaper wallpaper;
+    private TextView fpsLabel, minimizedLabel;
+    private Dialog minimizedWindow;
     private String engineFailure="";
     private TextView statusLabel, clockLabel, statusDetail;
     private final StringBuilder consoleHistory=new StringBuilder(
@@ -166,122 +169,257 @@ public final class DesktopActivity extends Activity {
         });
     }
 
+    // REVERSE OS: Windows/macOS-inspired desktop. The orbital shader is a
+    // wallpaper only: menus, windows, data and apps retain conventional roles.
     private void buildDesktop(){
         FrameLayout root=new FrameLayout(this);
         root.setBackgroundColor(BG);
         root.addView(new DesktopBackdrop(),new FrameLayout.LayoutParams(-1,-1));
 
-        LinearLayout layout=vertical();
-        layout.setPadding(dp(14),dp(22),dp(14),dp(13));
-        root.addView(layout,new FrameLayout.LayoutParams(-1,-1));
-        // Android 15+ draws host navigation over app windows by default.
-        // Reserve the genuine gesture/button inset so the desktop dock
-        // stays touchable and legible on smaller phones (e.g. Galaxy A16).
+        try {
+            wallpaper=new OrbitalWallpaper(this,new OrbitalWallpaper.Events(){
+                @Override public void onFps(int frames,float scale){
+                    if(fpsLabel!=null)fpsLabel.setText(frames+" FPS  ·  GPU "
+                            +Math.round(scale*100f)+"%");
+                }
+                @Override public void onFailure(String error){
+                    Log.e(LOG,"GPU fallback: "+error);
+                    if(wallpaper!=null)wallpaper.setVisibility(View.GONE);
+                    if(fpsLabel!=null)fpsLabel.setText("GPU FALLBACK");
+                }
+            });
+            root.addView(wallpaper,new FrameLayout.LayoutParams(-1,-1));
+        } catch(Throwable error) {
+            Log.e(LOG,"OpenGL wallpaper unavailable; retaining CPU fallback",error);
+            wallpaper=null;
+        }
+
+        LinearLayout system=vertical();
+        system.setPadding(dp(12),dp(3),dp(12),dp(0));
+        root.addView(system,new FrameLayout.LayoutParams(-1,-1));
         root.setOnApplyWindowInsetsListener((view,insets)->{
             int nav=android.os.Build.VERSION.SDK_INT>=30
                 ? insets.getInsets(android.view.WindowInsets.Type.navigationBars()).bottom
                 : insets.getSystemWindowInsetBottom();
-            layout.setPadding(dp(14),dp(22),dp(14),Math.max(dp(13),nav+dp(7)));
+            system.setPadding(dp(12),dp(3),dp(12),nav+dp(5));
             return insets;
         });
 
-        // Desktop system bar
-        LinearLayout toolbar=horizontal();
-        TextView mark=label("R",22,BG,true);
-        mark.setGravity(Gravity.CENTER);
-        mark.setBackground(round(ACCENT,0,11));
-        toolbar.addView(mark,new LinearLayout.LayoutParams(dp(43),dp(43)));
-        LinearLayout titles=vertical();
-        titles.setPadding(dp(11),0,0,0);
-        titles.addView(label("REVERSE OS",17,WHITE,true));
-        TextView sub=label("PERSONAL COMPUTER / XI",9,MUTED,false);
-        sub.setLetterSpacing(0.12f);
-        titles.addView(sub);
-        toolbar.addView(titles,new LinearLayout.LayoutParams(0,-2,1f));
-        clockLabel=label("",15,WHITE,true);
-        toolbar.addView(clockLabel);
-        TextView power=label(" PWR ",11,ACCENT,true);
-        power.setPadding(dp(11),dp(10),dp(5),dp(10));
-        power.setOnClickListener(v->openPower());
-        toolbar.addView(power);
-        layout.addView(toolbar,new LinearLayout.LayoutParams(-1,dp(46)));
+        // Tiny unobtrusive top status bar. The OS looks like a desktop rather
+        // than a mobile app with tab bars and cards.
+        LinearLayout top=horizontal();
+        TextView mark=label("REVERSE.",16,WHITE,true);
+        mark.setLetterSpacing(.28f);
+        mark.setShadowLayer(dp(6),0,0,0xff5751ff);
+        top.addView(mark,new LinearLayout.LayoutParams(0,-2,1f));
 
-        LinearLayout stateBar=horizontal();
-        stateBar.setPadding(dp(12),dp(9),dp(12),dp(9));
-        stateBar.setBackground(round(0xcc0f202c,0xff2d4957,14));
-        statusLabel=label("● CORE INIT",11,AMBER,true);
-        statusLabel.setClickable(true);
+        statusLabel=label("● CORE INIT",10,AMBER,true);
         statusLabel.setOnClickListener(v->{
-            if(!engineFailure.isEmpty())new AlertDialog.Builder(this)
-                .setTitle("Diagnóstico de REVERSE-PC")
-                .setMessage(engineFailure)
-                .setPositiveButton("CERRAR",null).show();
+            if(!engineFailure.isEmpty())
+                new AlertDialog.Builder(this).setTitle("REVERSE-PC")
+                    .setMessage(engineFailure).setPositiveButton("CERRAR",null).show();
             else openMonitor();
         });
-        stateBar.addView(statusLabel,new LinearLayout.LayoutParams(0,-2,1f));
-        statusDetail=label("INICIALIZANDO ENTORNO",9,MUTED,false);
-        stateBar.addView(statusDetail);
-        margin(layout,stateBar,13);
+        top.addView(statusLabel);
+        statusDetail=label("  XI / ETHER",10,MUTED,false);
+        top.addView(statusDetail);
+        LinearLayout.LayoutParams topP=new LinearLayout.LayoutParams(-1,dp(32));
+        system.addView(top,topP);
 
-        ScrollView scroll=new ScrollView(this);
-        scroll.setFillViewport(false);
-        scroll.setVerticalScrollBarEnabled(false);
-        LinearLayout main=vertical();
-        main.setPadding(dp(0),dp(10),dp(0),dp(12));
+        FrameLayout workspace=new FrameLayout(this);
+        system.addView(workspace,new LinearLayout.LayoutParams(-1,0,1f));
 
-        TextView micro=label("YOUR COMPUTER",11,ACCENT,true);
-        micro.setLetterSpacing(0.24f);
-        main.addView(micro);
-        TextView hero=label("MR REVERSE",34,WHITE,true);
-        hero.setLetterSpacing(0.025f);
-        margin(main,hero,6);
-        TextView caption=label("Un espacio. Un núcleo. Tus propias reglas.",13,0xffbfd2da,false);
-        margin(main,caption,4);
+        // The primary cosmic orb remains visible. Icons stay aligned to
+        // traditional desktop columns on the left, not a "quantum menu".
+        LinearLayout shortcutGrid=vertical();
+        shortcutGrid.setPadding(dp(3),dp(12),dp(3),dp(2));
+        LinearLayout row1=horizontal();
+        addDesktopShortcut(row1,"⌘","XI STUDIO",this::showStudio);
+        addDesktopShortcut(row1,">_","TERMINAL",this::openTerminal);
+        shortcutGrid.addView(row1);
+        LinearLayout row2=horizontal();
+        addDesktopShortcut(row2,"▤","FILES",this::openFiles);
+        addDesktopShortcut(row2,"◎","CHROMIUM",this::openBrowser);
+        shortcutGrid.addView(row2);
+        LinearLayout row3=horizontal();
+        addDesktopShortcut(row3,"◈","ETHER CORE",this::openMonitor);
+        addDesktopShortcut(row3,"⚙","SETTINGS",this::openSettings);
+        shortcutGrid.addView(row3);
+        FrameLayout.LayoutParams gridP=new FrameLayout.LayoutParams(dp(235),-2,
+                                                                  Gravity.TOP|Gravity.LEFT);
+        workspace.addView(shortcutGrid,gridP);
 
-        LinearLayout metrics=horizontal();
-        metrics.setGravity(Gravity.CENTER_VERTICAL);
-        TextView badge=label("XI MACHINE  V1",10,ACCENT,true);
-        badge.setPadding(dp(10),dp(8),dp(10),dp(8));
-        badge.setBackground(round(0xff102b32,0xff23595d,8));
-        metrics.addView(badge);
-        TextView badge2=label("  RVPC2  •  ETHER",10,MUTED,true);
-        metrics.addView(badge2);
-        margin(main,metrics,10);
+        LinearLayout identity=vertical();
+        identity.setGravity(Gravity.CENTER);
+        TextView title=label("REVERSE.",31,WHITE,true);
+        title.setGravity(Gravity.CENTER);
+        title.setLetterSpacing(.35f);
+        title.setShadowLayer(dp(14),0,0,0xff6150ff);
+        identity.addView(title);
+        TextView caption=label("P E R S O N A L   C O M P U T E R",9,0xffb8b5ed,false);
+        caption.setGravity(Gravity.CENTER);
+        margin(identity,caption,7);
+        FrameLayout.LayoutParams idP=new FrameLayout.LayoutParams(dp(320),dp(92),
+                                                              Gravity.CENTER);
+        idP.leftMargin=dp(115);
+        workspace.addView(identity,idP);
 
-        space(main,12);
-        TextView libraryTitle=label("APPLICATIONS",11,0xffb5c8d2,true);
-        libraryTitle.setLetterSpacing(0.22f);
-        main.addView(libraryTitle);
-        TextView subtitle=label("Abre herramientas, archivos y programas",12,MUTED,false);
-        margin(main,subtitle,4);
-        space(main,10);
-
-        // Compact 3 x 2 desktop launcher: show the complete application
-        // library above the dock even at 320dp emulator resolution.
-        LinearLayout r1=horizontal();
-        addTile(r1,"⌘","XI STUDIO","Programas XI",ACCENT,()->openStudio(0,null));
-        addTile(r1,">_","TERMINAL","Consola real",BLUE,this::openTerminal);
-        addTile(r1,"▤","FILES","Archivos .xi",AMBER,this::openFiles);
-        main.addView(r1,new LinearLayout.LayoutParams(-1,dp(96)));
-        space(main,9);
-        LinearLayout r2=horizontal();
-        addTile(r2,"◈","ETHER CORE","Estado real",VIOLET,this::openMonitor);
-        addTile(r2,"◎","CHROMIUM","WebView host",BLUE,this::openBrowser);
-        addTile(r2,"⚙","SETTINGS","Configurar",ACCENT,this::openSettings);
-        main.addView(r2,new LinearLayout.LayoutParams(-1,dp(96)));
-
-        TextView note=label("REVERSE-PC nativo  ·  Chromium utiliza Android WebView",10,MUTED,false);
-        note.setGravity(Gravity.CENTER_HORIZONTAL);
-        margin(main,note,18);
-
-        scroll.addView(main);
-        layout.addView(scroll,new LinearLayout.LayoutParams(-1,0,1f));
-        layout.addView(buildDock(),new LinearLayout.LayoutParams(-1,dp(76)));
-
+        system.addView(buildTaskbar(),new LinearLayout.LayoutParams(-1,dp(56)));
         setContentView(root);
-        Log.i(LOG,"DESKTOP_SHOWN REVERSE OS MR REVERSE");
+        Log.i(LOG,"DESKTOP_SHOWN REVERSE OS MR REVERSE landscape");
     }
 
+    private void showStudio(){openStudio(0,null);}
+
+    private void addDesktopShortcut(LinearLayout row,String glyph,String text,
+                                    Runnable callback) {
+        LinearLayout icon=vertical();
+        icon.setGravity(Gravity.CENTER);
+        icon.setPadding(dp(4),dp(6),dp(4),dp(6));
+        icon.setBackground(round(0x440c1229,0,12));
+        icon.setClickable(true);
+        icon.setFocusable(true);
+        icon.setOnClickListener(v->callback.run());
+        TextView sign=label(glyph,24,ACCENT,true);
+        sign.setGravity(Gravity.CENTER);
+        sign.setShadowLayer(dp(6),0,0,0xff5646c8);
+        icon.addView(sign);
+        TextView name=label(text,11,WHITE,true);
+        name.setGravity(Gravity.CENTER);
+        name.setSingleLine(true);
+        name.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        margin(icon,name,3);
+        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(111),dp(72));
+        p.setMargins(dp(1),dp(2),dp(1),dp(2));
+        row.addView(icon,p);
+    }
+
+    private LinearLayout buildTaskbar(){
+        LinearLayout taskbar=horizontal();
+        taskbar.setGravity(Gravity.CENTER_VERTICAL);
+        taskbar.setPadding(dp(8),dp(4),dp(8),dp(4));
+        taskbar.setBackground(round(0xee040612,0xff4c4389,11));
+        addTaskButton(taskbar,"▦","START",this::openStartMenu);
+        addTaskButton(taskbar,"⌕","SEARCH",this::openSearch);
+        addTaskButton(taskbar,"▤","FILES",this::openFiles);
+        addTaskButton(taskbar,">_","TERM",this::openTerminal);
+
+        LinearLayout center=horizontal();
+        center.setGravity(Gravity.CENTER);
+        TextView orb=label("✦",24,WHITE,true);
+        orb.setGravity(Gravity.CENTER);
+        orb.setShadowLayer(dp(13),0,0,0xff715fff);
+        orb.setBackground(round(0xff1b1350,0xff8c7eff,100));
+        orb.setContentDescription("ABRIR REVERSE HOME");
+        orb.setOnClickListener(v->openHome());
+        center.addView(orb,new LinearLayout.LayoutParams(dp(48),dp(46)));
+        taskbar.addView(center,new LinearLayout.LayoutParams(0,-1,1f));
+
+        minimizedLabel=label("▣ VENTANA",11,ACCENT,true);
+        minimizedLabel.setPadding(dp(10),dp(6),dp(10),dp(6));
+        minimizedLabel.setVisibility(minimizedWindow==null?View.GONE:View.VISIBLE);
+        minimizedLabel.setOnClickListener(v->{
+            if(minimizedWindow!=null){
+                minimizedWindow.show();
+                minimizedWindow=null;
+                minimizedLabel.setVisibility(View.GONE);
+            }
+        });
+        taskbar.addView(minimizedLabel);
+        fpsLabel=label("GPU INIT",10,MUTED,false);
+        taskbar.addView(fpsLabel);
+        TextView systemIcons=label("    ◉   ◖))  ",12,0xffb8b7e9,false);
+        taskbar.addView(systemIcons);
+        clockLabel=label("",13,WHITE,true);
+        taskbar.addView(clockLabel);
+        return taskbar;
+    }
+
+    private void addTaskButton(LinearLayout taskbar,String symbol,String title,
+                               Runnable callback) {
+        LinearLayout item=vertical();
+        item.setGravity(Gravity.CENTER);
+        TextView glyph=label(symbol,20,ACCENT,true);
+        glyph.setGravity(Gravity.CENTER);
+        item.addView(glyph);
+        TextView sub=label(title,9,WHITE,false);
+        sub.setGravity(Gravity.CENTER);
+        item.addView(sub);
+        item.setOnClickListener(v->callback.run());
+        item.setContentDescription(title);
+        taskbar.addView(item,new LinearLayout.LayoutParams(dp(65),-1));
+    }
+
+    private void openHome(){
+        WindowUi w=window("HOME","REVERSE / PERSONAL COMPUTER");
+        LinearLayout header=vertical();
+        header.setGravity(Gravity.CENTER);
+        TextView headline=label("REVERSE.",26,WHITE,true);
+        headline.setLetterSpacing(.34f);
+        headline.setGravity(Gravity.CENTER);
+        headline.setShadowLayer(dp(9),0,0,0xff5c52fc);
+        header.addView(headline);
+        TextView welcome=label("YOUR COMPUTER  •  XI / ETHER",11,MUTED,false);
+        welcome.setGravity(Gravity.CENTER);
+        margin(header,welcome,7);
+        w.content.addView(header,new LinearLayout.LayoutParams(-1,0,1f));
+        LinearLayout buttons=horizontal();
+        buttons.addView(touch("TERMINAL",12,false,()->{
+            w.dialog.dismiss();openTerminal();
+        }),new LinearLayout.LayoutParams(0,dp(43),1f));
+        TextView studio=touch("XI STUDIO",12,true,()->{
+            w.dialog.dismiss();openStudio(0,null);
+        });
+        LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,dp(43),1f);
+        p.leftMargin=dp(9);
+        buttons.addView(studio,p);
+        w.content.addView(buttons);
+    }
+
+    private void openStartMenu(){
+        WindowUi w=window("START","Aplicaciones REVERSE OS");
+        LinearLayout grid=vertical();
+        String[][] shortcuts={{"XI STUDIO","⌘"},{"TERMINAL",">_"},{"FILES","▤"},
+                              {"CHROMIUM","◎"},{"ETHER CORE","◈"},{"SETTINGS","⚙"}};
+        Runnable[] actions={()->openStudio(0,null),this::openTerminal,this::openFiles,
+                            this::openBrowser,this::openMonitor,this::openSettings};
+        for(int index=0;index<shortcuts.length;index++){
+            final int n=index;
+            TextView t=touch(shortcuts[index][1]+"   "+shortcuts[index][0],12,false,()->{
+                w.dialog.dismiss();actions[n].run();
+            });
+            margin(grid,t,7);
+        }
+        ScrollView scroll=new ScrollView(this);
+        scroll.addView(grid);
+        w.content.addView(scroll,new LinearLayout.LayoutParams(-1,0,1f));
+    }
+
+    private void openSearch(){
+        WindowUi w=window("SEARCH","Buscar aplicaciones");
+        EditText field=new EditText(this);
+        field.setTextColor(WHITE);field.setHintTextColor(MUTED);
+        field.setSingleLine(true);
+        field.setHint("XI, Files, Terminal, Chromium, Core, Settings...");
+        field.setBackground(round(CARD_BRIGHT,0xff56488b,9));
+        field.setPadding(dp(12),dp(11),dp(12),dp(11));
+        w.content.addView(field);
+        TextView result=label("Escribe un nombre y pulsa BUSCAR.",12,MUTED,false);
+        margin(w.content,result,14);
+        TextView go=touch("BUSCAR",12,true,()->{
+            final String q=field.getText().toString().trim().toLowerCase(Locale.ROOT);
+            Runnable action=null;
+            if(q.contains("xi")||q.contains("studio")||q.contains("program")) action=()->openStudio(0,null);
+            else if(q.contains("term")||q.contains("console")) action=this::openTerminal;
+            else if(q.contains("file")||q.contains("archivo")) action=this::openFiles;
+            else if(q.contains("chrome")||q.contains("web")||q.contains("naveg")) action=this::openBrowser;
+            else if(q.contains("ether")||q.contains("core")||q.contains("quant")) action=this::openMonitor;
+            else if(q.contains("setting")||q.contains("config")) action=this::openSettings;
+            if(action==null){result.setText("No hay ninguna aplicación coincidente.");return;}
+            w.dialog.dismiss();action.run();
+        });
+        margin(w.content,go,10);
+    }
     private void addTile(LinearLayout row,String glyph,String name,String subtitle,int color,Runnable open){
         LinearLayout cell=vertical();
         cell.setGravity(Gravity.CENTER_VERTICAL);
