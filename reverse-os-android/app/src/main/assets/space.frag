@@ -62,7 +62,7 @@ void main() {
   float aspect=uResolution.x/max(uResolution.y,1.0);
   vec2 p=(uv-0.5)*vec2(2.0*aspect,2.0);
   p-=uCamera*.09;
-  float t=uTime*(.20+.8*uSpeed);
+  float t=uTime*max(0.0,uSpeed);
 
   // Native procedural field: the same rule describes every pixel;
   // no dense 2D simulation state and no CPU per-pixel painting.
