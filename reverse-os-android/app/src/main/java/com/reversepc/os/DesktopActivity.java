@@ -68,6 +68,8 @@ public final class DesktopActivity extends Activity {
     private TextView fpsLabel;
     private DesktopWindows windows;
     private FrameLayout windowLayer;
+    private View desktopTop,desktopBar;
+    private WebView browserView;
     private LinearLayout taskList;
     private android.content.SharedPreferences preferences;
     private WorkspaceFiles files;
@@ -222,6 +224,12 @@ public final class DesktopActivity extends Activity {
             int left=android.os.Build.VERSION.SDK_INT>=30
                 ? insets.getInsets(android.view.WindowInsets.Type.navigationBars()).left
                 : insets.getSystemWindowInsetLeft();
+            boolean ime=android.os.Build.VERSION.SDK_INT>=30
+                ? insets.isVisible(android.view.WindowInsets.Type.ime())
+                : insets.getSystemWindowInsetBottom()>dp(110);
+            if(desktopTop!=null)desktopTop.setVisibility(ime?View.GONE:View.VISIBLE);
+            if(desktopBar!=null)desktopBar.setVisibility(ime?View.GONE:View.VISIBLE);
+            if(android.os.Build.VERSION.SDK_INT<30&&ime)nav=0;
             system.setPadding(Math.max(dp(12),left+dp(5)),dp(3),
                               Math.max(dp(12),right+dp(5)),nav+dp(5));
             return insets;
@@ -229,7 +237,7 @@ public final class DesktopActivity extends Activity {
 
         // Tiny unobtrusive top status bar. The OS looks like a desktop rather
         // than a mobile app with tab bars and cards.
-        LinearLayout top=horizontal();
+        LinearLayout top=horizontal();desktopTop=top;
         TextView mark=label("REVERSE",16,WHITE,true);
         mark.setLetterSpacing(.07f);
 
@@ -288,7 +296,7 @@ public final class DesktopActivity extends Activity {
 
         windowLayer=new FrameLayout(this);
         workspace.addView(windowLayer,new FrameLayout.LayoutParams(-1,-1));
-        system.addView(buildTaskbar(),new LinearLayout.LayoutParams(-1,dp(52)));
+        desktopBar=buildTaskbar();system.addView(desktopBar,new LinearLayout.LayoutParams(-1,dp(52)));
         windows=new DesktopWindows(this,windowLayer,taskList,preferences,this::updateWallpaper);
         updateWallpaper();
         setContentView(root);
@@ -546,7 +554,7 @@ public final class DesktopActivity extends Activity {
         fpsLabel=label("GPU",10,MUTED,false);fpsLabel.setPadding(dp(8),0,dp(8),0);bar.addView(fpsLabel);
         clockLabel=label("",12,WHITE,true);clockLabel.setPadding(dp(7),0,dp(7),0);clockLabel.setContentDescription("PANEL DEL SISTEMA");
         clockLabel.setOnClickListener(v->openSystemPanel());bar.addView(clockLabel);
-        TextView power=touch("⏻",17,false,this::openPower);power.setPadding(0,0,0,0);power.setContentDescription("ENCENDIDO");bar.addView(power,new LinearLayout.LayoutParams(dp(39),-1));
+        TextView power=touch("⋮",19,false,this::openPower);power.setPadding(0,0,0,0);power.setContentDescription("ENCENDIDO");bar.addView(power,new LinearLayout.LayoutParams(dp(39),-1));
         return bar;
     }
 
@@ -605,6 +613,7 @@ public final class DesktopActivity extends Activity {
     }
     private void restoreDesktop(){
         if(isDestroyed()||windows==null||!windows.all().isEmpty())return;
+        final String previousFocus=preferences.getString("focused","");
         for(String key:windows.savedKeys()){
             if(key.startsWith("xi:"))openStudio(0,key.substring(3));
             else if(key.startsWith("text:"))openText(key.substring(5));
@@ -612,6 +621,7 @@ public final class DesktopActivity extends Activity {
             else if(key.startsWith("files:"))openFiles(key.substring(6));
             else if(java.util.Arrays.asList(APPLICATIONS).contains(key)&&!key.equals("Editor"))launchApp(key);
         }
+        if(!previousFocus.isEmpty())windows.focusExisting(previousFocus);
     }
     private void updateWallpaper(){
         if(wallpaper==null||preferences==null)return;
@@ -629,7 +639,14 @@ public final class DesktopActivity extends Activity {
     private void openStartMenu(){
         WindowUi w=window("Inicio","Tus aplicaciones");if(w==null)return;
         ScrollView scroll=new ScrollView(this);LinearLayout list=vertical();scroll.addView(list);
-        for(String app:APPLICATIONS){TextView b=touch(app,13,false,()->{w.dialog.dismiss();launchApp(app);});margin(list,b,6);}
+        for(int i=0;i<APPLICATIONS.length;i+=3){
+            LinearLayout row=horizontal();
+            for(int j=i;j<Math.min(i+3,APPLICATIONS.length);j++){
+                final String app=APPLICATIONS[j];TextView b=touch(app,12,false,()->{w.dialog.dismiss();launchApp(app);});b.setPadding(dp(3),0,dp(3),0);
+                LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,dp(41),1);p.setMargins(dp(3),dp(3),dp(3),dp(3));row.addView(b,p);
+            }
+            list.addView(row);
+        }
         w.content.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         margin(w.content,touch("Apagar / Reiniciar",11,false,this::openPower),8);
     }
@@ -1034,7 +1051,7 @@ public final class DesktopActivity extends Activity {
     }
     private void fileMenu(WorkspaceFiles.Entry entry,String folder,View anchor,Runnable refresh){
         android.widget.PopupMenu menu=new android.widget.PopupMenu(this,anchor);
-        if(folder.equals("Papelera"))menu.getMenu().add("Restaurar");
+        if(folder.equals("Papelera")){menu.getMenu().add("Restaurar");menu.getMenu().add("Eliminar definitivamente");}
         else if(!WorkspaceFiles.parent(entry.path).isEmpty())for(String option:new String[]{"Abrir","Copiar","Cortar","Renombrar","Exportar","A la papelera"})menu.getMenu().add(option);
         else menu.getMenu().add("Abrir");
         menu.setOnMenuItemClickListener(item->{switch(item.getTitle().toString()){
@@ -1045,6 +1062,7 @@ public final class DesktopActivity extends Activity {
             case "Exportar":if(entry.directory)info("Abre la carpeta para exportar un archivo");else exportFile(entry.path);break;
             case "A la papelera":new AlertDialog.Builder(this).setTitle("Mover a la papelera").setMessage(entry.name).setNegativeButton("Cancelar",null).setPositiveButton("Mover",(d,n)->fileWork(()->files.trash(entry.path),refresh)).show();break;
             case "Restaurar":fileWork(()->files.restore(entry.path),refresh);break;
+            case "Eliminar definitivamente":new AlertDialog.Builder(this).setTitle("Eliminar definitivamente").setMessage(entry.name+" se eliminará de la papelera.").setNegativeButton("Cancelar",null).setPositiveButton("Eliminar",(d,n)->fileWork(()->files.eraseTrash(entry.path),refresh)).show();break;
         }return true;});menu.show();
     }
     private void newDocument(String folder){
@@ -1088,9 +1106,11 @@ public final class DesktopActivity extends Activity {
             },()->{baseline[0]=value;persist.run();status.setText(editor.getText().toString().equals(value)?"Guardado":"Guardado; hay cambios más recientes en el borrador");});
         };
         LinearLayout buttons=horizontal();TextView storeButton=touch("GUARDAR",11,true,save);storeButton.setContentDescription("GUARDAR DOCUMENTO");buttons.addView(storeButton,new LinearLayout.LayoutParams(0,dp(38),1));
-        TextView export=touch("EXPORTAR",11,false,()->{persist.run();exportFile(path);});LinearLayout.LayoutParams xp=new LinearLayout.LayoutParams(0,dp(38),1);xp.leftMargin=dp(7);buttons.addView(export,xp);margin(w.content,buttons,5);
+        TextView export=touch("EXPORTAR",11,false,()->{persist.run();exportFile(path,true);});LinearLayout.LayoutParams xp=new LinearLayout.LayoutParams(0,dp(38),1);xp.leftMargin=dp(7);buttons.addView(export,xp);margin(w.content,buttons,5);
         w.dialog.saveAction=save;w.dialog.setOnDismissListener(h->{clockHandler.removeCallbacks(deferred);persist.run();draftWriters.remove(h.key);});
-        engine.execute(()->{try{String saved=files.text(path);long stamp=files.modified(path);runOnUiThread(()->{
+        engine.execute(()->{try{String loaded;
+            try{loaded=files.text(path);}catch(IOException e){if(files.modified(path)!=0||!preferences.contains(draftKey))throw e;loaded="";}
+            final String saved=loaded;long stamp=files.modified(path);runOnUiThread(()->{
             if(!w.dialog.isShowing())return;baseline[0]=saved;modified[0]=stamp;editor.setText(preferences.getString(draftKey,saved));loading[0]=false;editor.setEnabled(true);
             status.setText(editor.getText().toString().equals(saved)?"Guardado":"Borrador recuperado");
         });}catch(Exception ex){runOnUiThread(()->status.setText("No se pudo leer. El borrador anterior se conserva: "+ex.getMessage()));}});
@@ -1198,8 +1218,9 @@ public final class DesktopActivity extends Activity {
         Intent open=new Intent(Intent.ACTION_OPEN_DOCUMENT);open.addCategory(Intent.CATEGORY_OPENABLE);open.setType("*/*");
         try{startActivityForResult(open,IMPORT_FILE);}catch(Exception ex){info("No hay selector de archivos disponible");}
     }
-    private void exportFile(String path){
-        preferences.edit().putString("export-path",path).apply();
+    private void exportFile(String path){exportFile(path,false);}
+    private void exportFile(String path,boolean includeDraft){
+        preferences.edit().putString("export-path",path).putBoolean("export-draft",includeDraft).apply();
         Intent save=new Intent(Intent.ACTION_CREATE_DOCUMENT);save.addCategory(Intent.CATEGORY_OPENABLE);save.setType("application/octet-stream");
         save.putExtra(Intent.EXTRA_TITLE,path.substring(path.lastIndexOf('/')+1));try{startActivityForResult(save,EXPORT_FILE);}catch(Exception e){info("No hay selector de archivos disponible");}
     }
@@ -1267,7 +1288,7 @@ public final class DesktopActivity extends Activity {
     }
 
     private void openBrowser(){
-        WindowUi w=window("Navegador","Android WebView • motor del sistema anfitrión");
+        WindowUi w=window("Navegador","Internet");
         if(w==null)return;
         LinearLayout address=horizontal();
         TextView back=touch("‹",20,false,()->{});
@@ -1281,7 +1302,7 @@ public final class DesktopActivity extends Activity {
         field.setPadding(dp(11),dp(9),dp(11),dp(9));
 
         try{
-            WebView web=new WebView(this);
+            WebView web=new WebView(this);browserView=web;
             web.setBackgroundColor(Color.WHITE);
             WebSettings settings=web.getSettings();
             settings.setJavaScriptEnabled(true);
@@ -1299,7 +1320,9 @@ public final class DesktopActivity extends Activity {
                     return !"http".equalsIgnoreCase(scheme)&&!"https".equalsIgnoreCase(scheme);
                 }
                 @Override public void onPageFinished(WebView w,String url){
-                    // Address bar remains editable; no hidden navigation or state changes.
+                    if(url.startsWith("https://")&&!url.startsWith("https://reverse.local")){
+                        preferences.edit().putString("browser-url",url).apply();if(!field.hasFocus())field.setText(url);
+                    }
                 }
             });
             // Window content is a real Android WebView: Chromium-based but NOT an
@@ -1318,7 +1341,7 @@ public final class DesktopActivity extends Activity {
             goParams.leftMargin=dp(6);
             address.addView(go,goParams);
             w.content.addView(address);
-            TextView note=label("Sitios web por Android WebView. No se ejecuta Chromium como huésped XI.",
+            TextView note=label("Escribe una dirección o busca en la web.",
                                 10,MUTED,false);
             margin(w.content,note,8);
             LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,0,1f);
@@ -1328,11 +1351,12 @@ public final class DesktopActivity extends Activity {
             TextView chrome=touch("ABRIR EN CHROME INSTALADO",11,false,()->openChrome());
             margin(w.content,chrome,9);
             w.dialog.setOnDismissListener(x->{
-                web.stopLoading();
-                web.destroy();
+                web.stopLoading();web.destroy();if(browserView==web)browserView=null;
             });
-            field.setText("https://www.chromium.org");
-            web.loadUrl("https://www.chromium.org");
+            String previous=preferences.getString("browser-url","");
+            field.setText(previous);
+            if(previous.startsWith("https://"))web.loadUrl(previous);
+            else web.loadDataWithBaseURL("https://reverse.local/","<html><meta name='viewport' content='width=device-width,initial-scale=1'><body style='font-family:sans-serif;background:#f4f6f8;color:#263746;padding:28px'><h1>REVERSE</h1><p>Tu ventana a la web.</p><p>Escribe una dirección o una búsqueda en la barra superior.</p></body></html>","text/html","UTF-8",null);
         }catch(Throwable error){
             Log.e(LOG,"Browser could not start",error);
             appError(w.content,"No se pudo iniciar el motor WebView de Android.\n"+error.getMessage());
@@ -1479,7 +1503,8 @@ public final class DesktopActivity extends Activity {
                 Log.i(LOG,"FILE_IMPORT_OK "+path);
             },null);return;
         }else if(request==EXPORT_FILE){
-            fileWork(()->{byte[] data=files.read(preferences.getString("export-path",""));try(OutputStream out=getContentResolver().openOutputStream(uri)){if(out==null)throw new IOException("Destino no disponible");out.write(data);}},null);return;
+            fileWork(()->{String path=preferences.getString("export-path","");
+                byte[] data=preferences.getBoolean("export-draft",false)&&preferences.contains("draft:"+path)?preferences.getString("draft:"+path,"").getBytes(java.nio.charset.StandardCharsets.UTF_8):files.read(path);try(OutputStream out=getContentResolver().openOutputStream(uri)){if(out==null)throw new IOException("Destino no disponible");out.write(data);}},null);return;
         }else if(request==EXPORT_DESKTOP){
             for(Runnable save:draftWriters.values())save.run();if(windows!=null)windows.save();
             fileWork(()->{
@@ -1559,6 +1584,8 @@ public final class DesktopActivity extends Activity {
     }
     @Override public void onBackPressed(){
         if(windows!=null&&windows.focused()!=null){windows.focused().dismiss();return;}
+        android.app.role.RoleManager role=getSystemService(android.app.role.RoleManager.class);
+        if(role!=null&&role.isRoleHeld(android.app.role.RoleManager.ROLE_HOME))return;
         new AlertDialog.Builder(this).setTitle("REVERSE OS")
             .setMessage("¿Cerrar el escritorio?")
             .setNegativeButton("CANCELAR",null)
@@ -1567,11 +1594,13 @@ public final class DesktopActivity extends Activity {
     @Override protected void onResume(){
         super.onResume();
         if(wallpaper!=null)wallpaper.onResume();
+        if(browserView!=null){browserView.onResume();browserView.resumeTimers();}
     }
     @Override protected void onPause(){
         for(Runnable save:draftWriters.values())save.run();
         if(windows!=null)windows.save();
         if(wallpaper!=null)wallpaper.onPause();
+        if(browserView!=null){browserView.onPause();browserView.pauseTimers();}
         super.onPause();
     }
     @Override protected void onDestroy(){
