@@ -147,3 +147,13 @@ La interfaz de REVERSE-PC inicia con la pantalla negra "Welcome, Mr Reverse" y a
 ## REVERSE OS v0.3 — escritorio horizontal y orbital animado
 
 La versión Android adopta una interfaz de escritorio convencional (similar a Windows/macOS) con Inicio, iconos, búsqueda, barra inferior y ventanas flotantes. El fondo violeta orbital sí se anima mediante el motor gráfico GLES3 de Space Glitch V2, adaptado para REVERSE OS. XI Studio y Terminal ejecutan los programas del mismo QuantumRuntime/InverseMemory y conservan el estado RVPC2. Es un entorno Android anfitrión, no un kernel arrancable ni una ejecución de Chromium bajo XI. [Detalles de compilación y pruebas](reverse-os-android/README.md).
+
+
+## REVERSE Desktop 1.0
+
+El escritorio Android incorpora varias ventanas no modales, barra de tareas,
+restauración de sesión, carpetas y documentos, borradores, copiar/mover/renombrar,
+papelera, imágenes, aplicaciones instaladas y calculadora ejecutada en XI.
+La edición `com.reversepc.desktop` se instala junto a versiones anteriores.
+El runtime, el formato RVPC2 y la dependencia fijada de Mundo X se conservan.
+[Uso, compilación y límites de REVERSE Desktop](reverse-os-android/README.md).

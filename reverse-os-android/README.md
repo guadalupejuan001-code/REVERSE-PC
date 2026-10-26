@@ -1,136 +1,103 @@
-# REVERSE OS v0.5 — escritorio natural con BBY Q en XI
+# REVERSE Desktop 1.0
 
-**REVERSE OS** es una computadora virtual basada en XI y Ether dentro de Android.
-El entorno adopta patrones convencionales de Windows y macOS: Inicio, búsqueda,
-barra de tareas, aplicaciones y ventanas flotantes que se pueden mover, minimizar
-y maximizar.
+Escritorio de trabajo dentro de Android, desarrollado sobre REVERSE OS v0.5
+(`7420e067db6b42d207dd43eab00bdb9942eacafc`). Mantiene el diseño plano en grafito
+con fondo orbital y el arranque `welcome.... REVERSE.`.
 
-## Diseño
+## Trabajo cotidiano
 
-- Pantalla negra de arranque: `welcome.... REVERSE.`, sin resplandores.
-- Escritorio horizontal en tonos de grafito, pizarra y azul suave; tipografía
-  legible y aplicaciones nombradas naturalmente en español.
-- Fondo procedural con **formas planas y órbitas lentas**; conserva movimiento
-  real usando OpenGL ES 3 de Space Glitch V2 (portado), pero no muestra partículas
-  espectaculares, efecto de plasma ni filtros de neón.
-- Las ventanas mantienen acciones reales: XI Studio (editar y ejecutar),
-  Terminal, Archivos, Navegador, Ether Core y Ajustes.
-- Ajustes de calidad: ECO / AUTO / ALTA y Pausa / Movimiento.
-- Pantalla inicial visible aun cuando falle el núcleo: diagnóstico explícito,
-  nunca respuestas simuladas para aparentar ejecución.
+- Varias ventanas dentro de la misma actividad: mover, redimensionar, minimizar,
+  maximizar, ajustar izquierda/derecha y recuperar cada tarea en la barra.
+- Inicio, búsqueda de aplicaciones/documentos, escritorio y panel de ventanas.
+- Hasta doce ventanas, con posiciones y sesión recordadas entre reinicios.
+- Archivos: carpetas, texto, copiar archivos, mover archivos/carpetas, renombrar,
+  papelera, restauración sin sobrescribir destinos existentes y eliminación
+  definitiva con confirmación.
+- Editor de texto UTF-8 y XI Studio con borradores conservados al cerrar o
+  reiniciar. Los borradores no sustituyen el archivo hasta pulsar Guardar.
+- Calculadora: precedencia, paréntesis, signo y seis decimales. La interfaz
+  compila expresiones a XI; las operaciones se ejecutan en el intérprete propio.
+  Usa registros de 64 bits y rechaza desbordamientos/división por cero.
+- Visor de imágenes con decodificación acotada; navegador Android WebView;
+  acceso explícito a las aplicaciones instaladas en Android.
+- Preferencias de movimiento/calidad conservadas. El fondo se pausa cuando una
+  ventana está maximizada, dos ventanas cubren ambos lados o Android suspende
+  la actividad.
+- Importar/exportar archivos mediante el selector Android, exportar respaldo
+  ZIP de documentos/programas/memoria/borradores y restaurar RVPC2 validado.
+  El ZIP se puede extraer con un gestor de archivos; no se importa como un
+  perfil completo desde la interfaz de esta versión.
+- Uso opcional como pantalla de inicio: Ajustes → Usar como escritorio de inicio.
+  Android pide al usuario elegir la aplicación de inicio. Volver a Inicio
+  recupera la misma actividad y no crea otra autoridad XI.
 
-## BBY Q: una aplicación instalada en el escritorio
+Atajos con teclado: Alt+Tab, Alt+F4, Ctrl+S, Ctrl+Alt+T, Meta+D y Meta+flechas.
+Con el dedo/ratón, mantener pulsado un archivo o usar ⋮ abre sus operaciones;
+el menú de cada ventana permite ajustar y restaurar su tamaño.
 
-REVERSE OS v0.5 añade **BBY Q** como programa del escritorio,
-barra de tareas, Inicio y búsqueda. El botón abre una ventana real
-con diálogo y dos controles de aprendizaje:
+## Archivos y conservación
 
-- **Preguntar:** introduce una microoración en letras ASCII minúsculas,
-  por ejemplo `cuarto contiene llave?`. `readline.xi` la tokeniza,
-  `ask.xi` busca hechos o una demostración de dos pasos,
-  `reflect.xi` decide qué aprender si desconoce la respuesta,
-  y `speak.xi` produce los bytes de respuesta.
-- **+ PALABRA:** enseña una palabra como observación con tres sensores
-  categóricos (0..3). La relación sensorial y el léxico nacen en XI.
-- **+ RELACIÓN:** enseña una relación observada o refutada con
-  sujeto, predicado y objeto; `relate.xi` actualiza evidencias y
-  `calibrate.xi` comprueba si corresponde inferencia transitiva.
+Los programas `.xi` continúan en la carpeta original `files/programs`; la
+memoria computacional sigue siendo el mismo `files/session.rvp`. Las carpetas
+Documentos, Descargas, Imágenes, Escritorio y Papelera viven en almacenamiento
+privado. Android solo expone un archivo externo cuando el usuario lo elige.
+No se solicita acceso general al almacenamiento ni se borran archivos al cerrar
+ventanas. Los límites son 8 MiB por archivo, 256 KiB por texto/programa y 64 MiB
+de documentos por respaldo ZIP. Las carpetas se mueven; copiar carpetas completas
+no está incluido. Los archivos en papelera se pueden restaurar a su origen.
 
-### Instalación y persistencia, sin borrar tu REVERSE-PC
+El gestor usa vistas no modales; desaparece la limitación anterior de un único
+`Dialog` minimizado. Teclado y cambios de área disponible acotan las ventanas
+sin perder su tamaño normal. Las barras se ocultan mientras se escribe para
+liberar espacio en el teclado horizontal. La actividad es `singleTask` y el trabajador XI es
+único en el proceso, también durante recreaciones de la pantalla.
 
-El primer acceso a BBY Q activa el **runtime XI del mismo
-`session.rvp` del escritorio**. No se instala un segundo
-núcleo, ni un modelo conectado a Internet.
+Se mantiene la aplicación BBY Q ya incluida en v0.5, con sus fuentes E009
+fijadas en `7dfa6c31247cf609128db78908313a6ce41c0b80`. Esta iteración no actualiza
+su entrenamiento ni integra los checkpoints E014: ese trabajo permanece
+separado, como se había acordado. La rama pendiente de v0.6 no se incorpora
+silenciosamente.
 
-1. Se abre la sesión existente sin reiniciarla.
-2. Si el organismo BBY Q todavía no está presente, los programas XI
-   aprenden y certifican cuatro bancos (XOR, XNOR, AND, OR). Si ya
-   existen cuatro bancos válidos, se reutilizan.
-3. `birth.xi`, `ground.xi`, `relate.xi` y `calibrate.xi`
-   crean sus primeros símbolos, sinónimos y relaciones mediante
-   experiencias del `curriculum-v1.txt` incluido. Este archivo
-   contiene observaciones y palabras, **no respuestas prefabricadas**.
-4. Se comprueban `e008/audit-organism.xi`,
-   `language/audit.xi` y una inferencia real nueva.
-5. **Una única transacción `SessionStore.writeState`** publica todo
-   en el RVPC2. Ante error, el archivo anterior no se sustituye.
+## Instalar
 
-Los programas originales `BBYQ_*.xi` quedan registrados en
-**Archivos** y disponibles desde XI Studio; se conserva el resto de
-programas y del estado de la computadora, incluida su memoria Ether.
-Las preguntas y las lecciones subsiguientes también se ejecutan
-en XI con commit tras verificación y rollback ante error.
+`REVERSE-Desktop-v1.0.apk` usa `com.reversepc.desktop`, por lo que se instala al
+lado de versiones antiguas de REVERSE OS y conserva su instalación. Es un
+espacio nuevo; no puede leer el almacenamiento privado de otra aplicación.
+Puede importar su RVPC2 desde Ajustes si se exportó previamente.
 
-### Origen y alcance
+`REVERSE-OS-v1.0-compatible.apk` conserva `com.reversepc.os`. Solo puede actualizar
+una instalación con la misma firma. No desinstalar una versión anterior para
+resolver una firma distinta sin exportar antes sus datos. La CI conserva la
+clave de desarrollo para futuras compilaciones de la rama principal; estas
+APK son compilaciones de desarrollo, no una distribución de producción.
 
-Los 24 programas empaquetados son **copias sin modificar del código
-original del repositorio BBY-Q**, fijadas en commit
-`7dfa6c31247cf609128db78908313a6ce41c0b80`.
-El script `reverse-os-android/scripts/prepare-bbyq.sh` las prepara
-para el APK y comprueba su SHA. El código Java es solo interfaz
-Android y transporte de bytes/estado hacia el **mismo XI nativo**;
-**no implementa un nuevo algoritmo de inteligencia ni sustituye
-el aprendizaje por respuestas Java**.
+Compilar ambas ediciones:
 
-**Límites:** BBY Q entiende por ahora microoraciones
-`sujeto predicado objeto?`, con palabras ASCII de 1..8 caracteres,
-y sus sensores son artificiales, no cámaras ni micrófonos. No hay
-conversación natural abierta, síntesis de voz, acceso a un LLM de
-terceros ni ventaja cuántica demostrada. El intérprete original XI
-aún emplea bootstrap C++; MX es la dirección del lenguaje fuente
-canónico, sin cadena autocompilada comprobada.
+```bash
+bash reverse-os-android/scripts/prepare-bbyq.sh deps/bbyq
+python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+gradle -p reverse-os-android :app:assembleDesktopDebug :app:assembleClassicDebug
+```
 
-## Tecnología que sí se utiliza
+El runtime y Mundo X se conservan fijados. Android aporta kernel, controladores,
+GPU, almacenamiento y WebView; XI/Ether ejecutan programas y conservan RVPC2.
+Este proyecto aún no reemplaza el kernel Android ni ejecuta aplicaciones de
+Windows. Las cifras de FPS/PSS provienen del proceso/renderizador reales;
+no se presentan como aceleración cuántica ni como pruebas del Samsung A16.
 
-La lógica de XI se ejecuta con el `QuantumRuntime` propio del repositorio,
-`InfiniteCore` y `Inverse Ether Memory`, sin crear una segunda autoridad.
-Los estados guardados siguen en formato RVPC2, con commit tras éxito.
+## Verificación
 
-El fondo de pantalla usa un shader GLSL 300 ES para una escena bidimensional
-de círculos y líneas. No se afirma aceleración cuántica física ni renderizado
-en el aún incompleto backend GLES de Ether Render X. Los FPS mostrados
-son medidos por el renderizador Android, con resolución adaptativa.
+`DesktopCoreTest.java` realiza operaciones reales con archivos, conflictos,
+papelera, Unicode, límites, enlaces y geometría. `check-calculator.py` ejecuta
+19 programas generados en el runtime XI y comprueba respuestas independientes,
+rechazo y conservación del núcleo/memoria. Estas pruebas se ejecutan en host.
 
-El navegador usa **Android WebView**, no ejecuta un binario de Chromium
-dentro de XI. Android sigue siendo el sistema operativo anfitrión y gestiona
-la GPU, el teclado y el kernel.
-
-## Instalación y prueba
-
-La compilación CI se llama `REVERSE OS v0.5 — native BBY Q XI desktop`.
-Produce el artefacto `REVERSE-OS-v0.5-BBYQ.apk` firmado en modo desarrollo para
-`arm64-v8a` (Samsung A16) y `x86_64` (emulador Android 15).
-
-El pipeline valida firma, bibliotecas, arranque horizontal, cambio de
-fotogramas en una región central del fondo, logs de FPS y funcionamiento del
-código XI con Euclides `r0 = 21`. También verifica que BBY Q se abra,
-aprenda y responda mediante XI, **sin perder el resultado anterior de
-Euclides ni otros datos del mismo RVPC2**. Conserva capturas y pruebas.
-
-### Copias de seguridad
-
-En **Ajustes → EXPORTAR MI MEMORIA RVPC2** el sistema permite guardar
-una copia exacta de la memoria del escritorio y de BBY Q mediante
-el selector de archivos Android. En **IMPORTAR RVPC2 VALIDADO**
-comprueba tamaño, firma y checksum antes de sustituir el estado
-transaccional; una importación fallida conserva el estado anterior.
-Los scripts XI personalizados siguen siendo archivos privados
-independientes y requieren respaldarse por separado.
-
-**Advertencia de firma:** una APK de depuración generada en otro
-runner GitHub puede tener firma distinta y Android podría
-rechazar la actualización. No desinstales la versión existente sin
-antes proteger tus archivos: **desinstalar borra el almacenamiento
-privado** del paquete `com.reversepc.os`. La exportación incluida
-en v0.5 ayuda en futuras migraciones, pero no modifica una
-versión anterior ya instalada que carezca de esa función.
-
-### Verificación de instalación
-
-La CI abre realmente BBY Q en Android 15, inicializa modelos y léxico XI,
-pregunta `cuarto contiene llave` y exige la frase generada
-`cuarto contiene llave (via caja).`. La misma prueba verifica
-que `O 42 21` (resultado Euclides del escritorio) siga en
-`session.rvp` y que haya cuatro modelos E008 y firma E009.
-No se sustituye el código original del escritorio ni hay
-conexiones de IA externas.
+La CI además compila y firma las dos ABI (`arm64-v8a`, `x86_64`), instala la APK
+Desktop en Android 15 y opera la interfaz mediante `adb`: arranque, movimiento
+real del fondo, varias ventanas, arrastre, tamaño, ajuste, archivos, borradores,
+calculadora XI, Euclides y recuperación tras matar/reabrir el proceso. La
+batería ampliada además opera WebView, aplicaciones Android, el acceso Inicio,
+importación de imágenes, exportación de borradores y respaldo ZIP a través del
+selector real de Android. Guarda
+capturas reales, registros y resultados. La prueba en el teléfono físico queda
+fuera de lo que puede comprobar el emulador.

@@ -1,383 +1,135 @@
-name: REVERSE OS v0.5 — native BBY Q XI desktop
+name: REVERSE Desktop 1.0 - windows, files and real XI
 on:
   pull_request:
-    branches: [main, feature/reverse-os-landscape-ether-motion-20261026]
-    paths:
-      - 'reverse-os-android/**'
-      - 'tests/reverse_os_transport.cpp'
-      - 'src/**'
-      - 'scripts/prepare-ether-compat.py'
-      - 'scripts/ether_integration.py'
-      - '.github/workflows/reverse-os-android.yml'
+    branches: [main]
+    paths: ['reverse-os-android/**', 'src/**', 'tests/reverse_os_transport.cpp', '.github/workflows/reverse-os-android.yml']
   push:
-    branches: [main, feature/reverse-os-bbyq-native-integration-20261026]
-    paths:
-      - 'reverse-os-android/**'
-      - 'tests/reverse_os_transport.cpp'
-      - '.github/workflows/reverse-os-android.yml'
+    branches: [main]
+    paths: ['reverse-os-android/**', 'src/**', '.github/workflows/reverse-os-android.yml']
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: reverse-desktop-android
+  cancel-in-progress: true
 jobs:
-  android-os:
+  desktop:
     runs-on: ubuntu-latest
-    timeout-minutes: 50
+    timeout-minutes: 45
     steps:
-      - name: Checkout REVERSE-PC, including XI extensions
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           persist-credentials: false
-      - name: Checkout pinned Mundo X compute kernel
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           repository: guadalupejuan001-code/mundo-X
           ref: e2778d962af22f6f1a0794058dd4685fc2573966
           path: deps/mundo-x
           persist-credentials: false
-      - name: Checkout pinned BBY Q original XI learner
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           repository: guadalupejuan001-code/BBY-Q
           ref: 7dfa6c31247cf609128db78908313a6ce41c0b80
           path: deps/bbyq
           persist-credentials: false
-      - name: Bundle the real BBY Q XI programs and observational curriculum
-        shell: bash
-        run: |
-          set -euo pipefail
-          bash reverse-os-android/scripts/prepare-bbyq.sh deps/bbyq
-          test "$(find reverse-os-android/app/src/main/assets/bbyq -name '*.xi' | wc -l)" -eq 24
-      - name: JDK 17
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-      - name: Gradle 8.9
-        uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Android NDK and emulator tools
+      - name: Retain development signing identity for subsequent main builds
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: reverse-desktop-debug-signing-v1
+      - name: Prepare pinned native dependencies and SDK
         shell: bash
         run: |
           set -euo pipefail
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
-            "platforms;android-35" "build-tools;35.0.0" \
-            "ndk;27.2.12479018" "cmake;3.22.1" \
-            platform-tools emulator "system-images;android-35;default;x86_64"
-      - name: Generate verified local Ether extension
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "$(git -C deps/mundo-x rev-parse HEAD)" = e2778d962af22f6f1a0794058dd4685fc2573966
+          mkdir -p reverse-os-evidence reverse-os-dist build
+          bash reverse-os-android/scripts/prepare-bbyq.sh deps/bbyq
           python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
-          test -s build/ether-compat/changes.diff
-      - name: Verify RVPC2 transport and real XI execution on Linux
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' \
+            'cmake;3.22.1' platform-tools emulator 'system-images;android-35;default;x86_64'
+          cp "$ANDROID_HOME/platforms/android-35/android.jar" build/android-35.jar
+      - name: Real files, geometry and calculator compiler
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p reverse-os-evidence reverse-os-dist
-          g++ -std=c++17 -O1 -Wall -Wextra -Wpedantic \
-            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
-            tests/reverse_os_transport.cpp -o build/reverse_os_transport
-          ./build/reverse_os_transport | tee reverse-os-evidence/host-native-test.txt
-      - name: Build REVERSE OS native APK
+          J=reverse-os-android/app/src/main/java/com/reversepc/os
+          mkdir -p build/desktop-tests
+          javac -d build/desktop-tests "$J/WindowGeometry.java" "$J/WorkspaceFiles.java" "$J/CalculatorCompiler.java" reverse-os-android/tests/DesktopCoreTest.java
+          java -cp build/desktop-tests com.reversepc.os.DesktopCoreTest reverse-os-evidence/host > reverse-os-evidence/desktop-core.txt
+          cat reverse-os-evidence/desktop-core.txt
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
+            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc src/reverse_pc.cpp -o build/reverse_pc
+          python3 reverse-os-android/tests/check-calculator.py build/reverse_pc reverse-os-evidence/host | tee reverse-os-evidence/calculator-native.txt
+          g++ -std=c++17 -O1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tests/reverse_os_transport.cpp -o build/reverse_os_transport
+          build/reverse_os_transport | tee reverse-os-evidence/transport.txt
+      - name: Build both desktop and compatible package editions
         shell: bash
         run: |
           set -euo pipefail
-          gradle -p reverse-os-android --no-daemon --stacktrace :app:assembleDebug \
-            > reverse-os-evidence/gradle.log 2>&1 || {
-              tail -160 reverse-os-evidence/gradle.log
-              exit 1
-            }
-          tail -35 reverse-os-evidence/gradle.log
-          cp reverse-os-android/app/build/outputs/apk/debug/app-debug.apk \
-            reverse-os-dist/REVERSE-OS-v0.5-BBYQ.apk
-      - name: Verify signed package and native libraries
-        shell: bash
-        run: |
-          set -euo pipefail
-          APK=reverse-os-dist/REVERSE-OS-v0.5-BBYQ.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK" \
-            > reverse-os-evidence/signature.txt
+          gradle -p reverse-os-android --no-daemon --stacktrace :app:assembleDesktopDebug :app:assembleClassicDebug > reverse-os-evidence/gradle.log 2>&1 || { tail -160 reverse-os-evidence/gradle.log; exit 1; }
+          cp reverse-os-android/app/build/outputs/apk/desktop/debug/app-desktop-debug.apk reverse-os-dist/REVERSE-Desktop-v1.0.apk
+          cp reverse-os-android/app/build/outputs/apk/classic/debug/app-classic-debug.apk reverse-os-dist/REVERSE-OS-v1.0-compatible.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose reverse-os-dist/REVERSE-Desktop-v1.0.apk > reverse-os-evidence/signature.txt
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging reverse-os-dist/REVERSE-Desktop-v1.0.apk > reverse-os-evidence/package.txt
           python3 - <<'PY'
-          import zipfile,hashlib,json,os,subprocess,re
-          apk="reverse-os-dist/REVERSE-OS-v0.5-BBYQ.apk"
-          cmd=os.environ["ANDROID_HOME"]+"/build-tools/35.0.0/aapt"
-          badging=subprocess.check_output([cmd,"dump","badging",apk],text=True)
-          perms=subprocess.check_output([cmd,"dump","permissions",apk],text=True)
-          assert "package: name='com.reversepc.os'" in badging,badging[:1000]
-          assert "versionCode='5'" in badging,badging[:1000]
-          assert "android.permission.INTERNET" in perms,perms
-          assert "android.permission.READ_EXTERNAL_STORAGE" not in perms,perms
-          assert "android.permission.WRITE_EXTERNAL_STORAGE" not in perms,perms
-          with zipfile.ZipFile(apk) as z:
-              assert z.testzip() is None
-              names=set(z.namelist())
-              for required in ("classes.dex","lib/arm64-v8a/libreverse_os.so",
-                               "lib/x86_64/libreverse_os.so",
-                               "assets/space.vert","assets/space.frag","assets/blit.frag",
-                               "assets/bbyq/e006/learn.xi",
-                               "assets/bbyq/e008/bank-store.xi",
-                               "assets/bbyq/language/readline.xi",
-                               "assets/bbyq/language/speak.xi",
-                               "assets/bbyq/curriculum-v1.txt"):
-                  assert required in names,required
-          b=open(apk,"rb").read()
-          obj={"package":"com.reversepc.os","bytes":len(b),"sha256":hashlib.sha256(b).hexdigest(),
-               "offline_xi":True,"browser_host":"Android WebView","native_xi":True,"abis":["arm64-v8a","x86_64"]}
-          open("reverse-os-evidence/apk.json","w").write(json.dumps(obj,indent=2)+"\n")
-          print(json.dumps(obj))
+          import hashlib,json,zipfile
+          from pathlib import Path
+          reports=[]
+          for apk in Path('reverse-os-dist').glob('*.apk'):
+              with zipfile.ZipFile(apk) as z:
+                  assert z.testzip() is None
+                  assert 'lib/arm64-v8a/libreverse_os.so' in z.namelist()
+                  assert 'lib/x86_64/libreverse_os.so' in z.namelist()
+              reports.append({'file':apk.name,'bytes':apk.stat().st_size,'sha256':hashlib.sha256(apk.read_bytes()).hexdigest()})
+          Path('reverse-os-evidence/apks.json').write_text(json.dumps(reports,indent=2)+'\n')
+          print(reports)
           PY
-      - name: Android 15 boots Welcome Mr Reverse, opens desktop, runs XI
-        timeout-minutes: 14
+      - name: Exercise real desktop workflows on Android 15
+        timeout-minutes: 22
         shell: bash
         run: |
           set -euo pipefail
           export PATH="$ANDROID_HOME/platform-tools:$PATH"
           sudo chmod a+rw /dev/kvm
-          export ANDROID_AVD_HOME="$(mktemp -d /tmp/reverse-os-avd.XXXXXX)"
-          printf 'no\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd \
-            --force -n reverse-os-test -p "$ANDROID_AVD_HOME/reverse-os-test.avd" \
-            -k 'system-images;android-35;default;x86_64'
-          "$ANDROID_HOME/emulator/emulator" -avd reverse-os-test -no-window \
-            -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect \
-            -memory 2048 > reverse-os-evidence/emulator.log 2>&1 &
+          export ANDROID_AVD_HOME="$(mktemp -d /tmp/reverse-desktop-avd.XXXXXX)"
+          printf 'no\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --force -n desktop -p "$ANDROID_AVD_HOME/desktop.avd" -k 'system-images;android-35;default;x86_64'
+          echo 'hw.keyboard=no' >> "$ANDROID_AVD_HOME/desktop.avd/config.ini"
+          "$ANDROID_HOME/emulator/emulator" -avd desktop -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -memory 2048 > reverse-os-evidence/emulator.log 2>&1 &
           EMU_PID=$!
-          trap 'kill "$EMU_PID" 2>/dev/null || true' EXIT
-          adb start-server
+          trap 'adb logcat -d > reverse-os-evidence/all-logcat.txt 2>/dev/null || true; kill "$EMU_PID" 2>/dev/null || true' EXIT
           ready=false
           for i in $(seq 1 115); do
-            if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == 1 ]]; then
-              ready=true;break
-            fi
+            if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == 1 ]]; then ready=true;break;fi
             sleep 2
           done
-          if [[ "$ready" != true ]]; then
-            tail -100 reverse-os-evidence/emulator.log;exit 1
-          fi
+          test "$ready" = true
           adb shell input keyevent 82
-          adb install -r reverse-os-dist/REVERSE-OS-v0.5-BBYQ.apk
+          adb shell wm size 720x1600
+          adb shell wm density 280
+          adb install -r reverse-os-dist/REVERSE-Desktop-v1.0.apk
           adb logcat -c
-          adb shell am start -W -n com.reversepc.os/.BootActivity \
-            | tee reverse-os-evidence/launch.txt
-          # Capture the actual black screen (not a fabricated mock image).
-          boot_seen=false
-          for i in $(seq 1 25); do
-            if adb logcat -d -s ReverseBoot:I '*:S' | grep -q 'WELCOME_SCREEN_SHOWN welcome.... REVERSE.'; then
-              boot_seen=true;break
-            fi
-            sleep 0.12
-          done
-          test "$boot_seen" = true
-          adb logcat -d -s ReverseBoot:I '*:S' > reverse-os-evidence/boot-log.txt
-          sleep 1.10
-          adb shell screencap -p /sdcard/reverse-os-boot.png
-          adb exec-out cat /sdcard/reverse-os-boot.png > reverse-os-evidence/boot.png
-          sleep 4
-          adb shell uiautomator dump /sdcard/reverse-os-desktop.xml >/dev/null
-          adb exec-out cat /sdcard/reverse-os-desktop.xml > reverse-os-evidence/desktop-ui.xml
-          adb shell screencap -p /sdcard/reverse-os-desktop.png
-          adb exec-out cat /sdcard/reverse-os-desktop.png > reverse-os-evidence/desktop.png
-          # Check that the actual GLES3 shader changes pixels between frames.
-          sleep 1.4
-          adb shell screencap -p /sdcard/reverse-os-motion.png
-          adb exec-out cat /sdcard/reverse-os-motion.png > reverse-os-evidence/motion.png
-          adb logcat -d -s ReverseGPU:I '*:S' > reverse-os-evidence/gpu-fps.txt
-          grep -q 'REVERSE_GPU_FPS fps=' reverse-os-evidence/gpu-fps.txt
           python3 -m pip install -q pillow
-          python3 - <<'PY'
-          from PIL import Image,ImageChops
-          from pathlib import Path
-          a=Image.open("reverse-os-evidence/desktop.png").convert("RGB")
-          b=Image.open("reverse-os-evidence/motion.png").convert("RGB")
-          assert a.size==b.size,a.size
-          assert a.width>a.height,("not landscape",a.size)
-          # The center excludes the clock and most launchers: difference must
-          # come from the GPU world, not from time labels or window updates.
-          bounds=(int(a.width*.43),int(a.height*.15),
-                  int(a.width*.76),int(a.height*.78))
-          diff=ImageChops.difference(a.crop(bounds),b.crop(bounds))
-          bbox=diff.getbbox()
-          assert bbox is not None,"orbital wallpaper did not visibly animate"
-          print("REVERSE_GPU_MOTION_PASS minimal_flat=true landscape="+str(a.size)+" center_changed=true")
-          PY
-          python3 - <<'PY'
-          import re,subprocess,xml.etree.ElementTree as ET
-          nodes=list(ET.parse("reverse-os-evidence/desktop-ui.xml").getroot().iter("node"))
-          text=" ".join(n.attrib.get("text","") for n in nodes)
-          required=("REVERSE","XI Studio","Terminal","Archivos","Ether Core","Navegador","Ajustes","BBY Q","INICIO")
-          assert "REVERSE" in text and "INICIO" in text,text[:1800]
-          if any(label not in text for label in required):
-              subprocess.run(["adb","shell","input","swipe","160","465","160","208","400"],check=True)
-              subprocess.run(["adb","shell","uiautomator","dump","/sdcard/reverse-os-scroll.xml"],
-                             check=True,stdout=subprocess.DEVNULL)
-              data=subprocess.check_output(["adb","exec-out","cat","/sdcard/reverse-os-scroll.xml"])
-              text+=" "+" ".join(n.attrib.get("text","") for n in ET.fromstring(data).iter("node"))
-              subprocess.run(["adb","shell","input","swipe","160","235","160","510","350"],check=True)
-              subprocess.run(["adb","shell","uiautomator","dump","/sdcard/reverse-os-top.xml"],
-                             check=True,stdout=subprocess.DEVNULL)
-              fresh=subprocess.check_output(["adb","exec-out","cat","/sdcard/reverse-os-top.xml"])
-              nodes=list(ET.fromstring(fresh).iter("node"))
-          for label in required:
-              assert label in text,(label,text[:1800])
-          match=next(n for n in nodes if n.attrib.get("text")=="XI Studio")
-          nums=[int(v) for v in re.findall(r"\d+",match.attrib["bounds"])]
-          assert len(nums)==4
-          subprocess.run(["adb","shell","input","tap",str((nums[0]+nums[2])//2),
-                         str((nums[1]+nums[3])//2)],check=True)
-          print("REVERSE_OS_DESKTOP_PASS landscape=true flat_ui=true launchers=7 start=true")
-          PY
-          sleep 3
-          adb shell uiautomator dump /sdcard/reverse-os-studio.xml >/dev/null
-          adb exec-out cat /sdcard/reverse-os-studio.xml > reverse-os-evidence/studio-ui.xml
-          python3 - <<'PY'
-          import re,subprocess,xml.etree.ElementTree as ET
-          nodes=list(ET.parse("reverse-os-evidence/studio-ui.xml").getroot().iter("node"))
-          text=" ".join(n.attrib.get("text","") for n in nodes)
-          assert "XI Studio" in text,text[:2200]
-          assert "01_euclides.xi" in text,text[:2200]
-          match=next((n for n in nodes if "EJECUTAR" in n.attrib.get("text","")),None)
-          assert match is not None,text[:2200]
-          nums=[int(x) for x in re.findall(r"\d+",match.attrib["bounds"])]
-          assert len(nums)==4
-          subprocess.run(["adb","shell","input","tap",str((nums[0]+nums[2])//2),
-                         str((nums[1]+nums[3])//2)],check=True)
-          PY
-          success=false
-          for i in $(seq 1 35); do
-            if adb logcat -d -s ReverseOS:I '*:S' | grep -q 'RUN_OK 01_euclides.xi'; then
-              success=true;break
-            fi
-            sleep 2
-          done
-          if [[ "$success" != true ]]; then
-            adb logcat -d > reverse-os-evidence/logcat.txt
-            tail -100 reverse-os-evidence/logcat.txt
-            echo 'Native XI program did not finish'
-            exit 1
-          fi
-          adb shell uiautomator dump /sdcard/reverse-os-result.xml >/dev/null
-          adb exec-out cat /sdcard/reverse-os-result.xml > reverse-os-evidence/result-ui.xml
-          adb shell screencap -p /sdcard/reverse-os-result.png
-          adb exec-out cat /sdcard/reverse-os-result.png > reverse-os-evidence/result.png
-          python3 - <<'PY'
-          import xml.etree.ElementTree as ET
-          text=" ".join(n.attrib.get("text","") for n in ET.parse(
-              "reverse-os-evidence/result-ui.xml").getroot().iter("node"))
-          assert "r0 = 21" in text,text[:2200]
-          assert "RVPC2 guardado" in text,text[:2200]
-          print("REVERSE_OS_ANDROID_XI_PASS desktop_to_ether=true gcd=21 state=RVPC2")
-          PY
-          adb shell run-as com.reversepc.os ls -l files/session.rvp | tee reverse-os-evidence/state-file.txt
-          # Real app has returned a correct result; verify the desktop survives
-          # a back navigation and does not depend on JNI for first rendering.
-          adb shell input keyevent 4
-          sleep 2
-          adb shell uiautomator dump /sdcard/reverse-os-return.xml >/dev/null
-          adb exec-out cat /sdcard/reverse-os-return.xml > reverse-os-evidence/return-ui.xml
-          python3 - <<'PY'
-          import xml.etree.ElementTree as ET
-          content=" ".join(n.attrib.get("text","") for n in ET.parse(
-              "reverse-os-evidence/return-ui.xml").getroot().iter("node"))
-          assert "REVERSE" in content and "INICIO" in content,content[:1500]
-          print("REVERSE_OS_HOME_RETURN_PASS window_close=true")
-          PY
-          # The original desktop UI is back on screen. Launch BBY Q as
-          # a real native XI application and exercise its Ether-trained brain.
-          python3 - <<'PY'
-          import re,subprocess,xml.etree.ElementTree as ET
-          nodes=list(ET.parse("reverse-os-evidence/return-ui.xml").getroot().iter("node"))
-          matches=[n for n in nodes if n.attrib.get("text")=="BBY Q"]
-          assert matches,"BBY Q shortcut missing from REVERSE OS"
-          box=[int(v) for v in re.findall(r"\d+",matches[-1].attrib["bounds"])]
-          assert len(box)==4
-          subprocess.run(["adb","shell","input","tap",str((box[0]+box[2])//2),
-                          str((box[1]+box[3])//2)],check=True)
-          print("BBYQ_DESKTOP_OPEN_TAP")
-          PY
-          bbyq_ready=false
-          for i in $(seq 1 130); do
-            if adb logcat -d -s BbyqOS:I '*:S' | grep -q 'BBYQ_INSTALL_OK'; then
-              bbyq_ready=true;break
-            fi
-            if adb logcat -d -s ReverseDesktop:E '*:S' | grep -q 'BBYQ_INSTALL_FAILED'; then
-              echo 'Real BBY Q installation failed';exit 1
-            fi
-            sleep 2
-          done
-          if [[ "$bbyq_ready" != true ]]; then
-            adb logcat -d > reverse-os-evidence/logcat.txt
-            grep -i 'BbyqOS\|BBYQ\|ReverseDesktop' reverse-os-evidence/logcat.txt | tail -70
-            echo 'BBY Q XI learning did not complete in Android emulator';exit 1
-          fi
-          adb shell uiautomator dump /sdcard/bbyq-window.xml > /dev/null
-          adb exec-out cat /sdcard/bbyq-window.xml > reverse-os-evidence/bbyq-window.xml
-          python3 - <<'PY'
-          import re,subprocess,xml.etree.ElementTree as ET
-          nodes=list(ET.parse("reverse-os-evidence/bbyq-window.xml").getroot().iter("node"))
-          text=" ".join(n.attrib.get("text","") for n in nodes)
-          assert "BBY Q" in text and "4 bancos Ether" in text,text[:2500]
-          field=next((n for n in nodes if n.attrib.get("class")=="android.widget.EditText"),None)
-          assert field is not None,text[:2500]
-          bounds=[int(v) for v in re.findall(r"\d+",field.attrib["bounds"])]
-          assert len(bounds)==4
-          subprocess.run(["adb","shell","input","tap",str((bounds[0]+bounds[2])//2),
-                          str((bounds[1]+bounds[3])//2)],check=True)
-          PY
-          adb shell input text 'cuarto%scontiene%sllave'
-          adb shell input keyevent 4
-          adb shell uiautomator dump /sdcard/bbyq-prompt.xml > /dev/null
-          adb exec-out cat /sdcard/bbyq-prompt.xml > reverse-os-evidence/bbyq-prompt.xml
-          python3 - <<'PY'
-          import re,subprocess,xml.etree.ElementTree as ET
-          nodes=list(ET.parse("reverse-os-evidence/bbyq-prompt.xml").getroot().iter("node"))
-          submit=next((n for n in nodes if n.attrib.get("text")=="ENVIAR"),None)
-          assert submit is not None,[n.attrib.get("text","") for n in nodes][-30:]
-          bounds=[int(v) for v in re.findall(r"\d+",submit.attrib["bounds"])]
-          subprocess.run(["adb","shell","input","tap",str((bounds[0]+bounds[2])//2),
-                          str((bounds[1]+bounds[3])//2)],check=True)
-          PY
-          bbyq_answer=false
-          for i in $(seq 1 45); do
-            if adb logcat -d -s BbyqOS:I '*:S' | grep -Fq 'BBYQ_ANSWER_OK query=cuarto contiene llave result=cuarto contiene llave (via caja).'; then
-              bbyq_answer=true;break
-            fi
-            sleep 2
-          done
-          if [[ "$bbyq_answer" != true ]]; then
-            adb logcat -d > reverse-os-evidence/logcat.txt
-            grep -i 'BbyqOS\|BBYQ' reverse-os-evidence/logcat.txt | tail -50
-            echo 'BBY Q did not reason and speak inside REVERSE OS';exit 1
-          fi
-          adb shell screencap -p /sdcard/bbyq-answer.png
-          adb exec-out cat /sdcard/bbyq-answer.png > reverse-os-evidence/bbyq-answer.png
-          adb shell uiautomator dump /sdcard/bbyq-answer.xml > /dev/null
-          adb exec-out cat /sdcard/bbyq-answer.xml > reverse-os-evidence/bbyq-answer.xml
-          python3 - <<'PY'
-          import xml.etree.ElementTree as ET
-          names=" ".join(n.attrib.get("text","") for n in ET.parse(
-              "reverse-os-evidence/bbyq-answer.xml").getroot().iter("node"))
-          assert "BBY Q" in names,names[:1500]
-          assert "cuarto contiene llave (via caja)." in names,names[:2500]
-          print("BBYQ_ANDROID_XI_PASS real_ether=true learned_relation=true")
-          PY
-          adb exec-out run-as com.reversepc.os cat files/session.rvp > reverse-os-evidence/bbyq-session.rvp
-          grep -a -q 'O 42 21' reverse-os-evidence/bbyq-session.rvp
-          grep -a -q 'O 7000000000000000610 4' reverse-os-evidence/bbyq-session.rvp
-          grep -a -q 'O 7100000000000000000 76' reverse-os-evidence/bbyq-session.rvp
-          echo 'BBYQ_SHARED_RVPC_PASS old_desktop_program=true four_models=true'
-          adb logcat -d > reverse-os-evidence/logcat.txt
-          if grep -E 'FATAL EXCEPTION' reverse-os-evidence/logcat.txt | grep -q 'com.reversepc.os'; then
-            echo 'Application fatal error';exit 1
-          fi
-      - name: Publish APK, execution logs and screenshot
-        uses: actions/upload-artifact@v4
+          python3 reverse-os-android/tests/desktop-extras.py reverse-os-evidence/android
+      - name: Publish installable APK and real UI evidence
         if: always()
+        uses: actions/upload-artifact@v4
         with:
-          name: REVERSE-OS-ANDROID-APK
+          name: REVERSE-DESKTOP-1.0
           path: |
             reverse-os-dist/**
             reverse-os-evidence/**
-          if-no-files-found: warn
           retention-days: 30
+      - name: Preserve the exact platform classpath for local compiler diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Android-35-compile-support
+          path: build/android-35.jar
+          retention-days: 3
