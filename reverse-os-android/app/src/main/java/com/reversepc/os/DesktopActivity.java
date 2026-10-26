@@ -53,9 +53,9 @@ import java.util.concurrent.Executors;
  */
 public final class DesktopActivity extends Activity {
     private static final String LOG = "ReverseDesktop";
-    private static final int BG=0xff040612, CARD=0xff0e1428, CARD_BRIGHT=0xff1b2441;
-    private static final int WHITE=0xfff7f7ff, MUTED=0xffa4a4c6, ACCENT=0xffa0a7ff;
-    private static final int BLUE=0xff80b4ff, VIOLET=0xffd3a5ff, AMBER=0xffffce9d;
+    private static final int BG=0xff131922, CARD=0xff222b36, CARD_BRIGHT=0xff303c47;
+    private static final int WHITE=0xfff5f3ef, MUTED=0xffbdc3c8, ACCENT=0xffaec3d2;
+    private static final int BLUE=0xffb4c6d4, VIOLET=0xffcbb9cb, AMBER=0xffdec4a6;
     private final ExecutorService engine=Executors.newSingleThreadExecutor();
     private final Handler clockHandler=new Handler(Looper.getMainLooper());
     private SessionStore store;
@@ -114,7 +114,7 @@ public final class DesktopActivity extends Activity {
     private TextView touch(String text,int size,boolean primary,Runnable action){
         TextView t=label(text,size,primary?BG:WHITE,true);
         t.setGravity(Gravity.CENTER);
-        t.setBackground(round(primary?ACCENT:CARD_BRIGHT,primary?0:0xff304658,13));
+        t.setBackground(round(primary?ACCENT:CARD_BRIGHT,primary?0:0xff45535f,9));
         t.setPadding(dp(15),dp(12),dp(15),dp(12));
         t.setClickable(true);
         t.setFocusable(true);
@@ -152,16 +152,16 @@ public final class DesktopActivity extends Activity {
                 Log.i(LOG,"DESKTOP_CORE_READY "+stats);
                 runOnUiThread(()->{
                     if(isFinishing()||isDestroyed())return;
-                    statusLabel.setText("● CORE ONLINE");
+                    statusLabel.setText("● Listo");
                     statusLabel.setTextColor(ACCENT);
-                    statusDetail.setText("XI MACHINE  •  ETHER ACTIVE");
+                    statusDetail.setText("XI y Ether disponibles");
                 });
             }catch(Throwable fault){
                 engineFailure=fault.getClass().getSimpleName()+": "+fault.getMessage();
                 Log.e(LOG,"ENGINE_BOOT_FAILED",fault);
                 runOnUiThread(()->{
                     if(isFinishing()||isDestroyed())return;
-                    statusLabel.setText("● CORE ERROR");
+                    statusLabel.setText("● Error del núcleo");
                     statusLabel.setTextColor(0xffff9898);
                     statusDetail.setText("Toca CORE ERROR para ver el diagnóstico.");
                 });
@@ -179,13 +179,12 @@ public final class DesktopActivity extends Activity {
         try {
             wallpaper=new OrbitalWallpaper(this,new OrbitalWallpaper.Events(){
                 @Override public void onFps(int frames,float scale){
-                    if(fpsLabel!=null)fpsLabel.setText(frames+" FPS  ·  GPU "
-                            +Math.round(scale*100f)+"%");
+                    if(fpsLabel!=null)fpsLabel.setText(frames+" fps");
                 }
                 @Override public void onFailure(String error){
                     Log.e(LOG,"GPU fallback: "+error);
                     if(wallpaper!=null)wallpaper.setVisibility(View.GONE);
-                    if(fpsLabel!=null)fpsLabel.setText("GPU FALLBACK");
+                    if(fpsLabel!=null)fpsLabel.setText("Fondo simple");
                 }
             });
             root.addView(wallpaper,new FrameLayout.LayoutParams(-1,-1));
@@ -208,12 +207,12 @@ public final class DesktopActivity extends Activity {
         // Tiny unobtrusive top status bar. The OS looks like a desktop rather
         // than a mobile app with tab bars and cards.
         LinearLayout top=horizontal();
-        TextView mark=label("REVERSE.",16,WHITE,true);
-        mark.setLetterSpacing(.28f);
-        mark.setShadowLayer(dp(6),0,0,0xff5751ff);
+        TextView mark=label("REVERSE",16,WHITE,true);
+        mark.setLetterSpacing(.07f);
+
         top.addView(mark,new LinearLayout.LayoutParams(0,-2,1f));
 
-        statusLabel=label("● CORE INIT",10,AMBER,true);
+        statusLabel=label("● Iniciando",10,AMBER,true);
         statusLabel.setOnClickListener(v->{
             if(!engineFailure.isEmpty())
                 new AlertDialog.Builder(this).setTitle("REVERSE-PC")
@@ -221,7 +220,7 @@ public final class DesktopActivity extends Activity {
             else openMonitor();
         });
         top.addView(statusLabel);
-        statusDetail=label("  XI / ETHER",10,MUTED,false);
+        statusDetail=label("  XI / Ether",10,MUTED,false);
         top.addView(statusDetail);
         LinearLayout.LayoutParams topP=new LinearLayout.LayoutParams(-1,dp(32));
         system.addView(top,topP);
@@ -238,7 +237,7 @@ public final class DesktopActivity extends Activity {
         addDesktopShortcut(row1,">_","TERMINAL",this::openTerminal);
         shortcutGrid.addView(row1);
         LinearLayout row2=horizontal();
-        addDesktopShortcut(row2,"▤","FILES",this::openFiles);
+        addDesktopShortcut(row2,"▤","ARCHIVOS",this::openFiles);
         addDesktopShortcut(row2,"◎","CHROMIUM",this::openBrowser);
         shortcutGrid.addView(row2);
         LinearLayout row3=horizontal();
@@ -251,12 +250,12 @@ public final class DesktopActivity extends Activity {
 
         LinearLayout identity=vertical();
         identity.setGravity(Gravity.CENTER);
-        TextView title=label("REVERSE.",31,WHITE,true);
+        TextView title=label("REVERSE",29,WHITE,true);
         title.setGravity(Gravity.CENTER);
-        title.setLetterSpacing(.35f);
-        title.setShadowLayer(dp(14),0,0,0xff6150ff);
+        title.setLetterSpacing(.10f);
+
         identity.addView(title);
-        TextView caption=label("P E R S O N A L   C O M P U T E R",9,0xffb8b5ed,false);
+        TextView caption=label("Tu espacio de trabajo",12,MUTED,false);
         caption.setGravity(Gravity.CENTER);
         margin(identity,caption,7);
         FrameLayout.LayoutParams idP=new FrameLayout.LayoutParams(dp(320),dp(92),
@@ -276,13 +275,13 @@ public final class DesktopActivity extends Activity {
         LinearLayout icon=vertical();
         icon.setGravity(Gravity.CENTER);
         icon.setPadding(dp(4),dp(6),dp(4),dp(6));
-        icon.setBackground(round(0x440c1229,0,12));
+        icon.setBackground(round(0xff1e2935,0,10));
         icon.setClickable(true);
         icon.setFocusable(true);
         icon.setOnClickListener(v->callback.run());
-        TextView sign=label(glyph,24,ACCENT,true);
+        TextView sign=label(glyph,22,ACCENT,true);
         sign.setGravity(Gravity.CENTER);
-        sign.setShadowLayer(dp(6),0,0,0xff5646c8);
+
         icon.addView(sign);
         TextView name=label(text,11,WHITE,true);
         name.setGravity(Gravity.CENTER);
@@ -298,24 +297,24 @@ public final class DesktopActivity extends Activity {
         LinearLayout taskbar=horizontal();
         taskbar.setGravity(Gravity.CENTER_VERTICAL);
         taskbar.setPadding(dp(8),dp(4),dp(8),dp(4));
-        taskbar.setBackground(round(0xee040612,0xff4c4389,11));
-        addTaskButton(taskbar,"▦","START",this::openStartMenu);
-        addTaskButton(taskbar,"⌕","SEARCH",this::openSearch);
-        addTaskButton(taskbar,"▤","FILES",this::openFiles);
+        taskbar.setBackground(round(0xff1c2631,0xff364651,8));
+        addTaskButton(taskbar,"▦","INICIO",this::openStartMenu);
+        addTaskButton(taskbar,"⌕","BUSCAR",this::openSearch);
+        addTaskButton(taskbar,"▤","ARCHIVOS",this::openFiles);
         addTaskButton(taskbar,">_","TERM",this::openTerminal);
 
         LinearLayout center=horizontal();
         center.setGravity(Gravity.CENTER);
-        TextView orb=label("✦",24,WHITE,true);
+        TextView orb=label("R",21,WHITE,true);
         orb.setGravity(Gravity.CENTER);
-        orb.setShadowLayer(dp(13),0,0,0xff715fff);
-        orb.setBackground(round(0xff1b1350,0xff8c7eff,100));
+
+        orb.setBackground(round(0xff344656,0xff728394,22));
         orb.setContentDescription("ABRIR REVERSE HOME");
         orb.setOnClickListener(v->openHome());
         center.addView(orb,new LinearLayout.LayoutParams(dp(48),dp(46)));
         taskbar.addView(center,new LinearLayout.LayoutParams(0,-1,1f));
 
-        minimizedLabel=label("▣ VENTANA",11,ACCENT,true);
+        minimizedLabel=label("▣ Ventana",11,ACCENT,true);
         minimizedLabel.setPadding(dp(10),dp(6),dp(10),dp(6));
         minimizedLabel.setVisibility(minimizedWindow==null?View.GONE:View.VISIBLE);
         minimizedLabel.setOnClickListener(v->{
@@ -326,7 +325,7 @@ public final class DesktopActivity extends Activity {
             }
         });
         taskbar.addView(minimizedLabel);
-        fpsLabel=label("GPU INIT",10,MUTED,false);
+        fpsLabel=label("Gráficos",10,MUTED,false);
         taskbar.addView(fpsLabel);
         TextView systemIcons=label("    ◉   ◖))  ",12,0xffb8b7e9,false);
         taskbar.addView(systemIcons);
@@ -354,12 +353,12 @@ public final class DesktopActivity extends Activity {
         WindowUi w=window("HOME","REVERSE / PERSONAL COMPUTER");
         LinearLayout header=vertical();
         header.setGravity(Gravity.CENTER);
-        TextView headline=label("REVERSE.",26,WHITE,true);
-        headline.setLetterSpacing(.34f);
+        TextView headline=label("Bienvenido a REVERSE",22,WHITE,true);
+        headline.setLetterSpacing(.01f);
         headline.setGravity(Gravity.CENTER);
-        headline.setShadowLayer(dp(9),0,0,0xff5c52fc);
+
         header.addView(headline);
-        TextView welcome=label("YOUR COMPUTER  •  XI / ETHER",11,MUTED,false);
+        TextView welcome=label("Tus archivos, programas y herramientas.",12,MUTED,false);
         welcome.setGravity(Gravity.CENTER);
         margin(header,welcome,7);
         w.content.addView(header,new LinearLayout.LayoutParams(-1,0,1f));
@@ -401,7 +400,7 @@ public final class DesktopActivity extends Activity {
         field.setTextColor(WHITE);field.setHintTextColor(MUTED);
         field.setSingleLine(true);
         field.setHint("XI, Files, Terminal, Chromium, Core, Settings...");
-        field.setBackground(round(CARD_BRIGHT,0xff56488b,9));
+        field.setBackground(round(CARD_BRIGHT,0xff536b79,9));
         field.setPadding(dp(12),dp(11),dp(12),dp(11));
         w.content.addView(field);
         TextView result=label("Escribe un nombre y pulsa BUSCAR.",12,MUTED,false);
@@ -449,11 +448,11 @@ public final class DesktopActivity extends Activity {
         LinearLayout dock=horizontal();
         dock.setGravity(Gravity.CENTER);
         dock.setPadding(dp(8),dp(6),dp(8),dp(6));
-        dock.setBackground(round(0xee122334,0xff345060,23));
+        dock.setBackground(round(0xee122334,0xff53616d,23));
         addDock(dock,"⌂","HOME",ACCENT,()->{});
         addDock(dock,"⌘","XI",WHITE,()->openStudio(0,null));
         addDock(dock,">_","TERM",WHITE,this::openTerminal);
-        addDock(dock,"▤","FILES",WHITE,this::openFiles);
+        addDock(dock,"▤","ARCHIVOS",WHITE,this::openFiles);
         addDock(dock,"◎","WEB",WHITE,this::openBrowser);
         addDock(dock,"◈","CORE",WHITE,this::openMonitor);
         return dock;
@@ -491,13 +490,13 @@ public final class DesktopActivity extends Activity {
         }
         Dialog dialog=new Dialog(this);
         LinearLayout shell=vertical();
-        shell.setBackground(round(0xf6101124,0xff6a5ca9,16));
+        shell.setBackground(round(0xff232c36,0xff45545f,12));
         shell.setPadding(dp(1),dp(1),dp(1),dp(1));
 
         LinearLayout top=horizontal();
-        top.setBackground(round(0xfa11152a,0,15));
+        top.setBackground(round(0xff26313b,0,11));
         top.setPadding(dp(11),dp(7),dp(11),dp(7));
-        TextView dot=label("●",13,0xffa7a0ff,true);
+        TextView dot=label("●",12,0xffcfb8ab,true);
         top.addView(dot);
         LinearLayout name=vertical();name.setPadding(dp(12),0,0,0);
         name.addView(label(title,15,WHITE,true));
@@ -535,19 +534,19 @@ public final class DesktopActivity extends Activity {
         TextView close=label("×",25,WHITE,false);
         close.setGravity(Gravity.CENTER);
         close.setContentDescription("CERRAR "+title);
-        close.setBackground(round(0xff272139,0,9));
+        close.setBackground(round(0xff384451,0,7));
         top.addView(close,new LinearLayout.LayoutParams(dp(38),dp(34)));
         close.setOnClickListener(v->dialog.dismiss());
         shell.addView(top,new LinearLayout.LayoutParams(-1,dp(51)));
 
-        View line=new View(this);line.setBackgroundColor(0xff353456);
+        View line=new View(this);line.setBackgroundColor(0xff48535d);
         shell.addView(line,new LinearLayout.LayoutParams(-1,dp(1)));
 
         LinearLayout interior=horizontal();
         interior.setGravity(Gravity.TOP);
         LinearLayout sidebar=vertical();
         sidebar.setPadding(dp(8),dp(12),dp(8),dp(8));
-        sidebar.setBackgroundColor(0xf40b1022);
+        sidebar.setBackgroundColor(0xff1d2731);
         String[] names={"⌂  HOME","▤  FILES","⚙  SETTINGS",">_  TERMINAL","ⓘ  ABOUT"};
         Runnable[] go={this::openHome,this::openFiles,this::openSettings,
                        this::openTerminal,this::openAbout};
@@ -560,13 +559,13 @@ public final class DesktopActivity extends Activity {
                (title.equalsIgnoreCase("SETTINGS")&&pos==2)||
                (title.equalsIgnoreCase("TERMINAL")&&pos==3)){
                 entry.setTextColor(ACCENT);
-                entry.setBackground(round(0xff1d2048,0,9));
+                entry.setBackground(round(0xff344451,0,7));
             }
             margin(sidebar,entry,pos==0?0:3);
             entry.setOnClickListener(v->{dialog.dismiss();go[pos].run();});
         }
         interior.addView(sidebar,new LinearLayout.LayoutParams(dp(143),-1));
-        View verticalRule=new View(this);verticalRule.setBackgroundColor(0xff32335e);
+        View verticalRule=new View(this);verticalRule.setBackgroundColor(0xff46515d);
         interior.addView(verticalRule,new LinearLayout.LayoutParams(dp(1),-1));
         LinearLayout body=vertical();
         body.setPadding(dp(13),dp(10),dp(13),dp(10));
@@ -754,10 +753,10 @@ public final class DesktopActivity extends Activity {
     private void openTerminal(){
         WindowUi w=window("TERMINAL","XI SHELL  •  ejecución nativa");
         ScrollView scroll=new ScrollView(this);
-        TextView output=label(consoleHistory.toString(),12,0xffc2ecdf,false);
+        TextView output=label(consoleHistory.toString(),12,0xffdddacb,false);
         output.setTypeface(Typeface.MONOSPACE);
         output.setPadding(dp(12),dp(13),dp(12),dp(13));
-        output.setBackground(round(0xff06131d,0xff213649,14));
+        output.setBackground(round(0xff171f29,0xff425160,14));
         scroll.addView(output);
         w.content.addView(scroll,new LinearLayout.LayoutParams(-1,0,1f));
         space(w.content,11);
@@ -911,7 +910,7 @@ public final class DesktopActivity extends Activity {
         TextView state=label("Leyendo núcleo nativo...",12,MUTED,false);
         state.setTypeface(Typeface.MONOSPACE);
         state.setPadding(dp(13),dp(15),dp(13),dp(15));
-        state.setBackground(round(0xff07131e,0xff223f51,15));
+        state.setBackground(round(0xff1a2430,0xff475664,15));
         ScrollView scroll=new ScrollView(this);
         scroll.addView(state);
         w.content.addView(scroll,new LinearLayout.LayoutParams(-1,0,1f));
