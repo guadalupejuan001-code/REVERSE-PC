@@ -1,0 +1,200 @@
+name: REVERSE OS — native XI Android workstation
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'reverse-os-android/**'
+      - 'tests/reverse_os_transport.cpp'
+      - 'src/**'
+      - 'scripts/prepare-ether-compat.py'
+      - 'scripts/ether_integration.py'
+      - '.github/workflows/reverse-os-android.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'reverse-os-android/**'
+      - 'tests/reverse_os_transport.cpp'
+      - '.github/workflows/reverse-os-android.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android-os:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - name: Checkout REVERSE-PC, including XI extensions
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Checkout pinned Mundo X compute kernel
+        uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: e2778d962af22f6f1a0794058dd4685fc2573966
+          path: deps/mundo-x
+          persist-credentials: false
+      - name: JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Android NDK and emulator tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            "platforms;android-35" "build-tools;35.0.0" \
+            "ndk;27.2.12479018" "cmake;3.22.1" \
+            platform-tools emulator "system-images;android-35;default;x86_64"
+      - name: Generate verified local Ether extension
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C deps/mundo-x rev-parse HEAD)" = e2778d962af22f6f1a0794058dd4685fc2573966
+          python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+          test -s build/ether-compat/changes.diff
+      - name: Verify RVPC2 transport and real XI execution on Linux
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p reverse-os-evidence reverse-os-dist
+          g++ -std=c++17 -O1 -Wall -Wextra -Wpedantic \
+            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
+            tests/reverse_os_transport.cpp -o build/reverse_os_transport
+          ./build/reverse_os_transport | tee reverse-os-evidence/host-native-test.txt
+      - name: Build REVERSE OS native APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle -p reverse-os-android --no-daemon --stacktrace :app:assembleDebug \
+            > reverse-os-evidence/gradle.log 2>&1 || {
+              tail -160 reverse-os-evidence/gradle.log
+              exit 1
+            }
+          tail -35 reverse-os-evidence/gradle.log
+          cp reverse-os-android/app/build/outputs/apk/debug/app-debug.apk \
+            reverse-os-dist/REVERSE-OS-v0.1.apk
+      - name: Verify signed package and native libraries
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=reverse-os-dist/REVERSE-OS-v0.1.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK" \
+            > reverse-os-evidence/signature.txt
+          python3 - <<'PY'
+          import zipfile,hashlib,json,os,subprocess,re
+          apk="reverse-os-dist/REVERSE-OS-v0.1.apk"
+          cmd=os.environ["ANDROID_HOME"]+"/build-tools/35.0.0/aapt"
+          badging=subprocess.check_output([cmd,"dump","badging",apk],text=True)
+          perms=subprocess.check_output([cmd,"dump","permissions",apk],text=True)
+          assert "package: name='com.reversepc.os'" in badging,badging[:1000]
+          assert "uses-permission:" not in perms,perms
+          with zipfile.ZipFile(apk) as z:
+              assert z.testzip() is None
+              names=set(z.namelist())
+              for required in ("classes.dex","lib/arm64-v8a/libreverse_os.so",
+                               "lib/x86_64/libreverse_os.so"):
+                  assert required in names,required
+          b=open(apk,"rb").read()
+          obj={"package":"com.reversepc.os","bytes":len(b),"sha256":hashlib.sha256(b).hexdigest(),
+               "offline":True,"native_xi":True,"abis":["arm64-v8a","x86_64"]}
+          open("reverse-os-evidence/apk.json","w").write(json.dumps(obj,indent=2)+"\n")
+          print(json.dumps(obj))
+          PY
+      - name: Android 15 device boots the real XI runtime
+        timeout-minutes: 12
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PATH="$ANDROID_HOME/platform-tools:$PATH"
+          sudo chmod a+rw /dev/kvm
+          export ANDROID_AVD_HOME="$(mktemp -d /tmp/reverse-os-avd.XXXXXX)"
+          printf 'no\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd \
+            --force -n reverse-os-test -p "$ANDROID_AVD_HOME/reverse-os-test.avd" \
+            -k 'system-images;android-35;default;x86_64'
+          "$ANDROID_HOME/emulator/emulator" -avd reverse-os-test -no-window \
+            -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect \
+            -memory 2048 > reverse-os-evidence/emulator.log 2>&1 &
+          EMU_PID=$!
+          trap 'kill "$EMU_PID" 2>/dev/null || true' EXIT
+          adb start-server
+          ready=false
+          for i in $(seq 1 110); do
+            if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == 1 ]]; then
+              ready=true;break
+            fi
+            sleep 2
+          done
+          if [[ "$ready" != true ]]; then
+            tail -100 reverse-os-evidence/emulator.log;exit 1
+          fi
+          adb shell input keyevent 82
+          adb install -r reverse-os-dist/REVERSE-OS-v0.1.apk
+          adb logcat -c
+          adb shell am start -W -n com.reversepc.os/.MainActivity | tee reverse-os-evidence/launch.txt
+          sleep 5
+          adb shell uiautomator dump /sdcard/reverse-os-initial.xml >/dev/null
+          adb exec-out cat /sdcard/reverse-os-initial.xml > reverse-os-evidence/initial-ui.xml
+          python3 - <<'PY'
+          import re,subprocess,xml.etree.ElementTree as ET
+          root=ET.parse("reverse-os-evidence/initial-ui.xml").getroot()
+          nodes=list(root.iter("node"))
+          texts=[n.attrib.get("text","") for n in nodes]
+          joined=" ".join(texts)
+          assert "REVERSE  OS" in joined,joined[:1200]
+          assert "PROGRAMAS" in joined and "CONSOLA" in joined,joined[:1200]
+          assert "01_euclides.xi" in joined,joined[:1200]
+          matches=[n for n in nodes if "EJECUTAR" in n.attrib.get("text","")]
+          assert matches,joined[:1200]
+          nums=[int(x) for x in re.findall(r"\d+",matches[0].attrib["bounds"])]
+          assert len(nums)==4,nums
+          subprocess.run(["adb","shell","input","tap",str((nums[0]+nums[2])//2),
+                          str((nums[1]+nums[3])//2)],check=True)
+          PY
+          success=false
+          for i in $(seq 1 35); do
+            if adb logcat -d -s ReverseOS:I '*:S' | grep -q 'RUN_OK 01_euclides.xi'; then
+              success=true;break
+            fi
+            sleep 2
+          done
+          if [[ "$success" != true ]]; then
+            adb logcat -d > reverse-os-evidence/logcat.txt
+            tail -100 reverse-os-evidence/logcat.txt
+            echo 'Native XI program did not finish'
+            exit 1
+          fi
+          adb shell uiautomator dump /sdcard/reverse-os-result.xml >/dev/null
+          adb exec-out cat /sdcard/reverse-os-result.xml > reverse-os-evidence/result-ui.xml
+          adb shell screencap -p /sdcard/reverse-os-result.png
+          adb exec-out cat /sdcard/reverse-os-result.png > reverse-os-evidence/result.png
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          txt=" ".join(n.attrib.get("text","") for n in ET.parse(
+              "reverse-os-evidence/result-ui.xml").getroot().iter("node"))
+          assert "r0 = 21" in txt,txt[:2200]
+          assert "RVPC2 guardado" in txt,txt[:2200]
+          print("REVERSE_OS_ANDROID_XI_PASS gcd=21 state=RVPC2")
+          PY
+          adb shell run-as com.reversepc.os ls -l files/session.rvp | tee reverse-os-evidence/state-file.txt
+          adb logcat -d > reverse-os-evidence/logcat.txt
+          if grep -E 'FATAL EXCEPTION' reverse-os-evidence/logcat.txt | grep -q 'com.reversepc.os'; then
+            echo 'Application fatal error'
+            exit 1
+          fi
+      - name: Publish APK, execution logs and screenshot
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: REVERSE-OS-ANDROID-APK
+          path: |
+            reverse-os-dist/**
+            reverse-os-evidence/**
+          if-no-files-found: warn
+          retention-days: 30
