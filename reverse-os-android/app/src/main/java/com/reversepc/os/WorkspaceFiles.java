@@ -48,7 +48,7 @@ public final class WorkspaceFiles {
     public synchronized List<Entry> list(String path)throws IOException{
         List<Entry> result=new ArrayList<>();
         if(path.isEmpty()){
-            for(String name:ROOTS)result.add(new Entry(name,resolve(name)));
+            for(String name:ROOTS)result.add(new Entry(name,resolve(name),name));
         }else{
             File folder=resolve(path);
             if(!folder.isDirectory())throw new IOException("La carpeta no existe");
@@ -131,6 +131,15 @@ public final class WorkspaceFiles {
         if(!record.isFile())throw new IOException("No hay destino original disponible");
         String original=new String(Files.readAllBytes(record.toPath()),StandardCharsets.UTF_8);
         mutable(original);move(path,original);record.delete();
+    }
+    public synchronized void eraseTrash(String path)throws IOException{
+        if(!parent(path).equals("Papelera"))throw new IOException("Solo se eliminan definitivamente elementos de la papelera");
+        File target=resolve(path);
+        Files.walkFileTree(target.toPath(),new SimpleFileVisitor<Path>(){
+            @Override public FileVisitResult visitFile(Path file,java.nio.file.attribute.BasicFileAttributes attributes)throws IOException{Files.delete(file);return FileVisitResult.CONTINUE;}
+            @Override public FileVisitResult postVisitDirectory(Path directory,IOException error)throws IOException{if(error!=null)throw error;Files.delete(directory);return FileVisitResult.CONTINUE;}
+        });
+        Files.deleteIfExists(new File(meta,target.getName()+".origin").toPath());
     }
     public synchronized File image(String path)throws IOException{return resolve(path);}
     public synchronized long modified(String path)throws IOException{return resolve(path).lastModified();}
