@@ -287,9 +287,6 @@ public final class DesktopActivity extends Activity {
     // the genuine result produced by XI on the shared Ether RVPC2 state.
     private void openBbyq(){
         WindowUi w=window("BBY Q","Inteligencia simbólica · XI / Ether");
-        TextView heading=label("BBY Q",21,WHITE,true);
-        heading.setLetterSpacing(.05f);
-        w.content.addView(heading);
         TextView modelStatus=label("Abriendo el organismo XI…",11,ACCENT,false);
         margin(w.content,modelStatus,3);
         ScrollView scroll=new ScrollView(this);
@@ -353,36 +350,19 @@ public final class DesktopActivity extends Activity {
         inputRow.addView(send,sendParams);
         margin(w.content,inputRow,9);
 
-        LinearLayout operations=horizontal();
-        TextView teachWord=touch("+ PALABRA",10,false,()->bbyqTeachWord(modelStatus));
-        operations.addView(teachWord,new LinearLayout.LayoutParams(0,dp(36),1f));
-        TextView teachRelation=touch("+ RELACIÓN",10,false,()->bbyqTeachRelation(modelStatus));
-        LinearLayout.LayoutParams teachRelationP=new LinearLayout.LayoutParams(0,dp(36),1f);
-        teachRelationP.leftMargin=dp(7);
-        operations.addView(teachRelation,teachRelationP);
-        margin(w.content,operations,6);
-
-        TextView development=label("Desarrollo XI: preparando conceptos bilingües…",11,MUTED,false);
-        margin(w.content,development,6);
-        LinearLayout languages=horizontal();
-        TextView spanish=touch("ESPAÑOL",10,true,()->bbyqSelectLanguage(1,development));
-        languages.addView(spanish,new LinearLayout.LayoutParams(0,dp(36),1f));
+        TextView development=label("Preparando su vocabulario y conocimientos ES/EN…",
+            10,MUTED,false);
+        margin(w.content,development,5);
+        LinearLayout footer=horizontal();
+        footer.addView(touch("ESPAÑOL",10,false,()->bbyqSelectLanguage(1,development)),
+            new LinearLayout.LayoutParams(0,dp(33),1f));
         TextView english=touch("ENGLISH",10,false,()->bbyqSelectLanguage(2,development));
-        LinearLayout.LayoutParams englishP=new LinearLayout.LayoutParams(0,dp(36),1f);
-        englishP.leftMargin=dp(7);
-        languages.addView(english,englishP);
-        margin(w.content,languages,6);
-        LinearLayout learningTools=horizontal();
-        learningTools.addView(touch("COLORES Y MÁS",10,false,()->openBbyqLearningLab(development)),
-            new LinearLayout.LayoutParams(0,dp(36),1f));
-        TextView arithmetic=touch("SUMAS / RESTAS",10,false,
-            ()->bbyqPracticeMath(development));
-        LinearLayout.LayoutParams mathP=new LinearLayout.LayoutParams(0,dp(36),1f);
-        mathP.leftMargin=dp(7);learningTools.addView(arithmetic,mathP);
-        TextView newConcept=touch("+ CONCEPTO",10,false,()->bbyqTeachConcept(development));
-        LinearLayout.LayoutParams conceptP=new LinearLayout.LayoutParams(0,dp(36),1f);
-        conceptP.leftMargin=dp(7);learningTools.addView(newConcept,conceptP);
-        margin(w.content,learningTools,6);
+        LinearLayout.LayoutParams ep=new LinearLayout.LayoutParams(0,dp(33),1f);
+        ep.leftMargin=dp(5);footer.addView(english,ep);
+        TextView explore=touch("APRENDER",10,true,()->openBbyqLearningMenu(development));
+        LinearLayout.LayoutParams xp=new LinearLayout.LayoutParams(0,dp(33),1f);
+        xp.leftMargin=dp(5);footer.addView(explore,xp);
+        margin(w.content,footer,5);
 
         if(executing){modelStatus.setText("Otro programa XI está trabajando");return;}
         executing=true;
@@ -462,6 +442,33 @@ public final class DesktopActivity extends Activity {
         margin(parent,spinner,6);
         return spinner;
     }
+    private void openBbyqLearningMenu(TextView parentStatus){
+        WindowUi w=window("Aprender","Exploración adaptativa con la tecnología propia");
+        TextView intro=label("Experimenta con observaciones, símbolos y cantidades. "+
+            "Puedes enseñar palabras y relaciones nuevas, y volver a preguntar.",12,MUTED,false);
+        margin(w.content,intro,5);
+        ScrollView scroll=new ScrollView(this);
+        LinearLayout content=vertical();
+        content.setPadding(dp(5),dp(3),dp(5),dp(5));
+        String[] titles={"COLORES · ANIMALES · NÚMEROS","SUMAS Y RESTAS",
+                         "ENSEÑAR CONCEPTO BILINGÜE","ENSEÑAR PALABRA",
+                         "ENSEÑAR RELACIÓN"};
+        Runnable[] actions={()->openBbyqLearningLab(parentStatus),
+                            ()->bbyqPracticeMath(parentStatus),
+                            ()->bbyqTeachConcept(parentStatus),
+                            ()->bbyqTeachWord(parentStatus),
+                            ()->bbyqTeachRelation(parentStatus)};
+        for(int i=0;i<titles.length;i++){
+            final int index=i;
+            TextView button=touch(titles[i],11,i==0,()->{
+                w.dialog.dismiss();actions[index].run();
+            });
+            margin(content,button,i==0?0:7);
+        }
+        scroll.addView(content);
+        w.content.addView(scroll,new LinearLayout.LayoutParams(-1,0,1f));
+    }
+
     private void bbyqLearningCard(LinearLayout row,String marker,int swatch,
                                   int domain,int x,int y,int z,TextView response){
         LinearLayout tile=vertical();
