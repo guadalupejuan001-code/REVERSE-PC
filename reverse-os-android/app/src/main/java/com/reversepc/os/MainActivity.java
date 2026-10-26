@@ -62,7 +62,10 @@ public final class MainActivity extends Activity {
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         try {
             storage=new SessionStore(this);
+            tab=Math.max(0,Math.min(3,getIntent().getIntExtra("tab",0)));
             active=getPreferences(0).getString("last_file","01_euclides.xi");
+            String requested=getIntent().getStringExtra("program");
+            if(requested!=null && storage.listPrograms().contains(requested))active=requested;
             if(!storage.listPrograms().contains(active))active="01_euclides.xi";
             draft=storage.readProgram(active);
             terminal="REVERSE OS / XI MACHINE\nSistema local. Núcleo C++ de Ether y REVERSE-PC.\n"
@@ -127,15 +130,32 @@ public final class MainActivity extends Activity {
     }
     private void build(){
         base=column();base.setBackgroundColor(BG);
+        // Explicitly respect Android 15+ navigation insets: never put execute
+        // and console controls beneath the system gesture bar.
+        base.setOnApplyWindowInsetsListener((view,insets)->{
+            int bottom=android.os.Build.VERSION.SDK_INT>=30
+                ? insets.getInsets(android.view.WindowInsets.Type.navigationBars()).bottom
+                : insets.getSystemWindowInsetBottom();
+            base.setPadding(0,0,0,bottom);
+            return insets;
+        });
         setContentView(base);
         LinearLayout header=column();header.setPadding(dp(19),dp(18),dp(19),dp(15));
         header.setBackgroundColor(PANEL);
         LinearLayout first=row();
-        TextView name=label("REVERSE  OS",23,TEXT,true);
+        TextView home=label("‹",30,ACCENT,true);
+        home.setGravity(Gravity.CENTER);
+        home.setContentDescription("REGRESAR AL ESCRITORIO");
+        home.setBackground(shape(PANEL2,0));
+        LinearLayout.LayoutParams homeP=new LinearLayout.LayoutParams(dp(42),dp(43));
+        homeP.rightMargin=dp(10);
+        first.addView(home,homeP);
+        home.setOnClickListener(v->finish());
+        TextView name=label("XI STUDIO",23,TEXT,true);
         first.addView(name,new LinearLayout.LayoutParams(0,-2,1));
         TextView indicator=label(busy?"● EJECUTANDO":"● NÚCLEO ACTIVO",10,busy?0xffffc56b:ACCENT,true);
         first.addView(indicator);header.addView(first);
-        margin(header,label("ETHER  /  XI MACHINE  /  RVPC2     v0.1",11,MUTED,false),6);
+        margin(header,label("ETHER  /  XI MACHINE  /  RVPC2     v0.2",11,MUTED,false),6);
         base.addView(header);
         HorizontalScrollView navScroll=new HorizontalScrollView(this);navScroll.setHorizontalScrollBarEnabled(false);
         LinearLayout nav=row();nav.setPadding(dp(7),dp(8),dp(7),dp(8));
@@ -157,7 +177,7 @@ public final class MainActivity extends Activity {
             case 2:showFiles();break;
             default:showSystem();break;
         }
-        TextView footer=label("REVERSE-PC  ·  LOCAL  ·  SIN INTERNET",10,MUTED,true);
+        TextView footer=label("REVERSE-PC  ·  XI LOCAL  ·  RVPC2",10,MUTED,true);
         footer.setGravity(Gravity.CENTER);footer.setPadding(0,dp(12),0,dp(12));
         base.addView(footer);
     }
