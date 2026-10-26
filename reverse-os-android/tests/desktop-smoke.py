@@ -198,10 +198,13 @@ if not any(n.get('content-desc')=='ARCHIVO Documentos' for n in root.iter('node'
     click(text='↑',clickable=True)
 click(desc='ARCHIVO Documentos');click(desc='ARCHIVO Prueba escritorio.txt')
 enter(find(desc='CONTENIDO DEL DOCUMENTO'),'sobrevive al reinicio');time.sleep(1)
+saved_editor_bounds=box(find(desc='VENTANA Editor'))
 adb('shell','am','force-stop',PACKAGE)
 adb('shell','am','start','-W','-n',COMPONENT)
 time.sleep(4)
 assert find(desc='CONTENIDO DEL DOCUMENTO',timeout=25).get('text')=='sobrevive al reinicio'
+restored_editor_bounds=box(find(desc='VENTANA Editor'))
+assert max(abs(a-b) for a,b in zip(saved_editor_bounds,restored_editor_bounds))<=4,(saved_editor_bounds,restored_editor_bounds)
 assert b'O 42 21' in file('session.rvp')
 log_check('PROCESS_RESTART_WINDOW_SESSION_DRAFT_AND_ETHER_PERSISTENCE_PASS')
 screenshot('restored-workspace.png')
