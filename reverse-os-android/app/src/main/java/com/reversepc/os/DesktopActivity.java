@@ -529,7 +529,7 @@ public final class DesktopActivity extends Activity {
         LinearLayout animals=horizontal();
         bbyqLearningCard(animals,"🐈",ACCENT,2,4,0,0,response);
         bbyqLearningCard(animals,"🐕",ACCENT,2,4,0,1,response);
-        bbyqLearningCard(animals,"🐦",ACCENT,2,2,0,response);
+        bbyqLearningCard(animals,"🐦",ACCENT,2,2,2,0,response);
         bbyqLearningCard(animals,"🐟",ACCENT,2,0,0,1,response);
         panel.addView(animals);
 
