@@ -4,13 +4,9 @@ import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
-import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.text.SpannableString;
-import android.text.Spanned;
-import android.text.style.ForegroundColorSpan;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.View;
@@ -20,38 +16,40 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 /**
- * The first visible frame stays black. The boot animation contains no JNI,
- * graphics engine dependency or expensive disk initialization.
- * It hands off to the horizontal OpenGL desktop independently of XI readiness.
+ * Quiet REVERSE boot. Never touches XI, OpenGL, files or JNI until the
+ * desktop has been drawn. The first platform and app frames are both black.
  */
 public final class BootActivity extends Activity {
     private final Handler handler=new Handler(Looper.getMainLooper());
-    private final Runnable go=()->{
+    private final Runnable next=()->{
         if(isFinishing()||isDestroyed())return;
-        try{
+        try {
             startActivity(new Intent(this,DesktopActivity.class));
             overridePendingTransition(android.R.anim.fade_in,android.R.anim.fade_out);
             finish();
-        }catch(Throwable error){
-            Log.e("ReverseBoot","Desktop failed",error);
-            TextView failure=new TextView(this);
-            failure.setText("REVERSE OS\n\nError al abrir escritorio:\n"+error.getMessage());
-            failure.setTextColor(0xffffaaaa);
-            failure.setPadding(35,40,35,35);
-            failure.setBackgroundColor(Color.BLACK);
-            setContentView(failure);
+        } catch (Throwable failure) {
+            Log.e("ReverseBoot","Could not launch desktop",failure);
+            TextView error=new TextView(this);
+            error.setText("REVERSE\nNo se pudo abrir el escritorio.\n"+
+                          failure.getMessage());
+            error.setTextColor(0xffffbbbb);
+            error.setBackgroundColor(Color.BLACK);
+            error.setGravity(Gravity.CENTER);
+            setContentView(error);
         }
     };
-    private int dp(float n){return Math.round(n*getResources().getDisplayMetrics().density);}
-    private TextView title(String text,int size,int color,boolean bold){
-        TextView result=new TextView(this);
-        result.setText(text);
-        result.setTextSize(size);
-        result.setTextColor(color);
-        result.setGravity(Gravity.CENTER);
-        result.setTypeface(Typeface.create(bold?"sans-serif-light":"sans-serif",
-                                          bold?Typeface.BOLD:Typeface.NORMAL));
-        return result;
+    private int dp(float a){
+        return Math.round(a*getResources().getDisplayMetrics().density);
+    }
+    private TextView text(String value,int size,int color,boolean bold){
+        TextView view=new TextView(this);
+        view.setText(value);
+        view.setTextSize(size);
+        view.setTextColor(color);
+        view.setGravity(Gravity.CENTER);
+        view.setTypeface(Typeface.create(bold?"sans-serif-medium":"sans-serif",
+                                         Typeface.NORMAL));
+        return view;
     }
     @Override public void onCreate(Bundle saved){
         super.onCreate(saved);
@@ -60,60 +58,41 @@ public final class BootActivity extends Activity {
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                              WindowManager.LayoutParams.FLAG_FULLSCREEN);
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN);
-        FrameLayout root=new FrameLayout(this);
-        root.setBackgroundColor(Color.BLACK);
-        LinearLayout stack=new LinearLayout(this);
-        stack.setGravity(Gravity.CENTER);
-        stack.setOrientation(LinearLayout.VERTICAL);
-        stack.setPadding(dp(15),0,dp(15),0);
-        TextView lead=title("welcome....",16,0xffd6d5ea,false);
-        lead.setLetterSpacing(.30f);
-        stack.addView(lead);
-        TextView name=title("REVERSE.",39,0xffc1b8ff,true);
-        name.setLetterSpacing(.36f);
-        name.setShadowLayer(dp(12),0,0,0xff6d44ff);
-        SpannableString gradient=new SpannableString("REVERSE.");
-        int[] tones={0xff73b4ff,0xffa2aaff,0xffd3a4ff,0xffeee6ff,
-                     0xffcfb3ff,0xffa3acff,0xffff8bef,0xffff80da};
-        for(int i=0;i<gradient.length();i++){
-            gradient.setSpan(new ForegroundColorSpan(tones[i]),i,i+1,
-                             Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        }
-        name.setText(gradient);
-        LinearLayout.LayoutParams titleParams=new LinearLayout.LayoutParams(-1,-2);
-        titleParams.topMargin=dp(10);
-        stack.addView(name,titleParams);
-        View line=new View(this);
-        GradientDrawable glow=new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-            new int[]{0x00000000,0xff6858ff,0xff76abff,0x00000000});
-        line.setBackground(glow);
-        LinearLayout.LayoutParams rule=new LinearLayout.LayoutParams(dp(280),dp(2));
-        rule.topMargin=dp(26);
-        stack.addView(line,rule);
-        TextView sub=title("ETHER  /  XI  /  PERSONAL COMPUTER",9,0xff626980,false);
-        sub.setLetterSpacing(.19f);
-        LinearLayout.LayoutParams subParams=new LinearLayout.LayoutParams(-1,-2);
-        subParams.topMargin=dp(19);
-        stack.addView(sub,subParams);
-        root.addView(stack,new FrameLayout.LayoutParams(-1,-2,Gravity.CENTER));
-        TextView foot=title("REVERSE SYSTEM • INITIALIZING",9,0xff4b5371,false);
-        foot.setLetterSpacing(.16f);
-        FrameLayout.LayoutParams footParams=new FrameLayout.LayoutParams(
-            -1,dp(30),Gravity.BOTTOM);
-        footParams.bottomMargin=dp(16);
-        root.addView(foot,footParams);
-        setContentView(root);
+        FrameLayout backdrop=new FrameLayout(this);
+        backdrop.setBackgroundColor(Color.BLACK);
 
-        lead.setAlpha(0f);name.setAlpha(0f);line.setScaleX(0f);sub.setAlpha(0f);
-        lead.animate().alpha(1f).setStartDelay(130).setDuration(610).start();
-        name.animate().alpha(1f).setStartDelay(330).setDuration(950).start();
-        line.animate().scaleX(1f).setStartDelay(650).setDuration(720).start();
-        sub.animate().alpha(1f).setStartDelay(870).setDuration(570).start();
+        LinearLayout center=new LinearLayout(this);
+        center.setOrientation(LinearLayout.VERTICAL);
+        center.setGravity(Gravity.CENTER);
+        TextView welcome=text("welcome....",16,0xffb7bdc5,false);
+        center.addView(welcome);
+        TextView brand=text("REVERSE.",35,0xfff0eee9,true);
+        brand.setLetterSpacing(.11f);
+        LinearLayout.LayoutParams title=new LinearLayout.LayoutParams(-1,-2);
+        title.topMargin=dp(7);
+        center.addView(brand,title);
+        View accent=new View(this);
+        accent.setBackgroundColor(0xffa7bcd0);
+        LinearLayout.LayoutParams rule=new LinearLayout.LayoutParams(dp(54),dp(2));
+        rule.topMargin=dp(22);
+        center.addView(accent,rule);
+        backdrop.addView(center,new FrameLayout.LayoutParams(-1,-2,Gravity.CENTER));
+
+        TextView foot=text("REVERSE OS",10,0xff7e8993,false);
+        FrameLayout.LayoutParams footer=new FrameLayout.LayoutParams(-1,dp(36),Gravity.BOTTOM);
+        footer.bottomMargin=dp(12);
+        backdrop.addView(foot,footer);
+        setContentView(backdrop);
+
+        welcome.setAlpha(0f);brand.setAlpha(0f);accent.setAlpha(0f);
+        welcome.animate().alpha(1f).setDuration(500).start();
+        brand.animate().alpha(1f).setStartDelay(220).setDuration(650).start();
+        accent.animate().alpha(1f).setStartDelay(430).setDuration(650).start();
         Log.i("ReverseBoot","WELCOME_SCREEN_SHOWN welcome.... REVERSE.");
-        handler.postDelayed(go,2800L);
+        handler.postDelayed(next,2500L);
     }
     @Override protected void onDestroy(){
-        handler.removeCallbacks(go);
+        handler.removeCallbacks(next);
         super.onDestroy();
     }
 }
