@@ -237,7 +237,7 @@ public final class DesktopActivity extends Activity {
         addDesktopShortcut(row1,">_","Terminal",this::openTerminal);
         shortcutGrid.addView(row1);
         LinearLayout row2=horizontal();
-        addDesktopShortcut(row2,"▤","ARCHIVOS",this::openFiles);
+        addDesktopShortcut(row2,"▤","Archivos",this::openFiles);
         addDesktopShortcut(row2,"◎","Navegador",this::openBrowser);
         shortcutGrid.addView(row2);
         LinearLayout row3=horizontal();
@@ -300,7 +300,7 @@ public final class DesktopActivity extends Activity {
         taskbar.setBackground(round(0xff1c2631,0xff364651,8));
         addTaskButton(taskbar,"▦","INICIO",this::openStartMenu);
         addTaskButton(taskbar,"⌕","BUSCAR",this::openSearch);
-        addTaskButton(taskbar,"▤","ARCHIVOS",this::openFiles);
+        addTaskButton(taskbar,"▤","Archivos",this::openFiles);
         addTaskButton(taskbar,">_","TERM",this::openTerminal);
 
         LinearLayout center=horizontal();
@@ -452,7 +452,7 @@ public final class DesktopActivity extends Activity {
         addDock(dock,"⌂","HOME",ACCENT,()->{});
         addDock(dock,"⌘","XI",WHITE,()->openStudio(0,null));
         addDock(dock,">_","TERM",WHITE,this::openTerminal);
-        addDock(dock,"▤","ARCHIVOS",WHITE,this::openFiles);
+        addDock(dock,"▤","Archivos",WHITE,this::openFiles);
         addDock(dock,"◎","WEB",WHITE,this::openBrowser);
         addDock(dock,"◈","CORE",WHITE,this::openMonitor);
         return dock;
