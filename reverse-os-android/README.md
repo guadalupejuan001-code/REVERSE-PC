@@ -1,4 +1,4 @@
-# REVERSE OS v0.5 — escritorio natural con BBY Q en XI
+# REVERSE OS v0.6 — escritorio con desarrollo bilingüe de BBY Q en XI
 
 **REVERSE OS** es una computadora virtual basada en XI y Ether dentro de Android.
 El entorno adopta patrones convencionales de Windows y macOS: Inicio, búsqueda,
@@ -80,6 +80,66 @@ terceros ni ventaja cuántica demostrada. El intérprete original XI
 aún emplea bootstrap C++; MX es la dirección del lenguaje fuente
 canónico, sin cadena autocompilada comprobada.
 
+## E010 — Enseñanza adaptativa de conceptos en el escritorio
+
+BBY Q ya no se limita a resolver una pregunta de tres palabras.
+Al abrirlo, **el mismo programa XI** incorpora un módulo de
+desarrollo por competencias dentro del mismo RVPC2, sin borrar las
+cuatro hipótesis anteriores ni el vocabulario de E009.
+
+La ventana muestra **ESPAÑOL / ENGLISH**. Cambiar de idioma altera
+una preferencia persistente que `school/name.xi` utiliza para
+expresar **el mismo concepto aprendido**, sin instalar dos modelos.
+
+Desde el botón **APRENDER** se abre un menú de exploración.
+La sección **COLORES · ANIMALES · NÚMEROS** presenta tarjetas visuales:
+
+- Tonalidades RGB que no son exactamente los colores del entrenamiento.
+- Pictogramas de animales asociados a rasgos simbólicos
+  (patas, alas y ladrido), **no análisis visual de fotografías**.
+- Figuras geométricas representadas por símbolos, con rasgos
+  numéricos enseñados de manera explícita.
+- Cantidades desde cero hasta nueve, con sus nombres en ambos idiomas.
+
+El menú **SUMAS Y RESTAS** aplica operaciones que XI aprendió comparando
+consecuencias de juntar o quitar conjuntos. Las salidas, incluidas
+abstenciones `?`, proceden de `calculate.xi` + `name.xi`.
+
+**+ CONCEPTO** enseña una observación con tres rasgos y dos nombres
+(ES/EN), conservada en Ether. **SENSOR LIBRE** permite introducir
+otros valores y ver si el reconocimiento se mantiene o se abstiene.
+
+### Instalación y examen transaccionales
+
+El primer arranque de E010, después de la etapa E009, utiliza
+`BbyqSchoolBridge` como **transporte y evaluación Android**,
+pero ejecuta el aprendizaje únicamente mediante los archivos XI
+originales `school/{birth,learn,recognize,name,grade,next,set-language,
+learn-operation,calculate,grade-math,audit}.xi`.
+
+La lección de 22 conceptos se repite dos veces. Una batería aparte
+evalúa **30 observaciones diferentes en español y 30 en inglés**,
+incluidos cuatro desconocidos por idioma. Si aprueba, se le
+enseñan consecuencias de dos tipos de operación y se evalúan
+**10 casos matemáticos distintos**. Al terminar, se ejecutan
+auditorías propias E010, E009 y E008. **Solo si todo aprueba**
+se publica una escritura atómica de `session.rvp`.
+Si hay error, el estado anterior se conserva.
+
+Los algoritmos y datos se copian sin modificarlos desde la
+etapa E010 validada de BBY-Q, fijada en el commit
+`1d621ba9875435fd46bdbc13b7459c8c62faef9b` al construir
+el APK. Android Java no interpreta semánticamente los nombres ni
+realiza cálculos por la IA: presenta tarjetas, genera experiencias
+de entrada y muestra lo producido por la máquina XI.
+
+**Límite:** este programa trabaja con observaciones codificadas;
+los pictogramas son interfaz humana, no una cámara conectada al
+modelo. La traducción está acotada a palabras enseñadas, no
+traducción libre de español a inglés; tampoco existe síntesis
+de voz propia. El aprendizaje de conciencia humana es una futura
+materia conceptual, no evidencia de conciencia de BBY Q.
+
 ## Tecnología que sí se utiliza
 
 La lógica de XI se ejecuta con el `QuantumRuntime` propio del repositorio,
@@ -97,8 +157,8 @@ la GPU, el teclado y el kernel.
 
 ## Instalación y prueba
 
-La compilación CI se llama `REVERSE OS v0.5 — native BBY Q XI desktop`.
-Produce el artefacto `REVERSE-OS-v0.5-BBYQ.apk` firmado en modo desarrollo para
+La compilación CI se llama `REVERSE OS v0.6 — BBY Q bilingual adaptive XI`.
+Produce el artefacto `REVERSE-OS-v0.6-BBYQ.apk` firmado en modo desarrollo para
 `arm64-v8a` (Samsung A16) y `x86_64` (emulador Android 15).
 
 El pipeline valida firma, bibliotecas, arranque horizontal, cambio de

@@ -1,4 +1,4 @@
-name: REVERSE OS v0.5 — native BBY Q XI desktop
+name: REVERSE OS v0.6 — BBY Q bilingual adaptive XI
 on:
   pull_request:
     branches: [main, feature/reverse-os-landscape-ether-motion-20261026]
@@ -10,7 +10,7 @@ on:
       - 'scripts/ether_integration.py'
       - '.github/workflows/reverse-os-android.yml'
   push:
-    branches: [main, feature/reverse-os-bbyq-native-integration-20261026]
+    branches: [main, feature/reverse-os-bbyq-native-integration-20261026, feature/reverse-os-bbyq-bilingual-development-20261026]
     paths:
       - 'reverse-os-android/**'
       - 'tests/reverse_os_transport.cpp'
@@ -39,7 +39,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: guadalupejuan001-code/BBY-Q
-          ref: 7dfa6c31247cf609128db78908313a6ce41c0b80
+          ref: 1d621ba9875435fd46bdbc13b7459c8c62faef9b
           path: deps/bbyq
           persist-credentials: false
       - name: Bundle the real BBY Q XI programs and observational curriculum
@@ -47,7 +47,7 @@ jobs:
         run: |
           set -euo pipefail
           bash reverse-os-android/scripts/prepare-bbyq.sh deps/bbyq
-          test "$(find reverse-os-android/app/src/main/assets/bbyq -name '*.xi' | wc -l)" -eq 24
+          test "$(find reverse-os-android/app/src/main/assets/bbyq -name '*.xi' | wc -l)" -eq 35
       - name: JDK 17
         uses: actions/setup-java@v4
         with:
@@ -92,22 +92,22 @@ jobs:
             }
           tail -35 reverse-os-evidence/gradle.log
           cp reverse-os-android/app/build/outputs/apk/debug/app-debug.apk \
-            reverse-os-dist/REVERSE-OS-v0.5-BBYQ.apk
+            reverse-os-dist/REVERSE-OS-v0.6-BBYQ.apk
       - name: Verify signed package and native libraries
         shell: bash
         run: |
           set -euo pipefail
-          APK=reverse-os-dist/REVERSE-OS-v0.5-BBYQ.apk
+          APK=reverse-os-dist/REVERSE-OS-v0.6-BBYQ.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$APK" \
             > reverse-os-evidence/signature.txt
           python3 - <<'PY'
           import zipfile,hashlib,json,os,subprocess,re
-          apk="reverse-os-dist/REVERSE-OS-v0.5-BBYQ.apk"
+          apk="reverse-os-dist/REVERSE-OS-v0.6-BBYQ.apk"
           cmd=os.environ["ANDROID_HOME"]+"/build-tools/35.0.0/aapt"
           badging=subprocess.check_output([cmd,"dump","badging",apk],text=True)
           perms=subprocess.check_output([cmd,"dump","permissions",apk],text=True)
           assert "package: name='com.reversepc.os'" in badging,badging[:1000]
-          assert "versionCode='5'" in badging,badging[:1000]
+          assert "versionCode='6'" in badging,badging[:1000]
           assert "android.permission.INTERNET" in perms,perms
           assert "android.permission.READ_EXTERNAL_STORAGE" not in perms,perms
           assert "android.permission.WRITE_EXTERNAL_STORAGE" not in perms,perms
@@ -121,6 +121,11 @@ jobs:
                                "assets/bbyq/e008/bank-store.xi",
                                "assets/bbyq/language/readline.xi",
                                "assets/bbyq/language/speak.xi",
+                               "assets/bbyq/school/learn.xi",
+                               "assets/bbyq/school/calculate.xi",
+                               "assets/bbyq/school/set-language.xi",
+                               "assets/bbyq/school/data/observations-v1.psv",
+                               "assets/bbyq/school/data/holdout-v1.psv",
                                "assets/bbyq/curriculum-v1.txt"):
                   assert required in names,required
           b=open(apk,"rb").read()
@@ -157,7 +162,7 @@ jobs:
             tail -100 reverse-os-evidence/emulator.log;exit 1
           fi
           adb shell input keyevent 82
-          adb install -r reverse-os-dist/REVERSE-OS-v0.5-BBYQ.apk
+          adb install -r reverse-os-dist/REVERSE-OS-v0.6-BBYQ.apk
           adb logcat -c
           adb shell am start -W -n com.reversepc.os/.BootActivity \
             | tee reverse-os-evidence/launch.txt
@@ -311,13 +316,30 @@ jobs:
             grep -i 'BbyqOS\|BBYQ\|ReverseDesktop' reverse-os-evidence/logcat.txt | tail -70
             echo 'BBY Q XI learning did not complete in Android emulator';exit 1
           fi
+          school_ready=false
+          for i in $(seq 1 140); do
+            if adb logcat -d -s BBYQDevelopment:I '*:S' | grep -q 'BBYQ_SCHOOL_INSTALL_OK'; then
+              school_ready=true;break
+            fi
+            if adb logcat -d -s ReverseDesktop:E '*:S' | grep -q 'BBYQ_INSTALL_FAILED'; then
+              echo 'BBY Q bilingual installation failed';exit 1
+            fi
+            sleep 2
+          done
+          if [[ "$school_ready" != true ]];then
+            adb logcat -d > reverse-os-evidence/logcat.txt
+            grep -i 'BBYQDevelopment\|BBYQ' reverse-os-evidence/logcat.txt | tail -65
+            echo 'Bilingual XI exam not completed';exit 1
+          fi
           adb shell uiautomator dump /sdcard/bbyq-window.xml > /dev/null
           adb exec-out cat /sdcard/bbyq-window.xml > reverse-os-evidence/bbyq-window.xml
           python3 - <<'PY'
           import re,subprocess,xml.etree.ElementTree as ET
           nodes=list(ET.parse("reverse-os-evidence/bbyq-window.xml").getroot().iter("node"))
           text=" ".join(n.attrib.get("text","") for n in nodes)
-          assert "BBY Q" in text and "4 bancos Ether" in text,text[:2500]
+          assert "BBY Q" in text and "22 conceptos" in text,text[:2500]
+          assert "ESPAÑOL" in text and "ENGLISH" in text,text[:2500]
+          assert "22 conceptos" in text,text[:2500]
           field=next((n for n in nodes if n.attrib.get("class")=="android.widget.EditText"),None)
           assert field is not None,text[:2500]
           bounds=[int(v) for v in re.findall(r"\d+",field.attrib["bounds"])]

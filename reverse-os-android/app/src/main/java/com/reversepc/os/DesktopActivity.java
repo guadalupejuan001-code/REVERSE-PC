@@ -287,9 +287,6 @@ public final class DesktopActivity extends Activity {
     // the genuine result produced by XI on the shared Ether RVPC2 state.
     private void openBbyq(){
         WindowUi w=window("BBY Q","Inteligencia simbólica · XI / Ether");
-        TextView heading=label("BBY Q",21,WHITE,true);
-        heading.setLetterSpacing(.05f);
-        w.content.addView(heading);
         TextView modelStatus=label("Abriendo el organismo XI…",11,ACCENT,false);
         margin(w.content,modelStatus,3);
         ScrollView scroll=new ScrollView(this);
@@ -353,14 +350,19 @@ public final class DesktopActivity extends Activity {
         inputRow.addView(send,sendParams);
         margin(w.content,inputRow,9);
 
-        LinearLayout operations=horizontal();
-        TextView teachWord=touch("+ PALABRA",10,false,()->bbyqTeachWord(modelStatus));
-        operations.addView(teachWord,new LinearLayout.LayoutParams(0,dp(36),1f));
-        TextView teachRelation=touch("+ RELACIÓN",10,false,()->bbyqTeachRelation(modelStatus));
-        LinearLayout.LayoutParams teachRelationP=new LinearLayout.LayoutParams(0,dp(36),1f);
-        teachRelationP.leftMargin=dp(7);
-        operations.addView(teachRelation,teachRelationP);
-        margin(w.content,operations,6);
+        TextView development=label("Preparando su vocabulario y conocimientos ES/EN…",
+            10,MUTED,false);
+        margin(w.content,development,5);
+        LinearLayout footer=horizontal();
+        footer.addView(touch("ESPAÑOL",10,false,()->bbyqSelectLanguage(1,development)),
+            new LinearLayout.LayoutParams(0,dp(33),1f));
+        TextView english=touch("ENGLISH",10,false,()->bbyqSelectLanguage(2,development));
+        LinearLayout.LayoutParams ep=new LinearLayout.LayoutParams(0,dp(33),1f);
+        ep.leftMargin=dp(5);footer.addView(english,ep);
+        TextView explore=touch("APRENDER",10,true,()->openBbyqLearningMenu(development));
+        LinearLayout.LayoutParams xp=new LinearLayout.LayoutParams(0,dp(33),1f);
+        xp.leftMargin=dp(5);footer.addView(explore,xp);
+        margin(w.content,footer,5);
 
         if(executing){modelStatus.setText("Otro programa XI está trabajando");return;}
         executing=true;
@@ -372,13 +374,20 @@ public final class DesktopActivity extends Activity {
                     store,message->runOnUiThread(()->{
                         if(w.dialog.isShowing())modelStatus.setText(message);
                     }));
+                BbyqSchoolBridge.Status school=BbyqSchoolBridge.install(
+                    getApplicationContext(),store,message->runOnUiThread(()->{
+                        if(w.dialog.isShowing())development.setText(message);
+                    }));
                 runOnUiThread(()->{
                     executing=false;
                     if(!w.dialog.isShowing())return;
                     modelStatus.setText(status.text());
+                    development.setText(school.description()+" · Idioma: "+
+                        (school.language==1?"Español":"English"));
                     question.setEnabled(true);
                     addBbyqMessage(history,scroll,
-                        "XI · Modelo verificado en Ether. Puedes preguntar o enseñar.",ACCENT);
+                        "XI · Inteligencia y conocimiento validados en Ether. "+
+                        "Preguntar, aprender, reconocer o calcular.",ACCENT);
                 });
             }catch(Throwable error){
                 Log.e(LOG,"BBYQ_INSTALL_FAILED",error);
@@ -400,6 +409,277 @@ public final class DesktopActivity extends Activity {
         margin(history,line,6);
         scroll.post(()->scroll.fullScroll(View.FOCUS_DOWN));
     }
+    private void bbyqSelectLanguage(int choice,TextView status) {
+        if(executing){info("XI está trabajando");return;}
+        executing=true;
+        status.setText("Cambiando idioma en memoria Ether…");
+        engine.execute(()->{
+            try{
+                if(store==null)throw new IOException("REVERSE-PC no disponible");
+                BbyqSchoolBridge.Status school=BbyqSchoolBridge.setLanguage(
+                    getApplicationContext(),store,choice);
+                runOnUiThread(()->{
+                    executing=false;
+                    status.setText(school.description()+" · Idioma: "+
+                        (choice==1?"Español":"English"));
+                });
+            }catch(Throwable error){
+                runOnUiThread(()->{
+                    executing=false;status.setText("Idioma: "+error.getMessage());
+                });
+            }
+        });
+    }
+    private android.widget.Spinner bbyqDomainSpinner(LinearLayout parent){
+        String[] names={"Color RGB","Animal: patas, alas, ladrido",
+                        "Figura: esquinas, líneas, curvas","Cantidad: 0 a 9"};
+        android.widget.Spinner spinner=new android.widget.Spinner(this);
+        android.widget.ArrayAdapter<String> adapter=new android.widget.ArrayAdapter<>(
+            this,android.R.layout.simple_spinner_item,names);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinner.setAdapter(adapter);
+        spinner.setBackground(round(CARD_BRIGHT,0xff475969,8));
+        margin(parent,spinner,6);
+        return spinner;
+    }
+    private void openBbyqLearningMenu(TextView parentStatus){
+        WindowUi w=window("Aprender","Exploración adaptativa con la tecnología propia");
+        TextView intro=label("Experimenta con observaciones, símbolos y cantidades. "+
+            "Puedes enseñar palabras y relaciones nuevas, y volver a preguntar.",12,MUTED,false);
+        margin(w.content,intro,5);
+        ScrollView scroll=new ScrollView(this);
+        LinearLayout content=vertical();
+        content.setPadding(dp(5),dp(3),dp(5),dp(5));
+        String[] titles={"COLORES · ANIMALES · NÚMEROS","SUMAS Y RESTAS",
+                         "ENSEÑAR CONCEPTO BILINGÜE","ENSEÑAR PALABRA",
+                         "ENSEÑAR RELACIÓN"};
+        Runnable[] actions={()->openBbyqLearningLab(parentStatus),
+                            ()->bbyqPracticeMath(parentStatus),
+                            ()->bbyqTeachConcept(parentStatus),
+                            ()->bbyqTeachWord(parentStatus),
+                            ()->bbyqTeachRelation(parentStatus)};
+        for(int i=0;i<titles.length;i++){
+            final int index=i;
+            TextView button=touch(titles[i],11,i==0,()->{
+                w.dialog.dismiss();actions[index].run();
+            });
+            margin(content,button,i==0?0:7);
+        }
+        scroll.addView(content);
+        w.content.addView(scroll,new LinearLayout.LayoutParams(-1,0,1f));
+    }
+
+    private void bbyqLearningCard(LinearLayout row,String marker,int swatch,
+                                  int domain,int x,int y,int z,TextView response){
+        LinearLayout tile=vertical();
+        tile.setPadding(dp(5),dp(6),dp(5),dp(6));
+        tile.setGravity(Gravity.CENTER);
+        tile.setBackground(round(0xff273542,0xff465663,9));
+        TextView shape=label(marker,20,domain==1?swatch:WHITE,true);
+        shape.setGravity(Gravity.CENTER);
+        if(domain==1)shape.setBackground(round(swatch,0,7));
+        tile.addView(shape,new LinearLayout.LayoutParams(-1,dp(30)));
+        TextView title=label("EXPLORAR",8,MUTED,false);
+        title.setGravity(Gravity.CENTER);
+        margin(tile,title,4);
+        tile.setContentDescription("Observación XI "+domain+" "+x+","+y+","+z);
+        tile.setClickable(true);
+        tile.setOnClickListener(v->{
+            if(executing){info("XI está ocupado");return;}
+            executing=true;
+            response.setText("BBY Q está identificando la observación…");
+            engine.execute(()->{
+                try{
+                    String word=BbyqSchoolBridge.identify(getApplicationContext(),
+                        store,domain,x,y,z);
+                    runOnUiThread(()->{
+                        executing=false;
+                        response.setText("BBY Q · "+word+
+                            ("?".equals(word)?" · aún necesita aprender":""));
+                    });
+                }catch(Throwable error){
+                    runOnUiThread(()->{
+                        executing=false;
+                        response.setText("Sin clasificación: "+error.getMessage());
+                    });
+                }
+            });
+        });
+        LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(0,dp(68),1f);
+        params.setMargins(dp(3),dp(3),dp(3),dp(3));
+        row.addView(tile,params);
+    }
+    private void openBbyqLearningLab(TextView parentStatus){
+        WindowUi w=window("Explorar","BBY Q · laboratorio de observaciones XI");
+        TextView caption=label("Aprendizaje adaptativo: observa y compara. "+
+            "El nombre viene de las asociaciones guardadas por BBY Q, "+
+            "no de estos botones.",12,MUTED,false);
+        margin(w.content,caption,2);
+        TextView response=label("Toca una tarjeta. Puedes cambiar ES / EN "+
+            "en la ventana de BBY Q.",14,ACCENT,true);
+        response.setPadding(dp(10),dp(9),dp(10),dp(9));
+        response.setBackground(round(CARD,0xff536979,7));
+        margin(w.content,response,7);
+        ScrollView scroll=new ScrollView(this);
+        LinearLayout panel=vertical();
+        panel.setPadding(dp(2),dp(3),dp(2),dp(10));
+
+        margin(panel,label("COLORES  ·  RGB observado",12,WHITE,true),8);
+        LinearLayout colors=horizontal();
+        bbyqLearningCard(colors,"●",0xffe82b20,1,232,43,30,response);
+        bbyqLearningCard(colors,"●",0xff2149d1,1,33,48,202,response);
+        bbyqLearningCard(colors,"●",0xff32be34,1,45,191,40,response);
+        bbyqLearningCard(colors,"●",0xfff0df22,1,233,222,35,response);
+        panel.addView(colors);
+
+        margin(panel,label("ANIMALES  ·  rasgos simbólicos",12,WHITE,true),9);
+        LinearLayout animals=horizontal();
+        bbyqLearningCard(animals,"🐈",ACCENT,2,4,0,0,response);
+        bbyqLearningCard(animals,"🐕",ACCENT,2,4,0,1,response);
+        bbyqLearningCard(animals,"🐦",ACCENT,2,2,2,0,response);
+        bbyqLearningCard(animals,"🐟",ACCENT,2,0,0,1,response);
+        panel.addView(animals);
+
+        margin(panel,label("FIGURAS  ·  esquinas y curvas",12,WHITE,true),9);
+        LinearLayout shapes=horizontal();
+        bbyqLearningCard(shapes,"○",ACCENT,3,0,0,1,response);
+        bbyqLearningCard(shapes,"□",ACCENT,3,4,4,0,response);
+        bbyqLearningCard(shapes,"☆",ACCENT,3,10,10,0,response);
+        bbyqLearningCard(shapes,"♡",ACCENT,3,0,0,2,response);
+        panel.addView(shapes);
+
+        margin(panel,label("CANTIDADES  ·  contar objetos",12,WHITE,true),9);
+        for(int start=0;start<10;start+=5){
+            LinearLayout counts=horizontal();
+            for(int n=start;n<start+5;n++){
+                String symbol=n==0?"∅":String.valueOf(n);
+                bbyqLearningCard(counts,symbol,ACCENT,4,n,0,0,response);
+            }
+            panel.addView(counts);
+        }
+        scroll.addView(panel);
+        w.content.addView(scroll,new LinearLayout.LayoutParams(-1,0,1f));
+        LinearLayout footer=horizontal();
+        footer.addView(touch("SENSOR LIBRE",10,false,()->{
+            w.dialog.dismiss();bbyqIdentify(parentStatus);
+        }),new LinearLayout.LayoutParams(0,dp(39),1f));
+        TextView close=touch("CERRAR",10,true,w.dialog::dismiss);
+        LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(0,dp(39),1f);
+        cp.leftMargin=dp(8);footer.addView(close,cp);
+        margin(w.content,footer,9);
+    }
+
+    private void bbyqIdentify(TextView status){
+        LinearLayout form=vertical();
+        form.setPadding(dp(16),dp(12),dp(16),dp(12));
+        form.addView(label("BBY Q observa rasgos y busca el nombre que aprendió. "+
+                           "Sin modelo externo.",12,MUTED,false));
+        android.widget.Spinner domain=bbyqDomainSpinner(form);
+        EditText sensors=bbyqField(form,"Tres rasgos: ej. rojo 232,43,30");
+        new AlertDialog.Builder(this).setTitle("Reconocimiento propio · XI")
+            .setView(form).setNegativeButton("CERRAR",null)
+            .setPositiveButton("RECONOCER",(d,which)->{
+                if(executing){info("XI está ocupado");return;}
+                executing=true;
+                final int category=domain.getSelectedItemPosition()+1;
+                final String values=sensors.getText().toString().trim();
+                status.setText("Comparando en memoria XI…");
+                engine.execute(()->{
+                    try{
+                        String[] v=values.split(",",-1);
+                        if(v.length!=3)throw new IOException("Introduce x,y,z separados por coma");
+                        String answer=BbyqSchoolBridge.identify(getApplicationContext(),
+                            store,category,Integer.parseInt(v[0].trim()),
+                            Integer.parseInt(v[1].trim()),Integer.parseInt(v[2].trim()));
+                        runOnUiThread(()->{
+                            executing=false;
+                            status.setText("BBY Q reconoce: "+answer+
+                                ("?".equals(answer)?" · requiere aprender más":""));
+                            info("XI · "+answer);
+                        });
+                    }catch(Throwable error){
+                        runOnUiThread(()->{executing=false;status.setText(
+                            "Observación rechazada: "+error.getMessage());});
+                    }
+                });
+            }).show();
+    }
+    private void bbyqPracticeMath(TextView status){
+        LinearLayout form=vertical();form.setPadding(dp(16),dp(12),dp(16),dp(12));
+        form.addView(label("Comprobar operaciones que BBY Q aprendió "+
+            "observando cantidades. Dominio actual: 0 a 9.",12,MUTED,false));
+        EditText before=bbyqField(form,"Cantidad inicial (0..9)");
+        EditText amount=bbyqField(form,"Cantidad que se junta o quita (1..9)");
+        android.widget.Spinner operation=new android.widget.Spinner(this);
+        android.widget.ArrayAdapter<String> ops=new android.widget.ArrayAdapter<>(
+            this,android.R.layout.simple_spinner_item,
+            new String[]{"Juntar / Join","Quitar / Remove"});
+        ops.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        operation.setAdapter(ops);
+        margin(form,operation,8);
+        new AlertDialog.Builder(this).setTitle("Cantidad y operaciones · XI")
+            .setView(form).setNegativeButton("CERRAR",null)
+            .setPositiveButton("CALCULAR",(d,which)->{
+                if(executing){info("XI está ocupado");return;}
+                executing=true;
+                final int operator=operation.getSelectedItemPosition()+1;
+                final String left=before.getText().toString().trim(),
+                    right=amount.getText().toString().trim();
+                status.setText("Calculando desde conceptos aprendidos…");
+                engine.execute(()->{
+                    try{
+                        String answer=BbyqSchoolBridge.arithmetic(getApplicationContext(),
+                            store,Integer.parseInt(left),Integer.parseInt(right),operator);
+                        runOnUiThread(()->{
+                            executing=false;
+                            status.setText("BBY Q · "+answer+
+                                ("?".equals(answer)?" · fuera de sus conocimientos":""));
+                            info("Resultado XI: "+answer);
+                        });
+                    }catch(Throwable error){
+                        runOnUiThread(()->{executing=false;
+                            status.setText("Operación: "+error.getMessage());});
+                    }
+                });
+            }).show();
+    }
+    private void bbyqTeachConcept(TextView status){
+        LinearLayout form=vertical();form.setPadding(dp(16),dp(12),dp(16),dp(12));
+        form.addView(label("Enseña una observación nueva y sus dos nombres. "+
+            "BBY Q la guardará en el mismo Ether.",12,MUTED,false));
+        android.widget.Spinner domain=bbyqDomainSpinner(form);
+        EditText sensors=bbyqField(form,"x,y,z: por ejemplo 225,37,29");
+        EditText es=bbyqField(form,"Nombre español (máx. 8 letras)");
+        EditText en=bbyqField(form,"English name (max 8 letters)");
+        new AlertDialog.Builder(this).setTitle("BBY Q · Enseñar concepto")
+            .setView(form).setNegativeButton("CANCELAR",null)
+            .setPositiveButton("ENSEÑAR",(d,which)->{
+                if(executing){info("XI está ocupado");return;}
+                executing=true;
+                final int category=domain.getSelectedItemPosition()+1;
+                final String raw=sensors.getText().toString().trim(),
+                    esWord=es.getText().toString().trim(),
+                    enWord=en.getText().toString().trim();
+                status.setText("Guardando experiencia en el mismo RVPC2…");
+                engine.execute(()->{
+                    try{
+                        String[] v=raw.split(",",-1);
+                        if(v.length!=3)throw new IOException("Necesito tres rasgos x,y,z");
+                        BbyqSchoolBridge.Status answer=BbyqSchoolBridge.teachObservation(
+                            getApplicationContext(),store,category,
+                            Integer.parseInt(v[0].trim()),Integer.parseInt(v[1].trim()),
+                            Integer.parseInt(v[2].trim()),esWord,enWord);
+                        runOnUiThread(()->{executing=false;
+                            status.setText(answer.description()+
+                                " · nuevo conocimiento guardado");});
+                    }catch(Throwable error){
+                        runOnUiThread(()->{executing=false;
+                            status.setText("No se guardó: "+error.getMessage());});
+                    }
+                });
+            }).show();
+    }
+
     private EditText bbyqField(LinearLayout parent,String hint){
         EditText field=new EditText(this);
         field.setSingleLine(true);field.setTextSize(13);
