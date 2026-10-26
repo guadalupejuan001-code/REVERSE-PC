@@ -1059,6 +1059,38 @@ public final class DesktopActivity extends Activity {
                 +"La computadora huésped XI aún no arranca como un sistema operativo independiente.",
                 12,MUTED,false),11);
         w.content.addView(panel);
+        TextView quality=label("FONDO ORBITAL — GPU GLES 3",12,ACCENT,true);
+        margin(w.content,quality,12);
+        LinearLayout qualityControls=horizontal();
+        qualityControls.addView(touch("ECO",11,false,()->{
+            if(wallpaper!=null)wallpaper.quality(1);
+            info("Calidad ECO seleccionada");
+        }),new LinearLayout.LayoutParams(0,dp(38),1f));
+        TextView automatic=touch("AUTO",11,true,()->{
+            if(wallpaper!=null)wallpaper.quality(0);
+            info("Calidad adaptativa seleccionada");
+        });
+        LinearLayout.LayoutParams center=new LinearLayout.LayoutParams(0,dp(38),1f);
+        center.leftMargin=dp(7);qualityControls.addView(automatic,center);
+        TextView maximum=touch("ALTA",11,false,()->{
+            if(wallpaper!=null)wallpaper.quality(2);
+            info("Calidad alta; medir FPS en la barra");
+        });
+        LinearLayout.LayoutParams right=new LinearLayout.LayoutParams(0,dp(38),1f);
+        right.leftMargin=dp(7);qualityControls.addView(maximum,right);
+        margin(w.content,qualityControls,7);
+        LinearLayout motionControls=horizontal();
+        motionControls.addView(touch("⏸ PAUSA",11,false,()->{
+            if(wallpaper!=null)wallpaper.motionEnabled(false);
+            info("Fondo orbital en pausa");
+        }),new LinearLayout.LayoutParams(0,dp(38),1f));
+        TextView play=touch("▶ MOVIMIENTO",11,true,()->{
+            if(wallpaper!=null)wallpaper.motionEnabled(true);
+            info("Fondo orbital animado");
+        });
+        LinearLayout.LayoutParams motionP=new LinearLayout.LayoutParams(0,dp(38),1f);
+        motionP.leftMargin=dp(7);motionControls.addView(play,motionP);
+        margin(w.content,motionControls,7);
         TextView restart=touch("REINICIAR LA PANTALLA DE BIENVENIDA",12,false,()->{
             w.dialog.dismiss();
             Intent i=new Intent(this,BootActivity.class);
