@@ -36,9 +36,9 @@ def find(text=None,desc=None,clickable=False,timeout=12):
     while time.monotonic()<until:
         root=tree()
         for n in root.iter('node'):
-            if text is not None and n.get('text')!=text:continue
+            if text is not None and n.get('text','').casefold()!=text.casefold():continue
             if desc is not None and n.get('content-desc')!=desc:continue
-            if clickable and n.get('clickable')!='true':continue
+            if clickable and text is None and n.get('clickable')!='true':continue
             try:box(n)
             except (AssertionError,ValueError):continue
             return n
@@ -65,7 +65,8 @@ def launch(name):
     click(desc='INICIO')
     for _ in range(7):
         root=tree()
-        nodes=[n for n in root.iter('node') if n.get('text')==name and n.get('clickable')=='true']
+        panel=next((n for n in root.iter('node') if n.get('content-desc')=='VENTANA Inicio'),root)
+        nodes=[n for n in panel.iter('node') if n.get('text')==name and n.get('clickable')=='true']
         if nodes:
             try:tap(nodes[-1]);time.sleep(.5);return
             except AssertionError:pass
