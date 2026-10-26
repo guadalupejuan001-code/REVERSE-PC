@@ -239,3 +239,11 @@ if(BUILD_TESTING)
     "${CMAKE_CURRENT_SOURCE_DIR}/tests/xi_machine_cli.py" "$<TARGET_FILE:reverse_pc>")
   set_tests_properties(reverse_pc_xi_machine reverse_pc_xi_machine_cli PROPERTIES TIMEOUT 180)
 endif()
+
+# REVERSE OS cross-platform state transport: Android and CLI use the same RVPC2 bytes.
+add_executable(reverse_pc_os_transport tests/reverse_os_transport.cpp)
+target_include_directories(reverse_pc_os_transport PRIVATE "${ETHER_SOURCE_DIR}/native/include")
+if(BUILD_TESTING)
+  add_test(NAME reverse_pc_os_transport COMMAND reverse_pc_os_transport)
+  set_tests_properties(reverse_pc_os_transport PROPERTIES TIMEOUT 180)
+endif()
