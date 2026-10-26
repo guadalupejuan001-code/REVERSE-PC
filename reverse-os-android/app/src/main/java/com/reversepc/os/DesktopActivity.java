@@ -373,7 +373,7 @@ public final class DesktopActivity extends Activity {
         languages.addView(english,englishP);
         margin(w.content,languages,6);
         LinearLayout learningTools=horizontal();
-        learningTools.addView(touch("COLORES Y MÁS",10,false,()->bbyqIdentify(development)),
+        learningTools.addView(touch("COLORES Y MÁS",10,false,()->openBbyqLearningLab(development)),
             new LinearLayout.LayoutParams(0,dp(36),1f));
         TextView arithmetic=touch("SUMAS / RESTAS",10,false,
             ()->bbyqPracticeMath(development));
@@ -462,6 +462,106 @@ public final class DesktopActivity extends Activity {
         margin(parent,spinner,6);
         return spinner;
     }
+    private void bbyqLearningCard(LinearLayout row,String marker,int swatch,
+                                  int domain,int x,int y,int z,TextView response){
+        LinearLayout tile=vertical();
+        tile.setPadding(dp(5),dp(6),dp(5),dp(6));
+        tile.setGravity(Gravity.CENTER);
+        tile.setBackground(round(0xff273542,0xff465663,9));
+        TextView shape=label(marker,20,domain==1?swatch:WHITE,true);
+        shape.setGravity(Gravity.CENTER);
+        if(domain==1)shape.setBackground(round(swatch,0,7));
+        tile.addView(shape,new LinearLayout.LayoutParams(-1,dp(30)));
+        TextView title=label("EXPLORAR",8,MUTED,false);
+        title.setGravity(Gravity.CENTER);
+        margin(tile,title,4);
+        tile.setContentDescription("Observación XI "+domain+" "+x+","+y+","+z);
+        tile.setClickable(true);
+        tile.setOnClickListener(v->{
+            if(executing){info("XI está ocupado");return;}
+            executing=true;
+            response.setText("BBY Q está identificando la observación…");
+            engine.execute(()->{
+                try{
+                    String word=BbyqSchoolBridge.identify(getApplicationContext(),
+                        store,domain,x,y,z);
+                    runOnUiThread(()->{
+                        executing=false;
+                        response.setText("BBY Q · "+word+
+                            ("?".equals(word)?" · aún necesita aprender":""));
+                    });
+                }catch(Throwable error){
+                    runOnUiThread(()->{
+                        executing=false;
+                        response.setText("Sin clasificación: "+error.getMessage());
+                    });
+                }
+            });
+        });
+        LinearLayout.LayoutParams params=new LinearLayout.LayoutParams(0,dp(68),1f);
+        params.setMargins(dp(3),dp(3),dp(3),dp(3));
+        row.addView(tile,params);
+    }
+    private void openBbyqLearningLab(TextView parentStatus){
+        WindowUi w=window("Explorar","BBY Q · laboratorio de observaciones XI");
+        TextView caption=label("Aprendizaje adaptativo: observa y compara. "+
+            "El nombre viene de las asociaciones guardadas por BBY Q, "+
+            "no de estos botones.",12,MUTED,false);
+        margin(w.content,caption,2);
+        TextView response=label("Toca una tarjeta. Puedes cambiar ES / EN "+
+            "en la ventana de BBY Q.",14,ACCENT,true);
+        response.setPadding(dp(10),dp(9),dp(10),dp(9));
+        response.setBackground(round(CARD,0xff536979,7));
+        margin(w.content,response,7);
+        ScrollView scroll=new ScrollView(this);
+        LinearLayout panel=vertical();
+        panel.setPadding(dp(2),dp(3),dp(2),dp(10));
+
+        margin(panel,label("COLORES  ·  RGB observado",12,WHITE,true),8);
+        LinearLayout colors=horizontal();
+        bbyqLearningCard(colors,"●",0xffe82b20,1,232,43,30,response);
+        bbyqLearningCard(colors,"●",0xff2149d1,1,33,48,202,response);
+        bbyqLearningCard(colors,"●",0xff32be34,1,45,191,40,response);
+        bbyqLearningCard(colors,"●",0xfff0df22,1,233,222,35,response);
+        panel.addView(colors);
+
+        margin(panel,label("ANIMALES  ·  rasgos simbólicos",12,WHITE,true),9);
+        LinearLayout animals=horizontal();
+        bbyqLearningCard(animals,"♟",ACCENT,2,4,0,0,response);
+        bbyqLearningCard(animals,"♞",ACCENT,2,4,0,1,response);
+        bbyqLearningCard(animals,"♧",ACCENT,2,2,0,response);
+        bbyqLearningCard(animals,"◉",ACCENT,2,0,0,1,response);
+        panel.addView(animals);
+
+        margin(panel,label("FIGURAS  ·  esquinas y curvas",12,WHITE,true),9);
+        LinearLayout shapes=horizontal();
+        bbyqLearningCard(shapes,"○",ACCENT,3,0,0,1,response);
+        bbyqLearningCard(shapes,"□",ACCENT,3,4,4,0,response);
+        bbyqLearningCard(shapes,"☆",ACCENT,3,10,10,0,response);
+        bbyqLearningCard(shapes,"♡",ACCENT,3,0,0,2,response);
+        panel.addView(shapes);
+
+        margin(panel,label("CANTIDADES  ·  contar objetos",12,WHITE,true),9);
+        for(int start=0;start<10;start+=5){
+            LinearLayout counts=horizontal();
+            for(int n=start;n<start+5;n++){
+                String symbol=n==0?"∅":String.valueOf(n);
+                bbyqLearningCard(counts,symbol,ACCENT,4,n,0,0,response);
+            }
+            panel.addView(counts);
+        }
+        scroll.addView(panel);
+        w.content.addView(scroll,new LinearLayout.LayoutParams(-1,0,1f));
+        LinearLayout footer=horizontal();
+        footer.addView(touch("SENSOR LIBRE",10,false,()->{
+            w.dialog.dismiss();bbyqIdentify(parentStatus);
+        }),new LinearLayout.LayoutParams(0,dp(39),1f));
+        TextView close=touch("CERRAR",10,true,w.dialog::dismiss);
+        LinearLayout.LayoutParams cp=new LinearLayout.LayoutParams(0,dp(39),1f);
+        cp.leftMargin=dp(8);footer.addView(close,cp);
+        margin(w.content,footer,9);
+    }
+
     private void bbyqIdentify(TextView status){
         LinearLayout form=vertical();
         form.setPadding(dp(16),dp(12),dp(16),dp(12));
