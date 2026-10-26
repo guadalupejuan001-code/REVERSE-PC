@@ -151,7 +151,7 @@ jobs:
           done
           test "$boot_seen" = true
           adb logcat -d -s ReverseBoot:I '*:S' > reverse-os-evidence/boot-log.txt
-          sleep 0.30
+          sleep 1.10
           adb shell screencap -p /sdcard/reverse-os-boot.png
           adb exec-out cat /sdcard/reverse-os-boot.png > reverse-os-evidence/boot.png
           sleep 4
@@ -163,10 +163,23 @@ jobs:
           import re,subprocess,xml.etree.ElementTree as ET
           nodes=list(ET.parse("reverse-os-evidence/desktop-ui.xml").getroot().iter("node"))
           text=" ".join(n.attrib.get("text","") for n in nodes)
-          for label in ("REVERSE OS","MR REVERSE","XI STUDIO","TERMINAL","FILES","ETHER CORE","CHROMIUM"):
+          required=("REVERSE OS","MR REVERSE","XI STUDIO","TERMINAL","FILES","ETHER CORE","CHROMIUM","SETTINGS")
+          assert "REVERSE OS" in text and "MR REVERSE" in text,text[:1800]
+          if any(label not in text for label in required):
+              subprocess.run(["adb","shell","input","swipe","160","465","160","208","400"],check=True)
+              subprocess.run(["adb","shell","uiautomator","dump","/sdcard/reverse-os-scroll.xml"],
+                             check=True,stdout=subprocess.DEVNULL)
+              data=subprocess.check_output(["adb","exec-out","cat","/sdcard/reverse-os-scroll.xml"])
+              text+=" "+" ".join(n.attrib.get("text","") for n in ET.fromstring(data).iter("node"))
+              subprocess.run(["adb","shell","input","swipe","160","235","160","510","350"],check=True)
+              subprocess.run(["adb","shell","uiautomator","dump","/sdcard/reverse-os-top.xml"],
+                             check=True,stdout=subprocess.DEVNULL)
+              fresh=subprocess.check_output(["adb","exec-out","cat","/sdcard/reverse-os-top.xml"])
+              nodes=list(ET.fromstring(fresh).iter("node"))
+          for label in required:
               assert label in text,(label,text[:1800])
           match=next(n for n in nodes if n.attrib.get("text")=="XI STUDIO")
-          nums=[int(x) for x in re.findall(r"\d+",match.attrib["bounds"])]
+          nums=[int(v) for v in re.findall(r"\d+",match.attrib["bounds"])]
           assert len(nums)==4
           subprocess.run(["adb","shell","input","tap",str((nums[0]+nums[2])//2),
                          str((nums[1]+nums[3])//2)],check=True)
