@@ -12,7 +12,7 @@ std::vector<std::uint8_t> bytes(JNIEnv* e,jbyteArray value) {
   const jsize n=e->GetArrayLength(value);
   if(n<0||std::size_t(n)>reverse_os::max_state+29)
     throw std::length_error("Android state exceeds transport budget");
-  std::vector<std::uint8_t> out(std::size_t(n));
+  std::vector<std::uint8_t> out(static_cast<std::size_t>(n));
   if(n)e->GetByteArrayRegion(value,0,n,reinterpret_cast<jbyte*>(out.data()));
   if(e->ExceptionCheck())throw std::runtime_error("JNI state read failed");
   return out;
