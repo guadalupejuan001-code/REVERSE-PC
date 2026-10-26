@@ -54,7 +54,8 @@ extern "C" JNIEXPORT jstring JNICALL
 Java_com_reversepc_os_NativeRuntime_inspect(JNIEnv* e,jclass,jbyteArray state){
   try{
     auto runtime=reverse_os::restore(bytes(e,state));
-    const auto q=runtime.core().stats(),m=runtime.memory().stats();
+    const auto q=runtime.core().stats();
+    const auto m=runtime.memory().stats();
     std::ostringstream s;
     s<<"{\"active_qubits\":"<<q.active_qubits
      <<",\"components\":"<<q.components
