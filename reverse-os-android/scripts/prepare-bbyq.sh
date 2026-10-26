@@ -6,7 +6,7 @@ set -euo pipefail
 bbyq="${1:?Expected checked-out BBY-Q path}"
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 target="$repo_root/reverse-os-android/app/src/main/assets/bbyq"
-expected="7dfa6c31247cf609128db78908313a6ce41c0b80"
+expected="1d621ba9875435fd46bdbc13b7459c8c62faef9b"
 actual="$(git -C "$bbyq" rev-parse HEAD)"
 if [[ "$actual" != "$expected" ]]; then
     echo "Unexpected BBY-Q head $actual; expected $expected" >&2
@@ -19,12 +19,21 @@ for program in \
     e008/admit-feed-xnor e008/admit-feed-and e008/admit-feed-or \
     e008/bank-store e008/audit-organism \
     language/birth language/ground language/relate language/calibrate \
-    language/readline language/ask language/reflect language/speak language/audit; do
+    language/readline language/ask language/reflect language/speak language/audit \
+    school/birth school/set-language school/learn school/recognize \
+    school/name school/grade school/next school/learn-operation \
+    school/calculate school/grade-math school/audit; do
     source="$bbyq/ai/xi/$program.xi"
     output="$target/$program.xi"
     test -s "$source"
     mkdir -p "$(dirname "$output")"
     cp "$source" "$output"
+done
+for dataset in observations-v1.psv holdout-v1.psv; do
+    source="$bbyq/ai/xi/school/data/$dataset"
+    test -s "$source"
+    mkdir -p "$target/school/data"
+    cp "$source" "$target/school/data/$dataset"
 done
 printf '%s\n' "$expected" > "$target/source-sha.txt"
 test -s "$target/curriculum-v1.txt"
