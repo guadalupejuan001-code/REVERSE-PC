@@ -139,3 +139,7 @@ qubits con un número arbitrario de T.
 
 Los informes anteriores conservan sus condiciones y revisiones originales.
 Sus números particulares no se extrapolan a todos los programas.
+
+## REVERSE OS — Android desktop v0.2
+
+La interfaz de REVERSE-PC inicia con la pantalla negra "Welcome, Mr Reverse" y abre un escritorio con seis apps y dock: XI Studio, Terminal, Files, Ether Core, Chromium mediante Android WebView y Settings. Los programas XI siguen ejecutándose mediante el mismo QuantumRuntime nativo con persistencia RVPC2. Android continúa siendo el sistema operativo anfitrión; este producto no es aún un kernel arrancable. [Documentación de REVERSE OS](reverse-os-android/README.md).

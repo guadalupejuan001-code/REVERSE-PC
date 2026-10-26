@@ -1,14 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
- <application android:label="REVERSE OS" android:theme="@android:style/Theme.Material.NoActionBar"
-    android:allowBackup="false" android:usesCleartextTraffic="false"
-    android:supportsRtl="true" android:icon="@drawable/ic_reverse">
-  <activity android:name=".MainActivity" android:exported="true"
-    android:screenOrientation="unspecified" android:windowSoftInputMode="adjustResize">
-   <intent-filter>
-    <action android:name="android.intent.action.MAIN"/>
-    <category android:name="android.intent.category.LAUNCHER"/>
-   </intent-filter>
-  </activity>
- </application>
+  <!-- Internet belongs solely to the explicitly opened Android WebView host browser.
+       The XI/Ether execution engine stays local and makes no network requests. -->
+  <uses-permission android:name="android.permission.INTERNET"/>
+  <queries>
+    <package android:name="com.android.chrome"/>
+  </queries>
+  <application
+      android:label="REVERSE OS"
+      android:theme="@style/Theme.ReverseOS"
+      android:allowBackup="false"
+      android:usesCleartextTraffic="false"
+      android:supportsRtl="true"
+      android:icon="@drawable/ic_reverse">
+    <activity android:name=".BootActivity"
+        android:exported="true"
+        android:screenOrientation="unspecified">
+      <intent-filter>
+        <action android:name="android.intent.action.MAIN"/>
+        <category android:name="android.intent.category.LAUNCHER"/>
+      </intent-filter>
+    </activity>
+    <activity android:name=".DesktopActivity"
+        android:exported="false"
+        android:screenOrientation="unspecified"
+        android:windowSoftInputMode="adjustResize"/>
+    <activity android:name=".MainActivity"
+        android:exported="false"
+        android:screenOrientation="unspecified"
+        android:windowSoftInputMode="adjustResize"/>
+  </application>
 </manifest>
