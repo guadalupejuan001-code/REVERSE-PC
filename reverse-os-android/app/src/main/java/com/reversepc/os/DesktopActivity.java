@@ -38,6 +38,9 @@ import android.widget.Toast;
 
 import org.json.JSONObject;
 import java.io.IOException;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -53,6 +56,7 @@ import java.util.concurrent.Executors;
  */
 public final class DesktopActivity extends Activity {
     private static final String LOG = "ReverseDesktop";
+    private static final int EXPORT_RVPC=5112, IMPORT_RVPC=5113;
     private static final int BG=0xff131922, CARD=0xff222b36, CARD_BRIGHT=0xff303c47;
     private static final int WHITE=0xfff5f3ef, MUTED=0xffbdc3c8, ACCENT=0xffaec3d2;
     private static final int BLUE=0xffb4c6d4, VIOLET=0xffcbb9cb, AMBER=0xffdec4a6;
@@ -251,6 +255,9 @@ public final class DesktopActivity extends Activity {
         addDesktopShortcut(row3,"◈","Ether Core",this::openMonitor);
         addDesktopShortcut(row3,"⚙","Ajustes",this::openSettings);
         shortcutGrid.addView(row3);
+        LinearLayout row4=horizontal();
+        addDesktopShortcut(row4,"B","BBY Q",this::openBbyq);
+        shortcutGrid.addView(row4);
         FrameLayout.LayoutParams gridP=new FrameLayout.LayoutParams(dp(235),-2,
                                                                   Gravity.TOP|Gravity.LEFT);
         workspace.addView(shortcutGrid,gridP);
@@ -273,6 +280,215 @@ public final class DesktopActivity extends Activity {
         system.addView(buildTaskbar(),new LinearLayout.LayoutParams(-1,dp(56)));
         setContentView(root);
         Log.i(LOG,"DESKTOP_SHOWN REVERSE OS MR REVERSE landscape");
+    }
+
+    // BBY Q is a native XI guest program, NOT a remote chatbot or a host
+    // language model. This window merely transports user input and displays
+    // the genuine result produced by XI on the shared Ether RVPC2 state.
+    private void openBbyq(){
+        WindowUi w=window("BBY Q","Inteligencia simbólica · XI / Ether");
+        TextView heading=label("BBY Q",21,WHITE,true);
+        heading.setLetterSpacing(.05f);
+        w.content.addView(heading);
+        TextView modelStatus=label("Abriendo el organismo XI…",11,ACCENT,false);
+        margin(w.content,modelStatus,3);
+        ScrollView scroll=new ScrollView(this);
+        scroll.setFillViewport(true);
+        LinearLayout history=vertical();
+        history.setPadding(dp(8),dp(10),dp(8),dp(10));
+        history.setBackground(round(0xff19242d,0xff394957,8));
+        TextView welcome=label("Lenguaje experimental XI. Pregunta con tres palabras, "
+            +"por ejemplo: cuarto contiene llave?",12,MUTED,false);
+        margin(history,welcome,5);
+        scroll.addView(history);
+        LinearLayout.LayoutParams transcript=new LinearLayout.LayoutParams(-1,0,1f);
+        transcript.topMargin=dp(8);
+        w.content.addView(scroll,transcript);
+
+        LinearLayout inputRow=horizontal();
+        EditText question=new EditText(this);
+        question.setSingleLine(true);
+        question.setTextSize(12);question.setTextColor(WHITE);
+        question.setHintTextColor(MUTED);
+        question.setHint("cuarto contiene llave?");
+        question.setInputType(InputType.TYPE_CLASS_TEXT|InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        question.setBackground(round(CARD_BRIGHT,0xff475969,8));
+        question.setPadding(dp(11),dp(8),dp(10),dp(8));
+        question.setEnabled(false);
+        inputRow.addView(question,new LinearLayout.LayoutParams(0,dp(44),1f));
+        TextView send=touch("ENVIAR",11,true,()->{
+            final String prompt=question.getText().toString().trim();
+            if(prompt.isEmpty())return;
+            if(executing){info("XI está ocupado");return;}
+            executing=true;
+            question.setText("");
+            addBbyqMessage(history,scroll,"TÚ · "+prompt,MUTED);
+            modelStatus.setText("BBY Q está consultando Ether…");
+            engine.execute(()->{
+                try{
+                    if(store==null)throw new IllegalStateException("REVERSE-PC no disponible");
+                    BbyqBridge.Answer answer=BbyqBridge.ask(getApplicationContext(),store,prompt);
+                    runOnUiThread(()->{
+                        executing=false;
+                        if(!w.dialog.isShowing())return;
+                        addBbyqMessage(history,scroll,"BBY Q · "+answer.text,WHITE);
+                        String next=answer.nextStudy==2 ? "Falta aprender una palabra." :
+                            answer.nextStudy==1 ? "Falta evidencia sobre esa relación." :
+                            "Respuesta respaldada por su conocimiento.";
+                        modelStatus.setText(next);
+                    });
+                }catch(Throwable error){
+                    Log.e(LOG,"BBYQ_ANSWER_FAILED",error);
+                    runOnUiThread(()->{
+                        executing=false;
+                        if(!w.dialog.isShowing())return;
+                        addBbyqMessage(history,scroll,"XI · "+error.getMessage(),0xffffa7a7);
+                        modelStatus.setText("Consulta rechazada; memoria anterior conservada");
+                    });
+                }
+            });
+        });
+        LinearLayout.LayoutParams sendParams=new LinearLayout.LayoutParams(dp(82),dp(44));
+        sendParams.leftMargin=dp(7);
+        inputRow.addView(send,sendParams);
+        margin(w.content,inputRow,9);
+
+        LinearLayout operations=horizontal();
+        TextView teachWord=touch("+ PALABRA",10,false,()->bbyqTeachWord(modelStatus));
+        operations.addView(teachWord,new LinearLayout.LayoutParams(0,dp(36),1f));
+        TextView teachRelation=touch("+ RELACIÓN",10,false,()->bbyqTeachRelation(modelStatus));
+        LinearLayout.LayoutParams teachRelationP=new LinearLayout.LayoutParams(0,dp(36),1f);
+        teachRelationP.leftMargin=dp(7);
+        operations.addView(teachRelation,teachRelationP);
+        margin(w.content,operations,6);
+
+        if(executing){modelStatus.setText("Otro programa XI está trabajando");return;}
+        executing=true;
+        engine.execute(()->{
+            try{
+                if(store==null)throw new IllegalStateException(
+                    "Núcleo XI indisponible: "+engineFailure);
+                BbyqBridge.Status status=BbyqBridge.install(getApplicationContext(),
+                    store,message->runOnUiThread(()->{
+                        if(w.dialog.isShowing())modelStatus.setText(message);
+                    }));
+                runOnUiThread(()->{
+                    executing=false;
+                    if(!w.dialog.isShowing())return;
+                    modelStatus.setText(status.text());
+                    question.setEnabled(true);
+                    addBbyqMessage(history,scroll,
+                        "XI · Modelo verificado en Ether. Puedes preguntar o enseñar.",ACCENT);
+                });
+            }catch(Throwable error){
+                Log.e(LOG,"BBYQ_INSTALL_FAILED",error);
+                runOnUiThread(()->{
+                    executing=false;
+                    if(!w.dialog.isShowing())return;
+                    modelStatus.setText("Instalación XI no completada");
+                    addBbyqMessage(history,scroll,"DIAGNÓSTICO · "+error.getMessage(),
+                        0xffffa7a7);
+                });
+            }
+        });
+    }
+    private void addBbyqMessage(LinearLayout history,ScrollView scroll,
+                                String message,int color){
+        TextView line=label(message,12,color,false);
+        line.setPadding(dp(10),dp(8),dp(10),dp(8));
+        line.setBackground(round(0xff27343e,0,6));
+        margin(history,line,6);
+        scroll.post(()->scroll.fullScroll(View.FOCUS_DOWN));
+    }
+    private EditText bbyqField(LinearLayout parent,String hint){
+        EditText field=new EditText(this);
+        field.setSingleLine(true);field.setTextSize(13);
+        field.setTextColor(WHITE);field.setHintTextColor(MUTED);
+        field.setHint(hint);
+        field.setInputType(InputType.TYPE_CLASS_TEXT|
+            InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        field.setBackground(round(0xff263541,0xff4c5962,8));
+        field.setPadding(dp(12),dp(7),dp(12),dp(7));
+        margin(parent,field,7);
+        return field;
+    }
+    private void bbyqTeachWord(TextView status){
+        LinearLayout fields=vertical();
+        fields.setPadding(dp(18),dp(12),dp(18),dp(12));
+        TextView notice=label("Nombre nuevo y tres señales observadas (0..3). "
+            +"Es un vocabulario experimental, no un diccionario externo.",12,MUTED,false);
+        fields.addView(notice);
+        EditText word=bbyqField(fields,"palabra en minúsculas: mesa");
+        EditText sensory=bbyqField(fields,"señales x,y,z: 1,2,3");
+        new AlertDialog.Builder(this).setTitle("BBY Q · Aprender palabra")
+            .setView(fields).setNegativeButton("CANCELAR",null)
+            .setPositiveButton("ENSEÑAR",(dialog,which)->{
+                if(executing){info("XI está ocupado");return;}
+                executing=true;
+                final String text=word.getText().toString().trim();
+                final String triple=sensory.getText().toString().trim();
+                status.setText("Aprendiendo en Ether…");
+                engine.execute(()->{
+                    try{
+                        String[] values=triple.split(",",-1);
+                        if(values.length!=3)throw new IllegalArgumentException(
+                            "Necesito tres valores 0..3 separados por comas");
+                        BbyqBridge.Status result=BbyqBridge.teachWord(
+                            getApplicationContext(),store,text,
+                            Integer.parseInt(values[0].trim()),
+                            Integer.parseInt(values[1].trim()),
+                            Integer.parseInt(values[2].trim()));
+                        runOnUiThread(()->{
+                            executing=false;status.setText(result.text());
+                            info("Palabra aprendida y guardada");
+                        });
+                    }catch(Throwable error){
+                        runOnUiThread(()->{
+                            executing=false;
+                            status.setText("No se guardó: "+error.getMessage());
+                        });
+                    }
+                });
+            }).show();
+    }
+    private void bbyqTeachRelation(TextView status){
+        LinearLayout fields=vertical();
+        fields.setPadding(dp(18),dp(12),dp(18),dp(12));
+        fields.addView(label("Enseña una relación observada. "
+            +"Los tres términos deben haber sido aprendidos.",12,MUTED,false));
+        EditText subject=bbyqField(fields,"Sujeto: caja");
+        EditText relation=bbyqField(fields,"Relación: contiene");
+        EditText object=bbyqField(fields,"Objeto: bolsa");
+        android.widget.CheckBox observed=new android.widget.CheckBox(this);
+        observed.setText("La relación fue observada");
+        observed.setTextColor(WHITE);observed.setChecked(true);
+        margin(fields,observed,6);
+        new AlertDialog.Builder(this).setTitle("BBY Q · Enseñar relación")
+            .setView(fields).setNegativeButton("CANCELAR",null)
+            .setPositiveButton("APRENDER",(dialog,which)->{
+                if(executing){info("XI está ocupado");return;}
+                executing=true;
+                final String s=subject.getText().toString().trim();
+                final String p=relation.getText().toString().trim();
+                final String o=object.getText().toString().trim();
+                final boolean truth=observed.isChecked();
+                status.setText("Consolidando la evidencia XI…");
+                engine.execute(()->{
+                    try{
+                        BbyqBridge.Status result=BbyqBridge.teachFact(
+                            getApplicationContext(),store,s,p,o,truth);
+                        runOnUiThread(()->{
+                            executing=false;status.setText(result.text());
+                            info("Evidencia aprendida en Ether");
+                        });
+                    }catch(Throwable error){
+                        runOnUiThread(()->{
+                            executing=false;
+                            status.setText("No se guardó: "+error.getMessage());
+                        });
+                    }
+                });
+            }).show();
     }
 
     private void showStudio(){openStudio(0,null);}
@@ -309,6 +525,7 @@ public final class DesktopActivity extends Activity {
         addTaskButton(taskbar,"⌕","BUSCAR",this::openSearch);
         addTaskButton(taskbar,"▤","Archivos",this::openFiles);
         addTaskButton(taskbar,">_","TERM",this::openTerminal);
+        addTaskButton(taskbar,"B","BBY Q",this::openBbyq);
 
         LinearLayout center=horizontal();
         center.setGravity(Gravity.CENTER);
@@ -386,9 +603,11 @@ public final class DesktopActivity extends Activity {
         WindowUi w=window("Inicio","Aplicaciones REVERSE OS");
         LinearLayout grid=vertical();
         String[][] shortcuts={{"XI Studio","⌘"},{"Terminal",">_"},{"Archivos","▤"},
-                              {"Navegador","◎"},{"Ether Core","◈"},{"Ajustes","⚙"}};
+                              {"Navegador","◎"},{"Ether Core","◈"},{"Ajustes","⚙"},
+                              {"BBY Q","B"}};
         Runnable[] actions={()->openStudio(0,null),this::openTerminal,this::openFiles,
-                            this::openBrowser,this::openMonitor,this::openSettings};
+                            this::openBrowser,this::openMonitor,this::openSettings,
+                            this::openBbyq};
         for(int index=0;index<shortcuts.length;index++){
             final int n=index;
             TextView t=touch(shortcuts[index][1]+"   "+shortcuts[index][0],12,false,()->{
@@ -406,7 +625,7 @@ public final class DesktopActivity extends Activity {
         EditText field=new EditText(this);
         field.setTextColor(WHITE);field.setHintTextColor(MUTED);
         field.setSingleLine(true);
-        field.setHint("XI, Files, Terminal, Chromium, Core, Settings...");
+        field.setHint("BBY Q, XI, Terminal, Archivos, Navegador...");
         field.setBackground(round(CARD_BRIGHT,0xff536b79,9));
         field.setPadding(dp(12),dp(11),dp(12),dp(11));
         w.content.addView(field);
@@ -415,7 +634,8 @@ public final class DesktopActivity extends Activity {
         TextView go=touch("BUSCAR",12,true,()->{
             final String q=field.getText().toString().trim().toLowerCase(Locale.ROOT);
             Runnable action=null;
-            if(q.contains("xi")||q.contains("studio")||q.contains("program")) action=()->openStudio(0,null);
+            if(q.contains("bby")||q.contains("bbyq")||q.contains("inteligencia")) action=this::openBbyq;
+            else if(q.contains("xi")||q.contains("studio")||q.contains("program")) action=()->openStudio(0,null);
             else if(q.contains("term")||q.contains("console")) action=this::openTerminal;
             else if(q.contains("file")||q.contains("archivo")) action=this::openFiles;
             else if(q.contains("chrome")||q.contains("web")||q.contains("naveg")) action=this::openBrowser;
@@ -490,6 +710,7 @@ public final class DesktopActivity extends Activity {
     // Floating window. The top bar can drag, minimize, maximize and close
     // without leaving REVERSE OS; navigation is a real sidebar.
     private WindowUi window(String title,String subtitle){
+        final boolean fullWorkArea="BBY Q".equals(title);
         if(minimizedWindow!=null){
             minimizedWindow.dismiss();
             minimizedWindow=null;
@@ -571,9 +792,12 @@ public final class DesktopActivity extends Activity {
             margin(sidebar,entry,pos==0?0:3);
             entry.setOnClickListener(v->{dialog.dismiss();go[pos].run();});
         }
-        interior.addView(sidebar,new LinearLayout.LayoutParams(dp(143),-1));
-        View verticalRule=new View(this);verticalRule.setBackgroundColor(0xff46515d);
-        interior.addView(verticalRule,new LinearLayout.LayoutParams(dp(1),-1));
+        if(!fullWorkArea){
+            interior.addView(sidebar,new LinearLayout.LayoutParams(dp(143),-1));
+            View verticalRule=new View(this);
+            verticalRule.setBackgroundColor(0xff46515d);
+            interior.addView(verticalRule,new LinearLayout.LayoutParams(dp(1),-1));
+        }
         LinearLayout body=vertical();
         body.setPadding(dp(13),dp(10),dp(13),dp(10));
         interior.addView(body,new LinearLayout.LayoutParams(0,-1,1f));
@@ -586,9 +810,11 @@ public final class DesktopActivity extends Activity {
             actual.setBackgroundDrawableResource(android.R.color.transparent);
             actual.addFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
             WindowManager.LayoutParams p=actual.getAttributes();
-            p.width=(int)(getResources().getDisplayMetrics().widthPixels*.78f);
-            p.height=(int)(getResources().getDisplayMetrics().heightPixels*.78f);
-            p.dimAmount=.25f;
+            p.width=(int)(getResources().getDisplayMetrics().widthPixels*
+                (fullWorkArea?.90f:.78f));
+            p.height=(int)(getResources().getDisplayMetrics().heightPixels*
+                (fullWorkArea?.91f:.78f));
+            p.dimAmount=fullWorkArea?.13f:.25f;
             p.gravity=Gravity.CENTER;
             actual.setAttributes(p);
             actual.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
@@ -785,7 +1011,7 @@ public final class DesktopActivity extends Activity {
         sendParams.leftMargin=dp(8);
         inputLine.addView(send,sendParams);
         w.content.addView(inputLine);
-        TextView help=label("help · ls · run nombre.xi · core · edit nombre.xi · clear",10,MUTED,false);
+        TextView help=label("help · bbyq · ls · run nombre.xi · core · edit nombre.xi",10,MUTED,false);
         margin(w.content,help,12);
         scroll.post(()->scroll.fullScroll(View.FOCUS_DOWN));
     }
@@ -822,7 +1048,10 @@ public final class DesktopActivity extends Activity {
         if(cmd.equals("help")){
             putConsole("help : comandos\nls : listar programas\n"
                 +"run programa.xi : ejecutar en Ether\ncore : estado nativo\n"
-                +"edit programa.xi : abrir estudio XI\nclear : limpiar consola\n\n",output,scroll);
+                +"edit programa.xi : abrir estudio XI\nbbyq : abrir BBY Q\n"
+                +"clear : limpiar consola\n\n",output,scroll);
+        }else if(cmd.equals("bbyq")){
+            w.dialog.dismiss();openBbyq();
         }else if(cmd.equals("edit")){
             if(arg.isEmpty()){putConsole("Falta nombre de archivo.\n",output,scroll);return;}
             w.dialog.dismiss();openStudio(0,SessionStore.normalized(arg));
@@ -1104,6 +1333,23 @@ public final class DesktopActivity extends Activity {
             startActivity(i);finish();
         });
         margin(w.content,restart,20);
+        TextView backup=touch("EXPORTAR MI MEMORIA RVPC2",12,false,()->{
+            Intent save=new Intent(Intent.ACTION_CREATE_DOCUMENT);
+            save.addCategory(Intent.CATEGORY_OPENABLE);
+            save.setType("application/octet-stream");
+            save.putExtra(Intent.EXTRA_TITLE,"REVERSE-BBYQ-Ether.rvp");
+            try{startActivityForResult(save,EXPORT_RVPC);}
+            catch(ActivityNotFoundException error){info("No hay gestor de archivos disponible");}
+        });
+        margin(w.content,backup,13);
+        TextView restore=touch("IMPORTAR RVPC2 VALIDADO",12,false,()->{
+            Intent open=new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            open.addCategory(Intent.CATEGORY_OPENABLE);
+            open.setType("*/*");
+            try{startActivityForResult(open,IMPORT_RVPC);}
+            catch(ActivityNotFoundException error){info("No hay gestor de archivos disponible");}
+        });
+        margin(w.content,restore,8);
         TextView reset=touch("RESTABLECER NÚCLEO ETHER",12,false,()->{
             new AlertDialog.Builder(this)
                 .setTitle("Reiniciar el estado de la computadora")
@@ -1125,6 +1371,60 @@ public final class DesktopActivity extends Activity {
         TextView close=touch("CERRAR",12,true,w.dialog::dismiss);
         margin(w.content,close,16);
     }
+    @Override protected void onActivityResult(int request,int code,Intent intent){
+        super.onActivityResult(request,code,intent);
+        if(code!=RESULT_OK||intent==null||intent.getData()==null)return;
+        final Uri uri=intent.getData();
+        if(request==EXPORT_RVPC){
+            engine.execute(()->{
+                try{
+                    if(store==null)throw new IOException("Núcleo Ether no disponible");
+                    byte[] state=store.loadState();
+                    NativeRuntime.inspect(state);
+                    try(OutputStream out=getContentResolver().openOutputStream(uri)){
+                        if(out==null)throw new IOException("Destino RVPC2 no disponible");
+                        out.write(state);out.flush();
+                    }
+                    runOnUiThread(()->info("Memoria Ether exportada: "+state.length+" bytes"));
+                }catch(Throwable error){
+                    Log.e(LOG,"RVPC_EXPORT_FAILED",error);
+                    runOnUiThread(()->info("Error exportando RVPC2: "+error.getMessage()));
+                }
+            });
+        }else if(request==IMPORT_RVPC){
+            new AlertDialog.Builder(this)
+                .setTitle("Importar memoria Ether")
+                .setMessage("Se sustituirá la sesión RVPC2 del escritorio. "+
+                            "Haz una copia de seguridad antes de continuar. "+
+                            "Los programas XI guardados no se borrarán.")
+                .setNegativeButton("CANCELAR",null)
+                .setPositiveButton("VALIDAR E IMPORTAR",(d,which)->engine.execute(()->{
+                    try{
+                        if(store==null)throw new IOException("Núcleo Ether no disponible");
+                        byte[] incoming;
+                        try(InputStream in=getContentResolver().openInputStream(uri);
+                            ByteArrayOutputStream out=new ByteArrayOutputStream()){
+                            if(in==null)throw new IOException("Origen RVPC2 no disponible");
+                            byte[] chunk=new byte[8192];
+                            int len;
+                            while((len=in.read(chunk))!=-1){
+                                if(out.size()+len>32*1024*1024+29)
+                                    throw new IOException("RVPC2 supera el límite del núcleo");
+                                out.write(chunk,0,len);
+                            }
+                            incoming=out.toByteArray();
+                        }
+                        NativeRuntime.inspect(incoming); // checksum, size, replay validation
+                        store.writeState(incoming); // AtomicFile: commit only after validation
+                        runOnUiThread(()->info("Memoria RVPC2 restaurada y validada"));
+                    }catch(Throwable error){
+                        Log.e(LOG,"RVPC_IMPORT_FAILED",error);
+                        runOnUiThread(()->info("Importación rechazada: "+error.getMessage()));
+                    }
+                })).show();
+        }
+    }
+
     private void openPower(){
         new AlertDialog.Builder(this).setTitle("REVERSE OS")
             .setItems(new String[]{"Reiniciar escritorio","Configuración","Cerrar REVERSE OS"},(d,which)->{
