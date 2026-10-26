@@ -233,16 +233,16 @@ public final class DesktopActivity extends Activity {
         LinearLayout shortcutGrid=vertical();
         shortcutGrid.setPadding(dp(3),dp(12),dp(3),dp(2));
         LinearLayout row1=horizontal();
-        addDesktopShortcut(row1,"⌘","XI STUDIO",this::showStudio);
-        addDesktopShortcut(row1,">_","TERMINAL",this::openTerminal);
+        addDesktopShortcut(row1,"⌘","XI Studio",this::showStudio);
+        addDesktopShortcut(row1,">_","Terminal",this::openTerminal);
         shortcutGrid.addView(row1);
         LinearLayout row2=horizontal();
         addDesktopShortcut(row2,"▤","ARCHIVOS",this::openFiles);
-        addDesktopShortcut(row2,"◎","CHROMIUM",this::openBrowser);
+        addDesktopShortcut(row2,"◎","Navegador",this::openBrowser);
         shortcutGrid.addView(row2);
         LinearLayout row3=horizontal();
-        addDesktopShortcut(row3,"◈","ETHER CORE",this::openMonitor);
-        addDesktopShortcut(row3,"⚙","SETTINGS",this::openSettings);
+        addDesktopShortcut(row3,"◈","Ether Core",this::openMonitor);
+        addDesktopShortcut(row3,"⚙","Ajustes",this::openSettings);
         shortcutGrid.addView(row3);
         FrameLayout.LayoutParams gridP=new FrameLayout.LayoutParams(dp(235),-2,
                                                                   Gravity.TOP|Gravity.LEFT);
@@ -363,10 +363,10 @@ public final class DesktopActivity extends Activity {
         margin(header,welcome,7);
         w.content.addView(header,new LinearLayout.LayoutParams(-1,0,1f));
         LinearLayout buttons=horizontal();
-        buttons.addView(touch("TERMINAL",12,false,()->{
+        buttons.addView(touch("Terminal",12,false,()->{
             w.dialog.dismiss();openTerminal();
         }),new LinearLayout.LayoutParams(0,dp(43),1f));
-        TextView studio=touch("XI STUDIO",12,true,()->{
+        TextView studio=touch("XI Studio",12,true,()->{
             w.dialog.dismiss();openStudio(0,null);
         });
         LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,dp(43),1f);
@@ -376,10 +376,10 @@ public final class DesktopActivity extends Activity {
     }
 
     private void openStartMenu(){
-        WindowUi w=window("START","Aplicaciones REVERSE OS");
+        WindowUi w=window("Inicio","Aplicaciones REVERSE OS");
         LinearLayout grid=vertical();
-        String[][] shortcuts={{"XI STUDIO","⌘"},{"TERMINAL",">_"},{"FILES","▤"},
-                              {"CHROMIUM","◎"},{"ETHER CORE","◈"},{"SETTINGS","⚙"}};
+        String[][] shortcuts={{"XI Studio","⌘"},{"Terminal",">_"},{"Archivos","▤"},
+                              {"Navegador","◎"},{"Ether Core","◈"},{"Ajustes","⚙"}};
         Runnable[] actions={()->openStudio(0,null),this::openTerminal,this::openFiles,
                             this::openBrowser,this::openMonitor,this::openSettings};
         for(int index=0;index<shortcuts.length;index++){
@@ -395,7 +395,7 @@ public final class DesktopActivity extends Activity {
     }
 
     private void openSearch(){
-        WindowUi w=window("SEARCH","Buscar aplicaciones");
+        WindowUi w=window("Buscar","Buscar aplicaciones");
         EditText field=new EditText(this);
         field.setTextColor(WHITE);field.setHintTextColor(MUTED);
         field.setSingleLine(true);
@@ -547,7 +547,7 @@ public final class DesktopActivity extends Activity {
         LinearLayout sidebar=vertical();
         sidebar.setPadding(dp(8),dp(12),dp(8),dp(8));
         sidebar.setBackgroundColor(0xff1d2731);
-        String[] names={"⌂  HOME","▤  FILES","⚙  SETTINGS",">_  TERMINAL","ⓘ  ABOUT"};
+        String[] names={"⌂  Inicio","▤  Archivos","⚙  Ajustes",">_  Terminal","ⓘ  Acerca de"};
         Runnable[] go={this::openHome,this::openFiles,this::openSettings,
                        this::openTerminal,this::openAbout};
         for(int index=0;index<names.length;index++){
@@ -555,9 +555,9 @@ public final class DesktopActivity extends Activity {
             TextView entry=label(names[index],11,pos==0?ACCENT:WHITE,false);
             entry.setPadding(dp(10),dp(12),dp(6),dp(12));
             if((title.equalsIgnoreCase("HOME")&&pos==0)||
-               (title.equalsIgnoreCase("FILES")&&pos==1)||
-               (title.equalsIgnoreCase("SETTINGS")&&pos==2)||
-               (title.equalsIgnoreCase("TERMINAL")&&pos==3)){
+               (title.equalsIgnoreCase("Archivos")&&pos==1)||
+               (title.equalsIgnoreCase("Ajustes")&&pos==2)||
+               (title.equalsIgnoreCase("Terminal")&&pos==3)){
                 entry.setTextColor(ACCENT);
                 entry.setBackground(round(0xff344451,0,7));
             }
@@ -616,7 +616,7 @@ public final class DesktopActivity extends Activity {
 
     private void openAbout(){
         WindowUi w=window("ABOUT","Acerca de REVERSE OS");
-        TextView text=label("REVERSE OS 0.3\n\n"+
+        TextView text=label("REVERSE OS 0.4\n\n"+
             "Escritorio horizontal con ventanas funcionales, GPU GLES 3 "+
             "de REVERSE Space Glitch y la computadora XI/Ether.\n\n"+
             "El fondo orbital representa cálculos gráficos en tiempo real; "+
@@ -642,7 +642,7 @@ public final class DesktopActivity extends Activity {
         final String chosen;
         if(tab==2)chosen="nuevo_"+(System.currentTimeMillis()%100000)+".xi";
         else chosen=file==null?"01_euclides.xi":SessionStore.normalized(file);
-        WindowUi w=window("XI STUDIO","Editor de programas de REVERSE-PC");
+        WindowUi w=window("XI Studio","Editor de programas de REVERSE-PC");
         TextView filename=label(chosen+"   •  XI SCRIPT",11,ACCENT,true);
         margin(w.content,filename,1);
 
@@ -751,7 +751,7 @@ public final class DesktopActivity extends Activity {
 
     // Terminal executes programs through the exact JNI bridge used by the original GUI.
     private void openTerminal(){
-        WindowUi w=window("TERMINAL","XI SHELL  •  ejecución nativa");
+        WindowUi w=window("Terminal","XI SHELL  •  ejecución nativa");
         ScrollView scroll=new ScrollView(this);
         TextView output=label(consoleHistory.toString(),12,0xffdddacb,false);
         output.setTypeface(Typeface.MONOSPACE);
@@ -860,7 +860,7 @@ public final class DesktopActivity extends Activity {
     }
 
     private void openFiles(){
-        WindowUi w=window("FILES","Aplicaciones XI instaladas");
+        WindowUi w=window("Archivos","Aplicaciones XI instaladas");
         TextView count=label("Leyendo biblioteca privada...",12,MUTED,false);
         w.content.addView(count);
         ScrollView scroll=new ScrollView(this);
@@ -906,7 +906,7 @@ public final class DesktopActivity extends Activity {
     }
 
     private void openMonitor(){
-        WindowUi w=window("ETHER CORE","Autoridad compartida XI / Inverse Memory");
+        WindowUi w=window("Ether Core","Autoridad compartida XI / Inverse Memory");
         TextView state=label("Leyendo núcleo nativo...",12,MUTED,false);
         state.setTypeface(Typeface.MONOSPACE);
         state.setPadding(dp(13),dp(15),dp(13),dp(15));
@@ -948,7 +948,7 @@ public final class DesktopActivity extends Activity {
     }
 
     private void openBrowser(){
-        WindowUi w=window("CHROMIUM","Android WebView • motor del sistema anfitrión");
+        WindowUi w=window("Navegador","Android WebView • motor del sistema anfitrión");
         LinearLayout address=horizontal();
         TextView back=touch("‹",20,false,()->{});
         TextView forward=touch("›",20,false,()->{});
@@ -1047,7 +1047,7 @@ public final class DesktopActivity extends Activity {
         }catch(Exception e){info("No se pudo abrir Chrome: "+e.getMessage());}
     }
     private void openSettings(){
-        WindowUi w=window("SETTINGS","REVERSE OS 0.2 • configuración");
+        WindowUi w=window("Ajustes","REVERSE OS 0.2 • configuración");
         LinearLayout panel=vertical();
         panel.setPadding(dp(16),dp(16),dp(16),dp(16));
         panel.setBackground(round(CARD,0xff29485a,16));
@@ -1150,32 +1150,27 @@ public final class DesktopActivity extends Activity {
         super.onDestroy();
     }
 
+    // Consistent flat-color fallback when the GPU shader is unavailable.
     private final class DesktopBackdrop extends View {
         private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
         DesktopBackdrop(){super(DesktopActivity.this);}
         @Override protected void onDraw(Canvas canvas){
             float w=getWidth(),h=getHeight();
-            paint.setShader(new LinearGradient(0,0,w,h,
-                new int[]{0xff060b11,0xff132536,0xff09111b},null,Shader.TileMode.CLAMP));
-            canvas.drawRect(0,0,w,h,paint);
-            paint.setShader(new RadialGradient(w*0.82f,h*0.35f,w*0.95f,
-                new int[]{0x4334a5bd,0x122e84a0,0x0007080c},null,Shader.TileMode.CLAMP));
-            canvas.drawRect(0,0,w,h,paint);
-            paint.setShader(null);
-            paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(dp(0.6f));
-            paint.setColor(0x1022cfb9);
-            for(int x=0;x<w;x+=dp(32))canvas.drawLine(x,0,x,h,paint);
-            for(int y=0;y<h;y+=dp(32))canvas.drawLine(0,y,w,y,paint);
-            paint.setColor(0x205fead2);
-            paint.setStrokeWidth(dp(1.5f));
-            canvas.drawCircle(w*0.86f,h*0.39f,dp(145),paint);
-            canvas.drawCircle(w*0.86f,h*0.39f,dp(179),paint);
+            canvas.drawColor(0xff131922);
+            float cx=w*.60f,cy=h*.50f,scale=Math.min(w,h);
             paint.setStyle(Paint.Style.FILL);
-            paint.setTypeface(Typeface.create("sans-serif-black",Typeface.BOLD));
-            paint.setTextSize(dp(290));
-            paint.setColor(0x0cffffff);
-            canvas.drawText("R",w*0.39f,h*0.66f,paint);
+            paint.setColor(0xff1c303d);
+            canvas.drawCircle(cx,cy,scale*.25f,paint);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(dp(1));
+            paint.setColor(0xff394d5c);
+            canvas.drawOval(cx-scale*.44f,cy-scale*.16f,
+                            cx+scale*.44f,cy+scale*.16f,paint);
+            paint.setColor(0xff354954);
+            canvas.drawCircle(cx,cy,scale*.30f,paint);
+            paint.setStyle(Paint.Style.FILL);
+            paint.setColor(0xffacbfcd);
+            canvas.drawCircle(cx+scale*.42f,cy,dp(3),paint);
         }
     }
 }
