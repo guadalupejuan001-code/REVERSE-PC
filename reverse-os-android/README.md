@@ -107,7 +107,30 @@ código XI con Euclides `r0 = 21`. También verifica que BBY Q se abra,
 aprenda y responda mediante XI, **sin perder el resultado anterior de
 Euclides ni otros datos del mismo RVPC2**. Conserva capturas y pruebas.
 
-**Importante:** el debug APK de un runner GitHub puede tener firma distinta
-de versiones anteriores. Si Android rechaza una actualización, exporta antes
-tus datos RVPC2 y programas, desinstala el APK anterior e instala el nuevo;
-desinstalar borra los archivos privados.
+### Copias de seguridad
+
+En **Ajustes → EXPORTAR MI MEMORIA RVPC2** el sistema permite guardar
+una copia exacta de la memoria del escritorio y de BBY Q mediante
+el selector de archivos Android. En **IMPORTAR RVPC2 VALIDADO**
+comprueba tamaño, firma y checksum antes de sustituir el estado
+transaccional; una importación fallida conserva el estado anterior.
+Los scripts XI personalizados siguen siendo archivos privados
+independientes y requieren respaldarse por separado.
+
+**Advertencia de firma:** una APK de depuración generada en otro
+runner GitHub puede tener firma distinta y Android podría
+rechazar la actualización. No desinstales la versión existente sin
+antes proteger tus archivos: **desinstalar borra el almacenamiento
+privado** del paquete `com.reversepc.os`. La exportación incluida
+en v0.5 ayuda en futuras migraciones, pero no modifica una
+versión anterior ya instalada que carezca de esa función.
+
+### Verificación de instalación
+
+La CI abre realmente BBY Q en Android 15, inicializa modelos y léxico XI,
+pregunta `cuarto contiene llave` y exige la frase generada
+`cuarto contiene llave (via caja).`. La misma prueba verifica
+que `O 42 21` (resultado Euclides del escritorio) siga en
+`session.rvp` y que haya cuatro modelos E008 y firma E009.
+No se sustituye el código original del escritorio ni hay
+conexiones de IA externas.
