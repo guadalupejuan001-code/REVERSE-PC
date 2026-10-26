@@ -20,7 +20,7 @@ import javax.microedition.khronos.opengles.GL10;
 
 /**
  * Real OpenGL ES 3 renderer with an adaptive-resolution offscreen texture.
- * All four effects are computed procedurally on the GPU, never in a WebView.
+ * The orbital wallpaper is computed procedurally on the GPU, never in a WebView.
  * Image capture is deliberately explicit: the CPU sees pixels only for PNG.
  */
 public final class ReverseOrbitalRenderer implements GLSurfaceView.Renderer {
@@ -50,6 +50,7 @@ public final class ReverseOrbitalRenderer implements GLSurfaceView.Renderer {
     volatile boolean captureRequested = false;
 
     private int sceneProgram, blitProgram, framebuffer, colorTexture;
+    private volatile boolean rendererFailed = false;
     private int width, height, renderWidth, renderHeight;
     private long startNs, lastNs, statsNs;
     private int frameCount;
@@ -109,6 +110,7 @@ public final class ReverseOrbitalRenderer implements GLSurfaceView.Renderer {
     }
 
     @Override public void onSurfaceCreated(GL10 ignored, EGLConfig config) {
+        rendererFailed = false;
         try {
             sceneProgram = program(asset("space.vert"), asset("space.frag"));
             blitProgram = program(asset("space.vert"), asset("blit.frag"));
@@ -121,8 +123,8 @@ public final class ReverseOrbitalRenderer implements GLSurfaceView.Renderer {
             startNs = lastNs = statsNs = System.nanoTime();
             frameCount = 0;
         } catch (RuntimeException e) {
+            rendererFailed = true;
             report(e.getMessage());
-            throw e;
         }
     }
 
@@ -187,7 +189,7 @@ public final class ReverseOrbitalRenderer implements GLSurfaceView.Renderer {
     }
 
     @Override public void onDrawFrame(GL10 ignored) {
-        if (sceneProgram == 0 || width == 0 || height == 0) return;
+        if (rendererFailed || sceneProgram == 0 || width == 0 || height == 0) return;
         long now = System.nanoTime();
         float seconds = (now - startNs) / 1_000_000_000f;
         float delta = Math.min(.1f, (now - lastNs) / 1_000_000_000f);
@@ -250,9 +252,9 @@ public final class ReverseOrbitalRenderer implements GLSurfaceView.Renderer {
                 statsNs = now;
             }
         } catch (RuntimeException error) {
+            rendererFailed = true;
             report(error.getMessage());
-            // Do not spin on a broken GL context at full speed.
-            throw error;
+            // Disable a failed GPU pathway and preserve the CPU fallback view.
         }
     }
 
