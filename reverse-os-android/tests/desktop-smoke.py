@@ -91,6 +91,14 @@ def wait_log(token,tag='ReverseDesktop',timeout=25):
 
 def file(path):return adb('exec-out','run-as',PACKAGE,'cat','files/'+path,binary=True)
 
+def fail_with_evidence(kind,value,traceback):
+    try:
+        (OUT/'failure-ui.xml').write_bytes(ET.tostring(tree()))
+        screenshot('failure.png')
+        (OUT/'failure-logcat.txt').write_text(adb('logcat','-d'))
+    finally:sys.__excepthook__(kind,value,traceback)
+sys.excepthook=fail_with_evidence
+
 adb('shell','am','start','-W','-n',COMPONENT)
 wait_log('WELCOME_SCREEN_SHOWN','ReverseBoot')
 time.sleep(.6);screenshot('boot.png')
