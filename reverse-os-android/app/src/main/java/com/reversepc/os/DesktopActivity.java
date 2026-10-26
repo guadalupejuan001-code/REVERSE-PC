@@ -38,6 +38,9 @@ import android.widget.Toast;
 
 import org.json.JSONObject;
 import java.io.IOException;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
@@ -53,6 +56,7 @@ import java.util.concurrent.Executors;
  */
 public final class DesktopActivity extends Activity {
     private static final String LOG = "ReverseDesktop";
+    private static final int EXPORT_RVPC=5112, IMPORT_RVPC=5113;
     private static final int BG=0xff131922, CARD=0xff222b36, CARD_BRIGHT=0xff303c47;
     private static final int WHITE=0xfff5f3ef, MUTED=0xffbdc3c8, ACCENT=0xffaec3d2;
     private static final int BLUE=0xffb4c6d4, VIOLET=0xffcbb9cb, AMBER=0xffdec4a6;
@@ -1323,6 +1327,23 @@ public final class DesktopActivity extends Activity {
             startActivity(i);finish();
         });
         margin(w.content,restart,20);
+        TextView backup=touch("EXPORTAR MI MEMORIA RVPC2",12,false,()->{
+            Intent save=new Intent(Intent.ACTION_CREATE_DOCUMENT);
+            save.addCategory(Intent.CATEGORY_OPENABLE);
+            save.setType("application/octet-stream");
+            save.putExtra(Intent.EXTRA_TITLE,"REVERSE-BBYQ-Ether.rvp");
+            try{startActivityForResult(save,EXPORT_RVPC);}
+            catch(ActivityNotFoundException error){info("No hay gestor de archivos disponible");}
+        });
+        margin(w.content,backup,13);
+        TextView restore=touch("IMPORTAR RVPC2 VALIDADO",12,false,()->{
+            Intent open=new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            open.addCategory(Intent.CATEGORY_OPENABLE);
+            open.setType("*/*");
+            try{startActivityForResult(open,IMPORT_RVPC);}
+            catch(ActivityNotFoundException error){info("No hay gestor de archivos disponible");}
+        });
+        margin(w.content,restore,8);
         TextView reset=touch("RESTABLECER NÚCLEO ETHER",12,false,()->{
             new AlertDialog.Builder(this)
                 .setTitle("Reiniciar el estado de la computadora")
@@ -1344,6 +1365,60 @@ public final class DesktopActivity extends Activity {
         TextView close=touch("CERRAR",12,true,w.dialog::dismiss);
         margin(w.content,close,16);
     }
+    @Override protected void onActivityResult(int request,int code,Intent intent){
+        super.onActivityResult(request,code,intent);
+        if(code!=RESULT_OK||intent==null||intent.getData()==null)return;
+        final Uri uri=intent.getData();
+        if(request==EXPORT_RVPC){
+            engine.execute(()->{
+                try{
+                    if(store==null)throw new IOException("Núcleo Ether no disponible");
+                    byte[] state=store.loadState();
+                    NativeRuntime.inspect(state);
+                    try(OutputStream out=getContentResolver().openOutputStream(uri)){
+                        if(out==null)throw new IOException("Destino RVPC2 no disponible");
+                        out.write(state);out.flush();
+                    }
+                    runOnUiThread(()->info("Memoria Ether exportada: "+state.length+" bytes"));
+                }catch(Throwable error){
+                    Log.e(LOG,"RVPC_EXPORT_FAILED",error);
+                    runOnUiThread(()->info("Error exportando RVPC2: "+error.getMessage()));
+                }
+            });
+        }else if(request==IMPORT_RVPC){
+            new AlertDialog.Builder(this)
+                .setTitle("Importar memoria Ether")
+                .setMessage("Se sustituirá la sesión RVPC2 del escritorio. "+
+                            "Haz una copia de seguridad antes de continuar. "+
+                            "Los programas XI guardados no se borrarán.")
+                .setNegativeButton("CANCELAR",null)
+                .setPositiveButton("VALIDAR E IMPORTAR",(d,which)->engine.execute(()->{
+                    try{
+                        if(store==null)throw new IOException("Núcleo Ether no disponible");
+                        byte[] incoming;
+                        try(InputStream in=getContentResolver().openInputStream(uri);
+                            ByteArrayOutputStream out=new ByteArrayOutputStream()){
+                            if(in==null)throw new IOException("Origen RVPC2 no disponible");
+                            byte[] chunk=new byte[8192];
+                            int len;
+                            while((len=in.read(chunk))!=-1){
+                                if(out.size()+len>32*1024*1024+29)
+                                    throw new IOException("RVPC2 supera el límite del núcleo");
+                                out.write(chunk,0,len);
+                            }
+                            incoming=out.toByteArray();
+                        }
+                        NativeRuntime.inspect(incoming); // checksum, size, replay validation
+                        store.writeState(incoming); // AtomicFile: commit only after validation
+                        runOnUiThread(()->info("Memoria RVPC2 restaurada y validada"));
+                    }catch(Throwable error){
+                        Log.e(LOG,"RVPC_IMPORT_FAILED",error);
+                        runOnUiThread(()->info("Importación rechazada: "+error.getMessage()));
+                    }
+                })).show();
+        }
+    }
+
     private void openPower(){
         new AlertDialog.Builder(this).setTitle("REVERSE OS")
             .setItems(new String[]{"Reiniciar escritorio","Configuración","Cerrar REVERSE OS"},(d,which)->{
