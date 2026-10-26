@@ -1,4 +1,5 @@
 /build/
+/build-signing/
 /deps/
 /evidence/
 /resultados/

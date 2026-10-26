@@ -1,4 +1,5 @@
 #include "mundo_x/quantum_runtime.hpp"
+#include "rxe.hpp"
 
 #include <array>
 #include <cstddef>
@@ -281,16 +282,27 @@ void experiment(const fs::path& output_dir) {
 void run(const fs::path& program,const fs::path& state_path,
          const fs::path& destination){
   auto runtime=load_state(state_path);
-  const auto output=runtime.execute(read_file(program));
+  const auto data=read_file(program);
+  auto extension=program.extension().string();for(char& c:extension)if(c>='A'&&c<='Z')c=char(c+('a'-'A'));
+  const bool binary=extension==".rxe"||reverse_pc::rxe::has_magic(data);
+  const auto output=binary?reverse_pc::rxe::execute(runtime,reverse_pc::rxe::Bytes(data.begin(),data.end())):runtime.execute(data);
   save_state(destination,runtime);
   std::cout<<output;
   std::cerr<<"REVERSE_PC_RUN_PASS saved="<<destination.string()<<"\n";
+}
+void write_program(const fs::path& path,const std::string& data){
+  if(!path.parent_path().empty())fs::create_directories(path.parent_path());
+  const fs::path temporary=path.string()+".pending";std::ofstream out(temporary,std::ios::binary|std::ios::trunc);
+  check(bool(out),"cannot write program output");out.write(data.data(),std::streamsize(data.size()));out.close();check(bool(out),"program output failed");fs::rename(temporary,path);
 }
 void help(){
   std::cout<<"REVERSE-PC / integrated Ether computer 0.2\n"
            <<"reverse_pc init STATE_OUTPUT.rvp\n"
            <<"reverse_pc demo [directory]\n"
-           <<"reverse_pc run PROGRAM.xi STATE_INPUT.rvp STATE_OUTPUT.rvp\n"
+           <<"reverse_pc run PROGRAM.xi|APP.rxe STATE_INPUT.rvp STATE_OUTPUT.rvp\n"
+           <<"reverse_pc compile PROGRAM.xi APP.rxe [TITLE]\n"
+           <<"reverse_pc inspect-rxe APP.rxe\n"
+           <<"reverse_pc disassemble APP.rxe OUTPUT.xi\n"
            <<"reverse_pc --help\n";
 }
 }
@@ -304,6 +316,15 @@ int main(int argc,char** argv) {
       experiment(argc==3?fs::path(argv[2]):fs::path("reverse-pc-results"));
     else if(cmd=="run"&&argc==5)
       run(argv[2],argv[3],argv[4]);
+    else if(cmd=="compile"&&(argc==4||argc==5)){
+      check(!fs::exists(argv[3])||!fs::equivalent(argv[2],argv[3]),"source and executable must be different files");
+      const auto image=reverse_pc::rxe::compile(read_file(argv[2]),argc==5?argv[4]:fs::path(argv[2]).stem().string());
+      write_program(argv[3],std::string(image.begin(),image.end()));std::cout<<reverse_pc::rxe::describe(image)<<"\n";
+    }
+    else if(cmd=="inspect-rxe"&&argc==3){const auto data=read_file(argv[2]);std::cout<<reverse_pc::rxe::describe(reverse_pc::rxe::Bytes(data.begin(),data.end()))<<"\n";}
+    else if(cmd=="disassemble"&&argc==4){
+      check(!fs::exists(argv[3])||!fs::equivalent(argv[2],argv[3]),"input and output must be different files");const auto data=read_file(argv[2]);write_program(argv[3],reverse_pc::rxe::disassemble(reverse_pc::rxe::decode(reverse_pc::rxe::Bytes(data.begin(),data.end()))));
+    }
     else throw std::invalid_argument("incorrect command/arguments, run --help");
     return 0;
   }catch(const std::exception& e){
