@@ -46,13 +46,23 @@ def find(text=None,desc=None,clickable=False,timeout=12):
             except (AssertionError,ValueError):continue
             return n
         time.sleep(.25)
-    (OUT/'failure-ui.xml').write_bytes(ET.tostring(root))
     raise AssertionError(('missing UI',text,desc))
 
 def tap(node):
     x1,y1,x2,y2=box(node);adb('shell','input','tap',(x1+x2)//2,(y1+y2)//2)
 
-def click(text=None,desc=None,clickable=False):tap(find(text,desc,clickable))
+def click(text=None,desc=None,clickable=False):
+    try:tap(find(text,desc,clickable,timeout=4));return
+    except AssertionError:
+        if text is None:raise
+    # Native popup menus can scroll on a short landscape display.
+    for _ in range(4):
+        lists=[n for n in tree().iter('node') if n.get('class')=='android.widget.ListView' and n.get('scrollable')=='true']
+        if not lists:break
+        x1,y1,x2,y2=box(lists[-1]);adb('shell','input','swipe',(x1+x2)//2,y2-18,(x1+x2)//2,y1+20,250)
+        try:tap(find(text,desc,clickable,timeout=2));return
+        except AssertionError:pass
+    tap(find(text,desc,clickable))
 
 def enter(node,value,clear=True):
     tap(node)
