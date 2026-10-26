@@ -21,6 +21,7 @@ public final class DesktopWindows {
     private final HashSet<String> desktopHidden=new HashSet<>();
     private Handle focused;
     private int fullWidth,fullHeight;
+    private String desktopFocus="";
     public DesktopWindows(Context c,FrameLayout area,LinearLayout tasks,SharedPreferences prefs,Runnable changed){
         context=c;this.area=area;this.tasks=tasks;this.prefs=prefs;this.changed=changed;
         area.addOnLayoutChangeListener((v,l,t,r,b,ol,ot,or,ob)->{
@@ -52,7 +53,7 @@ public final class DesktopWindows {
                 j.put("mode",h.mode);j.put("minimized",h.minimized);edit.putString("window:"+h.key,j.toString());
             }catch(JSONException ignored){}
         }
-        edit.putString("session",session.toString()).apply();
+        edit.putString("session",session.toString()).putString("focused",focused==null?"":focused.key).apply();
     }
     private void update(){
         tasks.removeAllViews();
@@ -82,9 +83,12 @@ public final class DesktopWindows {
     }
     public void showDesktop(){
         if(!desktopHidden.isEmpty()){
+            Handle last=null;
             for(Handle h:order)if(desktopHidden.contains(h.key)){h.minimized=false;h.shell.setVisibility(View.VISIBLE);}
-            desktopHidden.clear();if(!order.isEmpty())focus(order.get(order.size()-1));
+            for(Handle h:order)if(desktopHidden.contains(h.key)){last=h;if(h.key.equals(desktopFocus))break;}
+            desktopHidden.clear();if(last!=null)focus(last);
         }else{
+            desktopFocus=focused==null?"":focused.key;
             for(Handle h:order)if(!h.minimized){desktopHidden.add(h.key);h.minimized=true;h.shell.setVisibility(View.GONE);}
             focused=null;
         }
