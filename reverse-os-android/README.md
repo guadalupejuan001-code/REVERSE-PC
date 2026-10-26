@@ -1,84 +1,50 @@
-# REVERSE OS v0.3 — Escritorio horizontal con movimiento real
+# REVERSE OS v0.4 — escritorio natural, colores planos
 
-**REVERSE OS** funciona como un entorno de computadora dentro de Android.
-La interfaz adopta convenciones conocidas de Windows y macOS: escritorio,
-iconos, menú Inicio, búsqueda, barra de tareas y ventanas flotantes.
+**REVERSE OS** es una computadora virtual basada en XI y Ether dentro de Android.
+El entorno adopta patrones convencionales de Windows y macOS: Inicio, búsqueda,
+barra de tareas, aplicaciones y ventanas flotantes que se pueden mover, minimizar
+y maximizar.
 
-No reemplaza el kernel de Android; no ejecuta Windows, macOS ni Chromium como
-procesos huéspedes XI.
+## Diseño
 
-## Arranque
+- Pantalla negra de arranque: `welcome.... REVERSE.`, sin resplandores.
+- Escritorio horizontal en tonos de grafito, pizarra y azul suave; tipografía
+  legible y aplicaciones nombradas naturalmente en español.
+- Fondo procedural con **formas planas y órbitas lentas**; conserva movimiento
+  real usando OpenGL ES 3 de Space Glitch V2 (portado), pero no muestra partículas
+  espectaculares, efecto de plasma ni filtros de neón.
+- Las ventanas mantienen acciones reales: XI Studio (editar y ejecutar),
+  Terminal, Archivos, Navegador, Ether Core y Ajustes.
+- Ajustes de calidad: ECO / AUTO / ALTA y Pausa / Movimiento.
+- Pantalla inicial visible aun cuando falle el núcleo: diagnóstico explícito,
+  nunca respuestas simuladas para aparentar ejecución.
 
-1. Pantalla negra: `welcome.... REVERSE.`.
-2. Transición al escritorio panorámico.
-3. Fondo orbital violeta animado con **OpenGL ES 3**, usando el renderizador
-   adaptativo procedente de **REVERSE Space Glitch V2** y un shader propio
-   para REVERSE OS. La CPU no dibuja cada píxel.
-4. Accesos directos: **XI Studio, Terminal, Files, Chromium, Ether Core,
-   Settings**, y barra inferior con Inicio, búsqueda y aplicaciones.
-5. Ventanas con cerrar, minimizar, maximizar y arrastrar; menú lateral
-   con Home, Files, Settings, Terminal y About.
+## Tecnología que sí se utiliza
 
-## Aplicaciones funcionales
+La lógica de XI se ejecuta con el `QuantumRuntime` propio del repositorio,
+`InfiniteCore` y `Inverse Ether Memory`, sin crear una segunda autoridad.
+Los estados guardados siguen en formato RVPC2, con commit tras éxito.
 
-- **XI Studio:** ventana editable de código XI con Guardar y Ejecutar;
-  invoca el mismo `QuantumRuntime.execute()` C++ que la CLI y conserva
-  el archivo RVPC2 solo cuando la ejecución termina correctamente.
-- **Terminal:** `help`, `ls`, `run fichero.xi`, `edit fichero.xi`,
-  `core` y `clear`; salida real del intérprete.
-- **Files:** programas XI privados.
-- **Ether Core:** consultas reales al estado, reglas, qubits y revisiones.
-- **Chromium:** navegador sobre el **WebView de Android**, no un Chromium
-  binario compilado para la arquitectura XI.
-- **Settings:** reinicio, calidad visual **ECO / AUTO / ALTA** y
-  **PAUSA / MOVIMIENTO** del fondo.
+El fondo de pantalla usa un shader GLSL 300 ES para una escena bidimensional
+de círculos y líneas. No se afirma aceleración cuántica física ni renderizado
+en el aún incompleto backend GLES de Ether Render X. Los FPS mostrados
+son medidos por el renderizador Android, con resolución adaptativa.
 
-## Qué motor gráfico participa
+El navegador usa **Android WebView**, no ejecuta un binario de Chromium
+dentro de XI. Android sigue siendo el sistema operativo anfitrión y gestiona
+la GPU, el teclado y el kernel.
 
-Se revisó `mundo-X/docs/render-engine-inventory.md` y
-`mundo-X/docs/ether-render-x.md`. **Ether Render X** es el núcleo estructural
-objetivo de Mundo X, pero en la revisión indicada aún no disponía de un
-backend Android GLES que sustituyera el renderer de producción.
+## Instalación y prueba
 
-REVERSE OS utiliza en esta versión la infraestructura verificada de
-**Space Glitch V2** (`SpaceRenderer` adaptado como
-`ReverseOrbitalRenderer`), sin introducir un segundo estado
-cuántico. El shader `space.frag` genera una esfera, anillos y partículas
-mediante reglas compactas evaluadas directamente por la GPU.
+La compilación CI se llama `REVERSE OS v0.4 — minimal flat landscape desktop`.
+Produce el artefacto `REVERSE-OS-v0.4.apk` firmado en modo desarrollo para
+`arm64-v8a` (Samsung A16) y `x86_64` (emulador Android 15).
 
-El visualizador **no ejecuta los circuitos cuánticos en la GPU**.
-No afirma aceleración cuántica, una tasa FPS fija ni hardware cuántico.
-La calidad automática ajusta la resolución interna según FPS medidos.
+El pipeline valida firma, bibliotecas, arranque horizontal, cambio de
+fotogramas en una región central del fondo, logs de FPS y funcionamiento del
+código XI con Euclides `r0 = 21`. Conserva capturas y pruebas de RVPC2.
 
-## Cómo reproducir
-
-El CI `.github/workflows/reverse-os-android.yml` compila para
-`arm64-v8a` (Galaxy A16) y `x86_64` (emulador). Necesita Java 17,
-SDK Android 35, NDK, Gradle, el checkout de Mundo X en
-`e2778d962af22f6f1a0794058dd4685fc2573966` y el overlay
-comprobado por hashes.
-
-El artefacto de Actions contiene `REVERSE-OS-v0.3.apk`,
-`boot.png`, `desktop.png`, `motion.png`, `result.png`,
-logs y la medición FPS del renderer.
-
-Los criterios obligatorios son:
-- APK firmada con JNI real de XI y bibliotecas para ARM64/x86_64.
-- Inicio visible en horizontal y accesos a las seis aplicaciones.
-- Dos capturas separadas muestran cambio real en el centro del fondo;
-  el log aporta FPS medidos.
-- Abrir XI Studio desde el escritorio, ejecutar Euclides y comprobar
-  `r0 = 21`, RVPC2 guardado y regreso al escritorio.
-- Regresiones de REVERSE-PC sin alteraciones.
-
-## Limitaciones e instalación
-
-Es un *shell* Android, no un SO arrancable. Las ventanas son ventanas de
-aplicación del entorno; la planificación de procesos, GPU, teclado y WebView
-dependen del sistema anfitrión. El ejecutor de programas XI sigue siendo
-propio del proyecto REVERSE-PC.
-
-Los APK de debug de distintos runners GitHub pueden tener firmas distintas.
-Si Android rechaza la actualización sobre una versión anterior, **exporta
-primero tus programas y estado**, desinstala y reinstala. Desinstalar borra
-el almacenamiento privado.
+**Importante:** el debug APK de un runner GitHub puede tener firma distinta
+de versiones anteriores. Si Android rechaza una actualización, exporta antes
+tus datos RVPC2 y programas, desinstala el APK anterior e instala el nuevo;
+desinstalar borra los archivos privados.
