@@ -54,7 +54,16 @@ def tap(node):
 def click(text=None,desc=None,clickable=False):
     try:tap(find(text,desc,clickable,timeout=4));return
     except AssertionError:
-        if text is None:raise
+        if text is None:
+            if desc is None or not desc.startswith(('ARCHIVO ','OPCIONES ')):raise
+            for _ in range(7):
+                panel=find(desc='VENTANA Archivos')
+                lists=[n for n in panel.iter('node') if n.get('class')=='android.widget.ScrollView']
+                if not lists:break
+                x1,y1,x2,y2=box(lists[-1]);adb('shell','input','swipe',(x1+x2)//2,y2-12,(x1+x2)//2,y1+15,250)
+                try:tap(find(desc=desc,timeout=2));return
+                except AssertionError:pass
+            tap(find(desc=desc));return
     # Native popup menus can scroll on a short landscape display.
     for _ in range(4):
         lists=[n for n in tree().iter('node') if n.get('class')=='android.widget.ListView' and n.get('scrollable')=='true']
