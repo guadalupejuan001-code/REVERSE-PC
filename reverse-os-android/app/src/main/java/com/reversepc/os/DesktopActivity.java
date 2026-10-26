@@ -174,6 +174,16 @@ public final class DesktopActivity extends Activity {
         LinearLayout layout=vertical();
         layout.setPadding(dp(14),dp(22),dp(14),dp(13));
         root.addView(layout,new FrameLayout.LayoutParams(-1,-1));
+        // Android 15+ draws host navigation over app windows by default.
+        // Reserve the genuine gesture/button inset so the desktop dock
+        // stays touchable and legible on smaller phones (e.g. Galaxy A16).
+        root.setOnApplyWindowInsetsListener((view,insets)->{
+            int nav=android.os.Build.VERSION.SDK_INT>=30
+                ? insets.getInsets(android.view.WindowInsets.Type.navigationBars()).bottom
+                : insets.getSystemWindowInsetBottom();
+            layout.setPadding(dp(14),dp(22),dp(14),Math.max(dp(13),nav+dp(7)));
+            return insets;
+        });
 
         // Desktop system bar
         LinearLayout toolbar=horizontal();
@@ -190,8 +200,8 @@ public final class DesktopActivity extends Activity {
         toolbar.addView(titles,new LinearLayout.LayoutParams(0,-2,1f));
         clockLabel=label("",15,WHITE,true);
         toolbar.addView(clockLabel);
-        TextView power=label("  ⏻",24,WHITE,false);
-        power.setPadding(dp(12),0,dp(4),0);
+        TextView power=label(" PWR ",11,ACCENT,true);
+        power.setPadding(dp(11),dp(10),dp(5),dp(10));
         power.setOnClickListener(v->openPower());
         toolbar.addView(power);
         layout.addView(toolbar,new LinearLayout.LayoutParams(-1,dp(46)));
@@ -217,12 +227,12 @@ public final class DesktopActivity extends Activity {
         scroll.setFillViewport(false);
         scroll.setVerticalScrollBarEnabled(false);
         LinearLayout main=vertical();
-        main.setPadding(dp(0),dp(24),dp(0),dp(20));
+        main.setPadding(dp(0),dp(10),dp(0),dp(12));
 
         TextView micro=label("YOUR COMPUTER",11,ACCENT,true);
         micro.setLetterSpacing(0.24f);
         main.addView(micro);
-        TextView hero=label("MR REVERSE",38,WHITE,true);
+        TextView hero=label("MR REVERSE",34,WHITE,true);
         hero.setLetterSpacing(0.025f);
         margin(main,hero,6);
         TextView caption=label("Un espacio. Un núcleo. Tus propias reglas.",13,0xffbfd2da,false);
@@ -236,30 +246,29 @@ public final class DesktopActivity extends Activity {
         metrics.addView(badge);
         TextView badge2=label("  RVPC2  •  ETHER",10,MUTED,true);
         metrics.addView(badge2);
-        margin(main,metrics,17);
+        margin(main,metrics,10);
 
-        space(main,34);
+        space(main,12);
         TextView libraryTitle=label("APPLICATIONS",11,0xffb5c8d2,true);
         libraryTitle.setLetterSpacing(0.22f);
         main.addView(libraryTitle);
         TextView subtitle=label("Abre herramientas, archivos y programas",12,MUTED,false);
-        margin(main,subtitle,6);
-        space(main,16);
+        margin(main,subtitle,4);
+        space(main,10);
 
+        // Compact 3 x 2 desktop launcher: show the complete application
+        // library above the dock even at 320dp emulator resolution.
         LinearLayout r1=horizontal();
         addTile(r1,"⌘","XI STUDIO","Programas XI",ACCENT,()->openStudio(0,null));
         addTile(r1,">_","TERMINAL","Consola real",BLUE,this::openTerminal);
-        main.addView(r1,new LinearLayout.LayoutParams(-1,dp(143)));
-        space(main,12);
+        addTile(r1,"▤","FILES","Archivos .xi",AMBER,this::openFiles);
+        main.addView(r1,new LinearLayout.LayoutParams(-1,dp(96)));
+        space(main,9);
         LinearLayout r2=horizontal();
-        addTile(r2,"▤","FILES","Archivos .xi",AMBER,this::openFiles);
-        addTile(r2,"◈","ETHER CORE","Monitor de estado",VIOLET,this::openMonitor);
-        main.addView(r2,new LinearLayout.LayoutParams(-1,dp(143)));
-        space(main,12);
-        LinearLayout r3=horizontal();
-        addTile(r3,"◎","CHROMIUM","Navegador Android",BLUE,this::openBrowser);
-        addTile(r3,"⚙","SETTINGS","Sistema y control",ACCENT,this::openSettings);
-        main.addView(r3,new LinearLayout.LayoutParams(-1,dp(143)));
+        addTile(r2,"◈","ETHER CORE","Estado real",VIOLET,this::openMonitor);
+        addTile(r2,"◎","CHROMIUM","WebView host",BLUE,this::openBrowser);
+        addTile(r2,"⚙","SETTINGS","Configurar",ACCENT,this::openSettings);
+        main.addView(r2,new LinearLayout.LayoutParams(-1,dp(96)));
 
         TextView note=label("REVERSE-PC nativo  ·  Chromium utiliza Android WebView",10,MUTED,false);
         note.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -276,20 +285,24 @@ public final class DesktopActivity extends Activity {
     private void addTile(LinearLayout row,String glyph,String name,String subtitle,int color,Runnable open){
         LinearLayout cell=vertical();
         cell.setGravity(Gravity.CENTER_VERTICAL);
-        cell.setPadding(dp(16),dp(12),dp(12),dp(13));
+        cell.setPadding(dp(9),dp(7),dp(6),dp(7));
         cell.setBackground(round(0xe9142333,0xff2a3c4b,20));
         cell.setClickable(true);
         cell.setFocusable(true);
         cell.setOnClickListener(v->open.run());
 
-        TextView symbol=label(glyph,25,color,true);
+        TextView symbol=label(glyph,19,color,true);
         symbol.setGravity(Gravity.CENTER);
         symbol.setBackground(round(0xff233549,0,13));
-        cell.addView(symbol,new LinearLayout.LayoutParams(dp(53),dp(53)));
-        TextView title=label(name,14,WHITE,true);
-        margin(cell,title,9);
-        TextView caption=label(subtitle,10,MUTED,false);
-        margin(cell,caption,2);
+        cell.addView(symbol,new LinearLayout.LayoutParams(dp(35),dp(35)));
+        TextView title=label(name,11,WHITE,true);
+        title.setSingleLine(true);
+        title.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        margin(cell,title,5);
+        TextView caption=label(subtitle,9,MUTED,false);
+        caption.setSingleLine(true);
+        caption.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        margin(cell,caption,1);
         LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,-1,1f);
         p.setMargins(dp(4),0,dp(4),0);
         row.addView(cell,p);
