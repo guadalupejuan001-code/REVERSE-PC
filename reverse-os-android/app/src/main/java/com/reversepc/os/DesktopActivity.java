@@ -154,7 +154,7 @@ public final class DesktopActivity extends Activity {
                     if(isFinishing()||isDestroyed())return;
                     statusLabel.setText("● Listo");
                     statusLabel.setTextColor(ACCENT);
-                    statusDetail.setText("XI y Ether disponibles");
+                    statusDetail.setText("");
                 });
             }catch(Throwable fault){
                 engineFailure=fault.getClass().getSimpleName()+": "+fault.getMessage();
@@ -163,7 +163,7 @@ public final class DesktopActivity extends Activity {
                     if(isFinishing()||isDestroyed())return;
                     statusLabel.setText("● Error del núcleo");
                     statusLabel.setTextColor(0xffff9898);
-                    statusDetail.setText("Toca CORE ERROR para ver el diagnóstico.");
+                    statusDetail.setText("");
                 });
             }
         });
@@ -200,7 +200,14 @@ public final class DesktopActivity extends Activity {
             int nav=android.os.Build.VERSION.SDK_INT>=30
                 ? insets.getInsets(android.view.WindowInsets.Type.navigationBars()).bottom
                 : insets.getSystemWindowInsetBottom();
-            system.setPadding(dp(12),dp(3),dp(12),nav+dp(5));
+            int right=android.os.Build.VERSION.SDK_INT>=30
+                ? insets.getInsets(android.view.WindowInsets.Type.navigationBars()).right
+                : insets.getSystemWindowInsetRight();
+            int left=android.os.Build.VERSION.SDK_INT>=30
+                ? insets.getInsets(android.view.WindowInsets.Type.navigationBars()).left
+                : insets.getSystemWindowInsetLeft();
+            system.setPadding(Math.max(dp(12),left+dp(5)),dp(3),
+                              Math.max(dp(12),right+dp(5)),nav+dp(5));
             return insets;
         });
 
@@ -220,7 +227,7 @@ public final class DesktopActivity extends Activity {
             else openMonitor();
         });
         top.addView(statusLabel);
-        statusDetail=label("  XI / Ether",10,MUTED,false);
+        statusDetail=label("",10,MUTED,false);
         top.addView(statusDetail);
         LinearLayout.LayoutParams topP=new LinearLayout.LayoutParams(-1,dp(32));
         system.addView(top,topP);
@@ -250,17 +257,17 @@ public final class DesktopActivity extends Activity {
 
         LinearLayout identity=vertical();
         identity.setGravity(Gravity.CENTER);
-        TextView title=label("REVERSE",29,WHITE,true);
+        TextView title=label("REVERSE",23,WHITE,true);
         title.setGravity(Gravity.CENTER);
         title.setLetterSpacing(.10f);
 
         identity.addView(title);
-        TextView caption=label("Tu espacio de trabajo",12,MUTED,false);
+        TextView caption=label("Tu espacio de trabajo",11,MUTED,false);
         caption.setGravity(Gravity.CENTER);
         margin(identity,caption,7);
-        FrameLayout.LayoutParams idP=new FrameLayout.LayoutParams(dp(320),dp(92),
+        FrameLayout.LayoutParams idP=new FrameLayout.LayoutParams(dp(280),dp(77),
                                                               Gravity.CENTER);
-        idP.leftMargin=dp(115);
+        idP.leftMargin=dp(45);
         workspace.addView(identity,idP);
 
         system.addView(buildTaskbar(),new LinearLayout.LayoutParams(-1,dp(56)));
@@ -275,14 +282,14 @@ public final class DesktopActivity extends Activity {
         LinearLayout icon=vertical();
         icon.setGravity(Gravity.CENTER);
         icon.setPadding(dp(4),dp(6),dp(4),dp(6));
-        icon.setBackground(round(0xff1e2935,0,10));
+        icon.setBackground(round(0x00000000,0,10));
         icon.setClickable(true);
         icon.setFocusable(true);
         icon.setOnClickListener(v->callback.run());
         TextView sign=label(glyph,22,ACCENT,true);
         sign.setGravity(Gravity.CENTER);
-
-        icon.addView(sign);
+        sign.setBackground(round(0xff2b3a48,0,12));
+        icon.addView(sign,new LinearLayout.LayoutParams(dp(39),dp(39)));
         TextView name=label(text,11,WHITE,true);
         name.setGravity(Gravity.CENTER);
         name.setSingleLine(true);
@@ -655,7 +662,7 @@ public final class DesktopActivity extends Activity {
         editor.setInputType(InputType.TYPE_CLASS_TEXT|
             InputType.TYPE_TEXT_FLAG_MULTI_LINE|
             InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
-        editor.setBackground(round(0xff070c19,0xff45406a,10));
+        editor.setBackground(round(0xff1b2531,0xff4a5b69,9));
         editor.setPadding(dp(12),dp(8),dp(12),dp(8));
         editor.setText(tab==2?"#!reverse-pc-machine-v1\nset r0 1\nprint r0\nhalt\n":
             "#!reverse-pc-machine-v1\n# Cargando...\n");
@@ -1047,12 +1054,12 @@ public final class DesktopActivity extends Activity {
         }catch(Exception e){info("No se pudo abrir Chrome: "+e.getMessage());}
     }
     private void openSettings(){
-        WindowUi w=window("Ajustes","REVERSE OS 0.2 • configuración");
+        WindowUi w=window("Ajustes","Apariencia y funcionamiento");
         LinearLayout panel=vertical();
         panel.setPadding(dp(16),dp(16),dp(16),dp(16));
         panel.setBackground(round(CARD,0xff29485a,16));
         panel.addView(label("REVERSE OS  /  PERSONAL COMPUTER",16,WHITE,true));
-        margin(panel,label("Bienvenido, Mr Reverse.",13,ACCENT,false),9);
+        margin(panel,label("Un espacio sencillo para tus programas.",13,MUTED,false),9);
         margin(panel,label("Arquitectura XI y Ether con estado RVPC2.\n"
                 +"Android proporciona interfaz, procesos, teclado y controladores.\n\n"
                 +"La computadora huésped XI aún no arranca como un sistema operativo independiente.",
