@@ -57,7 +57,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
         int[] origin=new int[2];int[] width={0};runOnMainSync(()->{activity.testingWebView().getLocationOnScreen(origin);width[0]=activity.testingWebView().getWidth();});
         float scale=(float)(width[0]/point.getDouble("width")),x=origin[0]+(float)point.getDouble("x")*scale,y=origin[1]+(float)point.getDouble("y")*scale;
         long time=SystemClock.uptimeMillis();MotionEvent down=MotionEvent.obtain(time,time,MotionEvent.ACTION_DOWN,x,y,0),up=MotionEvent.obtain(time,time+80,MotionEvent.ACTION_UP,x,y,0);
-        try{sendPointerSync(down);sendPointerSync(up);}finally{down.recycle();up.recycle();}waitForIdleSync();
+        try{sendPointerSync(down);sendPointerSync(up);}finally{down.recycle();up.recycle();}Thread.sleep(100);
     }
     private void sendMessage(String question,String answer)throws Exception{
         int before=Integer.parseInt(js("programSessions.get(state.windows.find(w=>w.rxePath==='Aplicaciones/BBY-Q.rxe').id).snapshot.history.length"));
@@ -152,7 +152,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
         // All catalog entry points, including a restored 2.0 shortcut, stay here.
         js("createWindow('control',{tab:'apps'});true");tapDom(".control-app-grid [data-open=programs]");
         js("createWindow('control',{tab:'system'});true");waitJs("document.querySelector('.wall-editor-actions [data-open=programs]')");tapDom(".wall-editor-actions [data-open=programs]");
-        js("createWindow('nativeDesktop');window.ReverseNative.openNativeDesktop();true");waitForIdleSync();
+        js("createWindow('nativeDesktop');window.ReverseNative.openNativeDesktop();true");Thread.sleep(100);
         require(resumed instanceof WorkbenchActivity&&oldDesktop.getHits()==0,"A catalog entry point launched DesktopActivity");
         tapDom(".program-list [data-program-path=\"Aplicaciones/Hola-REVERSE.rxe\"]");
         waitJs("document.querySelector('.window[aria-label=\"Hola REVERSE\"] [data-program-action=run]')");
@@ -210,9 +210,11 @@ public final class WorkbenchTestRunner extends Instrumentation {
         try{
             String requested=arguments==null?"full":arguments.getString("mode","full");
             boolean boot=requested.equals("boot"),seed=requested.equals("upgradeSeed"),upgrade=requested.equals("upgrade"),legacy=requested.equals("legacy");
-            if(boot){ActivityMonitor monitor=addMonitor(WorkbenchActivity.class.getName(),null,false);startActivitySync(new Intent(getTargetContext(),BootActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));activity=(WorkbenchActivity)waitForMonitorWithTimeout(monitor,15000);removeMonitor(monitor);require(activity!=null,"Boot did not reach desktop");}
-            else if(legacy){ActivityMonitor monitor=addMonitor(WorkbenchActivity.class.getName(),null,false);runOnMainSync(()->getTargetContext().startActivity(new Intent(getTargetContext(),DesktopActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)));activity=(WorkbenchActivity)waitForMonitorWithTimeout(monitor,15000);removeMonitor(monitor);require(activity!=null,"Restored 2.0 activity did not redirect to Workbench");}
-            else activity=(WorkbenchActivity)startActivitySync(new Intent(getTargetContext(),WorkbenchActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            ActivityMonitor desktopMonitor=addMonitor(WorkbenchActivity.class.getName(),null,false);
+            Class<?> entry=boot?BootActivity.class:legacy?DesktopActivity.class:WorkbenchActivity.class;
+            runOnMainSync(()->getTargetContext().startActivity(new Intent(getTargetContext(),entry).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)));
+            activity=(WorkbenchActivity)waitForMonitorWithTimeout(desktopMonitor,15000);removeMonitor(desktopMonitor);
+            require(activity!=null,"Entry did not reach Workbench: "+requested);
             waitJs("document.querySelector('[data-task-app]')&&typeof nativeRequest==='function'");
             JSONObject snapshot=op("inspect","","testSnapshot");
             require(snapshot.getBoolean("ok"),snapshot.toString());

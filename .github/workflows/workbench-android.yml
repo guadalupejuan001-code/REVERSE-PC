@@ -112,30 +112,30 @@ jobs:
           # that first-boot update recreates already-running activities.
           sleep 20
           adb logcat -c
-          adb shell am instrument -w -e mode upgradeSeed com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/upgrade-seed.txt
+          timeout 180s adb shell am instrument -w -e mode upgradeSeed com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/upgrade-seed.txt
           grep 'WORKBENCH_TESTS_OK mode=upgradeSeed' workbench-evidence/upgrade-seed.txt
           adb shell am force-stop com.reversepc.workbench
           # Real in-place update: same package and signature, no uninstall or clear.
           adb install -r workbench-dist/REVERSE-Workbench-v2.1.apk
-          adb shell am instrument -w -e mode upgrade com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/upgrade.txt
+          timeout 180s adb shell am instrument -w -e mode upgrade com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/upgrade.txt
           grep 'WORKBENCH_TESTS_OK mode=upgrade' workbench-evidence/upgrade.txt
           adb shell am force-stop com.reversepc.workbench
-          adb shell am instrument -w -e mode restore com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/upgrade-restore.txt
+          timeout 180s adb shell am instrument -w -e mode restore com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/upgrade-restore.txt
           grep 'WORKBENCH_TESTS_OK mode=restore' workbench-evidence/upgrade-restore.txt
           adb pull /sdcard/Android/data/com.reversepc.workbench/files/visual-evidence workbench-evidence/upgrade-visual-evidence
           # A separate fresh-install scenario uses only this disposable emulator.
           adb shell pm clear com.reversepc.workbench
-          adb shell am instrument -w com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/instrumentation.txt
+          timeout 180s adb shell am instrument -w com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/instrumentation.txt
           grep 'WORKBENCH_TESTS_OK mode=full' workbench-evidence/instrumentation.txt
           adb shell am force-stop com.reversepc.workbench
-          adb shell am instrument -w -e mode restore com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/restore.txt
+          timeout 180s adb shell am instrument -w -e mode restore com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/restore.txt
           grep 'WORKBENCH_TESTS_OK mode=restore' workbench-evidence/restore.txt
           adb shell am force-stop com.reversepc.workbench
-          adb shell am instrument -w -e mode boot com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/boot.txt
+          timeout 180s adb shell am instrument -w -e mode boot com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/boot.txt
           grep 'WORKBENCH_TESTS_OK mode=boot' workbench-evidence/boot.txt
           adb shell am force-stop com.reversepc.workbench
           adb logcat -c
-          adb shell am instrument -w -e mode legacy com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/legacy-entry.txt
+          timeout 180s adb shell am instrument -w -e mode legacy com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/legacy-entry.txt
           grep 'WORKBENCH_TESTS_OK mode=legacy' workbench-evidence/legacy-entry.txt
           adb logcat -d -s ReverseDesktop:I '*:S' > workbench-evidence/legacy-entry-logcat.txt
           grep 'WORKBENCH_LEGACY_ENTRY_REDIRECT' workbench-evidence/legacy-entry-logcat.txt

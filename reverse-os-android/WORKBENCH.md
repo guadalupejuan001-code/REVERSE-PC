@@ -24,7 +24,7 @@ El editor del fondo está en Ajustes → Fondo de escritorio y Centro de control
 
 ## Datos y persistencia
 
-El estado del núcleo usa `SessionStore`/RVPC2. Los documentos de la nueva mesa, preferencias y ventanas usan `workbench-profile.json`, escrito con `AtomicFile` y confirmado a la interfaz. La copia en `localStorage` es secundaria; al arrancar se prefiere la copia nativa. La restauración de un respaldo de la mesa sigue validando el JSON y pidiendo confirmación. Ese JSON contiene documentos, preferencias y ventanas; los binarios y memorias RXE se exportan desde sus ventanas. La actualización 2.0 → 2.1 mantiene com.reversepc.workbench, aumenta versionCode de 200 a 201 y conserva la firma de desarrollo para actualizar sin borrar datos.
+El estado del núcleo usa `SessionStore`/RVPC2. Los documentos de la nueva mesa, preferencias y ventanas usan `workbench-profile.json`, escrito con `AtomicFile` y confirmado a la interfaz. La copia en `localStorage` es secundaria; al arrancar se prefiere la copia nativa. La restauración de un respaldo de la mesa sigue validando el JSON y pidiendo confirmación. Ese JSON contiene documentos, preferencias y ventanas; los binarios y memorias RXE se exportan desde sus ventanas. La actualización 2.0 → 2.1 mantiene com.reversepc.workbench, aumenta versionCode de 200 a 210 y conserva la firma de desarrollo para actualizar sin borrar datos.
 
 Las exportaciones usan el selector de documentos de Android y confirman el éxito después de escribir. Las importaciones usan el selector de archivos. El WebView con puente solo sirve los archivos propios bajo `https://reverse.local/`; bloquea navegación de terceros, subframes, conexiones y acceso `file://`. Los enlaces externos se abren en un navegador separado sin puente.
 
