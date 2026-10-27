@@ -41,7 +41,7 @@ assert.match(desktop,/xmarket:\{name:'X MARKET'/);
 assert.match(desktop,/const PINNED = \['files','programs','bbyq','xmarket','control'\]/);
 assert.match(desktop,/if\(w.app==='xmarket'\)body.innerHTML=xMarketHTML\(w\)/);
 assert.match(desktop,/marketShock:w.marketShock===true/);
-assert.match(controls,/data-open=\\"xmarket\\"/);
+assert.match(controls,/data-open="xmarket"/);
 assert.match(controls,/xmarket:'Terminal bursátil y laboratorio Laplace/);
 assert.match(html,/href="x-market.css"/);
 assert.match(html,/src="x-market.js"/);
