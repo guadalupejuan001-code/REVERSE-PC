@@ -14,6 +14,10 @@ import android.util.Base64;
 import android.util.Log;
 import android.util.AtomicFile;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
+import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -47,16 +51,34 @@ public final class WorkbenchActivity extends Activity {
     private ValueCallback<Uri[]> chooser;
     private byte[] pendingExport;
 
+    static void immersive(Activity activity){
+        Window window=activity.getWindow();
+        WindowManager.LayoutParams layout=window.getAttributes();
+        layout.layoutInDisplayCutoutMode=WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
+        window.setAttributes(layout);
+        window.setStatusBarColor(android.graphics.Color.TRANSPARENT);
+        window.setNavigationBarColor(android.graphics.Color.TRANSPARENT);
+        window.setNavigationBarContrastEnforced(false);
+        window.getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+            |View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY|View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+            |View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION|View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+        if(Build.VERSION.SDK_INT>=30){
+            window.setDecorFitsSystemWindows(false);
+            WindowInsetsController controller=window.getInsetsController();
+            if(controller!=null){controller.setSystemBarsBehavior(WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);controller.hide(WindowInsets.Type.systemBars());}
+        }
+    }
+
     @Override public void onCreate(Bundle previous){
         super.onCreate(previous);
-        getWindow().setStatusBarColor(0xff090b0d);
-        getWindow().setNavigationBarColor(0xff101316);
-        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+        immersive(this);
         FrameLayout root=new FrameLayout(this);root.setBackgroundColor(0xff090b0d);
         web=new WebView(this);root.addView(web,new FrameLayout.LayoutParams(-1,-1));setContentView(root);
         root.setOnApplyWindowInsetsListener((v,insets)->{
-            int left=insets.getSystemWindowInsetLeft(),right=insets.getSystemWindowInsetRight(),bottom=insets.getSystemWindowInsetBottom();
-            root.setPadding(left,0,right,bottom);return insets;
+            // The wallpaper fills the display, including cutout/system-bar areas.
+            // Only the on-screen keyboard reserves space for the message composer.
+            int keyboard=Build.VERSION.SDK_INT>=30&&insets.isVisible(WindowInsets.Type.ime())?insets.getInsets(WindowInsets.Type.ime()).bottom:0;
+            root.setPadding(0,0,0,keyboard);return insets;
         });
         WebSettings settings=web.getSettings();
         settings.setJavaScriptEnabled(true);settings.setDomStorageEnabled(true);
@@ -243,8 +265,9 @@ public final class WorkbenchActivity extends Activity {
         if(request==PICK&&chooser!=null){chooser.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(result,data));chooser=null;}
         if(request==EXPORT){byte[] bytes=pendingExport;pendingExport=null;if(result==RESULT_OK&&bytes!=null&&data!=null&&data.getData()!=null){Uri target=data.getData();RuntimeExecutor.INSTANCE.execute(()->{try(OutputStream stream=getContentResolver().openOutputStream(target,"wt")){if(stream==null)throw new IllegalStateException("Destino no disponible");stream.write(bytes);message("Archivo exportado.");}catch(Exception error){message("No se pudo escribir el archivo.");}});}}
     }
-    @Override protected void onPause(){if(web!=null)web.onPause();super.onPause();}
-    @Override protected void onResume(){super.onResume();if(web!=null)web.onResume();}
+    @Override public void onWindowFocusChanged(boolean focused){super.onWindowFocusChanged(focused);if(focused)immersive(this);}
+    @Override protected void onPause(){if(web!=null){web.evaluateJavascript("document.body&&(document.body.dataset.appPaused='true')",null);web.onPause();}super.onPause();}
+    @Override protected void onResume(){super.onResume();immersive(this);if(web!=null){web.onResume();web.evaluateJavascript("document.body&&(document.body.dataset.appPaused='false')",null);}}
     @Override protected void onDestroy(){closed=true;if(chooser!=null){chooser.onReceiveValue(null);chooser=null;}if(web!=null){web.removeJavascriptInterface("ReverseNative");web.destroy();}super.onDestroy();}
     // Used only by the in-repository Android instrumentation tests.
     public WebView testingWebView(){return web;}

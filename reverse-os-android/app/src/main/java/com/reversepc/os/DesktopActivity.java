@@ -162,6 +162,14 @@ public final class DesktopActivity extends Activity {
 
     @Override public void onCreate(Bundle previous) {
         super.onCreate(previous);
+        if(getPackageName().endsWith(".workbench")){
+            // Android Recents may restore the old 2.0 activity after an update.
+            // Redirect before drawing its desktop or touching any saved state.
+            Log.i(LOG,"WORKBENCH_LEGACY_ENTRY_REDIRECT");
+            startActivity(new Intent(this,WorkbenchActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP));
+            finish();return;
+        }
         getWindow().setStatusBarColor(BG);
         getWindow().setNavigationBarColor(BG);
         getWindow().getDecorView().setSystemUiVisibility(

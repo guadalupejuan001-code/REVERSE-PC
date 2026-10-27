@@ -51,7 +51,9 @@ public final class WorkbenchTestRunner extends Instrumentation {
     private void tapDom(String selector)throws Exception{
         String quoted=JSONObject.quote(selector);
         js("document.querySelector("+quoted+").scrollIntoView({block:'nearest',inline:'nearest'});true");
+        Thread.sleep(150); // A scroll or resize must reach the compositor before touch.
         JSONObject point=new JSONObject(js("(()=>{const r=document.querySelector("+quoted+").getBoundingClientRect();return JSON.stringify({x:r.x+r.width/2,y:r.y+r.height/2,width:innerWidth});})()"));
+        require(js("(()=>{const e=document.querySelector("+quoted+"),r=e.getBoundingClientRect(),hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);return !!hit&&(e===hit||e.contains(hit));})()").equals("true"),"Touch target is covered or outside the viewport: "+selector);
         int[] origin=new int[2];int[] width={0};runOnMainSync(()->{activity.testingWebView().getLocationOnScreen(origin);width[0]=activity.testingWebView().getWidth();});
         float scale=(float)(width[0]/point.getDouble("width")),x=origin[0]+(float)point.getDouble("x")*scale,y=origin[1]+(float)point.getDouble("y")*scale;
         long time=SystemClock.uptimeMillis();MotionEvent down=MotionEvent.obtain(time,time,MotionEvent.ACTION_DOWN,x,y,0),up=MotionEvent.obtain(time,time+80,MotionEvent.ACTION_UP,x,y,0);
@@ -86,10 +88,53 @@ public final class WorkbenchTestRunner extends Instrumentation {
         if(write){JSONObject proof=new JSONObject().put("record_sha256",hash(record)).put("desktop_sha256",hash("session.rvp"));Files.write(dataFile("retained-app.json").toPath(),proof.toString().getBytes(StandardCharsets.UTF_8));}
         else{JSONObject proof=new JSONObject(new String(Files.readAllBytes(dataFile("retained-app.json").toPath()),StandardCharsets.UTF_8));require(hash(record).equals(proof.getString("record_sha256")),"Opening after restart executed or changed BBY Q");require(hash("session.rvp").equals(proof.getString("desktop_sha256")),"Restart executed an RXE again");}
     }
+    private void fullDisplay()throws Exception{
+        int[] bounds=new int[4];boolean[] bars={true};
+        int displayWidth=0,displayHeight=0;
+        for(int attempt=0;attempt<30;attempt++){
+            runOnMainSync(()->{
+                WebView view=activity.testingWebView();int[] point=new int[2];view.getLocationOnScreen(point);
+                bounds[0]=point[0];bounds[1]=point[1];bounds[2]=view.getWidth();bounds[3]=view.getHeight();
+                android.view.WindowInsets insets=view.getRootWindowInsets();bars[0]=insets==null||insets.isVisible(android.view.WindowInsets.Type.statusBars())||insets.isVisible(android.view.WindowInsets.Type.navigationBars());
+            });
+            Bitmap screen=getUiAutomation().takeScreenshot();displayWidth=screen.getWidth();displayHeight=screen.getHeight();screen.recycle();
+            if(!bars[0]&&bounds[0]==0&&bounds[1]==0&&bounds[2]==displayWidth&&bounds[3]==displayHeight)return;
+            Thread.sleep(100);
+        }
+        throw new AssertionError("Display has reserved borders: "+Arrays.toString(bounds)+" display="+displayWidth+"x"+displayHeight+" bars="+bars[0]);
+    }
+    private void appearanceWorkflow()throws Exception{
+        fullDisplay();
+        require(js("!document.querySelector('#pinned-apps [data-task-app=wallpaper]')&&!document.querySelector('#running-apps [data-task-app=wallpaper]')").equals("true"),"Wallpaper editor is in the taskbar");
+        js("createWindow('settings');true");tapDom(".window[aria-label=Ajustes] [data-open=wallpaper]");
+        require(js("!!document.querySelector('.window[aria-label=\"Editor de fondo\"]')&&!document.querySelector('.taskbar [data-task-app=wallpaper]')").equals("true"),"Wallpaper editor is not contained in Settings");
+        tapDom(".window[aria-label=\"Editor de fondo\"] [data-pref-toggle=motion]");
+        require(js("state.prefs.motion").equals("false"),"Motion toggle did not pause");
+        String stopped=js("getComputedStyle(document.querySelector('#wall-image')).transform");Thread.sleep(500);
+        require(js("getComputedStyle(document.querySelector('#wall-image')).transform").equals(stopped),"Paused wallpaper still moves");
+        tapDom(".window[aria-label=\"Editor de fondo\"] [data-pref-toggle=motion]");
+        waitJs("document.querySelector('#wall-image').getAnimations().some(a=>a.playState==='running')");
+        js("for(const w of [...state.windows])if(w.app==='settings'||w.app==='wallpaper')closeWindow(w);true");
+        tapDom("#show-desktop");Thread.sleep(500);
+        String before=js("getComputedStyle(document.querySelector('#wall-image')).transform");
+        Bitmap first=getUiAutomation().takeScreenshot();Thread.sleep(1800);Bitmap second=getUiAutomation().takeScreenshot();
+        require(!js("getComputedStyle(document.querySelector('#wall-image')).transform").equals(before),"Animated wallpaper transform did not advance");
+        int changed=0;
+        for(int y=16;y<first.getHeight()-130;y+=4)for(int x=16;x<first.getWidth()-16;x+=4){
+            int a=first.getPixel(x,y),b=second.getPixel(x,y);
+            if(Math.abs(((a>>16)&255)-((b>>16)&255))+Math.abs(((a>>8)&255)-((b>>8)&255))+Math.abs((a&255)-(b&255))>8)changed++;
+        }
+        File folder=new File(getTargetContext().getExternalFilesDir(null),"visual-evidence");folder.mkdirs();
+        try(FileOutputStream output=new FileOutputStream(new File(folder,"wall-motion-before.png"))){first.compress(Bitmap.CompressFormat.PNG,100,output);}
+        try(FileOutputStream output=new FileOutputStream(new File(folder,"wall-motion-after.png"))){second.compress(Bitmap.CompressFormat.PNG,100,output);}
+        first.recycle();second.recycle();require(changed>30,"Wallpaper pixels did not move: "+changed);
+        tapDom("#show-desktop");fullDisplay();
+        js("window.appearanceSaved=null;persist().then(ok=>window.appearanceSaved=ok);true");require(waitJs("window.appearanceSaved").equals("true"),"Appearance was not saved");
+    }
     private void programNavigation(boolean upgrade)throws Exception{
         ActivityMonitor oldDesktop=addMonitor(DesktopActivity.class.getName(),null,true);
         byte[] desktopBefore=Files.readAllBytes(dataFile("session.rvp").toPath());
-        tapDom("#launcher-toggle");tapDom("#launcher [data-open=programs]");
+        tapDom("#launcher-toggle");fullDisplay();tapDom("#launcher [data-open=programs]");
         waitJs("document.querySelector('.window[aria-label=\"Aplicaciones .rxe\"] [data-program-path=\"Aplicaciones/BBY-Q.rxe\"]')");
         tapDom(".program-list [data-program-path=\"Aplicaciones/BBY-Q.rxe\"]");waitJs("document.querySelector('[data-program-input]:not(:disabled)')");
         require(resumed instanceof WorkbenchActivity&&oldDesktop.getHits()==0,"Applications left Workbench for the old desktop");
@@ -164,8 +209,9 @@ public final class WorkbenchTestRunner extends Instrumentation {
         Bundle result=new Bundle();
         try{
             String requested=arguments==null?"full":arguments.getString("mode","full");
-            boolean boot=requested.equals("boot"),seed=requested.equals("upgradeSeed"),upgrade=requested.equals("upgrade");
+            boolean boot=requested.equals("boot"),seed=requested.equals("upgradeSeed"),upgrade=requested.equals("upgrade"),legacy=requested.equals("legacy");
             if(boot){ActivityMonitor monitor=addMonitor(WorkbenchActivity.class.getName(),null,false);startActivitySync(new Intent(getTargetContext(),BootActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));activity=(WorkbenchActivity)waitForMonitorWithTimeout(monitor,15000);removeMonitor(monitor);require(activity!=null,"Boot did not reach desktop");}
+            else if(legacy){ActivityMonitor monitor=addMonitor(WorkbenchActivity.class.getName(),null,false);runOnMainSync(()->getTargetContext().startActivity(new Intent(getTargetContext(),DesktopActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)));activity=(WorkbenchActivity)waitForMonitorWithTimeout(monitor,15000);removeMonitor(monitor);require(activity!=null,"Restored 2.0 activity did not redirect to Workbench");}
             else activity=(WorkbenchActivity)startActivitySync(new Intent(getTargetContext(),WorkbenchActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             waitJs("document.querySelector('[data-task-app]')&&typeof nativeRequest==='function'");
             JSONObject snapshot=op("inspect","","testSnapshot");
@@ -173,7 +219,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
             require(snapshot.getJSONObject("android").getLong("ram_total_bytes")>0,"No native RAM reading");
             require(snapshot.getJSONObject("core").getString("state_format").equals("RVPC2"),"Wrong checkpoint format");
             require(snapshot.getJSONObject("build").getString("source_commit").matches("[a-f0-9]{40}"),"Missing build provenance");
-            boolean restore=boot||upgrade||requested.equals("restore");
+            boolean restore=boot||legacy||upgrade||requested.equals("restore");
             if(restore){
                 require(snapshot.getJSONObject("core").getLong("active_qubits")>=128,"Native state did not survive process restart");
                 require(js("state.prefs.dim").equals("23"),"Preferences did not survive restart");
@@ -206,10 +252,14 @@ public final class WorkbenchTestRunner extends Instrumentation {
             }
             if(seed)seedUpgrade();
             else if(restore&&!upgrade){waitJs("document.querySelector('[data-program-input]:not(:disabled)')");require(js("document.querySelector('[aria-label=\"Respuesta BBY Q\"]').textContent").equals("Ana has five apples."),"Restored app response differs");retainedProof(false);}
-            else programNavigation(upgrade);
+            else{programNavigation(upgrade);appearanceWorkflow();}
+            if(!seed)fullDisplay();
             String mode=boot?"boot":requested;visualCheck(mode);
             String text="WORKBENCH_TESTS_OK mode="+mode+" native=XI/Ether checkpoint=RVPC2 visual=drawn\n";
             result.putString("stream",text);result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);
-        }catch(Throwable failure){result.putString("stream","WORKBENCH_TESTS_FAILED "+failure+"\n");result.putString("error",failure.toString());finish(Activity.RESULT_CANCELED,result);}
+        }catch(Throwable failure){
+            try{File folder=new File(getTargetContext().getExternalFilesDir(null),"visual-evidence");folder.mkdirs();Bitmap screen=getUiAutomation().takeScreenshot();try(FileOutputStream output=new FileOutputStream(new File(folder,"failure-screen.png"))){screen.compress(Bitmap.CompressFormat.PNG,100,output);}finally{screen.recycle();}Files.write(new File(folder,"failure-dom.txt").toPath(),js("document.documentElement.outerHTML").getBytes(StandardCharsets.UTF_8));}catch(Throwable ignored){}
+            result.putString("stream","WORKBENCH_TESTS_FAILED "+failure+"\n");result.putString("error",failure.toString());finish(Activity.RESULT_CANCELED,result);
+        }
     }
 }

@@ -58,6 +58,7 @@ public final class BootActivity extends Activity {
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN,
                              WindowManager.LayoutParams.FLAG_FULLSCREEN);
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN);
+        if(getPackageName().endsWith(".workbench"))WorkbenchActivity.immersive(this);
         FrameLayout backdrop=new FrameLayout(this);
         backdrop.setBackgroundColor(Color.BLACK);
 
