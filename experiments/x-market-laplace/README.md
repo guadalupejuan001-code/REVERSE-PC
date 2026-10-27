@@ -11,7 +11,9 @@ Se ejecuta sobre la máquina XI v1 ya existente de REVERSE-PC. Emplea:
 - Transacciones del runtime existente con commit/rollback y archivos RVPC2.
 - Compilación opcional a ejecutable RXE para cargarlo en el ecosistema REVERSE.
 
-El sistema no introduce otro motor predictivo, no añade una CPU paralela y no altera InfiniteCore ni el checkout fijado de Mundo X. No aplicamos puertas cuánticas arbitrarias a la bolsa solo para etiquetarla de "cuántica".
+El sistema no introduce otro motor predictivo, no añade una CPU paralela y no altera InfiniteCore ni el checkout fijado de Mundo X.
+
+**Antecedente físico real del autor:** Mundo X Fusion 3D v1.3 sí ejecuta un Hamiltoniano radial fenomenológico de 256 sitios con 8 qubits lógicos MIL, comprobado contra RK4. Esto permite experimentar con dinámica nuclear modelada, pero no significa calcular todos los átomos del mundo ni obtener la información futura de los mercados. Véanse `mundo-X/fusion-android/README.md` y `MIL_RADIAL_SCALING.md`. No aplicamos puertas cuánticas arbitrarias a la bolsa solo para etiquetarla de "cuántica".
 
 ## Modelo cerrado (céntimos)
 
@@ -54,6 +56,8 @@ Para crear un ejecutable REVERSE de este experimento:
 ```sh
 ./build/reverse_pc compile experiments/x-market-laplace/closed_world.xi X-MARKET.rxe "X MARKET Laplace Lab"
 ```
+
+El workflow de GitHub Actions también publica `X-MARKET-LAPLACE.rxe` como artefacto descargable para REVERSE Desktop.
 
 **No produce una APK**: el archivo RXE necesita el runtime/intérprete del proyecto REVERSE. Los valores generados son sintéticos y no deben usarse para invertir.
 
