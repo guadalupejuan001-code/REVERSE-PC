@@ -1,0 +1,33 @@
+name: X MARKET Laplace Lab (XI)
+on:
+  pull_request:
+    paths:
+      - "experiments/x-market-laplace/**"
+      - "tests/x_market_laplace.sh"
+      - ".github/workflows/x-market-laplace.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  xi-experiment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: e2778d962af22f6f1a0794058dd4685fc2573966
+          path: deps/mundo-x
+          persist-credentials: false
+      - name: Validate pinned Ether
+        run: |
+          test "$(git -C deps/mundo-x rev-parse HEAD)" = e2778d962af22f6f1a0794058dd4685fc2573966
+      - name: Compile REVERSE-PC original XI runtime
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+          cmake --build build --target reverse_pc --parallel 2
+      - name: Exact closed-world oracle vs unknown external input
+        run: bash tests/x_market_laplace.sh ./build/reverse_pc
