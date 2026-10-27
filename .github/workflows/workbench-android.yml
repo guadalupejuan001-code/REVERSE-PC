@@ -104,6 +104,10 @@ jobs:
           adb shell wm size 720x1600
           adb shell wm density 280
           adb shell settings put system screen_off_timeout 600000
+          # Match AOSP CTS WindowInsetsBehaviorTests: suppress only the disposable
+          # emulator's immersive-mode education overlay, never the shipped app.
+          adb shell settings put secure immersive_mode_confirmations confirmed
+          test "$(adb shell settings get secure immersive_mode_confirmations | tr -d '\r')" = confirmed
           adb shell input keyevent 82
           echo 'e43c807c1d4ea0b6871e5bf8210cdcd465c2cd79f3c321ed5ece2c5f43c25a32  build/previous-workbench/workbench-dist/REVERSE-Workbench-v2.0.apk' | sha256sum -c
           adb install -r build/previous-workbench/workbench-dist/REVERSE-Workbench-v2.0.apk
