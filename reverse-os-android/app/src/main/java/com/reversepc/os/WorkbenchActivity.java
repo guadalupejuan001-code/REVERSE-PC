@@ -38,10 +38,11 @@ import java.util.concurrent.TimeUnit;
 /** Local packaged desktop. Only owned assets can access the native bridge. */
 public final class WorkbenchActivity extends Activity {
     static final String ORIGIN="https://reverse.local/";
-    private static final int PICK=7101,EXPORT=7102;
+    private static final int PICK=7101,EXPORT=7102,IMPORT_RXE=7103;
     private final Handler ui=new Handler(Looper.getMainLooper());
     private volatile boolean closed;
     private SessionStore store;
+    private WorkbenchPrograms programs;
     private WebView web;
     private ValueCallback<Uri[]> chooser;
     private byte[] pendingExport;
@@ -63,6 +64,7 @@ public final class WorkbenchActivity extends Activity {
         settings.setAllowFileAccessFromFileURLs(false);settings.setAllowUniversalAccessFromFileURLs(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setBlockNetworkLoads(true);
+        settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
         settings.setSupportMultipleWindows(false);
         web.setBackgroundColor(0xff090b0d);
         web.addJavascriptInterface(new Bridge(),"ReverseNative");
@@ -102,12 +104,14 @@ public final class WorkbenchActivity extends Activity {
             Map<String,String> headers=new HashMap<>();
             headers.put("Content-Security-Policy","default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'");
             headers.put("X-Content-Type-Options","nosniff");
+            headers.put("Cache-Control","no-store");
             return new WebResourceResponse(mime,"UTF-8",200,"OK",headers,data);
         }catch(Exception error){return denied();}
     }
     private static WebResourceResponse denied(){return new WebResourceResponse("text/plain","UTF-8",403,"Forbidden",new HashMap<>(),new ByteArrayInputStream(new byte[0]));}
     private void message(String text){ui.post(()->{if(!closed)Toast.makeText(this,text,Toast.LENGTH_LONG).show();});}
     private SessionStore session()throws Exception{if(store==null)store=new SessionStore(getApplicationContext());return store;}
+    private WorkbenchPrograms programs()throws Exception{if(programs==null)programs=new WorkbenchPrograms(getApplicationContext());return programs;}
     private String task(Callable<JSONObject> action){
         if(closed)return failure(new IllegalStateException("La mesa está cerrada"));
         try{
@@ -147,6 +151,11 @@ public final class WorkbenchActivity extends Activity {
                     else if("calculate".equals(operation))result=calculateNative(payload);
                     else if("execute".equals(operation))result=executeNative(payload);
                     else if("saveProfile".equals(operation))result=saveProfile(payload);
+                    else if("listApps".equals(operation))result=programs().catalog();
+                    else if("openApp".equals(operation))result=programs().open(new JSONObject(payload).getString("path"));
+                    else if("askApp".equals(operation))result=programs().ask(new JSONObject(payload));
+                    else if("runApp".equals(operation))result=programs().run(new JSONObject(payload),session());
+                    else if("compileApp".equals(operation))result=programs().compile(new JSONObject(payload));
                     else throw new IllegalArgumentException("Operación no permitida");
                     response=result.toString();
                 }catch(Throwable error){response=failure(error);}
@@ -159,7 +168,19 @@ public final class WorkbenchActivity extends Activity {
         @JavascriptInterface public String execute(String source){return task(()->executeNative(source));}
         @JavascriptInterface public String calculate(String expression){return task(()->calculateNative(expression));}
         @JavascriptInterface public void openNativeDesktop(){
-            RuntimeExecutor.INSTANCE.execute(()->ui.post(()->{if(!closed){startActivity(new Intent(WorkbenchActivity.this,DesktopActivity.class));finish();}}));
+            // Compatibility for a restored old shortcut: stay in this Workbench.
+            ui.post(()->{if(!closed)web.evaluateJavascript("createWindow('programs')",null);});
+        }
+        @JavascriptInterface public void importRxe(){
+            ui.post(()->{if(!closed)try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),IMPORT_RXE);}catch(Exception error){message("No se pudo abrir el selector de ejecutables.");}});
+        }
+        @JavascriptInterface public void exportRxe(String path,String identity,boolean memory){
+            RuntimeExecutor.INSTANCE.execute(()->{try{
+                JSONObject request=new JSONObject().put("path",path).put("identity",identity);
+                byte[] bytes=programs().exportImage(request,memory);
+                String name=path.substring(path.lastIndexOf('/')+1);if(memory)name=name.substring(0,name.length()-4)+"-memoria.rvp";
+                export(name,bytes,memory?"application/x-reverse-state":"application/x-reverse-executable");
+            }catch(Exception error){message("No se pudo exportar: "+error.getMessage());}});
         }
         @JavascriptInterface public void exportText(String name,String contents,String mime){
             if(contents==null||contents.length()>6*1024*1024){message("El archivo supera el límite de exportación.");return;}
@@ -213,6 +234,12 @@ public final class WorkbenchActivity extends Activity {
     }
     @Override protected void onActivityResult(int request,int result,Intent data){
         super.onActivityResult(request,result,data);
+        if(request==IMPORT_RXE&&result==RESULT_OK&&data!=null&&data.getData()!=null){Uri uri=data.getData();RuntimeExecutor.INSTANCE.execute(()->{
+            String response;
+            try(InputStream input=getContentResolver().openInputStream(uri)){JSONObject imported=programs().importImage(WorkbenchPrograms.read(input));response=imported.toString();Log.i("ReverseWorkbench","WORKBENCH_RXE_IMPORT_OK "+imported.getString("path"));}
+            catch(Exception error){response=failure(error);message("Ejecutable rechazado: "+error.getMessage());}
+            final String outcome=response;ui.post(()->{if(!closed)web.evaluateJavascript("window.ReversePrograms&&window.ReversePrograms.imported("+outcome+");",null);});
+        });}
         if(request==PICK&&chooser!=null){chooser.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(result,data));chooser=null;}
         if(request==EXPORT){byte[] bytes=pendingExport;pendingExport=null;if(result==RESULT_OK&&bytes!=null&&data!=null&&data.getData()!=null){Uri target=data.getData();RuntimeExecutor.INSTANCE.execute(()->{try(OutputStream stream=getContentResolver().openOutputStream(target,"wt")){if(stream==null)throw new IllegalStateException("Destino no disponible");stream.write(bytes);message("Archivo exportado.");}catch(Exception error){message("No se pudo escribir el archivo.");}});}}
     }

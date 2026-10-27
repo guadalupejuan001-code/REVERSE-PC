@@ -1,17 +1,22 @@
 name: REVERSE Workbench native APK
 on:
   push:
-    branches: ['feature/workbench-native-*']
+    branches: [main]
+    paths: ['reverse-os-android/**', '.github/workflows/workbench-android.yml']
+  pull_request:
+    branches: [main]
+    paths: ['reverse-os-android/**', '.github/workflows/workbench-android.yml']
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: reverse-workbench-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   apk:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 45
     env:
       REVERSE_SIGNING_KEYSTORE: ${{ github.workspace }}/build-signing/reverse-desktop.jks
     steps:
@@ -64,15 +69,22 @@ jobs:
         run: |
           set -euo pipefail
           gradle -p reverse-os-android --no-daemon :app:assembleWorkbenchDebug :app:assembleWorkbenchDebugAndroidTest > workbench-evidence/gradle.log 2>&1 || { tail -160 workbench-evidence/gradle.log; exit 1; }
-          cp reverse-os-android/app/build/outputs/apk/workbench/debug/app-workbench-debug.apk workbench-dist/REVERSE-Workbench-v2.0.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs workbench-dist/REVERSE-Workbench-v2.0.apk > workbench-evidence/signature.txt
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging workbench-dist/REVERSE-Workbench-v2.0.apk > workbench-evidence/package.txt
-          unzip -l workbench-dist/REVERSE-Workbench-v2.0.apk > workbench-evidence/apk-contents.txt
+          cp reverse-os-android/app/build/outputs/apk/workbench/debug/app-workbench-debug.apk workbench-dist/REVERSE-Workbench-v2.0.1.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs workbench-dist/REVERSE-Workbench-v2.0.1.apk > workbench-evidence/signature.txt
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging workbench-dist/REVERSE-Workbench-v2.0.1.apk > workbench-evidence/package.txt
+          unzip -l workbench-dist/REVERSE-Workbench-v2.0.1.apk > workbench-evidence/apk-contents.txt
           grep 'lib/arm64-v8a/libreverse_os.so' workbench-evidence/apk-contents.txt
           grep 'lib/x86_64/libreverse_os.so' workbench-evidence/apk-contents.txt
-          sha256sum workbench-dist/REVERSE-Workbench-v2.0.apk > workbench-evidence/SHA256SUMS
+          sha256sum workbench-dist/REVERSE-Workbench-v2.0.1.apk > workbench-evidence/SHA256SUMS
+      - name: Download the exact previously delivered Workbench 2.0 for update testing
+        uses: actions/download-artifact@v4
+        with:
+          name: REVERSE-Workbench-2.0-native
+          run-id: 40525948118
+          github-token: ${{ github.token }}
+          path: build/previous-workbench
       - name: Exercise WebView, JNI, files, calculator, qubits and cold restore
-        timeout-minutes: 20
+        timeout-minutes: 25
         shell: bash
         run: |
           set -euo pipefail
@@ -93,12 +105,25 @@ jobs:
           adb shell wm density 280
           adb shell settings put system screen_off_timeout 600000
           adb shell input keyevent 82
-          adb install -r workbench-dist/REVERSE-Workbench-v2.0.apk
+          echo 'e43c807c1d4ea0b6871e5bf8210cdcd465c2cd79f3c321ed5ece2c5f43c25a32  build/previous-workbench/workbench-dist/REVERSE-Workbench-v2.0.apk' | sha256sum -c
+          adb install -r build/previous-workbench/workbench-dist/REVERSE-Workbench-v2.0.apk
           adb install -r reverse-os-android/app/build/outputs/apk/androidTest/workbench/debug/app-workbench-debug-androidTest.apk
           # Let the fresh system finish applying its dynamic resource overlays;
           # that first-boot update recreates already-running activities.
           sleep 20
           adb logcat -c
+          adb shell am instrument -w -e mode upgradeSeed com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/upgrade-seed.txt
+          grep 'WORKBENCH_TESTS_OK mode=upgradeSeed' workbench-evidence/upgrade-seed.txt
+          adb shell am force-stop com.reversepc.workbench
+          # Real in-place update: same package and signature, no uninstall or clear.
+          adb install -r workbench-dist/REVERSE-Workbench-v2.0.1.apk
+          adb shell am instrument -w -e mode upgrade com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/upgrade.txt
+          grep 'WORKBENCH_TESTS_OK mode=upgrade' workbench-evidence/upgrade.txt
+          adb shell am force-stop com.reversepc.workbench
+          adb shell am instrument -w -e mode restore com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/upgrade-restore.txt
+          grep 'WORKBENCH_TESTS_OK mode=restore' workbench-evidence/upgrade-restore.txt
+          # A separate fresh-install scenario uses only this disposable emulator.
+          adb shell pm clear com.reversepc.workbench
           adb shell am instrument -w com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/instrumentation.txt
           grep 'WORKBENCH_TESTS_OK mode=full' workbench-evidence/instrumentation.txt
           adb shell am force-stop com.reversepc.workbench
@@ -111,7 +136,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: REVERSE-Workbench-2.0-native
+          name: REVERSE-Workbench-2.0.1-native
           path: |
             workbench-dist/**
             workbench-evidence/**
