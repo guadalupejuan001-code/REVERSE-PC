@@ -1,4 +1,12 @@
-# REVERSE Workbench 2.1 para Android
+# REVERSE Workbench 2.1.1 para Android
+
+## X MARKET instalado en Inicio
+
+X MARKET se integra en Inicio → Aplicaciones, búsqueda, acceso del escritorio, Centro de control y barra de tareas junto a BBY Q. Incluye cuatro pantallas: Mercado (sin cotizaciones hasta conectar fuentes), Laplace (escenario matemático sintético), Experimentos y Configuración. Todas son interfaces locales. El gráfico de Laplace usa solamente la regla y los resultados verificados en el experimento XI del PR #27; abrirlo no ejecuta operaciones, no invoca el núcleo, no altera BBY Q ni crea señales bursátiles.
+
+Esta versión conserva `com.reversepc.workbench`, firma de desarrollo y estado persistido; eleva `versionCode` a 211. Consulta [X MARKET](X_MARKET.md) para arquitectura, límites y pruebas.
+
+
 
 Edición instalable `com.reversepc.workbench`, compatible con ARM64 y x86_64. Se instala junto a las ediciones anteriores y conserva un perfil propio. Usa el arranque REVERSE y el escritorio diseñado con el fondo Pliegue, papelera, ventanas, editor de fondo y centro de control.
 

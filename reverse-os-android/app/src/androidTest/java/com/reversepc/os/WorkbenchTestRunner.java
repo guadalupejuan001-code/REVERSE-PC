@@ -173,6 +173,27 @@ public final class WorkbenchTestRunner extends Instrumentation {
         require(hash("session.rvp").equals(beforeSearch),"Searching reopened and executed the program");
         tapDom("#pinned-apps [data-task-app=bbyq]");
         require(js("getWindow(activeId).rxePath").equals("Aplicaciones/BBY-Q.rxe"),"BBY Q taskbar shortcut opened the wrong window");
+
+        // X MARKET is a built-in Workbench window, not an RXE masquerading as a market feed.
+        String beforeMarket=hash("session.rvp");
+        tapDom("#launcher-toggle");
+        tapDom("#launcher [data-open=xmarket]");
+        waitJs("document.querySelector('.window[aria-label=\"X MARKET\"] .xm-shell')");
+        require(js("getWindow(activeId).app").equals("xmarket"),"Start opened the wrong X MARKET application");
+        require(js("document.querySelector('.xm-no-data').textContent.includes('Sin datos de mercado')").equals("true"),"X MARKET fabricated a quote");
+        tapDom(".window[aria-label=\"X MARKET\"] [data-xm-tab=laplace]");
+        require(js("document.querySelector('.xm-lab-results').textContent.includes('12 620')").equals("true"),"Missing closed-world XI demonstration");
+        tapDom(".window[aria-label=\"X MARKET\"] [data-xm-shock=on]");
+        require(js("document.querySelector('.xm-lab-results').textContent.includes('+250')").equals("true"),"The unknown-event illustration did not update");
+        require(js("document.querySelector('.xm-lab-graph').textContent.includes('SINTÉTICO')").equals("true"),"Missing synthetic-data label");
+        visualCheck("x-market-in-workbench");
+        require(hash("session.rvp").equals(beforeMarket),"Viewing X MARKET mutated XI/Ether state");
+        tapDom("#pinned-apps [data-task-app=xmarket]");
+        require(js("getWindow(state.windows.find(x=>x.app==='xmarket').id).min").equals("true"),"X MARKET pin did not minimize its window");
+        tapDom("#pinned-apps [data-task-app=xmarket]");
+        require(js("getWindow(activeId).app").equals("xmarket"),"X MARKET pinned shortcut failed to restore");
+        require(resumed instanceof WorkbenchActivity&&oldDesktop.getHits()==0,"X MARKET escaped REVERSE Workbench");
+
         RuntimeExecutor.INSTANCE.submit(()->{try{
             WorkbenchPrograms programs=new WorkbenchPrograms(getTargetContext());WorkspaceFiles files=new WorkspaceFiles(getTargetContext().getFilesDir());
             JSONObject opened=programs.open("Aplicaciones/BBY-Q.rxe"),request=new JSONObject().put("path",opened.getString("path")).put("identity",opened.getString("identity"));
