@@ -10,4 +10,5 @@ public final class NativeRuntime {
     public static native byte[] executeRxe(byte[] state,byte[] executable);
     public static native byte[] appSeed(byte[] executable);
     public static native byte[] appTurn(byte[] state,byte[] executable,byte[] messageUtf8,int language);
+    public static native byte[] gameFrame(byte[] state,byte[] executable,int paddle,int command,int ticks);
 }

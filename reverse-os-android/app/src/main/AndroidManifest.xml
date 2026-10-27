@@ -26,6 +26,7 @@
       </intent-filter>
     </activity>
     <activity android:name=".WorkbenchActivity" android:exported="false" android:launchMode="singleTask" android:screenOrientation="landscape" android:windowSoftInputMode="adjustResize"/>
+    <activity android:name=".BreakerActivity" android:exported="false" android:launchMode="singleTask" android:screenOrientation="landscape"/>
     <activity android:name=".DesktopActivity"
         android:exported="false"
         android:launchMode="singleTask"

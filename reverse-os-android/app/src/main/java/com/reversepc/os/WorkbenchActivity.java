@@ -174,6 +174,12 @@ public final class WorkbenchActivity extends Activity {
         @JavascriptInterface public void importRxe(){
             ui.post(()->{if(!closed)try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),IMPORT_RXE);}catch(Exception error){message("No se pudo abrir el selector de ejecutables.");}});
         }
+        @JavascriptInterface public void openBreaker(String path,String identity){
+            RuntimeExecutor.INSTANCE.execute(()->{try{
+                programs().checkGame(new JSONObject().put("path",path).put("identity",identity));
+                ui.post(()->{if(!closed)startActivity(new Intent(WorkbenchActivity.this,BreakerActivity.class));});
+            }catch(Exception error){message("No se pudo abrir el juego: "+error.getMessage());}});
+        }
         @JavascriptInterface public void exportRxe(String path,String identity,boolean memory){
             RuntimeExecutor.INSTANCE.execute(()->{try{
                 JSONObject request=new JSONObject().put("path",path).put("identity",identity);

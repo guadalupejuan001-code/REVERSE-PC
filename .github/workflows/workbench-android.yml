@@ -1,7 +1,7 @@
 name: REVERSE Workbench native APK
 on:
   push:
-    branches: [main]
+    branches: [main, 'feature/workbench-native-breaker-*']
     paths: ['reverse-os-android/**', '.github/workflows/workbench-android.yml']
   pull_request:
     branches: [main]
@@ -62,6 +62,11 @@ jobs:
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1' platform-tools emulator 'system-images;android-35;default;x86_64'
           printf '{"source_commit":"%s","base_reverse_commit":"e0f893d3c13a05d201e57b06ec7f761f196caef1","mundo_x_commit":"e2778d962af22f6f1a0794058dd4685fc2573966"}\n' "$GITHUB_SHA" > reverse-os-android/app/src/main/assets/workbench/build-info.json
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc src/reverse_pc.cpp -o build/reverse_pc
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tests/breaker_test.cpp -o build/breaker_test
+          build/breaker_test games/reverse-breaker/game.xi | tee workbench-evidence/breaker-engine.txt
+          mkdir -p reverse-os-android/app/src/main/assets/native-games
+          build/reverse_pc compile games/reverse-breaker/game.xi workbench-dist/REVERSE-BREAKER.rxe 'REVERSE BREAKER' > workbench-evidence/breaker-package.json
+          cp workbench-dist/REVERSE-BREAKER.rxe reverse-os-android/app/src/main/assets/native-games/REVERSE-BREAKER.rxe
           python3 scripts/build-bbyq-app.py build/reverse_pc deps/bbyq-app workbench-dist/BBY-Q.rxe > workbench-evidence/bbyq-package.json
           mkdir -p reverse-os-android/app/src/main/assets/native-apps
           cp workbench-dist/BBY-Q.rxe reverse-os-android/app/src/main/assets/native-apps/BBY-Q.rxe
@@ -69,13 +74,13 @@ jobs:
         run: |
           set -euo pipefail
           gradle -p reverse-os-android --no-daemon :app:assembleWorkbenchDebug :app:assembleWorkbenchDebugAndroidTest > workbench-evidence/gradle.log 2>&1 || { tail -160 workbench-evidence/gradle.log; exit 1; }
-          cp reverse-os-android/app/build/outputs/apk/workbench/debug/app-workbench-debug.apk workbench-dist/REVERSE-Workbench-v2.0.1.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs workbench-dist/REVERSE-Workbench-v2.0.1.apk > workbench-evidence/signature.txt
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging workbench-dist/REVERSE-Workbench-v2.0.1.apk > workbench-evidence/package.txt
-          unzip -l workbench-dist/REVERSE-Workbench-v2.0.1.apk > workbench-evidence/apk-contents.txt
+          cp reverse-os-android/app/build/outputs/apk/workbench/debug/app-workbench-debug.apk workbench-dist/REVERSE-Workbench-v2.1.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs workbench-dist/REVERSE-Workbench-v2.1.apk > workbench-evidence/signature.txt
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging workbench-dist/REVERSE-Workbench-v2.1.apk > workbench-evidence/package.txt
+          unzip -l workbench-dist/REVERSE-Workbench-v2.1.apk > workbench-evidence/apk-contents.txt
           grep 'lib/arm64-v8a/libreverse_os.so' workbench-evidence/apk-contents.txt
           grep 'lib/x86_64/libreverse_os.so' workbench-evidence/apk-contents.txt
-          sha256sum workbench-dist/REVERSE-Workbench-v2.0.1.apk > workbench-evidence/SHA256SUMS
+          sha256sum workbench-dist/REVERSE-Workbench-v2.1.apk > workbench-evidence/SHA256SUMS
       - name: Download the exact previously delivered Workbench 2.0 for update testing
         uses: actions/download-artifact@v4
         with:
@@ -116,7 +121,7 @@ jobs:
           grep 'WORKBENCH_TESTS_OK mode=upgradeSeed' workbench-evidence/upgrade-seed.txt
           adb shell am force-stop com.reversepc.workbench
           # Real in-place update: same package and signature, no uninstall or clear.
-          adb install -r workbench-dist/REVERSE-Workbench-v2.0.1.apk
+          adb install -r workbench-dist/REVERSE-Workbench-v2.1.apk
           adb shell am instrument -w -e mode upgrade com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/upgrade.txt
           grep 'WORKBENCH_TESTS_OK mode=upgrade' workbench-evidence/upgrade.txt
           adb shell am force-stop com.reversepc.workbench
@@ -133,10 +138,16 @@ jobs:
           adb shell am instrument -w -e mode boot com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/boot.txt
           grep 'WORKBENCH_TESTS_OK mode=boot' workbench-evidence/boot.txt
           adb exec-out screencap -p > workbench-evidence/desktop.png
+          adb shell am force-stop com.reversepc.workbench
+          adb shell am instrument -w -e mode breaker com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/breaker-ui.txt
+          grep 'WORKBENCH_TESTS_OK mode=breaker ' workbench-evidence/breaker-ui.txt
+          adb shell am force-stop com.reversepc.workbench
+          adb shell am instrument -w -e mode breakerRestore com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/breaker-restore.txt
+          grep 'WORKBENCH_TESTS_OK mode=breakerRestore' workbench-evidence/breaker-restore.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: REVERSE-Workbench-2.0.1-native
+          name: REVERSE-Workbench-2.1-breaker
           path: |
             workbench-dist/**
             workbench-evidence/**

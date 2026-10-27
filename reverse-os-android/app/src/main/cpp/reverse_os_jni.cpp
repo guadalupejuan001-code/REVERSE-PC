@@ -1,6 +1,7 @@
 #include "session.hpp"
 #include "rxe.hpp"
 #include "rxe_app.hpp"
+#include "rxe_game.hpp"
 #include <jni.h>
 #include <exception>
 #include <limits>
@@ -95,5 +96,10 @@ Java_com_reversepc_os_NativeRuntime_appSeed(JNIEnv* e,jclass,jbyteArray program)
 extern "C" JNIEXPORT jbyteArray JNICALL
 Java_com_reversepc_os_NativeRuntime_appTurn(JNIEnv* e,jclass,jbyteArray state,jbyteArray program,jbyteArray message,jint language){
   try{const auto text=bytes(e,message);const auto result=reverse_pc::rxe_app::turn(bytes(e,program),bytes(e,state),std::string(text.begin(),text.end()),unsigned(language));return output(e,reverse_os::packet(result.text,result.state));}
+  catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_gameFrame(JNIEnv* e,jclass,jbyteArray state,jbyteArray program,jint paddle,jint command,jint ticks){
+  try{auto result=reverse_pc::rxe_game::frame(bytes(e,state),bytes(e,program),paddle,command,ticks);return output(e,reverse_os::packet(result.output,result.state));}
   catch(const std::exception& x){throw_java(e,x);return nullptr;}
 }

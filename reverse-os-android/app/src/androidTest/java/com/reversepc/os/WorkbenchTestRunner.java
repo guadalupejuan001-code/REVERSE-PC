@@ -20,6 +20,7 @@ import java.security.MessageDigest;
 import java.util.Arrays;
 import android.os.SystemClock;
 import android.view.MotionEvent;
+import android.graphics.RectF;
 
 /** Framework-only instrumentation: actual APK, WebView, JNI and saved RVPC2. */
 public final class WorkbenchTestRunner extends Instrumentation {
@@ -153,10 +154,59 @@ public final class WorkbenchTestRunner extends Instrumentation {
         runOnMainSync(()->{WebView view=activity.testingWebView();Bitmap bitmap=Bitmap.createBitmap(Math.max(1,view.getWidth()),Math.max(1,view.getHeight()),Bitmap.Config.ARGB_8888);view.draw(new Canvas(bitmap));try(FileOutputStream output=new FileOutputStream(new File(folder,mode+"-view.png"))){bitmap.compress(Bitmap.CompressFormat.PNG,100,output);}catch(Exception error){throw new RuntimeException(error);}finally{bitmap.recycle();}});
         require(visible,"Display stayed blank after committed WebView frame; "+geometry);
     }
+    private void tapNative(ViewTarget target,float x,float y)throws Exception{
+        int[] origin=new int[2];runOnMainSync(()->target.view.getLocationOnScreen(origin));long now=SystemClock.uptimeMillis();
+        MotionEvent down=MotionEvent.obtain(now,now,MotionEvent.ACTION_DOWN,x+origin[0],y+origin[1],0),up=MotionEvent.obtain(now,now+50,MotionEvent.ACTION_UP,x+origin[0],y+origin[1],0);
+        try{sendPointerSync(down);sendPointerSync(up);}finally{down.recycle();up.recycle();}
+    }
+    private static final class ViewTarget {final android.view.View view;ViewTarget(android.view.View view){this.view=view;}}
+    private int[] gameSnapshot(BreakerActivity game)throws Exception{
+        for(int i=0;i<120;i++){AtomicReference<int[]> result=new AtomicReference<>();runOnMainSync(()->result.set(game.testingSnapshot()));if(result.get()!=null)return result.get();Thread.sleep(100);}throw new AssertionError("Game did not load its XI frame");
+    }
+    private void screenshot(String name)throws Exception{
+        File folder=new File(getTargetContext().getExternalFilesDir(null),"visual-evidence");folder.mkdirs();Bitmap bitmap=getUiAutomation().takeScreenshot();require(bitmap!=null,"No native game screenshot");try(FileOutputStream output=new FileOutputStream(new File(folder,name+".png"))){bitmap.compress(Bitmap.CompressFormat.PNG,100,output);}finally{bitmap.recycle();}
+    }
+    private void breaker(boolean restore)throws Exception{
+        BreakerActivity game;
+        if(restore)game=(BreakerActivity)startActivitySync(new Intent(getTargetContext(),BreakerActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        else{
+            activity=(WorkbenchActivity)startActivitySync(new Intent(getTargetContext(),WorkbenchActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            waitJs("programCatalog&&programCatalog.apps.some(a=>a.metadata.ui==='breaker-v1')");
+            js("openProgram('Aplicaciones/REVERSE-BREAKER.rxe');true");waitJs("document.querySelector('[data-program-action=play-breaker]')");
+            ActivityMonitor monitor=addMonitor(BreakerActivity.class.getName(),null,false);tapDom("[data-program-action=play-breaker]");game=(BreakerActivity)waitForMonitorWithTimeout(monitor,10000);removeMonitor(monitor);require(game!=null,"RXE play did not open the native game");
+        }
+        int[] initial=gameSnapshot(game);String coreBefore=hash("session.rvp");
+        if(restore){
+            JSONObject proof=new JSONObject(Files.readString(dataFile("breaker-proof.json").toPath()));JSONArray before=proof.getJSONArray("frame");
+            for(int i:new int[]{0,1,5,6,7,8,9,10,12,13,14,15,16,17})require(initial[i]==before.getInt(i),"Cold game restore differs at "+i);
+            require(coreBefore.equals(proof.getString("core")),"Game altered desktop quantum checkpoint");
+            Thread.sleep(300);require(gameSnapshot(game)[17]==initial[17],"Restored game ran without player resuming");
+        }else{
+            require(initial[6]==3&&initial[9]==50,"First RXE game state differs");
+            RectF[] play={null};runOnMainSync(()->play[0]=game.testingPlayRect());tapNative(new ViewTarget(game.testingView()),play[0].centerX(),play[0].centerY());
+            for(int i=0;i<100&&gameSnapshot(game)[17]<8;i++)Thread.sleep(30);
+            int[] playing=gameSnapshot(game);require(playing[7]==1&&playing[17]>=8&&playing[1]!=initial[1],"Touch did not launch XI gameplay");
+            RectF[] board={null};runOnMainSync(()->board[0]=game.testingBoard());float x=board[0].left+board[0].width()*.75f,y=board[0].bottom-25;
+            tapNative(new ViewTarget(game.testingView()),x,y);Thread.sleep(100);require(gameSnapshot(game)[4]>=740,"Touch did not move XI paddle");
+            screenshot("breaker-running");
+            RectF[] pause={null};runOnMainSync(()->pause[0]=game.testingPauseRect());tapNative(new ViewTarget(game.testingView()),pause[0].centerX(),pause[0].centerY());Thread.sleep(250);
+            int[] stopped=gameSnapshot(game);Thread.sleep(250);require(gameSnapshot(game)[17]==stopped[17],"Pause kept advancing XI ticks");
+            RuntimeExecutor.INSTANCE.submit(()->{}).get(10,TimeUnit.SECONDS);
+            require(dataFile("reverse-breaker-v1.rvp").length()>29,"No durable game checkpoint");
+            require(hash("session.rvp").equals(coreBefore),"Game mutated desktop state");
+            JSONObject proof=new JSONObject().put("frame",new JSONArray(stopped)).put("core",coreBefore).put("checkpoint_bytes",dataFile("reverse-breaker-v1.rvp").length());
+            Files.writeString(dataFile("breaker-proof.json").toPath(),proof.toString());
+        }
+        screenshot(restore?"breaker-restored":"breaker-paused");runOnMainSync(game::finish);waitForIdleSync();
+        if(!restore)require(resumed instanceof WorkbenchActivity,"Returning from game opened the legacy desktop");
+    }
     @Override public void onStart(){
         Bundle result=new Bundle();
         try{
             String requested=arguments==null?"full":arguments.getString("mode","full");
+            if(requested.equals("breaker")||requested.equals("breakerRestore")){
+                breaker(requested.equals("breakerRestore"));result.putString("stream","WORKBENCH_TESTS_OK mode="+requested+" native=XI/Ether game=RXE touch=real checkpoint=RVPC2\n");result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
+            }
             boolean boot=requested.equals("boot"),seed=requested.equals("upgradeSeed"),upgrade=requested.equals("upgrade");
             if(boot){ActivityMonitor monitor=addMonitor(WorkbenchActivity.class.getName(),null,false);startActivitySync(new Intent(getTargetContext(),BootActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));activity=(WorkbenchActivity)waitForMonitorWithTimeout(monitor,15000);removeMonitor(monitor);require(activity!=null,"Boot did not reach desktop");}
             else activity=(WorkbenchActivity)startActivitySync(new Intent(getTargetContext(),WorkbenchActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));

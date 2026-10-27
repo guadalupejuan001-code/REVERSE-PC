@@ -22,6 +22,13 @@ final class WorkbenchPrograms {
         // Use the same executable paths and private memories as DesktopActivity.
         // Never replace a user's executable or restore a deliberately removed app.
         android.content.SharedPreferences prefs=context.getSharedPreferences("workbench-programs",0);
+        if(!prefs.getBoolean("breaker-v1-seeded",false)){
+            try(InputStream input=context.getAssets().open(BreakerSession.ASSET)){
+                byte[] image=read(input);info(image);String game="Aplicaciones/REVERSE-BREAKER.rxe";
+                if(!exists(game))files.write(game,image,false);
+            }
+            prefs.edit().putBoolean("breaker-v1-seeded",true).apply();
+        }
         if(!prefs.getBoolean("seeded",false)){
             android.content.SharedPreferences previous=context.getSharedPreferences("desktop-v1",0);
             if(!exists(BBYQ)&&!previous.getBoolean("bbyq-rxe-e016-seeded",false))try(InputStream in=context.getAssets().open("native-apps/BBY-Q.rxe")){
@@ -48,8 +55,10 @@ final class WorkbenchPrograms {
         if(value==null||!WorkspaceFiles.parent(value).equals("Aplicaciones")||!value.toLowerCase(Locale.ROOT).endsWith(".rxe"))throw new IOException("Selecciona un ejecutable de Aplicaciones");
         WorkspaceFiles.name(value.substring("Aplicaciones/".length()));return value;
     }
-    private static JSONObject info(byte[] image)throws Exception{
-        return new JSONObject(new String(NativeRuntime.inspectRxe(image),StandardCharsets.UTF_8));
+    private JSONObject info(byte[] image)throws Exception{
+        JSONObject metadata=new JSONObject(new String(NativeRuntime.inspectRxe(image),StandardCharsets.UTF_8));
+        if(BreakerSession.recognizes(context,image))metadata.put("ui","breaker-v1").put("app_version","1.0.0");
+        return metadata;
     }
     private static String identity(byte[] image)throws Exception{
         StringBuilder hex=new StringBuilder();for(byte b:MessageDigest.getInstance("SHA-256").digest(image))hex.append(String.format(Locale.ROOT,"%02x",b&255));return hex.toString();
@@ -91,12 +100,16 @@ final class WorkbenchPrograms {
     JSONObject run(JSONObject request,SessionStore session)throws Exception{
         byte[] image=checked(request);
         if("chat".equals(info(image).optString("ui")))throw new IOException("Abre la conversación de esta aplicación");
+        if("breaker-v1".equals(info(image).optString("ui")))throw new IOException("Abre el juego con su control gráfico");
         ResultPacket result=ResultPacket.parse(NativeRuntime.executeRxe(session.loadState(),image));
         session.writeState(result.state);
         String output=result.output.length()>48000?result.output.substring(0,48000)+"\n[Salida visible recortada]":result.output;
         context.getSharedPreferences("desktop-v1",0).edit().putString("rxe-output:"+request.getString("path"),output).apply();
         Log.i("ReverseWorkbench","WORKBENCH_RXE_RUN_OK "+request.getString("path"));
         return new JSONObject().put("ok",true).put("output",output);
+    }
+    void checkGame(JSONObject request)throws Exception{
+        if(!BreakerSession.recognizes(context,checked(request)))throw new IOException("El ejecutable no corresponde a REVERSE BREAKER 1.0");
     }
     JSONObject compile(JSONObject request)throws Exception{
         String source=request.getString("source");byte[] bytes=source.getBytes(StandardCharsets.UTF_8);

@@ -49,6 +49,7 @@ function programHTML(w){
   const status=data.error|| (data.busy?'Procesando en el núcleo…':chat?'Memoria guardada · '+(data.language===1?'Español':'English'):'Ejecutar inicia el programa. Abrir la ventana conserva la última salida.');
   const heading='<div class="rxe-heading"><span>'+esc(meta.title)+' · '+esc(meta.app_version||'RXE1')+'</span><div class="program-actions"><button class="secondary-button" data-program-action="reload" aria-label="Actualizar memoria"'+disabled+'>'+icon('restore')+'</button><button class="secondary-button" data-program-action="export"'+disabled+'>Exportar .rxe</button>'+(chat?'<button class="secondary-button" data-program-action="memory"'+disabled+'>Memoria .rvp</button>':'')+'</div></div>';
   const message='<p class="rxe-status" role="status">'+esc(status)+'</p>';
+  if(meta.ui==='breaker-v1')return '<div class="rxe-layout">'+heading+'<div class="breaker-card"><span class="eyebrow">EL PRIMER JUEGO DE REVERSE</span><h2>REVERSE<br>BREAKER</h2><p>Cinco sectores. Una barra. Rompe los bloques y conserva tu récord.</p><button class="primary-button" data-program-action="play-breaker">Jugar</button><small>Arrastra para mover · Pausa al salir · Lógica XI / Ether</small></div></div>';
   if(!chat)return '<div class="rxe-layout">'+heading+message+'<pre class="rxe-output" aria-label="Salida RXE">'+esc(saved.output||'Pulsa Ejecutar para iniciar.')+'</pre><button class="primary-button" data-program-action="run"'+(data.busy||data.uncertain?' disabled':'')+'>Ejecutar</button></div>';
   const history=saved.history.length?saved.history.map((item,i)=>'<div class="rxe-message '+(item.role==='user'?'from-user':'from-agent')+'"><small>'+esc(item.role==='user'?'TÚ':meta.title)+'</small><p'+(item.role==='assistant'&&i===saved.history.length-1?' aria-label="Respuesta BBY Q"':'')+'>'+esc(item.text)+'</p></div>').join(''):'<p class="muted">Memoria '+esc(meta.app_version)+' lista. Puedes empezar con «hola».</p>';
   queueMicrotask(()=>{const el=$('.rxe-history',$('#'+w.id));if(el)el.scrollTop=el.scrollHeight;});
@@ -89,6 +90,7 @@ document.addEventListener('click',async event=>{
   if(action==='import'){if(nativeAvailable)window.ReverseNative.importRxe();else toast('Requiere la aplicación Android.','help');}
   if(action==='reload'&&w)loadProgram(w);
   if(action==='run'&&w)transactProgram(w,'runApp');
+  if(action==='play-breaker'&&data?.snapshot)window.ReverseNative.openBreaker(w.rxePath,data.snapshot.identity);
   if((action==='export'||action==='memory')&&data?.snapshot)window.ReverseNative.exportRxe(w.rxePath,data.snapshot.identity,action==='memory');
   if(action==='compile'&&w){
     if(w.xiBusy||!nativeAvailable)return;

@@ -24,7 +24,7 @@ android {
  productFlavors {
   classic { dimension 'edition'; applicationId 'com.reversepc.os'; manifestPlaceholders = [appLabel:'REVERSE OS'] }
   desktop { dimension 'edition'; applicationId 'com.reversepc.desktop'; manifestPlaceholders = [appLabel:'REVERSE Desktop'] }
-  workbench { dimension 'edition'; versionCode 201; versionName '2.0.1'; applicationId 'com.reversepc.workbench'; manifestPlaceholders = [appLabel:'REVERSE Workbench'] }
+  workbench { dimension 'edition'; versionCode 210; versionName '2.1.0'; applicationId 'com.reversepc.workbench'; manifestPlaceholders = [appLabel:'REVERSE Workbench'] }
   rxe { dimension 'edition'; applicationId 'com.reversepc.desktop.rxe'; manifestPlaceholders = [appLabel:'REVERSE Desktop RXE'] }
  }
  externalNativeBuild {
