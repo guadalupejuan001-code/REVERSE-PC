@@ -141,7 +141,7 @@ jobs:
           echo 'hw.keyboard=no' >> "$ANDROID_AVD_HOME/desktop.avd/config.ini"
           "$ANDROID_HOME/emulator/emulator" -avd desktop -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -memory 2048 > reverse-os-evidence/emulator.log 2>&1 &
           EMU_PID=$!
-          trap 'adb logcat -d > reverse-os-evidence/all-logcat.txt 2>/dev/null || true; kill "$EMU_PID" 2>/dev/null || true' EXIT
+          trap 'adb logcat -d > reverse-os-evidence/all-logcat.txt 2>/dev/null || true; adb exec-out screencap -p > reverse-os-evidence/final-screen.png 2>/dev/null || true; adb shell uiautomator dump /sdcard/reverse-final.xml >/dev/null 2>&1 || true; adb pull /sdcard/reverse-final.xml reverse-os-evidence/final-ui.xml >/dev/null 2>&1 || true; kill "$EMU_PID" 2>/dev/null || true' EXIT
           ready=false
           for i in $(seq 1 115); do
             if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == 1 ]]; then ready=true;break;fi

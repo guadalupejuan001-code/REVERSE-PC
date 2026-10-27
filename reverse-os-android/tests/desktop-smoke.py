@@ -55,9 +55,10 @@ def click(text=None,desc=None,clickable=False):
     try:tap(find(text,desc,clickable,timeout=4));return
     except AssertionError:
         if text is None:
-            if desc is None or not desc.startswith(('ARCHIVO ','OPCIONES ')):raise
+            if desc is None or not desc.startswith(('ARCHIVO ','OPCIONES ','ABRIR RXE ')):raise
+            panel_name='Aplicaciones' if desc.startswith(('ABRIR RXE ','OPCIONES RXE ')) else 'Archivos'
             for _ in range(7):
-                panel=find(desc='VENTANA Archivos')
+                panel=find(desc='VENTANA '+panel_name)
                 lists=[n for n in panel.iter('node') if n.get('class')=='android.widget.ScrollView']
                 if not lists:break
                 x1,y1,x2,y2=box(lists[-1]);adb('shell','input','swipe',(x1+x2)//2,y2-12,(x1+x2)//2,y1+15,250)
