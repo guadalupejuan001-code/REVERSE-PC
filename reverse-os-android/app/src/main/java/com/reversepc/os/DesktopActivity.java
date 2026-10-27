@@ -60,7 +60,7 @@ public final class DesktopActivity extends Activity {
     private static final int BG=0xff131922, CARD=0xff222b36, CARD_BRIGHT=0xff303c47;
     private static final int WHITE=0xfff5f3ef, MUTED=0xffbdc3c8, ACCENT=0xffaec3d2;
     private static final int BLUE=0xffb4c6d4, VIOLET=0xffcbb9cb, AMBER=0xffdec4a6;
-    private static final ExecutorService ENGINE=Executors.newSingleThreadExecutor();
+    private static final ExecutorService ENGINE=RuntimeExecutor.INSTANCE;
     private final ExecutorService engine=ENGINE;
     private final Handler clockHandler=new Handler(Looper.getMainLooper());
     private SessionStore store;
@@ -162,6 +162,14 @@ public final class DesktopActivity extends Activity {
 
     @Override public void onCreate(Bundle previous) {
         super.onCreate(previous);
+        if(getPackageName().endsWith(".workbench")){
+            // Android Recents may restore the old 2.0 activity after an update.
+            // Redirect before drawing its desktop or touching any saved state.
+            Log.i(LOG,"WORKBENCH_LEGACY_ENTRY_REDIRECT");
+            startActivity(new Intent(this,WorkbenchActivity.class)
+                .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP));
+            finish();return;
+        }
         getWindow().setStatusBarColor(BG);
         getWindow().setNavigationBarColor(BG);
         getWindow().getDecorView().setSystemUiVisibility(
@@ -255,6 +263,7 @@ public final class DesktopActivity extends Activity {
         mark.setLetterSpacing(.07f);
 
         top.addView(mark,new LinearLayout.LayoutParams(0,-2,1f));
+        if(getPackageName().endsWith(".workbench"))top.addView(touch("Mesa",11,false,()->{startActivity(new Intent(this,WorkbenchActivity.class).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP));finish();}));
 
         statusLabel=label("● Iniciando",10,AMBER,true);
         statusLabel.setOnClickListener(v->{

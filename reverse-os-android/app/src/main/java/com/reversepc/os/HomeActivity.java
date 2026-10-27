@@ -8,7 +8,7 @@ import android.os.Bundle;
 public final class HomeActivity extends Activity {
     @Override public void onCreate(Bundle state){
         super.onCreate(state);
-        startActivity(new Intent(this,DesktopActivity.class)
+        startActivity(new Intent(this,getPackageName().endsWith(".workbench")?WorkbenchActivity.class:DesktopActivity.class)
             .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP|Intent.FLAG_ACTIVITY_SINGLE_TOP));
         finish();
     }
