@@ -102,6 +102,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
         sendMessage("cuantas manzanas tiene ana?","Ana tiene cinco manzanas.");
         tapDom("[data-program-language=\"2\"]");sendMessage("how many apples does she have?","Ana has five apples.");
         require(Arrays.equals(desktopBefore,Files.readAllBytes(dataFile("session.rvp").toPath())),"BBY Q wrote the shared desktop checkpoint");
+        require(js("document.querySelector('.task-tray').getBoundingClientRect().right<=innerWidth+1").equals("true"),"Taskbar controls overflow the display");
         visualCheck(upgrade?"upgraded-bbyq":"bbyq-in-workbench");
         // All catalog entry points, including a restored 2.0 shortcut, stay here.
         js("createWindow('control',{tab:'apps'});true");tapDom(".control-app-grid [data-open=programs]");
@@ -121,6 +122,12 @@ public final class WorkbenchTestRunner extends Instrumentation {
         require(hash("session.rvp").equals(beforeCompile),"Compilation executed the source");
         tapDom(".window[aria-label=\"Prueba-workbench\"] [data-program-action=run]");waitJs("document.querySelector('.window[aria-label=\"Prueba-workbench\"] .rxe-output').textContent.includes('63')");
         require(!hash("session.rvp").equals(beforeCompile),"RXE did not update the real machine");
+        String beforeSearch=hash("session.rvp");tapDom("#launcher-toggle");
+        js("(()=>{const field=document.querySelector('#global-search');field.value='Prueba-workbench';field.dispatchEvent(new Event('input',{bubbles:true}));})()");
+        tapDom("#launcher [data-program-path=\"Aplicaciones/Prueba-workbench.rxe\"]");
+        require(hash("session.rvp").equals(beforeSearch),"Searching reopened and executed the program");
+        tapDom("#pinned-apps [data-task-app=bbyq]");
+        require(js("getWindow(activeId).rxePath").equals("Aplicaciones/BBY-Q.rxe"),"BBY Q taskbar shortcut opened the wrong window");
         RuntimeExecutor.INSTANCE.submit(()->{try{
             WorkbenchPrograms programs=new WorkbenchPrograms(getTargetContext());WorkspaceFiles files=new WorkspaceFiles(getTargetContext().getFilesDir());
             JSONObject opened=programs.open("Aplicaciones/BBY-Q.rxe"),request=new JSONObject().put("path",opened.getString("path")).put("identity",opened.getString("identity"));

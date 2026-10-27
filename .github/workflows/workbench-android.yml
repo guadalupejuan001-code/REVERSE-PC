@@ -122,6 +122,7 @@ jobs:
           adb shell am force-stop com.reversepc.workbench
           adb shell am instrument -w -e mode restore com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/upgrade-restore.txt
           grep 'WORKBENCH_TESTS_OK mode=restore' workbench-evidence/upgrade-restore.txt
+          adb pull /sdcard/Android/data/com.reversepc.workbench/files/visual-evidence workbench-evidence/upgrade-visual-evidence
           # A separate fresh-install scenario uses only this disposable emulator.
           adb shell pm clear com.reversepc.workbench
           adb shell am instrument -w com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/instrumentation.txt

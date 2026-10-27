@@ -31,13 +31,14 @@ function renderShortcuts(){
   const count=state.files.filter(f=>f.trashRoot===f.id).length;
   $('#shortcuts').innerHTML='<button class="desktop-shortcut" data-open="files"><span class="shortcut-icon">'+icon('folder')+'</span><span>Archivos</span></button><button class="desktop-shortcut" data-ui="bin" aria-label="Papelera, '+count+(count===1?' elemento':' elementos')+'"><span class="shortcut-icon">'+icon('trash')+(count?'<span class="bin-count">'+count+'</span>':'')+'</span><span>Papelera</span></button>';
 }
+function taskApp(w){return w.app==='rxe'&&w.rxePath==='Aplicaciones/BBY-Q.rxe'?'bbyq':w.app;}
 function taskButton(app){
-  const list=state.windows.filter(w=>w.app===app&&w.space===state.space);const focused=list.some(w=>w.id===activeId&&!w.min);
+  const list=state.windows.filter(w=>taskApp(w)===app&&w.space===state.space);const focused=list.some(w=>w.id===activeId&&!w.min);
   return '<button class="dock-button task-app '+(list.length?'running ':'')+(focused?'focused':'')+'" data-task-app="'+app+'" aria-label="'+(list.length?'Ventanas de ':'Abrir ')+APPS[app].name+'" title="'+(list.length?list.length+' ventana'+(list.length===1?'':'s'):'Abrir aplicación')+'">'+icon(APPS[app].icon)+'<span class="task-app-label">'+APPS[app].name+'</span>'+(list.length>1?'<span class="task-count">'+list.length+'</span>':'')+'</button>';
 }
 function renderDock(){
   $('#pinned-apps').innerHTML=PINNED.map(taskButton).join('');
-  const extra=[...new Set(state.windows.filter(w=>w.space===state.space&&!PINNED.includes(w.app)).map(w=>w.app))];$('#running-apps').innerHTML=extra.map(taskButton).join('');
+  const extra=[...new Set(state.windows.filter(w=>w.space===state.space&&!PINNED.includes(taskApp(w))).map(taskApp))];$('#running-apps').innerHTML=extra.map(taskButton).join('');
 }
 function selectTopWindow(){const top=state.windows.filter(w=>w.space===state.space&&!w.min).sort((a,b)=>b.z-a.z)[0];activeId=top?.id||null;$$('.window').forEach(el=>el.classList.toggle('focused',el.dataset.id===activeId));}
 function updateClock(){
@@ -84,7 +85,7 @@ function controlHTML(w){
 function refreshControlLists(){for(const w of state.windows.filter(w=>w.app==='control'&&w.tab==='apps'))renderWindowContent(w);}
 function resetWallpaper(){Object.assign(state.prefs,{wall:'pliegue',dim:16,wallX:50,wallY:50,scale:100,blur:0,saturation:100,fit:'cover'});applyPrefs();refreshSettings();queueSave();toast('Fondo predeterminado restaurado.');}
 function handleTaskClick(app,button){
-  hideLauncher();const list=state.windows.filter(w=>w.app===app&&w.space===state.space).sort((a,b)=>b.z-a.z);
+  hideLauncher();const list=state.windows.filter(w=>taskApp(w)===app&&w.space===state.space).sort((a,b)=>b.z-a.z);
   if(list.length>1){const r=button.getBoundingClientRect();showMenu(r.left,r.top-list.length*40,list.map(w=>({label:windowTitle(w)+(w.min?' · Minimizada':''),icon:APPS[w.app].icon,run:()=>focusWindow(w.id)})));return;}
   if(list.length){const w=list[0];if(activeId===w.id&&!w.min)minimizeWindow(w);else focusWindow(w.id);}else createWindow(app);
 }
