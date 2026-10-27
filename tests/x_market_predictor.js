@@ -23,12 +23,12 @@ function parseCSV(text){
   requireValid(lines.length>=8&&lines.length<=220,'8..220 sequential observations required');
   let last='';
   return lines.map((line,i)=>{
-    const m=/^(\d{4}-\d{2}-\d{2}),([1-9]\d{0,4})$/.exec(line);
+    const m=/^(\d{4}-\d{2}-\d{2}),([1-9]\d{0,9})$/.exec(line);
     requireValid(Boolean(m),'invalid CSV row '+(i+2));
     const day=m[1],amount=Number(m[2]);
     requireValid(new Date(day+'T00:00:00.000Z').toISOString().slice(0,10)===day,'invalid date '+day);
     requireValid(day>last,'dates must be strictly ascending, without duplicates');
-    requireValid(Number.isSafeInteger(amount)&&amount>=1&&amount<=65535,'close_cents must be positive uint16');
+    requireValid(Number.isSafeInteger(amount)&&amount>=1&&amount<=2000000000,'close_cents must be positive and <=2 billion cents');
     last=day;return priceRow(day,amount);
   });
 }
@@ -45,7 +45,7 @@ function makeFixture(kind,size=66){
         total+=(seed%241)-120;
       }else throw Error('unknown fixture');
     }
-    requireValid(total>0&&total<=65535,'fixture outside input budget');
+    requireValid(total>0&&total<=2000000000,'fixture outside input budget');
     rows.push(priceRow(dayString(t),total));
   }
   return rows;
@@ -59,13 +59,13 @@ function command(exe,args,step){
   return checkCode(cp.spawnSync(exe,args,{encoding:'utf8',timeout:60000,maxBuffer:2*1024*1024}),step);
 }
 function stageProgram(t,cents){
-  const low=cents%256,high=Math.floor(cents/256),at=10000+2*t;
+  const bytes=[cents%256,Math.floor(cents/256)%256,Math.floor(cents/65536)%256,Math.floor(cents/16777216)%256],at=10000+4*t;
   // This input adapter stages only the new observation and the exact observation count.
   // No future prices, model coefficients, benchmark labels or hidden seeds are transferred.
   return '#!reverse-pc-machine-v1\n'+
     'load8 r0 4096\ncmp r0 '+t+'\nje correct_time\n'+
     'set r15 1\ndiv r15 0\nlabel correct_time\n'+
-    'store8 '+at+' '+low+'\nstore8 '+(at+1)+' '+high+'\n'+
+    bytes.map((value,i)=>'store8 '+(at+i)+' '+value+'\n').join('')+
     'add r0 1\nstore8 4096 r0\nprint r0\nhalt\n';
 }
 function registers(jsonl){
@@ -77,7 +77,7 @@ function registers(jsonl){
     requireValid(Number.isSafeInteger(map[key]),'missing XI register '+key);
   }
   requireValid([0,1,2].includes(map.r13),'invalid expert id');
-  requireValid(map.r14>=1&&map.r14<=65535,'XI prediction out of range');
+  requireValid(map.r14>=1&&map.r14<=2000000000,'XI prediction out of range');
   requireValid(map.r11===0||map.r11===1,'invalid gate status');
   requireValid(map.r10>=4&&map.r10<=8,'unexpected training length');
   requireValid(map.r15>=0,'negative historical error');
@@ -146,6 +146,8 @@ function ci(exe){
   // Independent fixtures. Forecaster XI never sees the generator's formula or seed.
   const exact=runSeries(exe,parseCSV(toCSV(makeFixture('quadratic'))));
   const shock=runSeries(exe,parseCSV(toCSV(makeFixture('shock'))));
+  const high=runSeries(exe,parseCSV(toCSV(makeFixture('quadratic').map(x=>priceRow(x.day,x.close_cents+80000)))));
+  assert.equal(high.metrics.model_mae_cents,0,'four-byte high-price calculation regressed');
   const noise=runSeries(exe,parseCSV(toCSV(makeFixture('noise'))));
   assert.equal(exact.metrics.nonzero_errors,0,'quadratic is not exact after minimum history');
   assert.equal(exact.metrics.model_mae_cents,0);
@@ -163,7 +165,7 @@ function ci(exe){
   assert.throws(()=>parseCSV(toCSV(prefix).replace('2026-01-04,','2026-01-40,')));
   assert.throws(()=>parseCSV(toCSV(prefix).replace('2026-01-06,','2026-01-06,-')));
   console.log(JSON.stringify({suite:'laplace_x_causal_xi',xi_native:true,rxe_equal:true,chronology_enforced:true,read_only:true,unknown_shock_detected:true,quadratic_exact:true,models_compared:true,results:{
-    quadratic:exact.metrics,shock:shock.metrics,unobserved_innovations:noise.metrics
+    quadratic:exact.metrics,high_price:high.metrics,shock:shock.metrics,unobserved_innovations:noise.metrics
   }}));
 }
 function main(){
