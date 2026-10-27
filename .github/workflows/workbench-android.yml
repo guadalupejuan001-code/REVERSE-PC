@@ -95,6 +95,9 @@ jobs:
           adb shell input keyevent 82
           adb install -r workbench-dist/REVERSE-Workbench-v2.0.apk
           adb install -r reverse-os-android/app/build/outputs/apk/androidTest/workbench/debug/app-workbench-debug-androidTest.apk
+          # Let the fresh system finish applying its dynamic resource overlays;
+          # that first-boot update recreates already-running activities.
+          sleep 20
           adb logcat -c
           adb shell am instrument -w com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/instrumentation.txt
           grep 'WORKBENCH_TESTS_OK mode=full' workbench-evidence/instrumentation.txt

@@ -18,13 +18,14 @@ import java.io.FileOutputStream;
 /** Framework-only instrumentation: actual APK, WebView, JNI and saved RVPC2. */
 public final class WorkbenchTestRunner extends Instrumentation {
     private Bundle arguments;
-    private WorkbenchActivity activity;
+    private volatile WorkbenchActivity activity;
+    @Override public void callActivityOnResume(Activity current){super.callActivityOnResume(current);if(current instanceof WorkbenchActivity)activity=(WorkbenchActivity)current;}
     @Override public void onCreate(Bundle args){arguments=args;start();}
     private static void require(boolean ok,String message){if(!ok)throw new AssertionError(message);}
     private String js(String script)throws Exception{
         CountDownLatch done=new CountDownLatch(1);AtomicReference<String> result=new AtomicReference<>();
         runOnMainSync(()->activity.testingWebView().evaluateJavascript(script,value->{result.set(value);done.countDown();}));
-        require(done.await(30,TimeUnit.SECONDS),"WebView callback timed out");
+        require(done.await(30,TimeUnit.SECONDS),"WebView callback timed out: "+script.substring(0,Math.min(script.length(),160)));
         Object value=new JSONArray("["+result.get()+"]").get(0);return value==JSONObject.NULL?"null":String.valueOf(value);
     }
     private String waitJs(String expression)throws Exception{
