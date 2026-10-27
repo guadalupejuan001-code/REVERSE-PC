@@ -2,7 +2,7 @@
 # LAPLACE X / XI causal online forecaster v0.2.
 # Same QuantumRuntime and Inverse Ether Memory as REVERSE-PC.
 # Input contract: store8 4096 N where N=number of observed closes (7..220).
-# p[k] is a positive 16-bit integer in cents, little endian at 10000+2*k.
+# p[k] is a positive <=2,000,000,000 integer cents, little endian at 10000+4*k.
 # CRITICAL: forecasts only use observations k < N. No reading or future labels.
 # Expert 0: persistence, expert 1: constant velocity, expert 2: constant acceleration.
 # Select the model with smallest last-8 strictly historical absolute error.
@@ -27,42 +27,74 @@ sub r1 1
 label train_window
 # Price p[k] from paired classical bytes; reads only addresses below the staged count.
 mov r2 r1
-mul r2 2
+mul r2 4
 add r2 10000
 load8 r3 $r2
 add r2 1
 load8 r10 $r2
 mul r10 256
 add r3 r10
+add r2 1
+load8 r10 $r2
+mul r10 65536
+add r3 r10
+add r2 1
+load8 r10 $r2
+mul r10 16777216
+add r3 r10
 # Price p[k-1] from paired classical bytes; reads only addresses below the staged count.
 mov r2 r1
 sub r2 1
-mul r2 2
+mul r2 4
 add r2 10000
 load8 r4 $r2
 add r2 1
 load8 r10 $r2
 mul r10 256
 add r4 r10
+add r2 1
+load8 r10 $r2
+mul r10 65536
+add r4 r10
+add r2 1
+load8 r10 $r2
+mul r10 16777216
+add r4 r10
 # Price p[k-2] from paired classical bytes; reads only addresses below the staged count.
 mov r2 r1
 sub r2 2
-mul r2 2
+mul r2 4
 add r2 10000
 load8 r5 $r2
 add r2 1
 load8 r10 $r2
 mul r10 256
 add r5 r10
+add r2 1
+load8 r10 $r2
+mul r10 65536
+add r5 r10
+add r2 1
+load8 r10 $r2
+mul r10 16777216
+add r5 r10
 # Price p[k-3] from paired classical bytes; reads only addresses below the staged count.
 mov r2 r1
 sub r2 3
-mul r2 2
+mul r2 4
 add r2 10000
 load8 r6 $r2
 add r2 1
 load8 r10 $r2
 mul r10 256
+add r6 r10
+add r2 1
+load8 r10 $r2
+mul r10 65536
+add r6 r10
+add r2 1
+load8 r10 $r2
+mul r10 16777216
 add r6 r10
 
 # Expert 0 historical error: |p[k] - p[k-1]|.
@@ -111,32 +143,56 @@ mov r1 r0
 sub r1 1
 # Price p[k] from paired classical bytes; reads only addresses below the staged count.
 mov r2 r1
-mul r2 2
+mul r2 4
 add r2 10000
 load8 r3 $r2
 add r2 1
 load8 r10 $r2
 mul r10 256
 add r3 r10
+add r2 1
+load8 r10 $r2
+mul r10 65536
+add r3 r10
+add r2 1
+load8 r10 $r2
+mul r10 16777216
+add r3 r10
 # Price p[k-1] from paired classical bytes; reads only addresses below the staged count.
 mov r2 r1
 sub r2 1
-mul r2 2
+mul r2 4
 add r2 10000
 load8 r4 $r2
 add r2 1
 load8 r10 $r2
 mul r10 256
 add r4 r10
+add r2 1
+load8 r10 $r2
+mul r10 65536
+add r4 r10
+add r2 1
+load8 r10 $r2
+mul r10 16777216
+add r4 r10
 # Price p[k-2] from paired classical bytes; reads only addresses below the staged count.
 mov r2 r1
 sub r2 2
-mul r2 2
+mul r2 4
 add r2 10000
 load8 r5 $r2
 add r2 1
 load8 r10 $r2
 mul r10 256
+add r5 r10
+add r2 1
+load8 r10 $r2
+mul r10 65536
+add r5 r10
+add r2 1
+load8 r10 $r2
+mul r10 16777216
 add r5 r10
 
 # Must restore window count: address decoding above reused r10 scratch.
@@ -170,9 +226,9 @@ cmp r14 1
 jge nonnegative_prediction
 set r14 1
 label nonnegative_prediction
-cmp r14 65535
+cmp r14 2000000000
 jle within_price_range
-set r14 65535
+set r14 2000000000
 label within_price_range
 # Gate is a simple, conservative, *uncalibrated* historical loss threshold.
 mov r11 r15
