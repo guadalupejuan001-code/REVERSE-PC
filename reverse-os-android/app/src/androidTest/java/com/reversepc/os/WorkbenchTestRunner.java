@@ -20,6 +20,9 @@ import java.security.MessageDigest;
 import java.util.Arrays;
 import android.os.SystemClock;
 import android.view.MotionEvent;
+import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.accessibility.AccessibilityWindowInfo;
+import android.accessibilityservice.AccessibilityServiceInfo;
 
 /** Framework-only instrumentation: actual APK, WebView, JNI and saved RVPC2. */
 public final class WorkbenchTestRunner extends Instrumentation {
@@ -48,7 +51,20 @@ public final class WorkbenchTestRunner extends Instrumentation {
         StringBuilder out=new StringBuilder();for(byte b:MessageDigest.getInstance("SHA-256").digest(data))out.append(String.format(java.util.Locale.ROOT,"%02x",b&255));return out.toString();
     }
     private String hash(String path)throws Exception{return digest(Files.readAllBytes(dataFile(path).toPath()));}
+    private boolean dismissFullscreenHint()throws Exception{
+        java.util.ArrayList<AccessibilityNodeInfo> roots=new java.util.ArrayList<>();
+        AccessibilityNodeInfo active=getUiAutomation().getRootInActiveWindow();if(active!=null)roots.add(active);
+        // The education overlay can be touchable without owning keyboard focus.
+        for(AccessibilityWindowInfo window:getUiAutomation().getWindows()){AccessibilityNodeInfo root=window.getRoot();if(root!=null)roots.add(root);}
+        for(AccessibilityNodeInfo root:roots)for(AccessibilityNodeInfo node:root.findAccessibilityNodeInfosByText("Got it")){
+            if("Got it".contentEquals(node.getText()==null?"":node.getText())&&"com.android.systemui".contentEquals(node.getPackageName()==null?"":node.getPackageName())){
+                if(node.performAction(AccessibilityNodeInfo.ACTION_CLICK)){Thread.sleep(300);return true;}
+            }
+        }
+        return false;
+    }
     private void tapDom(String selector)throws Exception{
+        dismissFullscreenHint();
         String quoted=JSONObject.quote(selector);
         js("document.querySelector("+quoted+").scrollIntoView({block:'nearest',inline:'nearest'});true");
         Thread.sleep(150); // A scroll or resize must reach the compositor before touch.
@@ -57,7 +73,10 @@ public final class WorkbenchTestRunner extends Instrumentation {
         int[] origin=new int[2];int[] width={0};runOnMainSync(()->{activity.testingWebView().getLocationOnScreen(origin);width[0]=activity.testingWebView().getWidth();});
         float scale=(float)(width[0]/point.getDouble("width")),x=origin[0]+(float)point.getDouble("x")*scale,y=origin[1]+(float)point.getDouble("y")*scale;
         long time=SystemClock.uptimeMillis();MotionEvent down=MotionEvent.obtain(time,time,MotionEvent.ACTION_DOWN,x,y,0),up=MotionEvent.obtain(time,time+80,MotionEvent.ACTION_UP,x,y,0);
-        try{sendPointerSync(down);sendPointerSync(up);}finally{down.recycle();up.recycle();}Thread.sleep(100);
+        try{
+            try{sendPointerSync(down);sendPointerSync(up);}
+            catch(IllegalArgumentException systemWindow){if(!dismissFullscreenHint())throw systemWindow;long retry=SystemClock.uptimeMillis();MotionEvent againDown=MotionEvent.obtain(retry,retry,MotionEvent.ACTION_DOWN,x,y,0),againUp=MotionEvent.obtain(retry,retry+80,MotionEvent.ACTION_UP,x,y,0);try{sendPointerSync(againDown);sendPointerSync(againUp);}finally{againDown.recycle();againUp.recycle();}}
+        }finally{down.recycle();up.recycle();}Thread.sleep(100);
     }
     private void sendMessage(String question,String answer)throws Exception{
         int before=Integer.parseInt(js("programSessions.get(state.windows.find(w=>w.rxePath==='Aplicaciones/BBY-Q.rxe').id).snapshot.history.length"));
@@ -92,6 +111,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
         int[] bounds=new int[4];boolean[] bars={true};
         int displayWidth=0,displayHeight=0;
         for(int attempt=0;attempt<30;attempt++){
+            dismissFullscreenHint();
             runOnMainSync(()->{
                 WebView view=activity.testingWebView();int[] point=new int[2];view.getLocationOnScreen(point);
                 bounds[0]=point[0];bounds[1]=point[1];bounds[2]=view.getWidth();bounds[3]=view.getHeight();
@@ -208,6 +228,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
     @Override public void onStart(){
         Bundle result=new Bundle();
         try{
+            AccessibilityServiceInfo accessibility=getUiAutomation().getServiceInfo();accessibility.flags|=AccessibilityServiceInfo.FLAG_RETRIEVE_INTERACTIVE_WINDOWS;getUiAutomation().setServiceInfo(accessibility);
             String requested=arguments==null?"full":arguments.getString("mode","full");
             boolean boot=requested.equals("boot"),seed=requested.equals("upgradeSeed"),upgrade=requested.equals("upgrade"),legacy=requested.equals("legacy");
             ActivityMonitor desktopMonitor=addMonitor(WorkbenchActivity.class.getName(),null,false);
