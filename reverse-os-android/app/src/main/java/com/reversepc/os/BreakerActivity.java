@@ -28,7 +28,7 @@ public final class BreakerActivity extends Activity {
     private int paddle=500,lastPaddle=-1,command;
     private long lastFrame,accumulator,lastSave,lastMeasure;
     private int draws,ticksMeasured,fps,tps;
-    private double xiMs;
+    private double xiMs=-1;
     private String error="",saveStatus="Abriendo partida…";
     private static final long TICK=16666667L;
     private final Choreographer.FrameCallback animate=new Choreographer.FrameCallback(){@Override public void doFrame(long now){
@@ -56,7 +56,7 @@ public final class BreakerActivity extends Activity {
             long begin=SystemClock.elapsedRealtimeNanos();BreakerSession.Frame next=session.step(x,cmd,count);double millis=(SystemClock.elapsedRealtimeNanos()-begin)/1e6;
             boolean save=cmd!=0||next.get(11)>=3||SystemClock.elapsedRealtime()-lastSave>=2000;
             if(save){session.save();lastSave=SystemClock.elapsedRealtime();}
-            main.post(()->{busy=false;if(closed)return;int previous=frame==null?next.get(17):frame.get(17);ticksMeasured+=(next.get(17)-previous+65536)%65536;frame=next;xiMs=millis;if(next.get(7)!=1)paused=true;if(save)saveStatus="Guardado · "+session.stateBytes()+" bytes";view.invalidate();});
+            main.post(()->{busy=false;if(closed)return;int previous=frame==null?next.get(17):frame.get(17);ticksMeasured+=(next.get(17)-previous+65536)%65536;frame=next;xiMs=millis;if(next.get(7)!=1&&command!=1)paused=true;if(save)saveStatus="Guardado · "+session.stateBytes()+" bytes";view.invalidate();});
         }catch(Throwable fault){main.post(()->busy=false);fail(fault);}});
     }
     private void play(){if(frame==null||!error.isEmpty())return;if(frame.get(7)>=2){command=2;paused=true;}else{if(frame.get(7)==0)command=1;paused=false;}lastFrame=0;accumulator=0;view.invalidate();}
@@ -109,7 +109,7 @@ public final class BreakerActivity extends Activity {
                 if(!error.isEmpty()){text(c,"Error al ejecutar el programa",board.centerX()-dp(110),board.centerY()+dp(10),dp(12),0xffffaaa6,true);}
             }
             if(frame!=null){String stats=w<=dp(700)?String.format(Locale.ROOT,"%05d · RÉCORD %05d · %d VIDAS",frame.get(5),frame.get(10),frame.get(6)):saveStatus;text(c,stats,margin,h-dp(20),dp(10),0xff81949f,false);}
-            String measured=frame==null?"XI / Ether":String.format(Locale.ROOT,"XI %.2f ms · %d ticks/s · %d dibujos/s",xiMs,tps,fps);p.setTextSize(dp(9));text(c,measured,w-margin-p.measureText(measured),h-dp(20),dp(9),0xff72a38f,false);
+            String measured=frame==null||xiMs<0?"XI / Ether":String.format(Locale.ROOT,"XI %.2f ms · %d ticks/s · %d dibujos/s",xiMs,tps,fps);p.setTextSize(dp(9));text(c,measured,w-margin-p.measureText(measured),h-dp(20),dp(9),0xff72a38f,false);
         }
         @Override public boolean onTouchEvent(MotionEvent event){float x=event.getX(),y=event.getY();if(event.getActionMasked()==MotionEvent.ACTION_DOWN){startX=x;startY=y;moved=false;return true;}if(event.getActionMasked()==MotionEvent.ACTION_MOVE){if(Math.abs(x-startX)+Math.abs(y-startY)>dp(8))moved=true;if(y>=board.top&&scale>0)paddle=Math.max(0,Math.min(1000,Math.round((x-board.left)/scale)));return true;}if(event.getActionMasked()==MotionEvent.ACTION_UP){if(!moved){if(backRect.contains(x,y)){finish();return true;}if(resetRect.contains(x,y)){command=2;paused=true;return true;}if(pauseRect.contains(x,y)){if(paused)play();else pause();return true;}if(paused&&playRect.contains(x,y)){play();return true;}if(board.contains(x,y)&&scale>0)paddle=Math.max(0,Math.min(1000,Math.round((x-board.left)/scale)));}performClick();return true;}return true;}
         @Override public boolean performClick(){super.performClick();return true;}

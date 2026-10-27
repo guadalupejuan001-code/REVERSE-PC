@@ -177,13 +177,13 @@ public final class WorkbenchTestRunner extends Instrumentation {
         }
         int[] initial=gameSnapshot(game);String coreBefore=hash("session.rvp");
         if(restore){
-            JSONObject proof=new JSONObject(Files.readString(dataFile("breaker-proof.json").toPath()));JSONArray before=proof.getJSONArray("frame");
+            JSONObject proof=new JSONObject(new String(Files.readAllBytes(dataFile("breaker-proof.json").toPath()),StandardCharsets.UTF_8));JSONArray before=proof.getJSONArray("frame");
             for(int i:new int[]{0,1,5,6,7,8,9,10,12,13,14,15,16,17})require(initial[i]==before.getInt(i),"Cold game restore differs at "+i);
             require(coreBefore.equals(proof.getString("core")),"Game altered desktop quantum checkpoint");
             Thread.sleep(300);require(gameSnapshot(game)[17]==initial[17],"Restored game ran without player resuming");
         }else{
             require(initial[6]==3&&initial[9]==50,"First RXE game state differs");
-            RectF[] play={null};runOnMainSync(()->play[0]=game.testingPlayRect());tapNative(new ViewTarget(game.testingView()),play[0].centerX(),play[0].centerY());
+            RectF[] play={null};for(int i=0;i<50;i++){runOnMainSync(()->play[0]=game.testingPlayRect());if(play[0].width()>0)break;Thread.sleep(50);}require(play[0].width()>0,"Game did not draw the play control");tapNative(new ViewTarget(game.testingView()),play[0].centerX(),play[0].centerY());
             for(int i=0;i<100&&gameSnapshot(game)[17]<8;i++)Thread.sleep(30);
             int[] playing=gameSnapshot(game);require(playing[7]==1&&playing[17]>=8&&playing[1]!=initial[1],"Touch did not launch XI gameplay");
             RectF[] board={null};runOnMainSync(()->board[0]=game.testingBoard());float x=board[0].left+board[0].width()*.75f,y=board[0].bottom-25;
@@ -195,7 +195,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
             require(dataFile("reverse-breaker-v1.rvp").length()>29,"No durable game checkpoint");
             require(hash("session.rvp").equals(coreBefore),"Game mutated desktop state");
             JSONObject proof=new JSONObject().put("frame",new JSONArray(stopped)).put("core",coreBefore).put("checkpoint_bytes",dataFile("reverse-breaker-v1.rvp").length());
-            Files.writeString(dataFile("breaker-proof.json").toPath(),proof.toString());
+            Files.write(dataFile("breaker-proof.json").toPath(),proof.toString().getBytes(StandardCharsets.UTF_8));
         }
         screenshot(restore?"breaker-restored":"breaker-paused");runOnMainSync(game::finish);waitForIdleSync();
         if(!restore)require(resumed instanceof WorkbenchActivity,"Returning from game opened the legacy desktop");
