@@ -22,7 +22,7 @@ function applyPrefs(){
   $$('[data-wallpaper-preview]').forEach(el=>{el.style.backgroundImage='url("'+wallpaperURL()+'")';el.style.backgroundSize=p.fit;el.style.backgroundPosition=p.wallX+'% '+p.wallY+'%';el.style.filter='brightness('+(1-p.dim/100)+') blur('+Math.min(p.blur,5)+'px) saturate('+p.saturation+'%)';});
   document.querySelector('meta[name="theme-color"]').content=getComputedStyle(root).getPropertyValue('--desktop').trim();
 }
-function persist(){
+function persistWeb(){
   try{const raw=JSON.stringify(state);if(raw.length>3600000)throw Error('Espacio de guardado lleno');localStorage.setItem(STORE_KEY,raw);if(localStorage.getItem(STORE_KEY)!==raw)throw Error('El navegador no confirmó el guardado');savedAt=now();saveError=null;}
   catch(error){saveError=error.message;if(now()-lastSaveError>6000){toast('No se pudo guardar. Exporta un respaldo desde Ajustes.','help');lastSaveError=now();}}
   $$('.save-label').forEach(el=>el.textContent=saveError?'Sin guardar: exporta una copia':'Guardado en este navegador');

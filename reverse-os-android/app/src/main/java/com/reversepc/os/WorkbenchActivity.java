@@ -12,6 +12,7 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Base64;
 import android.util.Log;
+import android.util.AtomicFile;
 import android.view.View;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
@@ -131,7 +132,7 @@ public final class WorkbenchActivity extends Activity {
             .put("logical_processors",Runtime.getRuntime().availableProcessors()).put("ram_total_bytes",memory.totalMem).put("ram_available_bytes",memory.availMem)
             .put("process_pss_kib",Debug.getPss()).put("process_cpu_ms",android.os.Process.getElapsedCpuTime()).put("pid",android.os.Process.myPid());
         JSONObject result=new JSONObject().put("ok",true).put("mode","android-native").put("core",core).put("android",host).put("state_bytes",state.length)
-            .put("package",getPackageName()).put("captured_at_ms",System.currentTimeMillis());
+            .put("package",getPackageName()).put("profile_bytes",profileFile().getBaseFile().length()).put("captured_at_ms",System.currentTimeMillis());
         try(InputStream input=getAssets().open("workbench/build-info.json")){java.io.ByteArrayOutputStream bytes=new java.io.ByteArrayOutputStream();byte[] part=new byte[2048];int count;while((count=input.read(part))!=-1)bytes.write(part,0,count);result.put("build",new JSONObject(new String(bytes.toByteArray(),StandardCharsets.UTF_8)));}
         return result;
     }
@@ -145,6 +146,7 @@ public final class WorkbenchActivity extends Activity {
                     if("inspect".equals(operation))result=WorkbenchActivity.this.inspect();
                     else if("calculate".equals(operation))result=calculateNative(payload);
                     else if("execute".equals(operation))result=executeNative(payload);
+                    else if("saveProfile".equals(operation))result=saveProfile(payload);
                     else throw new IllegalArgumentException("Operación no permitida");
                     response=result.toString();
                 }catch(Throwable error){response=failure(error);}
@@ -153,6 +155,7 @@ public final class WorkbenchActivity extends Activity {
             });
         }
         @JavascriptInterface public String inspect(){return task(()->WorkbenchActivity.this.inspect());}
+        @JavascriptInterface public String loadProfile(){return task(()->new JSONObject().put("ok",true).put("profile",profileFile().getBaseFile().exists()?new String(profileFile().readFully(),StandardCharsets.UTF_8):JSONObject.NULL));}
         @JavascriptInterface public String execute(String source){return task(()->executeNative(source));}
         @JavascriptInterface public String calculate(String expression){return task(()->calculateNative(expression));}
         @JavascriptInterface public void openNativeDesktop(){
@@ -166,6 +169,18 @@ public final class WorkbenchActivity extends Activity {
             try{if(contents==null||contents.length()>8*1024*1024)throw new IllegalArgumentException("Archivo demasiado grande");export(name,Base64.decode(contents,Base64.DEFAULT),mime);}
             catch(Exception error){message("No se pudo exportar la imagen.");}
         }
+    }
+    private AtomicFile profileFile(){return new AtomicFile(new java.io.File(getFilesDir(),"workbench-profile.json"));}
+    private JSONObject saveProfile(String profile)throws Exception{
+        if(profile==null||profile.length()>3600000)throw new IllegalArgumentException("Perfil supera el límite");
+        JSONObject decoded=new JSONObject(profile);
+        if(decoded.getInt("version")!=1||decoded.getJSONArray("files").length()>500)throw new IllegalArgumentException("Perfil no válido");
+        byte[] bytes=profile.getBytes(StandardCharsets.UTF_8);
+        if(bytes.length>12*1024*1024)throw new IllegalArgumentException("Perfil demasiado grande");
+        AtomicFile target=profileFile();java.io.FileOutputStream stream=null;
+        try{stream=target.startWrite();stream.write(bytes);target.finishWrite(stream);}
+        catch(Exception error){if(stream!=null)target.failWrite(stream);throw error;}
+        return new JSONObject().put("ok",true).put("bytes",bytes.length).put("source","AtomicFile · workbench-profile.json");
     }
     private JSONObject executeNative(String source)throws Exception{
         if(source==null||source.getBytes(StandardCharsets.UTF_8).length>256*1024)throw new IllegalArgumentException("Programa supera 256 KiB");

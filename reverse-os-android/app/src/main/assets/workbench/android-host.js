@@ -2,10 +2,25 @@
 const nativeAvailable=typeof window.ReverseNative!=='undefined';
 let androidSnapshot=null,androidError=null,androidReading=false,androidReadAt=0,nativeSerial=0;
 const nativePending=new Map();
+let nativeProfileSequence=0,nativeProfileAcknowledged=0;
 window.ReverseAndroid={complete(id,response){const pending=nativePending.get(id);if(!pending)return;nativePending.delete(id);clearTimeout(pending.timeout);if(response.ok)pending.resolve(response);else pending.reject(Error(response.error||'El núcleo rechazó la operación.'));}};
 function nativeRequest(operation,payload=''){
   if(!nativeAvailable)return Promise.reject(Error('Este programa requiere la APK nativa.'));
   return new Promise((resolve,reject)=>{const id='n'+(++nativeSerial);const timeout=setTimeout(()=>{nativePending.delete(id);reject(Error('La operación sigue sin resultado confirmado. Actualiza el estado antes de repetirla.'));},60000);nativePending.set(id,{resolve,reject,timeout});window.ReverseNative.request(id,operation,payload);});
+}
+function persist(){
+  if(!nativeAvailable)return persistWeb();
+  const sequence=++nativeProfileSequence;
+  try{
+    const raw=JSON.stringify(state);if(raw.length>3600000)throw Error('Perfil demasiado grande');
+    try{localStorage.setItem(STORE_KEY,raw);}catch{}
+    $$('.save-label').forEach(el=>el.textContent='Guardando en Android…');
+    return nativeRequest('saveProfile',raw).then(()=>{
+      nativeProfileAcknowledged=Math.max(sequence,nativeProfileAcknowledged);savedAt=now();saveError=null;
+      if(nativeProfileAcknowledged===nativeProfileSequence)$$('.save-label').forEach(el=>el.textContent='Guardado en Android');
+      return true;
+    }).catch(error=>{saveError=error.message;$$('.save-label').forEach(el=>el.textContent='Sin guardar: exporta una copia');toast('No se pudo guardar el perfil: '+error.message,'help');return false;});
+  }catch(error){saveError=error.message;toast(error.message,'help');return Promise.resolve(false);}
 }
 async function refreshAndroid(force=false){
   if(!nativeAvailable||androidReading||(!force&&Date.now()-androidReadAt<5000))return;
@@ -17,7 +32,7 @@ async function refreshAndroid(force=false){
 function collectSystemInfo(){
   const report=collectWebSystemInfo();if(!nativeAvailable)return report;
   refreshAndroid();
-  const nativeLabels=['Entorno','Procesador físico','Hilos lógicos disponibles','RAM física / consumo del sistema','XI / Ether','Interfaz'];
+  const nativeLabels=['Entorno','Procesador físico','Hilos lógicos disponibles','RAM física / consumo del sistema','XI / Ether','Interfaz','Datos guardados del escritorio'];
   report.rows=report.rows.filter(row=>!nativeLabels.includes(row.label));
   report.rows.unshift(diagnosticRow('Entorno','APK Android local','WorkbenchActivity · contenido empaquetado, sin servidor'));
   if(!androidSnapshot){report.rows.unshift(diagnosticRow('XI / Ether',androidError?'Error: '+androidError:'Leyendo el núcleo…','NativeRuntime.inspect sobre session.rvp',androidError?'unavailable':'pending'));return report;}
@@ -38,6 +53,7 @@ function collectSystemInfo(){
   report.rows.push(diagnosticRow('Excepciones / enlaces de memoria',q.memory_overrides+' / '+q.quantum_bindings,'Runtime.memory().stats()'));
   report.rows.push(diagnosticRow('Revisión núcleo / memoria',q.core_revision+' / '+q.memory_revision,'NativeRuntime.inspect · revisiones del estado'));
   report.rows.push(diagnosticRow('Checkpoint guardado',d.state_bytes+' bytes · '+q.state_format,'SessionStore.loadState()'));
+  report.rows.push(diagnosticRow('Perfil del escritorio',d.profile_bytes+' bytes','AtomicFile · workbench-profile.json'));
   report.rows.push(diagnosticRow('Versión de la aplicación',d.package+' · '+(d.build?.source_commit||'Sin metadatos de compilación'),'Paquete Android / build-info.json'));
   return report;
 }
@@ -47,6 +63,7 @@ function systemHTML(){
   return '<div class="control-heading"><div><span class="eyebrow">LECTURAS NATIVAS</span><h2>Sistema</h2><p>Android y núcleo REVERSE de este dispositivo.</p></div><button class="secondary-button" data-ui="refresh-system">'+icon('restore')+'Actualizar</button></div><div class="system-boundary">'+icon('desktop')+'<span>'+(androidSnapshot?'XI/Ether cargado. Calculadora y programas XI usan el runtime original. La interfaz se dibuja con WebView.':androidError?esc(androidError):'Consultando la biblioteca nativa y el checkpoint RVPC2…')+'</span></div><div class="diagnostic-table">'+d.rows.map(row=>'<div class="diagnostic-row"><div><span class="diagnostic-label">'+esc(row.label)+'</span><small>'+esc(row.source)+'</small></div><div><strong class="'+(['unavailable','disconnected'].includes(row.status)?'unavailable':'')+'">'+esc(row.value)+'</strong>'+(row.note?'<p>'+esc(row.note)+'</p>':'')+'</div></div>').join('')+'</div><div class="system-actions"><span>Fuente: JNI / Android</span><button class="secondary-button" data-native="export-diagnostic">'+icon('download')+'Exportar diagnóstico</button></div><div class="wall-editor-actions"><button class="secondary-button" data-open="xi">'+icon('note')+'Pruebas XI</button><button class="secondary-button" data-open="nativeDesktop">'+icon('desktop')+'Programas .rxe</button></div>';
 }
 async function calcKey(w,key){
+  if(w.calc?.busy)return;
   if(!nativeAvailable||!['=','%'].includes(key))return calcKeyWeb(w,key);
   const c=w.calc||={expression:'',history:''};if(c.busy)return;c.busy=true;
   const expression=c.expression;

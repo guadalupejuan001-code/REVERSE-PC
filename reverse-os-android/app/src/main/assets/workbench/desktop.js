@@ -82,7 +82,7 @@ function validateState(s) {
 }
 function validImage(s){return typeof s==='string'&&s.length<1100000&&/^data:image\/(png|jpeg|webp|gif);base64,[A-Za-z\d+/=]+$/.test(s);}
 let state; let fresh=true;
-try {const raw=localStorage.getItem(STORE_KEY);if(raw){state=validateState(JSON.parse(raw));fresh=false;}}catch{}
+try {let raw=null;if(nativeAvailable){const loaded=JSON.parse(window.ReverseNative.loadProfile());if(loaded.ok&&typeof loaded.profile==='string')raw=loaded.profile;}if(!raw)raw=localStorage.getItem(STORE_KEY);if(raw){state=validateState(JSON.parse(raw));fresh=false;}}catch{}
 state ||= seedState();
 let zCounter=10, activeId=null, saveTimer=null, lastSaveError=0;
 const windowsEl=$('#windows');
@@ -203,7 +203,7 @@ function isImageFile(file){return ['image/png','image/jpeg','image/webp','image/
 function asDataURL(file){return new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=()=>reject(Error('No se pudo leer la imagen.'));r.readAsDataURL(file);});}
 $('#file-import').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;try{const image=isImageFile(f);if(f.size>(image?700000:131072))throw Error(image?'La imagen debe pesar menos de 700 KB.':'El archivo debe pesar menos de 128 KB.');if(!image&&!(/^text\//.test(f.type)||/\.(txt|md|xi|csv|json)$/i.test(f.name)))throw Error('Importa un texto o una imagen PNG, JPG, WebP o GIF.');const content=image?await asDataURL(f):await f.text();if(!image&&content.includes('\u0000'))throw Error('Este archivo no es texto.');const node=createFile(image?'image':'text',f.name,importParent,content);if(node){toast('Archivo importado.');openFile(node.id);}}catch(error){toast(error.message,'help');}});
 $('#wallpaper-import').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{state.prefs.image=await prepareWallpaperFile(file);setPref('wall','image');toast('Fondo actualizado. La imagen original del dispositivo no se modifica.');}catch(error){toast(error.message,'help');}});
-function exportBackup(){persist();downloadBlob('REVERSE-mi-espacio-'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(state,null,2),'application/json');toast('Respaldo exportado.');}
+function exportBackup(){persist();downloadBlob('REVERSE-mi-espacio-'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(state,null,2),'application/json');toast(nativeAvailable?'Elige dónde guardar el respaldo.':'Respaldo exportado.');}
 $('#backup-import').addEventListener('change',async e=>{const file=e.target.files[0];if(!file)return;try{if(file.size>5000000)throw Error('El respaldo supera 5 MB.');const next=validateState(JSON.parse(await file.text()));if(JSON.stringify(next).length>3600000)throw Error('El respaldo supera el espacio disponible.');const accepted=await ask({title:'Restaurar este espacio',description:'El respaldo contiene '+next.files.length+' elementos. Sustituirá los archivos y ajustes actuales. Exporta primero una copia si quieres conservarlos.',confirm:'Restaurar',input:false});if(!accepted)return;clearTimeout(saveTimer);state=next;windowsEl.innerHTML='';activeId=null;zCounter=10;applyPrefs();for(const w of state.windows){w.z=++zCounter;mountWindow(w);}switchSpace(state.space);persist();toast('Tu espacio está de vuelta.');}catch(error){toast(error instanceof SyntaxError?'Este archivo no es un respaldo válido.':error.message,'help');}});
 document.addEventListener('click',async e=>{
   const target=e.target.closest('button,[data-file-id]');

@@ -63,7 +63,8 @@ public final class WorkbenchTestRunner extends Instrumentation {
                 require(js("document.querySelector('.calc-display').value").equals("42"),"UI did not display native result");
                 js("window.testFile=createFile('text','Prueba-nativa.txt','personal','Texto persistente real');deleteFile(testFile);true");
                 require(js("state.files.find(f=>f.id===testFile.id).trashRoot===testFile.id").equals("true"),"Trash did not change index");
-                js("restoreFile(testFile);setPref('dim',23,false);persist();true");
+                js("restoreFile(testFile);setPref('dim',23,false);window.testSaved=null;persist().then(ok=>window.testSaved=ok);true");
+                require(waitJs("window.testSaved").equals("true"),"Native profile was not acknowledged");
                 require(js("state.files.find(f=>f.id===testFile.id).trashRoot===undefined").equals("true"),"Trash restore failed");
                 js("createWindow('control',{tab:'system'});true");
                 waitJs("document.querySelector('.diagnostic-table')&&document.querySelector('.diagnostic-table').textContent.includes('Conectado')");
