@@ -1,5 +1,6 @@
 /build/
 /build-signing/
+/reverse-os-android/app/src/main/assets/native-apps/*.rxe
 /deps/
 /evidence/
 /resultados/

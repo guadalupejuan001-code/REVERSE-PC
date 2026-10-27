@@ -1,4 +1,18 @@
-# REVERSE Desktop RXE 1.1
+# REVERSE Desktop RXE 1.2
+
+
+## BBY Q como ejecutable
+
+`BBY-Q.rxe` alberga BBY Q E016: su programa XI compilado y el checkpoint real
+aprendido, en un archivo de 302.774 bytes. Se abre desde Aplicaciones o Inicio,
+con conversación en español/inglés, contexto e historial persistentes y
+exportación de memoria. Los turnos se ejecutan en XI/Ether; la interfaz no
+incorpora otra IA. E016 mantiene diálogos acotados, no conversación abierta.
+
+Su memoria activa y conversación se guardan juntas, sin modificar el RVPC2 del
+escritorio. Una copia idéntica del ejecutable conserva el mismo agente. Inicio
+conserva **BBY Q anterior** para el estado E009 previo. [Formato, procedencia,
+transacciones y límites](../docs/BBYQ_RXE_APP.md).
 
 ## Programas propios .rxe
 
@@ -25,7 +39,7 @@ memoria aislada por aplicación. Los programas usan el RVPC2 compartido; el moto
 Mundo X fijado y la versión de BBY Q se conservan.
 
 La aplicación que contiene este entorno se distribuye como
-`REVERSE-Desktop-RXE-v1.1.apk`, paquete `com.reversepc.desktop.rxe`, para instalarse
+`REVERSE-Desktop-RXE-v1.2.apk`, paquete `com.reversepc.desktop.rxe`, para instalarse
 junto a 1.0 y conservarla. La clave antigua no fue retenida. Esta edición usa una
 ruta de clave explícita y una caché de desarrollo; la caché puede caducar y no
 sustituye un almacén de firma de producción. RVPC2 se puede exportar/importar con

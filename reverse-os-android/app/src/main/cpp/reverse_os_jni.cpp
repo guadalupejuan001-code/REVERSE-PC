@@ -1,5 +1,6 @@
 #include "session.hpp"
 #include "rxe.hpp"
+#include "rxe_app.hpp"
 #include <jni.h>
 #include <exception>
 #include <limits>
@@ -78,11 +79,21 @@ Java_com_reversepc_os_NativeRuntime_compileRxe(JNIEnv* e,jclass,jbyteArray progr
 }
 extern "C" JNIEXPORT jbyteArray JNICALL
 Java_com_reversepc_os_NativeRuntime_inspectRxe(JNIEnv* e,jclass,jbyteArray program){
-  try{const auto description=reverse_pc::rxe::describe(bytes(e,program));return output(e,std::vector<std::uint8_t>(description.begin(),description.end()));}
+  try{const auto image=bytes(e,program);const auto description=reverse_pc::rxe_app::has_magic(image)?reverse_pc::rxe_app::describe(image):reverse_pc::rxe::describe(image);return output(e,std::vector<std::uint8_t>(description.begin(),description.end()));}
   catch(const std::exception& x){throw_java(e,x);return nullptr;}
 }
 extern "C" JNIEXPORT jbyteArray JNICALL
 Java_com_reversepc_os_NativeRuntime_executeRxe(JNIEnv* e,jclass,jbyteArray state,jbyteArray program){
   try{const auto image=reverse_pc::rxe::decode(bytes(e,program));const auto source=reverse_pc::rxe::disassemble(image);auto runtime=reverse_os::restore(bytes(e,state));const auto lines=runtime.execute(source);return output(e,reverse_os::packet(lines,reverse_os::save(runtime)));}
+  catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_appSeed(JNIEnv* e,jclass,jbyteArray program){
+  try{return output(e,reverse_pc::rxe_app::decode(bytes(e,program)).seed);}
+  catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_appTurn(JNIEnv* e,jclass,jbyteArray state,jbyteArray program,jbyteArray message,jint language){
+  try{const auto text=bytes(e,message);const auto result=reverse_pc::rxe_app::turn(bytes(e,program),bytes(e,state),std::string(text.begin(),text.end()),unsigned(language));return output(e,reverse_os::packet(result.text,result.state));}
   catch(const std::exception& x){throw_java(e,x);return nullptr;}
 }

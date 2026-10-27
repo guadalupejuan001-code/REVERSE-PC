@@ -55,14 +55,25 @@ def click(text=None,desc=None,clickable=False):
     try:tap(find(text,desc,clickable,timeout=4));return
     except AssertionError:
         if text is None:
-            if desc is None or not desc.startswith(('ARCHIVO ','OPCIONES ')):raise
-            for _ in range(7):
-                panel=find(desc='VENTANA Archivos')
-                lists=[n for n in panel.iter('node') if n.get('class')=='android.widget.ScrollView']
-                if not lists:break
-                x1,y1,x2,y2=box(lists[-1]);adb('shell','input','swipe',(x1+x2)//2,y2-12,(x1+x2)//2,y1+15,250)
-                try:tap(find(desc=desc,timeout=2));return
-                except AssertionError:pass
+            if desc is None or not desc.startswith(('ARCHIVO ','OPCIONES ','ABRIR RXE ')):raise
+            panel_name='Aplicaciones' if desc.startswith(('ABRIR RXE ','OPCIONES RXE ')) else 'Archivos'
+            # Catalogs can retain their scroll position when an imported app
+            # sorts above the visible rows. Search both directions and stop
+            # when a real gesture leaves the visible row positions unchanged.
+            for direction in ((-1,1) if panel_name=='Aplicaciones' else (1,)):
+                previous=None
+                for _ in range(7):
+                    panel=find(desc='VENTANA '+panel_name)
+                    lists=[n for n in panel.iter('node') if n.get('class')=='android.widget.ScrollView']
+                    if not lists:break
+                    if panel_name=='Aplicaciones':
+                        positions=tuple((n.get('content-desc'),n.get('bounds')) for n in panel.iter('node') if n.get('content-desc','').startswith(('ABRIR RXE ','OPCIONES RXE ')))
+                        if positions==previous:break
+                        previous=positions
+                    x1,y1,x2,y2=box(lists[-1]);start,end=(y1+15,y2-12) if direction<0 else (y2-12,y1+15)
+                    adb('shell','input','swipe',(x1+x2)//2,start,(x1+x2)//2,end,250)
+                    try:tap(find(desc=desc,timeout=2));return
+                    except AssertionError:pass
             tap(find(desc=desc));return
     # Native popup menus can scroll on a short landscape display.
     for _ in range(4):

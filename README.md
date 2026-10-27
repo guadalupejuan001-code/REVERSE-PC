@@ -2,6 +2,10 @@
 
 ## Ejecutables propios RXE
 
+**BBY-Q.rxe** contiene BBY Q E016, su programa compilado y su memoria entrenada.
+REVERSE Desktop RXE 1.2 lo abre con conversación ES/EN, contexto persistente y
+exportación de memoria. [Contrato, procedencia y límites](docs/BBYQ_RXE_APP.md).
+
 Los programas de REVERSE pueden distribuirse como **`.rxe`**: imágenes binarias
 con cabecera, ABI versionada, constantes, opcodes, operandos tipados y saltos
 resueltos. `reverse_pc compile fuente.xi programa.rxe` genera el ejecutable y
