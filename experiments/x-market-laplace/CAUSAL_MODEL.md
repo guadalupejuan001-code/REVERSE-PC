@@ -1,4 +1,4 @@
-# LAPLACE X v0.2 · Identificación causal de leyes (XI)
+# LAPLACE X v0.2 · Predicción cronológica con reglas candidatas (XI)
 
 **Estado:** modelo experimental real, escrito en XI, sobre el QuantumRuntime de REVERSE-PC. No predice acontecimientos imposibles de observar y todavía no está conectado a una fuente bursátil externa ni al panel Android X MARKET.
 
@@ -12,7 +12,7 @@ x(t+1) = F_theta(x(t), u(t)) + epsilon(t)
 
 El demonio de Laplace presupone conocer el estado físico completo y sus leyes, no proporciona una fórmula numérica universal para acciones. La ecuación de Laplace para campos armónicos es otro objeto matemático y no predice el mercado por sí sola.
 
-**Problema de ingeniería que resolvemos ahora:** inferir de una serie de observaciones cuál de varias leyes locales describe mejor el comportamiento pasado y emitir, antes de conocer el siguiente dato, una predicción que pueda ser auditada.
+**Problema de ingeniería que resolvemos ahora:** seleccionar entre tres reglas locales de extrapolación según su error histórico y emitir, antes de conocer el siguiente dato, una predicción que pueda ser auditada.
 
 ## Tres leyes candidatas implementadas en XI
 
@@ -22,7 +22,7 @@ Para precios enteros en céntimos `p[t]`:
 - Experto 1 — primera diferencia constante: `P1(t+1) = 2*p[t] - p[t-1]`.
 - Experto 2 — segunda diferencia constante: `P2(t+1) = 3*p[t] - 3*p[t-1] + p[t-2]`.
 
-En cada momento conocido `t`, XI calcula los errores absolutos de esos tres expertos para **como máximo ocho predicciones retrospectivas** `k` realizadas sobre `p[k-1]`, `p[k-2]`, `p[k-3]`. Elige el experto con menor suma de errores. Los empates favorecen la persistencia. No se ajustan parámetros después de mirar los resultados de la evaluación. El precio predicho queda limitado al rango de entrada.
+En cada momento conocido `t`, XI calcula los errores absolutos de esos tres expertos para **como máximo ocho predicciones retrospectivas** `k` realizadas sobre `p[k-1]`, `p[k-2]`, `p[k-3]`. Elige el experto con menor suma de errores. Los empates favorecen la persistencia. No se ajustan parámetros después de mirar los resultados de la evaluación. Elegir una regla por error pasado no demuestra que se haya identificado una causa física del mercado. El precio predicho queda limitado al rango de entrada.
 
 La «señal» `r11` es una condición diagnóstica: pérdida absoluta promedio reciente de como máximo 40 céntimos. No es una probabilidad calibrada, una autorización de compra o una medida universal de confianza. Puede seleccionar equivocadamente una estrategia sobre un segmento corto.
 
