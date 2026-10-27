@@ -51,11 +51,18 @@ public final class WorkbenchActivity extends Activity {
         super.onCreate(previous);
         getWindow().setStatusBarColor(0xff090b0d);
         getWindow().setNavigationBarColor(0xff101316);
+        if(Build.VERSION.SDK_INT>=30)getWindow().setDecorFitsSystemWindows(false);
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
         FrameLayout root=new FrameLayout(this);root.setBackgroundColor(0xff090b0d);
         web=new WebView(this);root.addView(web,new FrameLayout.LayoutParams(-1,-1));setContentView(root);
         root.setOnApplyWindowInsetsListener((v,insets)->{
             int left=insets.getSystemWindowInsetLeft(),right=insets.getSystemWindowInsetRight(),bottom=insets.getSystemWindowInsetBottom();
+            boolean ime;
+            if(Build.VERSION.SDK_INT>=30){
+                android.graphics.Insets bars=insets.getInsets(android.view.WindowInsets.Type.navigationBars()|android.view.WindowInsets.Type.displayCutout());
+                left=bars.left;right=bars.right;bottom=Math.max(bars.bottom,insets.getInsets(android.view.WindowInsets.Type.ime()).bottom);ime=insets.isVisible(android.view.WindowInsets.Type.ime());
+            }else ime=bottom>120*getResources().getDisplayMetrics().density;
+            web.evaluateJavascript("document.body&&(document.body.dataset.ime='"+ime+"');",null);
             root.setPadding(left,0,right,bottom);return insets;
         });
         WebSettings settings=web.getSettings();
@@ -79,7 +86,7 @@ public final class WorkbenchActivity extends Activity {
                 });
                 return true;
             }
-            @Override public void onPageFinished(WebView view,String url){Log.i("ReverseWorkbench","WORKBENCH_READY "+url);}
+            @Override public void onPageFinished(WebView view,String url){root.requestApplyInsets();Log.i("ReverseWorkbench","WORKBENCH_READY "+url);}
         });
         web.setWebChromeClient(new WebChromeClient(){
             @Override public boolean onShowFileChooser(WebView view,ValueCallback<Uri[]> callback,FileChooserParams params){

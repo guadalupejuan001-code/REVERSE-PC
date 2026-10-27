@@ -255,7 +255,7 @@ document.addEventListener('keydown',e=>{if($('#input-dialog').open)return;const 
   if(!typing&&(e.key==='Enter'||e.key===' ')&&e.target.matches('[data-file-id]')){e.preventDefault();openFile(e.target.dataset.fileId,getWindow(e.target.closest('.window')?.dataset.id));return;}
   if(!typing&&getWindow(activeId)?.app==='calculator'){const key={'*':'×','/':'÷','-':'−','Enter':'=','Backspace':'⌫','Delete':'AC'}[e.key]||e.key;if(/^[0-9.+%]$/.test(key)||['×','÷','−','=','⌫','AC','(',')'].includes(key)){e.preventDefault();calcKey(getWindow(activeId),key);}}
 });
-window.addEventListener('resize',()=>{for(const w of state.windows){clampWindow(w);geometry(w,$('#'+w.id));}queueSave();});
+window.addEventListener('resize',()=>{if(document.body.dataset.ime==='true'||document.activeElement?.matches('input,textarea'))return;for(const w of state.windows){clampWindow(w);geometry(w,$('#'+w.id));}queueSave();});
 window.addEventListener('pagehide',()=>{clearTimeout(saveTimer);persist();});
 applyPrefs();renderShortcuts();updateClock();setInterval(updateClock,15000);
 if(fresh){createWindow('control',{tab:'system'});if(area().w>1150)createWindow('wallpaper');}else{for(const w of state.windows){w.z=++zCounter;mountWindow(w);}const top=state.windows.filter(w=>w.space===state.space&&!w.min).at(-1);if(top)focusWindow(top.id);}

@@ -52,11 +52,11 @@ public final class WorkbenchTestRunner extends Instrumentation {
     private void tapDom(String selector)throws Exception{
         String quoted=JSONObject.quote(selector);
         js("document.querySelector("+quoted+").scrollIntoView({block:'nearest',inline:'nearest'});true");
-        JSONObject point=new JSONObject(js("(()=>{const r=document.querySelector("+quoted+").getBoundingClientRect();return JSON.stringify({x:r.x+r.width/2,y:r.y+r.height/2,width:innerWidth});})()"));
+        String geometry="(()=>{const r=document.querySelector("+quoted+").getBoundingClientRect();return JSON.stringify({x:r.x+r.width/2,y:r.y+r.height/2,width:innerWidth});})()";String previous="",stable="";int same=0;for(int i=0;i<30;i++){stable=js(geometry);same=stable.equals(previous)?same+1:0;if(same>=3)break;previous=stable;Thread.sleep(100);}JSONObject point=new JSONObject(stable);
         int[] origin=new int[2];int[] width={0};runOnMainSync(()->{activity.testingWebView().getLocationOnScreen(origin);width[0]=activity.testingWebView().getWidth();});
         float scale=(float)(width[0]/point.getDouble("width")),x=origin[0]+(float)point.getDouble("x")*scale,y=origin[1]+(float)point.getDouble("y")*scale;
         long time=SystemClock.uptimeMillis();MotionEvent down=MotionEvent.obtain(time,time,MotionEvent.ACTION_DOWN,x,y,0),up=MotionEvent.obtain(time,time+80,MotionEvent.ACTION_UP,x,y,0);
-        try{sendPointerSync(down);sendPointerSync(up);}finally{down.recycle();up.recycle();}waitForIdleSync();
+        try{sendPointerSync(down);sendPointerSync(up);}catch(Exception error){throw new AssertionError("Tap failed: "+selector+" x="+x+" y="+y+" geometry="+stable,error);}finally{down.recycle();up.recycle();}waitForIdleSync();
     }
     private void sendMessage(String question,String answer)throws Exception{
         int before=Integer.parseInt(js("programSessions.get(state.windows.find(w=>w.rxePath==='Aplicaciones/BBY-Q.rxe').id).snapshot.history.length"));
@@ -175,7 +175,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
             js("openProgram('Aplicaciones/REVERSE-BREAKER.rxe');true");waitJs("document.querySelector('[data-program-action=play-breaker]')");
             ActivityMonitor monitor=addMonitor(BreakerActivity.class.getName(),null,false);tapDom("[data-program-action=play-breaker]");game=(BreakerActivity)waitForMonitorWithTimeout(monitor,10000);removeMonitor(monitor);require(game!=null,"RXE play did not open the native game");
         }
-        int[] initial=gameSnapshot(game);String coreBefore=hash("session.rvp");
+        int[] initial=gameSnapshot(game);Thread.sleep(400);String coreBefore=hash("session.rvp");
         if(restore){
             JSONObject proof=new JSONObject(new String(Files.readAllBytes(dataFile("breaker-proof.json").toPath()),StandardCharsets.UTF_8));JSONArray before=proof.getJSONArray("frame");
             for(int i:new int[]{0,1,5,6,7,8,9,10,12,13,14,15,16,17})require(initial[i]==before.getInt(i),"Cold game restore differs at "+i);
