@@ -4,6 +4,7 @@ on:
     paths:
       - "experiments/x-market-laplace/**"
       - "tests/x_market_laplace.sh"
+      - "tests/x_market_predictor.js"
       - ".github/workflows/x-market-laplace.yml"
   workflow_dispatch:
 permissions:
@@ -31,13 +32,19 @@ jobs:
           cmake --build build --target reverse_pc --parallel 2
       - name: Exact closed-world oracle vs unknown external input
         run: bash tests/x_market_laplace.sh ./build/reverse_pc
-      - name: Package the original XI experiment as an RXE executable
+      - name: Native XI causal forecasting across sealed time steps
+        run: |
+          mkdir -p dist
+          node --check tests/x_market_predictor.js
+          node tests/x_market_predictor.js ./build/reverse_pc --ci | tee dist/laplace-x-causal-results.json
+      - name: Package the original XI experiment and causal model as RXE executables
         run: |
           mkdir -p dist
           ./build/reverse_pc compile experiments/x-market-laplace/closed_world.xi dist/X-MARKET-LAPLACE.rxe "X MARKET Laplace Lab"
+          ./build/reverse_pc compile experiments/x-market-laplace/forecast-one.xi dist/LAPLACE-X-FORECASTER.rxe "Laplace X Forecast Research"
       - uses: actions/upload-artifact@v4
         with:
-          name: X-MARKET-LAPLACE-RXE
-          path: dist/X-MARKET-LAPLACE.rxe
+          name: LAPLACE-X-XI-RXE-EVIDENCE
+          path: dist/
           retention-days: 30
           if-no-files-found: error
