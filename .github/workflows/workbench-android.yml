@@ -1,0 +1,112 @@
+name: REVERSE Workbench native APK
+on:
+  push:
+    branches: ['feature/workbench-native-*']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: reverse-workbench-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      REVERSE_SIGNING_KEYSTORE: ${{ github.workspace }}/build-signing/reverse-desktop.jks
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: e2778d962af22f6f1a0794058dd4685fc2573966
+          path: deps/mundo-x
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/BBY-Q
+          ref: 7dfa6c31247cf609128db78908313a6ce41c0b80
+          path: deps/bbyq
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/BBY-Q
+          ref: af1f9bff0e95cf78f0e03b5c289f7bd4dcdb9aa3
+          path: deps/bbyq-app
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '17'}
+      - uses: gradle/actions/setup-gradle@v4
+        with: {gradle-version: '8.9'}
+      - uses: actions/cache@v4
+        with:
+          path: ${{ env.REVERSE_SIGNING_KEYSTORE }}
+          key: reverse-desktop-developer-signing-v2
+      - name: Prepare signing, pinned engine, apps and Android SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build-signing workbench-evidence workbench-dist build
+          umask 077
+          if [[ ! -f "$REVERSE_SIGNING_KEYSTORE" ]]; then
+            keytool -genkeypair -keystore "$REVERSE_SIGNING_KEYSTORE" -storetype JKS -storepass android -keypass android -alias reverse-desktop -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=REVERSE Desktop Development'
+          fi
+          bash reverse-os-android/scripts/prepare-bbyq.sh deps/bbyq
+          python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1' platform-tools emulator 'system-images;android-35;default;x86_64'
+          printf '{"source_commit":"%s","base_reverse_commit":"e0f893d3c13a05d201e57b06ec7f761f196caef1","mundo_x_commit":"e2778d962af22f6f1a0794058dd4685fc2573966"}\n' "$GITHUB_SHA" > reverse-os-android/app/src/main/assets/workbench/build-info.json
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc src/reverse_pc.cpp -o build/reverse_pc
+          python3 scripts/build-bbyq-app.py build/reverse_pc deps/bbyq-app workbench-dist/BBY-Q.rxe > workbench-evidence/bbyq-package.json
+          mkdir -p reverse-os-android/app/src/main/assets/native-apps
+          cp workbench-dist/BBY-Q.rxe reverse-os-android/app/src/main/assets/native-apps/BBY-Q.rxe
+      - name: Build signed native Workbench and instrumentation
+        run: |
+          set -euo pipefail
+          gradle -p reverse-os-android --no-daemon :app:assembleWorkbenchDebug :app:assembleWorkbenchDebugAndroidTest > workbench-evidence/gradle.log 2>&1 || { tail -160 workbench-evidence/gradle.log; exit 1; }
+          cp reverse-os-android/app/build/outputs/apk/workbench/debug/app-workbench-debug.apk workbench-dist/REVERSE-Workbench-v2.0.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs workbench-dist/REVERSE-Workbench-v2.0.apk > workbench-evidence/signature.txt
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging workbench-dist/REVERSE-Workbench-v2.0.apk > workbench-evidence/package.txt
+          unzip -l workbench-dist/REVERSE-Workbench-v2.0.apk > workbench-evidence/apk-contents.txt
+          grep 'lib/arm64-v8a/libreverse_os.so' workbench-evidence/apk-contents.txt
+          grep 'lib/x86_64/libreverse_os.so' workbench-evidence/apk-contents.txt
+          sha256sum workbench-dist/REVERSE-Workbench-v2.0.apk > workbench-evidence/SHA256SUMS
+      - name: Exercise WebView, JNI, files, calculator, qubits and cold restore
+        timeout-minutes: 20
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PATH="$ANDROID_HOME/platform-tools:$PATH"
+          sudo chmod a+rw /dev/kvm
+          export ANDROID_AVD_HOME="$(mktemp -d /tmp/reverse-workbench-avd.XXXXXX)"
+          printf 'no\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --force -n workbench -p "$ANDROID_AVD_HOME/workbench.avd" -k 'system-images;android-35;default;x86_64'
+          "$ANDROID_HOME/emulator/emulator" -avd workbench -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -memory 2048 > workbench-evidence/emulator.log 2>&1 &
+          EMU_PID=$!
+          trap 'adb logcat -d > workbench-evidence/logcat.txt 2>/dev/null || true; adb exec-out screencap -p > workbench-evidence/screen.png 2>/dev/null || true; kill "$EMU_PID" 2>/dev/null || true' EXIT
+          ready=false
+          for i in $(seq 1 115); do
+            if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == 1 ]]; then ready=true;break;fi
+            sleep 2
+          done
+          test "$ready" = true
+          adb shell input keyevent 82
+          adb install -r workbench-dist/REVERSE-Workbench-v2.0.apk
+          adb install -r reverse-os-android/app/build/outputs/apk/androidTest/workbench/debug/app-workbench-debug-androidTest.apk
+          adb logcat -c
+          adb shell am instrument -w com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/instrumentation.txt
+          grep 'WORKBENCH_TESTS_OK mode=full' workbench-evidence/instrumentation.txt
+          adb shell am force-stop com.reversepc.workbench
+          adb shell am instrument -w -e mode restore com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/restore.txt
+          grep 'WORKBENCH_TESTS_OK mode=restore' workbench-evidence/restore.txt
+          adb shell am force-stop com.reversepc.workbench
+          adb shell am start -n com.reversepc.workbench/com.reversepc.os.BootActivity
+          sleep 6
+          adb exec-out screencap -p > workbench-evidence/desktop.png
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: REVERSE-Workbench-2.0-native
+          path: |
+            workbench-dist/**
+            workbench-evidence/**
+          retention-days: 30

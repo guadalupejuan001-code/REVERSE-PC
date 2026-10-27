@@ -45,7 +45,7 @@ public final class MainActivity extends Activity {
     private static final int ACCENT=0xff23dfbb, TEXT=0xffeaf6f7, MUTED=0xff96adbc;
     private static final int ERROR=0xffff8c91;
     private static final int IMPORT_PROGRAM=701, IMPORT_STATE=702, EXPORT_PROGRAM=703, EXPORT_STATE=704;
-    private final ExecutorService executor=Executors.newSingleThreadExecutor();
+    private final ExecutorService executor=RuntimeExecutor.INSTANCE;
     private SessionStore storage;
     private LinearLayout base,content;
     private int tab=0;
@@ -543,5 +543,5 @@ public final class MainActivity extends Activity {
         return s==null?e.getClass().getSimpleName():s;
     }
     private void notice(String s){Toast.makeText(this,s,Toast.LENGTH_LONG).show();}
-    @Override public void onDestroy(){executor.shutdown();super.onDestroy();}
+    @Override public void onDestroy(){super.onDestroy();}
 }

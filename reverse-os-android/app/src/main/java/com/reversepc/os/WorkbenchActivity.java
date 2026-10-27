@@ -1,0 +1,209 @@
+package com.reversepc.os;
+
+import android.app.Activity;
+import android.app.ActivityManager;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Build;
+import android.os.Bundle;
+import android.os.Debug;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
+import android.util.Base64;
+import android.util.Log;
+import android.view.View;
+import android.webkit.JavascriptInterface;
+import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
+import android.widget.Toast;
+import org.json.JSONObject;
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+
+/** Local packaged desktop. Only owned assets can access the native bridge. */
+public final class WorkbenchActivity extends Activity {
+    static final String ORIGIN="https://reverse.local/";
+    private static final int PICK=7101,EXPORT=7102;
+    private final Handler ui=new Handler(Looper.getMainLooper());
+    private volatile boolean closed;
+    private SessionStore store;
+    private WebView web;
+    private ValueCallback<Uri[]> chooser;
+    private byte[] pendingExport;
+
+    @Override public void onCreate(Bundle previous){
+        super.onCreate(previous);
+        getWindow().setStatusBarColor(0xff090b0d);
+        getWindow().setNavigationBarColor(0xff101316);
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
+        FrameLayout root=new FrameLayout(this);root.setBackgroundColor(0xff090b0d);
+        web=new WebView(this);root.addView(web,new FrameLayout.LayoutParams(-1,-1));setContentView(root);
+        root.setOnApplyWindowInsetsListener((v,insets)->{
+            int left=insets.getSystemWindowInsetLeft(),right=insets.getSystemWindowInsetRight(),bottom=insets.getSystemWindowInsetBottom();
+            root.setPadding(left,0,right,bottom);return insets;
+        });
+        WebSettings settings=web.getSettings();
+        settings.setJavaScriptEnabled(true);settings.setDomStorageEnabled(true);
+        settings.setAllowFileAccess(false);settings.setAllowContentAccess(true);
+        settings.setAllowFileAccessFromFileURLs(false);settings.setAllowUniversalAccessFromFileURLs(false);
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+        settings.setBlockNetworkLoads(true);
+        settings.setSupportMultipleWindows(false);
+        web.setBackgroundColor(0xff090b0d);
+        web.addJavascriptInterface(new Bridge(),"ReverseNative");
+        web.setWebViewClient(new WebViewClient(){
+            @Override public WebResourceResponse shouldInterceptRequest(WebView view,WebResourceRequest request){return asset(request.getUrl());}
+            @Override public boolean shouldOverrideUrlLoading(WebView view,WebResourceRequest request){
+                Uri uri=request.getUrl();
+                if(trusted(uri))return false;
+                // Never load an external document into a WebView holding the bridge.
+                if(request.isForMainFrame()&&"https".equals(uri.getScheme()))ui.post(()->{
+                    try{startActivity(new Intent(Intent.ACTION_VIEW,uri));}catch(Exception error){message("No hay un navegador disponible.");}
+                });
+                return true;
+            }
+            @Override public void onPageFinished(WebView view,String url){Log.i("ReverseWorkbench","WORKBENCH_READY "+url);}
+        });
+        web.setWebChromeClient(new WebChromeClient(){
+            @Override public boolean onShowFileChooser(WebView view,ValueCallback<Uri[]> callback,FileChooserParams params){
+                if(chooser!=null)chooser.onReceiveValue(null);chooser=callback;
+                try{startActivityForResult(params.createIntent(),PICK);}catch(Exception error){chooser=null;callback.onReceiveValue(null);message("No se pudo abrir el selector de archivos.");}
+                return true;
+            }
+            @Override public boolean onConsoleMessage(android.webkit.ConsoleMessage message){
+                Log.i("ReverseWorkbenchJS",message.messageLevel()+": "+message.message());return true;
+            }
+        });
+        web.loadUrl(ORIGIN);
+    }
+    private static boolean trusted(Uri uri){return "https".equals(uri.getScheme())&&"reverse.local".equals(uri.getHost())&&(uri.getPort()==-1||uri.getPort()==443);}
+    private WebResourceResponse asset(Uri uri){
+        try{
+            if(!trusted(uri))return denied();
+            String name=uri.getPath();if(name==null||name.equals("/"))name="/index.html";
+            if(name.contains("..")||name.contains("\\")||name.contains("\u0000"))return denied();
+            String mime=name.endsWith(".js")?"text/javascript":name.endsWith(".css")?"text/css":name.endsWith(".png")?"image/png":name.endsWith(".webp")?"image/webp":name.endsWith(".svg")?"image/svg+xml":"text/html";
+            InputStream data=getAssets().open("workbench"+name);
+            Map<String,String> headers=new HashMap<>();
+            headers.put("Content-Security-Policy","default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'");
+            headers.put("X-Content-Type-Options","nosniff");
+            return new WebResourceResponse(mime,"UTF-8",200,"OK",headers,data);
+        }catch(Exception error){return denied();}
+    }
+    private static WebResourceResponse denied(){return new WebResourceResponse("text/plain","UTF-8",403,"Forbidden",new HashMap<>(),new ByteArrayInputStream(new byte[0]));}
+    private void message(String text){ui.post(()->{if(!closed)Toast.makeText(this,text,Toast.LENGTH_LONG).show();});}
+    private SessionStore session()throws Exception{if(store==null)store=new SessionStore(getApplicationContext());return store;}
+    private String task(Callable<JSONObject> action){
+        if(closed)return failure(new IllegalStateException("La mesa está cerrada"));
+        try{
+            // A timeout does not cancel an in-flight native transaction. It stays on
+            // the same queue and commits once; the UI is told the result is unknown.
+            Future<JSONObject> future=RuntimeExecutor.INSTANCE.submit(action);
+            return future.get(45,TimeUnit.SECONDS).toString();
+        }catch(Throwable error){return failure(error);}
+    }
+    private static String failure(Throwable error){
+        Throwable cause=error.getCause()==null?error:error.getCause();
+        try{return new JSONObject().put("ok",false).put("error",cause.getClass().getSimpleName()+": "+String.valueOf(cause.getMessage())).toString();}
+        catch(Exception ignored){return "{\"ok\":false,\"error\":\"Error del runtime\"}";}
+    }
+    private JSONObject inspect()throws Exception{
+        SessionStore s=session();byte[] state=s.loadState();
+        JSONObject core=new JSONObject(NativeRuntime.inspect(state));
+        ActivityManager.MemoryInfo memory=new ActivityManager.MemoryInfo();
+        ((ActivityManager)getSystemService(ACTIVITY_SERVICE)).getMemoryInfo(memory);
+        JSONObject host=new JSONObject().put("model",Build.MANUFACTURER+" "+Build.MODEL).put("android",Build.VERSION.RELEASE).put("sdk",Build.VERSION.SDK_INT)
+            .put("hardware",Build.HARDWARE).put("soc",Build.VERSION.SDK_INT>=31?Build.SOC_MODEL:JSONObject.NULL)
+            .put("logical_processors",Runtime.getRuntime().availableProcessors()).put("ram_total_bytes",memory.totalMem).put("ram_available_bytes",memory.availMem)
+            .put("process_pss_kib",Debug.getPss()).put("process_cpu_ms",android.os.Process.getElapsedCpuTime()).put("pid",android.os.Process.myPid());
+        JSONObject result=new JSONObject().put("ok",true).put("mode","android-native").put("core",core).put("android",host).put("state_bytes",state.length)
+            .put("package",getPackageName()).put("captured_at_ms",System.currentTimeMillis());
+        try(InputStream input=getAssets().open("workbench/build-info.json")){java.io.ByteArrayOutputStream bytes=new java.io.ByteArrayOutputStream();byte[] part=new byte[2048];int count;while((count=input.read(part))!=-1)bytes.write(part,0,count);result.put("build",new JSONObject(new String(bytes.toByteArray(),StandardCharsets.UTF_8)));}
+        return result;
+    }
+    public final class Bridge {
+        @JavascriptInterface public void request(String id,String operation,String payload){
+            if(closed||id==null||!id.matches("[A-Za-z0-9_-]{1,60}"))return;
+            RuntimeExecutor.INSTANCE.execute(()->{
+                String response;
+                try{
+                    JSONObject result;
+                    if("inspect".equals(operation))result=WorkbenchActivity.this.inspect();
+                    else if("calculate".equals(operation))result=calculateNative(payload);
+                    else if("execute".equals(operation))result=executeNative(payload);
+                    else throw new IllegalArgumentException("Operación no permitida");
+                    response=result.toString();
+                }catch(Throwable error){response=failure(error);}
+                final String script="window.ReverseAndroid&&window.ReverseAndroid.complete("+JSONObject.quote(id)+","+response+");";
+                ui.post(()->{if(!closed)web.evaluateJavascript(script,null);});
+            });
+        }
+        @JavascriptInterface public String inspect(){return task(()->WorkbenchActivity.this.inspect());}
+        @JavascriptInterface public String execute(String source){return task(()->executeNative(source));}
+        @JavascriptInterface public String calculate(String expression){return task(()->calculateNative(expression));}
+        @JavascriptInterface public void openNativeDesktop(){
+            RuntimeExecutor.INSTANCE.execute(()->ui.post(()->{if(!closed){startActivity(new Intent(WorkbenchActivity.this,DesktopActivity.class));finish();}}));
+        }
+        @JavascriptInterface public void exportText(String name,String contents,String mime){
+            if(contents==null||contents.length()>6*1024*1024){message("El archivo supera el límite de exportación.");return;}
+            export(name,contents.getBytes(StandardCharsets.UTF_8),mime);
+        }
+        @JavascriptInterface public void exportBase64(String name,String contents,String mime){
+            try{if(contents==null||contents.length()>8*1024*1024)throw new IllegalArgumentException("Archivo demasiado grande");export(name,Base64.decode(contents,Base64.DEFAULT),mime);}
+            catch(Exception error){message("No se pudo exportar la imagen.");}
+        }
+    }
+    private JSONObject executeNative(String source)throws Exception{
+        if(source==null||source.getBytes(StandardCharsets.UTF_8).length>256*1024)throw new IllegalArgumentException("Programa supera 256 KiB");
+        SessionStore s=session();long start=SystemClock.elapsedRealtimeNanos();
+        ResultPacket result=ResultPacket.parse(NativeRuntime.execute(s.loadState(),source));
+        s.writeState(result.state);
+        return new JSONObject().put("ok",true).put("output",result.output).put("elapsed_ns",SystemClock.elapsedRealtimeNanos()-start).put("core",new JSONObject(NativeRuntime.inspect(result.state))).put("source","NativeRuntime.execute · XI/Ether · RVPC2");
+    }
+    private JSONObject calculateNative(String expression)throws Exception{
+        if(expression==null||expression.length()>256)throw new IllegalArgumentException("Expresión demasiado larga");
+        SessionStore s=session();String program=new CalculatorCompiler().compile(expression);
+        ResultPacket result=ResultPacket.parse(NativeRuntime.execute(s.loadState(),program));
+        Long value=null;
+        for(String line:result.output.split("\n")){if(!line.startsWith("{"))continue;JSONObject row=new JSONObject(line);if("r0".equals(row.optString("register")))value=row.getLong("value");}
+        if(value==null)throw new IllegalStateException("XI no devolvió el registro r0");
+        s.writeState(result.state);
+        return new JSONObject().put("ok",true).put("value",CalculatorCompiler.format(value)).put("source","CalculatorCompiler → NativeRuntime.execute · XI");
+    }
+    private void export(String name,byte[] bytes,String mime){
+        if(bytes.length>8*1024*1024){message("Archivo demasiado grande.");return;}
+        String safe=(name==null?"REVERSE.txt":name).replaceAll("[\\\\/\\p{Cntrl}]","_");
+        String type=mime!=null&&mime.matches("[a-zA-Z0-9.+-]+/[a-zA-Z0-9.+-]+(?:;.*)?")?mime.split(";")[0]:"application/octet-stream";
+        ui.post(()->{
+            if(closed)return;
+            if(pendingExport!=null){message("Termina primero la exportación abierta.");return;}
+            pendingExport=bytes;
+            try{startActivityForResult(new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType(type).putExtra(Intent.EXTRA_TITLE,safe),EXPORT);}
+            catch(Exception error){pendingExport=null;message("No se pudo abrir el destino de exportación.");}
+        });
+    }
+    @Override protected void onActivityResult(int request,int result,Intent data){
+        super.onActivityResult(request,result,data);
+        if(request==PICK&&chooser!=null){chooser.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(result,data));chooser=null;}
+        if(request==EXPORT){byte[] bytes=pendingExport;pendingExport=null;if(result==RESULT_OK&&bytes!=null&&data!=null&&data.getData()!=null){Uri target=data.getData();RuntimeExecutor.INSTANCE.execute(()->{try(OutputStream stream=getContentResolver().openOutputStream(target,"wt")){if(stream==null)throw new IllegalStateException("Destino no disponible");stream.write(bytes);message("Archivo exportado.");}catch(Exception error){message("No se pudo escribir el archivo.");}});}}
+    }
+    @Override protected void onPause(){if(web!=null)web.onPause();super.onPause();}
+    @Override protected void onResume(){super.onResume();if(web!=null)web.onResume();}
+    @Override protected void onDestroy(){closed=true;if(chooser!=null){chooser.onReceiveValue(null);chooser=null;}if(web!=null){web.removeJavascriptInterface("ReverseNative");web.destroy();}super.onDestroy();}
+    // Used only by the in-repository Android instrumentation tests.
+    public WebView testingWebView(){return web;}
+}

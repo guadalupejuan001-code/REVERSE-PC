@@ -24,7 +24,7 @@ public final class BootActivity extends Activity {
     private final Runnable next=()->{
         if(isFinishing()||isDestroyed())return;
         try {
-            startActivity(new Intent(this,DesktopActivity.class));
+            startActivity(new Intent(this,getPackageName().endsWith(".workbench")?WorkbenchActivity.class:DesktopActivity.class));
             overridePendingTransition(android.R.anim.fade_in,android.R.anim.fade_out);
             finish();
         } catch (Throwable failure) {
