@@ -103,6 +103,11 @@ jobs:
           test "$ready" = true
           adb shell wm size 720x1600
           adb shell wm density 280
+          # Keep the disposable emulator in the same landscape orientation as Workbench.
+          # Quickstep's system taskbar has shown ANR dialogs during repeated rotations,
+          # which intercept instrumentation touches despite the Workbench view being ready.
+          adb shell settings put system accelerometer_rotation 0
+          adb shell settings put system user_rotation 1
           adb shell settings put system screen_off_timeout 600000
           # Match AOSP CTS WindowInsetsBehaviorTests: suppress only the disposable
           # emulator's immersive-mode education overlay, never the shipped app.
@@ -118,6 +123,9 @@ jobs:
           adb logcat -c
           timeout 180s adb shell am instrument -w -e mode upgradeSeed com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/upgrade-seed.txt
           grep 'WORKBENCH_TESTS_OK mode=upgradeSeed' workbench-evidence/upgrade-seed.txt
+          # Terminate the emulator-only Quickstep process after its first orientation
+          # transition; system-owned ANR dialogs must not block the upgraded app.
+          adb shell am force-stop com.android.launcher3 || true
           adb shell am force-stop com.reversepc.workbench
           # Real in-place update: same package and signature, no uninstall or clear.
           adb install -r workbench-dist/REVERSE-Workbench-v2.1.1.apk
