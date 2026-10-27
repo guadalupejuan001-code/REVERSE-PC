@@ -31,3 +31,13 @@ jobs:
           cmake --build build --target reverse_pc --parallel 2
       - name: Exact closed-world oracle vs unknown external input
         run: bash tests/x_market_laplace.sh ./build/reverse_pc
+      - name: Package the original XI experiment as an RXE executable
+        run: |
+          mkdir -p dist
+          ./build/reverse_pc compile experiments/x-market-laplace/closed_world.xi dist/X-MARKET-LAPLACE.rxe "X MARKET Laplace Lab"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: X-MARKET-LAPLACE-RXE
+          path: dist/X-MARKET-LAPLACE.rxe
+          retention-days: 30
+          if-no-files-found: error
