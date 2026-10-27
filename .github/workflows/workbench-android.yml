@@ -80,15 +80,18 @@ jobs:
           sudo chmod a+rw /dev/kvm
           export ANDROID_AVD_HOME="$(mktemp -d /tmp/reverse-workbench-avd.XXXXXX)"
           printf 'no\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --force -n workbench -p "$ANDROID_AVD_HOME/workbench.avd" -k 'system-images;android-35;default;x86_64'
-          "$ANDROID_HOME/emulator/emulator" -avd workbench -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -memory 2048 > workbench-evidence/emulator.log 2>&1 &
+          "$ANDROID_HOME/emulator/emulator" -avd workbench -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader -feature -Vulkan -memory 2048 > workbench-evidence/emulator.log 2>&1 &
           EMU_PID=$!
-          trap 'adb logcat -d > workbench-evidence/logcat.txt 2>/dev/null || true; adb exec-out screencap -p > workbench-evidence/screen.png 2>/dev/null || true; kill "$EMU_PID" 2>/dev/null || true' EXIT
+          trap 'adb logcat -d > workbench-evidence/logcat.txt 2>/dev/null || true; adb exec-out screencap -p > workbench-evidence/screen.png 2>/dev/null || true; adb pull /sdcard/Android/data/com.reversepc.workbench/files/visual-evidence workbench-evidence/ 2>/dev/null || true; kill "$EMU_PID" 2>/dev/null || true' EXIT
           ready=false
           for i in $(seq 1 115); do
             if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == 1 ]]; then ready=true;break;fi
             sleep 2
           done
           test "$ready" = true
+          adb shell wm size 720x1600
+          adb shell wm density 280
+          adb shell settings put system screen_off_timeout 600000
           adb shell input keyevent 82
           adb install -r workbench-dist/REVERSE-Workbench-v2.0.apk
           adb install -r reverse-os-android/app/build/outputs/apk/androidTest/workbench/debug/app-workbench-debug-androidTest.apk
@@ -99,8 +102,8 @@ jobs:
           adb shell am instrument -w -e mode restore com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/restore.txt
           grep 'WORKBENCH_TESTS_OK mode=restore' workbench-evidence/restore.txt
           adb shell am force-stop com.reversepc.workbench
-          adb shell am start -n com.reversepc.workbench/com.reversepc.os.BootActivity
-          sleep 6
+          adb shell am instrument -w -e mode boot com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/boot.txt
+          grep 'WORKBENCH_TESTS_OK mode=boot' workbench-evidence/boot.txt
           adb exec-out screencap -p > workbench-evidence/desktop.png
       - uses: actions/upload-artifact@v4
         if: always()
