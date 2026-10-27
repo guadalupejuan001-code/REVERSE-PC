@@ -167,6 +167,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
         File folder=new File(getTargetContext().getExternalFilesDir(null),"visual-evidence");folder.mkdirs();Bitmap bitmap=getUiAutomation().takeScreenshot();require(bitmap!=null,"No native game screenshot");try(FileOutputStream output=new FileOutputStream(new File(folder,name+".png"))){bitmap.compress(Bitmap.CompressFormat.PNG,100,output);}finally{bitmap.recycle();}
     }
     private void breaker(boolean restore)throws Exception{
+        ActivityMonitor legacy=addMonitor(DesktopActivity.class.getName(),null,true);
         BreakerActivity game;
         if(restore)game=(BreakerActivity)startActivitySync(new Intent(getTargetContext(),BreakerActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         else{
@@ -198,7 +199,8 @@ public final class WorkbenchTestRunner extends Instrumentation {
             Files.write(dataFile("breaker-proof.json").toPath(),proof.toString().getBytes(StandardCharsets.UTF_8));
         }
         screenshot(restore?"breaker-restored":"breaker-paused");runOnMainSync(game::finish);waitForIdleSync();
-        if(!restore)require(resumed instanceof WorkbenchActivity,"Returning from game opened the legacy desktop");
+        if(!restore){for(int i=0;i<100&&!(resumed instanceof WorkbenchActivity);i++)Thread.sleep(50);require(resumed instanceof WorkbenchActivity&&legacy.getHits()==0,"Game return did not resume Workbench; activity="+(resumed==null?"none":resumed.getClass().getName()));}
+        removeMonitor(legacy);
     }
     @Override public void onStart(){
         Bundle result=new Bundle();

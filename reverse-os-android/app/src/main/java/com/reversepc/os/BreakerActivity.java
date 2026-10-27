@@ -45,8 +45,14 @@ public final class BreakerActivity extends Activity {
     }};
     @Override public void onCreate(Bundle saved){
         super.onCreate(saved);getWindow().setStatusBarColor(0xff090d13);getWindow().setNavigationBarColor(0xff090d13);
+        if(android.os.Build.VERSION.SDK_INT>=30)getWindow().setDecorFitsSystemWindows(false);
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_FULLSCREEN|View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
         FrameLayout root=new FrameLayout(this);root.setBackgroundColor(0xff090d13);view=new GameView();root.addView(view,new FrameLayout.LayoutParams(-1,-1));setContentView(root);
+        root.setOnApplyWindowInsetsListener((v,insets)->{
+            int left=insets.getSystemWindowInsetLeft(),top=insets.getSystemWindowInsetTop(),right=insets.getSystemWindowInsetRight(),bottom=insets.getSystemWindowInsetBottom();
+            if(android.os.Build.VERSION.SDK_INT>=30){android.graphics.Insets bars=insets.getInsets(android.view.WindowInsets.Type.systemBars()|android.view.WindowInsets.Type.displayCutout());left=bars.left;top=bars.top;right=bars.right;bottom=bars.bottom;}
+            root.setPadding(left,top,right,bottom);return insets;
+        });root.requestApplyInsets();
         RuntimeExecutor.INSTANCE.execute(()->{try{session=new BreakerSession(this);BreakerSession.Frame initial=session.step(500,0,0);main.post(()->{if(!closed){frame=initial;paddle=initial.get(4);saveStatus="Partida lista · RXE / XI";view.invalidate();}});}catch(Throwable fault){fail(fault);}});
     }
     private void fail(Throwable fault){Log.e("ReverseBreaker","GAME_FAILED",fault);main.post(()->{error=fault.getClass().getSimpleName()+": "+fault.getMessage();paused=true;view.invalidate();});}
