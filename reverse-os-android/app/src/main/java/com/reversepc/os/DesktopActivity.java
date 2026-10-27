@@ -78,14 +78,14 @@ public final class DesktopActivity extends Activity {
     private final java.util.Map<String,Runnable> fileRefreshers=new java.util.HashMap<>();
     private final java.util.Map<String,Runnable> draftWriters=new java.util.HashMap<>();
     private static final int IMPORT_FILE=5120,EXPORT_FILE=5121,EXPORT_DESKTOP=5122;
-    private static final int IMPORT_RXE=5140;
+    private static final int IMPORT_RXE=5140,EXPORT_APP_MEMORY=5141;
     private LinearLayout rxeShortcuts;
     private final java.util.Map<String,Runnable> rxeRefreshers=new java.util.HashMap<>();
     private java.util.List<RxeApp> rxeApps=java.util.Collections.emptyList();
     private boolean rxeLoading=false,rxeRefreshPending=false;
     private static final class RxeApp {
-        final String path,title;final int instructions;
-        RxeApp(String path,JSONObject metadata){this.path=path;title=metadata.optString("title",path);instructions=metadata.optInt("instructions");}
+        final String path,title,abi,version;final int instructions;
+        RxeApp(String path,JSONObject metadata){this.path=path;title=metadata.optString("title",path);instructions=metadata.optInt("instructions");abi=metadata.optString("abi");version=metadata.optString("app_version");}
     }
     private String engineFailure="";
     private TextView statusLabel, clockLabel, statusDetail;
@@ -175,6 +175,7 @@ public final class DesktopActivity extends Activity {
                 files=new WorkspaceFiles(getFilesDir());
                 SessionStore s=new SessionStore(getApplicationContext());
                 seedRxe();
+                seedBbyqExecutable();
                 String stats=NativeRuntime.inspect(s.loadState());
                 store=s;
                 Log.i(LOG,"DESKTOP_CORE_READY "+stats);
@@ -319,8 +320,9 @@ public final class DesktopActivity extends Activity {
     // BBY Q is a native XI guest program, NOT a remote chatbot or a host
     // language model. This window merely transports user input and displays
     // the genuine result produced by XI on the shared Ether RVPC2 state.
-    private void openBbyq(){
-        WindowUi w=window("BBY Q","Inteligencia simbólica · XI / Ether");
+    private void openBbyq(){openRxe("Aplicaciones/BBY-Q.rxe",true);}
+    private void openBbyqLegacy(){
+        WindowUi w=window("BBY Q anterior","Memoria compartida E009 · XI / Ether");
         if(w==null)return;
         TextView heading=label("BBY Q",21,WHITE,true);
         heading.setLetterSpacing(.05f);
@@ -613,7 +615,7 @@ public final class DesktopActivity extends Activity {
         w.content.addView(buttons);
     }
 
-    private static final String[] APPLICATIONS={"Archivos","Navegador","Editor","Calculadora","XI Studio","Terminal","Aplicaciones","Papelera","Ventanas","Ether Core","Ajustes","BBY Q"};
+    private static final String[] APPLICATIONS={"Archivos","Navegador","Editor","Calculadora","XI Studio","Terminal","Aplicaciones","Papelera","Ventanas","Ether Core","Ajustes","BBY Q","BBY Q anterior"};
     private void launchApp(String app){
         switch(app){
             case "Archivos":openFiles();break;case "Navegador":openBrowser();break;
@@ -622,6 +624,7 @@ public final class DesktopActivity extends Activity {
             case "Aplicaciones":openAndroidApps();break;case "Papelera":openFiles("Papelera");break;
             case "Ventanas":openTasks();break;case "Ether Core":openMonitor();break;
             case "Ajustes":openSettings();break;case "BBY Q":openBbyq();break;
+            case "BBY Q anterior":openBbyqLegacy();break;
         }
     }
     private void restoreDesktop(){
@@ -1219,6 +1222,12 @@ public final class DesktopActivity extends Activity {
         }catch(Exception ex){runOnUiThread(()->note.setText("No se pudo leer la lista de aplicaciones"));}});
     }
     private JSONObject rxeInfo(byte[] image)throws Exception{return new JSONObject(new String(NativeRuntime.inspectRxe(image),java.nio.charset.StandardCharsets.UTF_8));}
+    private void seedBbyqExecutable()throws Exception{
+        if(preferences.getBoolean("bbyq-rxe-e016-seeded",false))return;
+        boolean exists=false;for(WorkspaceFiles.Entry e:files.list("Aplicaciones"))if(e.path.equals("Aplicaciones/BBY-Q.rxe"))exists=true;
+        if(!exists){try(InputStream in=getAssets().open("native-apps/BBY-Q.rxe")){ByteArrayOutputStream data=new ByteArrayOutputStream();byte[] buffer=new byte[8192];int n;while((n=in.read(buffer))!=-1){if(data.size()+n>WorkspaceFiles.MAX_FILE)throw new IOException("Aplicación BBY Q demasiado grande");data.write(buffer,0,n);}byte[] executable=data.toByteArray();rxeInfo(executable);files.write("Aplicaciones/BBY-Q.rxe",executable,false);}}
+        preferences.edit().putBoolean("bbyq-rxe-e016-seeded",true).apply();
+    }
     private void seedRxe()throws Exception{
         if(preferences.getBoolean("rxe-seeded-v1",false))return;
         String path="Aplicaciones/Hola-REVERSE.rxe";boolean exists=false;for(WorkspaceFiles.Entry e:files.list("Aplicaciones"))if(e.path.equals(path))exists=true;
@@ -1250,7 +1259,7 @@ public final class DesktopActivity extends Activity {
     }
     private void rxeMenu(RxeApp app,View anchor){
         android.widget.PopupMenu menu=new android.widget.PopupMenu(this,anchor);String pin=isRxePinned(app.path)?"Quitar acceso":"Anclar al escritorio";for(String item:new String[]{"Ejecutar",pin,"Exportar","Propiedades","A la papelera"})menu.getMenu().add(item);
-        menu.setOnMenuItemClickListener(item->{String action=item.getTitle().toString();if(action.equals("Ejecutar"))openRxe(app.path,true);else if(action.equals(pin))pinRxe(app);else if(action.equals("Exportar"))exportFile(app.path);else if(action.equals("Propiedades"))new AlertDialog.Builder(this).setTitle(app.title).setMessage("Ejecutable REVERSE .rxe\nABI XI Machine v1\n"+app.instructions+" instrucciones\n"+app.path).setPositiveButton("Cerrar",null).show();else new AlertDialog.Builder(this).setTitle("Mover a la papelera").setMessage(app.title).setNegativeButton("Cancelar",null).setPositiveButton("Mover",(d,n)->fileWork(()->files.trash(app.path),this::refreshRxe)).show();return true;});menu.show();
+        menu.setOnMenuItemClickListener(item->{String action=item.getTitle().toString();if(action.equals("Ejecutar"))openRxe(app.path,true);else if(action.equals(pin))pinRxe(app);else if(action.equals("Exportar"))exportFile(app.path);else if(action.equals("Propiedades"))new AlertDialog.Builder(this).setTitle(app.title).setMessage("Ejecutable REVERSE .rxe\n"+app.abi+" · "+app.version+"\n"+app.instructions+" instrucciones\n"+app.path).setPositiveButton("Cerrar",null).show();else new AlertDialog.Builder(this).setTitle("Mover a la papelera").setMessage(app.title).setNegativeButton("Cancelar",null).setPositiveButton("Mover",(d,n)->fileWork(()->files.trash(app.path),this::refreshRxe)).show();return true;});menu.show();
     }
     private void createRxe(String source,String defaultName){
         promptName("Crear ejecutable .rxe",defaultName,chosen->{String name=chosen.toLowerCase(Locale.ROOT).endsWith(".rxe")?chosen:chosen+".rxe";final String path="Aplicaciones/"+name;final String title=name.substring(0,name.length()-4);
@@ -1260,13 +1269,37 @@ public final class DesktopActivity extends Activity {
     private void openRxe(String path,boolean start){
         if(files==null){info("Preparando aplicaciones…");return;}
         engine.execute(()->{try{byte[] image=files.read(path);JSONObject metadata=rxeInfo(image);String title=metadata.getString("title");runOnUiThread(()->{
-            if(isFinishing()||isDestroyed())return;WindowUi w=window(title,"Ejecutable REVERSE .rxe","rxe:"+path);if(w==null)return;
+            if(isFinishing()||isDestroyed())return;if("chat".equals(metadata.optString("ui"))){openRxeChat(path,image,metadata);return;}WindowUi w=window(title,"Ejecutable REVERSE .rxe","rxe:"+path);if(w==null)return;
             TextView output=label(preferences.getString("rxe-output:"+path,"Pulsa Ejecutar para iniciar el programa."),12,WHITE,false);output.setTypeface(Typeface.MONOSPACE);output.setTextIsSelectable(true);output.setContentDescription("SALIDA RXE "+path);ScrollView scroll=new ScrollView(this);scroll.addView(output);w.content.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
             TextView run=touch("Ejecutar",12,true,()->{});margin(w.content,run,6);
             Runnable execute=()->{run.setEnabled(false);output.setText("Ejecutando…");engine.execute(()->{String text;try{if(store==null)throw new IOException("Núcleo no disponible");byte[] current=files.read(path);ResultPacket result=ResultPacket.parse(NativeRuntime.executeRxe(store.loadState(),current));store.writeState(result.state);text=pretty(result.output);if(text.length()>48000)text=text.substring(0,48000)+"\n[Salida visible recortada]";preferences.edit().putString("rxe-output:"+path,text).apply();Log.i(LOG,"RXE_RUN_OK "+path);}catch(Exception e){text="No se pudo ejecutar: "+e.getMessage()+"\nEstado anterior conservado";Log.e(LOG,"RXE_RUN_FAILED "+path,e);}final String result=text;runOnUiThread(()->{if(w.dialog.isShowing()){output.setText(result);run.setEnabled(true);}});});};run.setOnClickListener(v->execute.run());if(start)execute.run();
         });}catch(Exception e){runOnUiThread(()->info("Ejecutable rechazado: "+e.getMessage()));}});
     }
     private void pickRxe(){Intent select=new Intent(Intent.ACTION_OPEN_DOCUMENT);select.addCategory(Intent.CATEGORY_OPENABLE);select.setType("*/*");try{startActivityForResult(select,IMPORT_RXE);}catch(Exception e){info("No hay selector de archivos disponible");}}
+    private void openRxeChat(String path,byte[] executable,JSONObject metadata){
+        WindowUi w=window(metadata.optString("title","BBY Q"),"Aplicación .rxe · "+metadata.optString("app_version"),"rxe:"+path);if(w==null)return;
+        TextView status=label("Abriendo la memoria de BBY Q…",11,ACCENT,false);status.setContentDescription("ESTADO BBY Q");margin(w.content,status,3);
+        LinearLayout history=vertical();history.setPadding(dp(5),dp(5),dp(5),dp(5));ScrollView scroll=new ScrollView(this);scroll.setContentDescription("CHAT BBY Q");scroll.addView(history);w.content.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+        final int[] language={1};final RxeAppStore[] data={null};final boolean[] busy={true};
+        EditText input=bbyqField(w.content,"Escribe un mensaje: hola");input.setContentDescription("ENTRADA BBY Q");input.setEnabled(false);
+        LinearLayout controls=horizontal();TextView spanish=touch("Español",11,false,()->language[0]=1),english=touch("English",11,false,()->language[0]=2),send=touch("Enviar",11,true,()->{}),memory=touch("Memoria",11,false,()->{});
+        spanish.setContentDescription("IDIOMA BBY Q ES");english.setContentDescription("IDIOMA BBY Q EN");send.setContentDescription("ENVIAR BBY Q");memory.setContentDescription("EXPORTAR MEMORIA BBY Q");
+        for(TextView control:new TextView[]{spanish,english,send,memory})controls.addView(control,new LinearLayout.LayoutParams(0,dp(34),1));margin(w.content,controls,3);send.setEnabled(false);memory.setEnabled(false);
+        Runnable paintLanguage=()->{spanish.setTextColor(language[0]==1?ACCENT:MUTED);english.setTextColor(language[0]==2?ACCENT:MUTED);};
+        spanish.setOnClickListener(v->{language[0]=1;paintLanguage.run();});english.setOnClickListener(v->{language[0]=2;paintLanguage.run();});
+        java.util.function.Consumer<RxeAppStore.Saved> render=saved->{
+            history.removeAllViews();if(saved.history.length()==0)addBbyqMessage(history,scroll,"Memoria E016 lista. Puedes empezar con «hola».",MUTED);
+            for(int i=0;i<saved.history.length();i++){JSONObject message=saved.history.optJSONObject(i);if(message==null)continue;boolean user="user".equals(message.optString("role"));addBbyqMessage(history,scroll,(user?"TÚ · ":"BBY Q · ")+message.optString("text"),user?MUTED:WHITE);history.getChildAt(history.getChildCount()-1).setContentDescription(!user&&i==saved.history.length()-1?"RESPUESTA BBY Q":"MENSAJE BBY Q "+i);}
+            status.setText(metadata.optString("app_version")+" · Memoria guardada · "+(saved.language==1?"Español":"English"));
+        };
+        send.setOnClickListener(v->{
+            String text=input.getText().toString().trim();if(text.isEmpty()||busy[0]||data[0]==null)return;final int selectedLanguage=language[0];busy[0]=true;send.setEnabled(false);input.setEnabled(false);memory.setEnabled(false);status.setText("BBY Q está pensando…");
+            ((android.view.inputmethod.InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(input.getWindowToken(),0);
+            engine.execute(()->{try{long started=SystemClock.elapsedRealtimeNanos();RxeAppStore.Saved saved=data[0].ask(executable,text,selectedLanguage);Log.i(LOG,"BBYQ_APP_TURN_OK identity="+data[0].identity+" messages="+saved.history.length()+" ns="+(SystemClock.elapsedRealtimeNanos()-started));runOnUiThread(()->{if(!w.dialog.isShowing())return;render.accept(saved);busy[0]=false;send.setEnabled(true);input.setEnabled(true);memory.setEnabled(true);input.setText("");});}catch(Exception error){Log.e(LOG,"BBYQ_APP_TURN_FAILED",error);runOnUiThread(()->{if(!w.dialog.isShowing())return;busy[0]=false;send.setEnabled(true);input.setEnabled(true);memory.setEnabled(true);status.setText("No se completó el turno: "+error.getMessage()+". Memoria anterior conservada.");});}});
+        });
+        memory.setOnClickListener(v->{if(busy[0]||data[0]==null)return;preferences.edit().putString("app-export-path",path).putString("app-export-identity",data[0].identity).apply();Intent save=new Intent(Intent.ACTION_CREATE_DOCUMENT);save.addCategory(Intent.CATEGORY_OPENABLE);save.setType("application/x-reverse-state");save.putExtra(Intent.EXTRA_TITLE,"BBY-Q-memoria.rvp");try{startActivityForResult(save,EXPORT_APP_MEMORY);}catch(Exception error){info("No hay selector de archivos disponible");}});
+        engine.execute(()->{try{RxeAppStore app=new RxeAppStore(getApplicationContext(),executable);RxeAppStore.Saved saved=app.load(executable);data[0]=app;Log.i(LOG,"BBYQ_APP_READY identity="+app.identity+" messages="+saved.history.length());runOnUiThread(()->{if(!w.dialog.isShowing())return;language[0]=saved.language;paintLanguage.run();render.accept(saved);busy[0]=false;input.setEnabled(true);send.setEnabled(true);memory.setEnabled(true);});}catch(Exception error){Log.e(LOG,"BBYQ_APP_OPEN_FAILED",error);runOnUiThread(()->status.setText("No se pudo abrir la memoria: "+error.getMessage()));}});
+    }
     private void importRxe(Uri uri){
         engine.execute(()->{try{byte[] image=readBounded(uri,WorkspaceFiles.MAX_FILE);JSONObject meta=rxeInfo(image);String suggested=meta.getString("title")+".rxe";runOnUiThread(()->promptName("Agregar ejecutable .rxe",suggested,chosen->{String name=chosen.toLowerCase(Locale.ROOT).endsWith(".rxe")?chosen:chosen+".rxe";String path="Aplicaciones/"+name;fileWork(()->{files.write(path,image,false);Log.i(LOG,"RXE_IMPORT_OK "+path);},this::refreshRxe);}));}catch(Exception e){Log.e(LOG,"RXE_IMPORT_REJECTED",e);runOnUiThread(()->info("Archivo rechazado: "+e.getMessage()));}});
     }
@@ -1578,6 +1611,9 @@ public final class DesktopActivity extends Activity {
         if(code!=RESULT_OK||intent==null||intent.getData()==null)return;
         final Uri uri=intent.getData();
         if(request==IMPORT_RXE){importRxe(uri);return;}
+        if(request==EXPORT_APP_MEMORY){
+            fileWork(()->{byte[] executable=files.read(preferences.getString("app-export-path",""));RxeAppStore app=new RxeAppStore(getApplicationContext(),executable);if(!app.identity.equals(preferences.getString("app-export-identity","")))throw new IOException("El ejecutable cambió; vuelve a abrir su memoria");byte[] memory=app.load(executable).state;try(OutputStream out=getContentResolver().openOutputStream(uri)){if(out==null)throw new IOException("Destino no disponible");out.write(memory);}Log.i(LOG,"BBYQ_APP_MEMORY_EXPORTED bytes="+memory.length);},null);return;
+        }
         if(request==IMPORT_FILE){
             fileWork(()->{
                 String name="archivo";try(android.database.Cursor c=getContentResolver().query(uri,new String[]{android.provider.OpenableColumns.DISPLAY_NAME},null,null,null)){
@@ -1601,7 +1637,7 @@ public final class DesktopActivity extends Activity {
                     byte[] state=store.loadState();NativeRuntime.inspect(state);zip.putNextEntry(new java.util.zip.ZipEntry("session.rvp"));zip.write(state);zip.closeEntry();
                     zip.putNextEntry(new java.util.zip.ZipEntry("escritorio.json"));zip.write(new JSONObject(preferences.getAll()).toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));zip.closeEntry();
                     zip.putNextEntry(new java.util.zip.ZipEntry("papelera.json"));zip.write(new JSONObject(files.trashOrigins()).toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));zip.closeEntry();
-                    backupFolder(zip,"",0,new int[]{0},new long[]{0});
+                    int[] count={0};long[] total={0};backupFolder(zip,"",0,count,total);RxeAppStore.backup(getApplicationContext(),zip,count,total);
                 }
                 Log.i(LOG,"DESKTOP_BACKUP_OK");
                 runOnUiThread(()->info("Respaldo del escritorio exportado"));

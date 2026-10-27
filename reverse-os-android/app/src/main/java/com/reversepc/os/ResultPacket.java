@@ -8,6 +8,15 @@ public final class ResultPacket {
     public final String output;
     public final byte[] state;
     private ResultPacket(String output,byte[] state){this.output=output;this.state=state;}
+    public static byte[] encode(String output,byte[] state){
+        if(output==null||state==null)throw new IllegalArgumentException("Missing packet fields");
+        byte[] text=output.getBytes(StandardCharsets.UTF_8);
+        if(text.length>16*1024*1024||state.length>32*1024*1024+29)
+            throw new IllegalArgumentException("Packet exceeds transport limits");
+        ByteBuffer result=ByteBuffer.allocate(13+text.length+state.length).order(ByteOrder.LITTLE_ENDIAN);
+        result.put("RXOS1".getBytes(StandardCharsets.US_ASCII)).putInt(text.length).putInt(state.length).put(text).put(state);
+        return result.array();
+    }
     public static ResultPacket parse(byte[] payload){
         if(payload==null||payload.length<13)
             throw new IllegalArgumentException("Native runtime returned incomplete result");

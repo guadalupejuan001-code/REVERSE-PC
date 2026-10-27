@@ -1,4 +1,7 @@
-# RXE v1: ejecutables propios de REVERSE
+# RXE v1: perfil de bytecode XI de REVERSE
+
+RXE1 se conserva sin cambios. RXE2 añade aplicaciones de conversación con
+programa y memoria inicial: [BBY Q como ejecutable](BBYQ_RXE_APP.md).
 
 `.rxe` ocupa el papel del archivo ejecutable dentro de REVERSE. Es una imagen
 binaria para la ABI XI Machine v1: cabecera, nombre, tabla de constantes,

@@ -1,5 +1,6 @@
 #include "mundo_x/quantum_runtime.hpp"
 #include "rxe.hpp"
+#include "rxe_app.hpp"
 
 #include <array>
 #include <cstddef>
@@ -283,6 +284,7 @@ void run(const fs::path& program,const fs::path& state_path,
          const fs::path& destination){
   auto runtime=load_state(state_path);
   const auto data=read_file(program);
+  check(!reverse_pc::rxe_app::has_magic({data.begin(),data.end()}),"RXE2 applications use app-turn with a message and an output language");
   auto extension=program.extension().string();for(char& c:extension)if(c>='A'&&c<='Z')c=char(c+('a'-'A'));
   const bool binary=extension==".rxe"||reverse_pc::rxe::has_magic(data);
   const auto output=binary?reverse_pc::rxe::execute(runtime,reverse_pc::rxe::Bytes(data.begin(),data.end())):runtime.execute(data);
@@ -303,6 +305,9 @@ void help(){
            <<"reverse_pc compile PROGRAM.xi APP.rxe [TITLE]\n"
            <<"reverse_pc inspect-rxe APP.rxe\n"
            <<"reverse_pc disassemble APP.rxe OUTPUT.xi\n"
+           <<"reverse_pc pack-app CODE.rxe SEED.rvp APP.rxe ID TITLE VERSION SOURCE_SHA\n"
+           <<"reverse_pc app-init APP.rxe NEW_STATE.rvp\n"
+           <<"reverse_pc app-turn APP.rxe STATE_INPUT.rvp STATE_OUTPUT.rvp es|en MESSAGE\n"
            <<"reverse_pc --help\n";
 }
 }
@@ -321,7 +326,23 @@ int main(int argc,char** argv) {
       const auto image=reverse_pc::rxe::compile(read_file(argv[2]),argc==5?argv[4]:fs::path(argv[2]).stem().string());
       write_program(argv[3],std::string(image.begin(),image.end()));std::cout<<reverse_pc::rxe::describe(image)<<"\n";
     }
-    else if(cmd=="inspect-rxe"&&argc==3){const auto data=read_file(argv[2]);std::cout<<reverse_pc::rxe::describe(reverse_pc::rxe::Bytes(data.begin(),data.end()))<<"\n";}
+    else if(cmd=="inspect-rxe"&&argc==3){const auto data=read_file(argv[2]);const reverse_pc::rxe::Bytes bytes(data.begin(),data.end());std::cout<<(reverse_pc::rxe_app::has_magic(bytes)?reverse_pc::rxe_app::describe(bytes):reverse_pc::rxe::describe(bytes))<<"\n";}
+    else if(cmd=="pack-app"&&argc==9){
+      check(!fs::exists(argv[4])||(!fs::equivalent(argv[2],argv[4])&&!fs::equivalent(argv[3],argv[4])),"application output must not replace its inputs");
+      const auto code=read_file(argv[2]),seed=read_file(argv[3]);
+      reverse_pc::rxe_app::App app{argv[5],argv[6],argv[7],argv[8],{code.begin(),code.end()},{seed.begin(),seed.end()}};
+      const auto bytes=reverse_pc::rxe_app::pack(app);write_program(argv[4],std::string(bytes.begin(),bytes.end()));std::cout<<reverse_pc::rxe_app::describe(bytes)<<"\n";
+    }
+    else if(cmd=="app-init"&&argc==4){
+      check(!fs::exists(argv[3]),"state already exists; use another output to preserve its memory");
+      const auto data=read_file(argv[2]);const auto app=reverse_pc::rxe_app::decode({data.begin(),data.end()});write_program(argv[3],std::string(app.seed.begin(),app.seed.end()));
+    }
+    else if(cmd=="app-turn"&&argc==7){
+      check(std::string(argv[5])=="es"||std::string(argv[5])=="en","language must be es or en");
+      check(!fs::exists(argv[4])||!fs::equivalent(argv[2],argv[4]),"state must not replace the executable");
+      const auto data=read_file(argv[2]);const auto result=reverse_pc::rxe_app::turn({data.begin(),data.end()},reverse_pc::rvpc2::save(load_state(argv[3])),argv[6],std::string(argv[5])=="es"?1:2);
+      write_program(argv[4],std::string(result.state.begin(),result.state.end()));std::cout<<result.text<<"\n";
+    }
     else if(cmd=="disassemble"&&argc==4){
       check(!fs::exists(argv[3])||!fs::equivalent(argv[2],argv[3]),"input and output must be different files");const auto data=read_file(argv[2]);write_program(argv[3],reverse_pc::rxe::disassemble(reverse_pc::rxe::decode(reverse_pc::rxe::Bytes(data.begin(),data.end()))));
     }
