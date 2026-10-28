@@ -26,7 +26,10 @@ La CI compila Linux 6.1 y registra dónde se detiene el intérprete propio.
 - ELF o contenedor `RVI1` de Image/DTB/initrd se conserva como respaldo inmutable.
 - RAM no modificada/BSS se describe con fondo cero. No se reserva un arreglo
   proporcional al espacio lógico declarado.
-- Un store ARM64 se aplica como una transacción `mem_store` del mismo runtime XI.
+- Un store ARM64 usa una transacción de bytes tipados del mismo `QuantumRuntime`.
+  Un bloque mantiene un candidato común para núcleo y memoria; evita volver a
+  analizar texto XI y copiar metadatos por cada palabra. Las operaciones siguen
+  llamando al `InverseMemory::store` original, con sus revisiones y enlaces cuánticos.
   Restaurar el byte de respaldo elimina la diferencia redundante. Escribir cero
   sobre una imagen no cero sí necesita una diferencia.
 - XI/RXE pueden alterar ese delta y el núcleo cuántico original. Leer o escribir
@@ -39,8 +42,8 @@ La CI compila Linux 6.1 y registra dónde se detiene el intérprete propio.
 «Estados mínimos» tiene este alcance concreto. No se afirma una representación
 matemáticamente mínima de todos los programas ni compresión universal. Muchas
 escrituras distintas pueden hacer costoso el mapa de excepciones por byte. Una
-memoria adaptativa por páginas y perfiles de rendimiento de cargas reales siguen
-pendientes antes de pretender ejecutar un Android con datos de juego.
+memoria adaptativa por páginas sigue pendiente; ahora hay perfiles del arranque
+parcial Linux y comparaciones de transacciones de bytes. Estos límites deben resolverse antes de pretender ejecutar un Android con datos de juego.
 
 Una prueba prepara **4.096 qubits independientes** con XI y luego ejecuta el testigo
 ARM64 sobre la misma autoridad. El snapshot/revisión del núcleo cuántico permanece
@@ -96,11 +99,14 @@ que su manejador continúe. Un bloque con presupuesto agotado conserva el avance
 1. Abre **XI → ARM64**.
 2. **Comprobar modo de sistema** prepara el testigo propio; no es Android/Linux.
 3. **Ejecutar bloque** debe producir `REVERSE: EL1 MMU IRQ EL0 SVC FAULT OK`.
-4. Los botones permiten importar ELF de aplicación, ELF de sistema o Linux Image.
+4. **Comprobar FP/SIMD**, seguido de **Ejecutar bloque**, verifica suma FP32,
+   raíz FP64 y registros/memoria NEON; imprime `REVERSE: FP32 FP64 SIMD OK`.
+   También puede ejecutarse con checkpoints entre bloques.
+5. Los botones permiten importar ELF de aplicación, ELF de sistema o Linux Image.
    La imagen debe encajar en los límites y usar instrucciones/dispositivos soportados.
-5. En modo sistema, **Consola → Enviar** agrega entrada a PL011. Ejecuta otro bloque
+6. En modo sistema, **Consola → Enviar** agrega entrada a PL011. Ejecuta otro bloque
    para que el programa la procese. Cerrar/reabrir conserva la sesión de máquina.
-6. **XI sobre el delta de memoria** modifica esa misma memoria. Una dirección sin
+7. **XI sobre el delta de memoria** modifica esa misma memoria. Una dirección sin
    respaldo tiene byte=delta; una dirección dentro de imagen combina por XOR.
 
 El testigo monta tablas reales, activa la MMU, programa un timer/GIC, entra por
@@ -109,7 +115,7 @@ imprime éxito después de verificar esos efectos. QEMU se usa únicamente en CI
 para contrastar el ELF ensamblado independientemente; no se incluye en REVERSE.
 
 El flavor Android de integración es el **REVERSE existente**, paquete
-`com.reversepc.control.workbench`, versión de código 252. La compilación CI usa una
+`com.reversepc.control.workbench`, versión de código 253. La compilación CI usa una
 clave desechable de pruebas: no es una actualización con firma verificada para
 el APK ya instalado por el usuario. No se pide desinstalar ni perder sus datos.
 
@@ -135,10 +141,12 @@ la restauración automática se realiza desde su archivo privado conservado.
 ```sh
 bash scripts/setup-ether.sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --target reverse_guest reverse_pc_minimal_guest reverse_pc_minimal_system reverse_pc_minimal_fp --parallel 2
+cmake --build build --target reverse_guest reverse_pc_minimal_guest reverse_pc_minimal_system reverse_pc_minimal_fp reverse_pc_minimal_bytes --parallel 2
 build/reverse_pc_minimal_guest
 build/reverse_pc_minimal_system
 build/reverse_pc_minimal_fp
+build/reverse_pc_minimal_bytes
+build/reverse_guest fp-demo
 build/reverse_guest system-demo-init inicial.rvg
 build/reverse_guest run inicial.rvg parcial.rvg 30
 build/reverse_guest run parcial.rvg final.rvg 1000
@@ -154,7 +162,7 @@ build/reverse_guest rxe cambiado.rvg cambios.rxe continuado.rvg
 El testigo de sistema conserva 128 MiB lógicos con una imagen de 4.391 bytes y
 9 diferencias de byte al terminar. Es un test pequeño, no la huella de Android
 ni de Wild Rift. Las pruebas originales aportan 8.234 aserciones; las nuevas
-comprueban 46 condiciones de sistema/tabla/permisos/estado cuántico, además de
+comprueban 54 condiciones de sistema/tabla/permisos/estado cuántico, además de
 CLI, UBSan y oráculos clang/lld/QEMU. La integración Android ejercita WebView/JNI,
 el ejecutor original y reinicio en emulador Android 15. No equivale a una prueba
 física en el teléfono.
@@ -164,6 +172,15 @@ ceros con signo, redondeos, FZ/DN, conversiones y vectores con clang/lld/QEMU.
 También exige igualdad completa entre ejecución continua y checkpoints cada
 137 instrucciones. Las pruebas nativas comprueban aislamiento de redondeos entre
 hilos, estado disperso, compatibilidad RVG1/RVG2 y rollback.
+
+La transacción de bytes tiene 213 comprobaciones, incluyendo escrituras
+cuánticas deterministas, lectura del candidato actual, rollback de ambos estados,
+límites y 1.700 stores aleatorios contrastados con XI. Un benchmark separado
+mide 12.000 stores; no predice FPS. Una variante de prueba traduce cada byte por
+separado y debe producir exactamente el mismo checkpoint Linux de 500.000
+instrucciones que la ruta que reutiliza el mapeo dentro de un acceso. No existe
+un TLB persistente: cada acceso observa las tablas actuales. Se prueban páginas
+no adyacentes, permisos y fallos sin stores parciales.
 
 Referencias primarias: [arranque Linux AArch64](https://docs.kernel.org/arch/arm64/booting.html),
 [Linux 6.1 fijado](https://github.com/torvalds/linux/tree/830b3c68c1fb1e9176028d02ef86f3cf76aa2476),

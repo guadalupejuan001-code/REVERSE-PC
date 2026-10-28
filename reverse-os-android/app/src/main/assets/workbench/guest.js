@@ -12,7 +12,7 @@ function guestHTML(){
     row('Instrucciones ejecutadas',g.instructions)+row('Excepciones atendidas',g.exceptions||0)+row('Posición',g.pc)+'</div>':'<p>Prueba la compatibilidad de sistema o importa un programa ARM64.</p>';
   return '<div class="programs-layout guest-layout"><span class="eyebrow">XI / ETHER · COMPATIBILIDAD</span><h2>ARM64 en REVERSE</h2>'+
     '<p class="guest-boundary">Extensión del ejecutor de REVERSE con memoria XI/Ether. Android y Wild Rift todavía no arrancan.</p>'+
-    '<div class="program-actions"><button class="primary-button" data-guest="system"'+disabled+'>Comprobar modo de sistema</button><button class="secondary-button" data-guest="demo"'+disabled+'>Prueba 6×7</button><button class="secondary-button" data-guest="import"'+disabled+'>Importar ELF</button><button class="secondary-button" data-guest="system-elf"'+disabled+'>ELF de sistema</button><button class="secondary-button" data-guest="linux"'+disabled+'>Importar Linux Image</button><button class="secondary-button" data-guest="inspect"'+disabled+'>Consultar</button></div>'+
+    '<div class="program-actions"><button class="primary-button" data-guest="system"'+disabled+'>Comprobar modo de sistema</button><button class="secondary-button" data-guest="float"'+disabled+'>Comprobar FP/SIMD</button><button class="secondary-button" data-guest="demo"'+disabled+'>Prueba 6×7</button><button class="secondary-button" data-guest="import"'+disabled+'>Importar ELF</button><button class="secondary-button" data-guest="system-elf"'+disabled+'>ELF de sistema</button><button class="secondary-button" data-guest="linux"'+disabled+'>Importar Linux Image</button><button class="secondary-button" data-guest="inspect"'+disabled+'>Consultar</button></div>'+
     '<p class="rxe-status" role="status">'+esc(guestUi.error||(guestUi.busy?'Procesando y guardando el invitado…':nativeAvailable?'La sesión se conserva al cerrar la ventana.':'Abre REVERSE en Android para ejecutar el invitado.'))+'</p>'+details+
     '<p class="guest-note">La RAM vacía se describe con una regla. El programa y sus cambios sí consumen memoria física; la RAM lógica no mide la RAM disponible del teléfono.</p>'+
     '<div class="program-actions"><label>Pasos <input class="guest-steps" type="number" min="1" max="10000" value="'+guestUi.steps+'" aria-label="Pasos del invitado"'+disabled+'></label><button class="primary-button" data-guest="run"'+(guestUi.busy||!g||g.halted?' disabled':'')+'>Ejecutar bloque</button><button class="secondary-button" data-guest="export"'+(guestUi.busy||!g?' disabled':'')+'>Exportar checkpoint</button></div>'+
@@ -26,7 +26,7 @@ async function guestOperation(operation,payload=''){
   guestUi.busy=true;guestUi.error='';refreshGuestViews();
   try{
     const response=await nativeRequest(operation,payload);guestUi.snapshot=response;
-    if(operation==='guestDemo'||operation==='guestSystem')guestUi.output='';
+    if(operation==='guestDemo'||operation==='guestSystem'||operation==='guestFloat')guestUi.output='';
     if(response.stdout!==undefined||response.stderr!==undefined)guestUi.output=(guestUi.output+(response.stdout||'')+(response.stderr||'')).slice(-65536);
     if(response.xi_output!==undefined)guestUi.output=response.xi_output;
   }catch(error){guestUi.error=error.message;}
@@ -45,10 +45,11 @@ document.addEventListener('input',event=>{
 document.addEventListener('click',event=>{
   const button=event.target.closest('[data-guest]');if(!button||button.disabled)return;
   const action=button.dataset.guest;
-  if(action==='demo'||action==='system'||action==='import'||action==='system-elf'||action==='linux'){
+  if(action==='demo'||action==='system'||action==='float'||action==='import'||action==='system-elf'||action==='linux'){
     if(guestUi.snapshot?.loaded&&!confirm('Esto reemplazará el invitado guardado. Exporta su checkpoint antes si deseas conservarlo. ¿Continuar?'))return;
     if(action==='demo')guestOperation('guestDemo');
     else if(action==='system')guestOperation('guestSystem');
+    else if(action==='float')guestOperation('guestFloat');
     else if(action==='linux'&&typeof window.ReverseNative?.importLinuxImage==='function')window.ReverseNative.importLinuxImage();
     else if(action==='system-elf'&&typeof window.ReverseNative?.importSystemElf==='function')window.ReverseNative.importSystemElf();
     else if(typeof window.ReverseNative?.importGuestElf==='function')window.ReverseNative.importGuestElf();

@@ -213,6 +213,7 @@ public final class WorkbenchActivity extends Activity {
                     else if("guestInspect".equals(operation))result=guest().inspect();
                     else if("guestDemo".equals(operation))result=guest().create(null);
                     else if("guestSystem".equals(operation))result=guest().createSystem(null,0);
+                    else if("guestFloat".equals(operation))result=guest().createSystem(null,3);
                     else if("guestRun".equals(operation))result=guest().run(new JSONObject(payload).getInt("steps"));
                     else if("guestXi".equals(operation))result=guest().xi(payload);
                     else if("guestInput".equals(operation))result=guest().input(payload);

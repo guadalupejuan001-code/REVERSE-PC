@@ -103,6 +103,16 @@ class ArmFloat {
   std::uint64_t sqrt(unsigned bits,std::uint64_t value){begin();value=input(value,bits);return finish(bits==32?std::uint64_t(f32_sqrt(float32_t{std::uint32_t(value)}).v):f64_sqrt(float64_t{value}).v,bits);}
   std::uint64_t fma(unsigned bits,std::uint64_t a,std::uint64_t b,std::uint64_t c,bool negate_product,bool negate_addend){
     begin();a=input(a,bits);b=input(b,bits);c=input(c,bits);if(negate_product)a^=sign(bits);if(negate_addend)c^=sign(bits);
+    if(nan(a,bits)||nan(b,bits)||nan(c,bits)){
+      // FPMulAdd processes the addend first: SNaN before QNaN, then C/A/B.
+      const auto magnitude=~sign(bits);const bool invalid_product=((a&magnitude)==exponent(bits)&&!(b&magnitude))||((b&magnitude)==exponent(bits)&&!(a&magnitude));
+      std::uint64_t value=0;
+      if(signaling(c,bits)||signaling(a,bits)||signaling(b,bits)){
+        softfloat_exceptionFlags|=softfloat_flag_invalid;value=signaling(c,bits)?c:signaling(a,bits)?a:b;value|=quiet(bits);
+      }else if(invalid_product){softfloat_exceptionFlags|=softfloat_flag_invalid;value=default_nan(bits);}
+      else value=nan(c,bits)?c:nan(a,bits)?a:b;
+      return finish(value,bits);
+    }
     return finish(bits==32?std::uint64_t(f32_mulAdd(float32_t{std::uint32_t(a)},float32_t{std::uint32_t(b)},float32_t{std::uint32_t(c)}).v):f64_mulAdd(float64_t{a},float64_t{b},float64_t{c}).v,bits);
   }
   unsigned compare(unsigned bits,std::uint64_t a,std::uint64_t b,bool signal_all_nan){
@@ -128,7 +138,8 @@ class ArmFloat {
     begin();if(source_bits!=16)value=input(value,source_bits);std::uint64_t result=0;
     if(source_bits==32&&destination_bits==64)result=f32_to_f64(float32_t{std::uint32_t(value)}).v;
     else if(source_bits==64&&destination_bits==32)result=f64_to_f32(float64_t{value}).v;
-    else if(destination_bits==16){result=source_bits==32?f32_to_f16(float32_t{std::uint32_t(value)}).v:f64_to_f16(float64_t{value}).v;flags(unsigned(softfloat_exceptionFlags));return result;}
+    else if(destination_bits==16){result=source_bits==32?f32_to_f16(float32_t{std::uint32_t(value)}).v:f64_to_f16(float64_t{value}).v;flags(unsigned(softfloat_exceptionFlags));
+      if((state_.fpcr&(1u<<25))&&(result&0x7c00)==0x7c00&&(result&0x3ff))result=0x7e00;return result;}
     else if(source_bits==16){result=destination_bits==32?std::uint64_t(f16_to_f32(float16_t{std::uint16_t(value)}).v):f16_to_f64(float16_t{std::uint16_t(value)}).v;}
     else throw std::runtime_error("Unsupported FP format conversion");
     return finish(result,destination_bits);

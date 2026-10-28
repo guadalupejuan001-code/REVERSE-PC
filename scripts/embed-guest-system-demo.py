@@ -9,6 +9,7 @@ import itertools
 import struct
 import sys
 
+fp='--fp' in sys.argv
 source=Path(sys.argv[1]).read_bytes()
 assert source[:6]==b'\x7fELF\x02\x01' and struct.unpack_from('<H',source,18)[0]==183
 offset=struct.unpack_from('<Q',source,40)[0]
@@ -45,7 +46,9 @@ inline Bytes system_demo_elf() {
 }
 } // namespace reverse_pc::guest
 '''
-target=Path(__file__).resolve().parents[1]/'src/minimal_guest_system_demo.hpp'
+if fp:
+    header=header.replace('guest-system-aarch64.S','guest-fp-demo.S').replace('system_demo_elf','fp_demo_elf').replace('0x40080000','0x1000')
+target=Path(__file__).resolve().parents[1]/('src/minimal_guest_fp_demo.hpp' if fp else 'src/minimal_guest_system_demo.hpp')
 if '--check' in sys.argv:
     assert target.read_text()==header,'Embedded system witness differs from independently assembled source'
 else:target.write_text(header)

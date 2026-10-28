@@ -37,6 +37,38 @@ replacements['quantum_runtime.hpp']=[(
     '        candidate_core, &candidate_memory, program, require_matching_background);',
     '        candidate_core, &candidate_memory, program, require_matching_background);\n'
     '    candidate_core.program_candidate_ = false;')]
+replacements['quantum_runtime.hpp'].append((
+    '  // Restore both authorities transactionally. A bad core or memory snapshot',
+    '''  // Typed byte access to the same authorities, scoped to one unpublished
+  // transaction. No XI text parsing and no per-word candidate map copy.
+  class ByteAccess {
+   public:
+    ByteAccess(const ByteAccess&) = delete;
+    ByteAccess& operator=(const ByteAccess&) = delete;
+    InverseMemory::ReadResult read(const std::string& address) const {
+      return memory_.read(address, core_);
+    }
+    void store(const std::string& address, std::uint8_t value) {
+      memory_.store(address, value, core_);
+    }
+   private:
+    friend class QuantumRuntime;
+    ByteAccess(InfiniteCore& core, InverseMemory& memory):core_(core),memory_(memory) {}
+    InfiniteCore& core_;
+    InverseMemory& memory_;
+  };
+  template<class Action> void transact_bytes(Action action) {
+    auto candidate_core = core_;
+    candidate_core.program_candidate_ = true;
+    auto candidate_memory = memory_;
+    ByteAccess bytes(candidate_core, candidate_memory);
+    action(bytes); // A failure discards both candidates, including quantum flips.
+    candidate_core.program_candidate_ = false;
+    core_ = std::move(candidate_core);
+    memory_ = std::move(candidate_memory);
+  }
+
+  // Restore both authorities transactionally. A bad core or memory snapshot'''))
 replacements['exact_t_experiment.hpp'] += [
     ('#include <array>', '#include <array>\n#include <memory>\n#include <mutex>\n#include "integration/state_io.hpp"'),
     ('  std::size_t n_;\n  std::size_t max_components_;', '#include "integration/reduced_state_extensions.inc"\n  std::size_t n_;\n  std::size_t max_components_;'),

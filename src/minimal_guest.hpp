@@ -160,7 +160,8 @@ class MinimalGuest {
 
   std::uint8_t read8(std::uint64_t address) const {
     range(address,1);
-    const auto delta=runtime_.memory().read(std::to_string(address),runtime_.core());
+    const auto key=std::to_string(address);
+    const auto delta=byte_transaction_?byte_transaction_->read(key):runtime_.memory().read(key,runtime_.core());
     require(delta.deterministic, "Guest read reached an unresolved quantum byte; explicit observation required");
     return backing(address)^delta.value;
   }
@@ -172,13 +173,13 @@ class MinimalGuest {
   }
   void write(std::uint64_t address,std::uint64_t value,unsigned size) {
     require(size==1 || size==2 || size==4 || size==8, "Invalid guest word size"); range(address,size);
-    std::string program;
-    for (unsigned i=0;i<size;++i) {
-      const auto byte=std::uint8_t(value>>(i*8))^backing(address+i);
-      program+="mem_store "+std::to_string(address+i)+" "+std::to_string(byte)+"\n";
-    }
-    // A multi-byte store uses the existing all-or-nothing XI transaction.
-    runtime_.execute(program);machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;
+    auto store=[&](mundo_x::QuantumRuntime::ByteAccess& bytes){
+      for(unsigned i=0;i<size;++i)bytes.store(std::to_string(address+i),std::uint8_t(value>>(i*8))^backing(address+i));
+    };
+    // The whole execution block owns a private native-byte transaction. Public
+    // standalone stores still receive their own all-or-nothing transaction.
+    if(byte_transaction_)store(*byte_transaction_);else runtime_.transact_bytes(store);
+    machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;
   }
   std::string apply_xi_delta(const std::string& source) { auto output=runtime_.execute(source);machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;return output; }
   std::string apply_rxe_delta(const Bytes& image) { auto output=reverse_pc::rxe::execute(runtime_,image);machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;return output; }
@@ -188,6 +189,9 @@ class MinimalGuest {
     require(budget>0 && budget<=1000000, "Guest run budget must be 1..1000000 instructions");
     auto candidate=*this; // Immutable image and unchanged Ether shards are shared.
     RunResult result;
+    candidate.runtime_.transact_bytes([&](mundo_x::QuantumRuntime::ByteAccess& bytes){
+    candidate.byte_transaction_=&bytes;
+    struct Reset {mundo_x::QuantumRuntime::ByteAccess*& pointer;~Reset(){pointer=nullptr;}} reset{candidate.byte_transaction_};
     while (result.executed<budget && !candidate.registers_.halted) {
       if(candidate.machine_.enabled && candidate.machine_.waiting){
         if(candidate.machine_.next_irq()==1023 && !candidate.machine_.event){
@@ -209,6 +213,7 @@ class MinimalGuest {
       }
       ++result.executed;
     }
+    });
     result.halted=candidate.registers_.halted; result.exit_code=candidate.registers_.exit_code;
     result.waiting=candidate.machine_.enabled&&candidate.machine_.waiting;
     *this=std::move(candidate);
@@ -309,6 +314,7 @@ class MinimalGuest {
   Registers registers_;
   MachineState machine_;
   FloatingState floating_;
+  mundo_x::QuantumRuntime::ByteAccess* byte_transaction_=nullptr; // Never persisted; scoped to run().
 
   static mundo_x::QuantumRuntime make_runtime(std::size_t overrides) {
     require(overrides>0 && overrides<=1048576, "Guest override limit must be 1..1048576");
@@ -381,6 +387,7 @@ class MinimalGuest {
   std::uint64_t cpu_read(std::uint64_t address,unsigned size,RunResult& result,bool executing=false);
   void cpu_write(std::uint64_t address,std::uint64_t value,unsigned size,RunResult& result);
   void check_access(std::uint64_t address,unsigned size,bool writing,bool executing=false) const;
+  std::array<std::uint64_t,16> resolve_access(std::uint64_t address,unsigned size,bool writing,bool executing=false) const;
   std::uint64_t device_read(std::uint64_t address,unsigned size);
   void device_write(std::uint64_t address,std::uint64_t value,unsigned size,RunResult& result);
   bool device_address(std::uint64_t address) const;

@@ -1,10 +1,10 @@
 name: REVERSE ARM64 compatibility
 on:
   pull_request:
-    paths: ['src/minimal_guest*', 'src/reverse_guest.cpp', 'tests/minimal_guest*', 'examples/guest-*.S', 'scripts/embed-guest-system-demo.py', 'third_party/softfloat/**', 'scripts/build-softfloat.py', 'reverse-os-android/**', 'CMakeLists.txt', '.github/workflows/minimal-state-guest.yml']
+    paths: ['src/minimal_guest*', 'src/reverse_guest.cpp', 'tests/minimal_guest*', 'examples/guest-*.S', 'scripts/embed-guest-system-demo.py', 'third_party/softfloat/**', 'scripts/build-softfloat.py', 'scripts/prepare-ether-compat.py', 'tools/guest_linux_probe.cpp', 'reverse-os-android/**', 'CMakeLists.txt', '.github/workflows/minimal-state-guest.yml']
   push:
     branches: [main]
-    paths: ['src/minimal_guest*', 'src/reverse_guest.cpp', 'tests/minimal_guest*', 'examples/guest-*.S', 'scripts/embed-guest-system-demo.py', 'third_party/softfloat/**', 'scripts/build-softfloat.py', 'reverse-os-android/**', '.github/workflows/minimal-state-guest.yml']
+    paths: ['src/minimal_guest*', 'src/reverse_guest.cpp', 'tests/minimal_guest*', 'examples/guest-*.S', 'scripts/embed-guest-system-demo.py', 'third_party/softfloat/**', 'scripts/build-softfloat.py', 'scripts/prepare-ether-compat.py', 'tools/guest_linux_probe.cpp', 'reverse-os-android/**', '.github/workflows/minimal-state-guest.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -24,11 +24,14 @@ jobs:
       - name: Build the own guest CPU and run correctness checks
         run: |
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_RELEASE=-O1 -DREVERSE_PC_BUILD_PREVIOUS_MAIN_REFERENCE=OFF
-          cmake --build build --target reverse_guest reverse_pc_minimal_guest reverse_pc_minimal_system reverse_pc_minimal_fp --parallel 2
+          cmake --build build --target reverse_guest reverse_pc_minimal_guest reverse_pc_minimal_system reverse_pc_minimal_fp reverse_pc_minimal_bytes reverse_pc_runtime_reference reverse_pc_runtime_contract --parallel 2
           mkdir -p guest-evidence
           build/reverse_pc_minimal_guest > guest-evidence/native-tests.json
           build/reverse_pc_minimal_system > guest-evidence/system-native.json
           build/reverse_pc_minimal_fp > guest-evidence/fp-native.json
+          build/reverse_pc_minimal_bytes > guest-evidence/native-bytes.json
+          python3 tests/compare_runtime.py build/reverse_pc_runtime_reference build/reverse_pc_runtime_contract > guest-evidence/xi-contract.json
+          build/reverse_guest fp-demo guest-evidence/fp-demo.rvg > guest-evidence/fp-demo.json
           python3 tests/minimal_guest_system_cli.py build/reverse_guest > guest-evidence/system-cli.json
           build/reverse_guest demo guest-evidence/demo.rvg > guest-evidence/demo.json
           python3 tests/minimal_guest_cli.py build/reverse_guest > guest-evidence/checkpoints.json
@@ -45,6 +48,11 @@ jobs:
           build/reverse_guest device-tree guest-evidence/reverse.dtb
           dtc -I dtb -O dts guest-evidence/reverse.dtb > guest-evidence/reverse.dts
           clang --target=aarch64-linux-gnu -fuse-ld=lld -nostdlib -static -Wl,--build-id=none -o guest-evidence/fp-simd.elf examples/guest-fp-simd.S
+          clang --target=aarch64-none-elf -c examples/guest-fp-demo.S -o guest-evidence/fp-demo.o
+          python3 scripts/embed-guest-system-demo.py guest-evidence/fp-demo.o --fp --check
+          clang --target=aarch64-linux-gnu -fuse-ld=lld -nostdlib -static -Wl,--build-id=none -o guest-evidence/fp-demo.elf examples/guest-fp-demo.S
+          qemu-aarch64 guest-evidence/fp-demo.elf > guest-evidence/fp-demo-qemu.txt
+          python3 -c 'import json;from pathlib import Path;p=Path("guest-evidence");d=json.loads((p/"fp-demo.json").read_text());assert d["stdout"]=="REVERSE: FP32 FP64 SIMD OK\n"==(p/"fp-demo-qemu.txt").read_text() and d["guest"]["exit_code"]==0'
           python3 tests/minimal_guest_fp_cli.py build/reverse_guest guest-evidence/fp-simd.elf > guest-evidence/fp-simd-oracle.json
           clang --version > guest-evidence/clang-version.txt
           qemu-aarch64 --version > guest-evidence/oracle-version.txt
@@ -57,6 +65,8 @@ jobs:
           build/system-ubsan > guest-evidence/system-ubsan.json
           g++ -std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tests/minimal_guest_fp_test.cpp build/softfloat/libreverse_softfloat.a -o build/fp-ubsan
           build/fp-ubsan > guest-evidence/fp-ubsan.json
+          g++ -std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tests/minimal_guest_bytes_test.cpp build/softfloat/libreverse_softfloat.a -o build/bytes-ubsan
+          build/bytes-ubsan > guest-evidence/bytes-ubsan.json
       - uses: actions/upload-artifact@v4
         if: always()
         with: {name: minimal-state-guest-native, path: guest-evidence/, retention-days: 14}
@@ -88,8 +98,13 @@ jobs:
         run: |
           python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
           python3 scripts/build-softfloat.py
-          g++ -std=c++17 -O1 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tools/guest_linux_probe.cpp build/softfloat/libreverse_softfloat.a -o build/guest-linux-probe
-          timeout 180 build/guest-linux-probe guest-linux-evidence/Image > guest-linux-evidence/own-linux-prefix.json
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tools/guest_linux_probe.cpp build/softfloat/libreverse_softfloat.a -o build/guest-linux-probe
+          timeout 180 build/guest-linux-probe guest-linux-evidence/Image 500000 guest-linux-evidence/fast-500k.rvg > guest-linux-evidence/own-linux-prefix.json
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_BYTEWISE_ACCESS_REFERENCE=1 -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tools/guest_linux_probe.cpp build/softfloat/libreverse_softfloat.a -o build/linux-bytewise
+          timeout 180 build/linux-bytewise guest-linux-evidence/Image 500000 guest-linux-evidence/bytewise-500k.rvg > guest-linux-evidence/bytewise-prefix.json
+          cmp guest-linux-evidence/fast-500k.rvg guest-linux-evidence/bytewise-500k.rvg
+          rm guest-linux-evidence/fast-500k.rvg guest-linux-evidence/bytewise-500k.rvg
+          timeout 180 build/guest-linux-probe guest-linux-evidence/Image 5000000 > guest-linux-evidence/own-linux-progress.json
           cat guest-linux-evidence/own-linux-prefix.json
       - uses: actions/upload-artifact@v4
         if: always()
@@ -125,7 +140,7 @@ jobs:
                       target=Path('reverse-os-android/app/src/main')/name
                       target.parent.mkdir(parents=True,exist_ok=True)
                       target.write_bytes(archive.read(name))
-          Path('reverse-os-android/app/src/main/assets/workbench/build-info.json').write_text(json.dumps({'source_commit':os.environ['GITHUB_SHA'],'bbyq_version':'E025-Chain-1','w4u_version':'0.1','arm64_compatibility_version':'0.2','mundo_x_commit':'e2778d962af22f6f1a0794058dd4685fc2573966'})+'\n')
+          Path('reverse-os-android/app/src/main/assets/workbench/build-info.json').write_text(json.dumps({'source_commit':os.environ['GITHUB_SHA'],'bbyq_version':'E025-Chain-1','w4u_version':'0.1','arm64_compatibility_version':'0.3','mundo_x_commit':'e2778d962af22f6f1a0794058dd4685fc2573966'})+'\n')
           PY
           python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
           keytool -genkeypair -keystore "$REVERSE_SIGNING_KEYSTORE" -storetype JKS -storepass android -keypass android -alias reverse-desktop -keyalg RSA -keysize 2048 -validity 365 -dname 'CN=REVERSE Guest Preview Development'
@@ -172,6 +187,11 @@ jobs:
             adb shell am force-stop com.reversepc.control.workbench
             adb shell am instrument -w -e mode armSystemRestore com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee guest-evidence/android-system-restore.txt
             grep 'WORKBENCH_TESTS_OK mode=armSystemRestore ' guest-evidence/android-system-restore.txt
+            adb shell am instrument -w -e mode armFloat com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee guest-evidence/android-fp.txt
+            grep 'WORKBENCH_TESTS_OK mode=armFloat ' guest-evidence/android-fp.txt
+            adb shell am force-stop com.reversepc.control.workbench
+            adb shell am instrument -w -e mode armFloatRestore com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee guest-evidence/android-fp-restore.txt
+            grep 'WORKBENCH_TESTS_OK mode=armFloatRestore ' guest-evidence/android-fp-restore.txt
             adb exec-out screencap -p > guest-evidence/android-screen.png
       - uses: actions/upload-artifact@v4
         if: always()

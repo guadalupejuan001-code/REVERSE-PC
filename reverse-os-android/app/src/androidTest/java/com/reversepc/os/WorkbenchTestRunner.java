@@ -42,6 +42,17 @@ public final class WorkbenchTestRunner extends Instrumentation {
         for(int i=0;i<120;i++){String result=js(expression);if(!result.equals("null")&&!result.equals("undefined")&&!result.equals("false"))return result;Thread.sleep(250);}
         throw new AssertionError("Timed out: "+expression);
     }
+    private void waitDesktopReady()throws Exception{
+        WorkbenchActivity observed=null;int stable=0;
+        for(int i=0;i<200;i++){
+            WorkbenchActivity current=activity;
+            if(current==observed&&current==resumed&&!current.isDestroyed()&&current.hasWindowFocus())stable++;
+            else{observed=current;stable=0;}
+            if(stable>=10&&js("document.readyState==='complete'&&innerWidth>innerHeight&&!!document.querySelector('[data-task-app]')&&typeof nativeRequest==='function'").equals("true"))return;
+            Thread.sleep(100);
+        }
+        throw new AssertionError("Desktop did not settle after orientation/activity startup");
+    }
     private JSONObject op(String op,String payload,String target)throws Exception{
         js("window."+target+"=null;nativeRequest("+JSONObject.quote(op)+","+JSONObject.quote(payload)+").then(r=>window."+target+"=r).catch(e=>window."+target+"={ok:false,error:String(e)});true");
         return new JSONObject(waitJs("window."+target+"?JSON.stringify(window."+target+"):null"));
@@ -353,6 +364,26 @@ public final class WorkbenchTestRunner extends Instrumentation {
         require(js("guestUi.snapshot.guest.core_revision").equals("4096"),"ARM64 operations changed quantum gates/revision");
         require(desktopBefore.equals(hash("session.rvp")),"ARM64 module changed desktop/BBY Q state");
     }
+    private void floatingWorkflow(boolean restore)throws Exception{
+        String desktopBefore=hash("session.rvp");
+        js("createWindow('guest');true");waitJs("guestUi.snapshot&&!guestUi.busy");
+        if(!restore){
+            js("window.confirm=()=>true;true");tapDom("[data-guest=float]");
+            waitJs("guestUi.snapshot?.loaded&&!guestUi.busy");
+            require(js("guestUi.snapshot.guest.delta_overrides").equals("0"),"FP witness allocated guest RAM before execution");
+            JSONObject quantum=op("guestXi","#!reverse-pc-machine-v1\nset r0 0\nlabel loop\nh $r0\nadd r0 1\ncmp r0 4096\njlt loop\nhalt\n","fpQuantum");
+            require(quantum.getBoolean("ok"),"FP witness lost the original XI quantum engine");
+            js("guestUi.steps=10;true");tapDom("[data-guest=run]");
+            waitJs("guestUi.snapshot.guest.instructions===10&&!guestUi.busy");
+            require(js("guestUi.snapshot.guest.nonzero_vector_registers>0&&!guestUi.snapshot.guest.halted").equals("true"),"FP state was absent at checkpoint boundary");
+            js("guestUi.steps=1000;true");tapDom("[data-guest=run]");
+            waitJs("guestUi.snapshot.guest.halted&&!guestUi.busy");
+            require(js("guestUi.output").contains("REVERSE: FP32 FP64 SIMD OK\n"),"FP/SIMD witness failed through UI/JNI/checkpoint");
+        }
+        require(js("guestUi.snapshot.guest.halted&&guestUi.snapshot.guest.exit_code===0&&guestUi.snapshot.guest.nonzero_vector_registers===4&&guestUi.snapshot.guest.active_qubits===4096&&guestUi.snapshot.guest.core_revision===4096").equals("true"),"FP/quantum state did not survive execution or restart");
+        require(Files.readAllBytes(dataFile("guest-aarch64.rvg").toPath())[3]=='3',"FP state was not stored as RVG3");
+        require(desktopBefore.equals(hash("session.rvp")),"FP/SIMD changed desktop/BBY Q state");
+    }
     @Override public void onStart(){
         Bundle result=new Bundle();
         try{
@@ -368,12 +399,17 @@ public final class WorkbenchTestRunner extends Instrumentation {
             runOnMainSync(()->getTargetContext().startActivity(new Intent(getTargetContext(),entry).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)));
             activity=(WorkbenchActivity)waitForMonitorWithTimeout(desktopMonitor,15000);removeMonitor(desktopMonitor);
             require(activity!=null,"Entry did not reach Workbench: "+requested);
-            waitJs("document.querySelector('[data-task-app]')&&typeof nativeRequest==='function'");
+            waitDesktopReady();
             JSONObject snapshot=op("inspect","","testSnapshot");
             require(snapshot.getBoolean("ok"),snapshot.toString());
             require(snapshot.getJSONObject("android").getLong("ram_total_bytes")>0,"No native RAM reading");
             require(snapshot.getJSONObject("core").getString("state_format").equals("RVPC2"),"Wrong checkpoint format");
             require(snapshot.getJSONObject("build").getString("source_commit").matches("[a-f0-9]{40}"),"Missing build provenance");
+            if(requested.equals("armFloat")||requested.equals("armFloatRestore")){
+                floatingWorkflow(requested.equals("armFloatRestore"));visualCheck(requested);
+                result.putString("stream","WORKBENCH_TESTS_OK mode="+requested+" integration=XI fp=ARM64 SIMD state=RVG3 qubits=4096\n");
+                result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
+            }
             if(requested.equals("armSystem")||requested.equals("armSystemRestore")){
                 systemWorkflow(requested.equals("armSystemRestore"));visualCheck(requested);
                 result.putString("stream","WORKBENCH_TESTS_OK mode="+requested+" integration=XI engine=original-QuantumRuntime qubits=4096 android-boot=not-implemented\n");

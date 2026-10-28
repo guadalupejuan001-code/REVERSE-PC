@@ -3,6 +3,7 @@
 #include "rxe_app.hpp"
 #include "minimal_guest_demo.hpp"
 #include "minimal_guest_system_demo.hpp"
+#include "minimal_guest_fp_demo.hpp"
 #include <jni.h>
 #include <exception>
 #include <limits>
@@ -125,6 +126,7 @@ Java_com_reversepc_os_NativeRuntime_guestInitializeSystem(JNIEnv* e,jclass,jbyte
     if(kind==0){reverse_pc::guest::require(!image,"Built-in system check does not accept an image");guest.load_elf(reverse_pc::guest::system_demo_elf(),true);}
     else if(kind==1)guest.load_elf(bytes(e,image),true);
     else if(kind==2)guest.load_linux_image(bytes(e,image));
+    else if(kind==3){reverse_pc::guest::require(!image,"Built-in FP check does not accept an image");guest.load_elf(reverse_pc::guest::fp_demo_elf());}
     else throw std::invalid_argument("Unsupported system image kind");
     return output(e,guest_packet(guest));
   }catch(const std::exception& x){throw_java(e,x);return nullptr;}

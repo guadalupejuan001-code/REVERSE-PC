@@ -32,6 +32,10 @@ void arithmetic(){
   state.fpcr=1u<<25;state.fpsr=0;
   check(fp.binary(2,32,0x7fc12345,0)==0x7fc00000,"Default NaN mode");
   state.fpcr=0;state.fpsr=0;
+  check(fp.fma(32,0x7fc12345,0x40000000,0x7fc54321,false,false)==0x7fc54321,"FMA addend NaN priority");
+  check(fp.fma(32,0x7f812345,0x7f854321,0x7f811111,false,false)==0x7fc11111&&state.fpsr==1,"FMA signaling addend priority/flag");
+  state.fpsr=0;check(fp.fma(32,0x7f800000,0,0x7fc12345,false,false)==0x7fc00000&&state.fpsr==1,"FMA 0*infinity+quiet-NaN");
+  state.fpcr=1u<<25;check(fp.convert(32,16,0x7fc12345)==0x7e00,"Half conversion default NaN");state.fpcr=0;state.fpsr=0;
   check(fp.to_int(64,UINT64_C(0xc004000000000000),true,64,softfloat_round_minMag)==UINT64_MAX-1&&state.fpsr==16,"Signed conversion truncation and IXC");
   check(fp.to_int(32,0x7fc12345,true,32,softfloat_round_minMag)==0&&(state.fpsr&1),"NaN conversion saturation");
   auto worker=[](unsigned mode,std::uint64_t expected){FloatingState s;s.fpcr=mode<<22;ArmFloat f(s);for(unsigned n=0;n<20000;++n)if(f.binary(2,32,0x3f800000,0x33800000)!=expected)return false;return true;};

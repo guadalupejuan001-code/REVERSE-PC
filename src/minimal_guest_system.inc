@@ -57,41 +57,54 @@ inline bool MinimalGuest::device_address(std::uint64_t address) const {
          (address>=MachineState::gic_cpu&&address<MachineState::gic_cpu+4096);
 }
 inline void MinimalGuest::check_access(std::uint64_t address,unsigned size,bool writing,bool executing) const {
+  (void)resolve_access(address,size,writing,executing);
+}
+inline std::array<std::uint64_t,16> MinimalGuest::resolve_access(std::uint64_t address,unsigned size,bool writing,bool executing) const {
   require(size&&size<=16 && address<=UINT64_MAX-(size-1),"Invalid CPU access extent");
-  if(!machine_.enabled){range(address,size);return;}
+  std::array<std::uint64_t,16> resolved{};
+  if(!machine_.enabled){range(address,size);for(unsigned i=0;i<size;++i)resolved[i]=address+i;return resolved;}
   if((machine_.sctlr&2)&&(address&(size-1))){
     const auto ec=executing?(machine_.el?0x21:0x20):(machine_.el?0x25:0x24);
     throw MachineFault{(std::uint64_t(ec)<<26)|(1u<<25)|(writing?64u:0u)|0x21,address};
   }
   for(unsigned i=0;i<size;++i){
+    // A supported 4 KiB stage-1 mapping is linear within its smallest page.
+    // Reuse only during this one access, never across instructions or stores.
+#ifdef REVERSE_PC_BYTEWISE_ACCESS_REFERENCE
     const auto physical=translate(address+i,writing,executing);
+#else
+    const auto physical=i&&((address+i)&4095)?resolved[i-1]+1:translate(address+i,writing,executing);
+#endif
+    resolved[i]=physical;
     const bool ram=physical>=MachineState::ram_base&&physical-MachineState::ram_base<ram_;
     if(!ram && (!device_address(physical)||executing)){
       const auto ec=executing?(machine_.el?0x21:0x20):(machine_.el?0x25:0x24);
       throw MachineFault{(std::uint64_t(ec)<<26)|(1u<<25)|(writing&&!executing?64u:0u)|0x10,address+i};
     }
     if(!ram){
-      const auto first=translate(address,writing,executing);
+      const auto first=resolved[0];
       require(size<=4 && !(address&(size-1)) && physical==first+i,"Unsupported split or unaligned device access");
     }
   }
+  return resolved;
 }
 inline std::uint64_t MinimalGuest::cpu_read(std::uint64_t address,unsigned size,RunResult&,bool executing) {
-  check_access(address,size,false,executing);
+  const auto physical=resolve_access(address,size,false,executing);
   if(!machine_.enabled)return read(address,size);
-  const auto first=translate(address,false,executing);
+  const auto first=physical[0];
   if(device_address(first))return device_read(first,size)&low_mask(size*8);
-  std::uint64_t value=0;for(unsigned i=0;i<size;++i)value|=std::uint64_t(read8(translate(address+i,false,executing)))<<(8*i);return value;
+  std::uint64_t value=0;for(unsigned i=0;i<size;++i)value|=std::uint64_t(read8(physical[i]))<<(8*i);return value;
 }
 inline void MinimalGuest::cpu_write(std::uint64_t address,std::uint64_t value,unsigned size,RunResult& result) {
-  check_access(address,size,true);machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;
+  const auto physical=resolve_access(address,size,true);machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;
   if(!machine_.enabled){write(address,value,size);return;}
-  const auto first=translate(address,true);
+  const auto first=physical[0];
   if(device_address(first)){device_write(first,value&low_mask(size*8),size,result);return;}
-  std::string program;
-  for(unsigned i=0;i<size;++i){const auto physical=translate(address+i,true);const auto delta=std::uint8_t(value>>(8*i))^backing(physical);
-    program+="mem_store "+std::to_string(physical)+" "+std::to_string(delta)+"\n";}
-  runtime_.execute(program);
+  auto store=[&](mundo_x::QuantumRuntime::ByteAccess& bytes){
+    for(unsigned i=0;i<size;++i){const auto delta=std::uint8_t(value>>(8*i))^backing(physical[i]);
+      bytes.store(std::to_string(physical[i]),delta);}
+  };
+  if(byte_transaction_)store(*byte_transaction_);else runtime_.transact_bytes(store);
 }
 inline std::uint64_t MinimalGuest::device_read(std::uint64_t address,unsigned size) {
   auto& m=machine_;
@@ -179,8 +192,10 @@ inline std::uint64_t MinimalGuest::system_read(unsigned id) const {
      !(id==guest_sysreg(3,3,14,0,1)&&(m.cntkctl&1))&&!(id==guest_sysreg(3,3,14,0,2)&&(m.cntkctl&2)))throw MachineFault{1u<<25,0};
   if(id==guest_sysreg(3,0,0,0,0))return 0x410fd034; // MIDR, Cortex-A53 model, one core.
   if(id==guest_sysreg(3,0,0,0,5))return UINT64_C(1)<<31; // MPIDR
+  if(id==guest_sysreg(3,0,0,0,6))return 0; // REVIDR: this software model has no implementation revision.
   if(id==guest_sysreg(3,0,0,4,0))return 0x11; // A64 EL0/EL1 and baseline FP/SIMD; unsupported opcodes fail.
-  if(id==guest_sysreg(3,0,0,4,1)||id==guest_sysreg(3,0,0,5,0)||id==guest_sysreg(3,0,0,5,1)||
+  if(id==guest_sysreg(3,0,0,4,1)||id==guest_sysreg(3,0,0,4,4)||id==guest_sysreg(3,0,0,4,5)|| // PFR1/ZFR0/SMFR0: extensions absent.
+     id==guest_sysreg(3,0,0,5,0)||id==guest_sysreg(3,0,0,5,1)||
      id==guest_sysreg(3,0,0,6,0)||id==guest_sysreg(3,0,0,6,1)||id==guest_sysreg(3,0,0,6,2)||
      id==guest_sysreg(3,0,0,7,1)||id==guest_sysreg(3,0,0,7,2))return 0;
   if(id==guest_sysreg(3,0,0,7,0))return 0x0ff00005; // 48-bit PA, 4 KiB only.

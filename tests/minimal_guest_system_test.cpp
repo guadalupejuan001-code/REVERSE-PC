@@ -91,7 +91,38 @@ void image_boot_protocol(){
   machine.mdscr=0;auto legacy=machine.save();legacy[0]=1;legacy.erase(legacy.end()-16,legacy.end()-8);
   check(MachineState::restore(legacy).save()==machine.save(),"Previous RVG2 machine-state v1 no longer restores");
 }
+void cross_page_access(){
+  auto guest=initial();for(unsigned i=0;i<60&&!(guest.machine().sctlr&1);++i)guest.run(1);
+  guest.write(0x40010018,0x40011003,8);guest.write(0x40011000,0x40012003,8);
+  guest.write(0x40012000,0x40030703,8);guest.write(0x40012008,0x40050703,8);
+  guest.write(0x400a0000,0xf9000020,4);guest.write(0x400a0004,0xf9400022,4); // STR X0,[X1]; LDR X2,[X1]
+  auto enter=[](MinimalGuest& target,std::uint64_t address,std::uint64_t value){
+    auto state=target.snapshot();auto patch=[&](std::size_t at,std::uint64_t n){for(unsigned i=0;i<8;++i)state[at+i]=std::uint8_t(n>>(i*8));};
+    patch(24,0x400a0000);patch(72,value);patch(80,address);patch(state.size()-8,digest(state,state.size()-8));target=MinimalGuest::from_snapshot(state);
+  };
+  enter(guest,0xc0000ffc,UINT64_C(0x123456789abcdef0));guest.run(2);
+  check(guest.read(0x40030ffc,4)==0x9abcdef0&&guest.read(0x40050000,4)==0x12345678,"Cross-page store assumed physically adjacent pages");
+  check(guest.registers().x[2]==UINT64_C(0x123456789abcdef0),"Cross-page load joined the wrong physical pages");
+  guest.write(0x40012008,0x40050783,8);enter(guest,0xc0000ffc,UINT64_MAX);guest.run(1);
+  check(guest.machine().exceptions==1&&guest.machine().far==0xc0001000&&(guest.machine().esr&63)==15,"Cross-page permission fault has incorrect address/status");
+  check(guest.read(0x40030ffc,4)==0x9abcdef0&&guest.read(0x40050000,4)==0x12345678,"Faulting cross-page store changed an earlier byte");
+  // Changing the page table must affect the very next access: there is no
+  // retained translation cache that can hide a permission or alias change.
+  guest.write(0x40012008,0x40060703,8);enter(guest,0xc0000ffc,UINT64_C(0x0badcafe00000000));guest.run(2);
+  check(guest.read(0x40060000,4)==0x0badcafe&&guest.read(0x40050000,4)==0x12345678,"Access-local mapping reuse became a stale persistent TLB");
 }
-int main(){try{boot_and_restore();translation();shared_quantum_authority();exclusives();image_boot_protocol();
+void identification(){
+  auto image=system_demo_elf();image.resize(260);const std::uint32_t instruction=0xd53800c0; // MRS X0,REVIDR_EL1
+  for(unsigned i=0;i<4;++i)image[256+i]=std::uint8_t(instruction>>(8*i));
+  for(unsigned i=0;i<8;++i){image[96+i]=std::uint8_t(UINT64_C(4)>>(8*i));image[104+i]=image[96+i];}
+  MinimalGuest guest(128*1024*1024);guest.load_elf(image,true);guest.run(1);
+  check(guest.registers().x[0]==0&&guest.machine().exceptions==0,"Software implementation revision is not readable");
+  for(auto id:{0xc024u,0xc025u}){
+    const auto op=0xd5200000u|(id<<5);for(unsigned i=0;i<4;++i)image[256+i]=std::uint8_t(op>>(8*i));
+    guest.load_elf(image,true);guest.run(1);check(guest.registers().x[0]==0,"Absent SVE/SME feature incorrectly advertised");
+  }
+}
+}
+int main(){try{boot_and_restore();translation();shared_quantum_authority();exclusives();image_boot_protocol();cross_page_access();identification();
   std::cout<<"{\"checks\":"<<checks<<",\"system\":\"own-EL1-MMU-IRQ-EL0-SVC\",\"existing_quantum_qubits\":4096,\"android_boot\":\"not_implemented\"}\n";return 0;
 }catch(const std::exception& error){std::cerr<<error.what()<<'\n';return 1;}}

@@ -146,6 +146,31 @@ _start:
     b.ne .Lmode
     msr fpcr, xzr
     msr fpsr, xzr
+    // FMA NaN operand priority and invalid 0 * infinity + quiet/signaling NaN.
+    adr x22, .Lnantriples
+    mov x23, #6
+.Lnanloop:
+    ldr s0, [x22], #4
+    ldr s1, [x22], #4
+    ldr s3, [x22], #4
+    msr fpsr, xzr
+    fmadd s2, s0, s1, s3
+    save q2
+    fmsub s2, s0, s1, s3
+    save q2
+    fnmadd s2, s0, s1, s3
+    save q2
+    fnmsub s2, s0, s1, s3
+    save q2
+    subs x23, x23, #1
+    b.ne .Lnanloop
+    mov x10, #0x2000000
+    msr fpcr, x10
+    adr x22, .Lsingle
+    ldr s0, [x22, #56]
+    fcvt h2, s0
+    save q2
+    msr fpcr, xzr
     adr x22, .Lvectors
     ldp q0, q1, [x22]
 .macro vector instruction, suffix
@@ -287,3 +312,10 @@ _start:
     .quad 0x807f0f0403020100, 0x80123456fedcba98, 0xfffe000300100002, 0x0102030405060708
     .word 0x3f800000, 0xc0000000, 0x7fc12345, 0x00000001
     .word 0x3f000000, 0x40000000, 0x7f812345, 0x00800000
+.Lnantriples:
+    .word 0x7fc12345, 0x40000000, 0x7fc54321
+    .word 0x3f800000, 0x7fc12345, 0x7fc54321
+    .word 0x7f812345, 0x40000000, 0x7fc54321
+    .word 0x7f812345, 0x7f854321, 0x7f811111
+    .word 0x7f800000, 0, 0x7fc12345
+    .word 0, 0x7f800000, 0x7f812345
