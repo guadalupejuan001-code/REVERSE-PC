@@ -65,8 +65,10 @@ final class QdEngine {
             .put("language","XI/Ether").put("storage","BBY Q / RVPC2");
     }
     private static String checked(String source)throws Exception{
-        if(source==null||source.length()>192||!source.startsWith(HEADER)
-            ||source.indexOf('\r')>=0||!StandardCharsets.US_ASCII.newEncoder().canEncode(source))
+        if(source==null||!source.startsWith(HEADER)||source.indexOf('\r')>=0)
+            throw new IllegalArgumentException("Programa XI inválido.");
+        if(!source.endsWith("\n"))source+="\n";
+        if(source.length()>192||!StandardCharsets.US_ASCII.newEncoder().canEncode(source))
             throw new IllegalArgumentException("Usa un programa XI ASCII de hasta 192 bytes.");
         int instructions=0;boolean a=false,b=false,printed=false,ended=false;
         for(String raw:source.split("\n")){
@@ -81,7 +83,7 @@ final class QdEngine {
         }
         if(!a||!b||!printed||!ended||instructions>24)
             throw new IllegalArgumentException("Incluye {{a}}, {{b}}, print r0 y halt.");
-        return source.endsWith("\n")?source:source+"\n";
+        return source;
     }
     private static String materialize(String source,int a,int b){
         return source.replace("{{a}}",Integer.toString(a)).replace("{{b}}",Integer.toString(b));
@@ -115,11 +117,20 @@ final class QdEngine {
     }
     private JSONObject teach(int skill,String source)throws Exception{
         String template=checked(source);JSONObject result=grade(template,skill,true);
-        if(!result.getBoolean("all_passed"))return result.put("ok",true).put("learned",false);
+        // Independent host grading supplies evidence; XI decides acceptance.
+        String evidence="store8 "+M+" 81\nstore8 "+(M+1)+" 3\n"
+            +"store8 "+(M+4)+" "+result.getInt("passed")+"\n"
+            +"store8 "+(M+5)+" "+result.getInt("total")+"\n";
+        List<Integer> decision=numbers(shared(pre(evidence+xi("judge")),false).output);
+        if(decision.size()!=1)throw new IllegalStateException("Qd no emitió evaluación XI");
+        if(decision.get(0)==0)return result.put("ok",true).put("learned",false);
+        if(decision.get(0)!=1)throw new IllegalStateException("Decisión XI no válida");
         StringBuilder stage=new StringBuilder();
         stage.append("store8 ").append(M).append(" 81\n");
         stage.append("store8 ").append(M+1).append(" 1\n");
         stage.append("store8 ").append(M+2).append(' ').append(skill).append('\n');
+        stage.append("store8 ").append(M+4).append(" 8\n");
+        stage.append("store8 ").append(M+5).append(" 8\n");
         byte[] code=template.getBytes(StandardCharsets.US_ASCII);
         stage.append("store8 ").append(M+3).append(' ').append(code.length).append('\n');
         for(int i=0;i<code.length;i++)stage.append("store8 ").append(M+16+i).append(' ').append(code[i]&255).append('\n');

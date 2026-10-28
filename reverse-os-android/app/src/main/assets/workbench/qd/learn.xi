@@ -8,6 +8,12 @@ jne invalid
 load8 r0 8410000000000000001
 cmp r0 1
 jne invalid
+load8 r10 8410000000000000004
+cmp r10 8
+jne invalid
+load8 r10 8410000000000000005
+cmp r10 8
+jne invalid
 load8 r1 8410000000000000002
 cmp r1 1
 jlt invalid

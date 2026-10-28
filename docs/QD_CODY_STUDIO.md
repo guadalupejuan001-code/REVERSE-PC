@@ -9,7 +9,7 @@ REVERSE-PC Control/Workbench 2.5.1 already supplies XI Studio, RXE, WebView desk
 - Select one of four bounded arithmetic skills (addition, subtraction, multiplication, remainder).
 - Edit a small XI Machine v1 program with `{{a}}` and `{{b}}` placeholders. The editor offers starter code; a starter program is **not** already learned by the agent.
 - **Probar código** executes 4 practice pairs through real XI/Ether using a fresh initialized runtime for every pair. The desktop state and BBY Q private memory are not mutated.
-- **Enseñar a Qd** runs those cases plus four held-out pairs. Only on 8/8 correct outcomes does an XI program persist the reviewed source template in a reserved range of the **same BBY Q RVPC2 private memory**. This is tested symbolic pattern retention, not neural-weight training.
+- **Enseñar a Qd** runs those cases plus four held-out pairs. An independent host oracle supplies 8 outcomes to the XI assessor. XI only accepts an 8/8 verdict, after which another XI program persists the reviewed source template in a reserved range of the **same BBY Q RVPC2 private memory**. This is tested symbolic pattern retention, not neural-weight training.
 - **Qd resuelve** loads the stored template by running XI against a nonpersistent copy of BBY Q state; fills new `a,b` inputs and runs it with real XI/Ether in an isolated temporary state.
 - **Crear .RXE** compiles explicitly verified generated XI source using the current `compileApp` path, stores it in `Aplicaciones` and opens the resulting window. A repeated name is rejected by the normal file contract.
 

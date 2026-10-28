@@ -62,13 +62,13 @@ function qdStudioHTML(w){
   '<section class="qd-editor"><div class="qd-panel-heading"><div><span class="qd-section-caption">EDITOR XI</span><strong>'+esc(skill.name)+'.xi</strong></div><span class="qd-file-ext">.xi</span></div>'+
   '<div class="qd-task"><strong>Objetivo</strong><p>'+esc(skill.description)+'</p><small>Los símbolos {{a}} y {{b}} son valores de entrada que Qd debe generalizar.</small></div>'+
   '<label class="qd-editor-label" for="qd-src-'+esc(w.id)+'">Código fuente</label>'+
-  '<textarea class="qd-source" data-qd-source id="qd-src-'+esc(w.id)+'" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" aria-label="Código XI de Qd"'+disabled+'>'+esc(draft)+'</textarea>'+
+  '<textarea class="qd-source" maxlength="192" data-qd-source id="qd-src-'+esc(w.id)+'" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" aria-label="Código XI de Qd"'+disabled+'>'+esc(draft)+'</textarea>'+
   '<div class="qd-editor-foot"><span>XI Machine v1 · registros y aritmética · aislado</span><button class="secondary-button" data-qd-action="reset">Restablecer ejemplo</button></div>'+
   '<div class="qd-editor-actions"><button class="secondary-button" data-qd-action="evaluate"'+disableNative+'>Probar código</button><button class="primary-button" data-qd-action="teach"'+disableNative+'>Enseñar a Qd</button></div></section>'+
   '<aside class="qd-results"><div class="qd-panel-heading"><div><span class="qd-section-caption">EVIDENCIA</span><strong>Resultados reales</strong></div>'+(s.busy?qdBadge('EJECUTANDO','busy'):s.loading?qdBadge('LEYENDO','busy'):qdBadge('LOCAL','neutral'))+'</div>'+
   (s.error?'<div role="alert" class="qd-error">'+esc(s.error)+'</div>':'')+
   '<div class="qd-results-scroll">'+qdReport(s)+'</div>'+
-  '<section class="qd-run"><strong>Qd programa por sí mismo</strong><p>Introduce dos números nuevos. Qd recupera el patrón que aprendió y crea un programa XI ejecutable.</p><div class="qd-fields">'+
+  '<section class="qd-run"><strong>Qd aplica lo aprendido</strong><p>Introduce números distintos. Qd recupera su patrón aprendido y produce una variante ejecutable XI.</p><div class="qd-fields">'+
   '<label>Valor a<input data-qd-number="a" type="number" min="0" max="99" value="'+w.qdA+'"></label>'+
   '<label>Valor b<input data-qd-number="b" type="number" min="1" max="99" value="'+w.qdB+'"></label></div>'+
   '<div class="qd-run-actions"><button class="primary-button" data-qd-action="solve"'+disableNative+'>Qd resuelve</button><button class="secondary-button" data-qd-action="export"'+(s.generated&&!s.busy?'':' disabled')+'>Crear .RXE</button></div></section></aside></div>'+

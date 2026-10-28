@@ -43,8 +43,14 @@ for(const row of cases){
   'store8 '+(M+1n)+' 1',
   'store8 '+(M+2n)+' '+row.skill,
   'store8 '+(M+3n)+' '+bytes.length,
+  'store8 '+(M+4n)+' 8',
+  'store8 '+(M+5n)+' 8',
   ...Array.from(bytes,(value,i)=>'store8 '+(M+16n+BigInt(i))+' '+value)
  ].join('\n');
+ const decision=execute(HEADER+'store8 '+M+' 81\nstore8 '+(M+1n)+' 3\nstore8 '+(M+4n)+' 8\nstore8 '+(M+5n)+' 8\n'+code('judge').slice(HEADER.length),false);
+ assert.deepEqual(decision,[1]);checks++;
+ const denied=execute(HEADER+'store8 '+M+' 81\nstore8 '+(M+1n)+' 3\nstore8 '+(M+4n)+' 7\nstore8 '+(M+5n)+' 8\n'+code('judge').slice(HEADER.length),false);
+ assert.deepEqual(denied,[0]);checks++;
  const result=execute(HEADER+stage+'\n'+code('learn').slice(HEADER.length));
  assert.deepEqual(result,[row.skill,bytes.length]);checks++;
  const statusNow=status();
