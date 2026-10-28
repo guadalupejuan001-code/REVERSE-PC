@@ -1,0 +1,83 @@
+name: REVERSE Linux checkpoint PC symbol diagnostic
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/linux-pc-symbols.yml'
+  workflow_dispatch:
+permissions:
+  actions: read
+  contents: read
+jobs:
+  map-kernel-program-counters:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/checkout@v4
+        with:
+          repository: torvalds/linux
+          ref: 830b3c68c1fb1e9176028d02ef86f3cf76aa2476
+          path: deps/linux
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: own-arm64-linux-development-probe
+          run-id: 40767291737
+          github-token: ${{ github.token }}
+          path: old-linux
+      - uses: actions/download-artifact@v4
+        with:
+          name: xi-linux-boot-continuation
+          run-id: 40769156660
+          github-token: ${{ github.token }}
+          path: steps
+      - name: Reproduce original Linux config and compile vmlinux symbols
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y clang lld llvm make flex bison bc libelf-dev
+          mkdir -p evidence
+          cp old-linux/linux.config deps/linux/.config
+          make -C deps/linux ARCH=arm64 LLVM=1 olddefconfig > evidence/config.log 2>&1
+          cmp old-linux/linux.config deps/linux/.config
+          export KBUILD_BUILD_USER=runner
+          export KBUILD_BUILD_HOST=runnervm48cm3
+          export KBUILD_BUILD_VERSION=1
+          export KBUILD_BUILD_TIMESTAMP='Wed Oct 28 20:56:52 UTC 2026'
+          make -C deps/linux ARCH=arm64 LLVM=1 -j2 Image > evidence/build.log 2>&1 || { tail -60 evidence/build.log; exit 1; }
+          sha256sum deps/linux/arch/arm64/boot/Image > evidence/rebuild-image.sha256
+          sha256sum old-linux/Image > evidence/reference-image.sha256
+          cmp old-linux/Image deps/linux/arch/arm64/boot/Image || { echo 'Rebuilt kernel is not byte-identical: symbol correlation is unsafe'; exit 1; }
+          llvm-nm -n --defined-only deps/linux/vmlinux > evidence/vmlinux-nm.txt
+      - name: Resolve real XI/Ether checkpoint PCs to exact kernel symbols
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import bisect, json
+          from pathlib import Path
+          symbols=[]
+          for line in Path('evidence/vmlinux-nm.txt').read_text().splitlines():
+              words=line.split()
+              if len(words)!=3 or words[1].upper() not in ('T','W','D','B','R','A'): continue
+              try: address=int(words[0],16)
+              except ValueError: continue
+              symbols.append((address,words[2]))
+          symbols.sort()
+          addresses=[x[0] for x in symbols]
+          report=[]
+          for path in sorted(Path('steps').glob('step-*.json'),key=lambda p:int(p.stem.split('-')[1])):
+              j=json.loads(path.read_text())
+              pc=int(j['guest']['pc'],16)
+              idx=bisect.bisect_right(addresses,pc)-1
+              candidate=symbols[idx] if idx>=0 else None
+              report.append({'instructions':j['guest']['instructions'],'pc':j['guest']['pc'],'nearest_symbol':candidate[1] if candidate else None,'offset_bytes':pc-candidate[0] if candidate else None,'exceptions':j['guest']['exceptions'],'overrides':j['guest']['delta_overrides'],'stop_reason':j['stop_reason']})
+          Path('evidence/pc-analysis.json').write_text(json.dumps(report,indent=2)+'\n')
+          print(json.dumps(report,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xi-linux-symbol-map-diagnostic
+          path: evidence/
+          retention-days: 14
