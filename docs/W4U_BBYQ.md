@@ -81,8 +81,8 @@ desde la APK anterior del propio proyecto, cuya firma se comprueba.
 - Escritorio: **83 comprobaciones**, **19 acciones con XI real** y un RXE de
   prueba que incrementa un byte del estado nativo del escritorio. Se confirma
   que su ventana existe y que el contador realmente cambió.
-- La regresión de gramática/conversación/migración se registra en
-  `docs/evidence/w4u-control-native.json` al terminar la campaña.
+- Regresión de gramática/conversación/migración: **1.127 comprobaciones**;
+  evidencia en `docs/evidence/w4u-control-native.json`.
 - Clases Java compiladas contra Android 35; APK firmada, DEX, ambas ABI y
   alineación verificadas durante el empaquetado.
 
