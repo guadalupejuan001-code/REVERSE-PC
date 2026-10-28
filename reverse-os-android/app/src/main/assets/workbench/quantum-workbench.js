@@ -30,8 +30,9 @@ function quantumResultHTML(w){
 const xiEditorHTML=xiHTML;
 xiHTML=function(w){
   const tab=w.xiTab||'editor';
-  const tabs='<nav class="xi-tabs" aria-label="Secciones de XI">'+[['editor','Editor'],['quantum','Operadores'],['hamiltonian','Hamiltonianos']].map(([key,label])=>'<button data-quantum-tab="'+key+'" class="'+(tab===key?'selected':'')+'"'+(tab===key?' aria-current="page"':'')+'>'+label+'</button>').join('')+'</nav>';
+  const tabs='<nav class="xi-tabs" aria-label="Secciones de XI">'+[['editor','Editor'],['quantum','Operadores'],['hamiltonian','Hamiltonianos'],['arm64','ARM64']].map(([key,label])=>'<button data-quantum-tab="'+key+'" class="'+(tab===key?'selected':'')+'"'+(tab===key?' aria-current="page"':'')+'>'+label+'</button>').join('')+'</nav>';
   if(tab==='editor')return '<div class="xi-workbench">'+tabs+xiEditorHTML(w)+'</div>';
+  if(tab==='arm64')return '<div class="xi-workbench">'+tabs+guestHTML()+'</div>';
   const p=w.hamiltonian||{coupling:1,field:1,steps:1};
   let content;
   if(tab==='quantum')content='<div class="quantum-heading"><span class="home-date">OPERADORES XI / ETHER</span><h2>Control del registro</h2><p>H, CX, T y T† ejecutados por el motor local.</p></div><section class="quantum-operation"><div><h3>Fase T</h3><p>Un qubit · H → T · observables X, Y, Z.</p></div><button class="primary-button" data-quantum-run="phase"'+(w.xiBusy?' disabled':'')+'>Ejecutar</button></section><section class="quantum-operation register-operation"><div><h3>Registro independiente</h3><p>Una puerta H y una T en cada qubit.</p></div><label class="quantum-field"><span>Qubits</span><input type="number" inputmode="numeric" min="1" max="4096" value="4096" data-qubit-count aria-label="Qubits del experimento"></label><button class="primary-button" data-quantum-run="register"'+(w.xiBusy?' disabled':'')+'>Ejecutar</button></section><p class="quantum-scope">Hasta 4.096 qubits independientes en el perfil actual. Un circuito entrelazado tiene otros límites de memoria y componentes.</p>';

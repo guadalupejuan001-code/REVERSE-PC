@@ -7,4 +7,7 @@
 /resultados/
 /reverse-pc-results/
 *.pending
+*.rvg
+/guest-dist/
+/guest-evidence/
 __pycache__/

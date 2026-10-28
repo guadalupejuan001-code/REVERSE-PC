@@ -1,6 +1,9 @@
 #include "session.hpp"
 #include "rxe.hpp"
 #include "rxe_app.hpp"
+#include "minimal_guest_demo.hpp"
+#include "minimal_guest_system_demo.hpp"
+#include "minimal_guest_fp_demo.hpp"
 #include <jni.h>
 #include <exception>
 #include <limits>
@@ -37,6 +40,17 @@ void throw_java(JNIEnv* e,const std::exception& err){
   if(e->ExceptionCheck())return;
   auto cls=e->FindClass("java/lang/IllegalStateException");
   if(cls)e->ThrowNew(cls,err.what());
+}
+std::vector<std::uint8_t> guest_packet(const reverse_pc::guest::MinimalGuest& guest,
+                                     const reverse_pc::guest::RunResult* run=nullptr,const std::string& xi_output={}){
+  const auto state=guest.snapshot();
+  if(state.size()>reverse_os::max_state)throw std::length_error("Guest exceeds Android checkpoint transport budget");
+  std::ostringstream text;text<<"{\"guest\":"<<guest.statistics();
+  if(run)text<<",\"executed_this_run\":"<<run->executed<<",\"stdout\":"<<reverse_pc::guest::quote(run->output)
+    <<",\"stderr\":"<<reverse_pc::guest::quote(run->error_output);
+  if(!xi_output.empty())text<<",\"xi_output\":"<<reverse_pc::guest::quote(xi_output);
+  text<<",\"snapshot_bytes\":"<<state.size()<<"}";
+  return reverse_os::packet(text.str(),state);
 }
 }
 extern "C" JNIEXPORT jbyteArray JNICALL
@@ -95,5 +109,48 @@ Java_com_reversepc_os_NativeRuntime_appSeed(JNIEnv* e,jclass,jbyteArray program)
 extern "C" JNIEXPORT jbyteArray JNICALL
 Java_com_reversepc_os_NativeRuntime_appTurn(JNIEnv* e,jclass,jbyteArray state,jbyteArray program,jbyteArray message,jint language){
   try{const auto text=bytes(e,message);const auto result=reverse_pc::rxe_app::turn(bytes(e,program),bytes(e,state),std::string(text.begin(),text.end()),unsigned(language));return output(e,reverse_os::packet(result.text,result.state));}
+  catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_guestInitialize(JNIEnv* e,jclass,jbyteArray elf,jlong ram,jint overrides){
+  try{
+    reverse_pc::guest::MinimalGuest guest{std::uint64_t(ram),std::size_t(overrides)};auto image=bytes(e,elf);
+    if(!elf)image=reverse_pc::guest::demo_elf(std::uint64_t(ram));
+    guest.load_elf(std::move(image));return output(e,guest_packet(guest));
+  }catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_guestInitializeSystem(JNIEnv* e,jclass,jbyteArray image,jint kind){
+  try{
+    reverse_pc::guest::MinimalGuest guest(128*1024*1024,65536);
+    if(kind==0){reverse_pc::guest::require(!image,"Built-in system check does not accept an image");guest.load_elf(reverse_pc::guest::system_demo_elf(),true);}
+    else if(kind==1)guest.load_elf(bytes(e,image),true);
+    else if(kind==2)guest.load_linux_image(bytes(e,image));
+    else if(kind==3){reverse_pc::guest::require(!image,"Built-in FP check does not accept an image");guest.load_elf(reverse_pc::guest::fp_demo_elf());}
+    else throw std::invalid_argument("Unsupported system image kind");
+    return output(e,guest_packet(guest));
+  }catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_reversepc_os_NativeRuntime_guestInspect(JNIEnv* e,jclass,jbyteArray state){
+  try{const auto guest=reverse_pc::guest::MinimalGuest::from_snapshot(bytes(e,state));return e->NewStringUTF(guest.statistics().c_str());}
+  catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_guestRun(JNIEnv* e,jclass,jbyteArray state,jint steps){
+  try{
+    reverse_pc::guest::require(steps>0&&steps<=10000,"Android guest step budget must be 1..10000");
+    auto guest=reverse_pc::guest::MinimalGuest::from_snapshot(bytes(e,state));const auto run=guest.run(unsigned(steps));
+    return output(e,guest_packet(guest,&run));
+  }catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_guestXi(JNIEnv* e,jclass,jbyteArray state,jstring program){
+  try{auto guest=reverse_pc::guest::MinimalGuest::from_snapshot(bytes(e,state));const auto lines=guest.apply_xi_delta(source(e,program));return output(e,guest_packet(guest,nullptr,lines));}
+  catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_guestInput(JNIEnv* e,jclass,jbyteArray state,jstring text){
+  try{auto guest=reverse_pc::guest::MinimalGuest::from_snapshot(bytes(e,state));guest.console_input(source(e,text));return output(e,guest_packet(guest));}
   catch(const std::exception& x){throw_java(e,x);return nullptr;}
 }

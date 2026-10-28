@@ -37,6 +37,38 @@ replacements['quantum_runtime.hpp']=[(
     '        candidate_core, &candidate_memory, program, require_matching_background);',
     '        candidate_core, &candidate_memory, program, require_matching_background);\n'
     '    candidate_core.program_candidate_ = false;')]
+replacements['quantum_runtime.hpp'].append((
+    '  // Restore both authorities transactionally. A bad core or memory snapshot',
+    '''  // Typed byte access to the same authorities, scoped to one unpublished
+  // transaction. No XI text parsing and no per-word candidate map copy.
+  class ByteAccess {
+   public:
+    ByteAccess(const ByteAccess&) = delete;
+    ByteAccess& operator=(const ByteAccess&) = delete;
+    InverseMemory::ReadResult read(const std::string& address) const {
+      return memory_.read(address, core_);
+    }
+    void store(const std::string& address, std::uint8_t value) {
+      memory_.store(address, value, core_);
+    }
+   private:
+    friend class QuantumRuntime;
+    ByteAccess(InfiniteCore& core, InverseMemory& memory):core_(core),memory_(memory) {}
+    InfiniteCore& core_;
+    InverseMemory& memory_;
+  };
+  template<class Action> void transact_bytes(Action action) {
+    auto candidate_core = core_;
+    candidate_core.program_candidate_ = true;
+    auto candidate_memory = memory_;
+    ByteAccess bytes(candidate_core, candidate_memory);
+    action(bytes); // A failure discards both candidates, including quantum flips.
+    candidate_core.program_candidate_ = false;
+    core_ = std::move(candidate_core);
+    memory_ = std::move(candidate_memory);
+  }
+
+  // Restore both authorities transactionally. A bad core or memory snapshot'''))
 replacements['exact_t_experiment.hpp'] += [
     ('#include <array>', '#include <array>\n#include <memory>\n#include <mutex>\n#include "integration/state_io.hpp"'),
     ('  std::size_t n_;\n  std::size_t max_components_;', '#include "integration/reduced_state_extensions.inc"\n  std::size_t n_;\n  std::size_t max_components_;'),
@@ -70,6 +102,27 @@ replacements['infinite_program.hpp'] += [
     throw std::length_error("program exceeds 16 MiB transport budget");
   ProgramResult result;""")
 ]
+# Reviewed local implementation: the original pinned InverseMemory remains the
+# only memory owner. 0 is an explicit opt-in "no override-count quota" value.
+# Sparse/dense COW pages replace its private classical index, while old MXIM1
+# snapshots remain byte-identical for every bounded legacy profile.
+replacements['inverse_memory.hpp'] += [
+    ('#include "mundo_x/cow_sharded_map.hpp"',
+     '#include "mundo_x/cow_sharded_map.hpp"\n#include "integration/adaptive_override_map.hpp"'),
+    ('    if (overrides_->size() == limits_.max_overrides)',
+     '    if (limits_.max_overrides && overrides_->size() == limits_.max_overrides)'),
+    ('        if (result.overrides_->size() == limits.max_overrides)',
+     '        if (limits.max_overrides && result.overrides_->size() == limits.max_overrides)'),
+    ('  std::string snapshot() const {',
+     '  std::string snapshot() const {\n    if (!limits_.max_overrides) return adaptive_snapshot();'),
+    ('    std::istringstream input(saved);',
+     '    if (saved.compare(0,6,"MXIM3 ")==0) return from_adaptive_snapshot(saved,limits);\n'
+     '    std::istringstream input(saved);'),
+    (' private:\n  using AddressMap = memory_detail::CowShardedMap<std::uint8_t>;',
+     ' #include "integration/inverse_memory_adaptive.inc"\n'
+     ' private:\n  using AddressMap = memory_detail::AdaptiveOverrideMap;'),
+]
+
 diffs=[]
 for name,digest in expected.items():
     raw=(source/name).read_bytes()

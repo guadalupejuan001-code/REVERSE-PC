@@ -1,5 +1,11 @@
 # REVERSE-PC
 
+**Compatibilidad ARM64 en XI:** módulo del ejecutor de REVERSE con memoria por
+imagen/reglas y deltas XI/RXE, modo de sistema EL1/EL0, MMU, excepciones,
+temporizadores y consola. Conserva el motor cuántico original y se abre en
+**XI → ARM64**. Android y Wild Rift aún no arrancan.
+[Capacidades, pruebas y límites](docs/MINIMAL_STATE_GUEST.md).
+
 **REVERSE 2.5.1:** BBY Q E025 y W4u 0.1 integrados, memoria nativa ampliada y correcciones de teclado conservadas. [Fuentes, compilación y procedencia](docs/RELEASE_2_5_1.md).
 
 **REVERSE 2.4.2:** escritorio PC horizontal con teclado integrado, borrador
