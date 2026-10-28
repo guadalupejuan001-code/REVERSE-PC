@@ -20,7 +20,7 @@ jobs:
       - name: Archive exact UX source for repeatable local review
         run: |
           set -euo pipefail
-          tar -czf reverse-ux-source.tar.gz             reverse-os-android/app/src/main/assets/workbench             reverse-os-android/app/src/main/java/com/reversepc/os             reverse-os-android/app/src/main/AndroidManifest.xml             reverse-os-android/app/src/main/assets/native-apps             reverse-os-android/tests             reverse-os-android/app/src/androidTest             reverse-os-android/app/build.gradle             apps/prisma/web             .github/workflows/workbench-android.yml
+          tar -czf reverse-ux-source.tar.gz             reverse-os-android/app/src/main/assets/workbench             reverse-os-android/app/src/main/java/com/reversepc/os             reverse-os-android/app/src/main/AndroidManifest.xml                         reverse-os-android/tests             reverse-os-android/app/src/androidTest             reverse-os-android/app/build.gradle             apps/prisma/web             .github/workflows/workbench-android.yml
           sha256sum reverse-ux-source.tar.gz > reverse-ux-source.sha256
       - uses: actions/upload-artifact@v4
         with:
