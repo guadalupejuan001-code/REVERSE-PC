@@ -8,6 +8,9 @@
 #include <sstream>
 #include <stdexcept>
 using Runtime=mundo_x::QuantumRuntime;
+// Compare both implementations under the same historical memory budget.
+// E025's intentional 524288 default is tested separately by its release suite.
+Runtime::MemoryLimits historical_memory(){Runtime::MemoryLimits limits;limits.max_overrides=65536;return limits;}
 void need(bool yes,const char* why){if(!yes)throw std::runtime_error(why);}
 std::string init(unsigned n){std::ostringstream p;p<<"begin\n";for(unsigned i=0;i<n;++i)p<<"x "<<i<<'\n';return p.str()+"end\n";}
 void emit(unsigned id,const Runtime& r,const std::string& result){
@@ -20,7 +23,7 @@ void failure(Runtime& r,const std::string& program,unsigned id){
   emit(id,r,error);
 }
 void contracts(){
-  Runtime baseline;baseline.execute(init(256));baseline.execute("mem_store 7 5\nmem_bind 9 100\nseed 42\n");
+  Runtime baseline(Runtime::Background::Zero,{},historical_memory());baseline.execute(init(256));baseline.execute("mem_store 7 5\nmem_bind 9 100\nseed 42\n");
   const auto original=baseline.core_snapshot();unsigned id=0;
   Runtime serial=baseline;std::string xs;for(unsigned i=0;i<128;++i)xs+="x 0\n";
   auto result=serial.execute(xs+"stats\nmem_stats\n");
@@ -30,7 +33,7 @@ void contracts(){
   need(batch.core().stats().revision==2,"explicit batch revisions changed");
   failure(serial,"mem_store 7 77\nx 0\nh 1\nmeasure 1\nmissing_instruction\n",id++);
   emit(id++,serial,serial.execute("h 1\nmeasure 1\nmeasure 1\nstats\n"));
-  Runtime restored;restored.restore(serial.core_snapshot(),serial.memory_snapshot());
+  Runtime restored(Runtime::Background::Zero,{},historical_memory());restored.restore(serial.core_snapshot(),serial.memory_snapshot());
   need(restored.core_snapshot()==serial.core_snapshot() && restored.memory_snapshot()==serial.memory_snapshot(),"restore changed snapshot");
   emit(id++,restored,restored.execute("h 2\nmeasure 2\nstats\n"));
   std::mt19937 rng(20261025);
@@ -46,11 +49,11 @@ void contracts(){
     emit(id++,r,r.execute(p.str()));
     need(baseline.core_snapshot()==original,"random branch isolation");
   }
-  Runtime globals;emit(id++,globals,globals.execute("x 10\nh 11\nh_all\nx 0\ncz_neighbors\nh 2\nx 1\nprobz 12\nstats\n"));
-  Runtime bell(Runtime::Background::BellPairs,{},{});
+  Runtime globals(Runtime::Background::Zero,{},historical_memory());emit(id++,globals,globals.execute("x 10\nh 11\nh_all\nx 0\ncz_neighbors\nh 2\nx 1\nprobz 12\nstats\n"));
+  Runtime bell(Runtime::Background::BellPairs,{},historical_memory());
   emit(id++,bell,bell.execute("seed 2026\nx 0\nh 2\ncx 1 3\nmeasure 0\nstats\n"));
   Runtime::CoreLimits cap;cap.max_active_qubits=1;
-  Runtime limited(Runtime::Background::Zero,cap,{});limited.execute("x 0\nseed 19\n");
+  Runtime limited(Runtime::Background::Zero,cap,historical_memory());limited.execute("x 0\nseed 19\n");
   failure(limited,"x 0\nh 0\nx 1\n",id++);
   failure(limited,"h 0\nmeasure 0\nx 1\n",id++);
   failure(limited,"x 0\nbegin\nh 0\ncx 0 1\nend\n",id++);
@@ -59,10 +62,10 @@ void contracts(){
   Runtime::MemoryLimits ml;ml.max_overrides=1;
   Runtime memory_cap(Runtime::Background::Zero,{},ml);
   failure(memory_cap,"mem_store 1 44\nx 0\nmem_store 2 99\n",id++);
-  Runtime full;
+  Runtime full(Runtime::Background::Zero,{},historical_memory());
   full.execute(init(4096));
   failure(full,"x 0\nx 4096\n",id++);
-  Runtime revision_cap;
+  Runtime revision_cap(Runtime::Background::Zero,{},historical_memory());
   auto maximal=revision_cap.core_snapshot();
   need(maximal.substr(0,5)=="MXI1:","revision fixture envelope");
   maximal.replace(7,16,"feffffffffffffff"); // UINT64_MAX-1, little endian
@@ -76,7 +79,7 @@ void contracts(){
   std::cout<<"CONTRACT_CASES "<<id<<'\n';
 }
 void bench(unsigned active){
-  Runtime r;r.execute(init(active));std::string program;for(unsigned i=0;i<128;++i)program+="x 0\n";
+  Runtime r(Runtime::Background::Zero,{},historical_memory());r.execute(init(active));std::string program;for(unsigned i=0;i<128;++i)program+="x 0\n";
   auto t=std::chrono::steady_clock::now();r.execute(program);
   auto ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-t).count();
   need(r.core().stats().revision==129 && r.core().probability_one("0")==1.,"bench state/revision");

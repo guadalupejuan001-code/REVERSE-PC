@@ -83,7 +83,9 @@ final class BbyqInterface {
                 for(int j=0;j<fields.length();j++){
                     JSONArray field=fields.getJSONArray(j);int value=field.getInt(1);
                     if(value<0||value>255)throw new IOException("Campo de enseñanza fuera de rango");
-                    program.append(put(field.getLong(0),value));
+                    // Android JSON.getLong(String) converts through double and
+                    // rounds these 64-bit XI addresses. Parse the decimal text.
+                    program.append(put(Long.parseLong(field.getString(0)),value));
                 }
                 source=program.append(body).toString();
             }
