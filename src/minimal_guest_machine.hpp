@@ -29,7 +29,7 @@ struct MachineState {
   std::array<std::uint32_t,2> enabled_irqs{},pending_irqs{},active_irqs{};
   std::array<std::uint8_t,64> priority{},targets{};
   std::array<std::uint32_t,4> irq_config{};
-  unsigned uart_cr=0x301,uart_ibrd=0,uart_fbrd=0,uart_lcr=0,uart_imsc=0;
+  unsigned uart_cr=0x301,uart_ibrd=0,uart_fbrd=0,uart_lcr=0,uart_imsc=0,uart_ifls=0;
   std::uint64_t mdscr=0;
   std::string receive;
 
@@ -63,7 +63,8 @@ struct MachineState {
   std::vector<std::uint8_t> save() const {
     std::vector<std::uint8_t> bytes;
     auto put=[&](std::uint64_t value){for(unsigned i=0;i<8;++i)bytes.push_back(std::uint8_t(value>>(8*i)));};
-    put(2);put(enabled);put(waiting);put(event);put(el);put(sp_select);put(daif);put(image_kind);
+    // Preserve byte-for-byte legacy v2 snapshots unless IFLS has a new value.
+    put(uart_ifls?3:2);put(enabled);put(waiting);put(event);put(el);put(sp_select);put(daif);put(image_kind);
     for(auto value:{sp0,sp1,sctlr,tcr,ttbr0,ttbr1,mair,vbar,elr,spsr,esr,far,par,cpacr,contextidr,
                    tpidr0,tpidrro,tpidr1,cntkctl,ticks,exceptions,cntp_cval,cntv_cval,exclusive_address})put(value);
     put(exclusive_size);
@@ -73,7 +74,8 @@ struct MachineState {
     for(auto value:active_irqs)put(value);
     for(auto value:irq_config)put(value);
     bytes.insert(bytes.end(),priority.begin(),priority.end());bytes.insert(bytes.end(),targets.begin(),targets.end());
-    put(mdscr);put(receive.size());bytes.insert(bytes.end(),receive.begin(),receive.end());return bytes;
+    put(mdscr);if(uart_ifls)put(uart_ifls);
+    put(receive.size());bytes.insert(bytes.end(),receive.begin(),receive.end());return bytes;
   }
   static MachineState restore(const std::vector<std::uint8_t>& bytes) {
     std::size_t at=0;
@@ -82,7 +84,7 @@ struct MachineState {
       std::uint64_t value=0;for(unsigned i=0;i<8;++i)value|=std::uint64_t(bytes[at++])<<(8*i);return value;
     };
     auto small=[&](std::uint64_t maximum){auto value=take();if(value>maximum)throw std::runtime_error("Invalid machine state field");return unsigned(value);};
-    const auto version=take();if(version!=1&&version!=2)throw std::runtime_error("Unsupported machine state version");
+    const auto version=take();if(version!=1&&version!=2&&version!=3)throw std::runtime_error("Unsupported machine state version");
     MachineState m;m.enabled=small(1);m.waiting=small(1);m.event=small(1);m.el=small(1);m.sp_select=small(1);
     m.daif=small(0x3c0);m.image_kind=small(2);
     if(!m.enabled||(m.daif&~0x3c0u)||(!m.el&&m.sp_select)||!m.image_kind)throw std::runtime_error("Invalid machine execution state");
@@ -98,7 +100,9 @@ struct MachineState {
     for(auto& value:m.irq_config)value=std::uint32_t(small(UINT32_MAX));
     if(at>bytes.size()||bytes.size()-at<128)throw std::runtime_error("Truncated interrupt state");
     for(auto& value:m.priority)value=bytes[at++];for(auto& value:m.targets)value=bytes[at++];
-    if(version==2){m.mdscr=take();if(m.mdscr&~UINT64_C(0x1000))throw std::runtime_error("Unsupported debug control state");}
+    if(version>=2){m.mdscr=take();if(m.mdscr&~UINT64_C(0x1000))throw std::runtime_error("Unsupported debug control state");}
+    if(version>=3){m.uart_ifls=small(63);
+      if((m.uart_ifls&7)>4||((m.uart_ifls>>3)&7)>4)throw std::runtime_error("Invalid PL011 FIFO threshold state");}
     const auto count=take();
     if(count>4096||count!=bytes.size()-at)throw std::runtime_error("Invalid serial input state");
     m.receive.assign(bytes.begin()+at,bytes.end());

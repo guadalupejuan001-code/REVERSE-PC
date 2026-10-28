@@ -118,7 +118,8 @@ inline std::uint64_t MinimalGuest::device_read(std::uint64_t address,unsigned si
     if(offset==0x40)return m.receive.empty()?0:m.uart_imsc&16;
     const std::array<unsigned,8> id{0x11,0x10,0x14,0,0x0d,0xf0,0x05,0xb1};
     if(offset>=0xfe0 && !(offset&3))return id[(offset-0xfe0)/4];
-    if(offset==4||offset==0x34||offset==0x48)return 0;
+    if(offset==0x34)return m.uart_ifls;
+    if(offset==4||offset==0x48)return 0;
     throw std::runtime_error("Unsupported PL011 register read "+hex(offset));
   }
   if(address>=MachineState::gic_cpu&&address<MachineState::gic_cpu+4096){
@@ -156,7 +157,14 @@ inline void MinimalGuest::device_write(std::uint64_t address,std::uint64_t value
     if(offset==0x2c){m.uart_lcr=unsigned(value)&255;return;}if(offset==0x30){m.uart_cr=unsigned(value)&65535;return;}
     if(offset==0x38){m.uart_imsc=unsigned(value)&0x7ff;return;}
     if(offset==4||offset==0x44)return;
-    if(offset==0x34){require((value&63)==0,"Non-default PL011 FIFO thresholds are not implemented");return;}
+    if(offset==0x34){
+      // IFLS selects the legal PL011 TX/RX FIFO trigger fractions (0..4).
+      // Persist and report configuration; the bounded serial transport still
+      // drains TX synchronously and does not model per-byte physical latency.
+      require(size==4 && !(value&~UINT64_C(63)) && (value&7)<=4 && ((value>>3)&7)<=4,
+              "Invalid PL011 FIFO interrupt thresholds");
+      m.uart_ifls=unsigned(value);return;
+    }
     throw std::runtime_error("Unsupported PL011 register write "+hex(offset));
   }
   if(address>=MachineState::gic_cpu&&address<MachineState::gic_cpu+4096){

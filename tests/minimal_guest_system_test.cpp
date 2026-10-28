@@ -125,6 +125,32 @@ void identification(){
     guest.load_elf(image,true);guest.run(1);check(guest.registers().x[0]==0,"Absent SVE/SME feature incorrectly advertised");
   }
 }
+void uart_fifo_configuration(){
+  // Independently assembled AArch64 instruction words:
+  // MOV X1,#0x09000000; MOV W0,#0x12; STR W0,[X1,#0x34];
+  // LDR W2,[X1,#0x34]; MOV X0,#8; MOVK X0,#0x8400,LSL#16; HVC #0.
+  const std::uint32_t code[]{0xd2a12001,0x52800240,0xb9003420,0xb9403422,0xd2800100,0xf2b08000,0xd4000002};
+  auto image=system_demo_elf();image.resize(256);
+  for(auto instruction:code)put(image,instruction,4);
+  for(unsigned i=0;i<8;++i){image[96+i]=std::uint8_t(std::uint64_t(sizeof(code))>>(8*i));image[104+i]=image[96+i];}
+  MinimalGuest guest(128*1024*1024);guest.load_elf(image,true);
+  const auto baseline=guest.snapshot();
+  check(guest.machine().uart_ifls==0,"Legacy machine default IFLS changed");
+  guest.run(4);
+  check(guest.machine().uart_ifls==0x12&&guest.registers().x[2]==0x12,"PL011 IFLS write/readback failed");
+  check(guest.machine().save()[0]==3,"Configured PL011 did not version its machine checkpoint");
+  auto resumed=MinimalGuest::from_snapshot(guest.snapshot());
+  check(resumed.machine().uart_ifls==0x12&&resumed.snapshot()==guest.snapshot(),"IFLS checkpoint is not exact");
+  check(resumed.run(3).halted,"Configured PL011 test program failed to shut down");
+  MinimalGuest legacy(128*1024*1024);legacy.load_elf(system_demo_elf(),true);
+  check(legacy.machine().save()[0]==2&&legacy.snapshot()!=baseline,"Unexpected fixture equivalence");
+  check(MinimalGuest::from_snapshot(legacy.snapshot()).snapshot()==legacy.snapshot(),"Legacy PL011 checkpoint changed");
+  auto bad=image;constexpr std::uint32_t reserved=0x528000e0; // MOV W0,#7, reserved TX IFLS encoding.
+  for(unsigned i=0;i<4;++i)bad[260+i]=std::uint8_t(reserved>>(8*i));
+  MinimalGuest reject(128*1024*1024);reject.load_elf(bad,true);reject.run(2);
+  const auto before=reject.snapshot();fails([&]{reject.run(1);},"Reserved PL011 trigger accepted");
+  check(reject.snapshot()==before,"Rejected PL011 configuration changed machine state");
+}
 void interrupt_priority_initialization(){
   auto image=system_demo_elf();image.resize(256);const std::uint32_t code[]{0xd2801a01,0xf2a10021,0xb900003f,0xb9400020,0xd2800020,0xb9000020};
   for(auto instruction:code)put(image,instruction,4);
@@ -135,6 +161,6 @@ void interrupt_priority_initialization(){
   check(guest.snapshot()==before,"Rejected APR write changed CPU/device state");
 }
 }
-int main(){try{boot_and_restore();translation();shared_quantum_authority();exclusives();image_boot_protocol();cross_page_access();identification();interrupt_priority_initialization();
+int main(){try{boot_and_restore();translation();shared_quantum_authority();exclusives();image_boot_protocol();cross_page_access();identification();uart_fifo_configuration();interrupt_priority_initialization();
   std::cout<<"{\"checks\":"<<checks<<",\"system\":\"own-EL1-MMU-IRQ-EL0-SVC\",\"existing_quantum_qubits\":4096,\"android_boot\":\"not_implemented\"}\n";return 0;
 }catch(const std::exception& error){std::cerr<<error.what()<<'\n';return 1;}}
