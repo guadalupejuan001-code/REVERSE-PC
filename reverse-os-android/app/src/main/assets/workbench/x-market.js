@@ -33,7 +33,7 @@ function xmDetails(w){
 }
 function xmPill(label,mod=''){return '<span class="xm-pill '+mod+'">'+label+'</span>';}
 function xmHeading(kicker,title,description){
-  return '<div class="xm-heading"><div><span class="xm-kicker">'+kicker+'</span><h2>'+title+'</h2><p>'+description+'</p></div>'+xmPill('SOLO INTERFAZ','neutral')+'</div>';
+  return '<div class="xm-heading"><div><span class="xm-kicker">'+kicker+'</span><h2>'+title+'</h2><p>'+description+'</p></div>'+xmPill(kicker.startsWith('LABORATORIO')?'XI LOCAL / MANUAL':'SIN DATOS DE MERCADO','neutral')+'</div>';
 }
 function xmMetric(label,value,note){
   return '<div class="xm-metric"><span>'+label+'</span><strong>'+value+'</strong><small>'+note+'</small></div>';

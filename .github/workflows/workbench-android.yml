@@ -1,4 +1,4 @@
-name: REVERSE 2.5.5 combined Music PRISMA Qd
+name: REVERSE 2.5.6 compact BBY Q modules and gyro PRISMA
 on:
   push:
     branches: [main]
@@ -103,6 +103,7 @@ jobs:
           npm install --prefix "$RUNNER_TEMP/reverse-ui" playwright@1.56.1
           node "$RUNNER_TEMP/reverse-ui/node_modules/playwright/cli.js" install --with-deps chromium
           export NODE_PATH="$RUNNER_TEMP/reverse-ui/node_modules"
+          node reverse-os-android/tests/ux-compact-ui.cjs > evidence/ux-compact.json
           node reverse-os-android/tests/qd-studio-ui.cjs evidence/qd-ui
           node reverse-os-android/tests/native-shell-ui.cjs build/reverse_pc build/e025 build/core-profile evidence/desktop
           node reverse-os-android/tests/keyboard-ui.cjs build/reverse_pc build/e025 build/core-profile evidence/keyboard
@@ -114,7 +115,7 @@ jobs:
           keytool -genkeypair -keystore "$REVERSE_SIGNING_KEYSTORE" -storetype JKS -storepass android -keypass android -alias reverse-desktop -keyalg RSA -keysize 2048 -validity 30 -dname 'CN=REVERSE Disposable CI'
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1' platform-tools emulator 'system-images;android-35;default;x86_64' > evidence/sdk.log
           gradle -p reverse-os-android --no-daemon :app:assembleControlDebug :app:assembleControlDebugAndroidTest > evidence/gradle.log 2>&1 || { tail -180 evidence/gradle.log; exit 1; }
-          cp reverse-os-android/app/build/outputs/apk/control/debug/app-control-debug.apk dist/REVERSE-v2.5.5-combined-ci.apk
+          cp reverse-os-android/app/build/outputs/apk/control/debug/app-control-debug.apk dist/REVERSE-v2.5.6-compact-ci.apk
           cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" dist/apksigner.jar
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/REVERSE-v2.5.5-combined-ci.apk > evidence/ci-signature.txt
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -p 4 dist/REVERSE-v2.5.5-combined-ci.apk > evidence/alignment.txt
@@ -172,7 +173,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: REVERSE-2.5.5-combined
+          name: REVERSE-2.5.6-compact-gyro
           path: |
             dist/
             evidence/
