@@ -63,7 +63,7 @@ function programHTML(w){
   }
   const history=saved.history.length?saved.history.map((item,i)=>'<div class="rxe-message '+(item.role==='user'?'from-user':'from-agent')+'"><small>'+esc(item.role==='user'?'TÚ':meta.title)+'</small><p'+(item.role==='assistant'&&i===saved.history.length-1?' aria-label="Respuesta BBY Q"':'')+'>'+esc(item.text)+'</p></div>').join(''):'<p class="muted">Memoria '+esc(meta.app_version)+' lista. Lista para conversar. W4u solo dispone de las acciones autorizadas y verificables de este escritorio.</p>';
   queueMicrotask(()=>{const el=$('.rxe-history',$('#'+w.id));if(el)el.scrollTop=el.scrollHeight;});
-  return '<div class="rxe-layout bbyq-shell">'+heading+moduleTabs+message+'<div class="rxe-history" aria-label="Conversación BBY Q">'+history+'</div><form class="rxe-composer" data-program-form><textarea aria-label="Mensaje para BBY Q" data-program-input maxlength="255" rows="2" placeholder="Escribe un mensaje…">'+esc(w.rxeDraft||'')+'</textarea><div class="program-actions"><button type="button" class="secondary-button '+(data.language===1?'selected':'')+'" data-program-language="1"'+disabled+'>Español</button><button type="button" class="secondary-button '+(data.language===2?'selected':'')+'" data-program-language="2"'+disabled+'>English</button><button type="submit" class="primary-button"'+(data.busy||data.uncertain?' disabled':'')+'>Enviar</button></div></form></div>';
+  return '<div class="rxe-layout bbyq-shell">'+heading+moduleTabs+message+'<small>Desde Chat: /cody, /work, /cody probar, /cody enseñar, /cody resolver 27 8</small><div class="rxe-history" aria-label="Conversación BBY Q">'+history+'</div><form class="rxe-composer" data-program-form><textarea aria-label="Mensaje para BBY Q" data-program-input maxlength="255" rows="2" placeholder="Escribe un mensaje…">'+esc(w.rxeDraft||'')+'</textarea><div class="program-actions"><button type="button" class="secondary-button '+(data.language===1?'selected':'')+'" data-program-language="1"'+disabled+'>Español</button><button type="button" class="secondary-button '+(data.language===2?'selected':'')+'" data-program-language="2"'+disabled+'>English</button><button type="submit" class="primary-button"'+(data.busy||data.uncertain?' disabled':'')+'>Enviar</button></div></form></div>';
 }
 function renderProgramContent(w,body){
   const next=document.createElement('div');next.innerHTML=programHTML(w);
@@ -124,6 +124,20 @@ document.addEventListener('submit',event=>{
   event.preventDefault();const w=getWindow(event.target.closest('.window')?.dataset.id);if(!w)return;
   const command=(w.rxeDraft||'').trim().toLowerCase();
   if(['/cody','/work','/chat'].includes(command)){w.rxeDraft='';w.bbyqModule=command.slice(1);renderWindowContent(w);queueSave();return;}
+  // Explicit operator shortcuts, not an invented natural-language coding agent.
+  const task=/^\/cody (probar|enseñar|resolver)(?:\s+(\d{1,2})\s+(\d{1,2}))?$/.exec(command);
+  if(task){
+    w.rxeDraft='';w.bbyqModule='cody';
+    if(task[1]==='resolver'){
+      const a=Number(task[2]),b=Number(task[3]);
+      if(task[2]===undefined||a<0||a>99||b<1||b>99){toast('Usa /cody resolver 27 8.','help');renderWindowContent(w);return;}
+      w.qdA=a;w.qdB=b;
+    }
+    renderWindowContent(w);queueSave();
+    qdSession(w);
+    qdAction(w,task[1]==='probar'?'evaluate':task[1]==='enseñar'?'teach':'solve');
+    return;
+  }
   transactProgram(w,'askApp');
 });
 document.addEventListener('click',event=>{
