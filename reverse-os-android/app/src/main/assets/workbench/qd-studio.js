@@ -109,7 +109,7 @@ document.addEventListener('input',event=>{
  }
  if(target.matches('[data-qd-number]')){
   const value=Number(target.value);
-  if(Number.isInteger(value)){if(target.dataset.qdNumber==='a')w.qdA=value;else w.qdB=value;queueSave();}
+  if(Number.isInteger(value)){if(target.dataset.qdNumber==='a')w.qdA=value;else w.qdB=value;const session=qdSessions.get(w.id);if(session)session.generated=null;const exportButton=$('[data-qd-action="export"]',$('#'+w.id));if(exportButton)exportButton.disabled=true;queueSave();}
  }
 });
 document.addEventListener('click',event=>{
