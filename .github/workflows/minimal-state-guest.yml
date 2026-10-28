@@ -1,10 +1,10 @@
 name: REVERSE ARM64 compatibility
 on:
   pull_request:
-    paths: ['src/minimal_guest*', 'src/reverse_guest.cpp', 'tests/minimal_guest*', 'examples/guest-*.S', 'scripts/embed-guest-system-demo.py', 'reverse-os-android/**', 'CMakeLists.txt', '.github/workflows/minimal-state-guest.yml']
+    paths: ['src/minimal_guest*', 'src/reverse_guest.cpp', 'tests/minimal_guest*', 'examples/guest-*.S', 'scripts/embed-guest-system-demo.py', 'third_party/softfloat/**', 'scripts/build-softfloat.py', 'reverse-os-android/**', 'CMakeLists.txt', '.github/workflows/minimal-state-guest.yml']
   push:
     branches: [main]
-    paths: ['src/minimal_guest*', 'src/reverse_guest.cpp', 'tests/minimal_guest*', 'examples/guest-*.S', 'scripts/embed-guest-system-demo.py', 'reverse-os-android/**', '.github/workflows/minimal-state-guest.yml']
+    paths: ['src/minimal_guest*', 'src/reverse_guest.cpp', 'tests/minimal_guest*', 'examples/guest-*.S', 'scripts/embed-guest-system-demo.py', 'third_party/softfloat/**', 'scripts/build-softfloat.py', 'reverse-os-android/**', '.github/workflows/minimal-state-guest.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -24,10 +24,11 @@ jobs:
       - name: Build the own guest CPU and run correctness checks
         run: |
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_RELEASE=-O1 -DREVERSE_PC_BUILD_PREVIOUS_MAIN_REFERENCE=OFF
-          cmake --build build --target reverse_guest reverse_pc_minimal_guest reverse_pc_minimal_system --parallel 2
+          cmake --build build --target reverse_guest reverse_pc_minimal_guest reverse_pc_minimal_system reverse_pc_minimal_fp --parallel 2
           mkdir -p guest-evidence
           build/reverse_pc_minimal_guest > guest-evidence/native-tests.json
           build/reverse_pc_minimal_system > guest-evidence/system-native.json
+          build/reverse_pc_minimal_fp > guest-evidence/fp-native.json
           python3 tests/minimal_guest_system_cli.py build/reverse_guest > guest-evidence/system-cli.json
           build/reverse_guest demo guest-evidence/demo.rvg > guest-evidence/demo.json
           python3 tests/minimal_guest_cli.py build/reverse_guest > guest-evidence/checkpoints.json
@@ -43,14 +44,19 @@ jobs:
           python3 tests/minimal_guest_system_cli.py build/reverse_guest guest-evidence/system-witness.elf > guest-evidence/system-oracle.json
           build/reverse_guest device-tree guest-evidence/reverse.dtb
           dtc -I dtb -O dts guest-evidence/reverse.dtb > guest-evidence/reverse.dts
+          clang --target=aarch64-linux-gnu -fuse-ld=lld -nostdlib -static -Wl,--build-id=none -o guest-evidence/fp-simd.elf examples/guest-fp-simd.S
+          python3 tests/minimal_guest_fp_cli.py build/reverse_guest guest-evidence/fp-simd.elf > guest-evidence/fp-simd-oracle.json
           clang --version > guest-evidence/clang-version.txt
           qemu-aarch64 --version > guest-evidence/oracle-version.txt
       - name: Check undefined behavior and failed transactions
         run: |
-          g++ -std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tests/minimal_guest_test.cpp -o build/guest-ubsan
+          python3 scripts/build-softfloat.py
+          g++ -std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tests/minimal_guest_test.cpp build/softfloat/libreverse_softfloat.a -o build/guest-ubsan
           build/guest-ubsan > guest-evidence/ubsan.json
-          g++ -std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tests/minimal_guest_system_test.cpp -o build/system-ubsan
+          g++ -std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tests/minimal_guest_system_test.cpp build/softfloat/libreverse_softfloat.a -o build/system-ubsan
           build/system-ubsan > guest-evidence/system-ubsan.json
+          g++ -std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tests/minimal_guest_fp_test.cpp build/softfloat/libreverse_softfloat.a -o build/fp-ubsan
+          build/fp-ubsan > guest-evidence/fp-ubsan.json
       - uses: actions/upload-artifact@v4
         if: always()
         with: {name: minimal-state-guest-native, path: guest-evidence/, retention-days: 14}
@@ -81,7 +87,8 @@ jobs:
       - name: Record the first unsupported operation using the own interpreter
         run: |
           python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
-          g++ -std=c++17 -O1 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tools/guest_linux_probe.cpp -o build/guest-linux-probe
+          python3 scripts/build-softfloat.py
+          g++ -std=c++17 -O1 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tools/guest_linux_probe.cpp build/softfloat/libreverse_softfloat.a -o build/guest-linux-probe
           timeout 180 build/guest-linux-probe guest-linux-evidence/Image > guest-linux-evidence/own-linux-prefix.json
           cat guest-linux-evidence/own-linux-prefix.json
       - uses: actions/upload-artifact@v4

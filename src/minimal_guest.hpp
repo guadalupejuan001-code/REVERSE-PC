@@ -5,6 +5,7 @@
 #include "mundo_x/quantum_runtime.hpp"
 #include "rxe.hpp"
 #include "minimal_guest_machine.hpp"
+#include "minimal_guest_fp.hpp"
 #include <algorithm>
 #include <array>
 #include <cstdint>
@@ -82,6 +83,7 @@ class MinimalGuest {
   std::size_t image_bytes() const noexcept { return image_ ? image_->size() : 0; }
   const std::vector<Segment>& segments() const noexcept { return segments_; }
   const MachineState& machine() const noexcept { return machine_; }
+  const FloatingState& floating() const noexcept { return floating_; }
   std::uint64_t ram_base() const noexcept { return machine_.enabled?MachineState::ram_base:0; }
   std::uint64_t physical_address(std::uint64_t address,bool writing=false,bool executing=false) const {return translate(address,writing,executing);}
 
@@ -121,7 +123,7 @@ class MinimalGuest {
     auto immutable=std::make_shared<const Bytes>(std::move(bytes));
     auto empty=make_runtime(override_limit_);
     image_=std::move(immutable); segments_=std::move(candidate); runtime_=std::move(empty);
-    machine_=MachineState{};machine_.enabled=privileged;machine_.image_kind=privileged?1:0;
+    machine_=MachineState{};machine_.enabled=privileged;machine_.image_kind=privileged?1:0;floating_=FloatingState{};
     registers_=Registers{}; registers_.pc=entry; registers_.sp=(ram_base()+ram_)&~UINT64_C(15);
     machine_.sp1=registers_.sp;
   }
@@ -147,7 +149,7 @@ class MinimalGuest {
     std::vector<Segment> segments{{kernel_address,extent,32,kernel.size(),5},{tree_address,tree.size(),32+kernel.size(),tree.size(),4}};
     if(!initrd.empty())segments.push_back({initrd_address,initrd.size(),32+kernel.size()+tree.size(),initrd.size(),4});
     std::sort(segments.begin(),segments.end(),[](const Segment& a,const Segment& b){return a.address<b.address;});
-    image_=std::move(immutable);segments_=std::move(segments);runtime_=std::move(empty);machine_=MachineState{};machine_.enabled=true;machine_.image_kind=2;
+    image_=std::move(immutable);segments_=std::move(segments);runtime_=std::move(empty);machine_=MachineState{};machine_.enabled=true;machine_.image_kind=2;floating_=FloatingState{};
     registers_=Registers{};registers_.pc=kernel_address;registers_.x[0]=tree_address;registers_.sp=MachineState::ram_base+ram_;machine_.sp1=registers_.sp;
   }
   void console_input(const std::string& text) {
@@ -216,21 +218,25 @@ class MinimalGuest {
   Bytes snapshot() const {
     const auto core=runtime_.core_snapshot(), memory=runtime_.memory_persistent_snapshot();
     const auto system=machine_.enabled?machine_.save():Bytes{};
-    Bytes result{'R','V','G',std::uint8_t(machine_.enabled?'2':'1'),13,10,26,10};
+    const auto fp=floating_.save();
+    Bytes result{'R','V','G',std::uint8_t(!fp.empty()?'3':machine_.enabled?'2':'1'),13,10,26,10};
     put(result,ram_); put(result,override_limit_); put(result,registers_.pc); put(result,registers_.sp);
     put(result,registers_.instructions); put(result,registers_.nzcv); put(result,registers_.halted?1:0); put(result,registers_.exit_code);
     for (auto value:registers_.x) put(result,value);
     put(result,image_bytes()); put(result,core.size()); put(result,memory.size());
-    if(machine_.enabled)put(result,system.size());
+    if(machine_.enabled||!fp.empty())put(result,system.size());
+    if(!fp.empty())put(result,fp.size());
     if (image_) result.insert(result.end(),image_->begin(),image_->end());
     result.insert(result.end(),core.begin(),core.end()); result.insert(result.end(),memory.begin(),memory.end());
     result.insert(result.end(),system.begin(),system.end());
+    result.insert(result.end(),fp.begin(),fp.end());
     require(result.size()+8<=max_snapshot, "Guest snapshot exceeds 48 MiB");
     put(result,digest(result,result.size())); return result;
   }
   static MinimalGuest from_snapshot(const Bytes& bytes) {
-    const bool system=bytes.size()>=4&&bytes[3]=='2';
-    const Bytes magic{'R','V','G',std::uint8_t(system?'2':'1'),13,10,26,10};
+    const unsigned version=bytes.size()>=4?unsigned(bytes[3]):0;
+    require(version=='1'||version=='2'||version=='3',"Unsupported guest checkpoint version");
+    const Bytes magic{'R','V','G',std::uint8_t(version),13,10,26,10};
     require(bytes.size()>=8+8*(8+31+3)+8 && bytes.size()<=max_snapshot &&
             std::equal(magic.begin(),magic.end(),bytes.begin()), "Invalid guest snapshot header/size");
     require(get(bytes,bytes.size()-8,8)==digest(bytes,bytes.size()-8), "Guest snapshot checksum mismatch");
@@ -242,11 +248,13 @@ class MinimalGuest {
     require(flags<=15 && halted<=1 && status<=255, "Invalid guest CPU snapshot fields");
     cpu.nzcv=unsigned(flags); cpu.halted=halted!=0; cpu.exit_code=unsigned(status);
     for (auto& value:cpu.x) value=take();
-    const auto image_size=take(), core_size=take(), memory_size=take(),system_size=system?take():0;
+    const auto image_size=take(), core_size=take(), memory_size=take(),system_size=version!='1'?take():0,fp_size=version=='3'?take():0;
+    const bool system=system_size!=0;
     require(image_size<=max_image && core_size<=max_snapshot && memory_size<=max_snapshot &&
-            system_size<=8192 && image_size+core_size+memory_size+system_size==bytes.size()-at-8, "Guest snapshot extents are invalid");
+            system_size<=8192 && fp_size<=532 && (version!='2'||system) && (version!='3'||fp_size>=20) &&
+            image_size+core_size+memory_size+system_size+fp_size==bytes.size()-at-8, "Guest snapshot extents are invalid");
     MachineState machine;
-    if(system)machine=MachineState::restore(Bytes(bytes.end()-8-std::size_t(system_size),bytes.end()-8));
+    if(system)machine=MachineState::restore(Bytes(bytes.end()-8-std::size_t(fp_size)-std::size_t(system_size),bytes.end()-8-std::size_t(fp_size)));
     if(image_size){
       const Bytes image(bytes.begin()+at,bytes.begin()+at+std::size_t(image_size));
       if(system&&machine.image_kind==2){
@@ -265,6 +273,7 @@ class MinimalGuest {
     candidate.runtime_.restore(core,memory);
     require(cpu.pc%4==0 && (system || (cpu.pc<=ram && (cpu.halted || cpu.pc<ram))), "Invalid guest PC in snapshot");
     if(system){candidate.machine_=std::move(machine);candidate.validate_system_configuration();}
+    if(fp_size)candidate.floating_=FloatingState::restore(Bytes(bytes.end()-8-std::size_t(fp_size),bytes.end()-8));
     candidate.registers_=cpu; return candidate;
   }
   std::string statistics() const {
@@ -284,6 +293,8 @@ class MinimalGuest {
         << ",\"mmu_enabled\":" << (machine_.enabled&&(machine_.sctlr&1)?"true":"false")
         << ",\"ram_base\":" << quote(hex(ram_base())) << ",\"exceptions\":" << machine_.exceptions
         << ",\"virtual_ticks\":" << machine_.ticks << ",\"waiting\":" << (machine_.waiting?"true":"false")
+        << ",\"fp_simd\":\"bounded-armv8-subset\",\"fpcr\":" << floating_.fpcr << ",\"fpsr\":" << floating_.fpsr
+        << ",\"nonzero_vector_registers\":" << floating_.nonzero()
         << ",\"android_boot\":\"not_implemented\""
         << ",\"wild_rift\":\"not_supported\",\"hardware_acceleration\":false}";
     return out.str();
@@ -297,6 +308,7 @@ class MinimalGuest {
   std::vector<Segment> segments_;
   Registers registers_;
   MachineState machine_;
+  FloatingState floating_;
 
   static mundo_x::QuantumRuntime make_runtime(std::size_t overrides) {
     require(overrides>0 && overrides<=1048576, "Guest override limit must be 1..1048576");
@@ -376,9 +388,24 @@ class MinimalGuest {
   void system_write(unsigned id,std::uint64_t value);
   void exception(std::uint64_t syndrome,std::uint64_t address,std::uint64_t return_pc,bool irq);
   void select_stack(unsigned el,unsigned selected);
+  void fp_access() const {
+    if(machine_.enabled){const auto mode=(machine_.cpacr>>20)&3;
+      if(mode==0||mode==2||(mode==1&&!machine_.el))throw MachineFault{(UINT64_C(7)<<26)|(1u<<25),0};}
+  }
+  void fp_set(unsigned reg,std::uint64_t value,unsigned bits){floating_.v[reg]={value&(bits==64?UINT64_MAX:low_mask(bits)),0};}
+  Vector128 fp_load(std::uint64_t address,unsigned bytes,RunResult& result){
+    check_access(address,bytes,false);Vector128 value;value.low=cpu_read(address,std::min(bytes,8u),result);
+    if(bytes==16)value.high=cpu_read(address+8,8,result);return value;
+  }
+  void fp_store(std::uint64_t address,const Vector128& value,unsigned bytes,RunResult& result){
+    check_access(address,bytes,true);cpu_write(address,value.low,std::min(bytes,8u),result);
+    if(bytes==16)cpu_write(address+8,value.high,8,result);
+  }
+  bool fp_instruction(std::uint32_t instruction,std::uint64_t pc,RunResult& result);
 };
 
 #include "minimal_guest_system.inc"
+#include "minimal_guest_simd.inc"
 
 inline void MinimalGuest::step(RunResult& result) {
   auto& cpu=registers_;
@@ -445,6 +472,7 @@ inline void MinimalGuest::step(RunResult& result) {
     else if(function==0x8400000a)set(0,(reg(1,32)==0x84000008||reg(1,32)==0x84000000||reg(1,32)==0x8400000a)?0:UINT64_MAX);
     else set(0,UINT64_MAX); // PSCI_NOT_SUPPORTED
   }
+  else if (fp_instruction(instruction,pc,result)) { /* shared vector/FP register bank */ }
   else if ((instruction&0x1f800000)==0x12800000) { // MOVN/MOVZ/MOVK
     const unsigned opcode=(instruction>>29)&3, position=((instruction>>21)&3)*16;
     if (opcode==1 || position>=bits) unsupported();

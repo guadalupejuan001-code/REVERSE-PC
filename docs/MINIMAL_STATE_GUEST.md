@@ -60,7 +60,8 @@ entre todos esos qubits ni mejora de FPS.
 | Tiempo | Un tick virtual por transición de ejecución; WFI puede avanzar hasta el siguiente plazo; no es reloj de pared |
 | Arranque Image | Image AArch64 little-endian de 4 KiB, DTB v17 generado y opcional initrd |
 | PSCI | VERSION, FEATURES seleccionadas, SYSTEM_OFF; otras llamadas devuelven NOT_SUPPORTED |
-| Checkpoint | RVG1 legado para EL0; RVG2 conserva máquina/imagen/núcleo/memoria, contador y cola serial |
+| FP/SIMD | Subconjunto escalar FP32/FP64 IEEE 754, conversiones FP16, registros V0–V31, memoria vectorial y operaciones NEON seleccionadas; FPCR/FPSR y trap FPEN |
+| Checkpoint | RVG1/RVG2 conservan sus bytes cuando FP está en cero; RVG3 añade únicamente el estado FP/SIMD no nulo |
 
 El subconjunto entero incluye las variantes implementadas en el decoder para
 MOVN/Z/K, ADD/SUB inmediatos/desplazados/extendidos, ADC/SBC, lógica inmediata y con
@@ -70,7 +71,17 @@ LDXR/STXR se habilitan en modo sistema; LDAR/STLR usan memoria coherente síncro
 El monitor exclusivo se invalida con escrituras/operaciones XI/RXE/excepciones y
 se conserva en RVG2. No hay cobertura completa del ISA.
 
-No se implementan FP/SIMD, EL2/EL3, virtualización KVM, multicore, enlazado ELF
+La aritmética FP usa Berkeley SoftFloat 3e fijado por hash, con configuración
+ARM-VFPv2. El núcleo cuántico y la autoridad de memoria se mantienen. El fondo
+de los 32 registros vectoriales es cero; RVG3 usa una máscara y 16 bytes por
+registro no nulo: entre 20 y 532 bytes adicionales, más el campo de longitud.
+FPCR/FPSR también se conservan. No se afirma cobertura completa de NEON: faltan,
+entre otras, operaciones saturadas, reducciones y desplazamientos seleccionados,
+criptografía y extensiones posteriores de Arm. No se implementan traps de
+excepciones aritméticas FP; los bits de habilitación no se anuncian. AHP no se
+admite. Los casos no soportados fallan de forma explícita.
+
+No se implementan EL2/EL3, virtualización KVM, multicore, enlazado ELF
 dinámico, arranque Android, Binder/ART/Bionic, almacenamiento/virtio, GPU de
 invitado, audio o red de invitado. Registros/instrucciones/dispositivos no soportados
 producen errores explícitos. Mantenimiento de caché seleccionado actúa sobre una
@@ -124,9 +135,10 @@ la restauración automática se realiza desde su archivo privado conservado.
 ```sh
 bash scripts/setup-ether.sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --target reverse_guest reverse_pc_minimal_guest reverse_pc_minimal_system --parallel 2
+cmake --build build --target reverse_guest reverse_pc_minimal_guest reverse_pc_minimal_system reverse_pc_minimal_fp --parallel 2
 build/reverse_pc_minimal_guest
 build/reverse_pc_minimal_system
+build/reverse_pc_minimal_fp
 build/reverse_guest system-demo-init inicial.rvg
 build/reverse_guest run inicial.rvg parcial.rvg 30
 build/reverse_guest run parcial.rvg final.rvg 1000
@@ -146,6 +158,12 @@ comprueban 46 condiciones de sistema/tabla/permisos/estado cuántico, además de
 CLI, UBSan y oráculos clang/lld/QEMU. La integración Android ejercita WebView/JNI,
 el ejecutor original y reinicio en emulador Android 15. No equivale a una prueba
 física en el teléfono.
+
+La prueba `examples/guest-fp-simd.S` compara resultados binarios, FPSR, NaN,
+ceros con signo, redondeos, FZ/DN, conversiones y vectores con clang/lld/QEMU.
+También exige igualdad completa entre ejecución continua y checkpoints cada
+137 instrucciones. Las pruebas nativas comprueban aislamiento de redondeos entre
+hilos, estado disperso, compatibilidad RVG1/RVG2 y rollback.
 
 Referencias primarias: [arranque Linux AArch64](https://docs.kernel.org/arch/arm64/booting.html),
 [Linux 6.1 fijado](https://github.com/torvalds/linux/tree/830b3c68c1fb1e9176028d02ef86f3cf76aa2476),

@@ -172,12 +172,14 @@ inline void MinimalGuest::device_write(std::uint64_t address,std::uint64_t value
 inline unsigned guest_sysreg(unsigned op0,unsigned op1,unsigned crn,unsigned crm,unsigned op2){return (op0<<14)|(op1<<11)|(crn<<7)|(crm<<3)|op2;}
 inline std::uint64_t MinimalGuest::system_read(unsigned id) const {
   const auto& m=machine_;
+  if(id==guest_sysreg(3,3,4,4,0)||id==guest_sysreg(3,3,4,4,1)){fp_access();return id==guest_sysreg(3,3,4,4,0)?floating_.fpcr:floating_.fpsr;}
+  if(id==guest_sysreg(3,3,4,2,0))return std::uint64_t(registers_.nzcv)<<28;
   if(!m.enabled)throw std::runtime_error("System registers require the ARM64 compatibility system mode");
   if(!m.el && id!=guest_sysreg(3,3,13,0,2)&&id!=guest_sysreg(3,3,13,0,3)&&id!=guest_sysreg(3,3,4,2,0)&&
      !(id==guest_sysreg(3,3,14,0,1)&&(m.cntkctl&1))&&!(id==guest_sysreg(3,3,14,0,2)&&(m.cntkctl&2)))throw MachineFault{1u<<25,0};
   if(id==guest_sysreg(3,0,0,0,0))return 0x410fd034; // MIDR, Cortex-A53 model, one core.
   if(id==guest_sysreg(3,0,0,0,5))return UINT64_C(1)<<31; // MPIDR
-  if(id==guest_sysreg(3,0,0,4,0))return 0x00ff0011; // EL0/EL1 A64; FP/SIMD absent.
+  if(id==guest_sysreg(3,0,0,4,0))return 0x11; // A64 EL0/EL1 and baseline FP/SIMD; unsupported opcodes fail.
   if(id==guest_sysreg(3,0,0,4,1)||id==guest_sysreg(3,0,0,5,0)||id==guest_sysreg(3,0,0,5,1)||
      id==guest_sysreg(3,0,0,6,0)||id==guest_sysreg(3,0,0,6,1)||id==guest_sysreg(3,0,0,6,2)||
      id==guest_sysreg(3,0,0,7,1)||id==guest_sysreg(3,0,0,7,2))return 0;
@@ -215,6 +217,11 @@ inline void MinimalGuest::select_stack(unsigned el,unsigned selected) {
 }
 inline void MinimalGuest::system_write(unsigned id,std::uint64_t value) {
   auto& m=machine_;
+  if(id==guest_sysreg(3,3,4,4,0)||id==guest_sysreg(3,3,4,4,1)){
+    fp_access();if(id==guest_sysreg(3,3,4,4,0)){require(!(value&(1u<<26)),"Alternative FP16 format is not implemented");floating_.fpcr=std::uint32_t(value)&0x03c00000;}
+    else floating_.fpsr=std::uint32_t(value)&0x0800009f;return;
+  }
+  if(id==guest_sysreg(3,3,4,2,0)){registers_.nzcv=unsigned(value>>28)&15;return;}
   require(m.enabled,"System registers require ARM64 system mode");
   if(id==guest_sysreg(3,3,13,0,2)){m.tpidr0=value;return;}
   if(id==guest_sysreg(3,3,4,2,0)){registers_.nzcv=unsigned(value>>28)&15;return;}
