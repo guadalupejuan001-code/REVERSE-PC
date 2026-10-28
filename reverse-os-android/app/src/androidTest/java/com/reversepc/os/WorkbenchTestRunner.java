@@ -298,6 +298,34 @@ public final class WorkbenchTestRunner extends Instrumentation {
         require(waitJs("window.shellSaved").equals("true"),"Profile not committed");
         retainedProof(true);fullDisplay();visualCheck("native-"+requested);
     }
+    private void guestWorkflow(boolean restore)throws Exception{
+        String desktopBefore=hash("session.rvp");
+        js("createWindow('guest');true");
+        waitJs("guestUi.snapshot&&!guestUi.busy");
+        if(restore){
+            require(js("guestUi.snapshot.guest.instructions").equals("13"),"Guest PC/count did not persist after restart");
+            require(js("guestUi.snapshot.guest.delta_overrides").equals("2"),"XI/ARM64 deltas did not persist");
+        }else{
+            tapDom("[data-guest=demo]");
+            waitJs("guestUi.snapshot?.loaded&&!guestUi.busy");
+            require(js("guestUi.snapshot.guest.delta_overrides").equals("0"),"ELF load allocated guest RAM");
+            js("guestUi.steps=4;true");tapDom("[data-guest=run]");
+            waitJs("guestUi.snapshot.guest.instructions===4&&!guestUi.busy");
+            require(!js("guestUi.snapshot.guest.halted").equals("true"),"Partial guest run did not yield");
+            JSONObject xi=op("guestXi","mem_store 90000 42\nmem_read 90000\n","guestDeltaResult");
+            require(xi.getBoolean("ok")&&xi.getString("xi_output").contains("42"),"XI guest delta did not execute in native core");
+            js("guestUi.steps=1000;true");tapDom("[data-guest=run]");
+            waitJs("guestUi.snapshot.guest.halted&&!guestUi.busy");
+            require(js("guestUi.output").contains("6*7 = 42"),"Native guest did not produce expected output");
+            require(js("guestUi.snapshot.guest.delta_overrides").equals("2"),"Unexpected guest delta count");
+            String before=hash("guest-aarch64.rvg");
+            JSONObject failed=op("guestXi","mem_store 90000 55\nunsupported_operation\n","guestFailure");
+            require(!failed.getBoolean("ok"),"Bad guest XI program accepted");
+            require(before.equals(hash("guest-aarch64.rvg")),"Rejected guest program changed saved checkpoint");
+        }
+        require(js("document.querySelector('.guest-boundary').textContent.includes('todavía no arrancan')").equals("true"),"UI falsely presents Android boot as implemented");
+        require(desktopBefore.equals(hash("session.rvp")),"Guest operation changed the desktop state");
+    }
     @Override public void onStart(){
         Bundle result=new Bundle();
         try{
@@ -319,6 +347,11 @@ public final class WorkbenchTestRunner extends Instrumentation {
             require(snapshot.getJSONObject("android").getLong("ram_total_bytes")>0,"No native RAM reading");
             require(snapshot.getJSONObject("core").getString("state_format").equals("RVPC2"),"Wrong checkpoint format");
             require(snapshot.getJSONObject("build").getString("source_commit").matches("[a-f0-9]{40}"),"Missing build provenance");
+            if(requested.equals("guest")||requested.equals("guestRestore")){
+                guestWorkflow(requested.equals("guestRestore"));visualCheck(requested);
+                result.putString("stream","WORKBENCH_TESTS_OK mode="+requested+" guest=own-AArch64 memory=XI/Ether android-boot=not-implemented\n");
+                result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
+            }
             if(!seed&&js("typeof window.ReverseShell==='object'").equals("true")){
                 desktopShellWorkflow(requested,snapshot);
                 result.putString("stream","WORKBENCH_TESTS_OK mode="+requested+" native=XI/Ether desktop-shell=verified\n");result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;

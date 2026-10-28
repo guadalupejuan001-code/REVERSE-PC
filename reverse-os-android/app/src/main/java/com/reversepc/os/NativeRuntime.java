@@ -10,4 +10,8 @@ public final class NativeRuntime {
     public static native byte[] executeRxe(byte[] state,byte[] executable);
     public static native byte[] appSeed(byte[] executable);
     public static native byte[] appTurn(byte[] state,byte[] executable,byte[] messageUtf8,int language);
+    public static native byte[] guestInitialize(byte[] elf,long logicalRamBytes,int maxOverrides);
+    public static native String guestInspect(byte[] state);
+    public static native byte[] guestRun(byte[] state,int steps);
+    public static native byte[] guestXi(byte[] state,String deltaProgram);
 }

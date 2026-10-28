@@ -22,7 +22,7 @@ function programCards(){
 }
 function programsHTML(){
   if(!programCatalog&&!programCatalogLoading&&!programCatalogError)queueMicrotask(refreshPrograms);
-  return '<div class="programs-layout"><div class="programs-heading"><div><span class="eyebrow">REVERSE WORKBENCH '+esc(UI_BUILD)+'</span><h2>Programas</h2><p>Abre tus programas en esta mesa.</p></div><div class="program-actions"><button class="primary-button" data-program-action="import">'+icon('plus')+'Agregar .rxe</button><button class="secondary-button" data-open="xi">Crear .rxe</button><button class="secondary-button" data-program-action="refresh" aria-label="Actualizar aplicaciones">'+icon('restore')+'</button></div></div><div class="program-list">'+programCards()+'</div></div>';
+  return '<div class="programs-layout"><div class="programs-heading"><div><span class="eyebrow">REVERSE WORKBENCH '+esc(UI_BUILD)+'</span><h2>Programas</h2><p>Abre tus programas en esta mesa.</p></div><div class="program-actions"><button class="primary-button" data-program-action="import">'+icon('plus')+'Agregar .rxe</button><button class="secondary-button" data-open="xi">Crear .rxe</button><button class="secondary-button" data-open="guest">Invitado ARM64</button><button class="secondary-button" data-program-action="refresh" aria-label="Actualizar aplicaciones">'+icon('restore')+'</button></div></div><div class="program-list">'+programCards()+'</div></div>';
 }
 function openProgram(path){return createWindow('rxe',{rxePath:path});}
 function applyProgramSnapshot(w,result){

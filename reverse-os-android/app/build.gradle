@@ -26,6 +26,7 @@ android {
   desktop { dimension 'edition'; applicationId 'com.reversepc.desktop'; manifestPlaceholders = [appLabel:'REVERSE Desktop'] }
   workbench { dimension 'edition'; versionCode 251; versionName '2.5.1'; applicationId 'com.reversepc.workbench'; manifestPlaceholders = [appLabel:'REVERSE Workbench'] }
   control { dimension 'edition'; versionCode 251; versionName '2.5.1-control'; applicationId 'com.reversepc.control.workbench'; manifestPlaceholders = [appLabel:'REVERSE'] }
+  guest { dimension 'edition'; versionCode 1; versionName '0.1-guest'; applicationId 'com.reversepc.guest.workbench'; manifestPlaceholders = [appLabel:'REVERSE Guest Preview'] }
   rxe { dimension 'edition'; applicationId 'com.reversepc.desktop.rxe'; manifestPlaceholders = [appLabel:'REVERSE Desktop RXE'] }
  }
  externalNativeBuild {

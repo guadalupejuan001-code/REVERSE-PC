@@ -1,5 +1,9 @@
 # REVERSE-PC
 
+**Invitado ARM64 experimental:** ejecución propia de ELF estáticos, memoria por
+imagen/reglas y deltas XI/RXE, checkpoints y panel del escritorio. Android y Wild
+Rift aún no arrancan. [Capacidades, pruebas y límites](docs/MINIMAL_STATE_GUEST.md).
+
 **REVERSE 2.5.1:** BBY Q E025 y W4u 0.1 integrados, memoria nativa ampliada y correcciones de teclado conservadas. [Fuentes, compilación y procedencia](docs/RELEASE_2_5_1.md).
 
 **REVERSE 2.4.2:** escritorio PC horizontal con teclado integrado, borrador
