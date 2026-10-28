@@ -186,3 +186,9 @@ Referencias primarias: [arranque Linux AArch64](https://docs.kernel.org/arch/arm
 [Linux 6.1 fijado](https://github.com/torvalds/linux/tree/830b3c68c1fb1e9176028d02ef86f3cf76aa2476),
 [ABI ELF AArch64](https://github.com/ARM-software/abi-aa/blob/main/aaelf64/aaelf64.rst),
 [arquitectura de memoria Arm](https://developer.arm.com/-/media/Arm%20Developer%20Community/PDF/Learn%20the%20Architecture/LearnTheArchitecture-MemoryManagement-101811_0100_00_en.pdf).
+
+## Linux userspace witness (CI, no complete boot claim)
+
+The pinned Linux 6.1 `tinyconfig` previously had `CONFIG_BINFMT_ELF` **disabled**. That would prevent a normal static ELF `/init` from executing even if the kernel completed early initialization. The dedicated CI workflow now explicitly enables `CONFIG_BINFMT_ELF=y` and builds `examples/guest-linux-init.S`, a tiny freestanding AArch64 Linux-syscall program with no libc. It packages this ELF as executable `/init` and a real `/dev/console` character device (major 5, minor 1) in a newc initramfs passed to the *existing* XI/Ether-backed Linux Image loader. If the machine reaches actual Linux user mode, `/init` writes `REVERSE_LINUX_INIT_OK` and then sleeps; absence of this banner is not a successful boot.
+
+The workflow tests real upstream Linux at 500,000 transitions, resumes that exact RVG checkpoint for another 500,000, and compares the final binary checkpoint and concatenated console stream with a one-shot 1,000,000-transition reference. It additionally saves the 5,000,000-transition RVG checkpoint and a continuation up to 6,000,000 transitions (or earlier architectural stop), plus JSON diagnostics. Exact checkpoint equivalence validates continued *state*, not speed, full Linux boot, Android, or game compatibility. The ELF/CPIO builder is a test fixture, not a new guest runtime or a replacement for XI/Ether.
