@@ -6,8 +6,10 @@ REVERSE Music es el reproductor de YouTube integrado en el escritorio. Aparece e
 
 1. Abre REVERSE Music y escribe un artista o canción, pega un enlace de YouTube o pulsa **Abrir YouTube**.
 2. Selecciona un resultado en la página. Los controles del reproductor y de YouTube permiten reproducir, pausar y cambiar de canción cuando existe una pista/lista compatible.
-3. **Guardar favorito** conserva el video o lista actual. Favoritos y la última búsqueda se guardan en el mismo perfil atómico del escritorio y se incluyen en su respaldo. No se guardan archivos de audio.
-4. El botón **Bloqueador** activa o desactiva el filtrado. La preferencia se conserva en Android; el contador muestra solicitudes bloqueadas en la sesión actual.
+3. **Guardar favorito** conserva el video o lista actual. Favoritos, repetición y la última búsqueda se guardan en el mismo perfil atómico del escritorio y se incluyen en su respaldo. No se guardan archivos de audio.
+4. **Repetir 1** mantiene la canción actual en bucle hasta desactivarlo o elegir otra pista. Se conserva en el perfil y su respaldo; no se aplica a los directos ni a anuncios identificados.
+5. En **Centro de control → Sesión → REVERSE Music** puedes ver la pista, pausar/reproducir, cambiar Repetir una y abrir el reproductor.
+6. El botón **Bloqueador** activa o desactiva el filtrado. La preferencia se conserva en Android; el contador muestra solicitudes bloqueadas en la sesión actual.
 
 Abrir o restaurar una ventana carga solamente la interfaz local. La conexión a YouTube empieza tras Buscar, Abrir YouTube o elegir un favorito. Restaurar un perfil nunca inicia música.
 
@@ -38,7 +40,7 @@ NODE_PATH=/ruta/a/node_modules node reverse-os-android/tests/music-ui.cjs eviden
 
 `MusicPolicyTest` verifica enlaces, búsquedas UTF-8, navegación, dominios engañosos y conservación de solicitudes de contenido. `music-ui.cjs` usa los archivos empaquetados en Chromium, con transporte nativo controlado, en 640×360, 740×360, 844×390, 915×412, 1024×600 y 1440×900; comprueba persistencia, favoritos, límites, ventanas y medios/anuncios de prueba.
 
-El workflow de APK añade `mode=music` a `WorkbenchTestRunner`. `MusicPlayerChecks` verifica un WebView Android real con HTML local bajo un origen de prueba YouTube, sin solicitudes a YouTube: ausencia de puente, permisos de archivos, filtros, límites y ciclo de vida. Además decodifica y reproduce un WAV PCM local real en el motor multimedia de Android: avance del reloj, pausa, interrupción de audio, reanudación manual y cierre. Las pruebas locales y de DOM no acreditan reproducción o bloqueo contra el servicio real. Sigue pendiente probar audio y anuncios reales en el teléfono.
+El workflow de APK añade `mode=music` a `WorkbenchTestRunner`. `MusicPlayerChecks` verifica un WebView Android real con HTML local bajo un origen de prueba YouTube, sin solicitudes a YouTube: ausencia de puente, permisos de archivos, filtros, límites y ciclo de vida. Además decodifica y reproduce un WAV PCM local real en el motor multimedia de Android: avance del reloj, repetición real al final del WAV, pausa, interrupción de audio, reanudación manual y cierre. Las pruebas locales y de DOM no acreditan reproducción o bloqueo contra el servicio real. Sigue pendiente probar audio y anuncios reales en el teléfono.
 
 Las ediciones Workbench y REVERSE mantienen sus identificadores de paquete y elevan `versionCode` a 252. La actualización instalable exige la misma firma de distribución; la APK de CI usa una firma temporal y no debe presentarse como actualización firmada de 2.5.1.
 

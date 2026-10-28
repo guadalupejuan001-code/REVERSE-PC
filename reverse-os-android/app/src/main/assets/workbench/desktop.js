@@ -5,6 +5,7 @@ const $ = (s, root = document) => root.querySelector(s);
 const $$ = (s, root = document) => Array.from(root.querySelectorAll(s));
 const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const paths = {
+  repeat:'M17 2l4 4-4 4M3 11V9a3 3 0 0 1 3-3h15M7 22l-4-4 4-4m14-1v2a3 3 0 0 1-3 3H3',
   music:'M9 18V5l11-2v13M9 8l11-2M9 18a3 3 0 1 1-3-3c1.6 0 3 1.3 3 3Zm11-2a3 3 0 1 1-3-3c1.6 0 3 1.3 3 3Z',play:'m8 4 12 8-12 8Z',pause:'M7 4h3v16H7Zm7 0h3v16h-3Z',previous:'M5 5v14M20 5l-12 7 12 7Z',next:'M19 5v14M4 5l12 7-12 7Z',
   keyboard:'M3 5h18v14H3ZM7 9h.01M11 9h.01M15 9h.01M18 9h.01M7 12h.01M11 12h.01M15 12h.01M18 12h.01M8 16h8',
   folder:'M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z',
@@ -99,7 +100,7 @@ function toast(message,ico='check'){const el=document.createElement('div');el.cl
 function area(){return {w:$('#desktop').clientWidth,h:$('#desktop').clientHeight};}
 function fittedFrame(w){const a=area(),width=Math.min(Math.max(260,w.w),Math.max(260,a.w-16)),height=Math.min(Math.max(144,w.h),Math.max(64,a.h-16));return {x:Math.max(8,Math.min(w.x,a.w-width-8)),y:Math.max(8,Math.min(w.y,Math.max(8,a.h-height-8))),w:width,h:height};}
 function clampWindow(w){Object.assign(w,fittedFrame(w));}
-function geometry(w,el){if(!el)return;el.dataset.app=w.app;if(w.max){el.style.left='0';el.style.top='0';el.style.width='100%';el.style.height='100%';}else{const frame=fittedFrame(w);el.style.left=frame.x+'px';el.style.top=frame.y+'px';el.style.width=frame.w+'px';el.style.height=frame.h+'px';}el.style.zIndex=w.z;el.classList.toggle('maximized',!!w.max);el.hidden=w.min||w.space!==state.space;}
+function geometry(w,el){if(!el)return;el.dataset.app=w.app;if(w.max){el.style.left='0';el.style.top='0';el.style.width='100%';el.style.height='100%';}else{const frame=fittedFrame(w);el.style.left=frame.x+'px';el.style.top=frame.y+'px';el.style.width=frame.w+'px';el.style.height=frame.h+'px';}el.style.zIndex=w.z;el.classList.toggle('maximized',!!w.max);el.hidden=w.min||w.space!==state.space;window.ReverseControl?.windowChanged(w);}
 function getWindow(id){return state.windows.find(w=>w.id===id);}
 function windowTitle(w){if(w.app==='rxe')return w.rxeTitle||'Aplicación .rxe';if(w.app==='notes'||w.app==='image')return fileById(w.file)?.name||APPS[w.app].name;return APPS[w.app].name;}
 function focusWindow(id){const w=getWindow(id);if(!w)return;activeId=id;w.z=++zCounter;w.min=false;for(const el of $$('.window'))el.classList.toggle('focused',el.dataset.id===id);const el=$('#'+id);if(el)geometry(w,el);renderDock();queueSave();}

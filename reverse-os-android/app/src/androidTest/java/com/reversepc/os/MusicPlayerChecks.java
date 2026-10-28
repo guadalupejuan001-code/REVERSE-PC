@@ -33,7 +33,7 @@ final class MusicPlayerChecks {
             Thread.sleep(100);
         }
         throw new AssertionError("Music fixture timed out: " + expression + " document="
-            + js(runner, view, "JSON.stringify({url:location.href,ready:document.readyState,body:document.body?.innerHTML.slice(0,600)})"));
+            + js(runner, view, "JSON.stringify({url:location.href,ready:document.readyState,player:window.__reverseMusic?.snapshot(),media:[...document.querySelectorAll('video')].map(v=>({paused:v.paused,time:v.currentTime,duration:v.duration,ready:v.readyState,error:v.error?.code})),body:document.body?.innerHTML.slice(0,600)})"));
     }
     static int run(Instrumentation runner, WorkbenchActivity activity) throws Exception {
         AtomicReference<MusicPlayer> player = new AtomicReference<>();
@@ -129,6 +129,12 @@ final class MusicPlayerChecks {
             waitFor(runner, web, "document.getElementById('real').readyState>=2&&document.getElementById('real').duration>10");
             control(runner,player.get(),"play");
             waitFor(runner, web, "!document.getElementById('real').paused&&document.getElementById('real').currentTime>.15");
+            runner.runOnMainSync(()->{try{player.get().command("repeat",new JSONObject().put("enabled",true));}catch(Exception error){throw new RuntimeException(error);}});
+            waitFor(runner,web,"document.getElementById('real').loop");
+            js(runner,web,"document.getElementById('real').currentTime=document.getElementById('real').duration-.15;true");
+            waitFor(runner,web,"!document.getElementById('real').paused&&document.getElementById('real').currentTime<1");
+            runner.runOnMainSync(()->{try{player.get().command("repeat",new JSONObject().put("enabled",false));}catch(Exception error){throw new RuntimeException(error);}});
+            waitFor(runner,web,"!document.getElementById('real').loop");
             control(runner,player.get(),"pause");
             waitFor(runner, web, "document.getElementById('real').paused");
             double stopped=Double.parseDouble(js(runner,web,"document.getElementById('real').currentTime"));
@@ -159,7 +165,7 @@ final class MusicPlayerChecks {
             check(status.get().getString("phase").equals("ready"),"Reload did not recover from an HTTP failure");
             runner.runOnMainSync(() -> player.get().destroy());
             check(web.getParent() == null, "Closed player still owns a desktop view");
-            return 25;
+            return 28;
         } finally {
             runner.runOnMainSync(() -> { if (player.get() != null) player.get().destroy(); });
             activity.getSharedPreferences("reverse-music", Context.MODE_PRIVATE).edit().putBoolean("shield", previousShield).commit();

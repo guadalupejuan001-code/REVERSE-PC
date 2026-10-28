@@ -50,6 +50,7 @@ final class MusicPlayer {
     private final AudioFocusRequest focus;
     private final MediaSession session;
     private volatile boolean shield;
+    private boolean repeatOne;
     private boolean focused, suspended, disposed, polling, receiverRegistered, recovering;
     private WebView remote;
     private String injection, error = "", notice = "", phase = "idle";
@@ -100,7 +101,7 @@ final class MusicPlayer {
         settings.setAllowFileAccessFromFileURLs(false); settings.setAllowUniversalAccessFromFileURLs(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setSupportMultipleWindows(false); settings.setJavaScriptCanOpenWindowsAutomatically(false);
-        settings.setMediaPlaybackRequiresUserGesture(true);
+        settings.setMediaPlaybackRequiresUserGesture(suspended);
         settings.setGeolocationEnabled(false); settings.setSafeBrowsingEnabled(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(remote, false);
         remote.setBackgroundColor(0xff101214);
@@ -125,7 +126,7 @@ final class MusicPlayer {
             }
             @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap icon) {
                 if (disposed || view != remote) return;
-                beginNavigation(); view.getSettings().setMediaPlaybackRequiresUserGesture(true); publish();
+                beginNavigation(); view.getSettings().setMediaPlaybackRequiresUserGesture(suspended); publish();
             }
             @Override public void onPageCommitVisible(WebView view, String url) { inject(view); }
             @Override public void onPageFinished(WebView view, String url) { inject(view); startPolling(); }
@@ -158,7 +159,7 @@ final class MusicPlayer {
         if (disposed || view != remote || phase.equals("error") || !MusicPolicy.pageAllowed(view.getUrl())) return;
         final int epoch = documentEpoch;
         String script = "(()=>{try{" + injection + "\nwindow.__reverseMusic.setShield(" + shield + ");"
-            + (suspended ? "window.__reverseMusic.command('hostPause');" : "") + "return true;}catch(e){return false;}})()";
+            + "window.__reverseMusic.setRepeatOne(" + repeatOne + ");" + (suspended ? "window.__reverseMusic.command('hostPause');" : "") + "return true;}catch(e){return false;}})()";
         view.evaluateJavascript(script, result -> {
             if (disposed || view != remote || epoch != documentEpoch || phase.equals("error")) return;
             if (!"true".equals(result)) { fail("No se pudo iniciar el reproductor. Pulsa Recargar."); return; }
@@ -169,6 +170,11 @@ final class MusicPlayer {
         if (disposed) return;
         if (action.equals("bounds")) { layout(data); return; }
         if (action.equals("status")) { publish(); return; }
+        if (action.equals("repeat")) {
+            repeatOne = data.getBoolean("enabled");
+            if (remote != null) remote.evaluateJavascript("window.__reverseMusic&&window.__reverseMusic.setRepeatOne("+repeatOne+")",null);
+            publish(); return;
+        }
         if (action.equals("shield")) {
             shield = data.getBoolean("enabled"); prefs.edit().putBoolean("shield", shield).apply();
             if (remote != null) remote.evaluateJavascript("window.__reverseMusic&&window.__reverseMusic.setShield(" + shield + ")", null);
@@ -225,7 +231,8 @@ final class MusicPlayer {
             if (!focused) { interrupt("Otra aplicación tiene el audio. Intenta reproducir de nuevo."); return; }
             remote.getSettings().setMediaPlaybackRequiresUserGesture(false);
         }
-        notice = ""; send(action, value);
+        // A pre-command sample must not overwrite Play or abandon its audio focus.
+        stopPolling(); notice = ""; send(action, value); startPolling();
     }
     void audioFocusChanged(int change) {
         if (!disposed && change < 0) interrupt("Audio interrumpido por otra aplicación. Pulsa Reproducir para continuar.");
@@ -319,7 +326,7 @@ final class MusicPlayer {
             // Always publish every track field; partial objects kept stale songs in the UI.
             JSONObject state = cleanSnapshot(snapshot);
             state.put("available",true).put("loaded",remote!=null).put("phase",phase).put("shield",shield)
-                .put("blocked",blocked.get()).put("error",error).put("notice",notice).put("recovering",recovering);
+                .put("repeatOne",repeatOne).put("blocked",blocked.get()).put("error",error).put("notice",notice).put("recovering",recovering);
             listener.state(state);
         } catch (Exception ignored) {}
     }
@@ -332,13 +339,13 @@ final class MusicPlayer {
         if (disposed) return;
         suspended = true; stopPolling(); send("hostPause",0); releaseFocus();
         try { snapshot.put("paused",true).put("held",true); } catch (Exception ignored) {}
-        if (remote != null) { remote.onPause(); remote.setVisibility(View.INVISIBLE); }
+        if (remote != null) { remote.getSettings().setMediaPlaybackRequiresUserGesture(true); remote.onPause(); remote.setVisibility(View.INVISIBLE); }
         updateSession(); publish();
     }
     void resume() {
         if (disposed) return;
         suspended = false;
-        if (remote != null) { remote.onResume(); send("hostResume",0); layout(bounds); startPolling(); }
+        if (remote != null) { remote.getSettings().setMediaPlaybackRequiresUserGesture(false); remote.onResume(); send("hostResume",0); layout(bounds); startPolling(); }
         updateSession(); publish();
     }
     void destroy() {

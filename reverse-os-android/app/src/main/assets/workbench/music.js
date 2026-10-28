@@ -3,7 +3,7 @@
 // Desktop UI owns the library. The native, bridge-free WebView owns YouTube.
 function musicEmptyStatus(shield=true){return {loaded:false,phase:'idle',shield,blocked:0,paused:true,hasMedia:false,error:'',notice:'',title:'',url:'',time:0,duration:0,ad:false,held:false,live:false,canSeek:false,canNext:false,canPrevious:false,mediaError:''};}
 let musicStatus=musicEmptyStatus();
-let musicBoundsFrame=0,musicLastBounds='',musicOwner=null;
+let musicBoundsFrame=0,musicLastBounds='',musicOwner=null,musicLastRepeat=null;
 function musicSavedURL(value){
   try{
     if(typeof value!=='string'||value.length>2048)return '';
@@ -24,7 +24,7 @@ function cleanMusicState(raw){
     if(!url||seen.has(url))return [];seen.add(url);
     return [{url,title:typeof item.title==='string'?item.title.slice(0,240):'YouTube'}];
   });
-  return {favorites,lastInput:typeof raw?.lastInput==='string'?raw.lastInput.slice(0,2048):''};
+  return {favorites,repeatOne:raw?.repeatOne===true,lastInput:typeof raw?.lastInput==='string'?raw.lastInput.slice(0,2048):''};
 }
 function musicNative(action,data={}){
   if(typeof window.ReverseNative?.music!=='function'){
@@ -42,11 +42,12 @@ function musicHTML(w){
     '<nav class="music-tabs" aria-label="Secciones de Music"><button data-music-tab="player" aria-selected="'+!favorites+'">Reproductor</button><button data-music-tab="favorites" aria-selected="'+favorites+'">Favoritos <span data-music-count>'+library.favorites.length+'</span></button><span data-music-blocked>'+musicStatus.blocked+' solicitudes bloqueadas</span></nav>'+
     (favorites?'<div class="music-library">'+(library.favorites.length?library.favorites.map((item,i)=>'<div class="music-favorite"><button data-music-favorite="'+i+'">'+icon('music')+'<span>'+esc(item.title)+'</span>'+icon('play')+'</button><button class="icon-button" data-music-remove="'+i+'" aria-label="Quitar '+esc(item.title)+' de favoritos">'+icon('close')+'</button></div>').join(''):'<div class="music-empty">'+icon('music')+'<strong>Tu música, a mano.</strong><p>Abre una canción o lista y pulsa Guardar favorito.</p></div>')+'</div>':
       '<div class="music-stage" data-music-stage><div class="music-empty">'+icon('music')+'<strong data-music-placeholder>Escucha desde tu escritorio.</strong><p data-music-hint>Busca una canción o abre YouTube para empezar.</p><button class="secondary-button" data-music-action="home">Abrir YouTube</button></div></div>')+
-    '<div class="music-error" data-music-error role="status" hidden></div><input class="music-seek" data-music-seek type="range" min="0" max="0" step="1" value="0" aria-label="Posición de la canción" disabled><div class="music-controls"><div class="music-track"><strong data-music-title>Sin reproducción</strong><span data-music-time>0:00 / 0:00</span></div><div class="music-transport"><button class="icon-button" data-music-action="previous" aria-label="Canción anterior">'+icon('previous')+'</button><button class="icon-button music-play" data-music-action="toggle" aria-label="Reproducir o pausar">'+icon('play')+'</button><button class="icon-button" data-music-action="next" aria-label="Canción siguiente">'+icon('next')+'</button></div><button class="secondary-button music-save" data-music-action="favorite" title="Guardar canción o lista actual">'+icon('plus')+'<span>Guardar favorito</span></button></div>'+
+    '<div class="music-error" data-music-error role="status" hidden></div><input class="music-seek" data-music-seek type="range" min="0" max="0" step="1" value="0" aria-label="Posición de la canción" disabled><div class="music-controls"><div class="music-track"><strong data-music-title>Sin reproducción</strong><span data-music-time>0:00 / 0:00</span></div><div class="music-transport"><button class="icon-button" data-music-action="previous" aria-label="Canción anterior">'+icon('previous')+'</button><button class="icon-button music-play" data-music-action="toggle" aria-label="Reproducir o pausar">'+icon('play')+'</button><button class="icon-button" data-music-action="next" aria-label="Canción siguiente">'+icon('next')+'</button><button class="icon-button music-repeat" data-music-action="repeat" aria-label="Repetir canción" aria-pressed="'+library.repeatOne+'" title="Repetir la canción actual">'+icon('repeat')+'<span>1</span></button></div><button class="secondary-button music-save" data-music-action="favorite" title="Guardar canción o lista actual">'+icon('plus')+'<span>Guardar favorito</span></button></div>'+
     '<footer class="music-footer"><div><button data-music-action="back" title="Atrás">'+icon('arrow-left')+'</button><button data-music-action="reload" title="Recargar">'+icon('restore')+'</button></div><span>Bloqueo experimental · reproducción en línea</span></footer></div>';
 }
 function musicTime(value){const s=Number.isFinite(Number(value))?Math.max(0,Math.floor(Number(value))):0;return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
 function updateMusicUI(){
+  updateMusicControlPanels();
   for(const win of $$('.window[data-app="music"]')){
     const text=(selector,value)=>{const el=$(selector,win);if(el&&el.textContent!==value)el.textContent=value;};
     text('[data-music-title]',musicStatus.title||'Sin reproducción');
@@ -58,6 +59,7 @@ function updateMusicUI(){
     const error=$('[data-music-error]',win);if(error){const message=musicStatus.error||musicStatus.mediaError||musicStatus.notice;error.hidden=!message;error.textContent=message||'';}
     const play=$('[data-music-action="toggle"]',win);if(play){const mode=musicStatus.paused?'play':'pause';if(play.dataset.mode!==mode){play.innerHTML=icon(mode);play.dataset.mode=mode;}play.setAttribute('aria-label',musicStatus.paused?'Reproducir':'Pausar');}
     $$('[data-music-action="toggle"],[data-music-action="previous"],[data-music-action="next"]',win).forEach(el=>el.disabled=!musicStatus.hasMedia||(el.dataset.musicAction==='next'&&!musicStatus.canNext)||(el.dataset.musicAction==='previous'&&!musicStatus.canPrevious));
+    const repeat=$('[data-music-action="repeat"]',win);if(repeat){repeat.setAttribute('aria-pressed',String(state.music?.repeatOne===true));repeat.disabled=musicStatus.live;repeat.title=musicStatus.live?'La repetición no está disponible en un directo':'Repetir la canción actual';}
     const save=$('[data-music-action="favorite"]',win);if(save)save.disabled=!musicSavedURL(musicStatus.url);
     text('[data-music-placeholder]',musicStatus.phase==='error'?'No se pudo cargar YouTube':musicStatus.phase==='loading'?'Cargando YouTube…':'Escucha desde tu escritorio.');
     text('[data-music-hint]',typeof window.ReverseNative?.music==='function'?'Busca una canción o abre YouTube para empezar.':'La reproducción está disponible en la APK de REVERSE Music.');
@@ -66,8 +68,9 @@ function updateMusicUI(){
 function syncMusicBounds(){
   musicBoundsFrame=0;
   const owner=state.windows.find(w=>w.app==='music');
-  if(!owner){if(musicOwner){musicNative('close');musicStatus=musicEmptyStatus(musicStatus.shield);musicOwner=null;musicLastBounds='';}return;}
-  if(musicOwner!==owner.id){musicOwner=owner.id;musicNative('status');updateMusicUI();}
+  if(!owner){if(musicOwner){musicNative('close');musicStatus=musicEmptyStatus(musicStatus.shield);musicOwner=null;musicLastBounds='';musicLastRepeat=null;}return;}
+  if(musicOwner!==owner.id){musicOwner=owner.id;musicLastRepeat=null;musicNative('status');updateMusicUI();}
+  const repeat=state.music?.repeatOne===true;if(musicLastRepeat!==repeat){if(musicNative('repeat',{enabled:repeat}))musicLastRepeat=repeat;}
   const win=document.getElementById(owner.id),stage=win?.querySelector('[data-music-stage]');
   const modal=!$('#launcher').hidden||!$('#context-menu').hidden||$('#input-dialog').open;
   const r=stage?.getBoundingClientRect();
@@ -93,7 +96,7 @@ window.ReverseMusic={
   rendered(){updateMusicUI();scheduleMusicBounds();},
   close(id){
     musicNative('close',{windowId:id});
-    if(musicOwner===id||!musicOwner){musicOwner=null;musicLastBounds='';musicStatus=musicEmptyStatus(musicStatus.shield);}
+    if(musicOwner===id||!musicOwner){musicOwner=null;musicLastBounds='';musicLastRepeat=null;musicStatus=musicEmptyStatus(musicStatus.shield);}
   }
 };
 document.addEventListener('pointerdown',e=>{if(e.target.matches('[data-music-seek]'))e.target.dataset.scrubbing='true';});
@@ -125,7 +128,8 @@ document.addEventListener('click',e=>{
   }
   if(button.hasAttribute('data-music-remove')){state.music.favorites.splice(Number(button.dataset.musicRemove),1);renderWindowContent(w);queueSave();return;}
   const action=button.dataset.musicAction;
-  if(action==='home')musicNative('open');
+  if(action==='repeat')toggleMusicRepeat();
+  else if(action==='home')musicNative('open');
   else if(action==='shield'){const enabled=!musicStatus.shield;if(musicNative('shield',{enabled})){musicStatus.shield=enabled;updateMusicUI();}}
   else if(action==='favorite'){
     const url=musicSavedURL(musicStatus.url);if(!url)return;
@@ -134,6 +138,33 @@ document.addEventListener('click',e=>{
     state.music.favorites.push({url,title:String(musicStatus.title||'YouTube').slice(0,240)});queueSave();
     $('[data-music-count]',document.getElementById(w.id)).textContent=state.music.favorites.length;toast('Favorito guardado.');
   }else musicNative(action);
+});
+function toggleMusicRepeat(){
+  state.music||=cleanMusicState();state.music.repeatOne=!state.music.repeatOne;
+  if(musicNative('repeat',{enabled:state.music.repeatOne}))musicLastRepeat=state.music.repeatOne;queueSave();updateMusicUI();
+}
+function musicPanelStatus(){return musicStatus.phase==='loading'?'Cargando YouTube…':musicStatus.phase==='error'?'Requiere atención':musicStatus.hasMedia?(musicStatus.paused?'En pausa':'Reproduciendo'):'Sin canción seleccionada';}
+function musicControlHTML(){
+  const repeat=state.music?.repeatOne===true;
+  return '<section class="music-control-panel" aria-label="Control de música"><div class="music-panel-heading">'+icon('music')+'<div><strong>REVERSE Music</strong><small data-music-panel-status>'+esc(musicPanelStatus())+'</small></div><button class="secondary-button" data-music-panel-action="open">Abrir Music</button></div><p class="music-panel-title" data-music-panel-title>'+esc(musicStatus.title||'Elige tu música desde el reproductor.')+'</p><div class="music-panel-controls"><button class="secondary-button" data-music-panel-action="toggle" data-music-panel-play '+(!musicStatus.hasMedia?'disabled':'')+'>'+icon(musicStatus.paused?'play':'pause')+'<span>'+(musicStatus.paused?'Reproducir':'Pausar')+'</span></button><button class="secondary-button music-repeat" data-music-panel-action="repeat" aria-pressed="'+repeat+'">'+icon('repeat')+'Repetir una</button><span data-music-panel-repeat-state>'+(repeat?'Repetición activada':'Repetición desactivada')+'</span></div></section>';
+}
+function updateMusicControlPanels(){
+  for(const panel of $$('.music-control-panel')){
+    $('[data-music-panel-title]',panel).textContent=musicStatus.title||'Elige tu música desde el reproductor.';
+    $('[data-music-panel-status]',panel).textContent=musicPanelStatus();
+    const play=$('[data-music-panel-play]',panel);play.disabled=!musicStatus.hasMedia;
+    const mode=musicStatus.paused?'play':'pause';if(play.dataset.mode!==mode){play.innerHTML=icon(mode)+'<span>'+(musicStatus.paused?'Reproducir':'Pausar')+'</span>';play.dataset.mode=mode;}
+    const repeat=state.music?.repeatOne===true,button=$('[data-music-panel-action="repeat"]',panel);
+    button.setAttribute('aria-pressed',String(repeat));button.disabled=musicStatus.live;
+    $('[data-music-panel-repeat-state]',panel).textContent=repeat?'Repetición activada':'Repetición desactivada';
+  }
+}
+document.addEventListener('click',e=>{
+  const button=e.target.closest('[data-music-panel-action]');if(!button)return;
+  const action=button.dataset.musicPanelAction;
+  if(action==='open')createWindow('music');
+  if(action==='toggle'&&musicStatus.hasMedia)musicNative('toggle');
+  if(action==='repeat')toggleMusicRepeat();
 });
 window.addEventListener('DOMContentLoaded',()=>{
   const observer=new MutationObserver(scheduleMusicBounds);

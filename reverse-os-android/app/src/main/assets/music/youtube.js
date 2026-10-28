@@ -4,6 +4,7 @@
   if (window.__reverseMusic?.version === 2) return;
   let shield=false,timer=null,observer=null,altered=null,lastAction=-Infinity;
   let held=false,hostSuspended=false,mediaError='',commandId=0;
+  let repeatOne=false,repeatTimer=null,repeatObserver=null,repeatVideo=null;
   const video=()=>document.querySelector('#movie_player video')||document.querySelector('#player-container-id video')
     ||document.querySelector('ytmusic-player video')||[...document.querySelectorAll('video')].find(v=>v.getClientRects().length)||document.querySelector('video');
   // An unrelated ad elsewhere in the page must never seek the current song.
@@ -42,6 +43,29 @@
     observer.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
     timer=setInterval(filter,600);filter();
   }
+  function syncRepeat(){
+    const v=video();
+    if(repeatVideo&&repeatVideo!==v)repeatVideo.loop=false;
+    repeatVideo=v;
+    if(v)v.loop=repeatOne&&!adShowing(v)&&Number.isFinite(v.duration)&&v.duration>0;
+  }
+  function setRepeatOne(enabled){
+    repeatOne=!!enabled;clearInterval(repeatTimer);repeatTimer=null;
+    repeatObserver?.disconnect();repeatObserver=null;syncRepeat();
+    if(repeatOne){
+      repeatObserver=new MutationObserver(syncRepeat);
+      repeatObserver.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class','src']});
+      repeatTimer=setInterval(syncRepeat,400);
+    }
+    return true;
+  }
+  for(const type of ['loadedmetadata','durationchange','emptied'])document.addEventListener(type,syncRepeat,true);
+  document.addEventListener('ended',e=>{
+    const v=video();
+    if(e.target!==v||!repeatOne||held||hostSuspended||adShowing(v)||!Number.isFinite(v.duration)||v.duration<=0)return;
+    e.stopImmediatePropagation();
+    try{v.currentTime=0;command('play');}catch{}
+  },true);
   function command(action,value){
     const attempt=++commandId;
     if(action==='hostPause'){hostSuspended=true;held=true;pauseAll();return true;}
@@ -70,13 +94,13 @@
   const interact=e=>{if(e.isTrusted&&!hostSuspended){commandId++;held=false;mediaError='';}};
   document.addEventListener('pointerdown',interact,true);document.addEventListener('keydown',interact,true);
   function snapshot(){
-    const v=video(),ad=adShowing(v);
+    syncRepeat();const v=video(),ad=adShowing(v);
     const title=document.querySelector('ytmusic-player-bar .title,ytm-slim-video-metadata-section-renderer h1,h1.ytd-watch-metadata,h1.title')?.textContent?.trim()
       ||document.title.replace(/ - YouTube(?: Music)?$/,'');
-    return {url:location.href.slice(0,4096),title:(title||'YouTube').slice(0,240),hasMedia:!!v,paused:v?v.paused:true,ad,held,
+    return {url:location.href.slice(0,4096),title:(title||'YouTube').slice(0,240),hasMedia:!!v,paused:v?v.paused:true,ad,held,repeatOne,
       time:v&&Number.isFinite(v.currentTime)?v.currentTime:0,duration:v&&Number.isFinite(v.duration)?v.duration:0,
       live:!!v&&v.duration===Infinity,canSeek:!!v&&!ad&&Number.isFinite(v.duration)&&v.duration>0,
       canNext:visible(transport('next',v)),canPrevious:visible(transport('previous',v)),mediaError};
   }
-  window.__reverseMusic={version:2,setShield,command,snapshot};
+  window.__reverseMusic={version:2,setShield,setRepeatOne,command,snapshot};
 })();

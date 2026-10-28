@@ -11,8 +11,9 @@ async function desktop(width,height,profile=null){
   page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(/^https?:/.test(r.url()))requests.push(r.url());});
   await page.addInitScript(profile=>{
     try{localStorage.removeItem('reverse.workbench.v1');}catch{}
-    window.__musicCommands=[];
+    window.__musicCommands=[];window.__exports=[];
     window.ReverseNative={
+      exportText(name,contents,mime){window.__exports.push({name,contents,mime});},
       loadProfile:()=>JSON.stringify({ok:true,profile:profile?JSON.stringify(profile):null}),
       request(id,operation){setTimeout(()=>window.ReverseAndroid.complete(id,operation==='saveProfile'?{ok:true}:{ok:false,error:'No XI backend in music UI fixture'}),0);},
       music(action,raw){const data=JSON.parse(raw);window.__musicCommands.push({action,data});
@@ -64,6 +65,26 @@ async function desktop(width,height,profile=null){
     await page.locator('[data-music-action="favorite"]').click();
     check(await page.evaluate(()=>state.music.favorites.length===1),'Favorites deduplicate');
     check(await page.evaluate(()=>state.music.favorites[0].url==='https://m.youtube.com/watch?v=abcdefghijk'),'Favorites drop tracking');
+    await page.locator('[data-music-action="repeat"]').click();
+    check(await page.evaluate(()=>state.music.repeatOne===true),'Repeat one is a persistent preference');
+    check(await page.locator('[data-music-action="repeat"]').getAttribute('aria-pressed')==='true','Repeat button shows its active state');
+    await page.evaluate(()=>createWindow('control',{tab:'apps'}));await frame(page);
+    check(await page.locator('.music-control-panel').count()===1,'Control center includes live music controls');
+    check(await page.locator('[data-music-panel-title]').innerText()==='Canción <img src=x onerror=alert(1)>','Control panel displays remote titles as text');
+    await page.locator('[data-music-panel-action="toggle"]').click();
+    check(await page.evaluate(()=>window.__musicCommands.filter(c=>c.action==='toggle').at(-1).data.windowId===state.windows.find(w=>w.app==='music').id),'Control panel targets the music window');
+    await page.locator('[data-music-panel-action="repeat"]').click();
+    check(await page.evaluate(()=>state.music.repeatOne===false),'Control panel changes the same repeat setting');
+    await page.locator('[data-music-panel-action="repeat"]').click();
+    await page.evaluate(()=>{const w=state.windows.find(w=>w.app==='music');toggleMax(w);});
+    check(await page.locator('[data-control-window] small').allInnerTexts().then(rows=>rows.some(s=>s==='REVERSE Music · Maximizada')),'Window inventory updates without rebuilding controls');
+    await page.evaluate(()=>{const w=state.windows.find(w=>w.app==='music');toggleMax(w);});
+    for(const tab of ['system','appearance','backup']){await page.locator('[data-ui-tab="'+tab+'"]').click();check(await page.locator('.control-main').innerText().then(t=>t.length>30),'Control panel tab renders: '+tab);}
+    await page.locator('.control-main [data-action="export-backup"]').click();
+    check(await page.evaluate(()=>{const backup=JSON.parse(window.__exports.at(-1).contents);return backup.music.repeatOne===true&&backup.music.favorites.length===1;}),'Control panel backup includes repeat and favorites');
+    await page.locator('[data-ui-tab="apps"]').click();
+    await page.locator('[data-music-panel-action="open"]').click();await frame(page);
+    check(await page.evaluate(()=>getWindow(activeId).app==='music'),'Control panel opens the existing music player');
     await page.locator('[data-music-tab="favorites"]').click();await frame(page);
     check(await page.locator('.music-favorite img').count()===0,'Remote titles are rendered as text');
     check(await page.evaluate(()=>window.__musicCommands.filter(c=>c.action==='bounds').at(-1).data.visible===false),'Native view hides on library tab');
@@ -89,6 +110,7 @@ async function desktop(width,height,profile=null){
     profile.windows.push({...profile.windows.find(w=>w.app==='music'),id:'duplicate-music',space:1});
     const restored=await desktop(width,height,profile);await frame(restored);
     check(await restored.evaluate(()=>state.music.favorites.length===1),'Favorites survive native profile restoration');
+    check(await restored.evaluate(()=>state.music.repeatOne===true),'Repeat preference survives restoration without autoplay');
     check(await restored.evaluate(()=>state.windows.filter(w=>w.app==='music').length===1),'Imported profiles cannot restore two native players');
     check(await restored.evaluate(()=>!window.__musicCommands.some(c=>c.action==='open')),'Restoration never starts playback');
     await restored.evaluate(()=>closeWindow(state.windows.find(w=>w.app==='music')));await frame(restored);
@@ -126,6 +148,14 @@ async function desktop(width,height,profile=null){
   await page.waitForTimeout(700);
   check(await page.evaluate(()=>__clock.time===7&&!document.querySelector('video').muted&&!document.getElementById('reverse-music-filter')),'Disabling removes ad actions/styles and restores audio');
   check(await page.locator('#player-ads').isVisible(),'Disabling restores cosmetic slots');
+  await page.evaluate(()=>{document.getElementById('movie_player').classList.remove('ad-showing');window.__reverseMusic.setRepeatOne(true);});
+  check(await page.evaluate(()=>document.querySelector('video').loop),'Repeat one enables the media loop');
+  await page.evaluate(()=>document.getElementById('movie_player').classList.add('ad-showing'));await page.waitForFunction(()=>!document.querySelector('video').loop);
+  check(await page.evaluate(()=>!document.querySelector('video').loop),'Repeat never loops a marked advertisement');
+  await page.evaluate(()=>document.getElementById('movie_player').classList.remove('ad-showing'));await page.waitForFunction(()=>document.querySelector('video').loop);
+  check(await page.evaluate(()=>document.querySelector('video').loop),'Repeat resumes for the song after an ad');
+  await page.evaluate(()=>window.__reverseMusic.setRepeatOne(false));
+  check(await page.evaluate(()=>!document.querySelector('video').loop),'Turning repeat off restores normal playback');
   await page.evaluate(()=>window.__reverseMusic.command('hostPause'));
   check(await page.evaluate(()=>window.__reverseMusic.command('play')===false&&__clock.paused),'A suspended host cannot start playback');
   await page.evaluate(()=>{window.__reverseMusic.command('hostResume');__clock.paused=false;document.querySelector('video').dispatchEvent(new Event('play'));});
