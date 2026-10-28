@@ -19,7 +19,13 @@
 .music-seek{width:100%;height:8px;min-height:8px;flex-shrink:0;margin:0;accent-color:#a7c58e;cursor:pointer}.music-seek:disabled{opacity:.3;cursor:default}
 
 .music-error{flex-shrink:0;max-height:54px;overflow:auto}.music-seek:focus-visible,.music-search input:focus-visible{outline:2px solid #a7c58e;outline-offset:-2px}
-body[data-keyboard="true"] .music-heading,body[data-keyboard="true"] .music-tabs,body[data-keyboard="true"] .music-footer,body[data-keyboard="true"] .music-controls,body[data-keyboard="true"] .music-seek{display:none}
+/* Input mode keeps navigation and paste available. Only video and playback chrome collapse. */
+body[data-keyboard="true"] .music-heading,body[data-keyboard="true"] .music-controls,body[data-keyboard="true"] .music-seek{display:none}
+body[data-keyboard="true"] .music-search{display:flex;min-height:32px;flex:none;z-index:5}
+body[data-keyboard="true"] .music-tabs{display:flex;flex:none;min-height:26px}
+body[data-keyboard="true"] .music-tabs button{min-height:25px;padding:4px 0}
+body[data-keyboard="true"] .music-footer{display:flex;flex:none;min-height:19px}
+body[data-keyboard="true"] .music-stage{flex:0 0 0!important;height:0!important;min-height:0!important;visibility:hidden;pointer-events:none}
 @container(max-width:360px){.music-tabs>span{display:none}.music-brand strong{font-size:11px}.music-shield{padding:4px}.music-controls{gap:3px}}
 
 .music-repeat{position:relative}.music-repeat[aria-pressed="true"]{color:#bcdca2;border-color:#90b66a;background:#90b66a18}.music-repeat>span{position:absolute;right:2px;bottom:1px;font-size:8px;font-weight:700}.music-repeat:disabled{opacity:.35}

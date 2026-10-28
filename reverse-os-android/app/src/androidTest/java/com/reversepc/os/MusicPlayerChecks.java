@@ -102,7 +102,15 @@ final class MusicPlayerChecks {
             int[] layout = new int[3];
             runner.runOnMainSync(() -> {
                 player.get().layout(bounds(desktop.getWidth(), true));
-                FrameLayout.LayoutParams p = (FrameLayout.LayoutParams) web.getLayoutParams();
+                // The remote view is MATCH_PARENT inside a clipping frame. Measure the frame, not the inner WebView.
+                FrameLayout host = (FrameLayout) web.getParent();
+                check(host != null && host.getClipChildren() && host.getClipToPadding(),
+                    "Remote YouTube WebView must be enclosed by a clipping host");
+                FrameLayout.LayoutParams inner = (FrameLayout.LayoutParams) web.getLayoutParams();
+                check(inner.width == FrameLayout.LayoutParams.MATCH_PARENT &&
+                    inner.height == FrameLayout.LayoutParams.MATCH_PARENT,
+                    "Remote YouTube WebView must fill ONLY its clipped stage");
+                FrameLayout.LayoutParams p = (FrameLayout.LayoutParams) host.getLayoutParams();
                 layout[0] = p.leftMargin; layout[1] = p.topMargin; layout[2] = p.width;
             });
             check(layout[0] == 20 && layout[1] == 30 && layout[2] == 240, "Native bounds do not match the desktop");
@@ -111,13 +119,19 @@ final class MusicPlayerChecks {
                     JSONObject unsafe=bounds(desktop.getWidth(),true).put("safeTop",60).put("safeBottom",140)
                         .put("safeLeft",10).put("safeRight",300);
                     player.get().layout(unsafe);
-                    check(web.getVisibility()!=View.VISIBLE,"Native YouTube overlay obscured the search field");
+                    check(web.getVisibility()!=View.VISIBLE &&
+                        ((FrameLayout)web.getParent()).getVisibility()!=View.VISIBLE,
+                        "Native YouTube overlay obscured the search field");
                     JSONObject safe=bounds(desktop.getWidth(),true).put("safeTop",28).put("safeBottom",132)
                         .put("safeLeft",10).put("safeRight",300);
                     player.get().layout(safe);
-                    check(web.getVisibility()==View.VISIBLE,"Properly bounded YouTube view cannot be shown");
+                    check(web.getVisibility()==View.VISIBLE &&
+                        ((FrameLayout)web.getParent()).getVisibility()==View.VISIBLE,
+                        "Clipped YouTube stage cannot be shown safely");
                     player.get().layout(safe.put("editing",true));
-                    check(web.getVisibility()!=View.VISIBLE,"Native YouTube overlay must hide while a link is edited");
+                    check(web.getVisibility()!=View.VISIBLE &&
+                        ((FrameLayout)web.getParent()).getVisibility()!=View.VISIBLE,
+                        "Both native WebView and clipping stage must hide while editing a link");
                 }catch(Exception error){throw new RuntimeException(error);}
             });
             runner.runOnMainSync(() -> player.get().layout(bounds(desktop.getWidth(), false)));

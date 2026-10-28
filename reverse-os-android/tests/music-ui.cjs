@@ -42,6 +42,14 @@ async function desktop(width,height,profile=null){
     await page.locator('[data-music-paste]').click();
     check(await page.locator('[data-music-search] input').inputValue()==='https://youtu.be/abcdefghijk','Paste button inserts a real clipboard URL');
     check(await page.evaluate(()=>!window.__musicCommands.some(c=>c.action==='open')),'Pasting never starts playback automatically');
+    await page.evaluate(()=>{document.body.dataset.keyboard='true';scheduleMusicBounds();});
+    await frame(page);
+    check(await page.locator('[data-music-search] input').isVisible(),'URL editor survives keyboard opening');
+    check(await page.locator('[data-music-tab="favorites"]').isVisible(),'Music navigation remains usable while typing');
+    check(await page.locator('[data-music-copy]').isVisible(),'Copy link remains accessible while keyboard is open');
+    check(await page.evaluate(()=>window.__musicCommands.filter(c=>c.action==='bounds').at(-1)?.data.visible===false),'Native video hides during keyboard entry');
+    await page.evaluate(()=>{document.body.dataset.keyboard='false';scheduleMusicBounds();});
+    await frame(page);
     check(await page.evaluate(()=>window.__musicCommands.filter(c=>c.action==='bounds').at(-1)?.data.visible===false),'Paste keeps the remote view hidden until Submit');
     check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No desktop overflow');
     check(await page.evaluate(()=>[...document.querySelectorAll('.taskbar button')].filter(e=>e.getClientRects().length).every(e=>{const r=e.getBoundingClientRect();return r.x>=0&&r.right<=innerWidth;})),'Taskbar still fits');

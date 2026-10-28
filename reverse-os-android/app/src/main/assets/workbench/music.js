@@ -152,6 +152,10 @@ window.ReverseMusic={
     if(musicOwner===id||!musicOwner){musicSearchEditing=false;musicOwner=null;musicLastBounds='';musicLastRepeat=null;musicStatus=musicEmptyStatus(musicStatus.shield);}
   }
 };
+document.addEventListener('pointerdown',e=>{
+  // On Android, hide the native surface before a tap is dispatched to an editor.
+  if(e.target.closest('[data-music-search]'))musicEnterEditMode();
+},true);
 document.addEventListener('focusin',e=>{
   if(e.target.matches('[data-music-search] input'))musicEnterEditMode();
 });
