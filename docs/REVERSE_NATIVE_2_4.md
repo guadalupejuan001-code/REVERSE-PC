@@ -23,6 +23,9 @@ ahora ambas identidades están reconocidas por la migración guardada.
 - La APK propaga los márgenes del recorte/gestos y la presencia del teclado.
   El compositor de BBY Q mantiene su superficie al abrir el teclado. El botón
   Atrás de Android usa la navegación del shell antes de salir.
+- El arranque y Workbench respetan la orientación elegida en Android, sin
+  bloqueo horizontal. La rotación redimensiona la misma WebView sin recrear la
+  actividad ni reiniciar sus programas.
 - Inicio concentra Programas, Archivos, BBY Q y XI. Sistema queda en Ajustes.
   Se retiran accesos duplicados, frases de plantilla, widgets decorativos y el
   sembrado automático de `Hola-REVERSE.rxe`. Una copia de fábrica antigua se
