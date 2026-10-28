@@ -129,6 +129,11 @@ jobs:
           adb shell am force-stop com.reversepc.control.workbench
           timeout 180s adb shell am instrument -w -e mode restore com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee evidence/android-restore.txt
           grep 'WORKBENCH_TESTS_OK mode=restore' evidence/android-restore.txt
+          # Only the disposable emulator profile is cleared; the user's Android state
+          # and the BBY Q fixture used by other workflows are never altered.
+          adb shell pm clear com.reversepc.control.workbench
+          timeout 240s adb shell am instrument -w -e mode qd com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee evidence/android-qd.txt
+          grep 'WORKBENCH_TESTS_OK mode=qd' evidence/android-qd.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
