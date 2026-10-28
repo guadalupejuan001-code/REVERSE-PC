@@ -111,7 +111,7 @@ function createWindow(app,opts={}){
   if(app==='rxe'){if(!opts.rxePath)return;const existing=state.windows.find(w=>w.app==='rxe'&&w.rxePath===opts.rxePath&&w.space===state.space);if(existing){focusWindow(existing.id);return existing;}}
   if(!APPS[app])return;
   if(app==='music'){const existing=state.windows.find(w=>w.app==='music');if(existing){if(existing.space!==state.space)switchSpace(existing.space);focusWindow(existing.id);return existing;}}
-  if(['files','settings','calculator','help','control','wallpaper','programs','xmarket','qd'].includes(app)){const existing=state.windows.find(w=>w.app===app&&w.space===state.space);if(existing){if('folder'in opts)existing.folder=opts.folder;if('tab'in opts)existing.tab=opts.tab;renderWindowContent(existing);focusWindow(existing.id);return existing;}}
+  if(['files','settings','calculator','help','control','wallpaper','programs','xmarket','qd'].includes(app)){const existing=state.windows.find(w=>w.app===app&&w.space===state.space);if(existing){if('folder'in opts)existing.folder=opts.folder;if('tab'in opts)existing.tab=opts.tab;if('marketTab'in opts)existing.marketTab=opts.marketTab;renderWindowContent(existing);focusWindow(existing.id);return existing;}}
   if(app==='notes'&&!opts.file){const note=createFile('text','Nota sin título.txt','personal','');if(!note)return;opts.file=note.id;}
   if(opts.file){const old=state.windows.find(w=>w.file===opts.file&&w.space===state.space);if(old){focusWindow(old.id);return old;}}
   if(state.windows.length>=12){toast('Hay 12 ventanas abiertas. Cierra una para continuar.','help');return;}
@@ -219,7 +219,7 @@ document.addEventListener('click',async e=>{
   const target=e.target.closest('button,[data-file-id]');
   if(!e.target.closest('#context-menu')&&!e.target.closest('[data-action="new-menu"],[data-file-menu],[data-window-action="menu"],[data-action="note-menu"]'))hideContext();
   if(!target)return;
-  if(target.dataset.open){hideLauncher();createWindow(target.dataset.open,target.hasAttribute('data-shortcut-folder')?{folder:target.dataset.shortcutFolder}:{});return;}
+  if(target.dataset.open){hideLauncher();createWindow(target.dataset.open,target.hasAttribute('data-market-tab')?{marketTab:target.dataset.marketTab}:target.hasAttribute('data-shortcut-folder')?{folder:target.dataset.shortcutFolder}:{});return;}
   if(target.hasAttribute('data-space')){switchSpace(target.dataset.space);return;}
   const win=target.closest('.window');const w=win?getWindow(win.dataset.id):null;
   if(target.dataset.fileMenu){e.stopPropagation();const r=target.getBoundingClientRect();fileMenu(fileById(target.dataset.fileMenu),r.right,r.bottom);return;}

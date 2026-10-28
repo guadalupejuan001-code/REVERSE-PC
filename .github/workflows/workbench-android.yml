@@ -85,6 +85,9 @@ jobs:
           node deps/bbyq-latest/ai/xi/w4u/tests/native-w4u.mjs build/reverse_pc build/w4u > evidence/w4u.log
           node reverse-os-android/tests/quantum-workbench-native.cjs build/reverse_pc build/core-profile build/quantum > evidence/quantum.log
           node reverse-os-android/tests/qd-native.cjs build/reverse_pc build/qd build/e025/controller.rvp > evidence/qd-native.log
+          bash tests/x_market_laplace.sh build/reverse_pc > evidence/laplace-contract.json
+          node tests/x_market_predictor.js build/reverse_pc --ci > evidence/laplace-chronological.json
+          node reverse-os-android/tests/laplace-bridge-contract.cjs > evidence/laplace-bridge.json
           node bbyq-interface/build.mjs build/reverse_pc deps/bbyq-legacy build/legacy - > evidence/legacy-build.json
           mkdir -p reverse-os-android/app/src/androidTest/assets
           cp build/legacy/BBY-Q.rxe reverse-os-android/app/src/androidTest/assets/legacy-BBY-Q.rxe
