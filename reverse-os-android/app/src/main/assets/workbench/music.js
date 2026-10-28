@@ -73,7 +73,7 @@ function updateMusicUI(){
     const text=(selector,value)=>{const el=$(selector,win);if(el&&el.textContent!==value)el.textContent=value;};
     text('[data-music-title]',musicStatus.title||'Sin reproducción');
     text('[data-music-source]',musicStatus.source==='local'?'Sin conexión':'YouTube');
-    text('[data-music-footer]',musicStatus.source==='local'?'Audio local · puedes abrir tu juego':'Bloqueo experimental · reproducción en línea');
+    text('[data-music-footer]',musicStatus.source==='local'?'Audio local · puedes abrir tu juego':'Filtro experimental · reproducción en línea');
     updateMusicLibraryUI(win);
     text('[data-music-time]',musicStatus.live?'En directo':musicTime(musicStatus.time)+' / '+musicTime(musicStatus.duration));
     const seek=$('[data-music-seek]',win);if(seek){seek.disabled=!musicStatus.hasMedia||!musicStatus.canSeek||!!musicStatus.ad||!(musicStatus.duration>0);seek.max=String(musicStatus.duration||0);if(seek.dataset.scrubbing!=='true')seek.value=String(musicStatus.time||0);}

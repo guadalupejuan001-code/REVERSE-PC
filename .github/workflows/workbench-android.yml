@@ -1,4 +1,4 @@
-name: REVERSE 2.5.6 compact BBY Q modules and gyro PRISMA
+name: REVERSE 2.5.7 combined OS Music navigation and safe overlay
 on:
   push:
     branches: [main]
@@ -115,10 +115,10 @@ jobs:
           keytool -genkeypair -keystore "$REVERSE_SIGNING_KEYSTORE" -storetype JKS -storepass android -keypass android -alias reverse-desktop -keyalg RSA -keysize 2048 -validity 30 -dname 'CN=REVERSE Disposable CI'
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1' platform-tools emulator 'system-images;android-35;default;x86_64' > evidence/sdk.log
           gradle -p reverse-os-android --no-daemon :app:assembleControlDebug :app:assembleControlDebugAndroidTest > evidence/gradle.log 2>&1 || { tail -180 evidence/gradle.log; exit 1; }
-          cp reverse-os-android/app/build/outputs/apk/control/debug/app-control-debug.apk dist/REVERSE-v2.5.6-compact-ci.apk
+          cp reverse-os-android/app/build/outputs/apk/control/debug/app-control-debug.apk dist/REVERSE-v2.5.7-combined-ci.apk
           cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" dist/apksigner.jar
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/REVERSE-v2.5.6-compact-ci.apk > evidence/ci-signature.txt
-          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -p 4 dist/REVERSE-v2.5.6-compact-ci.apk > evidence/alignment.txt
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/REVERSE-v2.5.7-combined-ci.apk > evidence/ci-signature.txt
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -p 4 dist/REVERSE-v2.5.7-combined-ci.apk > evidence/alignment.txt
       - name: Run migration, keyboard and desktop on Android 15
         timeout-minutes: 20
         shell: bash
@@ -145,7 +145,7 @@ jobs:
           adb shell settings put secure immersive_mode_confirmations confirmed
           adb shell settings put system screen_off_timeout 600000
           adb shell input keyevent 82
-          adb install -r dist/REVERSE-v2.5.6-compact-ci.apk
+          adb install -r dist/REVERSE-v2.5.7-combined-ci.apk
           adb install -r reverse-os-android/app/build/outputs/apk/androidTest/control/debug/app-control-debug-androidTest.apk
           sleep 20
           adb logcat -c
@@ -173,7 +173,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: REVERSE-2.5.6-compact-gyro
+          name: REVERSE-2.5.7-music-navigation
           path: |
             dist/
             evidence/
