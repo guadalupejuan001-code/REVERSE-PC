@@ -172,7 +172,7 @@ final class MusicPlayerChecks {
             check(status.get().getString("phase").equals("ready"),"Reload did not recover from an HTTP failure");
             runner.runOnMainSync(() -> player.get().destroy());
             check(web.getParent() == null, "Closed player still owns a desktop view");
-            return 28;
+            return 28 + MusicOfflineChecks.run(runner, activity);
         } finally {
             runner.runOnMainSync(() -> audio.abandonAudioFocusRequest(competingFocus));
             runner.runOnMainSync(() -> { if (player.get() != null) player.get().destroy(); });
@@ -182,7 +182,7 @@ final class MusicPlayerChecks {
     private static void control(Instrumentation runner, MusicPlayer player, String action) {
         runner.runOnMainSync(() -> {try {player.command(action,new JSONObject());} catch(Exception error){throw new RuntimeException(error);}});
     }
-    private static byte[] tone() {
+    static byte[] tone() {
         int samples=8000*12,bytes=samples*2;
         java.nio.ByteBuffer wav=java.nio.ByteBuffer.allocate(44+bytes).order(java.nio.ByteOrder.LITTLE_ENDIAN);
         wav.put("RIFF".getBytes(StandardCharsets.US_ASCII)).putInt(36+bytes).put("WAVEfmt ".getBytes(StandardCharsets.US_ASCII));

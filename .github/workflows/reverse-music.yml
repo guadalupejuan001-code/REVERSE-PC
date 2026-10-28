@@ -23,8 +23,9 @@ jobs:
       - name: Verify native URL and request filtering policy
         run: |
           mkdir -p build/music-policy
-          javac -d build/music-policy reverse-os-android/app/src/main/java/com/reversepc/os/MusicPolicy.java reverse-os-android/tests/MusicPolicyTest.java
+          javac -d build/music-policy reverse-os-android/app/src/main/java/com/reversepc/os/MusicPolicy.java reverse-os-android/app/src/main/java/com/reversepc/os/MusicDownloadPolicy.java reverse-os-android/tests/MusicPolicyTest.java reverse-os-android/tests/MusicDownloadPolicyTest.java
           java -cp build/music-policy com.reversepc.os.MusicPolicyTest
+          java -cp build/music-policy com.reversepc.os.MusicDownloadPolicyTest
       - name: Install browser test dependencies
         run: |
           npm install --prefix "$RUNNER_TEMP/music-ui" playwright@1.56.1

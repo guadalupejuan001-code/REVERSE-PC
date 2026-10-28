@@ -53,6 +53,49 @@ async function desktop(width,height,profile=null){
     await page.locator('[data-music-tab="favorites"]').click();await page.locator('[data-music-tab="player"]').click();
     check(await page.locator('[data-music-search] input').inputValue()==='Bach: concierto','Draft search survives tab switches');
 
+    await page.locator('[data-music-action="downloads"]').click();await frame(page);
+    check(await page.locator('[data-music-tab="downloads"]').getAttribute('aria-selected')==='true','Download button opens the offline library');
+    check(await page.evaluate(()=>window.__musicCommands.filter(c=>c.action==='bounds').at(-1).data.visible===false),'Remote YouTube view cannot cover the download form');
+    const audioURL='https://audio.example/song.mp3?signature=a%2Bb&format=mp3';
+    await page.locator('[data-music-download] input').fill(audioURL);await page.locator('[data-music-download] button').click();
+    check(await page.evaluate(url=>window.__musicCommands.some(c=>c.action==='download'&&c.data.url===url),audioURL),'Download submits the explicit audio URL unchanged');
+    const localId='12345678-1234-1234-1234-123456789abc',savingId='12345678-1234-1234-1234-123456789abd',errorId='12345678-1234-1234-1234-123456789abe';
+    await page.evaluate(({localId,savingId,errorId})=>window.ReverseMusic.update({library:[
+      {id:localId,title:'Offline <img src=x onerror=alert(1)>',status:'ready',bytes:1048576,total:1048576,duration:120},
+      {id:savingId,title:'Descargando.wav',status:'saving',bytes:250,total:1000,duration:0},
+      {id:errorId,title:'Audio fallido',status:'error',error:'El servidor no respondió.',bytes:0,total:0,duration:0},
+      {id:'<invalid>',title:'Bad ID',status:'ready'}
+    ]}),{localId,savingId,errorId});
+    check(await page.locator('[data-music-row]').count()===3,'Offline library validates identifiers and renders real transfer states');
+    check(await page.locator('[data-music-row] img').count()===0,'Local filenames are rendered as text');
+    check(await page.locator('[data-music-local]:enabled').count()===1,'Only fully saved audio can be played');
+    check(await page.locator('[data-music-row="'+savingId+'"] [data-music-local-status]').innerText()==='Guardando… 25 %','Download progress reflects received bytes');
+    check(await page.locator('[data-music-row="'+errorId+'"] [data-music-local-status]').innerText()==='El servidor no respondió.','Download failure is visible');
+    await page.locator('[data-music-local="'+localId+'"]').click();
+    check(await page.evaluate(id=>window.__musicCommands.some(c=>c.action==='local'&&c.data.id===id),localId),'Offline playback selects a native library identifier');
+    await page.evaluate(localId=>window.ReverseMusic.update({source:'local',localId,loaded:true,phase:'ready',hasMedia:true,paused:false,title:'Offline <img src=x onerror=alert(1)>',url:'',time:5,duration:120,canSeek:true,canNext:false,canPrevious:false}),localId);
+    check(await page.locator('[data-music-source]').innerText()==='Sin conexión','Player identifies offline playback');
+    check(await page.locator('[data-music-action="favorite"]').isDisabled(),'Local files cannot be saved as YouTube favorites');
+    check(await page.locator('[data-music-action="reload"]').isDisabled(),'YouTube reload cannot interrupt local playback');
+    await page.locator('[data-music-delete="'+savingId+'"]').focus();
+    await page.evaluate(({localId,savingId,errorId})=>window.ReverseMusic.update({library:[
+      {id:localId,title:'Offline <img src=x onerror=alert(1)>',status:'ready',bytes:1048576,total:1048576,duration:120},
+      {id:savingId,title:'Descargando.wav',status:'saving',bytes:500,total:1000,duration:0},
+      {id:errorId,title:'Audio fallido',status:'error',error:'El servidor no respondió.',bytes:0,total:0,duration:0}
+    ]}),{localId,savingId,errorId});
+    check(await page.evaluate(id=>document.activeElement?.dataset.musicDelete===id,savingId),'Progress updates preserve the focused library control');
+    check(await page.locator('[data-music-download] input').inputValue()===audioURL,'Transfer polling preserves the typed download link');
+    await page.locator('[data-music-action="import"]').click();
+    check(await page.evaluate(()=>window.__musicCommands.some(c=>c.action==='import')),'Import button requests the native audio picker');
+    await page.locator('[data-music-delete="'+savingId+'"]').click();
+    check(await page.evaluate(id=>window.__musicCommands.some(c=>c.action==='removeLocal'&&c.data.id===id),savingId),'Delete/cancel targets only the selected library identifier');
+    check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Download library fits the desktop width');
+    await page.locator('.music-downloads').evaluate(el=>{document.activeElement?.blur();el.scrollTop=0;});
+    await page.screenshot({path:path.join(out,'downloads-'+width+'.png')});
+    await page.locator('[data-music-tab="player"]').click();await frame(page);
+    check(await page.evaluate(()=>window.__musicCommands.filter(c=>c.action==='bounds').at(-1).data.visible===false),'A local track keeps the remote overlay hidden on the player tab');
+    await page.evaluate(()=>window.ReverseMusic.update({source:'youtube',localId:'',loaded:true,phase:'ready',hasMedia:true,canSeek:true,canNext:false,canPrevious:false,paused:false,time:72,duration:240,title:'Canción <img src=x onerror=alert(1)>',url:'https://www.youtube.com/watch?v=abcdefghijk&si=secret',blocked:3}));
+
     await page.locator('[data-music-action="shield"]').click();
     check(await page.evaluate(()=>window.__musicCommands.some(c=>c.action==='shield'&&c.data.enabled===false)),'Shield toggle reaches native filtering preference');
     await page.locator('[data-music-action="shield"]').click();

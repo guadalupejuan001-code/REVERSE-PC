@@ -45,7 +45,7 @@ import java.util.concurrent.TimeUnit;
 /** Local packaged desktop. Only owned assets can access the native bridge. */
 public final class WorkbenchActivity extends Activity {
     static final String ORIGIN="https://reverse.local/";
-    private static final int PICK=7101,EXPORT=7102,IMPORT_RXE=7103;
+    private static final int PICK=7101,EXPORT=7102,IMPORT_RXE=7103,IMPORT_MUSIC=7104;
     private final Handler ui=new Handler(Looper.getMainLooper());
     private volatile boolean closed;
     private SessionStore store;
@@ -55,6 +55,7 @@ public final class WorkbenchActivity extends Activity {
     private MusicPlayer music;
     private String musicWindowId;
     private boolean hostResumed;
+    private boolean musicPickerOpen;
     private ValueCallback<Uri[]> chooser;
     private byte[] pendingExport;
     private int insetTop,insetBottom,insetLeft,insetRight,keyboardInset;
@@ -209,11 +210,11 @@ public final class WorkbenchActivity extends Activity {
                     JSONObject data=new JSONObject(payload);String owner=data.optString("windowId","");
                     if(!owner.matches("[A-Za-z0-9_-]{1,128}"))return;
                     if("close".equals(action)){
-                        if(owner.equals(musicWindowId)&&music!=null){music.destroy();music=null;musicWindowId=null;}return;
+                        if(owner.equals(musicWindowId)&&music!=null){music.stopLocal();music.destroy();music=null;musicWindowId=null;}return;
                     }
                     if(!owner.equals(musicWindowId)){
                         if(!"status".equals(action)&&!"open".equals(action))return;
-                        if(music!=null)music.destroy();music=null;musicWindowId=owner;
+                        if(music!=null){music.stopLocal();music.destroy();}music=null;musicWindowId=owner;
                     }
                     if(music==null)music=new MusicPlayer(WorkbenchActivity.this,root,web,state->{
                         if(!closed&&owner.equals(musicWindowId))try{
@@ -222,6 +223,21 @@ public final class WorkbenchActivity extends Activity {
                         }catch(Exception ignored){}
                     });
                     if(!hostResumed)music.pause();
+                    if("import".equals(action)){
+                        if(!hostResumed||musicPickerOpen)return;
+                        musicPickerOpen=true;
+                        try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("audio/*"),IMPORT_MUSIC);}
+                        catch(Exception error){musicPickerOpen=false;throw error;}
+                        return;
+                    }
+                    if("removeLocal".equals(action)){
+                        new android.app.AlertDialog.Builder(WorkbenchActivity.this).setTitle("Eliminar audio guardado")
+                            .setMessage("Se eliminará esta copia de la biblioteca de REVERSE. Una transferencia en curso se cancelará.")
+                            .setNegativeButton("Conservar",null).setPositiveButton("Eliminar",(dialog,which)->{
+                                if(!closed&&music!=null&&owner.equals(musicWindowId))try{music.command(action,data);}catch(Exception error){music.reportError(error.getMessage());}
+                            }).show();
+                        return;
+                    }
                     music.command(action,data);
                 }catch(Exception error){if(music!=null)music.reportError(String.valueOf(error.getMessage()));}
             });
@@ -334,6 +350,13 @@ public final class WorkbenchActivity extends Activity {
     }
     @Override protected void onActivityResult(int request,int result,Intent data){
         super.onActivityResult(request,result,data);
+        if(request==IMPORT_MUSIC){
+            musicPickerOpen=false;
+            if(result==RESULT_OK&&data!=null&&data.getData()!=null)try{
+                MusicLibrary.get(this).importAudio(data.getData());
+                if(music!=null)music.reportError("");
+            }catch(Exception error){if(music!=null)music.reportError(error.getMessage());else message("No se pudo importar el audio.");}
+        }
         if(request==IMPORT_RXE&&result==RESULT_OK&&data!=null&&data.getData()!=null){Uri uri=data.getData();RuntimeExecutor.INSTANCE.execute(()->{
             String response;
             try(InputStream input=getContentResolver().openInputStream(uri)){JSONObject imported=programs().importImage(WorkbenchPrograms.read(input));response=imported.toString();Log.i("ReverseWorkbench","WORKBENCH_RXE_IMPORT_OK "+imported.getString("path"));}

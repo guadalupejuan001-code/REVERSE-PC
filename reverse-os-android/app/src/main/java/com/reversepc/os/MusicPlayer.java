@@ -45,8 +45,9 @@ final class MusicPlayer {
     private final SharedPreferences prefs;
     private final AtomicInteger blocked = new AtomicInteger();
     private final MediaSession session;
+    private final MusicLibrary library;
     private volatile boolean shield;
-    private boolean repeatOne;
+    private boolean repeatOne, localSelected;
     private boolean suspended, disposed, polling, receiverRegistered, recovering;
     private WebView remote;
     private String injection, error = "", notice = "", phase = "idle";
@@ -54,6 +55,9 @@ final class MusicPlayer {
     private Runnable pollTimeout;
     private JSONObject bounds = new JSONObject(), snapshot = new JSONObject();
     private final Runnable poll = this::poll;
+    private final Runnable libraryPoll = new Runnable() {
+        public void run() { if (disposed || suspended) return; if (!polling) publish(); ui.postDelayed(this, 1000); }
+    };
     private final BroadcastReceiver noisy = new BroadcastReceiver() {
         @Override public void onReceive(Context context, Intent intent) { interrupt("Auriculares desconectados. Pulsa Reproducir para continuar."); }
     };
@@ -61,6 +65,8 @@ final class MusicPlayer {
     MusicPlayer(Activity activity, FrameLayout root, WebView desktop, Listener listener) {
         this.activity = activity; this.root = root; this.desktop = desktop; this.listener = listener;
         prefs = activity.getSharedPreferences("reverse-music", Context.MODE_PRIVATE);
+        library = MusicLibrary.get(activity);
+        localSelected = !MusicAudioService.state().optString("localId").isEmpty();
         shield = prefs.getBoolean("shield", true);
         // Chromium's AudioFocusDelegate owns the audio focus for this WebView.
         // A second native focus request steals it from the same UID and pauses playback.
@@ -77,6 +83,7 @@ final class MusicPlayer {
         if (Build.VERSION.SDK_INT >= 33) activity.registerReceiver(noisy, filter, Context.RECEIVER_NOT_EXPORTED);
         else activity.registerReceiver(noisy, filter);
         receiverRegistered = true;
+        ui.post(libraryPoll);
     }
     private void createView() throws Exception {
         if (remote != null) return;
@@ -119,7 +126,7 @@ final class MusicPlayer {
             }
             @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap icon) {
                 if (disposed || view != remote) return;
-                beginNavigation(); view.getSettings().setMediaPlaybackRequiresUserGesture(suspended); publish();
+                beginNavigation(); view.getSettings().setMediaPlaybackRequiresUserGesture(suspended || localSelected); publish();
             }
             @Override public void onPageCommitVisible(WebView view, String url) { inject(view); }
             @Override public void onPageFinished(WebView view, String url) { inject(view); startPolling(); }
@@ -139,7 +146,7 @@ final class MusicPlayer {
             }
         });
         remote.setDownloadListener((url, agent, disposition, mime, size) -> {
-            notice = "Este reproductor reproduce en línea; no descarga archivos."; publish();
+            notice = "YouTube se reproduce en línea. Para guardar archivos de audio directos, abre Descargar música."; publish();
         });
         root.addView(remote, new FrameLayout.LayoutParams(1, 1));
         layout(bounds);
@@ -152,7 +159,7 @@ final class MusicPlayer {
         if (disposed || view != remote || phase.equals("error") || !MusicPolicy.pageAllowed(view.getUrl())) return;
         final int epoch = documentEpoch;
         String script = "(()=>{try{" + injection + "\nwindow.__reverseMusic.setShield(" + shield + ");"
-            + "window.__reverseMusic.setRepeatOne(" + repeatOne + ");" + (suspended ? "window.__reverseMusic.command('hostPause');" : "") + "return true;}catch(e){return false;}})()";
+            + "window.__reverseMusic.setRepeatOne(" + repeatOne + ");" + (suspended ? "window.__reverseMusic.command('hostPause');" : localSelected ? "window.__reverseMusic.command('hold');" : "") + "return true;}catch(e){return false;}})()";
         view.evaluateJavascript(script, result -> {
             if (disposed || view != remote || epoch != documentEpoch || phase.equals("error")) return;
             if (!"true".equals(result)) { fail("No se pudo iniciar el reproductor. Pulsa Recargar."); return; }
@@ -163,8 +170,23 @@ final class MusicPlayer {
         if (disposed) return;
         if (action.equals("bounds")) { layout(data); return; }
         if (action.equals("status")) { publish(); return; }
+        if (action.equals("download")) {
+            library.download(data.getString("url")); notice = ""; publish(); return;
+        }
+        if (action.equals("removeLocal")) {
+            String id = data.getString("id");
+            if (id.equals(MusicAudioService.state().optString("localId"))) MusicAudioService.stopPlayback();
+            library.remove(id); notice = ""; publish(); return;
+        }
+        if (action.equals("local")) {
+            if (suspended) return;
+            String id = data.getString("id"); library.ready(id);
+            stopPolling(); send("hold", 0); localSelected = true; notice = "";
+            updateSession(); layout(bounds); MusicAudioService.select(activity, id, repeatOne); publish(); return;
+        }
         if (action.equals("repeat")) {
             repeatOne = data.getBoolean("enabled");
+            MusicAudioService.control("repeat", repeatOne ? 1 : 0);
             if (remote != null) remote.evaluateJavascript("window.__reverseMusic&&window.__reverseMusic.setRepeatOne("+repeatOne+")",null);
             publish(); return;
         }
@@ -175,10 +197,11 @@ final class MusicPlayer {
         }
         if (action.equals("open")) {
             String url = MusicPolicy.resolve(data.optString("input", ""));
+            MusicAudioService.stopPlayback(); localSelected = false;
             createView(); beginNavigation(); remote.loadUrl(url); publish(); return;
         }
-        if (action.equals("reload")) { if (remote != null) { beginNavigation(); remote.reload(); publish(); } return; }
-        if (action.equals("back")) { if (remote != null && remote.canGoBack()) { beginNavigation(); remote.goBack(); publish(); } return; }
+        if (action.equals("reload")) { if (!localSelected && remote != null) { beginNavigation(); remote.reload(); publish(); } return; }
+        if (action.equals("back")) { if (!localSelected && remote != null && remote.canGoBack()) { beginNavigation(); remote.goBack(); publish(); } return; }
         if (!action.matches("play|pause|toggle|next|previous|seek"))
             throw new IllegalArgumentException("Control de música no permitido.");
         playback(action, data.optDouble("time", 0));
@@ -189,7 +212,7 @@ final class MusicPlayer {
         double viewport = data.optDouble("viewport", 0);
         double x = data.optDouble("x", 0), y = data.optDouble("y", 0);
         double w = data.optDouble("w", 0), h = data.optDouble("h", 0);
-        boolean visible = !suspended && data.optBoolean("visible") && viewport > 0
+        boolean visible = !suspended && !localSelected && data.optBoolean("visible") && viewport > 0
             && Double.isFinite(x + y + w + h + viewport) && w >= 1 && h >= 1 && x >= 0 && y >= 0;
         double scale = viewport > 0 ? desktop.getWidth() / viewport : 0;
         visible &= scale > 0 && (x + w) * scale <= desktop.getWidth() + 2 && (y + h) * scale <= desktop.getHeight() + 2;
@@ -217,6 +240,9 @@ final class MusicPlayer {
         });
     }
     private void playback(String action, double value) {
+        if (localSelected && !suspended && !disposed && Double.isFinite(value)) {
+            notice = ""; MusicAudioService.control(action, value); publish(); return;
+        }
         if (remote == null || suspended || disposed || phase.equals("error") || !Double.isFinite(value)) return;
         if (action.equals("pause")) { interrupt(""); return; }
         if (action.equals("play") || action.equals("toggle")) remote.getSettings().setMediaPlaybackRequiresUserGesture(false);
@@ -251,6 +277,7 @@ final class MusicPlayer {
     }
     private void updateSession() {
         if (disposed) return;
+        if (localSelected) { session.setActive(false); return; }
         boolean hasMedia = snapshot.optBoolean("hasMedia") && phase.equals("ready");
         boolean playing = hasMedia && !snapshot.optBoolean("paused",true) && !snapshot.optBoolean("held") && !suspended;
         long duration = (long)(snapshot.optDouble("duration",0)*1000);
@@ -272,7 +299,7 @@ final class MusicPlayer {
         pollTimeout = null;
     }
     private void startPolling() {
-        if (polling || suspended || disposed || remote == null || phase.equals("error")) return;
+        if (polling || suspended || disposed || localSelected || remote == null || phase.equals("error")) return;
         polling = true; ui.post(poll);
     }
     private void poll() {
@@ -301,9 +328,13 @@ final class MusicPlayer {
         if (disposed) return;
         try {
             // Always publish every track field; partial objects kept stale songs in the UI.
-            JSONObject state = cleanSnapshot(snapshot);
-            state.put("available",true).put("loaded",remote!=null).put("phase",phase).put("shield",shield)
-                .put("repeatOne",repeatOne).put("blocked",blocked.get()).put("error",error).put("notice",notice).put("recovering",recovering);
+            JSONObject local = MusicAudioService.state();
+            JSONObject state = cleanSnapshot(localSelected ? local : snapshot);
+            state.put("available",true).put("loaded",localSelected ? local.optBoolean("loaded") : remote!=null)
+                .put("phase",localSelected ? local.optString("phase", "idle") : phase).put("shield",shield)
+                .put("repeatOne",repeatOne).put("blocked",blocked.get()).put("error",localSelected ? local.optString("error") : error)
+                .put("notice",notice).put("recovering",recovering).put("source",localSelected ? "local" : "youtube")
+                .put("localId",localSelected ? local.optString("localId") : "").put("library",library.list());
             listener.state(state);
         } catch (Exception ignored) {}
     }
@@ -312,9 +343,11 @@ final class MusicPlayer {
         error = message; phase = "error"; updateSession(); publish();
     }
     void reportError(String message) { notice = message; publish(); }
+    void stopLocal() { MusicAudioService.stopPlayback(); }
     void pause() {
         if (disposed) return;
         suspended = true; stopPolling(); send("hostPause",0);
+        ui.removeCallbacks(libraryPoll);
         try { snapshot.put("paused",true).put("held",true); } catch (Exception ignored) {}
         if (remote != null) { remote.getSettings().setMediaPlaybackRequiresUserGesture(true); remote.onPause(); remote.setVisibility(View.INVISIBLE); }
         updateSession(); publish();
@@ -322,6 +355,7 @@ final class MusicPlayer {
     void resume() {
         if (disposed) return;
         suspended = false;
+        ui.removeCallbacks(libraryPoll); ui.post(libraryPoll);
         if (remote != null) { remote.getSettings().setMediaPlaybackRequiresUserGesture(false); remote.onResume(); send("hostResume",0); layout(bounds); startPolling(); }
         updateSession(); publish();
     }
