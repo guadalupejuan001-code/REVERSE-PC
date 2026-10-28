@@ -2,6 +2,7 @@
 #include "rxe.hpp"
 #include "rxe_app.hpp"
 #include "minimal_guest_demo.hpp"
+#include "minimal_guest_system_demo.hpp"
 #include <jni.h>
 #include <exception>
 #include <limits>
@@ -117,6 +118,17 @@ Java_com_reversepc_os_NativeRuntime_guestInitialize(JNIEnv* e,jclass,jbyteArray 
     guest.load_elf(std::move(image));return output(e,guest_packet(guest));
   }catch(const std::exception& x){throw_java(e,x);return nullptr;}
 }
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_guestInitializeSystem(JNIEnv* e,jclass,jbyteArray image,jint kind){
+  try{
+    reverse_pc::guest::MinimalGuest guest(128*1024*1024,65536);
+    if(kind==0){reverse_pc::guest::require(!image,"Built-in system check does not accept an image");guest.load_elf(reverse_pc::guest::system_demo_elf(),true);}
+    else if(kind==1)guest.load_elf(bytes(e,image),true);
+    else if(kind==2)guest.load_linux_image(bytes(e,image));
+    else throw std::invalid_argument("Unsupported system image kind");
+    return output(e,guest_packet(guest));
+  }catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_reversepc_os_NativeRuntime_guestInspect(JNIEnv* e,jclass,jbyteArray state){
   try{const auto guest=reverse_pc::guest::MinimalGuest::from_snapshot(bytes(e,state));return e->NewStringUTF(guest.statistics().c_str());}
@@ -133,5 +145,10 @@ Java_com_reversepc_os_NativeRuntime_guestRun(JNIEnv* e,jclass,jbyteArray state,j
 extern "C" JNIEXPORT jbyteArray JNICALL
 Java_com_reversepc_os_NativeRuntime_guestXi(JNIEnv* e,jclass,jbyteArray state,jstring program){
   try{auto guest=reverse_pc::guest::MinimalGuest::from_snapshot(bytes(e,state));const auto lines=guest.apply_xi_delta(source(e,program));return output(e,guest_packet(guest,nullptr,lines));}
+  catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_guestInput(JNIEnv* e,jclass,jbyteArray state,jstring text){
+  try{auto guest=reverse_pc::guest::MinimalGuest::from_snapshot(bytes(e,state));guest.console_input(source(e,text));return output(e,guest_packet(guest));}
   catch(const std::exception& x){throw_java(e,x);return nullptr;}
 }

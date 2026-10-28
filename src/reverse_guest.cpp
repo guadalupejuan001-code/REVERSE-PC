@@ -1,4 +1,5 @@
 #include "minimal_guest_demo.hpp"
+#include "minimal_guest_system_demo.hpp"
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -42,18 +43,23 @@ std::string elapsed(std::chrono::steady_clock::time_point start) {
 }
 void report(const MinimalGuest& guest,const RunResult& run,std::chrono::steady_clock::time_point start) {
   std::cout<<"{\"guest\":"<<guest.statistics()<<",\"executed_this_run\":"<<run.executed
-      <<",\"status\":"<<quote(run.halted?"exited":"yielded")<<",\"stdout\":"<<quote(run.output)
+      <<",\"status\":"<<quote(run.halted?"exited":run.waiting?"waiting":"yielded")<<",\"stdout\":"<<quote(run.output)
       <<",\"stderr\":"<<quote(run.error_output)<<",\"snapshot_bytes\":"<<guest.snapshot().size()<<elapsed(start)<<"}\n";
 }
 void help() {
-  std::cout<<"REVERSE minimal-state AArch64 EL0 guest (Android boot is not implemented)\n"
+  std::cout<<"REVERSE ARM64 compatibility module (Android boot is not implemented)\n"
       "reverse_guest demo [output.rvg]\n"
       "reverse_guest demo-init output.rvg\n"
       "reverse_guest init program.elf output.rvg [ram_bytes] [max_overrides]\n"
+      "reverse_guest system-demo-init output.rvg\n"
+      "reverse_guest system-init kernel.elf output.rvg [ram_bytes] [max_overrides]\n"
+      "reverse_guest linux-init Image output.rvg [initrd]\n"
       "reverse_guest run input.rvg output.rvg [steps]\n"
       "reverse_guest inspect input.rvg\n"
       "reverse_guest xi input.rvg delta.xi output.rvg\n"
       "reverse_guest rxe input.rvg delta.rxe output.rvg\n"
+      "reverse_guest input input.rvg text.txt output.rvg\n"
+      "reverse_guest device-tree output.dtb [ram_bytes]\n"
       "reverse_guest peek input.rvg address [bytes]\n";
 }
 } // namespace
@@ -63,6 +69,22 @@ int main(int argc,char** argv) {
     if (argc<2) { help();return 2; }
     const std::string operation=argv[1];
     if (operation=="--help") { help();return 0; }
+    if(operation=="device-tree"){
+      require(argc==3||argc==4,"device-tree requires output DTB and optional RAM size");
+      const auto ram=argc==4?integer(argv[3]):128*1024*1024;
+      require(ram>=64*1024*1024&&ram<=MinimalGuest::max_ram-MachineState::ram_base,"Invalid system RAM size");
+      save_file(argv[2],guest_device_tree(ram));std::cout<<"{\"device_tree\":\"reverse-arm64-v1\"}\n";return 0;
+    }
+    if(operation=="system-demo-init"){
+      require(argc==3,"system-demo-init requires output state");MinimalGuest guest(128*1024*1024);
+      guest.load_elf(system_demo_elf(),true);save_file(argv[2],guest.snapshot());std::cout<<guest.statistics()<<'\n';return 0;
+    }
+    if(operation=="linux-init"){
+      require(argc==4||argc==5,"linux-init requires Image, output state and optional initrd");
+      MinimalGuest guest(128*1024*1024,1048576);
+      guest.load_linux_image(read_file(argv[2],MinimalGuest::max_image),argc==5?read_file(argv[4],MinimalGuest::max_image):Bytes{});
+      save_file(argv[3],guest.snapshot());std::cout<<guest.statistics()<<'\n';return 0;
+    }
     if (operation=="demo-init") {
       require(argc==3,"demo-init requires an output state filename");
       MinimalGuest guest;guest.load_elf(demo_elf());save_file(argv[2],guest.snapshot());
@@ -75,10 +97,10 @@ int main(int argc,char** argv) {
       if (argc==3) save_file(argv[2],guest.snapshot());
       report(guest,run,start);return 0;
     }
-    if (operation=="init") {
+    if (operation=="init"||operation=="system-init") {
       require(argc>=4&&argc<=6,"init requires ELF and output state, optional RAM/override budget");
-      MinimalGuest guest(argc>=5?integer(argv[4]):UINT64_C(1)<<30,argc==6?integer(argv[5]):65536);
-      guest.load_elf(read_file(argv[2],MinimalGuest::max_image)); save_file(argv[3],guest.snapshot());
+      MinimalGuest guest(argc>=5?integer(argv[4]):operation=="init"?UINT64_C(1)<<30:128*1024*1024,argc==6?integer(argv[5]):65536);
+      guest.load_elf(read_file(argv[2],MinimalGuest::max_image),operation=="system-init"); save_file(argv[3],guest.snapshot());
       std::cout<<guest.statistics()<<'\n';return 0;
     }
     require(argc>=3,"Guest state filename required");
@@ -95,10 +117,14 @@ int main(int argc,char** argv) {
       else guest.apply_rxe_delta(program);
       save_file(argv[4],guest.snapshot());std::cout<<guest.statistics()<<'\n';return 0;
     }
+    if(operation=="input"){
+      require(argc==5,"input requires input state, serial text file and output state");const auto text=read_file(argv[3],4096);
+      guest.console_input(std::string(text.begin(),text.end()));save_file(argv[4],guest.snapshot());std::cout<<guest.statistics()<<'\n';return 0;
+    }
     if (operation=="peek") {
       require(argc==4||argc==5,"peek requires a byte address and optional count");
       const auto first=integer(argv[3]),count=argc==5?integer(argv[4]):1;
-      require(count>0&&count<=256&&first<=guest.logical_ram()&&count<=guest.logical_ram()-first,"peek range is invalid");
+      require(count>0&&count<=256&&first>=guest.ram_base()&&first-guest.ram_base()<=guest.logical_ram()&&count<=guest.logical_ram()-(first-guest.ram_base()),"peek range is invalid");
       std::cout<<"{\"address\":"<<quote(std::to_string(first))<<",\"bytes\":[";
       for (std::uint64_t i=0;i<count;++i) {if(i)std::cout<<',';std::cout<<unsigned(guest.read8(first+i));}
       std::cout<<"]}\n";return 0;

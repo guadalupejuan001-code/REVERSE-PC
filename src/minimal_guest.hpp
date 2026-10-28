@@ -1,8 +1,10 @@
 #pragma once
-// Experimental AArch64 EL0 guest. This is not an Android system emulator.
+// Own bounded AArch64 interpreter with optional single-core EL1 machine.
+// This is not yet an Android system emulator.
 // Immutable ELF bytes + zero rules + XOR deltas in the existing XI authority.
 #include "mundo_x/quantum_runtime.hpp"
 #include "rxe.hpp"
+#include "minimal_guest_machine.hpp"
 #include <algorithm>
 #include <array>
 #include <cstdint>
@@ -58,6 +60,7 @@ struct Registers {
 struct RunResult {
   std::uint64_t executed=0;
   bool halted=false;
+  bool waiting=false;
   unsigned exit_code=0;
   std::string output, error_output;
 };
@@ -78,10 +81,14 @@ class MinimalGuest {
   std::uint64_t logical_ram() const noexcept { return ram_; }
   std::size_t image_bytes() const noexcept { return image_ ? image_->size() : 0; }
   const std::vector<Segment>& segments() const noexcept { return segments_; }
+  const MachineState& machine() const noexcept { return machine_; }
+  std::uint64_t ram_base() const noexcept { return machine_.enabled?MachineState::ram_base:0; }
+  std::uint64_t physical_address(std::uint64_t address,bool writing=false,bool executing=false) const {return translate(address,writing,executing);}
 
   // The image is immutable backing, not an eager copy into a RAM array.
   // BSS and all unmodified RAM remain represented by the zero rule.
-  void load_elf(Bytes bytes) {
+  void load_elf(Bytes bytes,bool privileged=false) {
+    require(!privileged || (ram_>=64*1024*1024 && ram_<=max_ram-MachineState::ram_base),"System RAM must be 64 MiB..48-bit physical range");
     require(bytes.size()>=64 && bytes.size()<=max_image, "Guest ELF image must be 64 bytes..16 MiB");
     require(bytes[0]==0x7f && bytes[1]=='E' && bytes[2]=='L' && bytes[3]=='F', "Not an ELF image");
     require(bytes[4]==2 && bytes[5]==1 && bytes[6]==1, "Only little-endian ELF64 v1 is supported");
@@ -100,7 +107,7 @@ class MinimalGuest {
       Segment segment{get(bytes,at+16,8),get(bytes,at+40,8),get(bytes,at+8,8),get(bytes,at+32,8),std::uint32_t(get(bytes,at+4,4))};
       require(segment.file_size<=segment.size && segment.file_offset<=bytes.size() &&
               segment.file_size<=bytes.size()-segment.file_offset, "ELF segment file extent is invalid");
-      range(segment.address,segment.size);
+      ram_range(segment.address,segment.size,privileged?MachineState::ram_base:0);
       const auto alignment=get(bytes,at+48,8);
       require(alignment<=1 || ((alignment&(alignment-1))==0 &&
               (segment.address&(alignment-1))==(segment.file_offset&(alignment-1))), "ELF segment alignment is invalid");
@@ -114,7 +121,39 @@ class MinimalGuest {
     auto immutable=std::make_shared<const Bytes>(std::move(bytes));
     auto empty=make_runtime(override_limit_);
     image_=std::move(immutable); segments_=std::move(candidate); runtime_=std::move(empty);
-    registers_=Registers{}; registers_.pc=entry; registers_.sp=ram_&~UINT64_C(15);
+    machine_=MachineState{};machine_.enabled=privileged;machine_.image_kind=privileged?1:0;
+    registers_=Registers{}; registers_.pc=entry; registers_.sp=(ram_base()+ram_)&~UINT64_C(15);
+    machine_.sp1=registers_.sp;
+  }
+
+  // Linux's documented Image boot protocol, not an APK loader. A compact RVI1
+  // immutable container preserves Image/DTB/initrd without materializing RAM.
+  void load_linux_image(const Bytes& kernel,const Bytes& initrd={}) {
+    require(ram_>=64*1024*1024 && ram_<=max_ram-MachineState::ram_base,"System RAM must be 64 MiB..48-bit physical range");
+    require(kernel.size()>=64 && kernel.size()<=max_image && get(kernel,56,4)==0x644d5241,"Expected an uncompressed AArch64 Linux Image");
+    const auto offset=get(kernel,8,8),effective=get(kernel,16,8),flags=get(kernel,24,8);
+    require(!(flags&1) && ((flags>>1)&3)<=1,"Only little-endian 4 KiB-page Linux Images are supported");
+    const auto extent=std::max<std::uint64_t>(kernel.size(),effective);
+    require(offset<ram_/2 && extent<=ram_/2-offset,"Linux Image does not fit the lower half of system RAM");
+    require(offset%4==0 && initrd.size()<=ram_/2-2*1024*1024,"Linux Image/initrd placement is invalid");
+    const auto kernel_address=MachineState::ram_base+offset;
+    const auto initrd_address=MachineState::ram_base+ram_/2;
+    const auto tree_address=MachineState::ram_base+ram_-2*1024*1024;
+    const auto tree=guest_device_tree(ram_,initrd_address,initrd.size());
+    require(32+kernel.size()+tree.size()+initrd.size()<=max_image,"Combined Image/DTB/initrd exceeds 16 MiB image budget");
+    Bytes container{'R','V','I','1',13,10,26,10};put(container,kernel.size());put(container,tree.size());put(container,initrd.size());
+    container.insert(container.end(),kernel.begin(),kernel.end());container.insert(container.end(),tree.begin(),tree.end());container.insert(container.end(),initrd.begin(),initrd.end());
+    auto immutable=std::make_shared<const Bytes>(std::move(container));auto empty=make_runtime(override_limit_);
+    std::vector<Segment> segments{{kernel_address,extent,32,kernel.size(),5},{tree_address,tree.size(),32+kernel.size(),tree.size(),4}};
+    if(!initrd.empty())segments.push_back({initrd_address,initrd.size(),32+kernel.size()+tree.size(),initrd.size(),4});
+    std::sort(segments.begin(),segments.end(),[](const Segment& a,const Segment& b){return a.address<b.address;});
+    image_=std::move(immutable);segments_=std::move(segments);runtime_=std::move(empty);machine_=MachineState{};machine_.enabled=true;machine_.image_kind=2;
+    registers_=Registers{};registers_.pc=kernel_address;registers_.x[0]=tree_address;registers_.sp=MachineState::ram_base+ram_;machine_.sp1=registers_.sp;
+  }
+  void console_input(const std::string& text) {
+    require(machine_.enabled,"Serial input requires the system machine");
+    require(text.size()<=4096-machine_.receive.size(),"Serial input queue exceeds 4096 bytes");
+    machine_.receive+=text;
   }
 
   std::uint8_t read8(std::uint64_t address) const {
@@ -137,10 +176,10 @@ class MinimalGuest {
       program+="mem_store "+std::to_string(address+i)+" "+std::to_string(byte)+"\n";
     }
     // A multi-byte store uses the existing all-or-nothing XI transaction.
-    runtime_.execute(program);
+    runtime_.execute(program);machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;
   }
-  std::string apply_xi_delta(const std::string& source) { return runtime_.execute(source); }
-  std::string apply_rxe_delta(const Bytes& image) { return reverse_pc::rxe::execute(runtime_,image); }
+  std::string apply_xi_delta(const std::string& source) { auto output=runtime_.execute(source);machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;return output; }
+  std::string apply_rxe_delta(const Bytes& image) { auto output=reverse_pc::rxe::execute(runtime_,image);machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;return output; }
 
   RunResult run(std::uint64_t budget) {
     require(image_!=nullptr, "No ELF guest is loaded");
@@ -148,28 +187,50 @@ class MinimalGuest {
     auto candidate=*this; // Immutable image and unchanged Ether shards are shared.
     RunResult result;
     while (result.executed<budget && !candidate.registers_.halted) {
-      candidate.step(result);
+      if(candidate.machine_.enabled && candidate.machine_.waiting){
+        if(candidate.machine_.next_irq()==1023 && !candidate.machine_.event){
+          // Deterministic virtual time may advance only while the CPU waits.
+          auto deadline=UINT64_MAX;
+          if((candidate.machine_.cntp_ctl&3)==1 && candidate.machine_.cntp_cval>candidate.machine_.ticks)deadline=candidate.machine_.cntp_cval;
+          if((candidate.machine_.cntv_ctl&3)==1 && candidate.machine_.cntv_cval>candidate.machine_.ticks)deadline=std::min(deadline,candidate.machine_.cntv_cval);
+          if(deadline!=UINT64_MAX)candidate.machine_.ticks=deadline;
+        }
+        if(candidate.machine_.next_irq()==1023 && !candidate.machine_.event)break;
+        candidate.machine_.waiting=false;
+      }
+      if(candidate.machine_.enabled && !(candidate.machine_.daif&0x80) && candidate.machine_.next_irq()!=1023){
+        candidate.exception(0,0,candidate.registers_.pc,true);
+        candidate.advance();
+      }else try{candidate.step(result);}
+      catch(const MachineFault& fault){
+        candidate.exception(fault.syndrome,fault.address,candidate.registers_.pc,false);candidate.advance();
+      }
       ++result.executed;
     }
     result.halted=candidate.registers_.halted; result.exit_code=candidate.registers_.exit_code;
+    result.waiting=candidate.machine_.enabled&&candidate.machine_.waiting;
     *this=std::move(candidate);
     return result;
   }
 
   Bytes snapshot() const {
     const auto core=runtime_.core_snapshot(), memory=runtime_.memory_persistent_snapshot();
-    Bytes result{'R','V','G','1',13,10,26,10};
+    const auto system=machine_.enabled?machine_.save():Bytes{};
+    Bytes result{'R','V','G',std::uint8_t(machine_.enabled?'2':'1'),13,10,26,10};
     put(result,ram_); put(result,override_limit_); put(result,registers_.pc); put(result,registers_.sp);
     put(result,registers_.instructions); put(result,registers_.nzcv); put(result,registers_.halted?1:0); put(result,registers_.exit_code);
     for (auto value:registers_.x) put(result,value);
     put(result,image_bytes()); put(result,core.size()); put(result,memory.size());
+    if(machine_.enabled)put(result,system.size());
     if (image_) result.insert(result.end(),image_->begin(),image_->end());
     result.insert(result.end(),core.begin(),core.end()); result.insert(result.end(),memory.begin(),memory.end());
+    result.insert(result.end(),system.begin(),system.end());
     require(result.size()+8<=max_snapshot, "Guest snapshot exceeds 48 MiB");
     put(result,digest(result,result.size())); return result;
   }
   static MinimalGuest from_snapshot(const Bytes& bytes) {
-    const Bytes magic{'R','V','G','1',13,10,26,10};
+    const bool system=bytes.size()>=4&&bytes[3]=='2';
+    const Bytes magic{'R','V','G',std::uint8_t(system?'2':'1'),13,10,26,10};
     require(bytes.size()>=8+8*(8+31+3)+8 && bytes.size()<=max_snapshot &&
             std::equal(magic.begin(),magic.end(),bytes.begin()), "Invalid guest snapshot header/size");
     require(get(bytes,bytes.size()-8,8)==digest(bytes,bytes.size()-8), "Guest snapshot checksum mismatch");
@@ -181,28 +242,49 @@ class MinimalGuest {
     require(flags<=15 && halted<=1 && status<=255, "Invalid guest CPU snapshot fields");
     cpu.nzcv=unsigned(flags); cpu.halted=halted!=0; cpu.exit_code=unsigned(status);
     for (auto& value:cpu.x) value=take();
-    const auto image_size=take(), core_size=take(), memory_size=take();
+    const auto image_size=take(), core_size=take(), memory_size=take(),system_size=system?take():0;
     require(image_size<=max_image && core_size<=max_snapshot && memory_size<=max_snapshot &&
-            image_size+core_size+memory_size==bytes.size()-at-8, "Guest snapshot extents are invalid");
-    if (image_size) candidate.load_elf(Bytes(bytes.begin()+at,bytes.begin()+at+std::size_t(image_size)));
+            system_size<=8192 && image_size+core_size+memory_size+system_size==bytes.size()-at-8, "Guest snapshot extents are invalid");
+    MachineState machine;
+    if(system)machine=MachineState::restore(Bytes(bytes.end()-8-std::size_t(system_size),bytes.end()-8));
+    if(image_size){
+      const Bytes image(bytes.begin()+at,bytes.begin()+at+std::size_t(image_size));
+      if(system&&machine.image_kind==2){
+        const Bytes signature{'R','V','I','1',13,10,26,10};
+        require(image.size()>=32&&std::equal(signature.begin(),signature.end(),image.begin()),"Invalid Linux Image container");
+        const auto kernel_size=get(image,8,8),tree_size=get(image,16,8),initrd_size=get(image,24,8);
+        require(kernel_size<=max_image&&tree_size<=65536&&initrd_size<=max_image&&kernel_size+tree_size+initrd_size==image.size()-32,"Invalid Linux Image container extents");
+        candidate.load_linux_image(Bytes(image.begin()+32,image.begin()+32+kernel_size),Bytes(image.begin()+32+kernel_size+tree_size,image.end()));
+        require(*candidate.image_==image,"Linux Image device tree does not match this machine");
+      }else candidate.load_elf(image,system);
+    }
+    require(!system||image_size,"System snapshot is missing its boot image");
     at+=std::size_t(image_size);
     const std::string core(bytes.begin()+at,bytes.begin()+at+std::size_t(core_size)); at+=std::size_t(core_size);
     const std::string memory(bytes.begin()+at,bytes.begin()+at+std::size_t(memory_size));
     candidate.runtime_.restore(core,memory);
-    require(cpu.pc%4==0 && cpu.pc<=ram && (cpu.halted || cpu.pc<ram), "Invalid guest PC in snapshot");
+    require(cpu.pc%4==0 && (system || (cpu.pc<=ram && (cpu.halted || cpu.pc<ram))), "Invalid guest PC in snapshot");
+    if(system){candidate.machine_=std::move(machine);candidate.validate_system_configuration();}
     candidate.registers_=cpu; return candidate;
   }
   std::string statistics() const {
     const auto memory=runtime_.memory().stats();
+    const auto core=runtime_.core().stats();
     std::ostringstream out;
-    out << "{\"machine\":\"reverse-aarch64-el0-v1\",\"state_model\":\"immutable-image-xor-inverse-ether\""
+    out << "{\"machine\":" << quote(machine_.enabled?"reverse-aarch64-system-v1":"reverse-aarch64-el0-v1") << ",\"state_model\":\"immutable-image-xor-inverse-ether\""
         << ",\"logical_ram_bytes\":" << ram_ << ",\"immutable_image_bytes\":" << image_bytes()
         << ",\"delta_background_byte\":" << unsigned(memory.background_byte)
         << ",\"delta_overrides\":" << memory.overrides << ",\"max_delta_overrides\":" << override_limit_
         << ",\"quantum_bindings\":" << memory.quantum_bindings << ",\"memory_revision\":" << memory.revision
+        << ",\"active_qubits\":" << core.active_qubits << ",\"core_revision\":" << core.revision
         << ",\"pc\":" << quote(hex(registers_.pc)) << ",\"sp\":" << quote(hex(registers_.sp))
         << ",\"instructions\":" << registers_.instructions << ",\"halted\":" << (registers_.halted?"true":"false")
-        << ",\"exit_code\":" << registers_.exit_code << ",\"android_boot\":\"not_implemented\""
+        << ",\"exit_code\":" << registers_.exit_code
+        << ",\"system_mode\":" << (machine_.enabled?"true":"false") << ",\"exception_level\":" << (machine_.enabled?machine_.el:0)
+        << ",\"mmu_enabled\":" << (machine_.enabled&&(machine_.sctlr&1)?"true":"false")
+        << ",\"ram_base\":" << quote(hex(ram_base())) << ",\"exceptions\":" << machine_.exceptions
+        << ",\"virtual_ticks\":" << machine_.ticks << ",\"waiting\":" << (machine_.waiting?"true":"false")
+        << ",\"android_boot\":\"not_implemented\""
         << ",\"wild_rift\":\"not_supported\",\"hardware_acceleration\":false}";
     return out.str();
   }
@@ -214,6 +296,7 @@ class MinimalGuest {
   std::shared_ptr<const Bytes> image_;
   std::vector<Segment> segments_;
   Registers registers_;
+  MachineState machine_;
 
   static mundo_x::QuantumRuntime make_runtime(std::size_t overrides) {
     require(overrides>0 && overrides<=1048576, "Guest override limit must be 1..1048576");
@@ -221,7 +304,10 @@ class MinimalGuest {
     return mundo_x::QuantumRuntime(mundo_x::InfiniteCore::Background::Zero,mundo_x::InfiniteCore::Limits{},memory);
   }
   void range(std::uint64_t address,std::uint64_t size) const {
-    require(address<=ram_ && size<=ram_-address, "Guest address outside logical RAM: "+hex(address));
+    ram_range(address,size,ram_base());
+  }
+  void ram_range(std::uint64_t address,std::uint64_t size,std::uint64_t base) const {
+    require(address>=base && address-base<=ram_ && size<=ram_-(address-base), "Guest address outside logical RAM: "+hex(address));
   }
   std::uint8_t backing(std::uint64_t address) const {
     auto found=std::upper_bound(segments_.begin(),segments_.end(),address,
@@ -236,6 +322,18 @@ class MinimalGuest {
     return (value&sign) ? -std::int64_t((UINT64_C(1)<<bits)-value) : std::int64_t(value);
   }
   static std::uint64_t mask(unsigned bits) { return bits==64 ? UINT64_MAX : UINT64_C(0xffffffff); }
+  static std::uint64_t low_mask(unsigned bits){return bits==64?UINT64_MAX:(UINT64_C(1)<<bits)-1;}
+  static std::pair<std::uint64_t,std::uint64_t> bit_masks(unsigned n,unsigned last,unsigned rotation,unsigned bits,bool immediate){
+    const unsigned encoded=(n<<6)|((~last)&63);unsigned length=0;
+    for(unsigned i=0;i<7;++i)if(encoded&(1u<<i))length=i;
+    require(length>=1,"Invalid AArch64 bit mask");const unsigned element=1u<<length,levels=element-1;
+    require(element<=bits && (!immediate||(last&levels)!=levels),"Reserved AArch64 bit mask");
+    const unsigned r=rotation&levels,s=last&levels;auto w=low_mask(s+1),t=low_mask(((s-r)&levels)+1);
+    if(r)w=((w>>r)|(w<<(element-r)))&low_mask(element);
+    std::uint64_t write_mask=0,top_mask=0;
+    for(unsigned i=0;i<bits;i+=element){write_mask|=w<<i;top_mask|=t<<i;}
+    return {write_mask,top_mask};
+  }
   std::uint64_t reg(unsigned index,unsigned bits=64,bool stack=false) const {
     return (index==31 ? (stack?registers_.sp:0) : registers_.x[index])&mask(bits);
   }
@@ -264,17 +362,81 @@ class MinimalGuest {
     return ((value>>amount)|(value<<(bits-amount)))&mask(bits);
   }
   void step(RunResult& result);
+  void advance(){require(registers_.instructions!=UINT64_MAX,"Guest instruction counter overflow");++registers_.instructions;
+    if(machine_.enabled){require(machine_.ticks!=UINT64_MAX,"Guest virtual timer overflow");++machine_.ticks;}}
+  void validate_system_configuration() const;
+  std::uint64_t translate(std::uint64_t address,bool writing=false,bool executing=false) const;
+  std::uint64_t cpu_read(std::uint64_t address,unsigned size,RunResult& result,bool executing=false);
+  void cpu_write(std::uint64_t address,std::uint64_t value,unsigned size,RunResult& result);
+  void check_access(std::uint64_t address,unsigned size,bool writing,bool executing=false) const;
+  std::uint64_t device_read(std::uint64_t address,unsigned size);
+  void device_write(std::uint64_t address,std::uint64_t value,unsigned size,RunResult& result);
+  bool device_address(std::uint64_t address) const;
+  std::uint64_t system_read(unsigned id) const;
+  void system_write(unsigned id,std::uint64_t value);
+  void exception(std::uint64_t syndrome,std::uint64_t address,std::uint64_t return_pc,bool irq);
+  void select_stack(unsigned el,unsigned selected);
 };
+
+#include "minimal_guest_system.inc"
 
 inline void MinimalGuest::step(RunResult& result) {
   auto& cpu=registers_;
   require(cpu.pc%4==0,"Unaligned AArch64 instruction address");
   const auto pc=cpu.pc;
-  const auto instruction=std::uint32_t(read(pc,4));
+  const auto instruction=std::uint32_t(cpu_read(pc,4,result,true));
   auto next=pc+4;
   const unsigned bits=(instruction>>31)?64:32, rd=instruction&31, rn=(instruction>>5)&31, rm=(instruction>>16)&31;
   auto unsupported=[&](){throw std::runtime_error("Unsupported AArch64 instruction "+hex(instruction)+" at "+hex(pc));};
-  if (instruction==0xd503201f) { /* NOP */ }
+  if (instruction==0xd503201f || instruction==0xd503203f) { /* NOP / YIELD */ }
+  else if (instruction==0xd503205f || instruction==0xd503207f || instruction==0xd503209f || instruction==0xd50320bf) {
+    require(machine_.enabled,"Wait/event instructions require the system machine");
+    if(instruction==0xd503205f){if(machine_.event)machine_.event=false;else machine_.waiting=true;}
+    if(instruction==0xd503207f)machine_.waiting=true;
+    if(instruction==0xd503209f||instruction==0xd50320bf)machine_.event=true;
+  }
+  else if ((instruction&0xfffff0ff)==0xd503309f || (instruction&0xfffff0ff)==0xd50330bf || instruction==0xd5033fdf) {
+    // DSB/DMB/ISB: a single core with synchronous coherent memory has no pending operations.
+  }
+  else if ((instruction&0xfffff0ff)==0xd50340df || (instruction&0xfffff0ff)==0xd50340ff) {
+    require(machine_.enabled,"DAIF requires system mode");if(!machine_.el)throw MachineFault{1u<<25,0};
+    const auto field=((instruction>>8)&15)<<6;
+    if(instruction&32)machine_.daif&=~field;else machine_.daif|=field;
+  }
+  else if ((instruction&0xfffffeff)==0xd50040bf) {
+    require(machine_.enabled,"SPSel requires system mode");if(!machine_.el)throw MachineFault{1u<<25,0};select_stack(1,(instruction>>8)&1);
+  }
+  else if ((instruction&0xfff00000)==0xd5300000) { set(rd,system_read((instruction>>5)&65535)); }
+  else if ((instruction&0xfff00000)==0xd5100000) { system_write((instruction>>5)&65535,reg(rd)); }
+  else if (instruction==0xd69f03e0) { // ERET EL1 -> EL1h/EL1t/EL0t
+    require(machine_.enabled,"ERET requires system mode");if(!machine_.el)throw MachineFault{1u<<25,0};
+    const auto saved=machine_.spsr,mode=saved&31;
+    require((mode==0||mode==4||mode==5) && !(saved&~UINT64_C(0xf00003df)),"Unsupported ERET processor state");
+    require(!(machine_.elr&3),"Unaligned ERET target");
+    next=machine_.elr;select_stack(mode?1:0,mode==5?1:0);machine_.daif=unsigned(saved)&0x3c0;cpu.nzcv=unsigned(saved>>28)&15;
+    machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;
+  }
+  else if ((instruction&0xfff80000)==0xd5080000) { // selected SYS operations
+    require(machine_.enabled,"SYS requires system mode");if(!machine_.el)throw MachineFault{1u<<25,0};
+    const auto op1=(instruction>>16)&7,crn=(instruction>>12)&15,crm=(instruction>>8)&15,op2=(instruction>>5)&7;
+    if(crn==8 && (op1==0) && (crm==3||crm==7) && op2<=7){ /* no TLB cache: every access walks current tables */ }
+    else if(crn==7 && ((op1==0&&(crm==1||crm==5||crm==6||crm==10||crm==11||crm==14)) || (op1==3&&(crm==5||crm==10||crm==11||crm==14)))){ /* coherent cache maintenance */ }
+    else if(crn==7&&op1==0&&crm==8&&op2<=3){
+      try{const auto physical=translate(reg(rd),op2&1);machine_.par=physical&~UINT64_C(4095);}
+      catch(const MachineFault& fault){machine_.par=1|((fault.syndrome&63)<<1);}
+    }
+    else if(crn==7&&op1==3&&crm==4&&op2==1){const auto address=reg(rd)&~UINT64_C(63);check_access(address,8,true);check_access(address+56,8,true);
+      for(unsigned i=0;i<64;i+=8)cpu_write(address+i,0,8,result);}
+    else unsupported();
+  }
+  else if ((instruction&0xffe0001f)==0xd4000002 || (instruction&0xffe0001f)==0xd4000003) { // HVC/SMC PSCI subset
+    require(machine_.enabled&&machine_.el,"PSCI requires system mode EL1");require(((instruction>>5)&65535)==0,"Only PSCI call immediate zero is supported");
+    const auto function=reg(0,32);
+    if(function==0x84000000)set(0,0x10000);
+    else if(function==0x84000008){cpu.halted=true;cpu.exit_code=0;}
+    else if(function==0x8400000a)set(0,(reg(1,32)==0x84000008||reg(1,32)==0x84000000||reg(1,32)==0x8400000a)?0:UINT64_MAX);
+    else set(0,UINT64_MAX); // PSCI_NOT_SUPPORTED
+  }
   else if ((instruction&0x1f800000)==0x12800000) { // MOVN/MOVZ/MOVK
     const unsigned opcode=(instruction>>29)&3, position=((instruction>>21)&3)*16;
     if (opcode==1 || position>=bits) unsupported();
@@ -296,6 +458,31 @@ inline void MinimalGuest::step(RunResult& result) {
     if (update) flags(a,b,value,bits,subtract);
     set(rd,value,bits);
   }
+  else if ((instruction&0x1f200000)==0x0b200000) { // ADD/SUB extended register
+    const unsigned option=(instruction>>13)&7,amount=(instruction>>10)&7,extent=8u<<(option&3);
+    if(amount>4 || (bits==32&&(option&3)==3))unsupported();
+    auto b=reg(rm)&low_mask(extent);
+    if((option&4)&&(b&(UINT64_C(1)<<(extent-1))))b|=~low_mask(extent);
+    b=(b<<amount)&mask(bits);const auto a=reg(rn,bits,true);
+    const bool subtract=instruction&0x40000000,update=instruction&0x20000000;
+    const auto value=(subtract?a-b:a+b)&mask(bits);
+    if(update)flags(a,b,value,bits,subtract);set(rd,value,bits,!update);
+  }
+  else if ((instruction&0x1fe0fc00)==0x1a000000) { // ADC/ADCS/SBC/SBCS
+    const bool subtract=instruction&0x40000000,update=instruction&0x20000000;
+    const auto a=reg(rn,bits),b=subtract?(~reg(rm,bits)&mask(bits)):reg(rm,bits),carry=std::uint64_t((cpu.nzcv>>1)&1);
+    const auto partial=(a+b)&mask(bits),value=(partial+carry)&mask(bits);
+    if(update){const auto sign=UINT64_C(1)<<(bits-1);cpu.nzcv=(value&sign?8:0)|(value==0?4:0)|
+      ((partial<a||value<partial)?2:0)|((~(a^b)&(a^value)&sign)?1:0);}
+    set(rd,value,bits);
+  }
+  else if ((instruction&0x1f800000)==0x12000000) { // logical immediate
+    const unsigned opcode=(instruction>>29)&3;
+    const auto masks=bit_masks((instruction>>22)&1,(instruction>>10)&63,(instruction>>16)&63,bits,true);
+    const auto a=reg(rn,bits),b=masks.first,value=(opcode==0||opcode==3)?a&b:opcode==1?a|b:a^b;
+    set(rd,value,bits,opcode!=3);
+    if(opcode==3)cpu.nzcv=(value&(UINT64_C(1)<<(bits-1))?8:0)|(value==0?4:0);
+  }
   else if ((instruction&0x1f000000)==0x0a000000) { // logical shifted register
     const unsigned opcode=(instruction>>29)&3, amount=(instruction>>10)&63;
     if (amount>=bits) unsupported();
@@ -310,6 +497,17 @@ inline void MinimalGuest::step(RunResult& result) {
     const auto immediate=signed_field((((instruction>>5)&0x7ffff)<<2)|((instruction>>29)&3),21);
     const bool page=instruction&0x80000000;
     set(rd,(page?(pc&~UINT64_C(4095)):pc)+std::uint64_t(immediate)*(page?4096:1));
+  }
+  else if ((instruction&0x1fe00800)==0x1a800000) { // CSEL/CSINC/CSINV/CSNEG
+    auto value=reg(rn,bits);
+    if(!condition((instruction>>12)&15)){value=reg(rm,bits);if(instruction&0x40000000)value=~value;if(instruction&0x400)++value;}
+    set(rd,value,bits);
+  }
+  else if ((instruction&0x1fe00410)==0x1a400000 && (instruction&0x20000000)) { // CCMP/CCMN, immediate/register
+    if(condition((instruction>>12)&15)){
+      const auto a=reg(rn,bits),b=(instruction&0x800)?std::uint64_t(rm):reg(rm,bits);const bool subtract=instruction&0x40000000;
+      flags(a,b,(subtract?a-b:a+b)&mask(bits),bits,subtract);
+    }else cpu.nzcv=instruction&15;
   }
   else if ((instruction&0x7c000000)==0x14000000) { // B/BL
     if (instruction&0x80000000) set(30,next);
@@ -333,6 +531,7 @@ inline void MinimalGuest::step(RunResult& result) {
     next=target;
   }
   else if ((instruction&0xffe0001f)==0xd4000001) { // SVC #0; minimal Linux ABI shim
+    if(machine_.enabled){exception((UINT64_C(0x15)<<26)|(1u<<25)|((instruction>>5)&65535),0,next,false);advance();return;}
     require(((instruction>>5)&0xffff)==0,"Only SVC #0 is supported by the guest ABI shim");
     const auto service=reg(8);
     if (service==93 || service==94) { cpu.halted=true; cpu.exit_code=unsigned(reg(0)&255); }
@@ -349,27 +548,57 @@ inline void MinimalGuest::step(RunResult& result) {
       }
     } else throw std::runtime_error("Unsupported guest syscall "+std::to_string(service)+" at "+hex(pc));
   }
+  else if ((instruction&0xfffff0ff)==0xd503305f) { // CLREX
+    machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;
+  }
+  else if ((instruction&0x3f9f7c00)==0x089f7c00) { // LDAR/STLR
+    const unsigned size=1u<<(instruction>>30);const auto address=reg(rn,64,true);
+    if(instruction&0x00400000)set(rd,cpu_read(address,size,result),size==8?64:32);
+    else cpu_write(address,reg(rd),size,result);
+  }
+  else if ((instruction&0x3f207c00)==0x08007c00) { // LDXR/LDAXR/STXR/STLXR, single register
+    require(machine_.enabled,"Exclusive instructions currently require system mode");
+    const unsigned size=1u<<(instruction>>30),status=(instruction>>16)&31;const auto address=reg(rn,64,true);
+    if(address&(size-1))throw MachineFault{(std::uint64_t(machine_.el?0x25:0x24)<<26)|(1u<<25)|0x21,address};
+    if(instruction&0x00400000){set(rd,cpu_read(address,size,result),size==8?64:32);machine_.exclusive_address=translate(address);machine_.exclusive_size=size;}
+    else{
+      check_access(address,size,true);const bool success=machine_.exclusive_size==size&&machine_.exclusive_address==translate(address,true);
+      if(success)cpu_write(address,reg(rd),size,result);set(status,success?0:1,32);machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;
+    }
+  }
   else if ((instruction&0x3b000000)==0x39000000 && !(instruction&0x04000000)) { // LDR/STR unsigned offset
     const unsigned size=1u<<(instruction>>30), opcode=(instruction>>22)&3;
-    if (opcode>1) unsupported();
+    if ((opcode>=2&&size==8)||(opcode==3&&size==4)) { if(opcode==2&&size==8){/* PRFM is a hint. */}else unsupported(); }
+    else {
     const auto address=reg(rn,64,true)+std::uint64_t((instruction>>10)&4095)*size;
-    if (opcode) set(rd,read(address,size),size==8?64:32);
-    else write(address,reg(rd),size);
+    if (opcode){auto value=cpu_read(address,size,result);if(opcode>=2 && (value&(UINT64_C(1)<<(size*8-1))))value|=~low_mask(size*8);set(rd,value,opcode==2||size==8?64:32);}
+    else cpu_write(address,reg(rd),size,result);
+    }
+  }
+  else if ((instruction&0x3b200c00)==0x38200800 && !(instruction&0x04000000)) { // register offset integer LDR/STR
+    const unsigned size=1u<<(instruction>>30),opcode=(instruction>>22)&3,option=(instruction>>13)&7;
+    if((option&2)==0 || (opcode>=2&&size==8)||(opcode==3&&size==4))unsupported();
+    auto offset=reg(rm,option&1?64:32);
+    if(option==6 && (offset&0x80000000))offset|=UINT64_C(0xffffffff00000000);
+    if(instruction&0x1000)offset<<=instruction>>30;
+    const auto address=reg(rn,64,true)+offset;
+    if(opcode){auto value=cpu_read(address,size,result);if(opcode>=2&&(value&(UINT64_C(1)<<(size*8-1))))value|=~low_mask(size*8);set(rd,value,opcode==2||size==8?64:32);}
+    else cpu_write(address,reg(rd),size,result);
   }
   else if ((instruction&0x3b000000)==0x18000000 && !(instruction&0x04000000)) { // LDR literal/LDRSW
     const unsigned opcode=instruction>>30;
     if (opcode==3) unsupported();
-    auto value=read(pc+std::uint64_t(signed_field((instruction>>5)&0x7ffff,19))*4,opcode==1?8:4);
+    auto value=cpu_read(pc+std::uint64_t(signed_field((instruction>>5)&0x7ffff,19))*4,opcode==1?8:4,result);
     if (opcode==2 && (value&0x80000000)) value|=UINT64_C(0xffffffff00000000);
     set(rd,value,opcode==0?32:64);
   }
   else if ((instruction&0x3b200000)==0x38000000 && !(instruction&0x04000000)) { // LDUR/STUR and pre/post-index
     const unsigned size=1u<<(instruction>>30), opcode=(instruction>>22)&3, mode=(instruction>>10)&3;
-    if (opcode>1 || mode==2 || (mode && rn!=31 && rn==rd)) unsupported();
+    if ((opcode>=2&&size==8)||(opcode==3&&size==4) || mode==2 || (mode && rn!=31 && rn==rd)) unsupported();
     const auto base=reg(rn,64,true), updated=base+std::uint64_t(signed_field((instruction>>12)&511,9));
     const auto address=mode==1?base:updated;
-    if (opcode) set(rd,read(address,size),size==8?64:32);
-    else write(address,reg(rd),size);
+    if (opcode){auto value=cpu_read(address,size,result);if(opcode>=2&&(value&(UINT64_C(1)<<(size*8-1))))value|=~low_mask(size*8);set(rd,value,opcode==2||size==8?64:32);}
+    else cpu_write(address,reg(rd),size,result);
     if (mode) set(rn,updated,64,true);
   }
   else if ((instruction&0x3a000000)==0x28000000 && !(instruction&0x04000000)) { // LDP/STP integers
@@ -378,26 +607,29 @@ inline void MinimalGuest::step(RunResult& result) {
     if ((opcode!=0 && opcode!=2) || (writeback && rn!=31 && (rn==rd || rn==second))) unsupported();
     const unsigned size=opcode==2?8:4;
     const auto base=reg(rn,64,true), updated=base+std::uint64_t(signed_field((instruction>>15)&127,7))*size;
-    const auto address=mode==1?base:updated; range(address,size*2);
+    const auto address=mode==1?base:updated;check_access(address,size, !load);check_access(address+size,size,!load);
     if (load) {
-      const auto first_value=read(address,size), second_value=read(address+size,size);
+      const auto first_value=cpu_read(address,size,result), second_value=cpu_read(address+size,size,result);
       set(rd,first_value,size*8); set(second,second_value,size*8);
-    } else { write(address,reg(rd),size); write(address+size,reg(second),size); }
+    } else { cpu_write(address,reg(rd),size,result); cpu_write(address+size,reg(second),size,result); }
     if (writeback) set(rn,updated,64,true);
   }
-  else if ((instruction&0x1f800000)==0x13000000) { // common bitfield aliases: shifts and extensions
+  else if ((instruction&0x1f800000)==0x13000000) { // SBFM/BFM/UBFM, all valid bitfield masks
     const unsigned opcode=(instruction>>29)&3, rotation=(instruction>>16)&63, last=(instruction>>10)&63;
-    if (((instruction>>22)&1)!=(bits==64) || rotation>=bits || last>=bits || opcode==1 || opcode==3) unsupported();
-    const auto value=reg(rn,bits); std::uint64_t output=0;
-    if (last==bits-1) output=shift(value,rotation,opcode==0?2:1,bits);
-    else if (opcode==2 && rotation==last+1) output=(value<<(bits-rotation))&mask(bits);
-    else if (rotation==0) {
-      const auto extent=last+1;
-      const auto low=extent==64?UINT64_MAX:((UINT64_C(1)<<extent)-1);
-      output=value&low;
-      if (opcode==0 && (output&(UINT64_C(1)<<last))) output|=mask(bits)^low;
-    } else { unsupported(); }
+    if (((instruction>>22)&1)!=(bits==64) || rotation>=bits || last>=bits || opcode==3) unsupported();
+    const auto masks=bit_masks((instruction>>22)&1,last,rotation,bits,false);const auto value=reg(rn,bits);
+    auto bottom=shift(value,rotation,3,bits)&masks.first;std::uint64_t top=0;
+    if(opcode==0)top=(value&(UINT64_C(1)<<last))?mask(bits):0;
+    if(opcode==1){top=reg(rd,bits);bottom=(top&~masks.first)|bottom;}
+    const auto output=(top&~masks.second)|(bottom&masks.second);
     set(rd,output,bits);
+  }
+  else if ((instruction&0x1f800000)==0x13800000) { // EXTR
+    const unsigned amount=(instruction>>10)&63;if(amount>=bits || ((instruction>>22)&1)!=(bits==64))unsupported();
+    set(rd,amount?((reg(rm,bits)>>amount)|(reg(rn,bits)<<(bits-amount))):reg(rm,bits),bits);
+  }
+  else if ((instruction&0x7fe0f000)==0x1ac02000) { // LSLV/LSRV/ASRV/RORV
+    set(rd,shift(reg(rn,bits),unsigned(reg(rm,bits))&(bits-1),(instruction>>10)&3,bits),bits);
   }
   else if ((instruction&0x7fe0fc00)==0x1ac00800 || (instruction&0x7fe0fc00)==0x1ac00c00) { // UDIV/SDIV
     const auto a=reg(rn,bits), b=reg(rm,bits); std::uint64_t value=0;
@@ -416,8 +648,7 @@ inline void MinimalGuest::step(RunResult& result) {
     set(rd,(instruction&0x8000)?accumulator-product:accumulator+product,bits);
   }
   else { unsupported(); }
-  require(next%4==0,"Guest branch target is unaligned"); range(next,cpu.halted?0:4);
-  require(cpu.instructions!=UINT64_MAX,"Guest instruction counter overflow");
-  cpu.pc=next; ++cpu.instructions;
+  require(next%4==0,"Guest branch target is unaligned");if(!machine_.enabled)range(next,cpu.halted?0:4);
+  cpu.pc=next;advance();
 }
 } // namespace reverse_pc::guest

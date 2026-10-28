@@ -331,6 +331,28 @@ public final class WorkbenchTestRunner extends Instrumentation {
         require(js("document.querySelector('.guest-boundary').textContent.includes('todavía no arrancan')").equals("true"),"UI falsely presents Android boot as implemented");
         require(desktopBefore.equals(hash("session.rvp")),"Guest operation changed the desktop state");
     }
+    private void systemWorkflow(boolean restore)throws Exception{
+        String desktopBefore=hash("session.rvp");
+        js("createWindow('guest');true");waitJs("guestUi.snapshot&&!guestUi.busy");
+        require(js("state.windows.some(w=>w.app==='xi'&&w.xiTab==='arm64')&&!state.windows.some(w=>w.app==='guest')").equals("true"),"ARM64 was not integrated into existing XI window");
+        require(js("!SHELL_APPS.includes('guest')").equals("true"),"Separate Guest application is still in the launcher");
+        if(!restore){
+            // Replace the previous EL0 witness through the same native executor.
+            js("window.confirm=()=>true;true");tapDom("[data-guest=system]");
+            waitJs("guestUi.snapshot?.guest?.system_mode&&!guestUi.busy");
+            require(js("guestUi.snapshot.guest.delta_overrides").equals("0"),"System image allocated a RAM array");
+            JSONObject quantum=op("guestXi","#!reverse-pc-machine-v1\nset r0 0\nlabel loop\nh $r0\nadd r0 1\ncmp r0 4096\njlt loop\nhalt\n","armQuantumResult");
+            require(quantum.getBoolean("ok")&&quantum.getJSONObject("guest").getInt("active_qubits")==4096,"Existing 4096-qubit XI engine is unavailable to ARM64 module");
+            js("guestUi.steps=30;true");tapDom("[data-guest=run]");
+            waitJs("guestUi.snapshot.guest.instructions===30&&!guestUi.busy");
+            js("guestUi.steps=1000;true");tapDom("[data-guest=run]");
+            waitJs("guestUi.snapshot.guest.halted&&!guestUi.busy");
+            require(js("guestUi.output").contains("EL1 MMU IRQ EL0 SVC FAULT OK"),"System witness failed through actual WebView/JNI/executor");
+        }
+        require(js("guestUi.snapshot.guest.mmu_enabled&&guestUi.snapshot.guest.exceptions===4&&guestUi.snapshot.guest.active_qubits===4096").equals("true"),"System/quantum state did not survive execution or restart");
+        require(js("guestUi.snapshot.guest.core_revision").equals("4096"),"ARM64 operations changed quantum gates/revision");
+        require(desktopBefore.equals(hash("session.rvp")),"ARM64 module changed desktop/BBY Q state");
+    }
     @Override public void onStart(){
         Bundle result=new Bundle();
         try{
@@ -352,6 +374,11 @@ public final class WorkbenchTestRunner extends Instrumentation {
             require(snapshot.getJSONObject("android").getLong("ram_total_bytes")>0,"No native RAM reading");
             require(snapshot.getJSONObject("core").getString("state_format").equals("RVPC2"),"Wrong checkpoint format");
             require(snapshot.getJSONObject("build").getString("source_commit").matches("[a-f0-9]{40}"),"Missing build provenance");
+            if(requested.equals("armSystem")||requested.equals("armSystemRestore")){
+                systemWorkflow(requested.equals("armSystemRestore"));visualCheck(requested);
+                result.putString("stream","WORKBENCH_TESTS_OK mode="+requested+" integration=XI engine=original-QuantumRuntime qubits=4096 android-boot=not-implemented\n");
+                finish(Activity.RESULT_OK,result);return;
+            }
             if(requested.equals("guest")||requested.equals("guestRestore")){
                 guestWorkflow(requested.equals("guestRestore"));visualCheck(requested);
                 result.putString("stream","WORKBENCH_TESTS_OK mode="+requested+" guest=own-AArch64 memory=XI/Ether android-boot=not-implemented\n");

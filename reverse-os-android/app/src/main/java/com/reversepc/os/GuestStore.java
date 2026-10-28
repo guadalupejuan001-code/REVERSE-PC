@@ -31,6 +31,11 @@ public final class GuestStore {
             .put("guest",new JSONObject(NativeRuntime.guestInspect(saved)));
     }
     public JSONObject create(byte[] elf)throws Exception{return commit(NativeRuntime.guestInitialize(elf,1L<<30,65536));}
+    public JSONObject createSystem(byte[] image,int kind)throws Exception{return commit(NativeRuntime.guestInitializeSystem(image,kind));}
+    public JSONObject input(String text)throws Exception{
+        if(text==null||text.getBytes(java.nio.charset.StandardCharsets.UTF_8).length>4096)throw new IllegalArgumentException("Entrada de consola supera 4096 bytes");
+        return commit(NativeRuntime.guestInput(state(),text));
+    }
     public JSONObject run(int steps)throws Exception{return commit(NativeRuntime.guestRun(state(),steps));}
     public JSONObject xi(String source)throws Exception{
         if(source==null||source.getBytes(java.nio.charset.StandardCharsets.UTF_8).length>65536)

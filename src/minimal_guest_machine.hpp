@@ -1,0 +1,148 @@
+#pragma once
+// Architectural machine state. These are finite registers/device rules, not a
+// second RAM store. Physical bytes remain in MinimalGuest's XI/Ether authority.
+#include <array>
+#include <cstdint>
+#include <initializer_list>
+#include <stdexcept>
+#include <string>
+#include <vector>
+
+namespace reverse_pc::guest {
+struct MachineFault {
+  std::uint64_t syndrome=0, address=0;
+};
+
+struct MachineState {
+  static constexpr std::uint64_t ram_base=0x40000000, uart_base=0x09000000;
+  static constexpr std::uint64_t gic_dist=0x08000000, gic_cpu=0x08010000;
+  bool enabled=false, waiting=false, event=false;
+  unsigned el=1, sp_select=1, daif=0x3c0, image_kind=0;
+  std::uint64_t sp0=0,sp1=0,sctlr=0x30d00800,tcr=0,ttbr0=0,ttbr1=0,mair=0;
+  std::uint64_t vbar=0,elr=0,spsr=0,esr=0,far=0,par=0,cpacr=0,contextidr=0;
+  std::uint64_t tpidr0=0,tpidrro=0,tpidr1=0,cntkctl=0,ticks=0,exceptions=0;
+  std::uint64_t cntp_cval=0,cntv_cval=0;
+  std::uint64_t exclusive_address=UINT64_MAX;
+  unsigned exclusive_size=0;
+  unsigned cntp_ctl=0,cntv_ctl=0;
+  unsigned dist_ctl=0,cpu_ctl=0,pmr=255,bpr=0;
+  std::array<std::uint32_t,2> enabled_irqs{},pending_irqs{},active_irqs{};
+  std::array<std::uint8_t,64> priority{},targets{};
+  std::array<std::uint32_t,4> irq_config{};
+  unsigned uart_cr=0x301,uart_ibrd=0,uart_fbrd=0,uart_lcr=0,uart_imsc=0;
+  std::string receive;
+
+  MachineState() { priority.fill(0xa0);targets.fill(1); }
+  bool timer_pending(bool physical) const {
+    const auto control=physical?cntp_ctl:cntv_ctl;
+    return (control&1) && ticks>=(physical?cntp_cval:cntv_cval);
+  }
+  unsigned timer_control(bool physical) const {
+    return (physical?cntp_ctl:cntv_ctl)|(timer_pending(physical)?4u:0u);
+  }
+  std::uint32_t level_irqs(unsigned word) const {
+    if(word==1)return !receive.empty()&&(uart_imsc&16)?2u:0u; // SPI 33
+    return (timer_pending(true)&&!(cntp_ctl&2)?1u<<30:0u)|
+           (timer_pending(false)&&!(cntv_ctl&2)?1u<<27:0u);
+  }
+  unsigned next_irq() const {
+    if(!(dist_ctl&1)||!(cpu_ctl&1))return 1023;
+    unsigned selected=1023, threshold=pmr;
+    // Single-core GICv2: do not preempt an equal/higher active priority.
+    for(unsigned i=0;i<64;++i)if(active_irqs[i/32]&(1u<<(i%32)))
+      if(priority[i]<threshold)threshold=priority[i];
+    for(unsigned i=0;i<64;++i)if((enabled_irqs[i/32]&(1u<<(i%32)))&&
+      ((pending_irqs[i/32]|level_irqs(i/32))&(1u<<(i%32)))&&
+      !(active_irqs[i/32]&(1u<<(i%32)))&&(i<32||(targets[i]&1))&&priority[i]<threshold){
+      threshold=priority[i];selected=i;
+    }
+    return selected;
+  }
+
+  std::vector<std::uint8_t> save() const {
+    std::vector<std::uint8_t> bytes;
+    auto put=[&](std::uint64_t value){for(unsigned i=0;i<8;++i)bytes.push_back(std::uint8_t(value>>(8*i)));};
+    put(1);put(enabled);put(waiting);put(event);put(el);put(sp_select);put(daif);put(image_kind);
+    for(auto value:{sp0,sp1,sctlr,tcr,ttbr0,ttbr1,mair,vbar,elr,spsr,esr,far,par,cpacr,contextidr,
+                   tpidr0,tpidrro,tpidr1,cntkctl,ticks,exceptions,cntp_cval,cntv_cval,exclusive_address})put(value);
+    put(exclusive_size);
+    for(auto value:{cntp_ctl,cntv_ctl,dist_ctl,cpu_ctl,pmr,bpr,uart_cr,uart_ibrd,uart_fbrd,uart_lcr,uart_imsc})put(value);
+    for(auto value:enabled_irqs)put(value);
+    for(auto value:pending_irqs)put(value);
+    for(auto value:active_irqs)put(value);
+    for(auto value:irq_config)put(value);
+    bytes.insert(bytes.end(),priority.begin(),priority.end());bytes.insert(bytes.end(),targets.begin(),targets.end());
+    put(receive.size());bytes.insert(bytes.end(),receive.begin(),receive.end());return bytes;
+  }
+  static MachineState restore(const std::vector<std::uint8_t>& bytes) {
+    std::size_t at=0;
+    auto take=[&](){
+      if(at>bytes.size()||bytes.size()-at<8)throw std::runtime_error("Truncated machine state");
+      std::uint64_t value=0;for(unsigned i=0;i<8;++i)value|=std::uint64_t(bytes[at++])<<(8*i);return value;
+    };
+    auto small=[&](std::uint64_t maximum){auto value=take();if(value>maximum)throw std::runtime_error("Invalid machine state field");return unsigned(value);};
+    if(take()!=1)throw std::runtime_error("Unsupported machine state version");
+    MachineState m;m.enabled=small(1);m.waiting=small(1);m.event=small(1);m.el=small(1);m.sp_select=small(1);
+    m.daif=small(0x3c0);m.image_kind=small(2);
+    if(!m.enabled||(m.daif&~0x3c0u)||(!m.el&&m.sp_select)||!m.image_kind)throw std::runtime_error("Invalid machine execution state");
+    for(auto field:{&m.sp0,&m.sp1,&m.sctlr,&m.tcr,&m.ttbr0,&m.ttbr1,&m.mair,&m.vbar,&m.elr,&m.spsr,&m.esr,&m.far,&m.par,&m.cpacr,&m.contextidr,
+                    &m.tpidr0,&m.tpidrro,&m.tpidr1,&m.cntkctl,&m.ticks,&m.exceptions,&m.cntp_cval,&m.cntv_cval,&m.exclusive_address})*field=take();
+    m.exclusive_size=small(8);
+    if(m.exclusive_size!=0&&m.exclusive_size!=1&&m.exclusive_size!=2&&m.exclusive_size!=4&&m.exclusive_size!=8)throw std::runtime_error("Invalid exclusive monitor size");
+    m.cntp_ctl=small(3);m.cntv_ctl=small(3);m.dist_ctl=small(1);m.cpu_ctl=small(1);m.pmr=small(255);m.bpr=small(7);
+    m.uart_cr=small(65535);m.uart_ibrd=small(65535);m.uart_fbrd=small(63);m.uart_lcr=small(255);m.uart_imsc=small(0x7ff);
+    for(auto& value:m.enabled_irqs)value=std::uint32_t(small(UINT32_MAX));
+    for(auto& value:m.pending_irqs)value=std::uint32_t(small(UINT32_MAX));
+    for(auto& value:m.active_irqs)value=std::uint32_t(small(UINT32_MAX));
+    for(auto& value:m.irq_config)value=std::uint32_t(small(UINT32_MAX));
+    if(at>bytes.size()||bytes.size()-at<128)throw std::runtime_error("Truncated interrupt state");
+    for(auto& value:m.priority)value=bytes[at++];for(auto& value:m.targets)value=bytes[at++];
+    const auto count=take();
+    if(count>4096||count!=bytes.size()-at)throw std::runtime_error("Invalid serial input state");
+    m.receive.assign(bytes.begin()+at,bytes.end());
+    if(m.vbar&2047)throw std::runtime_error("Unaligned exception vectors in machine state");
+    return m;
+  }
+};
+
+// FDT v17: self-contained 64-bit-address single-core board, with explicit RAM,
+// PL011, GICv2 and architected timers. No fabricated Android services/devices.
+class GuestDeviceTree {
+ public:
+  using Data=std::vector<std::uint8_t>;
+  Data structure,strings;
+  static void be32(Data& data,std::uint32_t value){for(int i=3;i>=0;--i)data.push_back(std::uint8_t(value>>(i*8)));}
+  static void be64(Data& data,std::uint64_t value){be32(data,std::uint32_t(value>>32));be32(data,std::uint32_t(value));}
+  static void text(Data& data,const std::string& value){data.insert(data.end(),value.begin(),value.end());data.push_back(0);}
+  static void align(Data& data){while(data.size()%4)data.push_back(0);}
+  void begin(const std::string& name){be32(structure,1);text(structure,name);align(structure);}
+  void end(){be32(structure,2);}
+  void property(const std::string& name,const Data& data){
+    be32(structure,3);be32(structure,std::uint32_t(data.size()));be32(structure,std::uint32_t(strings.size()));text(strings,name);
+    structure.insert(structure.end(),data.begin(),data.end());align(structure);
+  }
+  void string(const std::string& name,const std::string& value){Data data;text(data,value);property(name,data);}
+  void cells(const std::string& name,std::initializer_list<std::uint32_t> values){Data data;for(auto value:values)be32(data,value);property(name,data);}
+  void reg(std::uint64_t address,std::uint64_t size){Data data;be64(data,address);be64(data,size);property("reg",data);}
+  Data finish(){
+    be32(structure,9);Data result;
+    for(auto value:{0xd00dfeedu,std::uint32_t(56+structure.size()+strings.size()),56u,std::uint32_t(56+structure.size()),40u,17u,16u,0u,std::uint32_t(strings.size()),std::uint32_t(structure.size())})be32(result,value);
+    be64(result,0);be64(result,0);result.insert(result.end(),structure.begin(),structure.end());result.insert(result.end(),strings.begin(),strings.end());return result;
+  }
+};
+inline std::vector<std::uint8_t> guest_device_tree(std::uint64_t ram,std::uint64_t initrd_address=0,std::uint64_t initrd_size=0) {
+  GuestDeviceTree tree;tree.begin("");tree.string("compatible","reverse,minimal-arm64-v1");tree.string("model","REVERSE own ARM64 machine");
+  tree.cells("#address-cells",{2});tree.cells("#size-cells",{2});tree.cells("interrupt-parent",{1});
+  tree.begin("chosen");tree.string("bootargs","console=ttyAMA0 earlycon=pl011,0x09000000 keep_bootcon nokaslr maxcpus=1");tree.string("stdout-path","/pl011@9000000");
+  if(initrd_size){GuestDeviceTree::Data data;GuestDeviceTree::be64(data,initrd_address);tree.property("linux,initrd-start",data);data.clear();GuestDeviceTree::be64(data,initrd_address+initrd_size);tree.property("linux,initrd-end",data);}tree.end();
+  tree.begin("memory@40000000");tree.string("device_type","memory");tree.reg(MachineState::ram_base,ram);tree.end();
+  tree.begin("cpus");tree.cells("#address-cells",{1});tree.cells("#size-cells",{0});tree.begin("cpu@0");tree.string("device_type","cpu");tree.string("compatible","arm,armv8");tree.cells("reg",{0});tree.end();tree.end();
+  tree.begin("intc@8000000");tree.string("compatible","arm,cortex-a15-gic");tree.cells("#interrupt-cells",{3});tree.property("interrupt-controller",{});tree.cells("phandle",{1});
+  GuestDeviceTree::Data ranges;GuestDeviceTree::be64(ranges,MachineState::gic_dist);GuestDeviceTree::be64(ranges,0x10000);GuestDeviceTree::be64(ranges,MachineState::gic_cpu);GuestDeviceTree::be64(ranges,0x10000);tree.property("reg",ranges);tree.end();
+  tree.begin("timer");tree.string("compatible","arm,armv8-timer");tree.cells("interrupts",{1,13,0x104,1,14,0x104,1,11,0x104,1,10,0x104});tree.property("always-on",{});tree.end();
+  tree.begin("apb-pclk");tree.string("compatible","fixed-clock");tree.cells("#clock-cells",{0});tree.cells("clock-frequency",{24000000});tree.cells("phandle",{2});tree.end();
+  tree.begin("pl011@9000000");GuestDeviceTree::Data compatible;GuestDeviceTree::text(compatible,"arm,pl011");GuestDeviceTree::text(compatible,"arm,primecell");tree.property("compatible",compatible);
+  tree.reg(MachineState::uart_base,0x1000);tree.cells("interrupts",{0,1,4});tree.cells("clocks",{2,2});GuestDeviceTree::Data names;GuestDeviceTree::text(names,"uartclk");GuestDeviceTree::text(names,"apb_pclk");tree.property("clock-names",names);tree.end();
+  tree.begin("psci");tree.string("compatible","arm,psci-0.2");tree.string("method","hvc");tree.end();tree.end();return tree.finish();
+}
+} // namespace reverse_pc::guest

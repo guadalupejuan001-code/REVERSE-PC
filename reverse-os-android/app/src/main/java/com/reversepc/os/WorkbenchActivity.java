@@ -45,7 +45,7 @@ import java.util.concurrent.TimeUnit;
 /** Local packaged desktop. Only owned assets can access the native bridge. */
 public final class WorkbenchActivity extends Activity {
     static final String ORIGIN="https://reverse.local/";
-    private static final int PICK=7101,EXPORT=7102,IMPORT_RXE=7103,IMPORT_GUEST_ELF=7104;
+    private static final int PICK=7101,EXPORT=7102,IMPORT_RXE=7103,IMPORT_GUEST_ELF=7104,IMPORT_LINUX_IMAGE=7105,IMPORT_SYSTEM_ELF=7106;
     private final Handler ui=new Handler(Looper.getMainLooper());
     private volatile boolean closed;
     private SessionStore store;
@@ -212,8 +212,10 @@ public final class WorkbenchActivity extends Activity {
                     else if("experiment".equals(operation))result=experimentNative(payload);
                     else if("guestInspect".equals(operation))result=guest().inspect();
                     else if("guestDemo".equals(operation))result=guest().create(null);
+                    else if("guestSystem".equals(operation))result=guest().createSystem(null,0);
                     else if("guestRun".equals(operation))result=guest().run(new JSONObject(payload).getInt("steps"));
                     else if("guestXi".equals(operation))result=guest().xi(payload);
+                    else if("guestInput".equals(operation))result=guest().input(payload);
                     else if("saveProfile".equals(operation))result=saveProfile(payload);
                     else if("listApps".equals(operation))result=programs().catalog();
                     else if("openApp".equals(operation))result=programs().open(new JSONObject(payload).getString("path"));
@@ -241,6 +243,12 @@ public final class WorkbenchActivity extends Activity {
         }
         @JavascriptInterface public void importGuestElf(){
             ui.post(()->{if(!closed)try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),IMPORT_GUEST_ELF);}catch(Exception error){message("No se pudo abrir el selector ELF.");}});
+        }
+        @JavascriptInterface public void importLinuxImage(){
+            ui.post(()->{if(!closed)try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),IMPORT_LINUX_IMAGE);}catch(Exception error){message("No se pudo abrir el selector Image.");}});
+        }
+        @JavascriptInterface public void importSystemElf(){
+            ui.post(()->{if(!closed)try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),IMPORT_SYSTEM_ELF);}catch(Exception error){message("No se pudo abrir el selector ELF de sistema.");}});
         }
         @JavascriptInterface public void exportGuest(){
             RuntimeExecutor.INSTANCE.execute(()->{try{export("REVERSE-invitado.rvg",guest().export(),"application/octet-stream");}catch(Exception error){message("No se pudo exportar: "+error.getMessage());}});
@@ -317,9 +325,9 @@ public final class WorkbenchActivity extends Activity {
     }
     @Override protected void onActivityResult(int request,int result,Intent data){
         super.onActivityResult(request,result,data);
-        if(request==IMPORT_GUEST_ELF&&result==RESULT_OK&&data!=null&&data.getData()!=null){Uri uri=data.getData();RuntimeExecutor.INSTANCE.execute(()->{
+        if((request==IMPORT_GUEST_ELF||request==IMPORT_LINUX_IMAGE||request==IMPORT_SYSTEM_ELF)&&result==RESULT_OK&&data!=null&&data.getData()!=null){Uri uri=data.getData();RuntimeExecutor.INSTANCE.execute(()->{
             String response;
-            try(InputStream input=getContentResolver().openInputStream(uri)){response=guest().create(GuestStore.readElf(input)).toString();}
+            try(InputStream input=getContentResolver().openInputStream(uri)){byte[] image=GuestStore.readElf(input);response=(request==IMPORT_GUEST_ELF?guest().create(image):guest().createSystem(image,request==IMPORT_LINUX_IMAGE?2:1)).toString();}
             catch(Exception error){response=failure(error);}
             final String outcome=response;ui.post(()->{if(!closed)web.evaluateJavascript("window.ReverseGuest&&window.ReverseGuest.imported("+outcome+");",null);});
         });}
