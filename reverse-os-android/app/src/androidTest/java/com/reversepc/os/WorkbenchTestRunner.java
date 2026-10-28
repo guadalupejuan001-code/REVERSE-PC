@@ -298,6 +298,41 @@ public final class WorkbenchTestRunner extends Instrumentation {
         require(waitJs("window.shellSaved").equals("true"),"Profile not committed");
         retainedProof(true);fullDisplay();visualCheck("native-"+requested);
     }
+    private String graphicsJs(RxeGraphicsActivity game,String script)throws Exception{
+        CountDownLatch ready=new CountDownLatch(1);AtomicReference<String> value=new AtomicReference<>();
+        runOnMainSync(()->game.testingWebView().evaluateJavascript(script,result->{value.set(result);ready.countDown();}));
+        require(ready.await(10,TimeUnit.SECONDS),"Graphics JavaScript timeout");return value.get();
+    }
+    private void graphicsWorkflow(JSONObject before)throws Exception{
+        JSONObject catalog=op("listApps","","graphicsCatalog");JSONObject program=null;
+        for(int i=0;i<catalog.getJSONArray("apps").length();i++){JSONObject app=catalog.getJSONArray("apps").getJSONObject(i);if("org.reverse.prisma".equals(app.getJSONObject("metadata").optString("app_id")))program=app;}
+        require(program!=null,"PRISMA binary missing from native catalog");
+        require(program.getJSONObject("metadata").getInt("version")==3,"Wrong graphics executable format");
+        final JSONObject selected=program;
+        ActivityMonitor monitor=addMonitor(RxeGraphicsActivity.class.getName(),null,false);
+        op("launchGraphics",new JSONObject().put("path",selected.getString("path")).put("identity",selected.getString("identity")).toString(),"graphicsLaunch");
+        RxeGraphicsActivity game=(RxeGraphicsActivity)waitForMonitorWithTimeout(monitor,15000);removeMonitor(monitor);require(game!=null,"RXE did not open its native graphics adapter");
+        long until=SystemClock.uptimeMillis()+20000;boolean loaded=false;
+        while(SystemClock.uptimeMillis()<until){AtomicReference<WebView> view=new AtomicReference<>();runOnMainSync(()->view.set(game.testingWebView()));if(view.get()!=null&&"true".equals(graphicsJs(game,"!!document.getElementById('startBtn')&&!!document.getElementById('game').dataset.renderer"))){loaded=true;break;}SystemClock.sleep(50);}
+        require(loaded,"Local graphics assets did not load");
+        require("true".equals(graphicsJs(game,"innerWidth>innerHeight")),"Game is not landscape");
+        require(graphicsJs(game,"document.getElementById('game').dataset.renderer").contains("graphics-cosmic-webgl2"),"GPU presentation not active on Android");
+        graphicsJs(game,"window.graphicReplies=[];window.addEventListener('reverse-score',e=>graphicReplies.push(e.detail));ReverseGraphics.event(1,1,0,0);true");
+        for(int serial=1;serial<=3;serial++){
+            if(serial==2)graphicsJs(game,"ReverseGraphics.event(2,1,1,150);true");
+            if(serial==3)graphicsJs(game,"ReverseGraphics.event(3,1,2,0);true");
+            long end=SystemClock.uptimeMillis()+15000;
+            while(SystemClock.uptimeMillis()<end&&!"true".equals(graphicsJs(game,"graphicReplies.length>="+serial)))SystemClock.sleep(30);
+            require("true".equals(graphicsJs(game,"graphicReplies.length==="+serial+"&&graphicReplies.at(-1).ok")),"Native XI event was not committed");
+        }
+        require("true".equals(graphicsJs(game,"graphicReplies[1].state.score===150&&graphicReplies[1].state.combo===1&&graphicReplies[2].state.combo===0&&graphicReplies[2].state.misses===1")),"Wrong persisted XI score");
+        graphicsJs(game,"window.blockedNetwork=false;fetch('https://example.com/').catch(()=>blockedNetwork=true);true");
+        require("true".equals(graphicsJs(game,"blockedNetwork")),"Graphics adapter allowed an external connection");
+        File folder=new File(getTargetContext().getExternalFilesDir(null),"ui-evidence");folder.mkdirs();Bitmap screen=getUiAutomation().takeScreenshot();if(screen!=null)try(FileOutputStream output=new FileOutputStream(new File(folder,"prisma-gpu-screen.png"))){screen.compress(Bitmap.CompressFormat.PNG,100,output);screen.recycle();}
+        runOnMainSync(game::finish);SystemClock.sleep(250);
+        JSONObject after=op("inspect","","graphicsCoreAfter");
+        for(String key:new String[]{"memory_revision","memory_overrides","core_revision"})require(before.getJSONObject("core").getLong(key)==after.getJSONObject("core").getLong(key),"Game altered desktop authority: "+key);
+    }
     @Override public void onStart(){
         Bundle result=new Bundle();
         try{
@@ -319,6 +354,9 @@ public final class WorkbenchTestRunner extends Instrumentation {
             require(snapshot.getJSONObject("android").getLong("ram_total_bytes")>0,"No native RAM reading");
             require(snapshot.getJSONObject("core").getString("state_format").equals("RVPC2"),"Wrong checkpoint format");
             require(snapshot.getJSONObject("build").getString("source_commit").matches("[a-f0-9]{40}"),"Missing build provenance");
+            if(requested.equals("graphics")){
+                graphicsWorkflow(snapshot);result.putString("stream","WORKBENCH_TESTS_OK mode=graphics native=XI GPU=Graphics-COSMIC-WebGL2 isolation=verified\n");result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
+            }
             if(!seed&&js("typeof window.ReverseShell==='object'").equals("true")){
                 desktopShellWorkflow(requested,snapshot);
                 result.putString("stream","WORKBENCH_TESTS_OK mode="+requested+" native=XI/Ether desktop-shell=verified\n");result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;

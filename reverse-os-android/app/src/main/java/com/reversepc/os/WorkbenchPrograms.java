@@ -31,6 +31,21 @@ final class WorkbenchPrograms {
             prefs.edit().putBoolean("seeded",true).apply();
         }
         upgradeBbyq();
+        seedGraphics();
+    }
+    private void seedGraphics()throws Exception{
+        android.content.SharedPreferences prefs=context.getSharedPreferences("workbench-programs",0);
+        if(prefs.getBoolean("prisma-1.1-seeded",false))return;
+        final byte[] image;
+        try(InputStream in=context.getAssets().open("native-apps/PRISMA.rxe")){image=read(in);}catch(java.io.FileNotFoundException optional){return;}
+        JSONObject metadata=info(image);if(!"graphics".equals(metadata.optString("ui")))throw new IOException("La aplicación PRISMA no tiene perfil gráfico");
+        if(!exists("Aplicaciones/PRISMA.rxe"))files.write("Aplicaciones/PRISMA.rxe",image,false);
+        prefs.edit().putBoolean("prisma-1.1-seeded",true).apply();
+    }
+    JSONObject graphicsLaunch(JSONObject request)throws Exception{
+        byte[] image=checked(request);JSONObject metadata=info(image);
+        if(!"graphics".equals(metadata.optString("ui")))throw new IOException("El programa no es una aplicación gráfica RXE");
+        return new JSONObject().put("ok",true).put("path",path(request.getString("path"))).put("identity",identity(image));
     }
     private void upgradeBbyq()throws Exception{
         byte[] bundled=BbyqInterface.asset(context,"native-apps/BBY-Q.rxe");

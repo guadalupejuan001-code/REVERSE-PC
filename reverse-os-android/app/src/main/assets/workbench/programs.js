@@ -51,6 +51,7 @@ function programHTML(w){
   const plan=saved.agents;
   const progress=plan&&plan.steps?'<p class="rxe-status">W4u · Plan: '+plan.steps+' paso'+(plan.steps===1?'':'s')+' · '+(plan.status===3?'Comprobado':plan.status===4?'Detenido':plan.completed+'/'+plan.steps+' completados')+'</p>':'';
   const message='<p class="rxe-status" role="status">'+esc(status)+'</p>'+progress;
+  if(meta.ui==='graphics')return '<div class="rxe-layout">'+heading+'<p class="rxe-status" role="status">'+esc(data.error||'Juego · Pantalla completa · Música propia')+'</p><h2>'+esc(meta.title)+'</h2><p>Una experiencia horizontal a pantalla completa. Carga tu música y desliza sobre los cubos.</p><button class="primary-button" data-program-action="graphics"'+disabled+'>Jugar a pantalla completa</button></div>';
   if(!chat)return '<div class="rxe-layout">'+heading+message+'<pre class="rxe-output" aria-label="Salida RXE">'+esc(saved.output||'Pulsa Ejecutar para iniciar.')+'</pre><button class="primary-button" data-program-action="run"'+(data.busy||data.uncertain?' disabled':'')+'>Ejecutar</button></div>';
   const history=saved.history.length?saved.history.map((item,i)=>'<div class="rxe-message '+(item.role==='user'?'from-user':'from-agent')+'"><small>'+esc(item.role==='user'?'TÚ':meta.title)+'</small><p'+(item.role==='assistant'&&i===saved.history.length-1?' aria-label="Respuesta BBY Q"':'')+'>'+esc(item.text)+'</p></div>').join(''):'<p class="muted">Memoria '+esc(meta.app_version)+' lista. Lista para conversar. W4u opera tus programas y ventanas.</p>';
   queueMicrotask(()=>{const el=$('.rxe-history',$('#'+w.id));if(el)el.scrollTop=el.scrollHeight;});
@@ -86,6 +87,7 @@ async function transactProgram(w,operation){
   try{
     if(operation==='askApp'&&snapshot.desktop_control){await refreshPrograms();payload.desktop=captureBbyqDesktop(snapshot.identity);}
     let result=await nativeRequest(operation,JSON.stringify(payload));
+    if(operation==='launchGraphics'){data.busy=false;if(getWindow(w.id))renderWindowContent(w);return;}
     if(operation==='askApp'){
       let observation=payload.desktop,steps=0;
       while(result.control){
@@ -120,6 +122,7 @@ document.addEventListener('click',async event=>{
   if(action==='refresh')refreshPrograms();
   if(action==='import'){if(nativeAvailable)window.ReverseNative.importRxe();else toast('Requiere la aplicación Android.','help');}
   if(action==='reload'&&w)loadProgram(w);
+  if(action==='graphics'&&w)transactProgram(w,'launchGraphics');
   if(action==='run'&&w)transactProgram(w,'runApp');
   if((action==='export'||action==='memory')&&data?.snapshot)window.ReverseNative.exportRxe(w.rxePath,data.snapshot.identity,action==='memory');
   if(action==='compile'&&w){
