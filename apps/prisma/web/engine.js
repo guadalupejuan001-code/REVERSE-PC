@@ -30,7 +30,7 @@ export class Scene {
     this.canvas = canvas; this.ctx = canvas.getContext('2d', { alpha:true, desynchronized:true }); this.settings = getSettings;
     this.width = 0; this.height = 0; this.particles = []; this.shards = []; this.trails = new Map(); this.pulse = 0; this.energy = 0; this.flash = 0; this.shake = 0;
     const random = seeded(6631); this.stars = Array.from({length:100}, () => ({x:random(),y:random(),a:.15+random()*.5,s:random()>.9?1.4:.6}));
-    this.qualityScale=1;this.frameTotal=0;this.frameCount=0;this.cooldown=0;this.view=new Float32Array(4);this.paletteKey='';this.rgb=[];this.diagnostics=new URLSearchParams(location.search).has('diagnostics');this.cpuTimes=[];
+    this.qualityScale=1;this.frameTotal=0;this.frameCount=0;this.cooldown=0;this.view=new Float32Array(4);this.motion={x:0,y:0};this.motionGoal={x:0,y:0};this.paletteKey='';this.rgb=[];this.diagnostics=new URLSearchParams(location.search).has('diagnostics');this.cpuTimes=[];
     this.gpu=NativeXRender.create()||(new URLSearchParams(location.search).get('renderer')==='canvas'?null:CubeGPU.create(canvas.parentElement));
     canvas.dataset.renderer=this.gpu?.native?'ether-render-x-cpu':this.gpu?'graphics-cosmic-webgl2':'canvas';
     if(this.gpu)this.gpu.onFailure=()=>{this.gpu.canvas.remove();this.gpu=null;canvas.dataset.renderer='canvas';this.resize();};
@@ -55,8 +55,9 @@ export class Scene {
     const next=mean>.022?Math.max(.6,this.qualityScale-.15):mean<.0174?Math.min(1,this.qualityScale+.1):this.qualityScale;
     if(next!==this.qualityScale){this.qualityScale=next;this.cooldown=now+8000;this.resize();}
   }
+  setMotion(x,y){this.motionGoal.x=Math.max(-.052,Math.min(.052,Number.isFinite(x)?x:0));this.motionGoal.y=Math.max(-.052,Math.min(.052,Number.isFinite(y)?y:0));}
   projection(x,y,z,preview = false) {
-    const mobile = this.width < 580, cx = this.width * (preview ? mobile ? .53 : .725 : .5), cy = this.height * (preview ? mobile ? .79 : .51 : .49);
+    const mobile = this.width < 580, cx = this.width * ((preview ? mobile ? .53 : .725 : .5)+this.motion.x), cy = this.height * ((preview ? mobile ? .79 : .51 : .49)+this.motion.y);
     const f = Math.min(this.width * 1.29, this.height * 1.22) * (preview && mobile ? .69 : 1);
     const scale = f / Math.max(.7, z + 4.8);
     return {x:cx + x * scale,y:cy + y * scale,s:scale};
@@ -114,8 +115,9 @@ export class Scene {
   render(time,dt,chart,preview,audioEnergy=0,latency=0,animate=true) {
     const started=this.diagnostics?performance.now():0;
     const ctx=this.ctx,w=this.width,h=this.height;if(!w||!h)return;
+    this.motion.x+=(this.motionGoal.x-this.motion.x)*Math.min(1,dt*12);this.motion.y+=(this.motionGoal.y-this.motion.y)*Math.min(1,dt*12);
     const key=this.settings().palette;if(key!==this.paletteKey){this.paletteKey=key;this.rgb=PALETTES[key].map(hex=>[parseInt(hex.slice(1,3),16)/255,parseInt(hex.slice(3,5),16)/255,parseInt(hex.slice(5,7),16)/255]);}
-    if(this.gpu){const mobile=w<580,f=Math.min(w*1.29,h*1.22)*(preview&&mobile?.69:1);this.view[0]=preview?(mobile?.53:.725):.5;this.view[1]=preview?(mobile?.79:.51):.49;this.view[2]=f/w;this.view[3]=f/h;if(this.gpu.native)this.gpu.quality={auto:0,high:1,battery:2}[this.settings().quality]||0;this.gpu.begin(time,this.energy,this.view,this.rgb,this.settings().effects);ctx.clearRect(0,0,w,h);}
+    if(this.gpu){const mobile=w<580,f=Math.min(w*1.29,h*1.22)*(preview&&mobile?.69:1);this.view[0]=(preview?(mobile?.53:.725):.5)+this.motion.x;this.view[1]=(preview?(mobile?.79:.51):.49)+this.motion.y;this.view[2]=f/w;this.view[3]=f/h;if(this.gpu.native)this.gpu.quality={auto:0,high:1,battery:2}[this.settings().quality]||0;this.gpu.begin(time,this.energy,this.view,this.rgb,this.settings().effects);ctx.clearRect(0,0,w,h);}
     ctx.setTransform(this.dpr,0,0,this.dpr,0,0);this.energy+=(audioEnergy-this.energy)*.12;this.pulse=Math.max(0,this.pulse-dt*2.7);this.shake=Math.max(0,this.shake-dt*22);
     ctx.save();if(this.shake&&!this.settings().effects)ctx.translate((Math.random()-.5)*this.shake,(Math.random()-.5)*this.shake);
     if(!this.gpu)this.background(time,preview,this.energy);

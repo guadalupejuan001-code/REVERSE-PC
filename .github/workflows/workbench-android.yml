@@ -68,6 +68,7 @@ jobs:
           build/test-xrender-spheres > evidence/xrender-spheres.txt
           g++ -std=c++17 -O2 -Ibuild/ether-compat -Ideps/mundo-x/native/include deps/mundo-x/native/tests/ether_surface_buffer.cpp -o build/test-xrender-surfaces
           build/test-xrender-surfaces > evidence/xrender-surfaces.txt
+          node apps/prisma/tests/motion.test.mjs > evidence/prisma-motion.json
           node scripts/build-prisma.mjs build/reverse_pc build/prisma "$GITHUB_SHA" > evidence/prisma-manifest.json
           python3 tests/rxe_graphics_cli.py build/reverse_pc build/prisma/PRISMA.rxe > evidence/prisma-native-tests.json
           python3 tests/rxe_cli.py build/reverse_pc > evidence/rxe1-regression.json

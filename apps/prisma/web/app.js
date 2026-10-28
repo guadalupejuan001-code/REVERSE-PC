@@ -1,5 +1,6 @@
 import { RhythmAudio, DEMO_BPM, DEMO_DURATION, analyseRhythm, waveformOf, seeded } from './audio.js';
 import { Scene, makeChart, segmentDistance, DIRECTIONS, PALETTES, visibleRange } from './engine.js';
+import { createMotion } from './motion.js';
 const $ = id => document.getElementById(id);
 const all = selector => [...document.querySelectorAll(selector)];
 const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
@@ -16,6 +17,7 @@ let track={name:'Midnight Motion',demo:true,bpm:DEMO_BPM,duration:DEMO_DURATION,
 let level='flow', chart=[], status='home', frozenTime=0, booting=false, missIndex=0, sceneDirty=true, gameBounds=null, lastScene=0, lastElapsed='';
 let score=0,combo=0,maxCombo=0,hits=0,misses=0,lastFrame=performance.now(),lastUI=0,feedbackUntil=0,toastTimer,activePointers=new Map(),runId=0;
 const nativeGraphics=typeof window.ReverseGraphics?.event==='function'?window.ReverseGraphics:null;
+const motionController=createMotion(scene,()=>{sceneDirty=true;},nativeGraphics);
 let nativeSerial=0,nativeFailure=false;
 const nativePending=new Map();
 function nativeEvent(kind,base,run=runId){
@@ -176,6 +178,20 @@ all('dialog').forEach(dialog=>dialog.addEventListener('click',e=>{if(e.target===
 function renderRecords(){const list=$('recordList');list.replaceChildren();if(!records.length){const p=document.createElement('p');p.className='dialog-lead';p.textContent='Tu primera marca todavía está por escribirse. Completa una pista y vuelve aquí.';list.append(p);return;}for(const r of records.slice(0,8)){const row=document.createElement('div'),meta=document.createElement('span'),small=document.createElement('small'),value=document.createElement('strong');meta.textContent=r.track;small.textContent=`${levelNames[r.level]||'Flow'} · ${r.accuracy}% precisión · ${r.combo} combo`;meta.append(small);value.textContent=r.score.toLocaleString('es');row.append(meta,value);list.append(row);}}
 $('quality').value=settings.quality;$('palette').value=settings.palette;$('precise').checked=settings.precise;$('effects').checked=settings.effects;$('latency').value=settings.latency;$('volume').value=settings.volume;$('latencyValue').textContent=`${settings.latency>0?'+':''}${settings.latency} ms`;
 function updatePalette(){sceneDirty=true;const palette=PALETTES[settings.palette];document.documentElement.style.setProperty('--green',palette[0]);document.documentElement.style.setProperty('--coral',palette[1]);all('.palette-legend>span')[0].lastChild.textContent=settings.palette==='ice'?'HIELO':'ESMERALDA';all('.palette-legend>span')[1].lastChild.textContent=settings.palette==='violet'?'VIOLETA':'CORAL';}
+const motionToggle=$('motionMode'),motionStatus=$('motionStatus'),motionCalibrate=$('motionCalibrate');
+motionToggle.disabled=!motionController.supported();
+if(motionToggle.disabled)motionStatus.textContent='Sin sensor de orientación disponible.';
+motionToggle.addEventListener('change',async()=>{
+  const answer=await motionController.enable(motionToggle.checked);
+  motionToggle.checked=answer.enabled;motionStatus.textContent=answer.reason;
+  motionCalibrate.disabled=!answer.enabled;sceneDirty=true;
+});
+motionCalibrate.addEventListener('click',()=>{
+  const ok=motionController.calibrate();
+  motionStatus.textContent=ok?'Centro de cámara recalibrado.':'Aún no se ha recibido una lectura del sensor.';
+  sceneDirty=true;
+});
+window.addEventListener('pagehide',()=>{motionController.enable(false);});
 $('quality').addEventListener('change',e=>{settings.quality=e.target.value;scene.qualityScale=1;scene.resize();sceneDirty=true;persistSettings();});
 $('palette').addEventListener('change',e=>{settings.palette=e.target.value;updatePalette();persistSettings();});
 $('precise').addEventListener('change',e=>{settings.precise=e.target.checked;persistSettings();});
