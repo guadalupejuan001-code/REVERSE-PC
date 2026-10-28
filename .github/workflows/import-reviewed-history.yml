@@ -1,0 +1,22 @@
+name: Import reviewed source history
+on:
+  push:
+    branches: ['transport/import-20261028-reverse']
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify and import the reviewed local Git history
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '98235ef5fcef6a20f222a9e533d7713b45896565dbda4235c6ac6eec4501af7f  bootstrap/source.bundle' | sha256sum -c
+          git bundle verify bootstrap/source.bundle
+          git fetch bootstrap/source.bundle refs/heads/integrate/latest-2026-10-28
+          test "$(git rev-parse FETCH_HEAD)" = a1b935ae0adf38615996bac92727e95289ad7cc1
+          git push origin a1b935ae0adf38615996bac92727e95289ad7cc1:refs/heads/integrate/latest-2026-10-28
