@@ -23,6 +23,12 @@ jobs:
         with: {persist-credentials: false}
       - uses: actions/checkout@v4
         with:
+          repository: guadalupejuan001-code/REVERSE-PC
+          ref: 481bff8b68ba5a41e55f32e2516d3b079470aaa0
+          path: deps/prisma-previous
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
           repository: guadalupejuan001-code/mundo-X
           ref: e2778d962af22f6f1a0794058dd4685fc2573966
           path: deps/mundo-x
@@ -69,6 +75,10 @@ jobs:
           mkdir -p reverse-os-android/app/src/main/assets/native-apps
           cp build/prisma/PRISMA.rxe reverse-os-android/app/src/main/assets/native-apps/PRISMA.rxe
           cp build/prisma/PRISMA.rxe dist/PRISMA.rxe
+          node deps/prisma-previous/scripts/build-prisma.mjs "$PWD/build/reverse_pc" "$PWD/build/prisma-previous" 2deb6c918ef94e77274d66a76ce20c0e9896c6da > evidence/prisma-previous.json
+          echo 'be811baf5404d97fae1803185b3e4679ec81fe2524a613ff81451a13d3fa3e64  build/prisma-previous/PRISMA.rxe' | sha256sum -c -
+          mkdir -p reverse-os-android/app/src/androidTest/assets
+          cp build/prisma-previous/PRISMA.rxe reverse-os-android/app/src/androidTest/assets/prisma-1.1.rxe
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tests/core-profile.cpp -o build/core-profile
           python3 deps/bbyq-latest/ai/releases/e025/build.py build/reverse_pc build/e025 --assets reverse-os-android/app/src/main/assets > evidence/e025-build.json
           python3 deps/bbyq-latest/ai/releases/e025/test.py build/reverse_pc build/e025-tests > evidence/e025-tests.json

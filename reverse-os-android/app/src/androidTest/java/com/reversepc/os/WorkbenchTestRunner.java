@@ -312,6 +312,24 @@ public final class WorkbenchTestRunner extends Instrumentation {
         try{sendPointerSync(down);sendPointerSync(up);}finally{down.recycle();up.recycle();}
     }
     private void graphicsWorkflow(JSONObject before)throws Exception{
+        // Isolated workspace: fresh seeding, exact official upgrade, user file,
+        // removal and repeated starts. Never edits the real desktop fixtures.
+        WorkspaceFiles migration=new WorkspaceFiles(new File(getTargetContext().getCacheDir(),"prisma-upgrade-"+System.nanoTime()));
+        android.content.SharedPreferences flags=getTargetContext().getSharedPreferences("prisma-upgrade-check",0);flags.edit().clear().commit();
+        WorkbenchPrograms.seedGraphics(getTargetContext(),migration,flags);byte[] current=migration.read("Aplicaciones/PRISMA.rxe");
+        require(new JSONObject(new String(NativeRuntime.inspectRxe(current),StandardCharsets.UTF_8)).getString("app_version").equals("1.2.0"),"Fresh install did not seed X Render game");
+        byte[] prior;try(java.io.InputStream input=getContext().getAssets().open("prisma-1.1.rxe")){prior=WorkbenchPrograms.read(input);}
+        require(digest(prior).equals(WorkbenchPrograms.PRISMA_11_SHA),"Wrong official PRISMA upgrade fixture");
+        migration.write("Aplicaciones/PRISMA.rxe",prior,true);flags.edit().putBoolean("prisma-1.2-seeded",false).commit();
+        WorkbenchPrograms.seedGraphics(getTargetContext(),migration,flags);
+        require(Arrays.equals(current,migration.read("Aplicaciones/PRISMA.rxe")),"Official PRISMA 1.1 was not upgraded");
+        byte[] custom=NativeRuntime.compileRxe("#!reverse-pc-machine-v1\nset r0 42\nprint r0\nhalt\n".getBytes(StandardCharsets.UTF_8),"User app".getBytes(StandardCharsets.UTF_8));
+        migration.write("Aplicaciones/PRISMA.rxe",custom,true);flags.edit().putBoolean("prisma-1.2-seeded",false).commit();
+        WorkbenchPrograms.seedGraphics(getTargetContext(),migration,flags);
+        require(Arrays.equals(custom,migration.read("Aplicaciones/PRISMA.rxe")),"Upgrade overwrote a custom executable");
+        migration.trash("Aplicaciones/PRISMA.rxe");flags.edit().putBoolean("prisma-1.2-seeded",false).commit();
+        WorkbenchPrograms.seedGraphics(getTargetContext(),migration,flags);WorkbenchPrograms.seedGraphics(getTargetContext(),migration,flags);
+        require(migration.list("Aplicaciones").isEmpty(),"Upgrade restored a removed game");
         JSONObject catalog=op("listApps","","graphicsCatalog");JSONObject program=null;
         for(int i=0;i<catalog.getJSONArray("apps").length();i++){JSONObject app=catalog.getJSONArray("apps").getJSONObject(i);if("org.reverse.prisma".equals(app.getJSONObject("metadata").optString("app_id")))program=app;}
         require(program!=null,"PRISMA binary missing from native catalog");
