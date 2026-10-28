@@ -56,7 +56,7 @@ function qdStudioHTML(w){
  const badges=QD_SKILLS.map(item=>'<button type="button" class="qd-skill '+(skill.id===item.id?'selected':'')+'" data-qd-skill="'+item.id+'" aria-current="'+(skill.id===item.id?'page':'false')+'"><span class="qd-skill-number">0'+item.id+'</span><span><strong>'+item.name+'</strong><small>'+((s.loaded&&s.learned[item.id-1])?'Aprendido':'Sin verificar')+'</small></span><span class="qd-skill-dot '+(s.loaded&&s.learned[item.id-1]?'learned':'')+'"></span></button>').join('');
  const disableNative=(!nativeAvailable||s.busy)?' disabled':'';
  return '<div class="qd-root">'+
-  '<header class="qd-top"><div><span class="qd-overline">REVERSE / INTELIGENCIA / PROGRAMACIÓN</span><h2>Qd <span>Cody</span></h2><p>Laboratorio XI para enseñar programación a BBY Q. Pruebas antes de aprender.</p></div><div class="qd-top-actions">'+available+'<button type="button" class="secondary-button" data-qd-action="refresh"'+disableNative+'>'+icon('restore')+' Estado</button></div></header>'+
+  '<header class="qd-top"><div><span class="qd-overline">BBY Q / CODY</span><h2>Cody <span>· XI</span></h2><p>Módulo de BBY Q. Evalúa y conserva patrones XI verificados.</p></div><div class="qd-top-actions">'+available+'<button type="button" class="secondary-button" data-qd-action="refresh"'+disableNative+'>'+icon('restore')+' Estado</button></div></header>'+
   '<div class="qd-workspace"><aside class="qd-sidebar"><span class="qd-section-caption">CURRÍCULO / NIVEL 01</span>'+badges+
   '<div class="qd-memory"><span>Memoria compartida con BBY Q</span><strong>'+(s.loaded?s.learned.filter(Boolean).length+'/4':'—')+'</strong><small>patrones aprendidos · '+(s.loaded?s.approved:'—')+' enseñanzas verificadas</small></div></aside>'+
   '<section class="qd-editor"><div class="qd-panel-heading"><div><span class="qd-section-caption">EDITOR XI</span><strong>'+esc(skill.name)+'.xi</strong></div><span class="qd-file-ext">.xi</span></div>'+
@@ -103,7 +103,7 @@ async function qdAction(w,action){
 }
 document.addEventListener('input',event=>{
  const target=event.target,w=getWindow(target.closest('.window')?.dataset.id);
- if(!w||w.app!=='qd')return;
+ if(!w||!(w.app==='qd'||(w.app==='rxe'&&w.rxePath==='Aplicaciones/BBY-Q.rxe'&&w.bbyqModule==='cody')))return;
  if(target.matches('[data-qd-source]')){
   w.qdDrafts ||= {};w.qdDrafts[String(w.qdSkill)]=target.value;const s=qdSessions.get(w.id);if(s)s.generated=null;queueSave();
  }
@@ -114,7 +114,7 @@ document.addEventListener('input',event=>{
 });
 document.addEventListener('click',event=>{
  const btn=event.target.closest('button');if(!btn)return;
- const w=getWindow(btn.closest('.window')?.dataset.id);if(!w||w.app!=='qd')return;
+ const w=getWindow(btn.closest('.window')?.dataset.id);if(!w||!(w.app==='qd'||(w.app==='rxe'&&w.rxePath==='Aplicaciones/BBY-Q.rxe'&&w.bbyqModule==='cody')))return;
  if(btn.dataset.qdSkill){
   const selected=qdSkill(btn.dataset.qdSkill).id;
   if(selected!==w.qdSkill){w.qdSkill=selected;const s=qdSessions.get(w.id);if(s){s.result=null;s.generated=null;s.error='';}qdRender(w);queueSave();}
