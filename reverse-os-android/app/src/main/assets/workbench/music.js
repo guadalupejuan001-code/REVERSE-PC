@@ -5,6 +5,7 @@ function musicEmptyStatus(shield=true){return {loaded:false,phase:'idle',source:
 let musicStatus=musicEmptyStatus();
 let musicBoundsFrame=0,musicLastBounds='',musicOwner=null,musicLastRepeat=null;
 let musicLibrary=[],musicDownloadDraft='';
+let musicSearchEditing=false;
 function musicDownloadRows(){
   return musicLibrary.map(item=>'<div class="music-download-row" data-music-row="'+item.id+'"><button data-music-local="'+item.id+'" '+(item.status!=='ready'?'disabled':'')+'>'+icon('music')+'<span><strong data-music-local-title>'+esc(item.title)+'</strong><small data-music-local-status></small></span>'+icon('play')+'</button><button class="icon-button" data-music-delete="'+item.id+'" aria-label="Eliminar '+esc(item.title)+'">'+icon('trash')+'</button><progress data-music-progress aria-label="Progreso de la descarga" hidden></progress></div>').join('');
 }
@@ -58,12 +59,12 @@ function musicHTML(w){
   const library=state.music||=cleanMusicState();
   const favorites=w.musicTab==='favorites',downloads=w.musicTab==='downloads';
   return '<div class="music-app"><div class="music-heading"><div class="music-brand">'+icon('music')+'<strong>REVERSE Music</strong><span data-music-source>YouTube</span></div><div class="music-heading-actions"><button class="secondary-button music-download-button" data-music-action="downloads" aria-label="Descargar música">'+icon('download')+'<span>Descargar música</span></button><button class="music-shield" data-music-action="shield" aria-pressed="'+musicStatus.shield+'" title="Activar o desactivar el bloqueador">'+icon('lock')+'<span data-music-shield>Bloqueador '+(musicStatus.shield?'activado':'desactivado')+'</span></button></div></div>'+
-    '<form class="music-search" data-music-search><label>'+icon('search')+'<input name="query" aria-label="Buscar música o pegar enlace de YouTube" placeholder="Artista, canción o enlace de YouTube" maxlength="2048" autocomplete="off" value="'+esc(library.lastInput)+'"></label><button class="primary-button" type="submit">Buscar</button></form>'+
+    '<form class="music-search" data-music-search><label>'+icon('search')+'<input name="query" aria-label="Buscar música o pegar enlace de YouTube" placeholder="Artista, canción o enlace de YouTube" maxlength="2048" autocomplete="off" value="'+esc(library.lastInput)+'"></label><button type="button" class="secondary-button music-paste" data-music-paste title="Pegar enlace desde el portapapeles">'+icon('copy')+'<span>Pegar</span></button><button class="primary-button" type="submit">Buscar</button></form>'+
     '<nav class="music-tabs" aria-label="Secciones de Music"><button data-music-tab="player" aria-selected="'+(!favorites&&!downloads)+'">Reproductor</button><button data-music-tab="favorites" aria-selected="'+favorites+'">Favoritos <span data-music-count>'+library.favorites.length+'</span></button><button data-music-tab="downloads" aria-selected="'+downloads+'">Descargas</button><span data-music-blocked>'+musicStatus.blocked+' solicitudes bloqueadas</span></nav>'+
     (downloads?musicDownloadsHTML():favorites?'<div class="music-library">'+(library.favorites.length?library.favorites.map((item,i)=>'<div class="music-favorite"><button data-music-favorite="'+i+'">'+icon('music')+'<span>'+esc(item.title)+'</span>'+icon('play')+'</button><button class="icon-button" data-music-remove="'+i+'" aria-label="Quitar '+esc(item.title)+' de favoritos">'+icon('close')+'</button></div>').join(''):'<div class="music-empty">'+icon('music')+'<strong>Tu música, a mano.</strong><p>Abre una canción o lista y pulsa Guardar favorito.</p></div>')+'</div>':
       '<div class="music-stage" data-music-stage><div class="music-empty">'+icon('music')+'<strong data-music-placeholder>Escucha desde tu escritorio.</strong><p data-music-hint>Busca una canción o abre YouTube para empezar.</p><button class="secondary-button" data-music-action="home">Abrir YouTube</button></div></div>')+
     '<div class="music-error" data-music-error role="status" hidden></div><input class="music-seek" data-music-seek type="range" min="0" max="0" step="1" value="0" aria-label="Posición de la canción" disabled><div class="music-controls"><div class="music-track"><strong data-music-title>Sin reproducción</strong><span data-music-time>0:00 / 0:00</span></div><div class="music-transport"><button class="icon-button" data-music-action="previous" aria-label="Canción anterior">'+icon('previous')+'</button><button class="icon-button music-play" data-music-action="toggle" aria-label="Reproducir o pausar">'+icon('play')+'</button><button class="icon-button" data-music-action="next" aria-label="Canción siguiente">'+icon('next')+'</button><button class="icon-button music-repeat" data-music-action="repeat" aria-label="Repetir canción" aria-pressed="'+library.repeatOne+'" title="Repetir la canción actual">'+icon('repeat')+'<span>1</span></button></div><button class="secondary-button music-save" data-music-action="favorite" title="Guardar canción o lista actual">'+icon('plus')+'<span>Guardar favorito</span></button></div>'+
-    '<footer class="music-footer"><div><button data-music-action="back" title="Atrás">'+icon('arrow-left')+'</button><button data-music-action="reload" title="Recargar">'+icon('restore')+'</button></div><span data-music-footer>Filtro experimental · reproducción en línea</span></footer></div>';
+    '<footer class="music-footer"><div><button data-music-action="back" title="Atrás">'+icon('arrow-left')+'</button><button data-music-action="reload" title="Recargar">'+icon('restore')+'</button><button type="button" data-music-copy title="Copiar enlace de la canción" aria-label="Copiar enlace">'+icon('copy')+'</button></div><span data-music-footer>Filtro experimental · reproducción en línea</span></footer></div>';
 }
 function musicTime(value){const s=Number.isFinite(Number(value))?Math.max(0,Math.floor(Number(value))):0;return Math.floor(s/60)+':'+String(s%60).padStart(2,'0');}
 function updateMusicUI(){
@@ -89,17 +90,38 @@ function updateMusicUI(){
     text('[data-music-hint]',musicStatus.source==='local'?'Tu audio guardado sigue disponible al abrir un juego. Puedes controlarlo desde la notificación de Android.':typeof window.ReverseNative?.music==='function'?'Busca una canción o abre YouTube para empezar.':'La reproducción está disponible en la APK de REVERSE Music.');
   }
 }
+function musicEnterEditMode(){
+  musicSearchEditing=true;
+  // Hide Android's separate WebView synchronously before editing a URL.
+  musicNative('bounds',{visible:false,editing:true});
+  musicLastBounds='';scheduleMusicBounds();
+}
 function syncMusicBounds(){
   musicBoundsFrame=0;
   const owner=state.windows.find(w=>w.app==='music');
-  if(!owner){if(musicOwner){musicNative('close');musicStatus=musicEmptyStatus(musicStatus.shield);musicOwner=null;musicLastBounds='';musicLastRepeat=null;}return;}
+  if(!owner){if(musicOwner){musicNative('close');musicStatus=musicEmptyStatus(musicStatus.shield);musicOwner=null;musicLastBounds='';musicLastRepeat=null;}musicSearchEditing=false;return;}
   if(musicOwner!==owner.id){musicOwner=owner.id;musicLastRepeat=null;musicNative('status');updateMusicUI();}
   const repeat=state.music?.repeatOne===true;if(musicLastRepeat!==repeat){if(musicNative('repeat',{enabled:repeat}))musicLastRepeat=repeat;}
   const win=document.getElementById(owner.id),stage=win?.querySelector('[data-music-stage]');
+  const search=win?.querySelector('[data-music-search]'),tabs=win?.querySelector('.music-tabs');
+  const seek=win?.querySelector('[data-music-seek]'),rect=stage?.getBoundingClientRect();
+  const tabsRect=tabs?.getBoundingClientRect(),searchRect=search?.getBoundingClientRect(),seekRect=seek?.getBoundingClientRect(),windowRect=win?.getBoundingClientRect();
   const modal=!$('#launcher').hidden||!$('#context-menu').hidden||$('#input-dialog').open;
-  const r=stage?.getBoundingClientRect();
-  const visible=musicStatus.source!=='local'&&musicStatus.phase!=='error'&&!!r&&activeId===owner.id&&!owner.min&&owner.space===state.space&&!modal&&document.body.dataset.appPaused!=='true'&&!document.hidden&&r.width>=1&&r.height>=1;
-  const data=visible?{visible:true,x:r.x,y:r.y,w:r.width,h:r.height,viewport:innerWidth}:{visible:false};
+  const editing=musicSearchEditing||document.body.dataset.keyboard==='true'||
+    !!(win?.contains(document.activeElement)&&document.activeElement?.matches('input:not([data-music-seek]),textarea,[contenteditable]'));
+  // The native YouTube WebView may occupy ONLY the central music-stage region.
+  // Its Android host validates these edges before displaying the native surface.
+  const inside=!!(rect&&tabsRect&&searchRect&&seekRect&&windowRect&&
+    Number.isFinite(rect.x+rect.y+rect.width+rect.height)&&rect.width>=1&&rect.height>=34&&
+    rect.top>=Math.max(tabsRect.bottom,searchRect.bottom)-1&&rect.bottom<=seekRect.top+1&&
+    rect.left>=windowRect.left-1&&rect.right<=windowRect.right+1&&
+    rect.left>=0&&rect.top>=0&&rect.right<=innerWidth+1&&rect.bottom<=innerHeight+1);
+  const visible=musicStatus.source!=='local'&&musicStatus.phase!=='error'&&inside&&
+    activeId===owner.id&&!owner.min&&owner.space===state.space&&!modal&&!editing&&
+    document.body.dataset.appPaused!=='true'&&!document.hidden;
+  const data=visible?{visible:true,x:rect.x,y:rect.y,w:rect.width,h:rect.height,viewport:innerWidth,
+    safeTop:Math.max(tabsRect.bottom,searchRect.bottom),safeBottom:seekRect.top,
+    safeLeft:windowRect.left,safeRight:windowRect.right}:{visible:false,editing:!!editing};
   const key=JSON.stringify(data);if(key!==musicLastBounds){musicLastBounds=key;musicNative('bounds',data);}
 }
 function scheduleMusicBounds(){if(!musicBoundsFrame)musicBoundsFrame=requestAnimationFrame(syncMusicBounds);}
@@ -127,9 +149,37 @@ window.ReverseMusic={
   rendered(){updateMusicUI();scheduleMusicBounds();},
   close(id){
     musicNative('close',{windowId:id});
-    if(musicOwner===id||!musicOwner){musicOwner=null;musicLastBounds='';musicLastRepeat=null;musicStatus=musicEmptyStatus(musicStatus.shield);}
+    if(musicOwner===id||!musicOwner){musicSearchEditing=false;musicOwner=null;musicLastBounds='';musicLastRepeat=null;musicStatus=musicEmptyStatus(musicStatus.shield);}
   }
 };
+document.addEventListener('focusin',e=>{
+  if(e.target.matches('[data-music-search] input'))musicEnterEditMode();
+});
+document.addEventListener('click',async e=>{
+  const button=e.target.closest('[data-music-paste],[data-music-copy]');if(!button)return;
+  const w=getWindow(button.closest('.window')?.dataset.id);if(!w||w.app!=='music')return;
+  e.preventDefault();
+  if(button.hasAttribute('data-music-copy')){
+    const link=musicSavedURL(musicStatus.url);
+    if(!link){toast('Abre primero una canción o lista de YouTube.','help');return;}
+    let ok=false;
+    try{if(typeof window.ReverseNative?.musicCopyLink==='function')ok=window.ReverseNative.musicCopyLink(link)===true;
+      else if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(link);ok=true;}}
+    catch{}
+    toast(ok?'Enlace de música copiado.':'No se pudo copiar automáticamente.','help');return;
+  }
+  const field=button.closest('[data-music-search]')?.querySelector('input[name="query"]');
+  if(!field)return;
+  musicEnterEditMode();
+  let content='';
+  try{if(typeof window.ReverseNative?.musicClipboard==='function')content=String(window.ReverseNative.musicClipboard()||'');
+    else if(navigator.clipboard?.readText)content=String(await navigator.clipboard.readText());}
+  catch{}
+  if(content.trim()){
+    field.value=content.trim().slice(0,2048);field.dispatchEvent(new Event('input',{bubbles:true}));
+  }else toast('Portapapeles vacío o no autorizado. Mantén pulsado el campo para pegar.','help');
+  field.focus();field.setSelectionRange(field.value.length,field.value.length);
+});
 document.addEventListener('pointerdown',e=>{if(e.target.matches('[data-music-seek]'))e.target.dataset.scrubbing='true';});
 document.addEventListener('input',e=>{
   if(e.target.matches('[data-music-seek]'))e.target.dataset.scrubbing='true';
@@ -150,25 +200,25 @@ document.addEventListener('submit',e=>{
   }
   if(!e.target.matches('[data-music-search]'))return;e.preventDefault();
   const input=e.target.elements.query.value.trim();if(!input)return;
-  state.music.lastInput=input;const w=getWindow(e.target.closest('.window')?.dataset.id);
+  state.music.lastInput=input;musicSearchEditing=false;e.target.elements.query.blur();const w=getWindow(e.target.closest('.window')?.dataset.id);
   if(w.musicTab!=='player'){w.musicTab='player';renderWindowContent(w);}
   musicNative('open',{input});queueSave();scheduleMusicBounds();
 });
 document.addEventListener('click',e=>{
   const button=e.target.closest('[data-music-action],[data-music-tab],[data-music-favorite],[data-music-remove],[data-music-local],[data-music-delete]');if(!button)return;
   const w=getWindow(button.closest('.window')?.dataset.id);if(!w||w.app!=='music')return;
-  if(button.dataset.musicTab){w.musicTab=button.dataset.musicTab;renderWindowContent(w);updateMusicUI();queueSave();scheduleMusicBounds();return;}
+  if(button.dataset.musicTab){musicSearchEditing=false;w.musicTab=button.dataset.musicTab;renderWindowContent(w);updateMusicUI();queueSave();scheduleMusicBounds();return;}
   if(button.hasAttribute('data-music-local')){musicNative('local',{id:button.dataset.musicLocal});return;}
   if(button.hasAttribute('data-music-delete')){musicNative('removeLocal',{id:button.dataset.musicDelete});return;}
   if(button.hasAttribute('data-music-favorite')){
     const item=state.music.favorites[Number(button.dataset.musicFavorite)];if(!item)return;
-    w.musicTab='player';renderWindowContent(w);musicNative('open',{input:item.url});scheduleMusicBounds();return;
+    musicSearchEditing=false;w.musicTab='player';renderWindowContent(w);musicNative('open',{input:item.url});scheduleMusicBounds();return;
   }
   if(button.hasAttribute('data-music-remove')){state.music.favorites.splice(Number(button.dataset.musicRemove),1);renderWindowContent(w);queueSave();return;}
   const action=button.dataset.musicAction;
-  if(action==='downloads'){w.musicTab='downloads';renderWindowContent(w);updateMusicUI();scheduleMusicBounds();$('[data-music-download] input',document.getElementById(w.id))?.focus();queueSave();}
+  if(action==='downloads'){musicSearchEditing=false;w.musicTab='downloads';renderWindowContent(w);updateMusicUI();scheduleMusicBounds();$('[data-music-download] input',document.getElementById(w.id))?.focus();queueSave();}
   else if(action==='repeat')toggleMusicRepeat();
-  else if(action==='home')musicNative('open');
+  else if(action==='home'){musicSearchEditing=false;musicNative('open');}
   else if(action==='shield'){const enabled=!musicStatus.shield;if(musicNative('shield',{enabled})){musicStatus.shield=enabled;updateMusicUI();}}
   else if(action==='favorite'){
     const url=musicSavedURL(musicStatus.url);if(!url)return;
