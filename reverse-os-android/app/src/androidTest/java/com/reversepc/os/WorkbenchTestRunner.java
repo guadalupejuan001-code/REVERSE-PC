@@ -307,8 +307,8 @@ public final class WorkbenchTestRunner extends Instrumentation {
         JSONObject initial=op("qd",new JSONObject().put("action","status").toString(),"qdInitial");
         require(initial.getBoolean("ok"),"Qd status unavailable: "+initial);
         int initialLessons=initial.getInt("approved_lessons");
-        String correct="#!reverse-pc-machine-v1\\nset r0 {{a}}\\nadd r0 {{b}}\\nprint r0\\nhalt\\n";
-        String wrong="#!reverse-pc-machine-v1\\nset r0 {{a}}\\nsub r0 {{b}}\\nprint r0\\nhalt\\n";
+        String correct="#!reverse-pc-machine-v1\nset r0 {{a}}\nadd r0 {{b}}\nprint r0\nhalt\n";
+        String wrong="#!reverse-pc-machine-v1\nset r0 {{a}}\nsub r0 {{b}}\nprint r0\nhalt\n";
         JSONObject rejected=op("qd",new JSONObject().put("action","teach").put("skill",1)
             .put("source",wrong).toString(),"qdRejected");
         require(rejected.getBoolean("ok")&&!rejected.getBoolean("learned")
@@ -378,7 +378,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
             require(snapshot.getJSONObject("build").getString("source_commit").matches("[a-f0-9]{40}"),"Missing build provenance");
             if(requested.equals("qd")){
                 qdWorkflow();
-                result.putString("stream","WORKBENCH_TESTS_OK mode=qd native=XI/Ether cases=32 rejected=32 saved=RVPC2\\n");
+                result.putString("stream","WORKBENCH_TESTS_OK mode=qd native=XI/Ether cases=32 rejected=32 saved=RVPC2\n");
                 result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
             }
             if(!seed&&js("typeof window.ReverseShell==='object'").equals("true")){
