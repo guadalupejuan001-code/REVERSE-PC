@@ -142,7 +142,7 @@ void uart_fifo_configuration(){
   auto resumed=MinimalGuest::from_snapshot(guest.snapshot());
   check(resumed.machine().uart_ifls==0x12&&resumed.snapshot()==guest.snapshot(),"IFLS checkpoint is not exact");
   check(resumed.run(3).halted,"Configured PL011 test program failed to shut down");
-  MinimalGuest legacy(128*1024*1024);legacy.load_elf(system_demo_elf(),true);
+  MinimalGuest legacy(128*1024*1024);legacy.load_elf(image,true);
   check(legacy.machine().save()[0]==2&&legacy.snapshot()==baseline,"Legacy machine checkpoint bytes changed");
   check(MinimalGuest::from_snapshot(legacy.snapshot()).snapshot()==legacy.snapshot(),"Legacy PL011 checkpoint changed");
   auto bad=image;constexpr std::uint32_t reserved=0x528000e0; // MOV W0,#7, reserved TX IFLS encoding.
