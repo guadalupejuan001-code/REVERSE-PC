@@ -51,6 +51,8 @@ public final class WorkbenchActivity extends Activity {
     private SessionStore store;
     private WorkbenchPrograms programs;
     private WebView web;
+    private FrameLayout root;
+    private MusicPlayer music;
     private ValueCallback<Uri[]> chooser;
     private byte[] pendingExport;
     private int insetTop,insetBottom,insetLeft,insetRight,keyboardInset;
@@ -77,7 +79,7 @@ public final class WorkbenchActivity extends Activity {
     @Override public void onCreate(Bundle previous){
         super.onCreate(previous);
         immersive(this);
-        FrameLayout root=new FrameLayout(this);root.setBackgroundColor(0xff090b0d);
+        root=new FrameLayout(this);root.setBackgroundColor(0xff090b0d);
         web=new WorkbenchWebView(this);root.addView(web,new FrameLayout.LayoutParams(-1,-1));setContentView(root);
         root.setOnApplyWindowInsetsListener((v,insets)->{
             // The wallpaper fills the display, including cutout/system-bar areas.
@@ -197,6 +199,20 @@ public final class WorkbenchActivity extends Activity {
         return result;
     }
     public final class Bridge {
+        @JavascriptInterface public void music(String action,String payload){
+            if(closed||action==null||payload==null||payload.length()>8192)return;
+            ui.post(()->{
+                if(closed)return;
+                if("close".equals(action)){if(music!=null){music.destroy();music=null;}return;}
+                if(music==null&&"bounds".equals(action))return;
+                try{
+                    if(music==null)music=new MusicPlayer(WorkbenchActivity.this,root,web,state->{
+                        if(!closed)web.evaluateJavascript("window.ReverseMusic&&window.ReverseMusic.update("+state.toString()+");",null);
+                    });
+                    music.command(action,new JSONObject(payload));
+                }catch(Exception error){if(music!=null)music.reportError(String.valueOf(error.getMessage()));}
+            });
+        }
         @JavascriptInterface public void hideKeyboard(){ui.post(WorkbenchActivity.this::hideKeyboard);}
         @JavascriptInterface public void request(String id,String operation,String payload){
             if(closed||id==null||!id.matches("[A-Za-z0-9_-]{1,60}"))return;
@@ -315,9 +331,9 @@ public final class WorkbenchActivity extends Activity {
         if(request==EXPORT){byte[] bytes=pendingExport;pendingExport=null;if(result==RESULT_OK&&bytes!=null&&data!=null&&data.getData()!=null){Uri target=data.getData();RuntimeExecutor.INSTANCE.execute(()->{try(OutputStream stream=getContentResolver().openOutputStream(target,"wt")){if(stream==null)throw new IllegalStateException("Destino no disponible");stream.write(bytes);message("Archivo exportado.");}catch(Exception error){message("No se pudo escribir el archivo.");}});}}
     }
     @Override public void onWindowFocusChanged(boolean focused){super.onWindowFocusChanged(focused);if(focused)immersive(this);}
-    @Override protected void onPause(){if(web!=null){web.evaluateJavascript("document.body&&(document.body.dataset.appPaused='true')",null);web.onPause();}super.onPause();}
-    @Override protected void onResume(){super.onResume();immersive(this);if(web!=null){web.onResume();web.evaluateJavascript("document.body&&(document.body.dataset.appPaused='false')",null);}}
-    @Override protected void onDestroy(){closed=true;if(chooser!=null){chooser.onReceiveValue(null);chooser=null;}if(web!=null){web.removeJavascriptInterface("ReverseNative");web.destroy();}super.onDestroy();}
+    @Override protected void onPause(){if(music!=null)music.pause();if(web!=null){web.evaluateJavascript("document.body&&(document.body.dataset.appPaused='true')",null);web.onPause();}super.onPause();}
+    @Override protected void onResume(){super.onResume();immersive(this);if(web!=null){web.onResume();web.evaluateJavascript("document.body&&(document.body.dataset.appPaused='false')",null);}if(music!=null)music.resume();}
+    @Override protected void onDestroy(){closed=true;if(music!=null){music.destroy();music=null;}if(chooser!=null){chooser.onReceiveValue(null);chooser=null;}if(web!=null){web.removeJavascriptInterface("ReverseNative");web.destroy();}super.onDestroy();}
     // Used only by the in-repository Android instrumentation tests.
     public WebView testingWebView(){return web;}
 }
