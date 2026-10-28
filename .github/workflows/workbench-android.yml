@@ -84,6 +84,7 @@ jobs:
           python3 deps/bbyq-latest/ai/releases/e025/test.py build/reverse_pc build/e025-tests > evidence/e025-tests.json
           node deps/bbyq-latest/ai/xi/w4u/tests/native-w4u.mjs build/reverse_pc build/w4u > evidence/w4u.log
           node reverse-os-android/tests/quantum-workbench-native.cjs build/reverse_pc build/core-profile build/quantum > evidence/quantum.log
+          node reverse-os-android/tests/qd-native.cjs build/reverse_pc build/qd build/e025/controller.rvp > evidence/qd-native.log
           node bbyq-interface/build.mjs build/reverse_pc deps/bbyq-legacy build/legacy - > evidence/legacy-build.json
           mkdir -p reverse-os-android/app/src/androidTest/assets
           cp build/legacy/BBY-Q.rxe reverse-os-android/app/src/androidTest/assets/legacy-BBY-Q.rxe
@@ -98,6 +99,7 @@ jobs:
           npm install --prefix "$RUNNER_TEMP/reverse-ui" playwright@1.56.1
           node "$RUNNER_TEMP/reverse-ui/node_modules/playwright/cli.js" install --with-deps chromium
           export NODE_PATH="$RUNNER_TEMP/reverse-ui/node_modules"
+          node reverse-os-android/tests/qd-studio-ui.cjs evidence/qd-ui
           node reverse-os-android/tests/native-shell-ui.cjs build/reverse_pc build/e025 build/core-profile evidence/desktop
           node reverse-os-android/tests/keyboard-ui.cjs build/reverse_pc build/e025 build/core-profile evidence/keyboard
       - name: Compile ARM64 and x86_64 Android packages
@@ -158,6 +160,11 @@ jobs:
           adb shell am force-stop com.reversepc.control.workbench
           timeout 180s adb shell am instrument -w -e mode restore com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee evidence/android-restore.txt
           grep 'WORKBENCH_TESTS_OK mode=restore' evidence/android-restore.txt
+          # Only the disposable emulator profile is cleared; the user's Android state
+          # and the BBY Q fixture used by other workflows are never altered.
+          adb shell pm clear com.reversepc.control.workbench
+          timeout 240s adb shell am instrument -w -e mode qd com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee evidence/android-qd.txt
+          grep 'WORKBENCH_TESTS_OK mode=qd' evidence/android-qd.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:

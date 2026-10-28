@@ -18,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Arrays;
+import java.util.HashSet;
 import android.os.SystemClock;
 import android.view.MotionEvent;
 import android.view.inputmethod.EditorInfo;
@@ -379,6 +380,62 @@ public final class WorkbenchTestRunner extends Instrumentation {
         JSONObject after=op("inspect","","graphicsCoreAfter");
         for(String key:new String[]{"memory_revision","memory_overrides","core_revision"})require(before.getJSONObject("core").getLong(key)==after.getJSONObject("core").getLong(key),"Game altered desktop authority: "+key);
     }
+    // Runs on a disposable Android emulator profile. This exercises the actual
+    // app bridge -> QdEngine -> native XI -> BBY Q private RVPC2 path, not stubs.
+    private void qdWorkflow()throws Exception{
+        require(js("typeof qdStudioHTML==='function'").equals("true"),"Qd Studio not shipped");
+        String desktopBefore=hash("session.rvp");
+        JSONObject initial=op("qd",new JSONObject().put("action","status").toString(),"qdInitial");
+        require(initial.getBoolean("ok"),"Qd status unavailable: "+initial);
+        int initialLessons=initial.getInt("approved_lessons");
+        String correct="#!reverse-pc-machine-v1\nset r0 {{a}}\nadd r0 {{b}}\nprint r0\nhalt\n";
+        String wrong="#!reverse-pc-machine-v1\nset r0 {{a}}\nsub r0 {{b}}\nprint r0\nhalt\n";
+        JSONObject rejected=op("qd",new JSONObject().put("action","teach").put("skill",1)
+            .put("source",wrong).toString(),"qdRejected");
+        require(rejected.getBoolean("ok")&&!rejected.getBoolean("learned")
+            &&rejected.getInt("passed")==0&&rejected.getInt("total")==32,
+            "Incorrect XI template was accepted: "+rejected);
+        JSONObject afterRejected=op("qd",new JSONObject().put("action","status").toString(),"qdAfterReject");
+        require(afterRejected.getInt("approved_lessons")==initialLessons,
+            "Rejected template mutated BBY Q's lesson count");
+        JSONObject accepted=op("qd",new JSONObject().put("action","teach").put("skill",1)
+            .put("source",correct).toString(),"qdAccepted");
+        require(accepted.getBoolean("ok")&&accepted.getBoolean("learned")
+            &&accepted.getInt("passed")==32&&accepted.getInt("total")==32,
+            "Correct XI template failed independent assessment: "+accepted);
+        JSONArray rows=accepted.getJSONArray("cases");require(rows.length()==32,"Wrong Qd exam length");
+        HashSet<String> unique=new HashSet<>(),oldExam=new HashSet<>(),newExam=new HashSet<>();
+        int practice=0,heldout=0;
+        for(int i=0;i<rejected.getJSONArray("cases").length();i++){
+            JSONObject row=rejected.getJSONArray("cases").getJSONObject(i);
+            if("evaluación".equals(row.getString("set")))oldExam.add(row.getInt("a")+":"+row.getInt("b"));
+        }
+        for(int i=0;i<rows.length();i++){
+            JSONObject row=rows.getJSONObject(i);
+            int a=row.getInt("a"),b=row.getInt("b");
+            require(a>=0&&a<=99&&b>=1&&b<=99,"Exam input outside documented domain");
+            require(row.getBoolean("pass")&&row.getInt("actual")==row.getInt("expected"),
+                "Native XI response did not match oracle");
+            String pair=a+":"+b;
+            require(unique.add(pair),"Repeated Qd exam pair");
+            if("práctica".equals(row.getString("set")))practice++;
+            else if("evaluación".equals(row.getString("set"))){heldout++;newExam.add(pair);}
+            else throw new AssertionError("Unknown Qd exam section");
+        }
+        require(practice==4&&heldout==28&&unique.size()==32,"No independent 4+28 exam");
+        require(!oldExam.equals(newExam),"Two Qd examinations reused all 28 held-out cases");
+        JSONObject status=op("qd",new JSONObject().put("action","status").toString(),"qdFinalStatus");
+        require(status.getInt("approved_lessons")==initialLessons+1
+            &&status.getJSONArray("learned").getBoolean(0),
+            "Qd approved pattern was not persisted in BBY Q RVPC2");
+        JSONObject solved=op("qd",new JSONObject().put("action","solve")
+            .put("skill",1).put("a",87).put("b",9).toString(),"qdSolve");
+        require(solved.getBoolean("ok")&&solved.getBoolean("learned")
+            &&solved.getBoolean("pass")&&solved.getInt("actual")==96
+            &&solved.getString("program").contains("add r0 9"),
+            "Qd failed to retrieve and execute the pattern from the saved RVPC2");
+        require(hash("session.rvp").equals(desktopBefore),"Qd changed desktop master state");
+    }
     @Override public void onStart(){
         Bundle result=new Bundle();
         try{
@@ -405,6 +462,11 @@ public final class WorkbenchTestRunner extends Instrumentation {
             require(snapshot.getJSONObject("android").getLong("ram_total_bytes")>0,"No native RAM reading");
             require(snapshot.getJSONObject("core").getString("state_format").equals("RVPC2"),"Wrong checkpoint format");
             require(snapshot.getJSONObject("build").getString("source_commit").matches("[a-f0-9]{40}"),"Missing build provenance");
+            if(requested.equals("qd")){
+                qdWorkflow();
+                result.putString("stream","WORKBENCH_TESTS_OK mode=qd native=XI/Ether cases=32 rejected=32 saved=RVPC2\n");
+                result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
+            }
             if(requested.equals("graphics")){
                 graphicsWorkflow(snapshot);result.putString("stream","WORKBENCH_TESTS_OK mode=graphics native=XI renderer=Ether-Render-X-CPU presenter=GLES3 touch=verified isolation=verified\n");result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
             }
