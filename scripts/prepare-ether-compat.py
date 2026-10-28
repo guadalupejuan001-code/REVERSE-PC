@@ -102,6 +102,27 @@ replacements['infinite_program.hpp'] += [
     throw std::length_error("program exceeds 16 MiB transport budget");
   ProgramResult result;""")
 ]
+# Reviewed local implementation: the original pinned InverseMemory remains the
+# only memory owner. 0 is an explicit opt-in "no override-count quota" value.
+# Sparse/dense COW pages replace its private classical index, while old MXIM1
+# snapshots remain byte-identical for every bounded legacy profile.
+replacements['inverse_memory.hpp'] += [
+    ('#include "mundo_x/cow_sharded_map.hpp"',
+     '#include "mundo_x/cow_sharded_map.hpp"\n#include "integration/adaptive_override_map.hpp"'),
+    ('    if (overrides_->size() == limits_.max_overrides)',
+     '    if (limits_.max_overrides && overrides_->size() == limits_.max_overrides)'),
+    ('        if (result.overrides_->size() == limits.max_overrides)',
+     '        if (limits.max_overrides && result.overrides_->size() == limits.max_overrides)'),
+    ('  std::string snapshot() const {',
+     '  std::string snapshot() const {\n    if (!limits_.max_overrides) return adaptive_snapshot();'),
+    ('    std::istringstream input(saved);',
+     '    if (saved.compare(0,6,"MXIM3 ")==0) return from_adaptive_snapshot(saved,limits);\n'
+     '    std::istringstream input(saved);'),
+    (' private:\n  using AddressMap = memory_detail::CowShardedMap<std::uint8_t>;',
+     ' #include "integration/inverse_memory_adaptive.inc"\n'
+     ' private:\n  using AddressMap = memory_detail::AdaptiveOverrideMap;'),
+]
+
 diffs=[]
 for name,digest in expected.items():
     raw=(source/name).read_bytes()

@@ -70,6 +70,9 @@ class MinimalGuest {
  public:
   static constexpr std::uint64_t max_ram=UINT64_C(1)<<48;
   static constexpr std::size_t max_image=16*1024*1024, max_snapshot=48*1024*1024;
+  // Larger host-side checkpoint transport only for explicit adaptive guests;
+  // this is still finite and must never be mistaken for infinite physical RAM.
+  static constexpr std::size_t max_adaptive_snapshot=256*1024*1024;
   static constexpr std::size_t max_output=65536;
 
   explicit MinimalGuest(std::uint64_t ram=UINT64_C(1)<<30, std::size_t overrides=65536)
@@ -184,6 +187,17 @@ class MinimalGuest {
   std::string apply_xi_delta(const std::string& source) { auto output=runtime_.execute(source);machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;return output; }
   std::string apply_rxe_delta(const Bytes& image) { auto output=reverse_pc::rxe::execute(runtime_,image);machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;return output; }
 
+  // Explicit opt-in: migrate a legacy RVG to the same QuantumRuntime and
+  // InverseMemory with adaptive classical storage and no count-only ceiling.
+  // Legacy checkpoints remain byte-identical unless this is invoked.
+  void enable_adaptive_memory() {
+    if (!override_limit_) return;
+    auto candidate=make_runtime(0);
+    candidate.restore(runtime_.core_snapshot(),runtime_.memory_persistent_snapshot());
+    runtime_=std::move(candidate);
+    override_limit_=0; // sentinel: constrained by actual host resources only
+  }
+
   RunResult run(std::uint64_t budget) {
     require(image_!=nullptr, "No ELF guest is loaded");
     require(budget>0 && budget<=1000000, "Guest run budget must be 1..1000000 instructions");
@@ -235,14 +249,17 @@ class MinimalGuest {
     result.insert(result.end(),core.begin(),core.end()); result.insert(result.end(),memory.begin(),memory.end());
     result.insert(result.end(),system.begin(),system.end());
     result.insert(result.end(),fp.begin(),fp.end());
-    require(result.size()+8<=max_snapshot, "Guest snapshot exceeds 48 MiB");
+    require(result.size()+8<=(override_limit_?max_snapshot:max_adaptive_snapshot),
+            "Guest snapshot exceeds configured host transport capacity");
     put(result,digest(result,result.size())); return result;
   }
   static MinimalGuest from_snapshot(const Bytes& bytes) {
     const unsigned version=bytes.size()>=4?unsigned(bytes[3]):0;
     require(version=='1'||version=='2'||version=='3',"Unsupported guest checkpoint version");
     const Bytes magic{'R','V','G',std::uint8_t(version),13,10,26,10};
-    require(bytes.size()>=8+8*(8+31+3)+8 && bytes.size()<=max_snapshot &&
+    const auto max_input_bytes=bytes.size()>=24 && get(bytes,16,8)==0 ?
+        max_adaptive_snapshot:max_snapshot;
+    require(bytes.size()>=8+8*(8+31+3)+8 && bytes.size()<=max_input_bytes &&
             std::equal(magic.begin(),magic.end(),bytes.begin()), "Invalid guest snapshot header/size");
     require(get(bytes,bytes.size()-8,8)==digest(bytes,bytes.size()-8), "Guest snapshot checksum mismatch");
     std::size_t at=8;
@@ -255,7 +272,7 @@ class MinimalGuest {
     for (auto& value:cpu.x) value=take();
     const auto image_size=take(), core_size=take(), memory_size=take(),system_size=version!='1'?take():0,fp_size=version=='3'?take():0;
     const bool system=system_size!=0;
-    require(image_size<=max_image && core_size<=max_snapshot && memory_size<=max_snapshot &&
+    require(image_size<=max_image && core_size<=max_input_bytes && memory_size<=max_input_bytes &&
             system_size<=8192 && fp_size<=532 && (version!='2'||system) && (version!='3'||fp_size>=20) &&
             image_size+core_size+memory_size+system_size+fp_size==bytes.size()-at-8, "Guest snapshot extents are invalid");
     MachineState machine;
@@ -317,7 +334,8 @@ class MinimalGuest {
   mundo_x::QuantumRuntime::ByteAccess* byte_transaction_=nullptr; // Never persisted; scoped to run().
 
   static mundo_x::QuantumRuntime make_runtime(std::size_t overrides) {
-    require(overrides>0 && overrides<=1048576, "Guest override limit must be 1..1048576");
+    // 0 disables the arbitrary override *count* cap; allocation, address,
+    // snapshot, and host memory availability are still real finite limits.
     mundo_x::InverseMemory::Limits memory; memory.max_overrides=overrides;
     return mundo_x::QuantumRuntime(mundo_x::InfiniteCore::Background::Zero,mundo_x::InfiniteCore::Limits{},memory);
   }
