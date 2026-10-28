@@ -215,6 +215,7 @@ public final class WorkbenchActivity extends Activity {
                     else if("ackControl".equals(operation))result=programs().acknowledge(new JSONObject(payload));
                     else if("runApp".equals(operation))result=programs().run(new JSONObject(payload),session());
                     else if("compileApp".equals(operation))result=programs().compile(new JSONObject(payload));
+                    else if("qd".equals(operation))result=programs().qd(new JSONObject(payload));
                     else throw new IllegalArgumentException("Operación no permitida");
                     response=result.toString();
                 }catch(Throwable error){response=failure(error);}
