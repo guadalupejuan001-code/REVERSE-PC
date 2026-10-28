@@ -45,6 +45,8 @@ replacements['exact_t_experiment.hpp'] += [
 ]
 from ether_integration import configure
 configure(expected,replacements)
+from xrender_extension import configure as configure_xrender
+configure_xrender(expected,replacements)
 # E025 retains the larger learned vocabulary and live working memory. Keep the
 # upstream checkout pinned and change only this verified, local compatibility copy.
 replacements['inverse_memory.hpp'].append((

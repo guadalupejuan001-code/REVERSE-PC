@@ -1,6 +1,7 @@
 #include "mundo_x/quantum_runtime.hpp"
 #include "rxe.hpp"
 #include "rxe_app.hpp"
+#include "rxe_graphics.hpp"
 
 #include <array>
 #include <cstddef>
@@ -307,6 +308,8 @@ void help(){
            <<"reverse_pc disassemble APP.rxe OUTPUT.xi\n"
            <<"reverse_pc pack-app CODE.rxe SEED.rvp APP.rxe ID TITLE VERSION SOURCE_SHA\n"
            <<"reverse_pc app-init APP.rxe NEW_STATE.rvp\n"
+           <<"reverse_pc pack-graphics CODE.rxe SEED.rvp ASSET_DIR APP.rxe ID TITLE VERSION SOURCE_SHA\n"
+           <<"reverse_pc graphics-event APP.rxe STATE_INPUT.rvp STATE_OUTPUT.rvp KIND QUALITY\n"
            <<"reverse_pc app-turn APP.rxe STATE_INPUT.rvp STATE_OUTPUT.rvp es|en MESSAGE\n"
            <<"reverse_pc --help\n";
 }
@@ -326,7 +329,21 @@ int main(int argc,char** argv) {
       const auto image=reverse_pc::rxe::compile(read_file(argv[2]),argc==5?argv[4]:fs::path(argv[2]).stem().string());
       write_program(argv[3],std::string(image.begin(),image.end()));std::cout<<reverse_pc::rxe::describe(image)<<"\n";
     }
-    else if(cmd=="inspect-rxe"&&argc==3){const auto data=read_file(argv[2]);const reverse_pc::rxe::Bytes bytes(data.begin(),data.end());std::cout<<(reverse_pc::rxe_app::has_magic(bytes)?reverse_pc::rxe_app::describe(bytes):reverse_pc::rxe::describe(bytes))<<"\n";}
+    else if(cmd=="inspect-rxe"&&argc==3){const auto data=read_file(argv[2]);const reverse_pc::rxe::Bytes bytes(data.begin(),data.end());std::cout<<(reverse_pc::rxe_graphics::has_magic(bytes)?reverse_pc::rxe_graphics::describe(bytes):reverse_pc::rxe_app::has_magic(bytes)?reverse_pc::rxe_app::describe(bytes):reverse_pc::rxe::describe(bytes))<<"\n";}
+    else if(cmd=="pack-graphics"&&argc==10){
+      check(!fs::exists(argv[5]),"graphics output already exists; preserve the previous executable");
+      const auto code=read_file(argv[2]),seed=read_file(argv[3]);
+      reverse_pc::rxe_graphics::App app{argv[6],argv[7],argv[8],argv[9],{code.begin(),code.end()},{seed.begin(),seed.end()},{}};
+      for(const auto& file:fs::recursive_directory_iterator(argv[4])){check(!file.is_symlink(),"symbolic assets are not allowed");if(!file.is_regular_file())continue;const auto name=fs::relative(file.path(),argv[4]).generic_string(),data=read_file(file.path());app.assets.emplace(name,reverse_pc::rxe::Bytes(data.begin(),data.end()));}
+      const auto data=reverse_pc::rxe_graphics::pack(app);write_program(argv[5],std::string(data.begin(),data.end()));std::cout<<reverse_pc::rxe_graphics::describe(data)<<"\n";
+    }
+    else if(cmd=="graphics-event"&&argc==7){
+      check(!fs::exists(argv[4])||!fs::equivalent(argv[2],argv[4]),"state must not replace the executable");
+      check(std::string(argv[3])=="-"||fs::exists(argv[3]),"input state does not exist; use - for the immutable seed");
+      auto bounded=[](const char* input,unsigned maximum){const std::string text(input);std::size_t end=0;const auto value=std::stoull(text,&end);check(!text.empty()&&end==text.size()&&std::all_of(text.begin(),text.end(),[](unsigned char c){return c>='0'&&c<='9';})&&value<=maximum,"graphics event argument is outside its contract");return unsigned(value);};
+      const auto image=read_file(argv[2]);const auto turn=reverse_pc::rxe_graphics::turn({image.begin(),image.end()},std::string(argv[3])=="-"?reverse_pc::rxe::Bytes{}:reverse_pc::rvpc2::save(load_state(argv[3])),bounded(argv[5],3),bounded(argv[6],150));
+      write_program(argv[4],std::string(turn.state.begin(),turn.state.end()));std::cout<<turn.text<<"\n";
+    }
     else if(cmd=="pack-app"&&argc==9){
       check(!fs::exists(argv[4])||(!fs::equivalent(argv[2],argv[4])&&!fs::equivalent(argv[3],argv[4])),"application output must not replace its inputs");
       const auto code=read_file(argv[2]),seed=read_file(argv[3]);
