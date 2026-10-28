@@ -106,3 +106,26 @@ device drivers, DTB/bootconfig, Android userspace and ADB remain unverified.
 The AOSP kernel could also be too large for REVERSE's existing image budget;
 that compatibility limit must be measured before making a narrowly scoped
 loader change. No UI/FPS/gaming claims follow from this check.
+
+
+## Siguiente fase: cargador Linux real sin el límite ELF de 16 MiB (PR #42)
+
+La sección anterior documenta el límite **histórico** de 16 MiB del PR #41.
+El nuevo experimento preserva ese límite para ELF, pero introduce presupuestos
+Linux **64 MiB kernel / 64 MiB initrd / 128 MiB RVI1** de forma independiente,
+con restauración RVG2/3 y retrocompatibilidad. El modo `--gki-kernel-only`
+reporta los nuevos límites; nunca afirma ejecutar Android.
+
+El workflow `.github/workflows/aosp-gki-xi-execution.yml` valida el SHA256
+original `boot.img` `58827ec86eb7621e4ac0c16640622119645cc20c65261fb74d82fc68a735ef63`,
+extrae el Image de 35,777,024 bytes, con SHA256
+`8d8cf5254f0823655e06ffee100d9c19abbf4ce33adb107b66da3fdb3742e0be`,
+compila el intérprete **XI/Ether original** contra Mundo-X fijado, ejecuta
+pruebas ELF/RVG/regresión y compara byte a byte un checkpoint directo con
+otro obtenido tras restauración. Solo se informará la instrucción realmente
+alcanzada, los logs UART y el motivo preciso de parada.
+
+Esto no crea una segunda autoridad de RAM ni hace una copia de QEMU. Hasta que
+existan ramdisks y particiones Android compatibles, una ejecución de GKI sin
+`/init` Android sigue siendo **una prueba de arranque del kernel**, no de Android
+completo ni ADB. No hay FPS ni ejecución de Wild Rift.

@@ -69,7 +69,13 @@ struct RunResult {
 class MinimalGuest {
  public:
   static constexpr std::uint64_t max_ram=UINT64_C(1)<<48;
+  // Preserve the old 16 MiB ELF limit and legacy RVG transport. Real AOSP GKI
+  // kernels need a *separate* bounded Linux Image path and recoverable RVG
+  // backing, not a second RAM/QuantumRuntime or an unbounded allocation.
   static constexpr std::size_t max_image=16*1024*1024, max_snapshot=48*1024*1024;
+  static constexpr std::size_t max_linux_kernel=64*1024*1024;
+  static constexpr std::size_t max_linux_initrd=64*1024*1024;
+  static constexpr std::size_t max_linux_container=128*1024*1024;
   // Larger host-side checkpoint transport only for explicit adaptive guests;
   // this is still finite and must never be mistaken for infinite physical RAM.
   static constexpr std::size_t max_adaptive_snapshot=256*1024*1024;
@@ -135,17 +141,19 @@ class MinimalGuest {
   // immutable container preserves Image/DTB/initrd without materializing RAM.
   void load_linux_image(const Bytes& kernel,const Bytes& initrd={}) {
     require(ram_>=64*1024*1024 && ram_<=max_ram-MachineState::ram_base,"System RAM must be 64 MiB..48-bit physical range");
-    require(kernel.size()>=64 && kernel.size()<=max_image && get(kernel,56,4)==0x644d5241,"Expected an uncompressed AArch64 Linux Image");
+    require(kernel.size()>=64 && kernel.size()<=max_linux_kernel && get(kernel,56,4)==0x644d5241,"Expected an uncompressed AArch64 Linux Image (up to 64 MiB)");
     const auto offset=get(kernel,8,8),effective=get(kernel,16,8),flags=get(kernel,24,8);
     require(!(flags&1) && ((flags>>1)&3)<=1,"Only little-endian 4 KiB-page Linux Images are supported");
     const auto extent=std::max<std::uint64_t>(kernel.size(),effective);
     require(offset<ram_/2 && extent<=ram_/2-offset,"Linux Image does not fit the lower half of system RAM");
-    require(offset%4==0 && initrd.size()<=ram_/2-2*1024*1024,"Linux Image/initrd placement is invalid");
+    require(offset%4==0 && initrd.size()<=max_linux_initrd &&
+            initrd.size()<=ram_/2-2*1024*1024,"Linux Image/initrd placement is invalid");
     const auto kernel_address=MachineState::ram_base+offset;
     const auto initrd_address=MachineState::ram_base+ram_/2;
     const auto tree_address=MachineState::ram_base+ram_-2*1024*1024;
     const auto tree=guest_device_tree(ram_,initrd_address,initrd.size());
-    require(32+kernel.size()+tree.size()+initrd.size()<=max_image,"Combined Image/DTB/initrd exceeds 16 MiB image budget");
+    require(32+kernel.size()+tree.size()+initrd.size()<=max_linux_container,
+            "Combined Linux Image/DTB/initrd exceeds 128 MiB host image budget");
     Bytes container{'R','V','I','1',13,10,26,10};put(container,kernel.size());put(container,tree.size());put(container,initrd.size());
     container.insert(container.end(),kernel.begin(),kernel.end());container.insert(container.end(),tree.begin(),tree.end());container.insert(container.end(),initrd.begin(),initrd.end());
     auto immutable=std::make_shared<const Bytes>(std::move(container));auto empty=make_runtime(override_limit_);
@@ -272,7 +280,11 @@ class MinimalGuest {
     for (auto& value:cpu.x) value=take();
     const auto image_size=take(), core_size=take(), memory_size=take(),system_size=version!='1'?take():0,fp_size=version=='3'?take():0;
     const bool system=system_size!=0;
-    require(image_size<=max_image && core_size<=max_input_bytes && memory_size<=max_input_bytes &&
+    // An RVG2/3 system snapshot can contain a Linux RVI1 larger than the
+    // historical ELF limit. MachineState image_kind below still rejects
+    // oversized ELF payloads; this check must not block valid GKI restores.
+    require(image_size<=(system?max_linux_container:max_image) &&
+            core_size<=max_input_bytes && memory_size<=max_input_bytes &&
             system_size<=8192 && fp_size<=532 && (version!='2'||system) && (version!='3'||fp_size>=20) &&
             image_size+core_size+memory_size+system_size+fp_size==bytes.size()-at-8, "Guest snapshot extents are invalid");
     MachineState machine;
@@ -283,7 +295,9 @@ class MinimalGuest {
         const Bytes signature{'R','V','I','1',13,10,26,10};
         require(image.size()>=32&&std::equal(signature.begin(),signature.end(),image.begin()),"Invalid Linux Image container");
         const auto kernel_size=get(image,8,8),tree_size=get(image,16,8),initrd_size=get(image,24,8);
-        require(kernel_size<=max_image&&tree_size<=65536&&initrd_size<=max_image&&kernel_size+tree_size+initrd_size==image.size()-32,"Invalid Linux Image container extents");
+        require(kernel_size<=max_linux_kernel&&tree_size<=65536&&initrd_size<=max_linux_initrd &&
+                kernel_size+tree_size+initrd_size==image.size()-32,
+                "Invalid Linux Image container extents");
         candidate.load_linux_image(Bytes(image.begin()+32,image.begin()+32+kernel_size),Bytes(image.begin()+32+kernel_size+tree_size,image.end()));
         require(*candidate.image_==image,"Linux Image device tree does not match this machine");
       }else candidate.load_elf(image,system);
