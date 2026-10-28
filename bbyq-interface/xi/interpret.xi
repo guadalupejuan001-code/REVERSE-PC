@@ -12,6 +12,9 @@ jne done
 load8 r0 7400000000000000040
 cmp r0 0
 jne done
+load8 r0 7400000000000000047
+cmp r0 0
+jne done
 load8 r12 7400000000000000032
 set r0 0
 label token
@@ -115,6 +118,8 @@ load8 r14 $r9
 cmp r14 2
 jne exact_class
 cmp r13 1
+je class_ready
+cmp r13 4
 je class_ready
 cmp r13 2
 jne next_alias
@@ -221,7 +226,15 @@ set r7 8200000000000000032
 add r7 r1
 load8 r1 $r7
 cmp r1 0
-je missing
+jne window_exists
+cmp r0 2
+je accepted
+cmp r0 4
+je accepted
+cmp r0 5
+je accepted
+jmp missing
+label window_exists
 cmp r1 1
 jgt clarify
 jmp accepted

@@ -18,7 +18,7 @@ async function refreshPrograms(){
 function programCards(){
   if(programCatalogError)return '<p role="alert">'+esc(programCatalogError)+'</p>';
   if(!programCatalog)return '<p class="muted">'+(nativeAvailable?'Leyendo tus ejecutables…':'Abre la aplicación Android para ejecutar programas .rxe.')+'</p>';
-  return programCatalog.apps.map(app=>'<article class="program-card"><div>'+icon(app.metadata.ui==='chat'?'help':'desktop')+'<span><strong>'+esc(app.metadata.title)+'</strong><small>'+esc(app.metadata.app_version||'RXE1')+' · '+Math.ceil(app.bytes/1024)+' KB · '+esc(app.path.split('/').pop())+'</small></span></div><div class="program-actions"><button class="primary-button" data-program-path="'+esc(app.path)+'">Abrir</button><button class="secondary-button" data-program-export="'+esc(app.path)+'" aria-label="Exportar '+esc(app.metadata.title)+'">'+icon('download')+'</button></div></article>').join('')+(programCatalog.apps.length?'':'<p>No hay ejecutables. Agrega un .rxe o créalo desde XI Studio.</p>')+(programCatalog.rejected?'<p role="status">Se omitieron '+programCatalog.rejected+' archivos que no son ejecutables válidos.</p>':'');
+  return programCatalog.apps.map(app=>'<article class="program-card"><div>'+icon(app.metadata.ui==='chat'?'help':'desktop')+'<span><strong>'+esc(app.metadata.title)+'</strong><small>'+esc(app.metadata.app_version||'RXE1')+(bbyqPrograms().find(p=>p.path===app.path)?' · Programa '+(bbyqPrograms().find(p=>p.path===app.path).target-15):'')+' · '+Math.ceil(app.bytes/1024)+' KB · '+esc(app.path.split('/').pop())+'</small></span></div><div class="program-actions"><button class="primary-button" data-program-path="'+esc(app.path)+'">Abrir</button><button class="secondary-button" data-program-export="'+esc(app.path)+'" aria-label="Exportar '+esc(app.metadata.title)+'">'+icon('download')+'</button></div></article>').join('')+(programCatalog.apps.length?'':'<p>No hay ejecutables. Agrega un .rxe o créalo desde XI Studio.</p>')+(programCatalog.rejected?'<p role="status">Se omitieron '+programCatalog.rejected+' archivos que no son ejecutables válidos.</p>':'');
 }
 function programsHTML(){
   if(!programCatalog&&!programCatalogLoading&&!programCatalogError)queueMicrotask(refreshPrograms);
@@ -46,11 +46,13 @@ function programHTML(w){
   const saved=data.snapshot;
   if(!saved)return '<div class="programs-layout"><p role="status">'+esc(data.error||'Abriendo el ejecutable y su memoria…')+'</p>'+(data.error?'<button class="secondary-button" data-program-action="reload">Volver a abrir</button>':'')+'</div>';
   const meta=saved.metadata,chat=meta.ui==='chat',disabled=data.busy?' disabled':'';
-  const status=data.error|| (data.busy?'Procesando en el núcleo…':chat?'Memoria guardada · '+(data.language===1?'Español':'English')+(saved.desktop_control?' · Control del escritorio':''):'Ejecutar inicia el programa. Abrir la ventana conserva la última salida.');
+  const status=data.error|| (data.busy?'Procesando en el núcleo…':chat?'Memoria guardada · '+(data.language===1?'Español':'English')+(saved.desktop_control?' · W4u conectado':''):'Ejecutar inicia el programa. Abrir la ventana conserva la última salida.');
   const heading='<div class="rxe-heading"><span>'+esc(meta.title)+' · '+esc(meta.app_version||'RXE1')+'</span><div class="program-actions"><button class="secondary-button" data-program-action="reload" aria-label="Actualizar memoria"'+disabled+'>'+icon('restore')+'</button><button class="secondary-button" data-program-action="export"'+disabled+'>Exportar .rxe</button>'+(chat?'<button class="secondary-button" data-program-action="memory"'+disabled+'>Memoria .rvp</button>':'')+'</div></div>';
-  const message='<p class="rxe-status" role="status">'+esc(status)+'</p>';
+  const plan=saved.agents;
+  const progress=plan&&plan.steps?'<p class="rxe-status">W4u · Plan: '+plan.steps+' paso'+(plan.steps===1?'':'s')+' · '+(plan.status===3?'Comprobado':plan.status===4?'Detenido':plan.completed+'/'+plan.steps+' completados')+'</p>':'';
+  const message='<p class="rxe-status" role="status">'+esc(status)+'</p>'+progress;
   if(!chat)return '<div class="rxe-layout">'+heading+message+'<pre class="rxe-output" aria-label="Salida RXE">'+esc(saved.output||'Pulsa Ejecutar para iniciar.')+'</pre><button class="primary-button" data-program-action="run"'+(data.busy||data.uncertain?' disabled':'')+'>Ejecutar</button></div>';
-  const history=saved.history.length?saved.history.map((item,i)=>'<div class="rxe-message '+(item.role==='user'?'from-user':'from-agent')+'"><small>'+esc(item.role==='user'?'TÚ':meta.title)+'</small><p'+(item.role==='assistant'&&i===saved.history.length-1?' aria-label="Respuesta BBY Q"':'')+'>'+esc(item.text)+'</p></div>').join(''):'<p class="muted">Memoria '+esc(meta.app_version)+' lista. Puedes empezar con «hola».</p>';
+  const history=saved.history.length?saved.history.map((item,i)=>'<div class="rxe-message '+(item.role==='user'?'from-user':'from-agent')+'"><small>'+esc(item.role==='user'?'TÚ':meta.title)+'</small><p'+(item.role==='assistant'&&i===saved.history.length-1?' aria-label="Respuesta BBY Q"':'')+'>'+esc(item.text)+'</p></div>').join(''):'<p class="muted">Memoria '+esc(meta.app_version)+' lista. Puedes empezar con «hola», «maximiza calculadora» o «ejecuta programa 1». Consulta los números en Aplicaciones.</p>';
   queueMicrotask(()=>{const el=$('.rxe-history',$('#'+w.id));if(el)el.scrollTop=el.scrollHeight;});
   return '<div class="rxe-layout">'+heading+message+'<div class="rxe-history" aria-label="Conversación BBY Q">'+history+'</div><form class="rxe-composer" data-program-form><textarea aria-label="Mensaje para BBY Q" data-program-input maxlength="255" rows="2" placeholder="Escribe un mensaje…"'+disabled+'>'+esc(w.rxeDraft||'')+'</textarea><div class="program-actions"><button type="button" class="secondary-button '+(data.language===1?'selected':'')+'" data-program-language="1"'+disabled+'>Español</button><button type="button" class="secondary-button '+(data.language===2?'selected':'')+'" data-program-language="2"'+disabled+'>English</button><button type="submit" class="primary-button"'+(data.busy||data.uncertain?' disabled':'')+'>Enviar</button></div></form></div>';
 }
@@ -61,18 +63,22 @@ async function transactProgram(w,operation){
     payload.text=(w.rxeDraft||'').trim();payload.language=data.language;
     if(!payload.text)return;
     if(new TextEncoder().encode(payload.text).length>255){toast('Escribe un mensaje de hasta 255 bytes.','help');return;}
-    if(snapshot.desktop_control)payload.desktop=captureBbyqDesktop(snapshot.identity);
   }
   data.busy=true;data.error='';renderWindowContent(w);
   try{
+    if(operation==='askApp'&&snapshot.desktop_control){await refreshPrograms();payload.desktop=captureBbyqDesktop(snapshot.identity);}
     let result=await nativeRequest(operation,JSON.stringify(payload));
     if(operation==='askApp'){
-      if(result.control){
-        if(!snapshot.desktop_control||!payload.desktop)throw Error('La aplicación no tiene un escritorio asociado.');
-        const outcome=await executeBbyqControl(result.control,payload.desktop,snapshot.identity);
-        result=await nativeRequest('ackControl',JSON.stringify({path:w.rxePath,identity:snapshot.identity,ticket:result.control.ticket,success:outcome.success}));
+      let observation=payload.desktop,steps=0;
+      while(result.control){
+        if(!snapshot.desktop_control||!observation)throw Error('La aplicación no tiene un escritorio asociado.');
+        if(++steps>2)throw Error('El plan supera el límite de pasos.');
+        const outcome=await executeBbyqControl(result.control,observation,snapshot.identity);
+        const nextObservation=captureBbyqDesktop(snapshot.identity);
+        result=await nativeRequest('ackControl',JSON.stringify({path:w.rxePath,identity:snapshot.identity,ticket:result.control.ticket,success:outcome.success,desktop:nextObservation}));
+        observation=nextObservation;
         if(!outcome.success)toast(outcome.reason,'help');
-        else if(!getWindow(w.id)||w.min||w.space!==state.space)toast('BBY Q · '+result.history.at(-1).text);
+        if(!result.control&&(!getWindow(w.id)||w.min||w.space!==state.space))toast('BBY Q · '+result.history.at(-1).text);
       }
       w.rxeDraft='';
       // Duplicate executables use the same native memory; refresh every open view.

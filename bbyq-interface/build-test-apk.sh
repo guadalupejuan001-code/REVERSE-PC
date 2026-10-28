@@ -33,7 +33,7 @@ fs.writeFileSync(path.join(assets,'workbench/build-info.json'),JSON.stringify(bu
 JS
 "$tools/aapt2" compile --dir "$repo/reverse-os-android/app/src/main/res" -o "$out/resources.zip"
 "$tools/aapt2" link -o "$out/resources.apk" -I "$platform" --manifest "$out/AndroidManifest.xml" \
-  --min-sdk-version 29 --target-sdk-version 35 --version-code 220 --version-name 2.2.0-control \
+  --min-sdk-version 29 --target-sdk-version 35 --version-code 230 --version-name 2.3.0-control \
   --auto-add-overlay -A "$assets" "$out/resources.zip"
 cp "$out/resources.apk" "$out/unaligned.apk"
 java -m jdk.jartool/sun.tools.jar.Main --update --no-compress --file "$out/unaligned.apk" -C "$out/dex" classes.dex -C "$out/stage" lib
@@ -45,9 +45,9 @@ if [[ ! -f "$key" ]]; then
     -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=REVERSE Control Development'
 fi
 "$tools/apksigner" sign --ks "$key" --ks-key-alias reverse-desktop --ks-pass pass:android --key-pass pass:android \
-  --out "$out/REVERSE-Control-v2.2.0.apk" "$out/aligned.apk"
-"$tools/apksigner" verify --verbose --print-certs "$out/REVERSE-Control-v2.2.0.apk" > "$out/signature.txt"
-"$tools/zipalign" -c -P 16 -v 4 "$out/REVERSE-Control-v2.2.0.apk" > "$out/alignment.txt"
-"$tools/aapt" dump badging "$out/REVERSE-Control-v2.2.0.apk" > "$out/package.txt"
-sha256sum "$out/REVERSE-Control-v2.2.0.apk" "$baseline" "$out/stage/lib/arm64-v8a/libreverse_os.so" "$out/stage/lib/x86_64/libreverse_os.so" > "$out/SHA256SUMS"
-printf 'CONTROL_APK_BUILT %s\n' "$out/REVERSE-Control-v2.2.0.apk"
+  --out "$out/REVERSE-Control-v2.3.0.apk" "$out/aligned.apk"
+"$tools/apksigner" verify --verbose --print-certs "$out/REVERSE-Control-v2.3.0.apk" > "$out/signature.txt"
+"$tools/zipalign" -c -P 16 -v 4 "$out/REVERSE-Control-v2.3.0.apk" > "$out/alignment.txt"
+"$tools/aapt" dump badging "$out/REVERSE-Control-v2.3.0.apk" > "$out/package.txt"
+sha256sum "$out/REVERSE-Control-v2.3.0.apk" "$baseline" "$out/stage/lib/arm64-v8a/libreverse_os.so" "$out/stage/lib/x86_64/libreverse_os.so" > "$out/SHA256SUMS"
+printf 'CONTROL_APK_BUILT %s\n' "$out/REVERSE-Control-v2.3.0.apk"

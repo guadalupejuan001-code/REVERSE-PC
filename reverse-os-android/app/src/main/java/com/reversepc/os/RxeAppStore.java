@@ -51,7 +51,7 @@ final class RxeAppStore {
             if(!(i%2==0?"user":"assistant").equals(role)||text.getBytes(StandardCharsets.UTF_8).length>(i%2==0?255:4096))throw new IOException("Historial de aplicación inválido");
         }
         JSONObject pending=metadata.optJSONObject("pending_action");
-        if(pending!=null&&(!pending.getString("ticket").matches("[0-9a-f-]{36}")||pending.getInt("op")<1||pending.getInt("op")>9||pending.getInt("target")<0||pending.getInt("target")>15))throw new IOException("Confirmación pendiente inválida");
+        if(pending!=null&&(!pending.getString("ticket").matches("[0-9a-f-]{36}")||pending.getInt("op")<1||pending.getInt("op")>10||pending.getInt("target")<0||pending.getInt("target")>31))throw new IOException("Confirmación pendiente inválida");
         NativeRuntime.inspect(packet.state);return new Saved(packet.state,history,language,pending);
     }
     private void save(Saved saved)throws Exception{
@@ -89,7 +89,7 @@ final class RxeAppStore {
             }
         }
     }
-    Saved acknowledge(byte[] executable,String ticket,boolean success)throws Exception{
+    Saved acknowledge(byte[] executable,String ticket,boolean success,JSONObject observation)throws Exception{
         try(FileChannel channel=FileChannel.open(new File(directory,"writer.lock").toPath(),StandardOpenOption.CREATE,StandardOpenOption.WRITE)){
             FileLock lock;try{lock=channel.tryLock();}catch(OverlappingFileLockException busy){throw new IOException("BBY Q está trabajando en otra ventana");}
             if(lock==null)throw new IOException("BBY Q está trabajando en otra ventana");
@@ -97,11 +97,16 @@ final class RxeAppStore {
                 Saved before=load(executable);
                 if(before.pending==null||!before.pending.getString("ticket").equals(ticket))throw new IOException("La acción ya fue confirmada o corresponde a otro turno");
                 if(!BbyqInterface.trusted(context,executable))throw new IOException("Este ejecutable no controla la interfaz");
-                ResultPacket response=BbyqInterface.feedback(context,before.state,before.language,success);
+                if(observation==null)throw new IOException("Falta la observación posterior a la acción");
+                byte[] observed=BbyqInterface.observe(before.state,observation);
+                ResultPacket response=BbyqInterface.feedback(context,observed,before.language,success);
+                JSONObject pending=BbyqInterface.action(response.state);
+                if(pending!=null){pending.put("ticket",java.util.UUID.randomUUID().toString());pending.put("view",observation.getString("view"));}
+                byte[] committed=BbyqInterface.consume(context,response.state);
                 JSONArray history=new JSONArray(before.history.toString());
                 if(history.length()<2)throw new IOException("No existe el turno de la acción");
                 history.getJSONObject(history.length()-1).put("text",response.output);
-                Saved after=new Saved(response.state,history,before.language);save(after);return after;
+                Saved after=new Saved(committed,history,before.language,pending);save(after);return after;
             }
         }
     }

@@ -11,7 +11,7 @@ import org.json.JSONObject;
 
 /** Typed observation/action transport. No words, prompts or intent are parsed here. */
 final class BbyqInterface {
-    static final long A=8200000000000000000L;
+    static final long A=8200000000000000000L,M=8300000000000000000L;
     static final String LEGACY_SHA="2e189e11a9ceda2d4dfc2299e61892929dc696411d595b8e3c138c8134c2802f";
     private static String bundledIdentity;
     private BbyqInterface(){}
@@ -25,20 +25,29 @@ final class BbyqInterface {
         if(bundledIdentity==null){
             byte[] bundled=asset(ctx,"native-apps/BBY-Q.rxe");
             JSONObject info=new JSONObject(new String(NativeRuntime.inspectRxe(bundled),StandardCharsets.UTF_8));
-            bundledIdentity="E022-Control-1".equals(info.optString("app_version"))&&"org.reverse.bbyq".equals(info.optString("app_id"))?identity(bundled):"";
+            bundledIdentity="E023-W4u-1".equals(info.optString("app_version"))&&"org.reverse.bbyq".equals(info.optString("app_id"))?identity(bundled):"";
         }
         return bundledIdentity.equals(identity(image));
     }
     private static String put(long address,int value){return "store8 "+address+" "+value+"\n";}
     static byte[] observe(byte[] state,JSONObject observation)throws Exception{
         if(observation==null)return state;
-        int active=observation.getInt("active"),count=observation.getInt("count");
-        JSONArray present=observation.getJSONArray("present");
+        int active=observation.getInt("active"),count=observation.getInt("count"),space=observation.getInt("space"),minCount=observation.getInt("minimizedCount");
+        JSONArray present=observation.getJSONArray("present"),minimized=observation.getJSONArray("minimized"),maximized=observation.getJSONArray("maximized"),programs=observation.getJSONArray("programs");
         String view=observation.getString("view");
-        if(active<0||active>15||count<0||count>128||present.length()!=16||view.length()>32768)throw new IOException("Observación del escritorio inválida");
+        if(active<0||active>31||count<0||count>128||present.length()!=32||minimized.length()!=32||maximized.length()!=32||view.length()>65536||space<0||space>1||minCount<0||minCount>count||programs.length()>16)throw new IOException("Observación del escritorio inválida");
         StringBuilder source=new StringBuilder("#!reverse-pc-machine-v1\n");
-        source.append(put(A+16,1)).append(put(A+17,active)).append(put(A+18,count));
-        for(int i=0;i<16;i++){int n=present.getInt(i);if(n<0||n>128)throw new IOException("Cantidad de ventanas inválida");source.append(put(A+32+i,n));}
+        source.append(put(A+16,1)).append(put(A+17,active)).append(put(A+18,count)).append(put(M+710,space)).append(put(M+711,minCount));
+        for(int i=0;i<32;i++){
+            int n=present.getInt(i),min=minimized.getInt(i),max=maximized.getInt(i);
+            if(n<0||n>128||min<0||min>n||max<0||max>n)throw new IOException("Cantidad de ventanas inválida");
+            source.append(put(A+32+i,n)).append(put(M+640+i,min)).append(put(M+672+i,max)).append(put(M+512+i,0));
+        }
+        for(int i=0;i<programs.length();i++){
+            JSONObject app=programs.getJSONObject(i);int target=app.getInt("target"),cap=app.getInt("capability");
+            if(target!=i+16||cap<1||cap>2)throw new IOException("Catálogo de programas inválido");
+            source.append(put(M+512+target,cap));
+        }
         return ResultPacket.parse(NativeRuntime.execute(state,source.toString())).state;
     }
     static JSONObject action(byte[] state)throws Exception{
@@ -47,9 +56,17 @@ final class BbyqInterface {
         for(String row:read.output.split("\\n"))if(row.startsWith("{")){JSONObject item=new JSONObject(row);if("register".equals(item.optString("type"))){if(i>=2)throw new IOException("Respuesta de control inválida");values[i++]=item.getInt("value");}}
         if(i!=2)throw new IOException("Respuesta de control incompleta");
         int op=values[0],target=values[1];if(op==0)return null;
-        boolean valid=(op==1&&target>=1&&target<=10)||(op>=2&&op<=6&&((target>=1&&target<=10)||target==15))||((op==7||op==8)&&target==0)||(op==9&&(target==13||target==14));
+        boolean valid=(op==10&&target>=16&&target<=31)||(op==1&&((target>=1&&target<=10)||(target>=16&&target<=31)))||(op>=2&&op<=6&&((target>=1&&target<=10)||target==15||(target>=16&&target<=31)))||((op==7||op==8)&&target==0)||(op==9&&(target==13||target==14));
         if(!valid)throw new IOException("El programa devolvió una acción fuera del contrato");
         return new JSONObject().put("op",op).put("target",target);
+    }
+    static JSONObject trace(byte[] state)throws Exception{
+        int[] offsets={16,17,18,19,20,32,33,34};StringBuilder source=new StringBuilder("#!reverse-pc-machine-v1\n");
+        for(int offset:offsets)source.append("load8 r0 ").append(M+offset).append("\nprint r0\n");
+        ResultPacket read=ResultPacket.parse(NativeRuntime.execute(state,source.toString()));int[] values=new int[8];int n=0;
+        for(String row:read.output.split("\\n"))if(row.startsWith("{")){JSONObject item=new JSONObject(row);if("register".equals(item.optString("type"))){if(n>=8)throw new IOException("Traza inválida");values[n++]=item.getInt("value");}}
+        if(n!=8)throw new IOException("Traza incompleta");
+        return new JSONObject().put("engine","W4u").put("version","0.1").put("status",values[0]).put("goal",values[1]).put("target",values[2]).put("steps",values[3]).put("completed",values[4]).put("planner",values[5]).put("explorer",values[6]).put("verifier",values[7]);
     }
     static byte[] consume(Context ctx,byte[] state)throws Exception{
         return ResultPacket.parse(NativeRuntime.execute(state,new String(asset(ctx,"bbyq-interface/consume.xi"),StandardCharsets.UTF_8))).state;
@@ -57,7 +74,7 @@ final class BbyqInterface {
     static ResultPacket feedback(Context ctx,byte[] state,int language,boolean success)throws Exception{
         String body=new String(asset(ctx,"bbyq-interface/feedback.xi"),StandardCharsets.UTF_8);
         body=body.substring(body.indexOf('\n')+1);
-        String source="#!reverse-pc-machine-v1\n"+put(7400000000000000003L,language)+put(A+67,success?2:3)+body;
+        String source="#!reverse-pc-machine-v1\n"+put(7400000000000000003L,language)+put(M+80,success?1:0)+body;
         ResultPacket result=ResultPacket.parse(NativeRuntime.execute(state,source));ByteArrayOutputStream bytes=new ByteArrayOutputStream();
         for(String row:result.output.split("\\n"))if(row.startsWith("{")){
             JSONObject item=new JSONObject(row);if(!"r14".equals(item.optString("register")))continue;

@@ -37,13 +37,15 @@ final class WorkbenchPrograms {
     }
     private void upgradeBbyq()throws Exception{
         byte[] bundled=BbyqInterface.asset(context,"native-apps/BBY-Q.rxe");
-        if(!"E022-Control-1".equals(info(bundled).optString("app_version")))return;
+        if(!"E023-W4u-1".equals(info(bundled).optString("app_version")))return;
         if(!exists(BBYQ))return; // A deliberately removed application stays removed.
         byte[] previous=files.read(BBYQ);
         if(identity(previous).equals(identity(bundled)))return;
-        if(!BbyqInterface.LEGACY_SHA.equals(identity(previous)))return; // Never replace a custom executable.
+        JSONObject manifest=new JSONObject(new String(BbyqInterface.asset(context,"bbyq-interface/manifest.json"),StandardCharsets.UTF_8));
+        boolean legacy=BbyqInterface.LEGACY_SHA.equals(identity(previous));
+        if(!legacy&&!manifest.getString("legacy_control_sha256").equals(identity(previous)))return; // Keep custom executables.
         RxeAppStore.Saved old=new RxeAppStore(context,previous).load(previous);
-        byte[] migration=BbyqInterface.asset(context,"bbyq-interface/upgrade-e016.rxe");
+        byte[] migration=BbyqInterface.asset(context,legacy?"bbyq-interface/upgrade-e016.rxe":"bbyq-interface/upgrade-control.rxe");
         ResultPacket converted=ResultPacket.parse(NativeRuntime.executeRxe(old.state,migration));
         new RxeAppStore(context,bundled).migrate(bundled,old,converted.state);
         // Existing private E016 data remain as a rollback copy. Publish the new
@@ -90,6 +92,7 @@ final class WorkbenchPrograms {
             RxeAppStore.Saved saved=new RxeAppStore(context,image).load(image);
             result.put("history",saved.history).put("language",saved.language);
             result.put("desktop_control",BbyqInterface.trusted(context,image));
+            if(BbyqInterface.trusted(context,image))result.put("agents",BbyqInterface.trace(saved.state));
         }else result.put("output",context.getSharedPreferences("desktop-v1",0).getString("rxe-output:"+path,""));
         return result;
     }
@@ -97,26 +100,40 @@ final class WorkbenchPrograms {
         String selectedPath=path(selected);byte[] image=files.read(selectedPath);
         return snapshot(selectedPath,image,info(image));
     }
+    private JSONObject observation(JSONObject request)throws Exception{
+        JSONObject desktop=request.optJSONObject("desktop");if(desktop==null)return null;
+        JSONArray programs=desktop.getJSONArray("programs");if(programs.length()>16)throw new IOException("Catálogo demasiado grande");
+        // Revalidate every frontend binding against actual native RXE metadata.
+        for(int i=0;i<programs.length();i++){
+            JSONObject app=programs.getJSONObject(i);byte[] image=checked(app);JSONObject metadata=info(image);
+            int capability="chat".equals(metadata.optString("ui"))?1:2;
+            if(app.getInt("target")!=16+i||app.getInt("capability")!=capability||"org.reverse.bbyq".equals(metadata.optString("app_id")))throw new IOException("Capacidad de programa inválida");
+        }
+        return desktop;
+    }
     JSONObject ask(JSONObject request)throws Exception{
         byte[] image=checked(request);JSONObject metadata=info(image);
         if(!"chat".equals(metadata.optString("ui")))throw new IOException("Este ejecutable no ofrece una conversación");
         String text=request.getString("text").trim();int language=request.getInt("language");
         if(text.isEmpty()||text.getBytes(StandardCharsets.UTF_8).length>255||(language!=1&&language!=2))throw new IOException("Escribe un mensaje de hasta 255 bytes y elige un idioma");
         RxeAppStore app=new RxeAppStore(context,image);
-        JSONObject observation=BbyqInterface.trusted(context,image)?request.optJSONObject("desktop"):null;
+        JSONObject observation=BbyqInterface.trusted(context,image)?observation(request):null;
         RxeAppStore.Saved saved=app.ask(image,text,language,observation);
         Log.i("ReverseWorkbench","WORKBENCH_APP_TURN_OK "+app.identity);
         JSONObject result=new JSONObject().put("ok",true).put("path",request.getString("path")).put("identity",app.identity).put("metadata",metadata).put("history",saved.history).put("language",saved.language).put("desktop_control",BbyqInterface.trusted(context,image));
         // Only a freshly committed ask may dispatch an action. open/catalog and
         // restoration never return this field and therefore never replay it.
         if(saved.pending!=null)result.put("control",saved.pending);
+        if(BbyqInterface.trusted(context,image))result.put("agents",BbyqInterface.trace(saved.state));
         return result;
     }
     JSONObject acknowledge(JSONObject request)throws Exception{
         byte[] image=checked(request);
         if(!BbyqInterface.trusted(context,image))throw new IOException("Este ejecutable no controla el escritorio");
-        new RxeAppStore(context,image).acknowledge(image,request.getString("ticket"),request.getBoolean("success"));
-        return snapshot(request.getString("path"),image,info(image));
+        RxeAppStore.Saved saved=new RxeAppStore(context,image).acknowledge(image,request.getString("ticket"),request.getBoolean("success"),observation(request));
+        JSONObject result=snapshot(request.getString("path"),image,info(image));
+        if(saved.pending!=null)result.put("control",saved.pending);
+        return result;
     }
     JSONObject run(JSONObject request,SessionStore session)throws Exception{
         byte[] image=checked(request);

@@ -1,5 +1,9 @@
 # REVERSE-PC
 
+**W4u 0.1 — work for u:** BBY Q conversa y W4u coordina tres roles XI para
+operar la interfaz y ejecutar programas RXE internos.
+[Uso, arquitectura y pruebas](docs/W4U_BBYQ.md).
+
 ## BBY Q controla Workbench 2.2
 
 BBY Q E022 puede abrir herramientas, enfocar, minimizar, maximizar, restaurar y

@@ -1,5 +1,8 @@
 # BBY Q controla REVERSE Workbench
 
+La coordinación de agentes y ejecución de programas de la versión siguiente se
+describe en [W4u 0.1](W4U_BBYQ.md). Esta página conserva el alcance de Control-1.
+
 Esta primera integración conecta BBY Q E022 y su intérprete corregido con las
 ventanas de REVERSE. La interpretación de las órdenes y la selección de una
 operación ocurren en XI, dentro del mismo RVPC2 privado del agente. La interfaz

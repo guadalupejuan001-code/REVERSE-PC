@@ -13,7 +13,8 @@ const image=path.join(build,'BBY-Q.rxe'),state=path.join(build,'test-agent.rvp')
 fs.copyFileSync(path.join(build,'controller.rvp'),state);
 const put=(n,v)=>`store8 ${n} ${v}\n`;
 let observation=put(A+16n,1)+put(A+17n,8)+put(A+18n,10);
-for(let id=1;id<=10;id++)observation+=put(A+32n+BigInt(id),1);
+for(let id=1;id<=31;id++)observation+=put(A+32n+BigInt(id),1);
+for(let id=16;id<=31;id++)observation+=put(8300000000000000512n+BigInt(id),2);
 const consume=fs.readFileSync(path.join(root,'xi/consume.xi'),'utf8').split('\n').slice(1).join('\n').replace(/^halt$/gm,'');
 const read=`load8 r0 ${A+64n}\nprint r0\nload8 r1 ${A+65n}\nprint r1\n`;
 fs.writeFileSync(step,'#!reverse-pc-machine-v1\n'+read+consume+observation+'halt\n');
