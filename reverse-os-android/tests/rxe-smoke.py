@@ -12,12 +12,21 @@ for key in ['adb','tree','find','box','tap','click','enter','launch','close','sc
     globals()[key]=driver[key]
 
 def downloads():
-    root=tree()
-    if any(n.get('text','').casefold()=='downloads' for n in root.iter('node')):
-        click(text='Downloads');return
-    for n in root.iter('node'):
-        if 'roots' in n.get('content-desc','').lower() or 'navigation drawer' in n.get('content-desc','').lower():
-            tap(n);click(text='Downloads');return
+    until=time.monotonic()+25
+    while time.monotonic()<until:
+        try:root=tree()
+        except AssertionError:
+            time.sleep(.3);continue
+        # The picker starts asynchronously. uiautomator can temporarily return
+        # the old app tree while DocumentsUI is still opening.
+        if not any('documentsui' in n.get('package','') for n in root.iter('node')):
+            time.sleep(.3);continue
+        if any(n.get('text','').casefold()=='downloads' for n in root.iter('node')):
+            click(text='Downloads');return
+        for n in root.iter('node'):
+            if 'roots' in n.get('content-desc','').lower() or 'navigation drawer' in n.get('content-desc','').lower():
+                tap(n);click(text='Downloads');return
+        time.sleep(.3)
     raise AssertionError('Android document picker has no Downloads entry')
 
 def public(path):
