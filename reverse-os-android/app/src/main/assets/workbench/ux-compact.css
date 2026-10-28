@@ -48,6 +48,8 @@
 @media(max-height:410px){
  .music-heading{padding:4px 8px}.music-brand strong{font-size:11px}.music-brand>span{display:none}
  .music-search input{padding:4px 0}.music-tabs{min-height:26px}.music-tabs button{min-height:25px;padding:3px}
- .music-controls{min-height:36px;padding:3px}.music-footer{display:none}.music-stage{min-height:70px}
+ .music-controls{min-height:36px;padding:3px}.music-footer{display:flex;min-height:20px}.music-stage{min-height:70px}
  .bbyq-modules{padding:2px 6px}.bbyq-modules button{min-height:25px;padding:4px 8px}
 }
+
+@media(max-height:450px){.music-app:has(.music-downloads)>.music-heading{display:flex!important}.music-downloads{min-height:65px;overflow-y:auto}.music-tabs{flex-shrink:0}.music-app>.music-footer{display:flex;flex-shrink:0}}
