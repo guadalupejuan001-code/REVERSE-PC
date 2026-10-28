@@ -31,6 +31,8 @@ async function desktop(width,height,profile=null){
     const page=await desktop(width,height);
     await page.locator('#pinned-apps [data-task-app="music"]').click();await frame(page);
     check(await page.locator('.window[data-app="music"]').count()===1,'Music is a PC window');
+    const stageFound=await page.locator('[data-music-stage]').count();
+    if(!stageFound){const diag=await page.evaluate(()=>({shell:window.ReverseShell?.mode, musicType:typeof musicHTML, qdType:typeof qdStudioHTML, musicUI:document.querySelector('.window[data-app="music"] .window-content')?.innerHTML.slice(0,1200), windows:[...document.querySelectorAll('.window')].map(x=>x.dataset.app)}));throw Error('Music stage absent: '+JSON.stringify({errors,diag}));}
     check(await page.locator('[data-music-stage]').boundingBox().then(r=>r.width>200&&r.height>=34),'Player has usable bounds');
     check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No desktop overflow');
     check(await page.evaluate(()=>[...document.querySelectorAll('.taskbar button')].filter(e=>e.getClientRects().length).every(e=>{const r=e.getBoundingClientRect();return r.x>=0&&r.right<=innerWidth;})),'Taskbar still fits');
