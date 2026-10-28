@@ -126,9 +126,9 @@ el APK ya instalado por el usuario. No se pide desinstalar ni perder sus datos.
 | RAM lógica EL0 | 64 KiB–256 TiB; no representa RAM física disponible |
 | RAM lógica de sistema | 64 MiB hasta rango físico de 48 bits; UI usa 128 MiB |
 | RAM física de sistema | Comienza en `0x40000000` |
-| Imagen total | 16 MiB; ELF hasta 64 PT_LOAD sin solapamientos |
+| Imagen ELF / Linux | ELF: 16 MiB (sin cambios); Linux ARM64 Image: 64 MiB kernel, 64 MiB initrd y 128 MiB de contenedor total (nuevo perfil CI); ELF hasta 64 PT_LOAD |
 | Excepciones de byte | 1–1.048.576; Android 65.536 |
-| Snapshot CLI / transporte Android | 48 MiB / 32 MiB; exportador UI adicional de 8 MiB |
+| Snapshot CI/CLI / transporte Android | RVG convencional 48 MiB; RVG adaptable hasta 256 MiB bajo perfil explícito; Android UI 32 MiB y exportador 8 MiB aún no adaptados |
 | Bloque CLI / Android | 1.000.000 / 10.000 transiciones máximo |
 | Salida por bloque / entrada serial | 65.536 / 4.096 bytes |
 
@@ -236,3 +236,27 @@ A native AArch64 fixture independently assembled with Clang sets SPSR_EL1, retur
 ## CSDB speculative data barrier after Linux EL0 entry
 
 The pinned ERET replay passed (95 native checks), returned to actual EL0 PC **0x210148** and subsequently advanced the real Linux kernel to **29,474,606 instructions**. That means the kernel reached the real /init ELF entry. It stopped at opcode `0xd503229f`, independently assembled and verified as **CSDB** (Consume Speculative Data Barrier), at `0xffffffc00801a168`. This instruction prevents unsafe speculation-dependent use of data on speculative CPU hardware. The REVERSE interpreter executes instructions sequentially with no speculative execution, so CSDB is represented as an architectural ordering hint without modifying XI/Ether bytes. Dedicated native tests verify PC progression, register preservation, exact checkpoint restoration, unchanged quantum/memory state and continuation. Do not infer that /init successfully printed or that Android booted: the UART marker is still missing.
+
+
+## GKI auténtico: presupuesto separado de Linux (experimental, PR #42)
+
+El antiguo `MinimalGuest::max_image=16 MiB` se creó para ELF pequeños y se
+aplicaba por accidente también al Linux Image, al contenedor RVI1 y a la
+validación de RVG restaurados. Ahora **ELF conserva su límite de 16 MiB**,
+pero Linux admite un **kernel hasta 64 MiB**, un initrd hasta **64 MiB**,
+y el contenedor inmutable Image+DTB+initrd tiene un máximo separado de
+**128 MiB**. La geometría de RAM/arranque, los segmentos y el límite del
+transporte RVG siguen siendo obligatorios; el perfil adaptable soporta
+checkpoints hasta 256 MiB, no RAM física ilimitada. En el CLI de prueba,
+Linux usa `enable_adaptive_memory()` en el único QuantumRuntime/InverseMemory.
+
+El Image real de Android Common build 16707926 fue medido en **35,777,024
+bytes**, con SHA256
+`8d8cf5254f0823655e06ffee100d9c19abbf4ce33adb107b66da3fdb3742e0be`.
+Una CI separada intentará cargarlo y ejecutarlo en el **mismo** intérprete;
+solo aceptará progreso observado y un checkpoint RVG restaurable; cualquier
+fallo ISA/dispositivo se documentará como el siguiente obstáculo. La app de
+Android todavía tiene límites diferentes de transporte y **no** recibe por
+este cambio la posibilidad de arrancar AOSP ni Wild Rift. El GKI sin ramdisk
+genérico, vendor_boot, init_boot, particiones ni servicios no puede ejecutar
+el Android `/init` real.
