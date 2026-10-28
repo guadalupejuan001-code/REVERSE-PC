@@ -9,9 +9,11 @@ inline void MinimalGuest::validate_system_configuration() const {
     require(!(m.tcr&(UINT64_C(3)<<39)),"Hardware access/dirty flag updates are not implemented");
   }
 }
-inline std::uint64_t MinimalGuest::translate(std::uint64_t address,bool writing,bool executing) const {
+inline std::uint64_t MinimalGuest::translate(std::uint64_t address,bool writing,bool executing,bool unprivileged) const {
   if(!machine_.enabled || !(machine_.sctlr&1))return address;
   const auto& m=machine_;
+  const bool permission_el0=unprivileged||!m.el;
+  // EC always reflects the actual current EL, even for LDTR/STTR.
   const auto ec=executing?(m.el?0x21u:0x20u):(m.el?0x25u:0x24u);
   auto fault=[&](unsigned status){throw MachineFault{(std::uint64_t(ec)<<26)|(1u<<25)|(!executing&&writing?64u:0u)|status,address};};
   const bool upper=(address>>55)&1;
@@ -41,7 +43,7 @@ inline std::uint64_t MinimalGuest::translate(std::uint64_t address,bool writing,
     if(!(descriptor&(UINT64_C(1)<<10)))fault(8+level);
     const bool user=(descriptor&(1u<<6))&&!deny_user;
     const bool readonly=(descriptor&(1u<<7))||read_only;
-    if((!m.el&&!user)||(writing&&readonly))fault(12+level);
+    if((permission_el0&&!user)||(writing&&readonly))fault(12+level);
     // AArch64 always forbids privileged execution from a region writable by
     // EL0, independently of PXN and SCTLR.WXN (Arm VMSA permission rules).
     if(executing&&m.el&&user&&!readonly)fault(12+level);
@@ -56,10 +58,10 @@ inline bool MinimalGuest::device_address(std::uint64_t address) const {
          (address>=MachineState::gic_dist&&address<MachineState::gic_dist+4096)||
          (address>=MachineState::gic_cpu&&address<MachineState::gic_cpu+4096);
 }
-inline void MinimalGuest::check_access(std::uint64_t address,unsigned size,bool writing,bool executing) const {
-  (void)resolve_access(address,size,writing,executing);
+inline void MinimalGuest::check_access(std::uint64_t address,unsigned size,bool writing,bool executing,bool unprivileged) const {
+  (void)resolve_access(address,size,writing,executing,unprivileged);
 }
-inline std::array<std::uint64_t,16> MinimalGuest::resolve_access(std::uint64_t address,unsigned size,bool writing,bool executing) const {
+inline std::array<std::uint64_t,16> MinimalGuest::resolve_access(std::uint64_t address,unsigned size,bool writing,bool executing,bool unprivileged) const {
   require(size&&size<=16 && address<=UINT64_MAX-(size-1),"Invalid CPU access extent");
   std::array<std::uint64_t,16> resolved{};
   if(!machine_.enabled){range(address,size);for(unsigned i=0;i<size;++i)resolved[i]=address+i;return resolved;}
@@ -71,9 +73,9 @@ inline std::array<std::uint64_t,16> MinimalGuest::resolve_access(std::uint64_t a
     // A supported 4 KiB stage-1 mapping is linear within its smallest page.
     // Reuse only during this one access, never across instructions or stores.
 #ifdef REVERSE_PC_BYTEWISE_ACCESS_REFERENCE
-    const auto physical=translate(address+i,writing,executing);
+    const auto physical=translate(address+i,writing,executing,unprivileged);
 #else
-    const auto physical=i&&((address+i)&4095)?resolved[i-1]+1:translate(address+i,writing,executing);
+    const auto physical=i&&((address+i)&4095)?resolved[i-1]+1:translate(address+i,writing,executing,unprivileged);
 #endif
     resolved[i]=physical;
     const bool ram=physical>=MachineState::ram_base&&physical-MachineState::ram_base<ram_;
@@ -88,15 +90,15 @@ inline std::array<std::uint64_t,16> MinimalGuest::resolve_access(std::uint64_t a
   }
   return resolved;
 }
-inline std::uint64_t MinimalGuest::cpu_read(std::uint64_t address,unsigned size,RunResult&,bool executing) {
-  const auto physical=resolve_access(address,size,false,executing);
+inline std::uint64_t MinimalGuest::cpu_read(std::uint64_t address,unsigned size,RunResult&,bool executing,bool unprivileged) {
+  const auto physical=resolve_access(address,size,false,executing,unprivileged);
   if(!machine_.enabled)return read(address,size);
   const auto first=physical[0];
   if(device_address(first))return device_read(first,size)&low_mask(size*8);
   std::uint64_t value=0;for(unsigned i=0;i<size;++i)value|=std::uint64_t(read8(physical[i]))<<(8*i);return value;
 }
-inline void MinimalGuest::cpu_write(std::uint64_t address,std::uint64_t value,unsigned size,RunResult& result) {
-  const auto physical=resolve_access(address,size,true);machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;
+inline void MinimalGuest::cpu_write(std::uint64_t address,std::uint64_t value,unsigned size,RunResult& result,bool unprivileged) {
+  const auto physical=resolve_access(address,size,true,false,unprivileged);machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;
   if(!machine_.enabled){write(address,value,size);return;}
   const auto first=physical[0];
   if(device_address(first)){device_write(first,value&low_mask(size*8),size,result);return;}

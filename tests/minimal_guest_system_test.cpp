@@ -114,6 +114,86 @@ void cross_page_access(){
   guest.write(0x40012008,0x40060703,8);enter(guest,0xc0000ffc,UINT64_C(0x0badcafe00000000));guest.run(2);
   check(guest.read(0x40060000,4)==0x0badcafe&&guest.read(0x40050000,4)==0x12345678,"Access-local mapping reuse became a stale persistent TLB");
 }
+
+void unprivileged_memory_access(){
+  auto guest=initial();
+  for(unsigned i=0;i<60 && !(guest.machine().sctlr&1);++i)guest.run(1);
+  check((guest.machine().sctlr&1)!=0&&guest.machine().el==1,
+        "Unprivileged test did not start at EL1 with MMU");
+  // Map 0xC0000000 and the next 4 KiB to distinct physical pages.
+  guest.write(0x40010018,0x40011003,8);
+  guest.write(0x40011000,0x40012003,8);
+  guest.write(0x40012000,0x40030703,8); // First page EL1 only.
+  guest.write(0x40012008,0x40050703,8); // Second page EL1 only.
+  // Exact independently assembled AArch64 STTR/LDTR opcodes.
+  constexpr std::uint32_t sttr=0xf8000820,ldtr=0xf8400822;
+  constexpr std::uint32_t privileged_str=0xf9000020;
+  guest.write(0x400a0000,sttr,4);
+  auto enter=[](MinimalGuest& target,std::uint64_t address,std::uint64_t value){
+    auto state=target.snapshot();
+    auto patch=[&](std::size_t at,std::uint64_t n){
+      for(unsigned i=0;i<8;++i)state[at+i]=std::uint8_t(n>>(i*8));
+    };
+    patch(24,0x400a0000);patch(72,value);patch(80,address);
+    patch(state.size()-8,digest(state,state.size()-8));
+    target=MinimalGuest::from_snapshot(state);
+  };
+  const auto initial_state=guest.snapshot();
+  constexpr std::uint64_t payload=UINT64_C(0x123456789abcdef0);
+  enter(guest,0xc0000ffc,payload);
+  const auto core=guest.runtime().core_snapshot();
+  guest.run(1);
+  check(guest.machine().exceptions==1&&guest.machine().far==0xc0000ffc &&
+        (guest.machine().esr&63)==15 && ((guest.machine().esr>>26)&63)==0x25,
+        "STTR failed to enforce user permission with an EL1 data abort");
+  check(guest.read(0x40030ffc,4)==0 && guest.read(0x40050000,4)==0,
+        "Faulting unprivileged store partially modified protected memory");
+  check(guest.runtime().core_snapshot()==core,
+        "Unprivileged permission fault changed quantum state");
+
+  auto normal=MinimalGuest::from_snapshot(initial_state);
+  normal.write(0x400a0000,privileged_str,4);
+  enter(normal,0xc0000ffc,payload);normal.run(1);
+  check(normal.machine().exceptions==0 &&
+        normal.read(0x40030ffc,4)==0x9abcdef0 &&
+        normal.read(0x40050000,4)==0x12345678,
+        "Ordinary EL1 store was unexpectedly restricted to EL0 permissions");
+
+  auto partial=MinimalGuest::from_snapshot(initial_state);
+  partial.write(0x40012000,0x40030743,8); // EL0 may write first page only.
+  enter(partial,0xc0000ffc,payload);partial.run(1);
+  check(partial.machine().exceptions==1&&partial.machine().far==0xc0001000 &&
+        (partial.machine().esr&63)==15 &&
+        partial.read(0x40030ffc,4)==0 && partial.read(0x40050000,4)==0,
+        "Cross-page STTR did not roll back after EL0 permission fault");
+
+  auto allowed=MinimalGuest::from_snapshot(initial_state);
+  allowed.write(0x40012000,0x40030743,8);
+  allowed.write(0x40012008,0x40050743,8);
+  enter(allowed,0xc0000ffc,payload);
+  const auto before_store=allowed.snapshot();
+  allowed.run(1);
+  check(allowed.machine().exceptions==0&&allowed.machine().el==1 &&
+        allowed.registers().x[1]==0xc0000ffc &&
+        allowed.read(0x40030ffc,4)==0x9abcdef0 &&
+        allowed.read(0x40050000,4)==0x12345678,
+        "STTR did not write user pages or changed the base register");
+  auto resume=MinimalGuest::from_snapshot(allowed.snapshot());
+  check(resume.snapshot()==allowed.snapshot(),
+        "STTR snapshot differs after restoration");
+  resume.write(0x400a0000,ldtr,4);
+  enter(resume,0xc0000ffc,0);
+  resume.run(1);
+  check(resume.registers().x[2]==payload&&resume.machine().exceptions==0,
+        "LDTR failed to load from user pages");
+  auto denied=MinimalGuest::from_snapshot(initial_state);
+  denied.write(0x400a0000,ldtr,4);
+  enter(denied,0xc0000ffc,0);denied.run(1);
+  check(denied.machine().exceptions==1&&denied.machine().far==0xc0000ffc,
+        "LDTR ignored user-read access permissions");
+  check(MinimalGuest::from_snapshot(before_store).snapshot()==before_store,
+        "User-access regression changed legacy RVG checkpoint encoding");
+}
 void identification(){
   auto image=system_demo_elf();image.resize(260);const std::uint32_t instruction=0xd53800c0; // MRS X0,REVIDR_EL1
   for(unsigned i=0;i<4;++i)image[256+i]=std::uint8_t(instruction>>(8*i));
@@ -172,6 +252,6 @@ void interrupt_priority_initialization(){
   check(guest.snapshot()==before,"Rejected APR write changed CPU/device state");
 }
 }
-int main(){try{boot_and_restore();translation();shared_quantum_authority();exclusives();image_boot_protocol();cross_page_access();identification();uart_fifo_configuration();interrupt_priority_initialization();
+int main(){try{boot_and_restore();translation();shared_quantum_authority();exclusives();image_boot_protocol();cross_page_access();unprivileged_memory_access();identification();uart_fifo_configuration();interrupt_priority_initialization();
   std::cout<<"{\"checks\":"<<checks<<",\"system\":\"own-EL1-MMU-IRQ-EL0-SVC\",\"existing_quantum_qubits\":4096,\"android_boot\":\"not_implemented\"}\n";return 0;
 }catch(const std::exception& error){std::cerr<<error.what()<<'\n';return 1;}}

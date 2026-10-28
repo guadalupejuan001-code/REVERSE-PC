@@ -88,7 +88,7 @@ class MinimalGuest {
   const MachineState& machine() const noexcept { return machine_; }
   const FloatingState& floating() const noexcept { return floating_; }
   std::uint64_t ram_base() const noexcept { return machine_.enabled?MachineState::ram_base:0; }
-  std::uint64_t physical_address(std::uint64_t address,bool writing=false,bool executing=false) const {return translate(address,writing,executing);}
+  std::uint64_t physical_address(std::uint64_t address,bool writing=false,bool executing=false,bool unprivileged=false) const {return translate(address,writing,executing,unprivileged);}
 
   // The image is immutable backing, not an eager copy into a RAM array.
   // BSS and all unmodified RAM remain represented by the zero rule.
@@ -401,11 +401,11 @@ class MinimalGuest {
   void advance(){require(registers_.instructions!=UINT64_MAX,"Guest instruction counter overflow");++registers_.instructions;
     if(machine_.enabled){require(machine_.ticks!=UINT64_MAX,"Guest virtual timer overflow");++machine_.ticks;}}
   void validate_system_configuration() const;
-  std::uint64_t translate(std::uint64_t address,bool writing=false,bool executing=false) const;
-  std::uint64_t cpu_read(std::uint64_t address,unsigned size,RunResult& result,bool executing=false);
-  void cpu_write(std::uint64_t address,std::uint64_t value,unsigned size,RunResult& result);
-  void check_access(std::uint64_t address,unsigned size,bool writing,bool executing=false) const;
-  std::array<std::uint64_t,16> resolve_access(std::uint64_t address,unsigned size,bool writing,bool executing=false) const;
+  std::uint64_t translate(std::uint64_t address,bool writing=false,bool executing=false,bool unprivileged=false) const;
+  std::uint64_t cpu_read(std::uint64_t address,unsigned size,RunResult& result,bool executing=false,bool unprivileged=false);
+  void cpu_write(std::uint64_t address,std::uint64_t value,unsigned size,RunResult& result,bool unprivileged=false);
+  void check_access(std::uint64_t address,unsigned size,bool writing,bool executing=false,bool unprivileged=false) const;
+  std::array<std::uint64_t,16> resolve_access(std::uint64_t address,unsigned size,bool writing,bool executing=false,bool unprivileged=false) const;
   std::uint64_t device_read(std::uint64_t address,unsigned size);
   void device_write(std::uint64_t address,std::uint64_t value,unsigned size,RunResult& result);
   bool device_address(std::uint64_t address) const;
@@ -657,14 +657,18 @@ inline void MinimalGuest::step(RunResult& result) {
     if (opcode==2 && (value&0x80000000)) value|=UINT64_C(0xffffffff00000000);
     set(rd,value,opcode==0?32:64);
   }
-  else if ((instruction&0x3b200000)==0x38000000 && !(instruction&0x04000000)) { // LDUR/STUR and pre/post-index
+  else if ((instruction&0x3b200000)==0x38000000 && !(instruction&0x04000000)) { // LDUR/STUR, LDTR/STTR, pre/post-index
     const unsigned size=1u<<(instruction>>30), opcode=(instruction>>22)&3, mode=(instruction>>10)&3;
-    if ((opcode>=2&&size==8)||(opcode==3&&size==4) || mode==2 || (mode && rn!=31 && rn==rd)) unsupported();
+    // Mode 2 is the architected unprivileged LDTR/STTR family. In EL1 with
+    // UAO==0 it observes EL0 page permissions, without lowering the current
+    // exception level or changing the EL1 data-abort syndrome.
+    const bool unprivileged=(mode==2),writeback=(mode==1||mode==3);
+    if ((opcode>=2&&size==8)||(opcode==3&&size==4) || (writeback && rn!=31 && rn==rd)) unsupported();
     const auto base=reg(rn,64,true), updated=base+std::uint64_t(signed_field((instruction>>12)&511,9));
     const auto address=mode==1?base:updated;
-    if (opcode){auto value=cpu_read(address,size,result);if(opcode>=2&&(value&(UINT64_C(1)<<(size*8-1))))value|=~low_mask(size*8);set(rd,value,opcode==2||size==8?64:32);}
-    else cpu_write(address,reg(rd),size,result);
-    if (mode) set(rn,updated,64,true);
+    if (opcode){auto value=cpu_read(address,size,result,false,unprivileged);if(opcode>=2&&(value&(UINT64_C(1)<<(size*8-1))))value|=~low_mask(size*8);set(rd,value,opcode==2||size==8?64:32);}
+    else cpu_write(address,reg(rd),size,result,unprivileged);
+    if (writeback) set(rn,updated,64,true);
   }
   else if ((instruction&0x3a000000)==0x28000000 && !(instruction&0x04000000)) { // LDP/STP/LDPSW integers
     const unsigned opcode=instruction>>30, second=(instruction>>10)&31, mode=(instruction>>23)&3;
