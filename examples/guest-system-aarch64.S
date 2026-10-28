@@ -18,12 +18,12 @@ _start:
     mov x0, #0x40010000
     mov x1, #0x401
     str x1, [x0]                 // Device space, EL1 only.
-    mov x1, #0x745
+    mov x1, #0x705
     movk x1, #0x4000, lsl #16
-    str x1, [x0, #8]             // RAM, user RW, inner-shareable normal.
+    str x1, [x0, #8]             // RAM, EL1 RW only; executable at EL1.
     mov x1, #0x7c5
     movk x1, #0x4000, lsl #16
-    str x1, [x0, #16]            // A read-only alias used to trigger an abort.
+    str x1, [x0, #16]            // EL0 read-only code/data alias; write must abort.
     msr ttbr0_el1, x0
     msr ttbr1_el1, x0
     mov x1, #0xff00
@@ -66,6 +66,8 @@ _start:
     movk x0, #0x4100, lsl #16
     msr sp_el0, x0
     adr x0, .Luser
+    mov x1, #0x40000000
+    add x0, x0, x1              // Execute EL0 through its read-only alias.
     msr elr_el1, x0
     msr spsr_el1, xzr
     eret

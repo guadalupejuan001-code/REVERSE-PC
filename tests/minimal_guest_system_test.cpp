@@ -34,7 +34,8 @@ void translation(){
   fault(guest,UINT64_C(0x0100000040080000),false,false,0,"Noncanonical virtual address accepted");
   fault(guest,0x80009000,true,false,13,"Read-only block allowed a write");
   guest.write(0x40010008,0x40000345,8);fault(guest,0x40080000,false,false,9,"Missing access flag accepted");
-  guest.write(0x40010008,UINT64_C(0x0020000040000745),8);fault(guest,0x40080000,false,true,13,"Privileged execute-never ignored");
+  guest.write(0x40010008,0x40000745,8);fault(guest,0x40080000,false,true,13,"EL1 executed a region writable by EL0");
+  guest.write(0x40010008,UINT64_C(0x0020000040000705),8);fault(guest,0x40080000,false,true,13,"Privileged execute-never ignored");
   guest.write(0x40010008,0x40011003,8);guest.write(0x40011000,0x40000745,8);
   check(guest.physical_address(0x40001234)==0x40001234,"Level-2 table/block walk failed");
   guest.write(0x40011000,0x40012003,8);guest.write(0x40012008,0x40001747,8);
@@ -45,7 +46,7 @@ void translation(){
   auto user=initial();for(unsigned i=0;i<150&&user.machine().el;++i)user.run(1);
   check(user.machine().el==0,"ERET did not enter EL0");
   fault(user,MachineState::uart_base,false,false,13,"EL0 accessed privileged device mapping");
-  check(user.physical_address(0x40080000)==0x40080000,"EL0 user-accessible RAM denied");
+  check(user.physical_address(0x80080000,false,true)==0x40080000,"EL0 read-only code alias denied");
 }
 void shared_quantum_authority(){
   auto guest=initial();guest.apply_xi_delta("#!reverse-pc-machine-v1\nset r0 0\nlabel loop\nh $r0\nadd r0 1\ncmp r0 4096\njlt loop\nhalt\n");

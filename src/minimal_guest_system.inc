@@ -42,6 +42,9 @@ inline std::uint64_t MinimalGuest::translate(std::uint64_t address,bool writing,
     const bool user=(descriptor&(1u<<6))&&!deny_user;
     const bool readonly=(descriptor&(1u<<7))||read_only;
     if((!m.el&&!user)||(writing&&readonly))fault(12+level);
+    // AArch64 always forbids privileged execution from a region writable by
+    // EL0, independently of PXN and SCTLR.WXN (Arm VMSA permission rules).
+    if(executing&&m.el&&user&&!readonly)fault(12+level);
     if(executing && ((m.el?(pxn||bool(descriptor&(UINT64_C(1)<<53))):(uxn||bool(descriptor&(UINT64_C(1)<<54)))) ||
                     ((m.sctlr&(1u<<19))&&!readonly)))fault(12+level);
     return (descriptor&UINT64_C(0x0000fffffffff000)&~offset_mask)|(canonical&offset_mask);
