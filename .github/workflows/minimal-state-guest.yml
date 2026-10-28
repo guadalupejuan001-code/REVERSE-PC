@@ -84,7 +84,7 @@ jobs:
         run: |
           mkdir -p guest-linux-evidence
           sudo apt-get update -qq
-          sudo apt-get install -y clang lld llvm make flex bison bc libelf-dev
+          sudo apt-get install -y clang lld llvm make flex bison bc libelf-dev jq
           make -C deps/linux ARCH=arm64 LLVM=1 tinyconfig > guest-linux-evidence/configure.log 2>&1
           deps/linux/scripts/config --file deps/linux/.config --enable PRINTK --enable TTY --enable SERIAL_AMBA_PL011 --enable SERIAL_AMBA_PL011_CONSOLE --enable BLK_DEV_INITRD --disable KERNEL_MODE_NEON --disable RANDOMIZE_BASE
           make -C deps/linux ARCH=arm64 LLVM=1 olddefconfig >> guest-linux-evidence/configure.log 2>&1
@@ -103,9 +103,28 @@ jobs:
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_BYTEWISE_ACCESS_REFERENCE=1 -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tools/guest_linux_probe.cpp build/softfloat/libreverse_softfloat.a -o build/linux-bytewise
           timeout 180 build/linux-bytewise guest-linux-evidence/Image 500000 guest-linux-evidence/bytewise-500k.rvg > guest-linux-evidence/bytewise-prefix.json
           cmp guest-linux-evidence/fast-500k.rvg guest-linux-evidence/bytewise-500k.rvg
-          rm guest-linux-evidence/fast-500k.rvg guest-linux-evidence/bytewise-500k.rvg
-          timeout 180 build/guest-linux-probe guest-linux-evidence/Image 5000000 > guest-linux-evidence/own-linux-progress.json
+          # A real Linux checkpoint must resume byte-identically to an uninterrupted run,
+          # including output, FP state, MMU, interrupts, XI/Ether deltas and virtual time.
+          timeout 180 build/guest-linux-probe guest-linux-evidence/fast-500k.rvg 500000 guest-linux-evidence/resumed-1m.rvg > guest-linux-evidence/resumed-1m.json
+          timeout 180 build/guest-linux-probe guest-linux-evidence/Image 1000000 guest-linux-evidence/continuous-1m.rvg > guest-linux-evidence/continuous-1m.json
+          cmp guest-linux-evidence/resumed-1m.rvg guest-linux-evidence/continuous-1m.rvg
+          jq -e -n \
+            --slurpfile prefix guest-linux-evidence/own-linux-prefix.json \
+            --slurpfile resumed guest-linux-evidence/resumed-1m.json \
+            --slurpfile continuous guest-linux-evidence/continuous-1m.json \
+            '($prefix[0].console + $resumed[0].console) == $continuous[0].console and
+             $resumed[0].initial_instructions == 500000 and
+             $resumed[0].guest.instructions == 1000000 and
+             $continuous[0].guest.instructions == 1000000 and
+             $resumed[0].checkpoint_fnv == $continuous[0].checkpoint_fnv and
+             $resumed[0].stop_reason == "instruction_budget" and
+             $continuous[0].stop_reason == "instruction_budget"'
+          rm guest-linux-evidence/fast-500k.rvg guest-linux-evidence/bytewise-500k.rvg guest-linux-evidence/resumed-1m.rvg guest-linux-evidence/continuous-1m.rvg
+          # Preserve real 5M/6M checkpoints and diagnostic JSON. Boot is NOT implied.
+          timeout 180 build/guest-linux-probe guest-linux-evidence/Image 5000000 guest-linux-evidence/own-linux-5m.rvg > guest-linux-evidence/own-linux-progress.json
+          timeout 180 build/guest-linux-probe guest-linux-evidence/own-linux-5m.rvg 1000000 guest-linux-evidence/own-linux-6m.rvg > guest-linux-evidence/own-linux-continued.json
           cat guest-linux-evidence/own-linux-prefix.json
+          cat guest-linux-evidence/own-linux-continued.json
       - uses: actions/upload-artifact@v4
         if: always()
         with: {name: own-arm64-linux-development-probe, path: guest-linux-evidence/, retention-days: 14}
