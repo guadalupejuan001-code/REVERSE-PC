@@ -1,0 +1,82 @@
+{
+  "version": 1,
+  "actualizado_utc": "2026-10-28T19:13:00Z",
+  "ciclo": "QD-20261028-01",
+  "estado": "ci_xi_android15_aprobada_pr_en_revision",
+  "repositorio": "guadalupejuan001-code/REVERSE-PC",
+  "rama_codigo": "qd/cycle-20261028-independent-exams",
+  "codigo_ci_sha": "e99196e5d95b008fdeb01d3d3b1b326c0d2f7d16",
+  "nota_revision": "El commit probado y el commit de notas son distintos. Resolver HEAD antes del próximo ciclo.",
+  "pr": {
+    "numero": 35,
+    "url": "https://github.com/guadalupejuan001-code/REVERSE-PC/pull/35",
+    "base": "feature/qd-cody-studio-xi",
+    "borrador": true,
+    "integrado": false
+  },
+  "qd_base_sha": "fe2ca5a27c810a18bc1082b47f767b6141f688b3",
+  "reverse_main_sha": "01829217cfb0a3a704d37f0c0f66527a23ec149d",
+  "bb_yq": {
+    "main_sha": "783d7aff4385687d416e2f3a67ed81dca89d9fb9",
+    "app": "E025",
+    "ref_fijada_ci": "ed32ab6b73a31e96080b62269ad1eb9f3e15709d",
+    "checkpoint_ci": "build/e025/controller.rvp",
+    "sha256_checkpoint_no_comprobado_en_esta_sesion": true,
+    "memoria_usuario_sin_cambios": true
+  },
+  "w4u": {
+    "version": "0.1",
+    "ref_fijada_ci": "86b52437d851c7c6db8a80a1d2d4c3e5e2affb09"
+  },
+  "mundo_x_fijado": "e2778d962af22f6f1a0794058dd4685fc2573966",
+  "ci": {
+    "tipo": "GitHub Actions",
+    "workflow": ".github/workflows/workbench-android.yml",
+    "run_id": 40750976891,
+    "resultado": "success",
+    "url": "https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40750976891",
+    "artifact_id": 12843529961,
+    "entorno": "Ubuntu host XI/Ether, emulador Android 15 x86_64"
+  },
+  "pruebas": {
+    "xi_nativo": "Aprobado: 4 habilidades x 32 entradas = 128 ejecuciones reales; acepta 32/32, rechaza 31/32 y 8/8; recuperación, rollback y región W4u",
+    "interfaz": "Aprobado: protocolo UI; usa stub y no demuestra ejecución nativa",
+    "android_qd": "WORKBENCH_TESTS_OK mode=qd native=XI/Ether cases=32 rejected=32 saved=RVPC2",
+    "android_migracion": "WORKBENCH_TESTS_OK mode=migration checks=13 native=XI/Ether",
+    "android_full": "WORKBENCH_TESTS_OK mode=full native=XI/Ether desktop-shell=verified",
+    "android_restore": "WORKBENCH_TESTS_OK mode=restore native=XI/Ether desktop-shell=verified",
+    "antes": {
+      "casos_practica": 4,
+      "holdout_publicos_fijos": 4,
+      "umbral": "8/8",
+      "evaluaciones_nativas_totales": 32
+    },
+    "despues": {
+      "casos_practica": 4,
+      "holdout_nuevos_por_ensayo": 28,
+      "umbral": "32/32",
+      "evaluaciones_nativas_totales": 128,
+      "formato_rvpc2": "inalterado"
+    }
+  },
+  "aprendizaje": "Se demostró recuperación y adaptación de plantillas aritméticas a números nuevos en memoria desechable de emulador. No se añadieron pesos ni algoritmos generales ni se escribió memoria del usuario.",
+  "recursos_no_medidos": [
+    "latencia y RAM en teléfono físico",
+    "tamaño real del estado tras aprendizaje de usuario",
+    "eficiencia frente a otros modelos"
+  ],
+  "regresiones_observadas": 0,
+  "bloqueos": [
+    "PR #34 sigue abierta; PR #35 es dependiente y no puede fusionarse antes de ella.",
+    "No hay APK de actualización firmada con la llave del usuario.",
+    "Sin demostración de depuración o síntesis general.",
+    "CI inicial PR #34 falló por descarga corrupta NDK; repetición posterior fue success."
+  ],
+  "ciclo_activo": null,
+  "ultima_actividad": {
+    "id": "QD-20261028-01",
+    "registro": "docs/qd/autonomy/ejecuciones/ciclo-20261028-01.json",
+    "evidencia": "docs/qd/autonomy/evidencias/ciclo-20261028-criterio.json"
+  },
+  "siguiente": "docs/qd/autonomy/SIGUIENTE.md"
+}
