@@ -158,10 +158,11 @@ inline void MinimalGuest::device_write(std::uint64_t address,std::uint64_t value
     if(offset==0x38){m.uart_imsc=unsigned(value)&0x7ff;return;}
     if(offset==4||offset==0x44)return;
     if(offset==0x34){
-      // IFLS selects the legal PL011 TX/RX FIFO trigger fractions (0..4).
+      // Linux uses STRH for IFLS: accept byte, halfword and word MMIO.
+      // Only the legal PL011 TX/RX trigger fractions (0..4) are supported.
       // Persist and report configuration; the bounded serial transport still
       // drains TX synchronously and does not model per-byte physical latency.
-      require(size==4 && !(value&~UINT64_C(63)) && (value&7)<=4 && ((value>>3)&7)<=4,
+      require((size==1 || size==2 || size==4) && !(value&~UINT64_C(63)) && (value&7)<=4 && ((value>>3)&7)<=4,
               "Invalid PL011 FIFO interrupt thresholds");
       m.uart_ifls=unsigned(value);return;
     }

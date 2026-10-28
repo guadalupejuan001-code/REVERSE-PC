@@ -51,7 +51,7 @@ jobs:
           # At this exact checkpoint the previously rejected next instruction
           # configures PL011 IFLS. Refuse to mask the failure with a large budget.
           timeout 90 build/guest-linux-probe linux-phase3/current.rvg 1 linux-phase3/after-ifls.rvg > linux-phase3/ifls-first-step.json
-          jq -e '.guest.instructions == 29002276 and .stop_reason == "instruction_budget"' linux-phase3/ifls-first-step.json >/dev/null
+          jq -e '.guest.instructions == 29002276 and .stop_reason == "instruction_budget" and .next_instruction.uart_ifls == 18' linux-phase3/ifls-first-step.json >/dev/null
           mv linux-phase3/after-ifls.rvg linux-phase3/current.rvg
           reached=no
           for i in $(seq 1 12); do

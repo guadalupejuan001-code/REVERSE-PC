@@ -4,6 +4,7 @@
 #include <fstream>
 #include <chrono>
 #include <iostream>
+#include <sstream>
 using namespace reverse_pc::guest;
 int main(int argc,char** argv){try{
   require(argc>=2&&argc<=5,"Expected Image-or-RVG [additional_instruction_budget] [output_checkpoint] [initrd_for_Image]");
@@ -33,9 +34,31 @@ int main(int argc,char** argv){try{
       break;
     }
   }
+  // Read-only diagnostic: inspect the exact XI/Ether-backed next instruction.
+  std::string next_instruction="null";
+  try {
+    const auto virtual_pc=guest.registers().pc;
+    const auto physical_pc=guest.physical_address(virtual_pc,false,true);
+    const auto opcode=guest.read(physical_pc,4);
+    std::ostringstream details;
+    details<<"{\"virtual_pc\":"<<quote(hex(virtual_pc))
+           <<",\"physical_pc\":"<<quote(hex(physical_pc))
+           <<",\"opcode\":"<<quote(hex(opcode))
+           <<",\"uart_ifls\":"<<guest.machine().uart_ifls
+           <<",\"registers\":{";
+    for(unsigned i=0;i<guest.registers().x.size();++i){
+      if(i)details<<',';
+      details<<quote("x"+std::to_string(i))<<':'<<quote(hex(guest.registers().x[i]));
+    }
+    details<<"}}";next_instruction=details.str();
+  }catch(const std::exception& error){
+    next_instruction="{\"inspection_error\":"+quote(error.what())+"}";
+  }catch(...){next_instruction="{\"inspection_error\":\"architectural translation fault\"}";}
   const auto state=guest.snapshot();if(argc>=4){std::ofstream out(argv[3],std::ios::binary);out.write(reinterpret_cast<const char*>(state.data()),state.size());require(bool(out),"Cannot save probe checkpoint");}
   const auto elapsed=std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now()-begin).count();
   std::cout<<"{\"expected_upstream_linux\":\"6.1/830b3c68c1fb1e9176028d02ef86f3cf76aa2476\",\"initial_instructions\":"<<initial_instructions<<",\"guest\":"<<guest.statistics()
-    <<",\"host_elapsed_ns\":"<<elapsed<<",\"checkpoint_bytes\":"<<state.size()<<",\"checkpoint_fnv\":"<<quote(hex(digest(state,state.size())))<<",\"stop_reason\":"<<quote(reason)<<",\"console\":"<<quote(console)<<",\"linux_boot_complete\":false,\"android_boot\":false}\n";
+    <<",\"host_elapsed_ns\":"<<elapsed<<",\"checkpoint_bytes\":"<<state.size()<<",\"checkpoint_fnv\":"<<quote(hex(digest(state,state.size())))<<",\"stop_reason\":"<<quote(reason)<<",\"next_instruction\":"<<next_instruction<<",\"console\":"<<quote(console)
+    <<",\"linux_userspace_init_observed\":"<<(console.find("REVERSE_LINUX_INIT_OK")!=std::string::npos?"true":"false")
+    <<",\"linux_boot_complete\":false,\"android_boot\":false}\n";
   return 0;
 }catch(const std::exception& error){std::cerr<<error.what()<<'\n';return 1;}}
