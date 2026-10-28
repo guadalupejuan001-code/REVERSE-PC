@@ -96,7 +96,7 @@ function xmLaplace(w){
     '<div class="xm-result"><small>Predicción previa</small><strong>12 620 ¢</strong><span>Regla y estado inicial conocidos</span></div>'+
     '<div class="xm-result"><small>Resultado realizado</small><strong>'+(shock?'12 870':'12 620')+' ¢</strong><span>'+(shock?'Incluye un evento externo de +250 ¢':'Sin eventos externos')+'</span></div>'+
     '<div class="xm-result final"><small>Error de la predicción</small><strong>'+ (shock?'+250':'0') +' ¢</strong><span>'+(shock?'No se conocía el evento al pronosticar.':'Coincidencia exacta dentro del modelo.')+'</span></div></aside></section>'+
-    '<div class="xm-explain">'+icon('help')+'<p><strong>Conclusión:</strong> '+(shock?'Conocer todas las ecuaciones no permite anticipar datos externos que no se han observado. Si el evento se conociera antes, la predicción condicionada sería 12 870 ¢.':'Las dos soluciones XI coinciden exactamente porque el sistema y las condiciones del experimento están completamente definidos.')+' Esto no es una señal para operar en bolsa.</p></div>';
+    '<div class="xm-explain">'+icon('help')+'<p><strong>Conclusión:</strong> '+(shock?'Conocer todas las ecuaciones no permite anticipar datos externos que no se han observado. Si el evento se conociera antes, la predicción condicionada sería 12 870 ¢.':'Las dos soluciones XI coinciden exactamente porque el sistema y las condiciones del experimento están completamente definidos.')+' Esto no es una señal para operar en bolsa.</p></div>'+xmForecastHTML(w);
 }
 function xmResearch(){
   const records=[
@@ -107,7 +107,7 @@ function xmResearch(){
   return xmHeading('INVESTIGACIÓN / 03','Experimentos','Registro del laboratorio XI separado de cualquier historial de operaciones bursátiles.')+
     '<div class="xm-research-intro xm-card"><div><span class="xm-section-label">REVERSE-PC / XI</span><h3>Primera prueba de la hipótesis</h3><p>El proyecto X MARKET Laplace Lab v0.1 pasó una ejecución automatizada en GitHub Actions el 27 de octubre de 2026. Es evidencia de exactitud formal, no de predicción de mercados reales.</p></div>'+xmPill('CI XI APROBADA','positive')+'</div>'+
     '<div class="xm-research-list">'+records.map(r=>'<article class="xm-card xm-experiment"><div class="xm-experiment-index">'+r.number+'</div><div><h3>'+r.title+'</h3><p>'+r.result+'</p><small>'+r.state+'</small></div><strong>'+r.metric+'</strong></article>').join('')+'</div>'+
-    '<div class="xm-explain">'+icon('lock')+'<p>Estos resultados se cargan como documentación de una ejecución separada. Abrir X MARKET no ejecuta XI, no modifica la memoria de BBY Q ni crea transacciones.</p></div>';
+    '<div class="xm-explain">'+icon('lock')+'<p>Estos resultados documentan una ejecución separada. Laplace solo ejecuta XI bajo petición explícita, en un estado aislado que no modifica BBY Q ni realiza transacciones.</p></div>';
 }
 function xmAbout(){
   return xmHeading('SISTEMA / 04','Configuración','Estado de las conexiones y capacidades realmente presentes en esta primera interfaz.')+
@@ -119,7 +119,7 @@ function xmAbout(){
   '</div><div class="xm-card xm-settings-card"><h3>Arquitectura</h3>'+
   '<div class="xm-setting"><span>Interfaz</span><strong>REVERSE Workbench</strong></div>'+
   '<div class="xm-setting"><span>Experimento matemático</span><strong>XI, validado externamente</strong></div>'+
-  '<div class="xm-setting"><span>Ejecución local XI desde esta ventana</span><strong>Pendiente</strong></div>'+
+  '<div class="xm-setting"><span>Ejecución local XI desde esta ventana</span><strong>Disponible en Laplace bajo demanda</strong></div>'+
   '<div class="xm-setting"><span>Precisión bursátil demostrada</span><strong>Sin datos</strong></div>'+
   '</div></section>'+
   '<section class="xm-card xm-roadmap"><span class="xm-section-label">SIGUIENTE ETAPA</span><h3>Interfaz lista para conectar componentes reales</h3><p>La fuente de datos, el almacenamiento temporal, el motor estadístico, la auditoría de pronósticos y las pruebas financieras no forman parte de esta entrega visual. No se simulan como si estuvieran instalados.</p>'+

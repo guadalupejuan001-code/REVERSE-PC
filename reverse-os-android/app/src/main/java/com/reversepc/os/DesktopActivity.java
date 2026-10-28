@@ -183,7 +183,7 @@ public final class DesktopActivity extends Activity {
                 files=new WorkspaceFiles(getFilesDir());
                 SessionStore s=new SessionStore(getApplicationContext());
                 seedRxe();
-                seedBbyqExecutable();
+                seedBbyqExecutable();seedGraphicsExecutable();
                 String stats=NativeRuntime.inspect(s.loadState());
                 store=s;
                 Log.i(LOG,"DESKTOP_CORE_READY "+stats);
@@ -1231,6 +1231,9 @@ public final class DesktopActivity extends Activity {
         }catch(Exception ex){runOnUiThread(()->note.setText("No se pudo leer la lista de aplicaciones"));}});
     }
     private JSONObject rxeInfo(byte[] image)throws Exception{return new JSONObject(new String(NativeRuntime.inspectRxe(image),java.nio.charset.StandardCharsets.UTF_8));}
+    private void seedGraphicsExecutable()throws Exception{
+        WorkbenchPrograms.seedGraphics(this,files,preferences);
+    }
     private void seedBbyqExecutable()throws Exception{
         if(preferences.getBoolean("bbyq-rxe-e016-seeded",false))return;
         boolean exists=false;for(WorkspaceFiles.Entry e:files.list("Aplicaciones"))if(e.path.equals("Aplicaciones/BBY-Q.rxe"))exists=true;
@@ -1278,7 +1281,7 @@ public final class DesktopActivity extends Activity {
     private void openRxe(String path,boolean start){
         if(files==null){info("Preparando aplicaciones…");return;}
         engine.execute(()->{try{byte[] image=files.read(path);JSONObject metadata=rxeInfo(image);String title=metadata.getString("title");runOnUiThread(()->{
-            if(isFinishing()||isDestroyed())return;if("chat".equals(metadata.optString("ui"))){openRxeChat(path,image,metadata);return;}WindowUi w=window(title,"Ejecutable REVERSE .rxe","rxe:"+path);if(w==null)return;
+            if(isFinishing()||isDestroyed())return;if("graphics".equals(metadata.optString("ui"))){if(start)try{startActivity(new Intent(this,RxeGraphicsActivity.class).putExtra("path",path).putExtra("identity",RxeGraphicsActivity.identity(image)));}catch(Exception error){info("No se pudo abrir el juego: "+error.getMessage());}return;}if("chat".equals(metadata.optString("ui"))){openRxeChat(path,image,metadata);return;}WindowUi w=window(title,"Ejecutable REVERSE .rxe","rxe:"+path);if(w==null)return;
             TextView output=label(preferences.getString("rxe-output:"+path,"Pulsa Ejecutar para iniciar el programa."),12,WHITE,false);output.setTypeface(Typeface.MONOSPACE);output.setTextIsSelectable(true);output.setContentDescription("SALIDA RXE "+path);ScrollView scroll=new ScrollView(this);scroll.addView(output);w.content.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
             TextView run=touch("Ejecutar",12,true,()->{});margin(w.content,run,6);
             Runnable execute=()->{run.setEnabled(false);output.setText("Ejecutando…");engine.execute(()->{String text;try{if(store==null)throw new IOException("Núcleo no disponible");byte[] current=files.read(path);ResultPacket result=ResultPacket.parse(NativeRuntime.executeRxe(store.loadState(),current));store.writeState(result.state);text=pretty(result.output);if(text.length()>48000)text=text.substring(0,48000)+"\n[Salida visible recortada]";preferences.edit().putString("rxe-output:"+path,text).apply();Log.i(LOG,"RXE_RUN_OK "+path);}catch(Exception e){text="No se pudo ejecutar: "+e.getMessage()+"\nEstado anterior conservado";Log.e(LOG,"RXE_RUN_FAILED "+path,e);}final String result=text;runOnUiThread(()->{if(w.dialog.isShowing()){output.setText(result);run.setEnabled(true);}});});};run.setOnClickListener(v->execute.run());if(start)execute.run();

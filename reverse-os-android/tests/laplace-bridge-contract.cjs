@@ -1,0 +1,13 @@
+'use strict';
+const fs=require('node:fs'),assert=require('node:assert/strict'),path=require('node:path'),root=path.resolve(__dirname,'../..');
+const a=fs.readFileSync(path.join(root,'experiments/x-market-laplace/forecast-one.xi'));
+const b=fs.readFileSync(path.join(root,'reverse-os-android/app/src/main/assets/workbench/laplace-forecast.xi'));
+assert.deepEqual(b,a,'The original XI model must be shipped byte-for-byte');
+const ui=fs.readFileSync(path.join(root,'reverse-os-android/app/src/main/assets/workbench/laplace-native.js'),'utf8');
+const xm=fs.readFileSync(path.join(root,'reverse-os-android/app/src/main/assets/workbench/x-market.js'),'utf8');
+const html=fs.readFileSync(path.join(root,'reverse-os-android/app/src/main/assets/workbench/index.html'),'utf8');
+assert.ok(ui.includes("nativeRequest('experiment'"),'Must use isolated native XI');
+assert.ok(ui.includes("reply.isolated!==true"),'Must validate isolated result');
+assert.ok(xm.includes('xmForecastHTML(w)'),'Must be visible in X MARKET');
+assert.ok(html.includes('laplace-native.js'),'JS must be embedded');
+console.log(JSON.stringify({suite:'laplace_native_ui_contract',model_exact:true,xi_isolated:true,ui_embedded:true}));
