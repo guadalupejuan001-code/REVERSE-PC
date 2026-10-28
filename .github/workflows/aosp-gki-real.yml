@@ -23,7 +23,7 @@ jobs:
       - name: Acquire official public Android14-6.1 GKI from source-pinned CI build
         run: |
           set -euo pipefail
-          mkdir -p input extracted oracle evidence
+          mkdir -p input oracle evidence
           # Android Common tag android14-6.1-2026-09_r5:
           # source commit 6d8630162a371a04152cf5778f8a5b90e49f30a6
           # public official artifact build 16707926, target kernel_aarch64.
