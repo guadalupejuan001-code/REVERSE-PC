@@ -194,6 +194,49 @@ void unprivileged_memory_access(){
   check(MinimalGuest::from_snapshot(before_store).snapshot()==before_store,
         "User-access regression changed legacy RVG checkpoint encoding");
 }
+
+void eret_ssbs_saved_status(){
+  // Independently assembled AArch64 sequence:
+  // MOV X0,#0x1000; MSR SPSR_EL1,X0; load ELR_EL1=0x40080018;
+  // ERET; NOP at the EL0 target. The bit 12 SPSR marker is SSBS.
+  const std::uint32_t code[]{
+    0xd2820000u,0xd5184000u,0xd2800301u,0xf2a80101u,
+    0xd5184021u,0xd69f03e0u,0xd503201fu
+  };
+  auto image=system_demo_elf();image.resize(256);
+  for(const auto instruction:code)put(image,instruction,4);
+  for(unsigned i=0;i<8;++i){
+    image[96+i]=std::uint8_t(std::uint64_t(sizeof(code))>>(8*i));
+    image[104+i]=image[96+i];
+  }
+  MinimalGuest witness(128*1024*1024);witness.load_elf(image,true);
+  const auto before=witness.snapshot();
+  witness.run(5);
+  check(witness.machine().spsr==0x1000&&witness.machine().el==1,
+        "The SSBS ERET witness did not set its saved process status");
+  const auto checkpoint=witness.snapshot();
+  auto restored=MinimalGuest::from_snapshot(checkpoint);
+  check(restored.snapshot()==checkpoint,"SPSR with SSBS flag altered RVG history");
+  restored.run(1);
+  check(restored.machine().el==0&&restored.registers().pc==0x40080018 &&
+        restored.machine().spsr==0x1000,
+        "SPSR.SSBS was not accepted for the actual EL0 exception return");
+  check(restored.registers().sp==restored.machine().sp0,
+        "SSBS return did not restore the EL0 stack");
+  restored.run(1);
+  check(restored.machine().el==0&&restored.registers().pc==0x4008001c,
+        "Target EL0 instruction did not execute after ERET");
+  // A genuinely unsupported SPSR bit must still fail atomically.
+  auto invalid=image;
+  constexpr std::uint32_t mov_reserved=0xd2840000u; // MOV X0,#0x2000: reserved bit 13
+  for(unsigned i=0;i<4;++i)invalid[256+i]=std::uint8_t(mov_reserved>>(i*8));
+  MinimalGuest bad(128*1024*1024);bad.load_elf(invalid,true);
+  bad.run(5);const auto saved=bad.snapshot();
+  fails([&]{bad.run(1);},"Reserved SPSR bits were silently permitted");
+  check(bad.snapshot()==saved,"Failed ERET violated atomic rollback");
+  check(MinimalGuest::from_snapshot(before).snapshot()==before,
+        "Previous guest checkpoint was changed by SSBS support");
+}
 void identification(){
   auto image=system_demo_elf();image.resize(260);const std::uint32_t instruction=0xd53800c0; // MRS X0,REVIDR_EL1
   for(unsigned i=0;i<4;++i)image[256+i]=std::uint8_t(instruction>>(8*i));
@@ -252,6 +295,6 @@ void interrupt_priority_initialization(){
   check(guest.snapshot()==before,"Rejected APR write changed CPU/device state");
 }
 }
-int main(){try{boot_and_restore();translation();shared_quantum_authority();exclusives();image_boot_protocol();cross_page_access();unprivileged_memory_access();identification();uart_fifo_configuration();interrupt_priority_initialization();
+int main(){try{boot_and_restore();translation();shared_quantum_authority();exclusives();image_boot_protocol();cross_page_access();unprivileged_memory_access();eret_ssbs_saved_status();identification();uart_fifo_configuration();interrupt_priority_initialization();
   std::cout<<"{\"checks\":"<<checks<<",\"system\":\"own-EL1-MMU-IRQ-EL0-SVC\",\"existing_quantum_qubits\":4096,\"android_boot\":\"not_implemented\"}\n";return 0;
 }catch(const std::exception& error){std::cerr<<error.what()<<'\n';return 1;}}

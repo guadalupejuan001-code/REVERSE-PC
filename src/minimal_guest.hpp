@@ -471,7 +471,12 @@ inline void MinimalGuest::step(RunResult& result) {
   else if (instruction==0xd69f03e0) { // ERET EL1 -> EL1h/EL1t/EL0t
     require(machine_.enabled,"ERET requires system mode");if(!machine_.el)throw MachineFault{1u<<25,0};
     const auto saved=machine_.spsr,mode=saved&31;
-    require((mode==0||mode==4||mode==5) && !(saved&~UINT64_C(0xf00003df)),"Unsupported ERET processor state");
+    // Bit 12 is SPSR_EL1.SSBS. Linux can set it in an EL0 saved frame even
+    // when this sequential CPU does not advertise speculative execution or
+    // FEAT_SSBS. Accept the bit as an inert architectural marker; do not
+    // interpret it as a change in privilege or erase the other reserved-bit
+    // checks. A user return remains an EL0 return, never an EL1 shortcut.
+    require((mode==0||mode==4||mode==5) && !(saved&~UINT64_C(0xf00013df)),"Unsupported ERET processor state");
     require(!(machine_.elr&3),"Unaligned ERET target");
     next=machine_.elr;select_stack(mode?1:0,mode==5?1:0);machine_.daif=unsigned(saved)&0x3c0;cpu.nzcv=unsigned(saved>>28)&15;
     machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;
