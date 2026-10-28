@@ -99,19 +99,22 @@ export function inspectGkiKernelOnly(boot) {
   // Exact ARM64 Linux Image header fields; fail on big-endian or unsupported granules.
   check((flags&1n)===0n&&((flags>>1n)&3n)<=1n,
     'GKI kernel Image flags are not supported by the current XI/Ether loader');
-  const maximum=16*1024*1024;
-  const certainSizeBlock=b.kernel.size+32>=maximum;
+  // Mirror the *Linux-only* limits in MinimalGuest. CI also checks both
+  // constants against src/minimal_guest.hpp; ELF remains capped at 16 MiB.
+  const kernelBudget=64*1024*1024,totalBudget=128*1024*1024;
+  const certainSizeBlock=b.kernel.size>kernelBudget;
   return {manifest:{
     status:'gki_kernel_only',android_boot:false,android_init_observed:false,adb:false,wild_rift:false,
     container_sha256:b.hash,container_header_version:b.ver,
     kernel:summary(b.kernel),arm64_image_magic:true,
     linux_image_header:{text_offset:'0x'+k.readBigUInt64LE(8).toString(16),
       image_size:k.readBigUInt64LE(16).toString(),flags:'0x'+flags.toString(16)},
-    existing_guest_image_budget_bytes:maximum,
+    existing_guest_image_budget_bytes:totalBudget,
+    guest_linux_kernel_budget_bytes:kernelBudget,
     guest_loader_certain_size_block:certainSizeBlock,
     pending:['matching vendor_boot, init_boot or boot generic ramdisk, and Android system/vendor partitions',
       'virtual-board compatibility, bootconfig, device support, Android /init and services not verified',
-      ...(certainSizeBlock?['kernel by itself exceeds current 16 MiB combined Image/DTB/initramfs budget']:[])]
+      ...(certainSizeBlock?['kernel exceeds current 64 MiB Linux kernel host limit']:[])]
   },segments:{kernel:k}};
 }
 async function load(path){
