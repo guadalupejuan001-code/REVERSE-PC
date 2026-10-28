@@ -3,7 +3,7 @@
   'use strict';
   if (window.__reverseMusic?.version === 2) return;
   let shield=false,timer=null,observer=null,altered=null,lastAction=-Infinity;
-  let held=false,hostSuspended=false,mediaError='';
+  let held=false,hostSuspended=false,mediaError='',commandId=0;
   const video=()=>document.querySelector('#movie_player video')||document.querySelector('#player-container-id video')
     ||document.querySelector('ytmusic-player video')||[...document.querySelectorAll('video')].find(v=>v.getClientRects().length)||document.querySelector('video');
   // An unrelated ad elsewhere in the page must never seek the current song.
@@ -43,6 +43,7 @@
     timer=setInterval(filter,600);filter();
   }
   function command(action,value){
+    const attempt=++commandId;
     if(action==='hostPause'){hostSuspended=true;held=true;pauseAll();return true;}
     if(action==='hostResume'){hostSuspended=false;held=true;pauseAll();return true;}
     if(action==='hold'||action==='pause'){held=true;pauseAll();return true;}
@@ -50,7 +51,7 @@
     const v=video();
     if(action==='play'||(action==='toggle'&&v?.paused)){
       if(!v)return false;held=false;mediaError='';
-      try{const playing=v.play();playing?.catch(()=>{mediaError='No se pudo reproducir. Toca el video o vuelve a pulsar Reproducir.';});return true;}
+      try{const playing=v.play();playing?.catch(()=>{if(attempt===commandId&&!held&&!hostSuspended)mediaError='No se pudo reproducir. Toca el video o vuelve a pulsar Reproducir.';});return true;}
       catch{mediaError='No se pudo reproducir. Toca el video para continuar.';return false;}
     }
     if(action==='toggle'){held=true;pauseAll();return !!v;}
@@ -66,7 +67,7 @@
   }
   // Interruptions stay paused until a real interaction or an explicit native Play.
   document.addEventListener('play',e=>{if((held||hostSuspended)&&e.target.matches?.('video,audio'))e.target.pause();},true);
-  const interact=e=>{if(e.isTrusted&&!hostSuspended){held=false;mediaError='';}};
+  const interact=e=>{if(e.isTrusted&&!hostSuspended){commandId++;held=false;mediaError='';}};
   document.addEventListener('pointerdown',interact,true);document.addEventListener('keydown',interact,true);
   function snapshot(){
     const v=video(),ad=adShowing(v);

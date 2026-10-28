@@ -131,6 +131,8 @@ async function desktop(width,height,profile=null){
   await page.evaluate(()=>{window.__reverseMusic.command('hostResume');__clock.paused=false;document.querySelector('video').dispatchEvent(new Event('play'));});
   check(await page.evaluate(()=>__clock.paused&&window.__reverseMusic.snapshot().held),'Returning to the app keeps automatic playback paused');
   await page.evaluate(()=>window.__reverseMusic.command('play'));check(await page.evaluate(()=>!__clock.paused&&!window.__reverseMusic.snapshot().held),'Explicit Play releases the interruption');
+  await page.evaluate(async()=>{const v=document.querySelector('video');v.play=()=>new Promise((resolve,reject)=>window.rejectPlay=reject);window.__reverseMusic.command('play');window.__reverseMusic.command('pause');window.rejectPlay(Error('Interrupted by user'));await Promise.resolve();});
+  check(await page.evaluate(()=>window.__reverseMusic.snapshot().mediaError===''),'A canceled Play promise cannot overwrite a newer Pause');
   check(errors.length===0,JSON.stringify(errors));check(requests.length===0,'Fixtures make no external requests');
   await browser.close();
   fs.writeFileSync(path.join(out,'results.json'),JSON.stringify({checks,page_errors:errors,external_requests:requests,scope:'Desktop/profile/transport and DOM media fixtures; no live YouTube streaming or Android device playback verified.'},null,2)+'\n');
