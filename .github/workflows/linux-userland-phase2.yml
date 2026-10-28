@@ -25,10 +25,10 @@ jobs:
           ref: e2778d962af22f6f1a0794058dd4685fc2573966
           path: deps/mundo-x
           persist-credentials: false
-      - name: Retrieve verified Linux 6M checkpoint
+      - name: Retrieve verified Linux 22M checkpoint
         uses: actions/download-artifact@v4
         with:
-          name: xi-linux-boot-phase2
+          name: xi-linux-boot-continuation
           run-id: 40769156660
           github-token: ${{ github.token }}
           path: guest-linux-evidence
@@ -73,6 +73,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: xi-linux-boot-continuation
+          name: xi-linux-boot-phase2
           path: linux-phase2/
           retention-days: 14
