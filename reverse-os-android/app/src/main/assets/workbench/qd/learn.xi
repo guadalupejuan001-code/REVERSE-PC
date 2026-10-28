@@ -1,6 +1,7 @@
 #!reverse-pc-machine-v1
 # Qd v1: commit one reviewed coding pattern to BBY Q's OWN RVPC2.
 # The host may stage typed input, but ONLY XI accepts and copies it.
+# v2 requires full 32/32 assessed cases; stored template format unchanged.
 # B=8400000000000000000, M=8410000000000000000.
 load8 r0 8410000000000000000
 cmp r0 81
@@ -9,10 +10,10 @@ load8 r0 8410000000000000001
 cmp r0 1
 jne invalid
 load8 r10 8410000000000000004
-cmp r10 8
+cmp r10 32
 jne invalid
 load8 r10 8410000000000000005
-cmp r10 8
+cmp r10 32
 jne invalid
 load8 r1 8410000000000000002
 cmp r1 1
