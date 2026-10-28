@@ -122,7 +122,16 @@ void identification(){
     guest.load_elf(image,true);guest.run(1);check(guest.registers().x[0]==0,"Absent SVE/SME feature incorrectly advertised");
   }
 }
+void interrupt_priority_initialization(){
+  auto image=system_demo_elf();image.resize(256);const std::uint32_t code[]{0xd2801a01,0xf2a10021,0xb900003f,0xb9400020,0xd2800020,0xb9000020};
+  for(auto instruction:code)put(image,instruction,4);
+  for(unsigned i=0;i<8;++i){image[96+i]=std::uint8_t(std::uint64_t(sizeof(code))>>(8*i));image[104+i]=image[96+i];}
+  MinimalGuest guest(128*1024*1024);guest.load_elf(image,true);guest.run(5);
+  check(guest.machine().active_irqs[0]==0&&guest.machine().active_irqs[1]==0,"APR initialization created active interrupts");
+  const auto before=guest.snapshot();fails([&]{guest.run(1);},"Unimplemented manual active-priority write accepted");
+  check(guest.snapshot()==before,"Rejected APR write changed CPU/device state");
 }
-int main(){try{boot_and_restore();translation();shared_quantum_authority();exclusives();image_boot_protocol();cross_page_access();identification();
+}
+int main(){try{boot_and_restore();translation();shared_quantum_authority();exclusives();image_boot_protocol();cross_page_access();identification();interrupt_priority_initialization();
   std::cout<<"{\"checks\":"<<checks<<",\"system\":\"own-EL1-MMU-IRQ-EL0-SVC\",\"existing_quantum_qubits\":4096,\"android_boot\":\"not_implemented\"}\n";return 0;
 }catch(const std::exception& error){std::cerr<<error.what()<<'\n';return 1;}}

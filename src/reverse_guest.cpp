@@ -1,5 +1,6 @@
 #include "minimal_guest_demo.hpp"
 #include "minimal_guest_system_demo.hpp"
+#include "minimal_guest_fp_demo.hpp"
 #include <chrono>
 #include <filesystem>
 #include <fstream>
@@ -50,6 +51,8 @@ void help() {
   std::cout<<"REVERSE ARM64 compatibility module (Android boot is not implemented)\n"
       "reverse_guest demo [output.rvg]\n"
       "reverse_guest demo-init output.rvg\n"
+      "reverse_guest fp-demo [output.rvg]\n"
+      "reverse_guest fp-demo-init output.rvg\n"
       "reverse_guest init program.elf output.rvg [ram_bytes] [max_overrides]\n"
       "reverse_guest system-demo-init output.rvg\n"
       "reverse_guest system-init kernel.elf output.rvg [ram_bytes] [max_overrides]\n"
@@ -78,6 +81,12 @@ int main(int argc,char** argv) {
     if(operation=="system-demo-init"){
       require(argc==3,"system-demo-init requires output state");MinimalGuest guest(128*1024*1024);
       guest.load_elf(system_demo_elf(),true);save_file(argv[2],guest.snapshot());std::cout<<guest.statistics()<<'\n';return 0;
+    }
+    if(operation=="fp-demo"||operation=="fp-demo-init"){
+      require(argc==3||(argc==2&&operation=="fp-demo"),"fp-demo accepts a state filename; fp-demo-init requires one");
+      MinimalGuest guest;guest.load_elf(fp_demo_elf());RunResult run;
+      if(operation=="fp-demo")run=guest.run(1000);
+      if(argc==3)save_file(argv[2],guest.snapshot());report(guest,run,start);return 0;
     }
     if(operation=="linux-init"){
       require(argc==4||argc==5,"linux-init requires Image, output state and optional initrd");

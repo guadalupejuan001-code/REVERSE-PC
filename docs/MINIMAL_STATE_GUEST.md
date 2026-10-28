@@ -59,7 +59,7 @@ entre todos esos qubits ni mejora de FPS.
 | Excepciones | Síncronas/IRQ, VBAR/ELR/SPSR/ESR/FAR; permisos y fallos de traducción |
 | MMU | Stage 1, TTBR0/TTBR1, 25–48 bits VA, granulo 4 KiB, bloques L1/L2 y páginas L3; AF/AP/APTable/PXN/UXN y prohibición de ejecutar en EL1 regiones escribibles por EL0 |
 | Consola | Subconjunto PL011 con entrada/salida y cola acotada |
-| Interrupciones | Subconjunto GICv2 de un grupo y un núcleo, 64 IDs; temporizadores físico/virtual |
+| Interrupciones | Subconjunto GICv2 de un grupo y un núcleo, 64 IDs; inicialización APR en cero sin IRQ activa; temporizadores físico/virtual |
 | Tiempo | Un tick virtual por transición de ejecución; WFI puede avanzar hasta el siguiente plazo; no es reloj de pared |
 | Arranque Image | Image AArch64 little-endian de 4 KiB, DTB v17 generado y opcional initrd |
 | PSCI | VERSION, FEATURES seleccionadas, SYSTEM_OFF; otras llamadas devuelven NOT_SUPPORTED |
@@ -162,7 +162,7 @@ build/reverse_guest rxe cambiado.rvg cambios.rxe continuado.rvg
 El testigo de sistema conserva 128 MiB lógicos con una imagen de 4.391 bytes y
 9 diferencias de byte al terminar. Es un test pequeño, no la huella de Android
 ni de Wild Rift. Las pruebas originales aportan 8.234 aserciones; las nuevas
-comprueban 54 condiciones de sistema/tabla/permisos/estado cuántico, además de
+comprueban 57 condiciones de sistema/tabla/permisos/estado cuántico, además de
 CLI, UBSan y oráculos clang/lld/QEMU. La integración Android ejercita WebView/JNI,
 el ejecutor original y reinicio en emulador Android 15. No equivale a una prueba
 física en el teléfono.

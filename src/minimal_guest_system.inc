@@ -128,6 +128,7 @@ inline std::uint64_t MinimalGuest::device_read(std::uint64_t address,unsigned si
     if(offset==0xc){const auto irq=m.next_irq();if(irq<64){m.pending_irqs[irq/32]&=~(1u<<(irq%32));m.active_irqs[irq/32]|=1u<<(irq%32);}return irq;}
     if(offset==0x18)return m.next_irq();if(offset==0xfc)return 0x0202043b;
     if(offset==0x14){unsigned priority=255;for(unsigned i=0;i<64;++i)if(m.active_irqs[i/32]&(1u<<(i%32)))priority=std::min(priority,unsigned(m.priority[i]));return priority;}
+    if(offset>=0xd0&&offset<=0xdc){require(!(m.active_irqs[0]|m.active_irqs[1]),"GIC APR reads with active IRQs are not implemented");return 0;}
     throw std::runtime_error("Unsupported GIC CPU register read "+hex(offset));
   }
   const auto offset=unsigned(address-MachineState::gic_dist);
@@ -163,6 +164,9 @@ inline void MinimalGuest::device_write(std::uint64_t address,std::uint64_t value
     if(offset==0){require((value&~UINT64_C(1))==0,"Only GICv2 single-group mode is implemented");m.cpu_ctl=unsigned(value);return;}
     if(offset==4){m.pmr=unsigned(value)&255;return;}if(offset==8){m.bpr=unsigned(value)&7;return;}
     if(offset==0x10){const auto irq=unsigned(value)&1023;require(irq<64,"Invalid GIC end-of-interrupt ID");m.active_irqs[irq/32]&=~(1u<<(irq%32));return;}
+    if(offset>=0xd0&&offset<=0xdc){
+      require(value==0&&!(m.active_irqs[0]|m.active_irqs[1]),"Only GIC APR zero initialization before active IRQs is implemented");return;
+    }
     throw std::runtime_error("Unsupported GIC CPU register write "+hex(offset));
   }
   const auto offset=unsigned(address-MachineState::gic_dist);
