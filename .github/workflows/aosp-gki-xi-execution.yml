@@ -80,7 +80,8 @@ jobs:
           jq -e '.guest.immutable_image_bytes>35777024 and
             .guest.max_delta_overrides==0 and
             .android_boot==false' evidence/gki-split.json >/dev/null
-          jq -e '.initial_instructions==(.guest.instructions|if .>=0 then . else 0 end)' evidence/gki-first.json >/dev/null || true
+          first_instructions="$(jq -r '.guest.instructions' evidence/gki-first.json)"
+          jq --argjson n "$first_instructions" -e '.initial_instructions==$n' evidence/gki-split.json >/dev/null
           sha256sum evidence/gki-direct.rvg > evidence/checkpoint.sha256
           jq '{initial_instructions,guest:{pc:.guest.pc,instructions:.guest.instructions,
             exception_level:.guest.exception_level,exceptions:.guest.exceptions,
