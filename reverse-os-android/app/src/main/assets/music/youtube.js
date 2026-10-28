@@ -94,7 +94,7 @@
   document.addEventListener('pause',e=>{
     const v=video();
     // WebView pauses this element when Android takes audio focus away.
-    if(e.target===v&&!adShowing(v)&&!v.ended&&!v.seeking&&v.currentTime>0&&v.readyState>=2)held=true;
+    if(e.target===v&&!adShowing(v)&&!v.ended&&!v.seeking&&v.readyState>=2)held=true;
   },true);
   const interact=e=>{if(e.isTrusted&&!hostSuspended){commandId++;held=false;mediaError='';}};
   document.addEventListener('pointerdown',interact,true);document.addEventListener('keydown',interact,true);

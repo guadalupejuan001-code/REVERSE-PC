@@ -156,6 +156,8 @@ async function desktop(width,height,profile=null){
   check(await page.evaluate(()=>document.querySelector('video').loop),'Repeat resumes for the song after an ad');
   await page.evaluate(()=>window.__reverseMusic.setRepeatOne(false));
   check(await page.evaluate(()=>!document.querySelector('video').loop),'Turning repeat off restores normal playback');
+  await page.evaluate(()=>{const v=document.querySelector('video');Object.defineProperty(v,'readyState',{value:4});__clock.time=0;window.__reverseMusic.command('play');v.pause();v.dispatchEvent(new Event('pause'));});
+  check(await page.evaluate(()=>window.__reverseMusic.snapshot().held),'A system pause at the start of a track also blocks automatic resume');
   await page.evaluate(()=>window.__reverseMusic.command('hostPause'));
   check(await page.evaluate(()=>window.__reverseMusic.command('play')===false&&__clock.paused),'A suspended host cannot start playback');
   await page.evaluate(()=>{window.__reverseMusic.command('hostResume');__clock.paused=false;document.querySelector('video').dispatchEvent(new Event('play'));});
