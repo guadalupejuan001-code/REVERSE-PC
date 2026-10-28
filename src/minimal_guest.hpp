@@ -440,11 +440,13 @@ inline void MinimalGuest::step(RunResult& result) {
   auto next=pc+4;
   const unsigned bits=(instruction>>31)?64:32, rd=instruction&31, rn=(instruction>>5)&31, rm=(instruction>>16)&31;
   auto unsupported=[&](){throw std::runtime_error("Unsupported AArch64 instruction "+hex(instruction)+" at "+hex(pc));};
-  if (instruction==0xd503201f || instruction==0xd503203f || instruction==0xd503241f ||
+  if (instruction==0xd503201f || instruction==0xd503203f || instruction==0xd503229f || instruction==0xd503241f ||
       instruction==0xd503245f || instruction==0xd503249f || instruction==0xd50324df ||
       instruction==0xd50320ff || instruction==0xd503233f || instruction==0xd503237f ||
       instruction==0xd50323bf || instruction==0xd50323ff) {
-    // NOP/YIELD and BTI hints. ID registers do not advertise FEAT_BTI, so the
+    // NOP/YIELD, CSDB (Consume Speculative Data Barrier), and BTI hints.
+    // This software CPU performs no speculative memory reads, so CSDB adds
+    // no effect beyond preserving program order. ID registers omit BTI; the
     // architecturally backwards-compatible BTI/PAuth HINT encodings are NOPs.
     // PAuth/BTI features are not advertised; authenticated branch opcodes are
     // not accepted as ordinary branches.

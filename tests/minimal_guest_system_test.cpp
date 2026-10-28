@@ -237,6 +237,37 @@ void eret_ssbs_saved_status(){
   check(MinimalGuest::from_snapshot(before).snapshot()==before,
         "Previous guest checkpoint was changed by SSBS support");
 }
+
+void speculative_data_barrier(){
+  // 0xd503229f is CSDB, independently assembled by Clang AArch64.
+  const std::uint32_t instructions[]{
+    0xd503229fu,0xd503201fu,0xd2800100u,0xf2b08000u,0xd4000002u
+  };
+  auto image=system_demo_elf();image.resize(256);
+  for(auto instruction:instructions)put(image,instruction,4);
+  for(unsigned i=0;i<8;++i){
+    image[96+i]=std::uint8_t(std::uint64_t(sizeof(instructions))>>(8*i));
+    image[104+i]=image[96+i];
+  }
+  MinimalGuest guest(128*1024*1024);guest.load_elf(image,true);
+  const auto before_core=guest.runtime().core_snapshot();
+  const auto before_memory=guest.runtime().memory_persistent_snapshot();
+  const auto before_pc=guest.registers().pc;
+  const auto before_registers=guest.registers().x;
+  guest.run(1);
+  check(guest.registers().pc==before_pc+4 &&
+        guest.registers().x==before_registers &&
+        guest.machine().exceptions==0,
+        "CSDB did not execute as an architectural speculation-order hint");
+  check(guest.runtime().core_snapshot()==before_core &&
+        guest.runtime().memory_persistent_snapshot()==before_memory,
+        "CSDB unexpectedly changed the XI/Ether state");
+  const auto saved=guest.snapshot();
+  auto restored=MinimalGuest::from_snapshot(saved);
+  check(restored.snapshot()==saved,"CSDB checkpoint was not stable");
+  const auto result=restored.run(10);
+  check(result.halted&&result.exit_code==0,"Guest execution did not continue after CSDB");
+}
 void identification(){
   auto image=system_demo_elf();image.resize(260);const std::uint32_t instruction=0xd53800c0; // MRS X0,REVIDR_EL1
   for(unsigned i=0;i<4;++i)image[256+i]=std::uint8_t(instruction>>(8*i));
@@ -295,6 +326,6 @@ void interrupt_priority_initialization(){
   check(guest.snapshot()==before,"Rejected APR write changed CPU/device state");
 }
 }
-int main(){try{boot_and_restore();translation();shared_quantum_authority();exclusives();image_boot_protocol();cross_page_access();unprivileged_memory_access();eret_ssbs_saved_status();identification();uart_fifo_configuration();interrupt_priority_initialization();
+int main(){try{boot_and_restore();translation();shared_quantum_authority();exclusives();image_boot_protocol();cross_page_access();unprivileged_memory_access();eret_ssbs_saved_status();speculative_data_barrier();identification();uart_fifo_configuration();interrupt_priority_initialization();
   std::cout<<"{\"checks\":"<<checks<<",\"system\":\"own-EL1-MMU-IRQ-EL0-SVC\",\"existing_quantum_qubits\":4096,\"android_boot\":\"not_implemented\"}\n";return 0;
 }catch(const std::exception& error){std::cerr<<error.what()<<'\n';return 1;}}
