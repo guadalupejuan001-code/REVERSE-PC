@@ -163,6 +163,11 @@ final class WorkbenchPrograms {
         Log.i("ReverseWorkbench","WORKBENCH_RXE_RUN_OK "+request.getString("path"));
         return new JSONObject().put("ok",true).put("output",output);
     }
+    JSONObject qd(JSONObject request)throws Exception{
+        if(!exists(BBYQ))throw new IOException("BBY Q no está instalado en Aplicaciones");
+        byte[] image=files.read(BBYQ);
+        return new QdEngine(context,image).handle(request);
+    }
     JSONObject compile(JSONObject request)throws Exception{
         String source=request.getString("source");byte[] bytes=source.getBytes(StandardCharsets.UTF_8);
         if(bytes.length>WorkspaceFiles.MAX_TEXT)throw new IOException("El programa supera 256 KiB");
