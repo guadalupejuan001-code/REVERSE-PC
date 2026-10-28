@@ -91,6 +91,11 @@
   }
   // Interruptions stay paused until a real interaction or an explicit native Play.
   document.addEventListener('play',e=>{if((held||hostSuspended)&&e.target.matches?.('video,audio'))e.target.pause();},true);
+  document.addEventListener('pause',e=>{
+    const v=video();
+    // WebView pauses this element when Android takes audio focus away.
+    if(e.target===v&&!adShowing(v)&&!v.ended&&!v.seeking&&v.currentTime>0&&v.readyState>=2)held=true;
+  },true);
   const interact=e=>{if(e.isTrusted&&!hostSuspended){commandId++;held=false;mediaError='';}};
   document.addEventListener('pointerdown',interact,true);document.addEventListener('keydown',interact,true);
   function snapshot(){

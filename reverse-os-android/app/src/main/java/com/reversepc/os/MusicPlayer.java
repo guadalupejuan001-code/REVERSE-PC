@@ -6,8 +6,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
-import android.media.AudioAttributes;
-import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.media.MediaMetadata;
 import android.media.session.MediaSession;
@@ -46,12 +44,10 @@ final class MusicPlayer {
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final SharedPreferences prefs;
     private final AtomicInteger blocked = new AtomicInteger();
-    private final AudioManager audio;
-    private final AudioFocusRequest focus;
     private final MediaSession session;
     private volatile boolean shield;
     private boolean repeatOne;
-    private boolean focused, suspended, disposed, polling, receiverRegistered, recovering;
+    private boolean suspended, disposed, polling, receiverRegistered, recovering;
     private WebView remote;
     private String injection, error = "", notice = "", phase = "idle";
     private int pollGeneration, documentEpoch;
@@ -66,11 +62,8 @@ final class MusicPlayer {
         this.activity = activity; this.root = root; this.desktop = desktop; this.listener = listener;
         prefs = activity.getSharedPreferences("reverse-music", Context.MODE_PRIVATE);
         shield = prefs.getBoolean("shield", true);
-        audio = (AudioManager) activity.getSystemService(Context.AUDIO_SERVICE);
-        focus = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
-            .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA)
-                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
-            .setWillPauseWhenDucked(true).setOnAudioFocusChangeListener(this::audioFocusChanged, ui).build();
+        // Chromium's AudioFocusDelegate owns the audio focus for this WebView.
+        // A second native focus request steals it from the same UID and pauses playback.
         session = new MediaSession(activity, "REVERSE Music");
         session.setCallback(new MediaSession.Callback() {
             @Override public void onPlay() { playback("play", 0); }
@@ -211,7 +204,7 @@ final class MusicPlayer {
     }
     private void beginNavigation() {
         documentEpoch++; stopPolling(); phase = "loading"; error = ""; notice = "";
-        snapshot = new JSONObject(); releaseFocus(); updateSession();
+        snapshot = new JSONObject(); updateSession();
     }
     private void send(String action, double value) {
         if (remote == null || disposed) return;
@@ -226,27 +219,16 @@ final class MusicPlayer {
     private void playback(String action, double value) {
         if (remote == null || suspended || disposed || phase.equals("error") || !Double.isFinite(value)) return;
         if (action.equals("pause")) { interrupt(""); return; }
-        if (action.equals("play") || action.equals("toggle")) {
-            if (!focused) focused = audio.requestAudioFocus(focus) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
-            if (!focused) { interrupt("Otra aplicación tiene el audio. Intenta reproducir de nuevo."); return; }
-            remote.getSettings().setMediaPlaybackRequiresUserGesture(false);
-        }
-        // A pre-command sample must not overwrite Play or abandon its audio focus.
+        if (action.equals("play") || action.equals("toggle")) remote.getSettings().setMediaPlaybackRequiresUserGesture(false);
+        // A pre-command sample must not overwrite a newer playback command.
         stopPolling(); notice = ""; send(action, value); startPolling();
-    }
-    void audioFocusChanged(int change) {
-        if (!disposed && change < 0) interrupt("Audio interrumpido por otra aplicación. Pulsa Reproducir para continuar.");
     }
     private void interrupt(String message) {
         if (disposed) return;
-        // Cancel callbacks sampled before the interruption; they must not reacquire focus.
-        stopPolling(); send("hold", 0); releaseFocus(); notice = message;
+        // Cancel callbacks sampled before the interruption; they must not undo the pause.
+        stopPolling(); send("hold", 0); notice = message;
         try { snapshot.put("paused", true).put("held", true); } catch (Exception ignored) {}
         updateSession(); publish(); startPolling();
-    }
-    private void releaseFocus() {
-        if (focused) audio.abandonAudioFocusRequest(focus);
-        focused = false;
     }
     private static double number(JSONObject value, String key) {
         Object raw = value.opt(key);
@@ -270,7 +252,7 @@ final class MusicPlayer {
     private void updateSession() {
         if (disposed) return;
         boolean hasMedia = snapshot.optBoolean("hasMedia") && phase.equals("ready");
-        boolean playing = hasMedia && !snapshot.optBoolean("paused",true) && focused && !suspended;
+        boolean playing = hasMedia && !snapshot.optBoolean("paused",true) && !snapshot.optBoolean("held") && !suspended;
         long duration = (long)(snapshot.optDouble("duration",0)*1000);
         session.setMetadata(new MediaMetadata.Builder().putString(MediaMetadata.METADATA_KEY_TITLE,
             snapshot.optString("title","YouTube")).putLong(MediaMetadata.METADATA_KEY_DURATION,duration).build());
@@ -309,12 +291,7 @@ final class MusicPlayer {
                     if (decoded instanceof String && !"null".equals(decoded)) snapshot = cleanSnapshot(new JSONObject((String)decoded));
                 }
                 boolean playing = phase.equals("ready") && snapshot.optBoolean("hasMedia") && !snapshot.optBoolean("paused",true);
-                if (playing && snapshot.optBoolean("held")) { send("hold",0); playing = false; }
-                if (playing && !focused) {
-                    focused = audio.requestAudioFocus(focus) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
-                    if (!focused) { interrupt("El audio está ocupado por otra aplicación."); return; }
-                }
-                if (!playing && focused) releaseFocus();
+                if (playing && snapshot.optBoolean("held")) { send("hold",0); snapshot.put("paused",true); }
                 updateSession(); publish();
             } catch (Exception ignored) { /* Navigation can transiently return null. */ }
             if (polling && generation == pollGeneration) ui.postDelayed(poll,1000);
@@ -331,13 +308,13 @@ final class MusicPlayer {
         } catch (Exception ignored) {}
     }
     private void fail(String message) {
-        stopPolling(); send("hold",0); releaseFocus(); snapshot = new JSONObject();
+        stopPolling(); send("hold",0); snapshot = new JSONObject();
         error = message; phase = "error"; updateSession(); publish();
     }
     void reportError(String message) { notice = message; publish(); }
     void pause() {
         if (disposed) return;
-        suspended = true; stopPolling(); send("hostPause",0); releaseFocus();
+        suspended = true; stopPolling(); send("hostPause",0);
         try { snapshot.put("paused",true).put("held",true); } catch (Exception ignored) {}
         if (remote != null) { remote.getSettings().setMediaPlaybackRequiresUserGesture(true); remote.onPause(); remote.setVisibility(View.INVISIBLE); }
         updateSession(); publish();

@@ -40,6 +40,10 @@ final class MusicPlayerChecks {
         AtomicReference<WebView> remote = new AtomicReference<>();
         AtomicReference<JSONObject> status = new AtomicReference<>();
         AtomicReference<Throwable> setupError = new AtomicReference<>();
+        android.media.AudioManager audio=(android.media.AudioManager)activity.getSystemService(Context.AUDIO_SERVICE);
+        android.media.AudioFocusRequest competingFocus=new android.media.AudioFocusRequest.Builder(android.media.AudioManager.AUDIOFOCUS_GAIN_TRANSIENT)
+            .setAudioAttributes(new android.media.AudioAttributes.Builder().setUsage(android.media.AudioAttributes.USAGE_MEDIA).setContentType(android.media.AudioAttributes.CONTENT_TYPE_SPEECH).build())
+            .setOnAudioFocusChangeListener(change->{},new android.os.Handler(android.os.Looper.getMainLooper())).build();
         WebView desktop = activity.testingWebView();
         FrameLayout root = (FrameLayout) desktop.getParent();
         boolean previousShield = activity.getSharedPreferences("reverse-music", Context.MODE_PRIVATE).getBoolean("shield", true);
@@ -116,7 +120,7 @@ final class MusicPlayerChecks {
                 catch (Exception failure) { throw new RuntimeException(failure); }
             });
             waitFor(runner, web, "!document.getElementById('reverse-music-filter')");
-            runner.runOnMainSync(() -> player.get().audioFocusChanged(android.media.AudioManager.AUDIOFOCUS_LOSS));
+            control(runner,player.get(),"pause");
             waitFor(runner, web, "clock.paused&&window.__reverseMusic.snapshot().held");
             js(runner, web, "clock.paused=false;document.querySelector('video').dispatchEvent(new Event('play'));true");
             check(js(runner, web, "clock.paused").equals("true"), "Automatic playback escaped an audio interruption");
@@ -142,8 +146,11 @@ final class MusicPlayerChecks {
             check(Math.abs(Double.parseDouble(js(runner,web,"document.getElementById('real').currentTime"))-stopped)<.1,"Paused PCM audio kept advancing");
             control(runner,player.get(),"play");
             waitFor(runner, web, "!document.getElementById('real').paused");
-            runner.runOnMainSync(() -> player.get().audioFocusChanged(android.media.AudioManager.AUDIOFOCUS_LOSS_TRANSIENT));
+            runner.runOnMainSync(() -> check(audio.requestAudioFocus(competingFocus)==android.media.AudioManager.AUDIOFOCUS_REQUEST_GRANTED,"Competing audio focus was denied"));
             waitFor(runner, web, "document.getElementById('real').paused&&window.__reverseMusic.snapshot().held");
+            runner.runOnMainSync(() -> audio.abandonAudioFocusRequest(competingFocus));
+            Thread.sleep(300);
+            check(js(runner,web,"document.getElementById('real').paused").equals("true"),"Regaining audio focus restarted playback automatically");
             // Resuming the Activity must retain that pause even with a real media decoder.
             runner.runOnMainSync(() -> {player.get().pause();player.get().resume();});
             check(js(runner,web,"document.getElementById('real').paused").equals("true"),"Activity resume restarted PCM audio");
@@ -167,6 +174,7 @@ final class MusicPlayerChecks {
             check(web.getParent() == null, "Closed player still owns a desktop view");
             return 28;
         } finally {
+            runner.runOnMainSync(() -> audio.abandonAudioFocusRequest(competingFocus));
             runner.runOnMainSync(() -> { if (player.get() != null) player.get().destroy(); });
             activity.getSharedPreferences("reverse-music", Context.MODE_PRIVATE).edit().putBoolean("shield", previousShield).commit();
         }
