@@ -2,6 +2,12 @@ package com.reversepc.os;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.Context;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
+import android.os.SystemClock;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
@@ -37,15 +43,40 @@ public final class RxeGraphicsActivity extends Activity {
     private volatile boolean closed=false,foreground=true;
     private WebView web;
     private XRenderSurface xrender;
+    private SensorManager sensors;
+    private Sensor motionSensor;
+    private boolean motionRequested;
+    private long lastMotionMs;
     private byte[] image;
     private String originHost;
     private GraphicsSessionStore session;
     private ValueCallback<Uri[]> chooser;
+    private final SensorEventListener motionListener=new SensorEventListener(){
+        @Override public void onAccuracyChanged(Sensor sensor,int accuracy){}
+        @Override public void onSensorChanged(SensorEvent e){
+            if(closed||!foreground||!motionRequested||web==null||motionSensor==null||e.sensor!=motionSensor)return;
+            long now=SystemClock.elapsedRealtime();if(now-lastMotionMs<40)return;lastMotionMs=now;
+            float[] matrix=new float[9],angles=new float[3];
+            SensorManager.getRotationMatrixFromVector(matrix,e.values);
+            SensorManager.getOrientation(matrix,angles);
+            if(!Float.isFinite(angles[0])||!Float.isFinite(angles[1])||!Float.isFinite(angles[2]))return;
+            final String values=String.format(Locale.US,"{\"yaw\":%.5f,\"pitch\":%.5f,\"roll\":%.5f}",angles[0],angles[1],angles[2]);
+            web.evaluateJavascript("window.dispatchEvent(new CustomEvent('prisma-motion',{detail:"+values+"}));",null);
+        }
+    };
+    private void updateMotionListener(){
+        if(sensors==null)return;
+        sensors.unregisterListener(motionListener);
+        if(!closed&&foreground&&motionRequested&&motionSensor!=null)sensors.registerListener(motionListener,motionSensor,SensorManager.SENSOR_DELAY_GAME);
+    }
     static String identity(byte[] bytes)throws Exception{
         StringBuilder hex=new StringBuilder();for(byte b:MessageDigest.getInstance("SHA-256").digest(bytes))hex.append(String.format(Locale.ROOT,"%02x",b&255));return hex.toString();
     }
     @Override protected void onCreate(Bundle saved){
-        super.onCreate(saved);getWindow().setNavigationBarColor(Color.BLACK);getWindow().setStatusBarColor(Color.BLACK);WorkbenchActivity.immersive(this);
+        super.onCreate(saved);
+        sensors=(SensorManager)getSystemService(Context.SENSOR_SERVICE);
+        if(sensors!=null){motionSensor=sensors.getDefaultSensor(Sensor.TYPE_GAME_ROTATION_VECTOR);if(motionSensor==null)motionSensor=sensors.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR);}
+        getWindow().setNavigationBarColor(Color.BLACK);getWindow().setStatusBarColor(Color.BLACK);WorkbenchActivity.immersive(this);
         events.execute(()->{
             try{
                 String path=getIntent().getStringExtra("path"),expected=getIntent().getStringExtra("identity");
@@ -97,6 +128,8 @@ public final class RxeGraphicsActivity extends Activity {
     private static WebResourceResponse denied(){return new WebResourceResponse("text/plain","UTF-8",403,"Forbidden",new HashMap<>(),new ByteArrayInputStream(new byte[0]));}
     public final class Bridge {
         @JavascriptInterface public boolean immersive(){return true;}
+        @JavascriptInterface public boolean motionAvailable(){return motionSensor!=null;}
+        @JavascriptInterface public void motionEnabled(boolean enabled){ui.post(()->{if(closed)return;motionRequested=enabled;updateMotionListener();});}
         @JavascriptInterface public String xRender(){return "ether-render-x-cuboids-v1";}
         @JavascriptInterface public void frame(float[] data){if(!closed&&foreground&&xrender!=null)xrender.submit(data);}
         @JavascriptInterface public String xRenderInfo(){return xrender==null?"{}":xrender.info();}
@@ -117,8 +150,8 @@ public final class RxeGraphicsActivity extends Activity {
         }catch(Exception ignored){/* JSONObject only contains bounded native values. */}
     }
     @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==PICK_AUDIO){ValueCallback<Uri[]> callback=chooser;chooser=null;if(callback!=null)callback.onReceiveValue(result==RESULT_OK&&data!=null&&data.getData()!=null?new Uri[]{data.getData()}:null);}}
-    @Override protected void onPause(){foreground=false;if(web!=null)web.evaluateJavascript("window.dispatchEvent(new Event('prisma-native-pause'));",ignored->{if(!foreground&&web!=null)web.onPause();});if(xrender!=null)xrender.onPause();super.onPause();}
-    @Override protected void onResume(){super.onResume();foreground=true;WorkbenchActivity.immersive(this);if(xrender!=null)xrender.onResume();if(web!=null)web.onResume();}
+    @Override protected void onPause(){foreground=false;updateMotionListener();if(web!=null)web.evaluateJavascript("window.dispatchEvent(new Event('prisma-native-pause'));",ignored->{if(!foreground&&web!=null)web.onPause();});if(xrender!=null)xrender.onPause();super.onPause();}
+    @Override protected void onResume(){super.onResume();foreground=true;updateMotionListener();WorkbenchActivity.immersive(this);if(xrender!=null)xrender.onResume();if(web!=null)web.onResume();}
     @Override public void onWindowFocusChanged(boolean focus){super.onWindowFocusChanged(focus);if(focus)WorkbenchActivity.immersive(this);else if(web!=null)web.evaluateJavascript("window.dispatchEvent(new Event('prisma-native-pause'));",null);}
-    @Override protected void onDestroy(){closed=true;if(chooser!=null){chooser.onReceiveValue(null);chooser=null;}if(web!=null){web.removeJavascriptInterface("ReverseGraphics");web.destroy();web=null;}if(xrender!=null){xrender.release();xrender=null;}events.shutdown();super.onDestroy();}
+    @Override protected void onDestroy(){closed=true;motionRequested=false;updateMotionListener();if(chooser!=null){chooser.onReceiveValue(null);chooser=null;}if(web!=null){web.removeJavascriptInterface("ReverseGraphics");web.destroy();web=null;}if(xrender!=null){xrender.release();xrender=null;}events.shutdown();super.onDestroy();}
 }
