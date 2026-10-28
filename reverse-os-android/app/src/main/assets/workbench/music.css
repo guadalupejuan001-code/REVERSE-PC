@@ -34,3 +34,17 @@ body[data-keyboard="true"] .music-heading,body[data-keyboard="true"] .music-tabs
 @container(max-width:480px){.music-downloads{padding:9px 10px}.music-heading-actions{gap:5px}.music-download-button{padding:5px 7px}.music-download-button span{font-size:0}.music-download-button span::after{content:'Descargar';font-size:10px}.music-download-intro strong{font-size:12px}.music-download-intro p{font-size:10px}}
 @container(max-width:360px){.music-download-button span{display:none}.music-download-intro{align-items:flex-start}.music-download-intro button{font-size:9px;padding:6px}.music-download-form>div{gap:5px}}
 @media(max-height:450px){.music-app:has(.music-downloads)>.music-heading{display:none}.music-download-intro p{display:none}.music-download-form{margin:8px 0}.music-download-form input{padding:7px}.music-download-intro strong{font-size:12px}}
+
+/* Native Music WebView stays in the central stage; URL/paste controls must
+   remain visible and focusable at every landscape height. */
+.music-search{position:relative;z-index:2;flex:none;min-height:35px;align-items:stretch}
+.music-search label{min-width:0;flex:1 1 auto}
+.music-search .music-paste{display:inline-flex;align-items:center;justify-content:center;gap:4px;flex:0 0 auto;white-space:nowrap;min-width:55px;font-size:10px;padding:5px 8px}
+.music-search .music-paste .icon{width:14px;height:14px;flex:none}
+.music-search>.primary-button{min-width:52px;flex:0 0 auto}
+.music-tabs,.music-heading{flex:none;position:relative}
+.music-stage{min-height:34px;flex:1 1 auto;z-index:0}
+.music-controls,.music-footer,.music-seek{flex-shrink:0}
+.music-footer [data-music-copy]{width:29px;height:25px}
+@container(max-width:480px){.music-search{gap:4px;padding-left:7px;padding-right:7px}.music-search .music-paste{min-width:31px;padding:4px}.music-search .music-paste span{display:none}.music-search>.primary-button{min-width:50px;padding:5px 6px}}
+@media(max-height:410px){.music-search{min-height:28px}.music-search .music-paste{padding:3px 5px}.music-search input{padding:3px 0}.music-tabs{min-height:26px}}

@@ -3,6 +3,8 @@ package com.reversepc.os;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.Intent;
+import android.content.ClipboardManager;
+import android.content.ClipData;
 import android.graphics.Insets;
 import android.graphics.Rect;
 import android.net.Uri;
@@ -202,6 +204,29 @@ public final class WorkbenchActivity extends Activity {
         return result;
     }
     public final class Bridge {
+        /** Clipboard is queried only on an explicit UI action. No polling or storage. */
+        @JavascriptInterface public String musicClipboard(){
+            if(closed||!hostResumed)return "";
+            try{
+                ClipboardManager clipboard=(ClipboardManager)getSystemService(CLIPBOARD_SERVICE);
+                if(clipboard==null||!clipboard.hasPrimaryClip())return "";
+                ClipData item=clipboard.getPrimaryClip();
+                if(item==null||item.getItemCount()==0)return "";
+                CharSequence text=item.getItemAt(0).getText();
+                if(text==null)return "";
+                String value=text.toString().trim();
+                return value.length()>2048?value.substring(0,2048):value;
+            }catch(RuntimeException denied){return "";}
+        }
+        @JavascriptInterface public boolean musicCopyLink(String link){
+            if(closed||!hostResumed||link==null||link.length()>2048||!MusicPolicy.pageAllowed(link))return false;
+            try{
+                ClipboardManager clipboard=(ClipboardManager)getSystemService(CLIPBOARD_SERVICE);
+                if(clipboard==null)return false;
+                clipboard.setPrimaryClip(ClipData.newPlainText("Enlace de YouTube",link));
+                return true;
+            }catch(RuntimeException denied){return false;}
+        }
         @JavascriptInterface public void music(String action,String payload){
             if(closed||action==null||payload==null||payload.length()>8192)return;
             ui.post(()->{

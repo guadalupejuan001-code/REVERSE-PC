@@ -212,8 +212,17 @@ final class MusicPlayer {
         double viewport = data.optDouble("viewport", 0);
         double x = data.optDouble("x", 0), y = data.optDouble("y", 0);
         double w = data.optDouble("w", 0), h = data.optDouble("h", 0);
-        boolean visible = !suspended && !localSelected && data.optBoolean("visible") && viewport > 0
+        boolean visible = !suspended && !localSelected && !data.optBoolean("editing", false) && data.optBoolean("visible") && viewport > 0
             && Double.isFinite(x + y + w + h + viewport) && w >= 1 && h >= 1 && x >= 0 && y >= 0;
+        // The separate native WebView must never overlap Music's first-party
+        // URL editor, tab bar, transport or window controls.
+        if (data.has("safeTop") || data.has("safeBottom") || data.has("safeLeft") || data.has("safeRight")) {
+            double top=data.optDouble("safeTop",Double.NaN), bottom=data.optDouble("safeBottom",Double.NaN);
+            double left=data.optDouble("safeLeft",Double.NaN), right=data.optDouble("safeRight",Double.NaN);
+            visible &= Double.isFinite(top)&&Double.isFinite(bottom)&&Double.isFinite(left)&&Double.isFinite(right)
+                && top>=0&&bottom>top+32&&right>left+100
+                && x>=left-1&&x+w<=right+1&&y>=top-1&&y+h<=bottom+1;
+        }
         double scale = viewport > 0 ? desktop.getWidth() / viewport : 0;
         visible &= scale > 0 && (x + w) * scale <= desktop.getWidth() + 2 && (y + h) * scale <= desktop.getHeight() + 2;
         if (visible) {
@@ -223,6 +232,7 @@ final class MusicPlayer {
             params.leftMargin = (int)Math.round(x * scale); params.topMargin = (int)Math.round(y * scale);
             remote.setLayoutParams(params);
         }
+        if (!visible && remote.getVisibility()==View.VISIBLE) remote.clearFocus();
         remote.setVisibility(visible ? View.VISIBLE : View.INVISIBLE);
     }
     private void beginNavigation() {
