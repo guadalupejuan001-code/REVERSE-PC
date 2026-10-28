@@ -71,6 +71,7 @@ final class MusicPlayerChecks {
                         @Override public void onPageCommitVisible(WebView view, String url) { production.onPageCommitVisible(view, url); }
                         @Override public void onPageFinished(WebView view, String url) { production.onPageFinished(view, url); }
                         @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) { return production.shouldOverrideUrlLoading(view, request); }
+                        @Override public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) { production.onReceivedHttpError(view,request,response); }
                     });
                     p.command("open", new JSONObject().put("input", "https://m.youtube.com/watch?v=abcdefghijk"));
                 } catch (Throwable failure) { setupError.set(failure); }
@@ -142,9 +143,23 @@ final class MusicPlayerChecks {
             check(js(runner,web,"document.getElementById('real').paused").equals("true"),"Activity resume restarted PCM audio");
             control(runner,player.get(),"play");
             waitFor(runner, web, "!document.getElementById('real').paused");
+            runner.runOnMainSync(() -> {
+                try {
+                    player.get().command("open",new JSONObject().put("input","https://m.youtube.com/watch?v=abcdefghijk"));
+                    JSONObject loading=status.get();
+                    check(loading.getString("phase").equals("loading")&&!loading.getBoolean("hasMedia")&&loading.getString("title").isEmpty(),"Navigation published the previous track");
+                }catch(Exception failure){throw new RuntimeException(failure);}
+            });
+            waitFor(runner,web,"!document.getElementById('real')&&!!window.__reverseMusic");
+            runner.runOnMainSync(() -> web.getWebViewClient().onReceivedHttpError(web,request("https://m.youtube.com/watch?v=abcdefghijk",true),
+                new WebResourceResponse("text/html","UTF-8",503,"Unavailable",Collections.emptyMap(),new ByteArrayInputStream(new byte[0]))));
+            check(status.get().getString("phase").equals("error")&&!status.get().getBoolean("hasMedia")&&status.get().getString("title").isEmpty(),"HTTP failure retained playback controls or stale metadata");
+            control(runner,player.get(),"reload");
+            for(int n=0;n<80&&!status.get().optString("phase").equals("ready");n++)Thread.sleep(100);
+            check(status.get().getString("phase").equals("ready"),"Reload did not recover from an HTTP failure");
             runner.runOnMainSync(() -> player.get().destroy());
             check(web.getParent() == null, "Closed player still owns a desktop view");
-            return 22;
+            return 25;
         } finally {
             runner.runOnMainSync(() -> { if (player.get() != null) player.get().destroy(); });
             activity.getSharedPreferences("reverse-music", Context.MODE_PRIVATE).edit().putBoolean("shield", previousShield).commit();
@@ -166,10 +181,11 @@ final class MusicPlayerChecks {
         try { return new JSONObject().put("viewport", viewport).put("x", 20).put("y", 30).put("w", 240).put("h", 100).put("visible", visible); }
         catch (Exception error) { throw new RuntimeException(error); }
     }
-    private static WebResourceRequest request(String url) {
+    private static WebResourceRequest request(String url) { return request(url,false); }
+    private static WebResourceRequest request(String url, boolean mainFrame) {
         return new WebResourceRequest() {
             public android.net.Uri getUrl() { return android.net.Uri.parse(url); }
-            public boolean isForMainFrame() { return false; }
+            public boolean isForMainFrame() { return mainFrame; }
             public boolean isRedirect() { return false; }
             public boolean hasGesture() { return false; }
             public String getMethod() { return "GET"; }

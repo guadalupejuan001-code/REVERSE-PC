@@ -54,6 +54,7 @@ public final class WorkbenchActivity extends Activity {
     private FrameLayout root;
     private MusicPlayer music;
     private String musicWindowId;
+    private boolean hostResumed;
     private ValueCallback<Uri[]> chooser;
     private byte[] pendingExport;
     private int insetTop,insetBottom,insetLeft,insetRight,keyboardInset;
@@ -220,6 +221,7 @@ public final class WorkbenchActivity extends Activity {
                             web.evaluateJavascript("window.ReverseMusic&&window.ReverseMusic.update("+state.toString()+");",null);
                         }catch(Exception ignored){}
                     });
+                    if(!hostResumed)music.pause();
                     music.command(action,data);
                 }catch(Exception error){if(music!=null)music.reportError(String.valueOf(error.getMessage()));}
             });
@@ -342,8 +344,8 @@ public final class WorkbenchActivity extends Activity {
         if(request==EXPORT){byte[] bytes=pendingExport;pendingExport=null;if(result==RESULT_OK&&bytes!=null&&data!=null&&data.getData()!=null){Uri target=data.getData();RuntimeExecutor.INSTANCE.execute(()->{try(OutputStream stream=getContentResolver().openOutputStream(target,"wt")){if(stream==null)throw new IllegalStateException("Destino no disponible");stream.write(bytes);message("Archivo exportado.");}catch(Exception error){message("No se pudo escribir el archivo.");}});}}
     }
     @Override public void onWindowFocusChanged(boolean focused){super.onWindowFocusChanged(focused);if(focused)immersive(this);}
-    @Override protected void onPause(){if(music!=null)music.pause();if(web!=null){web.evaluateJavascript("document.body&&(document.body.dataset.appPaused='true')",null);web.onPause();}super.onPause();}
-    @Override protected void onResume(){super.onResume();immersive(this);if(web!=null){web.onResume();web.evaluateJavascript("document.body&&(document.body.dataset.appPaused='false')",null);}if(music!=null)music.resume();}
+    @Override protected void onPause(){hostResumed=false;if(music!=null)music.pause();if(web!=null){web.evaluateJavascript("document.body&&(document.body.dataset.appPaused='true')",null);web.onPause();}super.onPause();}
+    @Override protected void onResume(){super.onResume();hostResumed=true;immersive(this);if(web!=null){web.onResume();web.evaluateJavascript("document.body&&(document.body.dataset.appPaused='false')",null);}if(music!=null)music.resume();}
     @Override protected void onDestroy(){closed=true;if(music!=null){music.destroy();music=null;}if(chooser!=null){chooser.onReceiveValue(null);chooser=null;}if(web!=null){web.removeJavascriptInterface("ReverseNative");web.destroy();}super.onDestroy();}
     // Used only by the in-repository Android instrumentation tests.
     public WebView testingWebView(){return web;}

@@ -125,8 +125,7 @@ final class MusicPlayer {
             }
             @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap icon) {
                 if (disposed || view != remote) return;
-                documentEpoch++; stopPolling(); view.getSettings().setMediaPlaybackRequiresUserGesture(true); phase = "loading"; error = ""; notice = "";
-                snapshot = new JSONObject(); releaseFocus(); updateSession(); publish();
+                beginNavigation(); view.getSettings().setMediaPlaybackRequiresUserGesture(true); publish();
             }
             @Override public void onPageCommitVisible(WebView view, String url) { inject(view); }
             @Override public void onPageFinished(WebView view, String url) { inject(view); startPolling(); }
@@ -177,11 +176,10 @@ final class MusicPlayer {
         }
         if (action.equals("open")) {
             String url = MusicPolicy.resolve(data.optString("input", ""));
-            createView(); phase = "loading"; error = ""; notice = ""; snapshot = new JSONObject();
-            releaseFocus(); updateSession(); remote.loadUrl(url); publish(); return;
+            createView(); beginNavigation(); remote.loadUrl(url); publish(); return;
         }
-        if (action.equals("reload")) { if (remote != null) { phase = "loading"; error = ""; notice = ""; remote.reload(); } return; }
-        if (action.equals("back")) { if (remote != null && remote.canGoBack()) remote.goBack(); return; }
+        if (action.equals("reload")) { if (remote != null) { beginNavigation(); remote.reload(); publish(); } return; }
+        if (action.equals("back")) { if (remote != null && remote.canGoBack()) { beginNavigation(); remote.goBack(); publish(); } return; }
         if (!action.matches("play|pause|toggle|next|previous|seek"))
             throw new IllegalArgumentException("Control de música no permitido.");
         playback(action, data.optDouble("time", 0));
@@ -204,6 +202,10 @@ final class MusicPlayer {
             remote.setLayoutParams(params);
         }
         remote.setVisibility(visible ? View.VISIBLE : View.INVISIBLE);
+    }
+    private void beginNavigation() {
+        documentEpoch++; stopPolling(); phase = "loading"; error = ""; notice = "";
+        snapshot = new JSONObject(); releaseFocus(); updateSession();
     }
     private void send(String action, double value) {
         if (remote == null || disposed) return;
@@ -295,11 +297,11 @@ final class MusicPlayer {
             if (disposed || suspended || source != remote || generation != pollGeneration) return;
             ui.removeCallbacks(pollTimeout); pollTimeout = null;
             try {
-                if (epoch == documentEpoch && raw != null && raw.length() <= 20000) {
+                if (epoch == documentEpoch && phase.equals("ready") && raw != null && raw.length() <= 20000) {
                     Object decoded = new JSONTokener(raw).nextValue();
                     if (decoded instanceof String && !"null".equals(decoded)) snapshot = cleanSnapshot(new JSONObject((String)decoded));
                 }
-                boolean playing = snapshot.optBoolean("hasMedia") && !snapshot.optBoolean("paused",true);
+                boolean playing = phase.equals("ready") && snapshot.optBoolean("hasMedia") && !snapshot.optBoolean("paused",true);
                 if (playing && snapshot.optBoolean("held")) { send("hold",0); playing = false; }
                 if (playing && !focused) {
                     focused = audio.requestAudioFocus(focus) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
