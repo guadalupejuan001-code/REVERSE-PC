@@ -36,7 +36,7 @@ jobs:
           jq -e '.guest.instructions==504096 and
             .guest.immutable_image_bytes==35778512 and
             .stop_reason=="instruction_budget" and
-            .android_boot==false and .linux_userspace_init_observed==false' prior/gki-direct.json >/dev/null
+            .android_boot==false and .linux_userspace_init_observed==false' prior/actual-stop.json >/dev/null
           cp prior/current.rvg evidence/current.rvg
       - name: Compile original XI Ether against unchanged pinned runtime
         run: |
