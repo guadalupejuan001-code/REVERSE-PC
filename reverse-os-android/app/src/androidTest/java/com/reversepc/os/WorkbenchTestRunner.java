@@ -303,6 +303,14 @@ public final class WorkbenchTestRunner extends Instrumentation {
         runOnMainSync(()->game.testingWebView().evaluateJavascript(script,result->{value.set(result);ready.countDown();}));
         require(ready.await(10,TimeUnit.SECONDS),"Graphics JavaScript timeout");return value.get();
     }
+    private void graphicsTap(RxeGraphicsActivity game,String selector)throws Exception{
+        String encoded=graphicsJs(game,"(()=>{const r=document.querySelector("+JSONObject.quote(selector)+").getBoundingClientRect();return JSON.stringify({x:r.x+r.width/2,y:r.y+r.height/2,width:innerWidth});})()");
+        JSONObject point=new JSONObject(new JSONArray("["+encoded+"]").getString(0));
+        int[] origin=new int[2],width={0};runOnMainSync(()->{game.testingWebView().getLocationOnScreen(origin);width[0]=game.testingWebView().getWidth();});
+        float scale=(float)(width[0]/point.getDouble("width")),x=origin[0]+(float)point.getDouble("x")*scale,y=origin[1]+(float)point.getDouble("y")*scale;
+        long t=SystemClock.uptimeMillis();MotionEvent down=MotionEvent.obtain(t,t,MotionEvent.ACTION_DOWN,x,y,0),up=MotionEvent.obtain(t,t+70,MotionEvent.ACTION_UP,x,y,0);
+        try{sendPointerSync(down);sendPointerSync(up);}finally{down.recycle();up.recycle();}
+    }
     private void graphicsWorkflow(JSONObject before)throws Exception{
         JSONObject catalog=op("listApps","","graphicsCatalog");JSONObject program=null;
         for(int i=0;i<catalog.getJSONArray("apps").length();i++){JSONObject app=catalog.getJSONArray("apps").getJSONObject(i);if("org.reverse.prisma".equals(app.getJSONObject("metadata").optString("app_id")))program=app;}
@@ -316,7 +324,11 @@ public final class WorkbenchTestRunner extends Instrumentation {
         while(SystemClock.uptimeMillis()<until){AtomicReference<WebView> view=new AtomicReference<>();runOnMainSync(()->view.set(game.testingWebView()));if(view.get()!=null&&"true".equals(graphicsJs(game,"!!document.getElementById('startBtn')&&!!document.getElementById('game').dataset.renderer"))){loaded=true;break;}SystemClock.sleep(50);}
         require(loaded,"Local graphics assets did not load");
         require("true".equals(graphicsJs(game,"innerWidth>innerHeight")),"Game is not landscape");
-        require(graphicsJs(game,"document.getElementById('game').dataset.renderer").contains("graphics-cosmic-webgl2"),"GPU presentation not active on Android");
+        require(graphicsJs(game,"document.getElementById('game').dataset.renderer").contains("ether-render-x-cpu"),"Ether Render X was not selected");
+        long firstFrame=SystemClock.uptimeMillis()+15000;boolean nativeFrame=false;
+        while(SystemClock.uptimeMillis()<firstFrame){if("true".equals(graphicsJs(game,"(()=>{const r=JSON.parse(ReverseGraphics.xRenderInfo());return r.frames>0&&r.cubes===5&&r.surface_pixels>0&&r.candidate_queries<r.width*r.height;})()"))){nativeFrame=true;break;}SystemClock.sleep(60);}
+        require(nativeFrame,"Ether Render X did not resolve and present native cube surfaces");
+        require("true".equals(graphicsJs(game,"document.documentElement.classList.contains('native-xrender')&&!document.querySelector('.gpu-canvas')")),"Legacy GPU cube renderer remained active");
         graphicsJs(game,"window.graphicReplies=[];window.addEventListener('reverse-score',e=>graphicReplies.push(e.detail));ReverseGraphics.event(1,1,0,0);true");
         for(int serial=1;serial<=3;serial++){
             if(serial==2)graphicsJs(game,"ReverseGraphics.event(2,1,1,150);true");
@@ -328,7 +340,16 @@ public final class WorkbenchTestRunner extends Instrumentation {
         require("true".equals(graphicsJs(game,"graphicReplies[1].state.score===150&&graphicReplies[1].state.combo===1&&graphicReplies[2].state.combo===0&&graphicReplies[2].state.misses===1")),"Wrong persisted XI score");
         graphicsJs(game,"window.blockedNetwork=false;fetch('https://example.com/').catch(()=>blockedNetwork=true);true");
         require("true".equals(graphicsJs(game,"blockedNetwork")),"Graphics adapter allowed an external connection");
-        File folder=new File(getTargetContext().getExternalFilesDir(null),"ui-evidence");folder.mkdirs();Bitmap screen=getUiAutomation().takeScreenshot();if(screen!=null)try(FileOutputStream output=new FileOutputStream(new File(folder,"prisma-gpu-screen.png"))){screen.compress(Bitmap.CompressFormat.PNG,100,output);screen.recycle();}
+        File folder=new File(getTargetContext().getExternalFilesDir(null),"ui-evidence");folder.mkdirs();Bitmap screen=getUiAutomation().takeScreenshot();if(screen!=null)try(FileOutputStream output=new FileOutputStream(new File(folder,"prisma-xrender-screen.png"))){screen.compress(Bitmap.CompressFormat.PNG,100,output);screen.recycle();}
+        graphicsTap(game,"#startBtn");long playDeadline=SystemClock.uptimeMillis()+20000;
+        while(SystemClock.uptimeMillis()<playDeadline&&!"true".equals(graphicsJs(game,"document.body.classList.contains('is-playing')")))SystemClock.sleep(60);
+        require("true".equals(graphicsJs(game,"document.body.classList.contains('is-playing')")),"Native game did not start after touch");
+        SystemClock.sleep(3600);require("true".equals(graphicsJs(game,"JSON.parse(ReverseGraphics.xRenderInfo()).frames>10")),"X Render stopped during playback");
+        graphicsTap(game,"#pauseBtn");SystemClock.sleep(200);
+        require("true".equals(graphicsJs(game,"!document.getElementById('pauseOverlay').hidden")),"Native game did not pause");
+        graphicsTap(game,"#resumeBtn");SystemClock.sleep(200);
+        require("true".equals(graphicsJs(game,"document.body.classList.contains('is-playing')")),"Native game did not resume");
+        Files.write(new File(folder,"prisma-xrender-info.json").toPath(),new JSONArray("["+graphicsJs(game,"ReverseGraphics.xRenderInfo()")+"]").getString(0).getBytes(StandardCharsets.UTF_8));
         runOnMainSync(game::finish);SystemClock.sleep(250);
         JSONObject after=op("inspect","","graphicsCoreAfter");
         for(String key:new String[]{"memory_revision","memory_overrides","core_revision"})require(before.getJSONObject("core").getLong(key)==after.getJSONObject("core").getLong(key),"Game altered desktop authority: "+key);
@@ -355,7 +376,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
             require(snapshot.getJSONObject("core").getString("state_format").equals("RVPC2"),"Wrong checkpoint format");
             require(snapshot.getJSONObject("build").getString("source_commit").matches("[a-f0-9]{40}"),"Missing build provenance");
             if(requested.equals("graphics")){
-                graphicsWorkflow(snapshot);result.putString("stream","WORKBENCH_TESTS_OK mode=graphics native=XI GPU=Graphics-COSMIC-WebGL2 isolation=verified\n");result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
+                graphicsWorkflow(snapshot);result.putString("stream","WORKBENCH_TESTS_OK mode=graphics native=XI renderer=Ether-Render-X-CPU presenter=GLES3 touch=verified isolation=verified\n");result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
             }
             if(!seed&&js("typeof window.ReverseShell==='object'").equals("true")){
                 desktopShellWorkflow(requested,snapshot);

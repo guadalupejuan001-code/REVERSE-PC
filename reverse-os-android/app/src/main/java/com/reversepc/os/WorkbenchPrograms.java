@@ -14,6 +14,7 @@ import java.util.Locale;
 /** RXE catalog and transactions for the current desktop. Call on RuntimeExecutor. */
 final class WorkbenchPrograms {
     static final String BBYQ="Aplicaciones/BBY-Q.rxe";
+    static final String PRISMA_11_SHA="be811baf5404d97fae1803185b3e4679ec81fe2524a613ff81451a13d3fa3e64";
     private final Context context;
     private final WorkspaceFiles files;
     private byte[] retiredHello;
@@ -35,12 +36,19 @@ final class WorkbenchPrograms {
     }
     private void seedGraphics()throws Exception{
         android.content.SharedPreferences prefs=context.getSharedPreferences("workbench-programs",0);
-        if(prefs.getBoolean("prisma-1.1-seeded",false))return;
+        seedGraphics(context,files,prefs);
+    }
+    static void seedGraphics(Context context,WorkspaceFiles files,android.content.SharedPreferences prefs)throws Exception{
+        if(prefs.getBoolean("prisma-1.2-seeded",false))return;
         final byte[] image;
         try(InputStream in=context.getAssets().open("native-apps/PRISMA.rxe")){image=read(in);}catch(java.io.FileNotFoundException optional){return;}
         JSONObject metadata=info(image);if(!"graphics".equals(metadata.optString("ui")))throw new IOException("La aplicación PRISMA no tiene perfil gráfico");
-        if(!exists("Aplicaciones/PRISMA.rxe"))files.write("Aplicaciones/PRISMA.rxe",image,false);
-        prefs.edit().putBoolean("prisma-1.1-seeded",true).apply();
+        boolean present=false;for(WorkspaceFiles.Entry entry:files.list("Aplicaciones"))if(entry.path.equals("Aplicaciones/PRISMA.rxe"))present=true;
+        if(present){
+            // Upgrade only the exact released image. Keep custom programs intact.
+            if(PRISMA_11_SHA.equals(identity(files.read("Aplicaciones/PRISMA.rxe"))))files.write("Aplicaciones/PRISMA.rxe",image,true);
+        }else if(!prefs.getBoolean("prisma-1.1-seeded",false))files.write("Aplicaciones/PRISMA.rxe",image,false);
+        prefs.edit().putBoolean("prisma-1.1-seeded",true).putBoolean("prisma-1.2-seeded",true).apply();
     }
     JSONObject graphicsLaunch(JSONObject request)throws Exception{
         byte[] image=checked(request);JSONObject metadata=info(image);

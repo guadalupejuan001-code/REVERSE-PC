@@ -1232,11 +1232,7 @@ public final class DesktopActivity extends Activity {
     }
     private JSONObject rxeInfo(byte[] image)throws Exception{return new JSONObject(new String(NativeRuntime.inspectRxe(image),java.nio.charset.StandardCharsets.UTF_8));}
     private void seedGraphicsExecutable()throws Exception{
-        if(preferences.getBoolean("prisma-1.1-seeded",false))return;
-        final byte[] image;try(InputStream input=getAssets().open("native-apps/PRISMA.rxe")){image=WorkbenchPrograms.read(input);}catch(java.io.FileNotFoundException optional){return;}
-        rxeInfo(image);boolean exists=false;for(WorkspaceFiles.Entry e:files.list("Aplicaciones"))if(e.path.equals("Aplicaciones/PRISMA.rxe"))exists=true;
-        if(!exists)files.write("Aplicaciones/PRISMA.rxe",image,false);
-        preferences.edit().putBoolean("prisma-1.1-seeded",true).apply();
+        WorkbenchPrograms.seedGraphics(this,files,preferences);
     }
     private void seedBbyqExecutable()throws Exception{
         if(preferences.getBoolean("bbyq-rxe-e016-seeded",false))return;

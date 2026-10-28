@@ -1,4 +1,4 @@
-# PRISMA 1.1 · RXE gráfico
+# PRISMA 1.2 · Ether Render X y RXE gráfico
 
 PRISMA convierte archivos de audio locales en una pista de cubos para cortar.
 Se ejecuta en horizontal, a pantalla completa, con mouse, teclado y varios
@@ -7,31 +7,44 @@ los píxeles y adapta la resolución a la cadencia observada.
 
 ## Usar
 
-Esta extensión requiere el cargador gráfico de **REVERSE 2.5.2 PRISMA**.
+La ruta nativa de X Render requiere **REVERSE 2.5.3 PRISMA X Render**.
 REVERSE 2.5.1 conserva sus RXE1/RXE2 y rechaza el perfil RXE3 desconocido.
 La existencia previa de la familia gráfica no hacía que el cargador RXE2 de
 conversación pudiera abrir cualquier aplicación interactiva.
 
 En Programas, abre **PRISMA** y pulsa **Jugar a pantalla completa**. El adaptador
-incluye la app de fábrica sin reemplazar un archivo existente ni reinstalar uno
-que el usuario haya eliminado. También permite importar/exportar `PRISMA.rxe`.
+incluye la app de fábrica y actualiza únicamente el binario oficial 1.1 identificado
+por su SHA-256. Conserva ejecutables personalizados y aplicaciones eliminadas.
+También permite importar/exportar `PRISMA.rxe`.
 La demo musical es original. La música propia se selecciona con el proveedor de
 archivos Android, se decodifica localmente y no se envía a servidores.
 
 ## Familia gráfica utilizada y límites
 
-El diseño de malla indexada —24 vértices, 36 índices y envío por instancias—
-procede de `mundo-X/app/src/main/java/com/mundox/lab/ObjectSceneRenderer.java`,
-revisión local auditada `c375159fdb17e202e452af7bd0299b16a3ec6fff` de la familia
-Graphics/COSMIC. `gpu-scene.js` porta ese diseño a WebGL 2, la interfaz de
-navegador de GLES 3. El conjunto visible de cubos se envía en una sola llamada.
-No se ejecutan QuantumRenderer ni el motor Ether Render X dentro de JavaScript;
-no se afirma una conexión al estado cuántico ni un motor cuántico nuevo.
+Android utiliza el **observador espacial nativo de Ether Render X**, de
+`mundo-X` `e2778d962af22f6f1a0794058dd4685fc2573966`. La extensión verificada
+`scripts/xrender_extension.py` añade cubos orientados, materiales para sus
+bordes/flechas y centro de proyección desplazable. Conserva su planificación
+por regiones, candidatos conservadores, orden por profundidad y observación
+dispersa. No añade otro planificador ni sustituye el núcleo MIL/Ether.
 
-Android/WebView proporciona la GPU, audio, selector de archivos y eventos.
-Si WebGL 2 no está disponible, Canvas conserva una ruta con resolución acotada.
-La preferencia de ahorro reduce detalle. La calidad automática no fuerza 4K/8K:
-resolución de salida y coste de rasterización son medidas diferentes.
+El radio de cada cubo es su esfera envolvente conservadora. El observador
+resuelve intersecciones exactas de rayos con cajas orientadas y calcula el
+color solo dentro de sus huellas. JNI entrega esos colores a una textura
+GLES 3: la GPU compone el fondo y presenta la textura, sin rasterizar cubos.
+El archivo `src/prisma_xrender.hpp` une los descriptores de la escena con ese
+observador. `XRenderSurface` mantiene una única ranura de cuadro reemplazable;
+una escena nueva descarta la pendiente, evitando acumular cuadros atrasados.
+La resolución CPU se adapta a su tiempo observado; los controles/tacto y XI
+no esperan a que termine el render. La textura de pantalla sí tiene tamaño
+proporcional a sus píxeles; la observación dispersa no elimina ese coste.
+
+WebView conserva controles, audio local, efectos y selector de archivos sobre
+la superficie nativa. El motor no se ejecuta dentro de JavaScript. El navegador
+independiente conserva WebGL 2 basado en Graphics/COSMIC y, si falta, Canvas.
+Esas rutas de navegador no se presentan como Ether Render X. La calidad no
+fuerza 4K/8K; cualquier mejora de FPS requiere medir la presentación completa
+en el mismo dispositivo. No hay afirmación de aceleración cuántica física.
 
 `apps/prisma/game.xi` contiene las reglas de puntuación, combo, máximo, aciertos
 y fallos. Son 169 instrucciones compiladas a RXE1. Cada evento entra una vez al
@@ -41,9 +54,10 @@ la escritura. Los eventos se procesan fuera del hilo de animación. La UI puede
 mostrar provisionalmente el cálculo local, pero el resultado final espera todas
 las confirmaciones XI. No cambia InfiniteCore, Ether, la ISA ni RXE1/RXE2.
 
-El host gráfico es híbrido: los activos HTML/CSS/JS de presentación están dentro
-del ejecutable; las reglas persistentes se ejecutan en XI. No es una traducción
-de toda la presentación a XI ni una aplicación Windows ejecutada por REVERSE.
+El host gráfico es híbrido: UI/audio HTML/CSS/JS dentro del ejecutable,
+observación geométrica en Ether Render X C++, presentación GLES y reglas
+persistentes en XI. El programa transmite solo descriptores acotados de cubos,
+sin acceso a punteros nativos ni al estado del escritorio.
 
 ## RXE3, perfil XI-graphics-v1
 
@@ -96,6 +110,10 @@ Las pruebas comparan 112 eventos contra un modelo independiente, reinician el
 proceso por evento, comprueban 16 imágenes inválidas, argumentos inválidos,
 rollback, memoria existente e invariancia de los perfiles anteriores. CI compila
 ARM64/x86_64 y usa el modo `graphics` de la instrumentación Android para comprobar
-carga local, WebGL 2, orientación, confirmación XI y aislamiento del escritorio.
-La compilación/validación de GLSL en Mesa y el emulador no equivalen a una medida
-de FPS o latencia en el teléfono físico del usuario.
+carga local, superficies reales de Ether Render X, ausencia de cubos WebGL,
+orientación, inicio/pausa/continuación táctil, confirmación XI y aislamiento.
+`tests/prisma_xrender.cpp` compara ID y profundidad con un oráculo independiente
+de 12 triángulos por cubo, comprueba regiones/RGBA, huellas dispersas, cámara
+interior y campos inválidos. Las pruebas originales de esferas y surface buffer
+se ejecutan con la extensión para detectar regresiones. El emulador y los
+tiempos CPU del host no equivalen a FPS/latencia en el teléfono físico.

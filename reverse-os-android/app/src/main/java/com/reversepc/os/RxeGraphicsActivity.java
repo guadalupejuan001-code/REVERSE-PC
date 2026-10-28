@@ -16,6 +16,7 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.TextView;
+import android.widget.FrameLayout;
 import org.json.JSONObject;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -27,7 +28,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
-/** A local GLES/WebGL presentation adapter for RXE3. No network or desktop bridge. */
+/** Local RXE3 adapter. Ether Render X draws PRISMA; WebView supplies UI/audio. */
 public final class RxeGraphicsActivity extends Activity {
     static final int PICK_AUDIO=7301;
     private final Handler ui=new Handler(Looper.getMainLooper());
@@ -35,6 +36,7 @@ public final class RxeGraphicsActivity extends Activity {
     private final AtomicInteger pending=new AtomicInteger();
     private volatile boolean closed=false,foreground=true;
     private WebView web;
+    private XRenderSurface xrender;
     private byte[] image;
     private String originHost;
     private GraphicsSessionStore session;
@@ -59,7 +61,8 @@ public final class RxeGraphicsActivity extends Activity {
     }
     private void showFailure(String message){if(closed)return;TextView text=new TextView(this);text.setText("No se pudo abrir el ejecutable\n\n"+message);text.setTextColor(Color.WHITE);text.setBackgroundColor(Color.BLACK);text.setPadding(40,50,40,40);setContentView(text);}
     private void openWeb(){
-        web=new WebView(this);web.setBackgroundColor(Color.BLACK);WebSettings settings=web.getSettings();
+        xrender=new XRenderSurface(this,this::showFailure);
+        web=new WebView(this);web.setBackgroundColor(Color.TRANSPARENT);WebSettings settings=web.getSettings();
         settings.setJavaScriptEnabled(true);settings.setDomStorageEnabled(true);settings.setMediaPlaybackRequiresUserGesture(true);
         settings.setAllowFileAccess(false);settings.setAllowContentAccess(true);settings.setAllowFileAccessFromFileURLs(false);settings.setAllowUniversalAccessFromFileURLs(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);settings.setSupportMultipleWindows(false);settings.setJavaScriptCanOpenWindowsAutomatically(false);
@@ -86,12 +89,17 @@ public final class RxeGraphicsActivity extends Activity {
                 catch(Exception error){chooser=null;callback.onReceiveValue(null);}return true;
             }
         });
-        setContentView(web);web.loadUrl("https://"+originHost+"/index.html");
+        FrameLayout root=new FrameLayout(this);root.setBackgroundColor(Color.BLACK);
+        root.addView(xrender,new FrameLayout.LayoutParams(-1,-1));root.addView(web,new FrameLayout.LayoutParams(-1,-1));
+        setContentView(root);web.loadUrl("https://"+originHost+"/index.html");
     }
     WebView testingWebView(){return web;}
     private static WebResourceResponse denied(){return new WebResourceResponse("text/plain","UTF-8",403,"Forbidden",new HashMap<>(),new ByteArrayInputStream(new byte[0]));}
     public final class Bridge {
         @JavascriptInterface public boolean immersive(){return true;}
+        @JavascriptInterface public String xRender(){return "ether-render-x-cuboids-v1";}
+        @JavascriptInterface public void frame(float[] data){if(!closed&&foreground&&xrender!=null)xrender.submit(data);}
+        @JavascriptInterface public String xRenderInfo(){return xrender==null?"{}":xrender.info();}
         @JavascriptInterface public void event(int serial,int run,int kind,int quality){
             if(closed||serial<1||run<1||kind<0||kind>3||quality<0||quality>150||(kind!=1&&quality!=0))return;
             if(pending.incrementAndGet()>64){pending.decrementAndGet();deliver(serial,run,null,"Demasiados eventos pendientes");return;}
@@ -109,8 +117,8 @@ public final class RxeGraphicsActivity extends Activity {
         }catch(Exception ignored){/* JSONObject only contains bounded native values. */}
     }
     @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(request==PICK_AUDIO){ValueCallback<Uri[]> callback=chooser;chooser=null;if(callback!=null)callback.onReceiveValue(result==RESULT_OK&&data!=null&&data.getData()!=null?new Uri[]{data.getData()}:null);}}
-    @Override protected void onPause(){foreground=false;if(web!=null)web.evaluateJavascript("window.dispatchEvent(new Event('prisma-native-pause'));",ignored->{if(!foreground&&web!=null)web.onPause();});super.onPause();}
-    @Override protected void onResume(){super.onResume();foreground=true;WorkbenchActivity.immersive(this);if(web!=null)web.onResume();}
+    @Override protected void onPause(){foreground=false;if(web!=null)web.evaluateJavascript("window.dispatchEvent(new Event('prisma-native-pause'));",ignored->{if(!foreground&&web!=null)web.onPause();});if(xrender!=null)xrender.onPause();super.onPause();}
+    @Override protected void onResume(){super.onResume();foreground=true;WorkbenchActivity.immersive(this);if(xrender!=null)xrender.onResume();if(web!=null)web.onResume();}
     @Override public void onWindowFocusChanged(boolean focus){super.onWindowFocusChanged(focus);if(focus)WorkbenchActivity.immersive(this);else if(web!=null)web.evaluateJavascript("window.dispatchEvent(new Event('prisma-native-pause'));",null);}
-    @Override protected void onDestroy(){closed=true;if(chooser!=null){chooser.onReceiveValue(null);chooser=null;}if(web!=null){web.removeJavascriptInterface("ReverseGraphics");web.destroy();web=null;}events.shutdown();super.onDestroy();}
+    @Override protected void onDestroy(){closed=true;if(chooser!=null){chooser.onReceiveValue(null);chooser=null;}if(web!=null){web.removeJavascriptInterface("ReverseGraphics");web.destroy();web=null;}if(xrender!=null){xrender.release();xrender=null;}events.shutdown();super.onDestroy();}
 }

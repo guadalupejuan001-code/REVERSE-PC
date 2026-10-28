@@ -10,6 +10,10 @@ public final class NativeRuntime {
     public static native byte[] executeRxe(byte[] state,byte[] executable);
     public static native byte[] graphicsAsset(byte[] executable,byte[] pathUtf8);
     public static native byte[] graphicsTurn(byte[] state,byte[] executable,int kind,int quality);
+    static native long xRenderCreate();
+    static native void xRenderResize(long renderer,int width,int height);
+    static native String xRenderFrame(long renderer,float[] frame);
+    static native void xRenderDestroy(long renderer,boolean releaseGl);
     public static native byte[] appSeed(byte[] executable);
     public static native byte[] appTurn(byte[] state,byte[] executable,byte[] messageUtf8,int language);
 }

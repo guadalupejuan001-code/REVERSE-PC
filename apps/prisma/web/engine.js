@@ -1,4 +1,5 @@
 import { CubeGPU } from './gpu-scene.js';
+import { NativeXRender } from './native-xrender.js';
 import { seeded } from './audio.js';
 export const PALETTES = { coral: ['#63ffb4','#ff5074'], violet: ['#63ffb4','#bd8bff'], ice: ['#7aeaff','#ff5074'] };
 export const DIRECTIONS = [{x:0,y:-1},{x:1,y:0},{x:0,y:1},{x:-1,y:0}];
@@ -30,8 +31,8 @@ export class Scene {
     this.width = 0; this.height = 0; this.particles = []; this.shards = []; this.trails = new Map(); this.pulse = 0; this.energy = 0; this.flash = 0; this.shake = 0;
     const random = seeded(6631); this.stars = Array.from({length:100}, () => ({x:random(),y:random(),a:.15+random()*.5,s:random()>.9?1.4:.6}));
     this.qualityScale=1;this.frameTotal=0;this.frameCount=0;this.cooldown=0;this.view=new Float32Array(4);this.paletteKey='';this.rgb=[];this.diagnostics=new URLSearchParams(location.search).has('diagnostics');this.cpuTimes=[];
-    this.gpu=new URLSearchParams(location.search).get('renderer')==='canvas'?null:CubeGPU.create(canvas.parentElement);
-    canvas.dataset.renderer=this.gpu?'graphics-cosmic-webgl2':'canvas';
+    this.gpu=NativeXRender.create()||(new URLSearchParams(location.search).get('renderer')==='canvas'?null:CubeGPU.create(canvas.parentElement));
+    canvas.dataset.renderer=this.gpu?.native?'ether-render-x-cpu':this.gpu?'graphics-cosmic-webgl2':'canvas';
     if(this.gpu)this.gpu.onFailure=()=>{this.gpu.canvas.remove();this.gpu=null;canvas.dataset.renderer='canvas';this.resize();};
     this.resize(); this.observer = new ResizeObserver(() => this.resize()); this.observer.observe(canvas);
   }
@@ -114,7 +115,7 @@ export class Scene {
     const started=this.diagnostics?performance.now():0;
     const ctx=this.ctx,w=this.width,h=this.height;if(!w||!h)return;
     const key=this.settings().palette;if(key!==this.paletteKey){this.paletteKey=key;this.rgb=PALETTES[key].map(hex=>[parseInt(hex.slice(1,3),16)/255,parseInt(hex.slice(3,5),16)/255,parseInt(hex.slice(5,7),16)/255]);}
-    if(this.gpu){const mobile=w<580,f=Math.min(w*1.29,h*1.22)*(preview&&mobile?.69:1);this.view[0]=preview?(mobile?.53:.725):.5;this.view[1]=preview?(mobile?.79:.51):.49;this.view[2]=f/w;this.view[3]=f/h;this.gpu.begin(time,this.energy,this.view,this.rgb,this.settings().effects);ctx.clearRect(0,0,w,h);}
+    if(this.gpu){const mobile=w<580,f=Math.min(w*1.29,h*1.22)*(preview&&mobile?.69:1);this.view[0]=preview?(mobile?.53:.725):.5;this.view[1]=preview?(mobile?.79:.51):.49;this.view[2]=f/w;this.view[3]=f/h;if(this.gpu.native)this.gpu.quality={auto:0,high:1,battery:2}[this.settings().quality]||0;this.gpu.begin(time,this.energy,this.view,this.rgb,this.settings().effects);ctx.clearRect(0,0,w,h);}
     ctx.setTransform(this.dpr,0,0,this.dpr,0,0);this.energy+=(audioEnergy-this.energy)*.12;this.pulse=Math.max(0,this.pulse-dt*2.7);this.shake=Math.max(0,this.shake-dt*22);
     ctx.save();if(this.shake&&!this.settings().effects)ctx.translate((Math.random()-.5)*this.shake,(Math.random()-.5)*this.shake);
     if(!this.gpu)this.background(time,preview,this.energy);
