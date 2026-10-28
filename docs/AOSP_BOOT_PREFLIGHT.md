@@ -68,3 +68,41 @@ unpack_bootimg independently, then connect actual GKI kernel, ramdisk assembly
 and bootconfig to the original XI/Ether guest, stopping at the first observed
 opcode or device failure. Only count Android kernel and /init boot after a
 real guest UART trace and saved checkpoint prove it.
+
+## Authentic Android Common GKI kernel-only acceptance gate (next experimental cycle)
+
+A complete compatible Android image set has NOT been provided. To avoid
+substituting an unverified Linux kernel or manufacturing an Android boot,
+the additive `--gki-kernel-only` mode inspects an authentic GKI `boot.img`
+**without** falsely requiring vendor_boot. It only extracts the raw ARM64
+Linux Image and records its actual size, container/kernel SHA-256 and Linux
+Image header fields, plus whether REVERSE's current **combined 16 MiB**
+Image/DTB/initramfs budget is already certainly exceeded by the kernel.
+It never claims successful execution.
+
+    node tools/aosp_boot_preflight.mjs --boot /path/to/boot.img \
+      --gki-kernel-only --extract-dir /new/output-directory
+
+`aosp-gki-real.yml` requests a **real public Android Common** GKI artifact
+identified by source tag `android14-6.1-2026-09_r5`, source commit
+`6d8630162a371a04152cf5778f8a5b90e49f30a6`, official build `16707926`,
+target `kernel_aarch64`:
+
+https://ci.android.com/builds/submitted/16707926/kernel_aarch64/latest/raw/boot.img
+
+The CI hashes the **bytes actually downloaded**, never assumes a SHA from
+an unperformed download, refuses missing/non-ARM64 images, and requires
+byte-for-byte parity with the independent AOSP
+`unpack_bootimg.py` at commit
+`b78811e89d774685e9262339a8fedcbe2fc89efe`.
+The independent extractor is fetched only as a CI oracle, not integrated
+into REVERSE or XI/Ether. If public access to the official artifact fails,
+the workflow must **fail**, and evidence may not be reported as a pass.
+No kernel, boot partition or unrelated game binary is committed.
+
+This is a GKI kernel-only extraction gate, **not** a bootable Android
+system: matching board/vendor_boot, init_boot generic ramdisk, partitions,
+device drivers, DTB/bootconfig, Android userspace and ADB remain unverified.
+The AOSP kernel could also be too large for REVERSE's existing image budget;
+that compatibility limit must be measured before making a narrowly scoped
+loader change. No UI/FPS/gaming claims follow from this check.
