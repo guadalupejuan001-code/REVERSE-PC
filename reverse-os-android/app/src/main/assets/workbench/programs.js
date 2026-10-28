@@ -48,15 +48,22 @@ function programHTML(w){
   if(!saved)return '<div class="programs-layout"><p role="status">'+esc(data.error||'Abriendo el ejecutable y su memoria…')+'</p>'+(data.error?'<button class="secondary-button" data-program-action="reload">Volver a abrir</button>':'')+'</div>';
   const meta=saved.metadata,chat=meta.ui==='chat',disabled=data.busy?' disabled':'';
   const status=data.error|| (data.busy?'Procesando en el núcleo…':chat?'Memoria guardada · '+(data.language===1?'Español':'English')+(saved.desktop_control?' · W4u conectado':''):'Ejecutar inicia el programa. Abrir la ventana conserva la última salida.');
-  const heading='<div class="rxe-heading"><span>'+(chat?'W4u 0.1':esc(meta.title)+' · '+esc(meta.app_version||'RXE1'))+'</span><div class="program-actions"><button class="secondary-button" data-program-action="reload" aria-label="Actualizar memoria"'+disabled+'>'+icon('restore')+'</button><button class="secondary-button" data-program-action="export"'+disabled+'>Exportar .rxe</button>'+(chat?'<button class="secondary-button" data-program-action="memory"'+disabled+'>Memoria</button>':'')+'</div></div>';
+  const heading='<div class="rxe-heading"><span>'+(chat?'BBY Q · XI/Ether':esc(meta.title)+' · '+esc(meta.app_version||'RXE1'))+'</span><div class="program-actions"><button class="secondary-button" data-program-action="reload" aria-label="Actualizar memoria"'+disabled+'>'+icon('restore')+'</button><button class="secondary-button" data-program-action="export"'+disabled+'>Exportar .rxe</button>'+(chat?'<button class="secondary-button" data-program-action="memory"'+disabled+'>Memoria</button>':'')+'</div></div>';
   const plan=saved.agents;
   const progress=plan&&plan.steps?'<p class="rxe-status">W4u · Plan: '+plan.steps+' paso'+(plan.steps===1?'':'s')+' · '+(plan.status===3?'Comprobado':plan.status===4?'Detenido':plan.completed+'/'+plan.steps+' completados')+'</p>':'';
   const message='<p class="rxe-status" role="status">'+esc(status)+'</p>'+progress;
   if(meta.ui==='graphics')return '<div class="rxe-layout">'+heading+'<p class="rxe-status" role="status">'+esc(data.error||'Juego · Pantalla completa · Música propia')+'</p><h2>'+esc(meta.title)+'</h2><p>Una experiencia horizontal a pantalla completa. Carga tu música y desliza sobre los cubos.</p><button class="primary-button" data-program-action="graphics"'+disabled+'>Jugar a pantalla completa</button></div>';
   if(!chat)return '<div class="rxe-layout">'+heading+message+'<pre class="rxe-output" aria-label="Salida RXE">'+esc(saved.output||'Pulsa Ejecutar para iniciar.')+'</pre><button class="primary-button" data-program-action="run"'+(data.busy||data.uncertain?' disabled':'')+'>Ejecutar</button></div>';
-  const history=saved.history.length?saved.history.map((item,i)=>'<div class="rxe-message '+(item.role==='user'?'from-user':'from-agent')+'"><small>'+esc(item.role==='user'?'TÚ':meta.title)+'</small><p'+(item.role==='assistant'&&i===saved.history.length-1?' aria-label="Respuesta BBY Q"':'')+'>'+esc(item.text)+'</p></div>').join(''):'<p class="muted">Memoria '+esc(meta.app_version)+' lista. Lista para conversar. W4u opera tus programas y ventanas.</p>';
+  const module=['chat','work','cody'].includes(w.bbyqModule)?w.bbyqModule:'chat';
+  const moduleTabs='<nav class="bbyq-modules" aria-label="Módulos de BBY Q">'+[['chat','Chat'],['work','Work · W4u'],['cody','Cody · XI']].map(([id,label])=>'<button type="button" data-bbyq-module="'+id+'" aria-current="'+(module===id?'page':'false')+'" class="'+(module===id?'selected':'')+'">'+label+'</button>').join('')+'</nav>';
+  if(module==='cody')return '<div class="rxe-layout bbyq-shell">'+heading+moduleTabs+'<section class="bbyq-module-content" aria-label="Cody, programación de BBY Q">'+qdStudioHTML(w)+'</section></div>';
+  if(module==='work'){
+    const details=plan&&Number.isInteger(plan.steps)&&plan.steps>0?'Último plan: '+(plan.completed||0)+' de '+plan.steps+' pasos. '+(plan.status===3?'Comprobado':plan.status===4?'Detenido':'Pendiente de confirmación')+'.':'Sin plan verificado en la sesión.';
+    return '<div class="rxe-layout bbyq-shell">'+heading+moduleTabs+'<section class="bbyq-work"><h2>Work · W4u</h2><p>Capacidad de coordinación del mismo BBY Q. Las órdenes se escriben en Chat; no se ejecuta trabajo oculto.</p><div class="bbyq-work-status"><strong>Control del escritorio</strong><span>'+(saved.desktop_control?'Acciones admitidas y verificadas por REVERSE':'No disponible para este ejecutable')+'</span></div><div class="bbyq-work-status"><strong>Plan</strong><span>'+esc(details)+'</span></div><p>La memoria solo se confirma tras observar el resultado. No hay tareas externas ni acceso irrestricto al teléfono.</p><button class="primary-button" data-bbyq-module="chat">Dar instrucción en Chat</button></section></div>';
+  }
+  const history=saved.history.length?saved.history.map((item,i)=>'<div class="rxe-message '+(item.role==='user'?'from-user':'from-agent')+'"><small>'+esc(item.role==='user'?'TÚ':meta.title)+'</small><p'+(item.role==='assistant'&&i===saved.history.length-1?' aria-label="Respuesta BBY Q"':'')+'>'+esc(item.text)+'</p></div>').join(''):'<p class="muted">Memoria '+esc(meta.app_version)+' lista. Lista para conversar. W4u solo dispone de las acciones autorizadas y verificables de este escritorio.</p>';
   queueMicrotask(()=>{const el=$('.rxe-history',$('#'+w.id));if(el)el.scrollTop=el.scrollHeight;});
-  return '<div class="rxe-layout">'+heading+message+'<div class="rxe-history" aria-label="Conversación BBY Q">'+history+'</div><form class="rxe-composer" data-program-form><textarea aria-label="Mensaje para BBY Q" data-program-input maxlength="255" rows="2" placeholder="Escribe un mensaje…">'+esc(w.rxeDraft||'')+'</textarea><div class="program-actions"><button type="button" class="secondary-button '+(data.language===1?'selected':'')+'" data-program-language="1"'+disabled+'>Español</button><button type="button" class="secondary-button '+(data.language===2?'selected':'')+'" data-program-language="2"'+disabled+'>English</button><button type="submit" class="primary-button"'+(data.busy||data.uncertain?' disabled':'')+'>Enviar</button></div></form></div>';
+  return '<div class="rxe-layout bbyq-shell">'+heading+moduleTabs+message+'<div class="rxe-history" aria-label="Conversación BBY Q">'+history+'</div><form class="rxe-composer" data-program-form><textarea aria-label="Mensaje para BBY Q" data-program-input maxlength="255" rows="2" placeholder="Escribe un mensaje…">'+esc(w.rxeDraft||'')+'</textarea><div class="program-actions"><button type="button" class="secondary-button '+(data.language===1?'selected':'')+'" data-program-language="1"'+disabled+'>Español</button><button type="button" class="secondary-button '+(data.language===2?'selected':'')+'" data-program-language="2"'+disabled+'>English</button><button type="submit" class="primary-button"'+(data.busy||data.uncertain?' disabled':'')+'>Enviar</button></div></form></div>';
 }
 function renderProgramContent(w,body){
   const next=document.createElement('div');next.innerHTML=programHTML(w);
@@ -112,7 +119,20 @@ async function transactProgram(w,operation){
 }
 window.ReversePrograms={imported(result){refreshPrograms();if(result.ok){toast('Ejecutable agregado.');openProgram(result.path);}}};
 document.addEventListener('input',event=>{if(event.target.matches('[data-program-input]')){const w=getWindow(event.target.closest('.window')?.dataset.id);if(w){w.rxeDraft=event.target.value;queueSave();}}});
-document.addEventListener('submit',event=>{if(event.target.matches('[data-program-form]')){event.preventDefault();const w=getWindow(event.target.closest('.window')?.dataset.id);if(w)transactProgram(w,'askApp');}});
+document.addEventListener('submit',event=>{
+  if(!event.target.matches('[data-program-form]'))return;
+  event.preventDefault();const w=getWindow(event.target.closest('.window')?.dataset.id);if(!w)return;
+  const command=(w.rxeDraft||'').trim().toLowerCase();
+  if(['/cody','/work','/chat'].includes(command)){w.rxeDraft='';w.bbyqModule=command.slice(1);renderWindowContent(w);queueSave();return;}
+  transactProgram(w,'askApp');
+});
+document.addEventListener('click',event=>{
+  const button=event.target.closest('[data-bbyq-module]');if(!button)return;
+  const w=getWindow(button.closest('.window')?.dataset.id);
+  if(!w||w.rxePath!=='Aplicaciones/BBY-Q.rxe')return;
+  const module=button.dataset.bbyqModule;if(!['chat','work','cody'].includes(module))return;
+  w.bbyqModule=module;renderWindowContent(w);queueSave();
+});
 document.addEventListener('click',async event=>{
   const button=event.target.closest('button');if(!button)return;
   if(button.dataset.programPath){hideLauncher();openProgram(button.dataset.programPath);return;}
