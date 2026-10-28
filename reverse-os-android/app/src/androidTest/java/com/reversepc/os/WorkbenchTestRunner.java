@@ -319,6 +319,11 @@ public final class WorkbenchTestRunner extends Instrumentation {
             require(js("guestUi.output").contains("6*7 = 42"),"Native guest did not produce expected output");
             require(js("guestUi.snapshot.guest.delta_overrides").equals("2"),"Unexpected guest delta count");
             String before=hash("guest-aarch64.rvg");
+            boolean emptyRejected=RuntimeExecutor.INSTANCE.submit(()->{
+                try{new GuestStore(getTargetContext()).create(new byte[0]);return false;}
+                catch(Exception expected){return true;}
+            }).get(30,TimeUnit.SECONDS);
+            require(emptyRejected&&before.equals(hash("guest-aarch64.rvg")),"Empty ELF replaced the saved guest");
             JSONObject failed=op("guestXi","mem_store 90000 55\nunsupported_operation\n","guestFailure");
             require(!failed.getBoolean("ok"),"Bad guest XI program accepted");
             require(before.equals(hash("guest-aarch64.rvg")),"Rejected guest program changed saved checkpoint");

@@ -75,22 +75,34 @@ jobs:
           PY
           python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
           keytool -genkeypair -keystore "$REVERSE_SIGNING_KEYSTORE" -storetype JKS -storepass android -keypass android -alias reverse-desktop -keyalg RSA -keysize 2048 -validity 365 -dname 'CN=REVERSE Guest Preview Development'
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1' platform-tools emulator > guest-evidence/sdk.log
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1' platform-tools 'system-images;android-35;default;x86_64' > guest-evidence/sdk.log
+          test -x "$ANDROID_HOME/emulator/emulator"
+          "$ANDROID_HOME/emulator/emulator" -version > guest-evidence/emulator-version.txt
       - name: Build ARM64/x86_64 preview and instrumentation
         run: |
           gradle -p reverse-os-android --no-daemon :app:assembleGuestDebug :app:assembleGuestDebugAndroidTest > guest-evidence/gradle.log 2>&1 || { tail -160 guest-evidence/gradle.log; exit 1; }
           cp reverse-os-android/app/build/outputs/apk/guest/debug/app-guest-debug.apk guest-dist/REVERSE-Guest-v0.1.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs guest-dist/REVERSE-Guest-v0.1.apk > guest-evidence/signature.txt
           sudo chmod a+rw /dev/kvm
-      - uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 35
-          arch: x86_64
-          target: default
-          ram-size: 2048M
-          disable-animations: true
-          emulator-options: -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader
-          script: |
+      - name: Exercise guest CPU, XI delta and persistence on Android 15
+        timeout-minutes: 10
+        shell: bash
+        run: |
+            set -euo pipefail
+            export PATH="$ANDROID_HOME/platform-tools:$PATH"
+            export ANDROID_AVD_HOME="$RUNNER_TEMP/reverse-guest-avd"
+            mkdir -p "$ANDROID_AVD_HOME"
+            printf 'no\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --force -n guest -p "$ANDROID_AVD_HOME/guest.avd" -k 'system-images;android-35;default;x86_64'
+            "$ANDROID_HOME/emulator/emulator" -avd guest -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -memory 2048 > guest-evidence/emulator.log 2>&1 &
+            GUEST_EMULATOR_PID=$!
+            trap 'adb logcat -d > guest-evidence/logcat.txt 2>/dev/null || true; kill "$GUEST_EMULATOR_PID" 2>/dev/null || true' EXIT
+            ready=false
+            for i in $(seq 1 115); do
+              if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d "\r")" == 1 ]]; then ready=true;break;fi
+              sleep 2
+            done
+            test "$ready" = true
+            adb shell input keyevent 82
             adb shell wm size 720x1600
             adb shell wm density 280
             adb install -r guest-dist/REVERSE-Guest-v0.1.apk

@@ -113,7 +113,7 @@ extern "C" JNIEXPORT jbyteArray JNICALL
 Java_com_reversepc_os_NativeRuntime_guestInitialize(JNIEnv* e,jclass,jbyteArray elf,jlong ram,jint overrides){
   try{
     reverse_pc::guest::MinimalGuest guest{std::uint64_t(ram),std::size_t(overrides)};auto image=bytes(e,elf);
-    if(image.empty())image=reverse_pc::guest::demo_elf(std::uint64_t(ram));
+    if(!elf)image=reverse_pc::guest::demo_elf(std::uint64_t(ram));
     guest.load_elf(std::move(image));return output(e,guest_packet(guest));
   }catch(const std::exception& x){throw_java(e,x);return nullptr;}
 }
