@@ -7,7 +7,7 @@ import {readFileSync,writeFileSync,mkdtempSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {inspect,bootParts,vendorParts} from '../tools/aosp_boot_preflight.mjs';
+import {inspect,bootParts,vendorParts,inspectGkiKernelOnly} from '../tools/aosp_boot_preflight.mjs';
 const align=(x,p)=>Math.ceil(x/p)*p;
 const sha=x=>createHash('sha256').update(x).digest('hex');
 const kernel=Buffer.alloc(140);kernel.write('ARMd',56);kernel.write('NOT_EXECUTABLE',72);
@@ -102,5 +102,44 @@ test('CLI extracts exact original bytes, records hashes, never overwrites output
   assert.deepEqual(readFileSync(join(out,'generic_ramdisk.bin')),generic);
   assert.equal(JSON.parse(readFileSync(join(out,'manifest.json'),'utf8')).boot.kernel.sha256,sha(kernel));
   const again=spawnSync('node',[script,'--boot',b,'--vendor-boot',v,'--extract-dir',out],{encoding:'utf8'});
+  assert.notEqual(again.status,0);
+});
+
+test('standalone GKI boot-only proves bytes and reports missing Android inputs',()=>{
+  const b=boot(4,{r:Buffer.alloc(0)});
+  const x=inspectGkiKernelOnly(b);
+  assert.equal(x.manifest.status,'gki_kernel_only');
+  assert.equal(x.manifest.android_boot,false);
+  assert.equal(x.manifest.android_init_observed,false);
+  assert.equal(x.manifest.container_sha256,sha(b));
+  assert.equal(x.manifest.kernel.sha256,sha(kernel));
+  assert.equal(x.manifest.guest_loader_certain_size_block,false);
+  assert.deepEqual(x.segments.kernel,kernel);
+  assert.match(x.manifest.pending.join(' '),/vendor_boot/);
+});
+test('GKI-only gate refuses non-ARM64 and unsupported endianness',()=>{
+  assert.throws(()=>inspectGkiKernelOnly(boot(4,{k:Buffer.from('x'),r:Buffer.alloc(0)})),/AArch64/);
+  const k=Buffer.from(kernel);k.writeBigUInt64LE(1n,24);
+  assert.throws(()=>inspectGkiKernelOnly(boot(4,{k,r:Buffer.alloc(0)})),/flags/);
+});
+test('actual kernel size above old 16 MiB budget is a precise gate not a boot claim',()=>{
+  const k=Buffer.alloc(16*1024*1024-31);
+  k.write('ARMd',56);
+  const x=inspectGkiKernelOnly(boot(4,{k,r:Buffer.alloc(0)}));
+  assert.equal(x.manifest.guest_loader_certain_size_block,true);
+  assert.match(x.manifest.pending.join(' '),/16 MiB/);
+  assert.equal(x.manifest.android_boot,false);
+});
+test('GKI kernel-only CLI extracts byte-identically and prevents overwrite',()=>{
+  const root=mkdtempSync(join(tmpdir(),'reverse-gki-'));
+  const b=join(root,'boot.img'),out=join(root,'out');
+  const script=fileURLToPath(new URL('../tools/aosp_boot_preflight.mjs',import.meta.url));
+  writeFileSync(b,boot(4,{r:Buffer.alloc(0)}));
+  const data=JSON.parse(execFileSync('node',
+    [script,'--boot',b,'--gki-kernel-only','--extract-dir',out],{encoding:'utf8'}));
+  assert.equal(data.status,'gki_kernel_only');
+  assert.deepEqual(readFileSync(join(out,'kernel.bin')),kernel);
+  assert.equal(JSON.parse(readFileSync(join(out,'manifest.json'),'utf8')).android_boot,false);
+  const again=spawnSync('node',[script,'--boot',b,'--gki-kernel-only','--extract-dir',out]);
   assert.notEqual(again.status,0);
 });
