@@ -110,9 +110,21 @@ final class RxeAppStore {
             }
         }
     }
+    interface LockedSnapshotAction {void run(Saved saved)throws Exception;}
+    void withLockedSnapshot(byte[] executable,LockedSnapshotAction action)throws Exception{
+        try(FileChannel channel=FileChannel.open(new File(directory,"writer.lock").toPath(),StandardOpenOption.CREATE,StandardOpenOption.WRITE)){
+            FileLock lock=channel.tryLock();
+            if(lock==null)throw new IOException("BBY Q está trabajando en otra ventana");
+            try(FileLock held=lock){action.run(load(executable));}
+        }
+    }
     void migrate(byte[] executable,Saved legacy,byte[] state)throws Exception{
         try(FileChannel channel=FileChannel.open(new File(directory,"writer.lock").toPath(),StandardOpenOption.CREATE,StandardOpenOption.WRITE);FileLock held=channel.lock()){
-            if(record.exists()){load(executable);return;}
+            if(record.exists()){
+                Saved existing=load(executable);
+                if(existing.pending!=null||existing.language!=legacy.language||!existing.history.toString().equals(legacy.history.toString())||!java.util.Arrays.equals(existing.state,state))throw new IOException("La memoria de destino ya existe y contiene otra sesión");
+                return;
+            }
             save(new Saved(state,new JSONArray(legacy.history.toString()),legacy.language));
         }
     }

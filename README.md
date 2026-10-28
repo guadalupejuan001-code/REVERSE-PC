@@ -1,5 +1,7 @@
 # REVERSE-PC
 
+**REVERSE 2.5.1:** BBY Q E025 y W4u 0.1 integrados, memoria nativa ampliada y correcciones de teclado conservadas. [Fuentes, compilación y procedencia](docs/RELEASE_2_5_1.md).
+
 **REVERSE 2.4.2:** escritorio PC horizontal con teclado integrado, borrador
 continuo en BBY Q y espacio de escritura ajustado al teclado Android.
 [Teclado, actualización y validación](docs/REVERSE_KEYBOARD_2_4_2.md).

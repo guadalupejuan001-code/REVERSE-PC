@@ -1,7 +1,7 @@
 'use strict';
 /* Lecturas locales con procedencia. Sin métricas sintéticas ni sondeos remotos. */
 const DEFAULT_WALL = 'assets/pliegue-default.webp';
-const UI_BUILD = '2.4.2';
+const UI_BUILD = '2.4.1';
 let systemSnapshot = null;
 let savedAt = null;
 let saveError = null;

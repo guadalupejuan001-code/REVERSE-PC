@@ -25,9 +25,82 @@ final class BbyqInterface {
         if(bundledIdentity==null){
             byte[] bundled=asset(ctx,"native-apps/BBY-Q.rxe");
             JSONObject info=new JSONObject(new String(NativeRuntime.inspectRxe(bundled),StandardCharsets.UTF_8));
-            bundledIdentity="E023-W4u-1".equals(info.optString("app_version"))&&"org.reverse.bbyq".equals(info.optString("app_id"))?identity(bundled):"";
+            bundledIdentity="E025-Chain-1".equals(info.optString("app_version"))&&"org.reverse.bbyq".equals(info.optString("app_id"))?identity(bundled):"";
         }
-        return bundledIdentity.equals(identity(image));
+        String hash=identity(image);
+        if(bundledIdentity.equals(hash))return true;
+        JSONArray compatible=new JSONObject(new String(asset(ctx,"bbyq-interface/manifest.json"),StandardCharsets.UTF_8)).optJSONArray("compatible_w4u_sha256s");
+        if(compatible!=null)for(int i=0;i<compatible.length();i++)if(hash.equals(compatible.getString(i)))return true;
+        return false;
+    }
+    // Recovered from the delivered 2.5.0 host. Work only on candidate bytes;
+    // publication is handled by WorkbenchPrograms after all lessons succeed.
+    static byte[] extendChain(Context ctx,byte[] state)throws Exception{
+        ResultPacket marker=ResultPacket.parse(NativeRuntime.execute(state,"#!reverse-pc-machine-v1\nload8 r0 8600000000000000000\nprint r0\nhalt\n"));
+        int schema=-1;
+        for(String row:marker.output.split("\\n"))if(row.startsWith("{"))schema=new JSONObject(row).getInt("value");
+        if(schema==25)return state;
+        if(schema!=0)throw new IOException("La nueva región de memoria ya contiene otro estado");
+        byte[] raw=asset(ctx,"bbyq-interface/upgrade-chain.json");
+        JSONObject manifest=new JSONObject(new String(asset(ctx,"bbyq-interface/manifest.json"),StandardCharsets.UTF_8));
+        if(!identity(raw).equals(manifest.getJSONObject("chain").getString("curriculum_sha256")))throw new IOException("El currículo no coincide con esta actualización");
+        JSONObject curriculum=new JSONObject(new String(raw,StandardCharsets.UTF_8));
+        if(curriculum.getInt("format")!=1||!"E025".equals(curriculum.getString("profile")))throw new IOException("Formato de currículo desconocido");
+        JSONArray initializers=curriculum.getJSONArray("initializers");
+        for(int i=0;i<initializers.length();i++){
+            String file=initializers.getString(i);
+            if(!file.matches("chain/initialize-[a-z]+\\.xi"))throw new IOException("Inicializador no válido");
+            state=ResultPacket.parse(NativeRuntime.execute(state,new String(asset(ctx,"bbyq-interface/"+file),StandardCharsets.UTF_8))).state;
+        }
+        JSONObject modules=curriculum.getJSONObject("modules");
+        java.util.Map<String,String> cache=new java.util.HashMap<>();
+        JSONArray lessons=curriculum.getJSONArray("lessons");
+        for(int i=0;i<lessons.length();i++){
+            JSONObject lesson=lessons.getJSONObject(i);String source;
+            if(lesson.has("raw"))source="#!reverse-pc-machine-v1\n"+lesson.getString("raw");
+            else{
+                boolean dialogue=lesson.optBoolean("dialogue",false);
+                String mode=(dialogue?"dialogue-":"")+lesson.getString("mode");
+                if(!mode.matches("[a-z][a-z0-9-]*"))throw new IOException("Módulo de enseñanza no válido");
+                String body=cache.get(mode);
+                if(body==null){
+                    JSONObject module=modules.getJSONObject(mode);String file=module.getString("file");
+                    if(!file.equals("chain/"+mode+".xi"))throw new IOException("Ruta del módulo no válida");
+                    byte[] bytes=asset(ctx,"bbyq-interface/"+file);
+                    if(!identity(bytes).equals(module.getString("sha256")))throw new IOException("El módulo no coincide con el currículo");
+                    body=new String(bytes,StandardCharsets.UTF_8);body=body.substring(body.indexOf('\n')+1);cache.put(mode,body);
+                }
+                byte[] text=lesson.optString("text","").getBytes(StandardCharsets.UTF_8);
+                if(text.length>255)throw new IOException("Lección fuera del contrato de entrada");
+                long mailbox=dialogue?7300000000000000000L:7400000000000000000L;
+                StringBuilder program=new StringBuilder("#!reverse-pc-machine-v1\n");
+                if(text.length>0){
+                    program.append(put(mailbox+16,1)).append(put(mailbox+17,text.length));
+                    if(!dialogue)program.append(put(mailbox+3,lesson.getInt("language")));
+                    for(int j=0;j<text.length;j++)program.append(put(mailbox+128+j,text[j]&255));
+                }
+                JSONArray fields=lesson.getJSONArray("fields");
+                for(int j=0;j<fields.length();j++){
+                    JSONArray field=fields.getJSONArray(j);int value=field.getInt(1);
+                    if(value<0||value>255)throw new IOException("Campo de enseñanza fuera de rango");
+                    program.append(put(field.getLong(0),value));
+                }
+                source=program.append(body).toString();
+            }
+            ResultPacket result=ResultPacket.parse(NativeRuntime.execute(state,source));
+            if(lesson.has("expected")&&!lesson.getString("expected").equals(speech(result.output)))throw new IOException("La enseñanza entra en conflicto con el vocabulario de esta sesión");
+            state=result.state;
+        }
+        return state;
+    }
+    private static String speech(String output)throws Exception{
+        ByteArrayOutputStream bytes=new ByteArrayOutputStream();
+        for(String row:output.split("\\n"))if(row.startsWith("{")){
+            JSONObject item=new JSONObject(row);String register=item.optString("register");
+            if(!"r14".equals(register)&&!"r9".equals(register))continue;
+            int b=item.getInt("value");if(b<0||b>255||bytes.size()>=4096)throw new IOException("Salida XI no válida");bytes.write(b);
+        }
+        return StandardCharsets.UTF_8.newDecoder().decode(java.nio.ByteBuffer.wrap(bytes.toByteArray())).toString();
     }
     private static String put(long address,int value){return "store8 "+address+" "+value+"\n";}
     static byte[] observe(byte[] state,JSONObject observation)throws Exception{

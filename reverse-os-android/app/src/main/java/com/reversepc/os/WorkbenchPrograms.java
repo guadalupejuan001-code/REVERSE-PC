@@ -34,24 +34,37 @@ final class WorkbenchPrograms {
     }
     private void upgradeBbyq()throws Exception{
         byte[] bundled=BbyqInterface.asset(context,"native-apps/BBY-Q.rxe");
-        if(!"E023-W4u-1".equals(info(bundled).optString("app_version")))return;
+        if(!"E025-Chain-1".equals(info(bundled).optString("app_version")))return;
         if(!exists(BBYQ))return; // A deliberately removed application stays removed.
         byte[] previous=files.read(BBYQ);
         if(identity(previous).equals(identity(bundled)))return;
         JSONObject manifest=new JSONObject(new String(BbyqInterface.asset(context,"bbyq-interface/manifest.json"),StandardCharsets.UTF_8));
-        boolean legacy=BbyqInterface.LEGACY_SHA.equals(identity(previous));
-        boolean knownControl=manifest.getString("legacy_control_sha256").equals(identity(previous));
+        String previousHash=identity(previous);
+        boolean legacy=BbyqInterface.LEGACY_SHA.equals(previousHash);
+        boolean oldW4u=manifest.getString("legacy_w4u_sha256").equals(previousHash);
+        boolean oldSocial=manifest.getString("legacy_social_sha256").equals(previousHash);
+        boolean knownControl=manifest.getString("legacy_control_sha256").equals(previousHash);
         JSONArray identities=manifest.optJSONArray("legacy_control_sha256s");
         if(identities!=null)for(int i=0;i<identities.length();i++)knownControl|=identities.getString(i).equals(identity(previous));
-        if(!legacy&&!knownControl)return; // Keep custom executables.
-        RxeAppStore.Saved old=new RxeAppStore(context,previous).load(previous);
-        byte[] migration=BbyqInterface.asset(context,legacy?"bbyq-interface/upgrade-e016.rxe":"bbyq-interface/upgrade-control.rxe");
-        ResultPacket converted=ResultPacket.parse(NativeRuntime.executeRxe(old.state,migration));
-        new RxeAppStore(context,bundled).migrate(bundled,old,converted.state);
-        // Existing private E016 data remain as a rollback copy. Publish the new
-        // executable only after its migrated state and transcript are durable.
-        files.write(BBYQ,bundled,true);
-        Log.i("ReverseWorkbench","BBYQ_INTERFACE_MIGRATED messages="+old.history.length());
+        if(!legacy&&!knownControl&&!oldW4u&&!oldSocial)return; // Keep custom executables.
+        try{
+            new RxeAppStore(context,previous).withLockedSnapshot(previous,old->{
+                if(old.pending!=null)throw new IOException("La acción pendiente debe confirmarse antes de actualizar BBY Q");
+                byte[] candidate=old.state;
+                if(!oldSocial){
+                    String migration=legacy?"upgrade-e016.rxe":oldW4u?"upgrade-w4u.rxe":"upgrade-control.rxe";
+                    candidate=ResultPacket.parse(NativeRuntime.executeRxe(candidate,BbyqInterface.asset(context,"bbyq-interface/"+migration))).state;
+                }
+                candidate=ResultPacket.parse(NativeRuntime.executeRxe(candidate,BbyqInterface.asset(context,"bbyq-interface/upgrade-chain-ui.rxe"))).state;
+                candidate=BbyqInterface.extendChain(context,candidate);
+                new RxeAppStore(context,bundled).migrate(bundled,old,candidate);
+                if(!identity(files.read(BBYQ)).equals(previousHash))throw new IOException("El ejecutable cambió durante la actualización");
+                // Keep the old memory as a rollback copy and publish only after
+                // the candidate state and full transcript are durable.
+                files.write(BBYQ,bundled,true);
+                Log.i("ReverseWorkbench","BBYQ_CHAIN_MIGRATED messages="+old.history.length());
+            });
+        }catch(Exception conflict){Log.w("ReverseWorkbench","BBYQ_CHAIN_RETAINED_PREVIOUS",conflict);}
     }
     private boolean exists(String path)throws Exception{
         for(WorkspaceFiles.Entry entry:files.list("Aplicaciones"))if(entry.path.equals(path))return true;
