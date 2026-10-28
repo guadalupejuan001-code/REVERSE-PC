@@ -95,6 +95,7 @@ _start:
     mov x0, #0
     mov x8, #93
     svc #0
+.section .data
 .balign 16
 .Loutput:
     .zero 1024
