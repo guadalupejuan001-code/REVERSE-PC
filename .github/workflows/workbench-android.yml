@@ -1,4 +1,4 @@
-name: REVERSE 2.5.1 integrated APK
+name: REVERSE 2.5.8 native clipped Music YouTube + consolidated OS
 on:
   push:
     branches: [main]
@@ -21,6 +21,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: {persist-credentials: false}
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/REVERSE-PC
+          ref: 481bff8b68ba5a41e55f32e2516d3b079470aaa0
+          path: deps/prisma-previous
+          persist-credentials: false
       - uses: actions/checkout@v4
         with:
           repository: guadalupejuan001-code/mundo-X
@@ -56,11 +62,33 @@ jobs:
           mkdir -p build dist evidence build-signing
           python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc src/reverse_pc.cpp -o build/reverse_pc
+          g++ -std=c++17 -O2 -Wall -Wextra -Wpedantic -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tests/prisma_xrender.cpp -o build/test-prisma-xrender
+          build/test-prisma-xrender > evidence/prisma-xrender-exact.json
+          g++ -std=c++17 -O2 -Ibuild/ether-compat -Ideps/mundo-x/native/include deps/mundo-x/native/tests/ether_render_spatial.cpp -o build/test-xrender-spheres
+          build/test-xrender-spheres > evidence/xrender-spheres.txt
+          g++ -std=c++17 -O2 -Ibuild/ether-compat -Ideps/mundo-x/native/include deps/mundo-x/native/tests/ether_surface_buffer.cpp -o build/test-xrender-surfaces
+          build/test-xrender-surfaces > evidence/xrender-surfaces.txt
+          node apps/prisma/tests/motion.test.mjs > evidence/prisma-motion.json
+          node scripts/build-prisma.mjs build/reverse_pc build/prisma "$GITHUB_SHA" > evidence/prisma-manifest.json
+          python3 tests/rxe_graphics_cli.py build/reverse_pc build/prisma/PRISMA.rxe > evidence/prisma-native-tests.json
+          python3 tests/rxe_cli.py build/reverse_pc > evidence/rxe1-regression.json
+          python3 tests/rxe_app_cli.py build/reverse_pc > evidence/rxe2-regression.json
+          mkdir -p reverse-os-android/app/src/main/assets/native-apps
+          cp build/prisma/PRISMA.rxe reverse-os-android/app/src/main/assets/native-apps/PRISMA.rxe
+          cp build/prisma/PRISMA.rxe dist/PRISMA.rxe
+          node deps/prisma-previous/scripts/build-prisma.mjs "$PWD/build/reverse_pc" "$PWD/build/prisma-previous" 2deb6c918ef94e77274d66a76ce20c0e9896c6da > evidence/prisma-previous.json
+          echo 'be811baf5404d97fae1803185b3e4679ec81fe2524a613ff81451a13d3fa3e64  build/prisma-previous/PRISMA.rxe' | sha256sum -c -
+          mkdir -p reverse-os-android/app/src/androidTest/assets
+          cp build/prisma-previous/PRISMA.rxe reverse-os-android/app/src/androidTest/assets/prisma-1.1.rxe
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tests/core-profile.cpp -o build/core-profile
           python3 deps/bbyq-latest/ai/releases/e025/build.py build/reverse_pc build/e025 --assets reverse-os-android/app/src/main/assets > evidence/e025-build.json
           python3 deps/bbyq-latest/ai/releases/e025/test.py build/reverse_pc build/e025-tests > evidence/e025-tests.json
           node deps/bbyq-latest/ai/xi/w4u/tests/native-w4u.mjs build/reverse_pc build/w4u > evidence/w4u.log
           node reverse-os-android/tests/quantum-workbench-native.cjs build/reverse_pc build/core-profile build/quantum > evidence/quantum.log
+          node reverse-os-android/tests/qd-native.cjs build/reverse_pc build/qd build/e025/controller.rvp > evidence/qd-native.log
+          bash tests/x_market_laplace.sh build/reverse_pc > evidence/laplace-contract.json
+          node tests/x_market_predictor.js build/reverse_pc --ci > evidence/laplace-chronological.json
+          node reverse-os-android/tests/laplace-bridge-contract.cjs > evidence/laplace-bridge.json
           node bbyq-interface/build.mjs build/reverse_pc deps/bbyq-legacy build/legacy - > evidence/legacy-build.json
           mkdir -p reverse-os-android/app/src/androidTest/assets
           cp build/legacy/BBY-Q.rxe reverse-os-android/app/src/androidTest/assets/legacy-BBY-Q.rxe
@@ -75,6 +103,8 @@ jobs:
           npm install --prefix "$RUNNER_TEMP/reverse-ui" playwright@1.56.1
           node "$RUNNER_TEMP/reverse-ui/node_modules/playwright/cli.js" install --with-deps chromium
           export NODE_PATH="$RUNNER_TEMP/reverse-ui/node_modules"
+          node reverse-os-android/tests/ux-compact-ui.cjs > evidence/ux-compact.json
+          node reverse-os-android/tests/qd-studio-ui.cjs evidence/qd-ui
           node reverse-os-android/tests/native-shell-ui.cjs build/reverse_pc build/e025 build/core-profile evidence/desktop
           node reverse-os-android/tests/keyboard-ui.cjs build/reverse_pc build/e025 build/core-profile evidence/keyboard
       - name: Compile ARM64 and x86_64 Android packages
@@ -85,10 +115,10 @@ jobs:
           keytool -genkeypair -keystore "$REVERSE_SIGNING_KEYSTORE" -storetype JKS -storepass android -keypass android -alias reverse-desktop -keyalg RSA -keysize 2048 -validity 30 -dname 'CN=REVERSE Disposable CI'
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1' platform-tools emulator 'system-images;android-35;default;x86_64' > evidence/sdk.log
           gradle -p reverse-os-android --no-daemon :app:assembleControlDebug :app:assembleControlDebugAndroidTest > evidence/gradle.log 2>&1 || { tail -180 evidence/gradle.log; exit 1; }
-          cp reverse-os-android/app/build/outputs/apk/control/debug/app-control-debug.apk dist/REVERSE-v2.5.1-ci.apk
+          cp reverse-os-android/app/build/outputs/apk/control/debug/app-control-debug.apk dist/REVERSE-v2.5.8-music-clip-ci.apk
           cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" dist/apksigner.jar
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/REVERSE-v2.5.1-ci.apk > evidence/ci-signature.txt
-          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -p 4 dist/REVERSE-v2.5.1-ci.apk > evidence/alignment.txt
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/REVERSE-v2.5.8-music-clip-ci.apk > evidence/ci-signature.txt
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -p 4 dist/REVERSE-v2.5.8-music-clip-ci.apk > evidence/alignment.txt
       - name: Run migration, keyboard and desktop on Android 15
         timeout-minutes: 20
         shell: bash
@@ -115,7 +145,7 @@ jobs:
           adb shell settings put secure immersive_mode_confirmations confirmed
           adb shell settings put system screen_off_timeout 600000
           adb shell input keyevent 82
-          adb install -r dist/REVERSE-v2.5.1-ci.apk
+          adb install -r dist/REVERSE-v2.5.8-music-clip-ci.apk
           adb install -r reverse-os-android/app/build/outputs/apk/androidTest/control/debug/app-control-debug-androidTest.apk
           sleep 20
           adb logcat -c
@@ -126,12 +156,24 @@ jobs:
           timeout 240s adb shell am instrument -w -e mode full com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee evidence/android-full.txt
           grep 'WORKBENCH_TESTS_OK mode=full' evidence/android-full.txt
           adb shell am force-stop com.reversepc.control.workbench
+          timeout 180s adb shell am instrument -w -e mode graphics com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee evidence/android-graphics.txt
+          grep 'WORKBENCH_TESTS_OK mode=graphics' evidence/android-graphics.txt
+          adb shell am force-stop com.reversepc.control.workbench
+          timeout 240s adb shell am instrument -w -e mode music com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee evidence/android-music.txt
+          grep 'WORKBENCH_TESTS_OK mode=music' evidence/android-music.txt
+          adb pull /sdcard/Android/data/com.reversepc.control.workbench/files/ui-evidence evidence/prisma-ui || true
+          adb shell am force-stop com.reversepc.control.workbench
           timeout 180s adb shell am instrument -w -e mode restore com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee evidence/android-restore.txt
           grep 'WORKBENCH_TESTS_OK mode=restore' evidence/android-restore.txt
+          # Only the disposable emulator profile is cleared; the user's Android state
+          # and the BBY Q fixture used by other workflows are never altered.
+          adb shell pm clear com.reversepc.control.workbench
+          timeout 240s adb shell am instrument -w -e mode qd com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee evidence/android-qd.txt
+          grep 'WORKBENCH_TESTS_OK mode=qd' evidence/android-qd.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: REVERSE-2.5.1-integrated
+          name: REVERSE-2.5.8-music-clipped
           path: |
             dist/
             evidence/

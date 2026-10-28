@@ -1,0 +1,71 @@
+name: Publish REVERSE 2.5.6 preview APK
+on:
+  push:
+    branches:
+      - ux/reverse-compact-bbyq-gyro-20261028
+    paths:
+      - .github/workflows/publish-reverse-256-preview.yml
+  workflow_dispatch:
+permissions:
+  actions: read
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Download exact preview build from GitHub Actions
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/reverse-256-artifact
+          gh run download 40770326406 \
+            --repo "$GITHUB_REPOSITORY" \
+            --name REVERSE-2.5.6-compact-gyro \
+            --dir /tmp/reverse-256-artifact
+          test -s /tmp/reverse-256-artifact/dist/REVERSE-v2.5.6-compact-ci.apk
+          mkdir -p dist
+          cp /tmp/reverse-256-artifact/dist/REVERSE-v2.5.6-compact-ci.apk \
+            dist/REVERSE-v2.5.6-preview.apk
+          printf '%s  %s\n' \
+            50ac36fe598b00bfcdfb7b7298baa99524471666b98e9834a925a589c9d9add5 \
+            dist/REVERSE-v2.5.6-preview.apk | sha256sum --check -
+          unzip -t dist/REVERSE-v2.5.6-preview.apk
+          sha256sum dist/REVERSE-v2.5.6-preview.apk > dist/REVERSE-v2.5.6-preview.sha256
+      - name: Publish direct APK as clearly labeled prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cat > /tmp/RELEASE_NOTES.md <<'EOF'
+          REVERSE-PC 2.5.6 — versión experimental de prueba, no actualización estable.
+          
+          Esta APK contiene el rediseño de escritorio compacto, iconos más pequeños,
+          Music, PRISMA con paralaje por sensor, y BBY Q con Chat / W4u / Cody.
+          
+          Procedencia: REVERSE-PC PR #37, commit 8725959fc0a4239da59dd85ad854d367bb83c267,
+          GitHub Actions run 40770326406, artifact REVERSE-2.5.6-compact-gyro.
+          Se verificó integridad ZIP y SHA256 del instalador; ese run
+          terminó con fallo por referencias antiguas al nombre de archivo en la
+          verificación, por lo que NO se afirma validación completa del emulador.
+          
+          ADVERTENCIA: Firmada con certificado CI efímero. No actualiza directamente
+          instalaciones previas firmadas con otras claves. Haz respaldo de la memoria
+          y archivos de BBY Q antes de desinstalar versiones anteriores.
+          EOF
+          if gh release view v2.5.6-preview.1 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload v2.5.6-preview.1 \
+              dist/REVERSE-v2.5.6-preview.apk \
+              dist/REVERSE-v2.5.6-preview.sha256 \
+              --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            gh release create v2.5.6-preview.1 \
+              dist/REVERSE-v2.5.6-preview.apk \
+              dist/REVERSE-v2.5.6-preview.sha256 \
+              --repo "$GITHUB_REPOSITORY" \
+              --target 8725959fc0a4239da59dd85ad854d367bb83c267 \
+              --title 'REVERSE 2.5.6 — APK de prueba (descarga directa)' \
+              --notes-file /tmp/RELEASE_NOTES.md \
+              --prerelease
+          fi

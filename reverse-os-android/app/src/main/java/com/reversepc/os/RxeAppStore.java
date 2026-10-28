@@ -110,6 +110,21 @@ final class RxeAppStore {
             }
         }
     }
+    /** Execute first-party Qd XI on the original BBY Q memory, with one lock and atomic commit. */
+    ResultPacket runTrustedXi(byte[] executable,String code,boolean persist)throws Exception{
+        try(FileChannel channel=FileChannel.open(new File(directory,"writer.lock").toPath(),StandardOpenOption.CREATE,StandardOpenOption.WRITE)){
+            FileLock lock;
+            try{lock=channel.tryLock();}catch(OverlappingFileLockException busy){throw new IOException("BBY Q está ocupado");}
+            if(lock==null)throw new IOException("BBY Q está ocupado");
+            try(FileLock held=lock){
+                Saved previous=load(executable);
+                if(persist&&previous.pending!=null)throw new IOException("Confirma primero la acción pendiente de W4u");
+                ResultPacket result=ResultPacket.parse(NativeRuntime.execute(previous.state,code));
+                if(persist)save(new Saved(result.state,new JSONArray(previous.history.toString()),previous.language,previous.pending));
+                return result;
+            }
+        }
+    }
     interface LockedSnapshotAction {void run(Saved saved)throws Exception;}
     void withLockedSnapshot(byte[] executable,LockedSnapshotAction action)throws Exception{
         try(FileChannel channel=FileChannel.open(new File(directory,"writer.lock").toPath(),StandardOpenOption.CREATE,StandardOpenOption.WRITE)){

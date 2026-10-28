@@ -3,6 +3,8 @@ package com.reversepc.os;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.Intent;
+import android.content.ClipboardManager;
+import android.content.ClipData;
 import android.graphics.Insets;
 import android.graphics.Rect;
 import android.net.Uri;
@@ -45,12 +47,17 @@ import java.util.concurrent.TimeUnit;
 /** Local packaged desktop. Only owned assets can access the native bridge. */
 public final class WorkbenchActivity extends Activity {
     static final String ORIGIN="https://reverse.local/";
-    private static final int PICK=7101,EXPORT=7102,IMPORT_RXE=7103;
+    private static final int PICK=7101,EXPORT=7102,IMPORT_RXE=7103,IMPORT_MUSIC=7104;
     private final Handler ui=new Handler(Looper.getMainLooper());
     private volatile boolean closed;
     private SessionStore store;
     private WorkbenchPrograms programs;
     private WebView web;
+    private FrameLayout root;
+    private MusicPlayer music;
+    private String musicWindowId;
+    private boolean hostResumed;
+    private boolean musicPickerOpen;
     private ValueCallback<Uri[]> chooser;
     private byte[] pendingExport;
     private int insetTop,insetBottom,insetLeft,insetRight,keyboardInset;
@@ -77,7 +84,7 @@ public final class WorkbenchActivity extends Activity {
     @Override public void onCreate(Bundle previous){
         super.onCreate(previous);
         immersive(this);
-        FrameLayout root=new FrameLayout(this);root.setBackgroundColor(0xff090b0d);
+        root=new FrameLayout(this);root.setBackgroundColor(0xff090b0d);
         web=new WorkbenchWebView(this);root.addView(web,new FrameLayout.LayoutParams(-1,-1));setContentView(root);
         root.setOnApplyWindowInsetsListener((v,insets)->{
             // The wallpaper fills the display, including cutout/system-bar areas.
@@ -197,6 +204,69 @@ public final class WorkbenchActivity extends Activity {
         return result;
     }
     public final class Bridge {
+        /** Clipboard is queried only on an explicit UI action. No polling or storage. */
+        @JavascriptInterface public String musicClipboard(){
+            if(closed||!hostResumed)return "";
+            try{
+                ClipboardManager clipboard=(ClipboardManager)getSystemService(CLIPBOARD_SERVICE);
+                if(clipboard==null||!clipboard.hasPrimaryClip())return "";
+                ClipData item=clipboard.getPrimaryClip();
+                if(item==null||item.getItemCount()==0)return "";
+                CharSequence text=item.getItemAt(0).getText();
+                if(text==null)return "";
+                String value=text.toString().trim();
+                return value.length()>2048?value.substring(0,2048):value;
+            }catch(RuntimeException denied){return "";}
+        }
+        @JavascriptInterface public boolean musicCopyLink(String link){
+            if(closed||!hostResumed||link==null||link.length()>2048||!MusicPolicy.pageAllowed(link))return false;
+            try{
+                ClipboardManager clipboard=(ClipboardManager)getSystemService(CLIPBOARD_SERVICE);
+                if(clipboard==null)return false;
+                clipboard.setPrimaryClip(ClipData.newPlainText("Enlace de YouTube",link));
+                return true;
+            }catch(RuntimeException denied){return false;}
+        }
+        @JavascriptInterface public void music(String action,String payload){
+            if(closed||action==null||payload==null||payload.length()>8192)return;
+            ui.post(()->{
+                if(closed)return;
+                try{
+                    JSONObject data=new JSONObject(payload);String owner=data.optString("windowId","");
+                    if(!owner.matches("[A-Za-z0-9_-]{1,128}"))return;
+                    if("close".equals(action)){
+                        if(owner.equals(musicWindowId)&&music!=null){music.stopLocal();music.destroy();music=null;musicWindowId=null;}return;
+                    }
+                    if(!owner.equals(musicWindowId)){
+                        if(!"status".equals(action)&&!"open".equals(action))return;
+                        if(music!=null){music.stopLocal();music.destroy();}music=null;musicWindowId=owner;
+                    }
+                    if(music==null)music=new MusicPlayer(WorkbenchActivity.this,root,web,state->{
+                        if(!closed&&owner.equals(musicWindowId))try{
+                            state.put("windowId",owner);
+                            web.evaluateJavascript("window.ReverseMusic&&window.ReverseMusic.update("+state.toString()+");",null);
+                        }catch(Exception ignored){}
+                    });
+                    if(!hostResumed)music.pause();
+                    if("import".equals(action)){
+                        if(!hostResumed||musicPickerOpen)return;
+                        musicPickerOpen=true;
+                        try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("audio/*"),IMPORT_MUSIC);}
+                        catch(Exception error){musicPickerOpen=false;throw error;}
+                        return;
+                    }
+                    if("removeLocal".equals(action)){
+                        new android.app.AlertDialog.Builder(WorkbenchActivity.this).setTitle("Eliminar audio guardado")
+                            .setMessage("Se eliminará esta copia de la biblioteca de REVERSE. Una transferencia en curso se cancelará.")
+                            .setNegativeButton("Conservar",null).setPositiveButton("Eliminar",(dialog,which)->{
+                                if(!closed&&music!=null&&owner.equals(musicWindowId))try{music.command(action,data);}catch(Exception error){music.reportError(error.getMessage());}
+                            }).show();
+                        return;
+                    }
+                    music.command(action,data);
+                }catch(Exception error){if(music!=null)music.reportError(String.valueOf(error.getMessage()));}
+            });
+        }
         @JavascriptInterface public void hideKeyboard(){ui.post(WorkbenchActivity.this::hideKeyboard);}
         @JavascriptInterface public void request(String id,String operation,String payload){
             if(closed||id==null||!id.matches("[A-Za-z0-9_-]{1,60}"))return;
@@ -211,10 +281,16 @@ public final class WorkbenchActivity extends Activity {
                     else if("saveProfile".equals(operation))result=saveProfile(payload);
                     else if("listApps".equals(operation))result=programs().catalog();
                     else if("openApp".equals(operation))result=programs().open(new JSONObject(payload).getString("path"));
+                    else if("launchGraphics".equals(operation)){
+                        result=programs().graphicsLaunch(new JSONObject(payload));
+                        final String path=result.getString("path"),identity=result.getString("identity");
+                        ui.post(()->{if(!closed)startActivity(new Intent(WorkbenchActivity.this,RxeGraphicsActivity.class).putExtra("path",path).putExtra("identity",identity));});
+                    }
                     else if("askApp".equals(operation))result=programs().ask(new JSONObject(payload));
                     else if("ackControl".equals(operation))result=programs().acknowledge(new JSONObject(payload));
                     else if("runApp".equals(operation))result=programs().run(new JSONObject(payload),session());
                     else if("compileApp".equals(operation))result=programs().compile(new JSONObject(payload));
+                    else if("qd".equals(operation))result=programs().qd(new JSONObject(payload));
                     else throw new IllegalArgumentException("Operación no permitida");
                     response=result.toString();
                 }catch(Throwable error){response=failure(error);}
@@ -305,6 +381,13 @@ public final class WorkbenchActivity extends Activity {
     }
     @Override protected void onActivityResult(int request,int result,Intent data){
         super.onActivityResult(request,result,data);
+        if(request==IMPORT_MUSIC){
+            musicPickerOpen=false;
+            if(result==RESULT_OK&&data!=null&&data.getData()!=null)try{
+                MusicLibrary.get(this).importAudio(data.getData());
+                if(music!=null)music.reportError("");
+            }catch(Exception error){if(music!=null)music.reportError(error.getMessage());else message("No se pudo importar el audio.");}
+        }
         if(request==IMPORT_RXE&&result==RESULT_OK&&data!=null&&data.getData()!=null){Uri uri=data.getData();RuntimeExecutor.INSTANCE.execute(()->{
             String response;
             try(InputStream input=getContentResolver().openInputStream(uri)){JSONObject imported=programs().importImage(WorkbenchPrograms.read(input));response=imported.toString();Log.i("ReverseWorkbench","WORKBENCH_RXE_IMPORT_OK "+imported.getString("path"));}
@@ -315,9 +398,9 @@ public final class WorkbenchActivity extends Activity {
         if(request==EXPORT){byte[] bytes=pendingExport;pendingExport=null;if(result==RESULT_OK&&bytes!=null&&data!=null&&data.getData()!=null){Uri target=data.getData();RuntimeExecutor.INSTANCE.execute(()->{try(OutputStream stream=getContentResolver().openOutputStream(target,"wt")){if(stream==null)throw new IllegalStateException("Destino no disponible");stream.write(bytes);message("Archivo exportado.");}catch(Exception error){message("No se pudo escribir el archivo.");}});}}
     }
     @Override public void onWindowFocusChanged(boolean focused){super.onWindowFocusChanged(focused);if(focused)immersive(this);}
-    @Override protected void onPause(){if(web!=null){web.evaluateJavascript("document.body&&(document.body.dataset.appPaused='true')",null);web.onPause();}super.onPause();}
-    @Override protected void onResume(){super.onResume();immersive(this);if(web!=null){web.onResume();web.evaluateJavascript("document.body&&(document.body.dataset.appPaused='false')",null);}}
-    @Override protected void onDestroy(){closed=true;if(chooser!=null){chooser.onReceiveValue(null);chooser=null;}if(web!=null){web.removeJavascriptInterface("ReverseNative");web.destroy();}super.onDestroy();}
+    @Override protected void onPause(){hostResumed=false;if(music!=null)music.pause();if(web!=null){web.evaluateJavascript("document.body&&(document.body.dataset.appPaused='true')",null);web.onPause();}super.onPause();}
+    @Override protected void onResume(){super.onResume();hostResumed=true;immersive(this);if(web!=null){web.onResume();web.evaluateJavascript("document.body&&(document.body.dataset.appPaused='false')",null);}if(music!=null)music.resume();}
+    @Override protected void onDestroy(){closed=true;if(music!=null){music.destroy();music=null;}if(chooser!=null){chooser.onReceiveValue(null);chooser=null;}if(web!=null){web.removeJavascriptInterface("ReverseNative");web.destroy();}super.onDestroy();}
     // Used only by the in-repository Android instrumentation tests.
     public WebView testingWebView(){return web;}
 }
