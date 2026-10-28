@@ -69,7 +69,7 @@ entre todos esos qubits ni mejora de FPS.
 El subconjunto entero incluye las variantes implementadas en el decoder para
 MOVN/Z/K, ADD/SUB inmediatos/desplazados/extendidos, ADC/SBC, lógica inmediata y con
 registro, bitfields, EXTR, desplazamientos variables, CSEL, CCMP, RBIT/REV/CLZ/CLS, divisiones,
-MADD/MSUB, ramas, cargas/stores enteros comunes y pares. Los exclusivos simples
+MADD/MSUB, ramas, cargas/stores enteros comunes y pares, incluido LDPSW con extensión de signo. Los exclusivos simples
 LDXR/STXR se habilitan en modo sistema; LDAR/STLR usan memoria coherente síncrona.
 El monitor exclusivo se invalida con escrituras/operaciones XI/RXE/excepciones y
 se conserva en RVG2. No hay cobertura completa del ISA.
@@ -77,7 +77,7 @@ se conserva en RVG2. No hay cobertura completa del ISA.
 La aritmética FP usa Berkeley SoftFloat 3e fijado por hash, con configuración
 ARM-VFPv2. El núcleo cuántico y la autoridad de memoria se mantienen. El fondo
 de los 32 registros vectoriales es cero; RVG3 usa una máscara y 16 bytes por
-registro no nulo: entre 20 y 532 bytes adicionales, más el campo de longitud.
+registro no nulo: entre 20 y 532 bytes adicionales, más los campos de longitud versionados.
 FPCR/FPSR también se conservan. No se afirma cobertura completa de NEON: faltan,
 entre otras, operaciones saturadas, reducciones y desplazamientos seleccionados,
 criptografía y extensiones posteriores de Arm. No se implementan traps de
@@ -162,7 +162,7 @@ build/reverse_guest rxe cambiado.rvg cambios.rxe continuado.rvg
 El testigo de sistema conserva 128 MiB lógicos con una imagen de 4.391 bytes y
 9 diferencias de byte al terminar. Es un test pequeño, no la huella de Android
 ni de Wild Rift. Las pruebas originales aportan 8.234 aserciones; las nuevas
-comprueban 57 condiciones de sistema/tabla/permisos/estado cuántico, además de
+comprueban 58 condiciones de sistema/tabla/permisos/estado cuántico, además de
 CLI, UBSan y oráculos clang/lld/QEMU. La integración Android ejercita WebView/JNI,
 el ejecutor original y reinicio en emulador Android 15. No equivale a una prueba
 física en el teléfono.

@@ -648,16 +648,17 @@ inline void MinimalGuest::step(RunResult& result) {
     else cpu_write(address,reg(rd),size,result);
     if (mode) set(rn,updated,64,true);
   }
-  else if ((instruction&0x3a000000)==0x28000000 && !(instruction&0x04000000)) { // LDP/STP integers
+  else if ((instruction&0x3a000000)==0x28000000 && !(instruction&0x04000000)) { // LDP/STP/LDPSW integers
     const unsigned opcode=instruction>>30, second=(instruction>>10)&31, mode=(instruction>>23)&3;
     const bool load=instruction&0x00400000, writeback=mode==1||mode==3;
-    if ((opcode!=0 && opcode!=2) || (writeback && rn!=31 && (rn==rd || rn==second))) unsupported();
+    if (opcode==3 || (opcode==1&&(!load||mode==0)) || (load&&rd==second) || (writeback && rn!=31 && (rn==rd || rn==second))) unsupported();
     const unsigned size=opcode==2?8:4;
     const auto base=reg(rn,64,true), updated=base+std::uint64_t(signed_field((instruction>>15)&127,7))*size;
     const auto address=mode==1?base:updated;check_access(address,size, !load);check_access(address+size,size,!load);
     if (load) {
-      const auto first_value=cpu_read(address,size,result), second_value=cpu_read(address+size,size,result);
-      set(rd,first_value,size*8); set(second,second_value,size*8);
+      auto first_value=cpu_read(address,size,result), second_value=cpu_read(address+size,size,result);
+      if(opcode==1){if(first_value&0x80000000)first_value|=UINT64_C(0xffffffff00000000);if(second_value&0x80000000)second_value|=UINT64_C(0xffffffff00000000);}
+      set(rd,first_value,opcode==1?64:size*8); set(second,second_value,opcode==1?64:size*8);
     } else { cpu_write(address,reg(rd),size,result); cpu_write(address+size,reg(second),size,result); }
     if (writeback) set(rn,updated,64,true);
   }

@@ -103,6 +103,9 @@ void cross_page_access(){
   enter(guest,0xc0000ffc,UINT64_C(0x123456789abcdef0));guest.run(2);
   check(guest.read(0x40030ffc,4)==0x9abcdef0&&guest.read(0x40050000,4)==0x12345678,"Cross-page store assumed physically adjacent pages");
   check(guest.registers().x[2]==UINT64_C(0x123456789abcdef0),"Cross-page load joined the wrong physical pages");
+  guest.write(0x400a0000,0x69400820,4);enter(guest,0xc0000ffc,0);guest.run(1); // LDPSW X0,X2,[X1]
+  check(guest.registers().x[0]==UINT64_C(0xffffffff9abcdef0)&&guest.registers().x[2]==0x12345678,"LDPSW did not sign-extend separate mapped pages");
+  guest.write(0x400a0000,0xf9000020,4);
   guest.write(0x40012008,0x40050783,8);enter(guest,0xc0000ffc,UINT64_MAX);guest.run(1);
   check(guest.machine().exceptions==1&&guest.machine().far==0xc0001000&&(guest.machine().esr&63)==15,"Cross-page permission fault has incorrect address/status");
   check(guest.read(0x40030ffc,4)==0x9abcdef0&&guest.read(0x40050000,4)==0x12345678,"Faulting cross-page store changed an earlier byte");

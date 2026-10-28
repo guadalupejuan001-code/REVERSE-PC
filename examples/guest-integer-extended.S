@@ -87,9 +87,21 @@ _start:
     mov x2, #-1
     umulh x0, x1, x2
     str x0, [x20, #176]
+    add x3, x20, #512
+    mov x4, x3
+    ldpsw x0, x1, [x3]
+    stp x0, x1, [x20, #184]
+    ldpsw x0, x1, [x3], #8
+    stp x0, x1, [x20, #200]
+    sub x0, x3, x4
+    str x0, [x20, #216]
+    ldpsw x0, x1, [x3, #-8]!
+    stp x0, x1, [x20, #224]
+    sub x0, x3, x4
+    str x0, [x20, #240]
     mov x0, #1
     mov x1, x20
-    mov x2, #184
+    mov x2, #248
     mov x8, #64
     svc #0
     mov x0, #0
