@@ -132,7 +132,6 @@ void large_linux_gki_loader_budget(){
   check(guest.snapshot()==stable,"Rejected ELF mutated live GKI state");
   MinimalGuest roomy(256*1024*1024);
   Bytes kernel_over_limit(MinimalGuest::max_linux_kernel+1,0);
-  patch(0,0xd503201f,4); // patch only original fixture, not oversized candidate
   fails([&]{roomy.load_linux_image(kernel_over_limit);},
         "Linux kernel larger than host safety budget was accepted");
 }
