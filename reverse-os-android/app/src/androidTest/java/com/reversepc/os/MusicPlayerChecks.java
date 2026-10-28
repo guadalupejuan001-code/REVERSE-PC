@@ -106,6 +106,20 @@ final class MusicPlayerChecks {
                 layout[0] = p.leftMargin; layout[1] = p.topMargin; layout[2] = p.width;
             });
             check(layout[0] == 20 && layout[1] == 30 && layout[2] == 240, "Native bounds do not match the desktop");
+            runner.runOnMainSync(() -> {
+                try {
+                    JSONObject unsafe=bounds(desktop.getWidth(),true).put("safeTop",60).put("safeBottom",140)
+                        .put("safeLeft",10).put("safeRight",300);
+                    player.get().layout(unsafe);
+                    check(web.getVisibility()!=View.VISIBLE,"Native YouTube overlay obscured the search field");
+                    JSONObject safe=bounds(desktop.getWidth(),true).put("safeTop",28).put("safeBottom",132)
+                        .put("safeLeft",10).put("safeRight",300);
+                    player.get().layout(safe);
+                    check(web.getVisibility()==View.VISIBLE,"Properly bounded YouTube view cannot be shown");
+                    player.get().layout(safe.put("editing",true));
+                    check(web.getVisibility()!=View.VISIBLE,"Native YouTube overlay must hide while a link is edited");
+                }catch(Exception error){throw new RuntimeException(error);}
+            });
             runner.runOnMainSync(() -> player.get().layout(bounds(desktop.getWidth(), false)));
             check(web.getVisibility() == View.INVISIBLE, "Background player covers another app");
             check(js(runner, web, "!!window.__reverseMusic").equals("true"), "Hiding discarded the session");
@@ -172,7 +186,7 @@ final class MusicPlayerChecks {
             check(status.get().getString("phase").equals("ready"),"Reload did not recover from an HTTP failure");
             runner.runOnMainSync(() -> player.get().destroy());
             check(web.getParent() == null, "Closed player still owns a desktop view");
-            return 28 + MusicOfflineChecks.run(runner, activity);
+            return 31 + MusicOfflineChecks.run(runner, activity);
         } finally {
             runner.runOnMainSync(() -> audio.abandonAudioFocusRequest(competingFocus));
             runner.runOnMainSync(() -> { if (player.get() != null) player.get().destroy(); });

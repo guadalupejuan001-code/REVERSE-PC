@@ -13,6 +13,8 @@ async function desktop(width,height,profile=null){
     try{localStorage.removeItem('reverse.workbench.v1');}catch{}
     window.__musicCommands=[];window.__exports=[];
     window.ReverseNative={
+      musicClipboard:()=> 'https://youtu.be/abcdefghijk',
+      musicCopyLink:link=>(window.__copiedMusicLink=link,true),
       exportText(name,contents,mime){window.__exports.push({name,contents,mime});},
       loadProfile:()=>JSON.stringify({ok:true,profile:profile?JSON.stringify(profile):null}),
       request(id,operation){setTimeout(()=>window.ReverseAndroid.complete(id,operation==='saveProfile'?{ok:true}:{ok:false,error:'No XI backend in music UI fixture'}),0);},
@@ -34,14 +36,29 @@ async function desktop(width,height,profile=null){
     const stageFound=await page.locator('[data-music-stage]').count();
     if(!stageFound){const diag=await page.evaluate(()=>({shell:window.ReverseShell?.mode, musicType:typeof musicHTML, qdType:typeof qdStudioHTML, musicUI:document.querySelector('.window[data-app="music"] .window-content')?.innerHTML.slice(0,1200), windows:[...document.querySelectorAll('.window')].map(x=>x.dataset.app)}));throw Error('Music stage absent: '+JSON.stringify({errors,diag}));}
     check(await page.locator('[data-music-stage]').boundingBox().then(r=>r.width>200&&r.height>=34),'Player has usable bounds');
+    // Even when YouTube is loaded, a first-party URL search must remain usable.
+    await page.locator('[data-music-search] input').focus();await frame(page);
+    check(await page.evaluate(()=>window.__musicCommands.filter(c=>c.action==='bounds').at(-1)?.data.visible===false),'Remote Android surface hides as soon as URL field is focused');
+    await page.locator('[data-music-paste]').click();
+    check(await page.locator('[data-music-search] input').inputValue()==='https://youtu.be/abcdefghijk','Paste button inserts a real clipboard URL');
+    check(await page.evaluate(()=>!window.__musicCommands.some(c=>c.action==='open')),'Pasting never starts playback automatically');
+    check(await page.evaluate(()=>window.__musicCommands.filter(c=>c.action==='bounds').at(-1)?.data.visible===false),'Paste keeps the remote view hidden until Submit');
     check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'No desktop overflow');
     check(await page.evaluate(()=>[...document.querySelectorAll('.taskbar button')].filter(e=>e.getClientRects().length).every(e=>{const r=e.getBoundingClientRect();return r.x>=0&&r.right<=innerWidth;})),'Taskbar still fits');
     check(await page.evaluate(()=>!window.__musicCommands.some(c=>c.action==='open')),'Opening the window never autoplays or loads YouTube');
     await page.screenshot({path:path.join(out,'music-'+width+'.png')});
     await page.locator('[data-music-search] input').fill('café & jazz');await page.locator('[data-music-search] button').click();
     check(await page.evaluate(()=>window.__musicCommands.some(c=>c.action==='open'&&c.data.input==='café & jazz')),'Search reaches native player unchanged');
+    await frame(page);await frame(page);
+    check(await page.evaluate(()=>{
+      const b=window.__musicCommands.filter(c=>c.action==='bounds'&&c.data.visible).at(-1)?.data;
+      return !!b&&Number.isFinite(b.safeTop)&&Number.isFinite(b.safeBottom)&&Number.isFinite(b.safeLeft)&&Number.isFinite(b.safeRight)
+        && b.y>=b.safeTop-1&&b.y+b.h<=b.safeBottom+1&&b.x>=b.safeLeft-1&&b.x+b.w<=b.safeRight+1;
+    }),'YouTube WebView stays within bounds between search tabs and transport');
     await page.evaluate(()=>window.ReverseMusic.update({loaded:true,phase:'ready',hasMedia:true,canSeek:true,canNext:false,canPrevious:false,paused:false,time:72,duration:240,title:'Canción <img src=x onerror=alert(1)>',url:'https://www.youtube.com/watch?v=abcdefghijk&si=secret',blocked:3}));
     check(await page.locator('[data-music-time]').innerText()==='1:12 / 4:00','Real status controls time display');
+    await page.locator('[data-music-copy]').click();
+    check(await page.evaluate(()=>window.__copiedMusicLink==='https://m.youtube.com/watch?v=abcdefghijk'),'Copy-link strips tracking information');
     check(await page.locator('[data-music-action="next"]').isDisabled(),'Next is disabled without a playlist control');
     await page.locator('[data-music-seek]').focus();await page.evaluate(()=>window.ReverseMusic.update({time:73}));
     check(await page.locator('[data-music-seek]').inputValue()==='73','Focused seek keeps following playback');
