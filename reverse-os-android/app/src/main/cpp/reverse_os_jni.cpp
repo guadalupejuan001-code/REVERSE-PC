@@ -1,6 +1,7 @@
 #include "session.hpp"
 #include "rxe.hpp"
 #include "rxe_app.hpp"
+#include "rxe_graphics.hpp"
 #include <jni.h>
 #include <exception>
 #include <limits>
@@ -79,7 +80,7 @@ Java_com_reversepc_os_NativeRuntime_compileRxe(JNIEnv* e,jclass,jbyteArray progr
 }
 extern "C" JNIEXPORT jbyteArray JNICALL
 Java_com_reversepc_os_NativeRuntime_inspectRxe(JNIEnv* e,jclass,jbyteArray program){
-  try{const auto image=bytes(e,program);const auto description=reverse_pc::rxe_app::has_magic(image)?reverse_pc::rxe_app::describe(image):reverse_pc::rxe::describe(image);return output(e,std::vector<std::uint8_t>(description.begin(),description.end()));}
+  try{const auto image=bytes(e,program);const auto description=reverse_pc::rxe_graphics::has_magic(image)?reverse_pc::rxe_graphics::describe(image):reverse_pc::rxe_app::has_magic(image)?reverse_pc::rxe_app::describe(image):reverse_pc::rxe::describe(image);return output(e,std::vector<std::uint8_t>(description.begin(),description.end()));}
   catch(const std::exception& x){throw_java(e,x);return nullptr;}
 }
 extern "C" JNIEXPORT jbyteArray JNICALL
@@ -95,5 +96,16 @@ Java_com_reversepc_os_NativeRuntime_appSeed(JNIEnv* e,jclass,jbyteArray program)
 extern "C" JNIEXPORT jbyteArray JNICALL
 Java_com_reversepc_os_NativeRuntime_appTurn(JNIEnv* e,jclass,jbyteArray state,jbyteArray program,jbyteArray message,jint language){
   try{const auto text=bytes(e,message);const auto result=reverse_pc::rxe_app::turn(bytes(e,program),bytes(e,state),std::string(text.begin(),text.end()),unsigned(language));return output(e,reverse_os::packet(result.text,result.state));}
+  catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_graphicsAsset(JNIEnv* e,jclass,jbyteArray program,jbyteArray path){
+  try{const auto name=bytes(e,path);const auto app=reverse_pc::rxe_graphics::decode(bytes(e,program));const auto item=app.assets.find(std::string(name.begin(),name.end()));reverse_pc::rxe::require(item!=app.assets.end(),"Activo RXE inexistente");return output(e,item->second);}
+  catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_graphicsTurn(JNIEnv* e,jclass,jbyteArray state,jbyteArray program,jint kind,jint quality){
+  try{const auto result=reverse_pc::rxe_graphics::turn(bytes(e,program),bytes(e,state),unsigned(kind),unsigned(quality));return output(e,reverse_os::packet(result.text,result.state));}
   catch(const std::exception& x){throw_java(e,x);return nullptr;}
 }

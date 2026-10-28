@@ -1,0 +1,18 @@
+'use strict';
+const fs=require('node:fs'),assert=require('node:assert/strict'),path=require('node:path');
+const base=path.resolve(__dirname,'../app/src/main/assets/workbench'),read=x=>fs.readFileSync(path.join(base,x),'utf8');
+const desktop=read('desktop.js'),bb=read('programs.js'),qd=read('qd-studio.js'),css=read('ux-compact.css'),html=read('index.html');
+const music=read('music.js'),control=read('control-center.js'),xm=read('x-market.js');
+assert.ok(html.includes('ux-compact.css'),'Compact theme must be loaded');
+assert.ok(css.includes('.window:not(.focused){display:none!important}'),'Nonfocused windows must not obscure focused app at small sizes');
+assert.ok(css.includes('grid-auto-columns:66px'),'Desktop icons must be smaller');
+assert.ok(css.includes('.music-tabs')&&css.includes('.music-stage'),'Music must reserve space for navigation and stage');
+assert.ok(desktop.includes("const SHELL_APPS = ['programs','files','bbyq','music','xi','control']"),'Cody is a BBY Q module, not a second application');
+assert.ok(desktop.includes("bbyqModule:['chat','work','cody']"),'Module selection persisted');
+assert.ok(bb.includes("const moduleTabs=")&&bb.includes("data-bbyq-module")&&bb.includes("qdStudioHTML(w)"),'BBY Q must offer same-window Chat/Work/Cody');
+assert.ok(bb.includes("qdAction(w,task[1]"),'Operator must be able to trigger real Qd XI actions through explicit chat command');
+assert.ok(qd.includes("w.app==='rxe'&&w.rxePath==='Aplicaciones/BBY-Q.rxe'"),'Qd handler must accept BBY Q host window');
+assert.ok(music.includes("Filtro experimental"),'Ad filtering must be transparently labelled');
+assert.ok(xm.includes('SIN DATOS DE MERCADO'),'Do not label executable Laplace as display-only or claim real feeds');
+assert.ok(control.includes('UI_BUILD = \'2.5.7\''),'Version must reflect UX update');
+console.log(JSON.stringify({suite:'reverse_ux',compact:true,modules:['chat','work','cody'],music_layout:true,operator_to_qd:true,truthful_provenance:true}));

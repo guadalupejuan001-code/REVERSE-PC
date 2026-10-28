@@ -1,0 +1,27 @@
+name: Qd Cody Studio UI and protocol
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'reverse-os-android/app/src/main/assets/workbench/**'
+      - 'reverse-os-android/app/src/main/java/com/reversepc/os/QdEngine.java'
+      - 'reverse-os-android/tests/qd-studio-ui.cjs'
+      - '.github/workflows/qd-studio.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  qd-interface:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Check shipped Qd Studio source syntax
+        run: |
+          node --check reverse-os-android/app/src/main/assets/workbench/qd-studio.js
+          node --check reverse-os-android/app/src/main/assets/workbench/desktop.js
+          node --check reverse-os-android/tests/qd-studio-ui.cjs
+          node --check reverse-os-android/tests/qd-native.cjs
+      - name: Run original UI transport tests
+        run: node reverse-os-android/tests/qd-studio-ui.cjs
