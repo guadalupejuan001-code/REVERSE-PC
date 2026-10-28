@@ -52,11 +52,13 @@ final class MusicPlayer {
     private volatile boolean shield;
     private boolean focused, suspended, disposed, polling, receiverRegistered, recovering;
     private WebView remote;
-    private String injection, error = "";
+    private String injection, error = "", notice = "", phase = "idle";
+    private int pollGeneration, documentEpoch;
+    private Runnable pollTimeout;
     private JSONObject bounds = new JSONObject(), snapshot = new JSONObject();
     private final Runnable poll = this::poll;
     private final BroadcastReceiver noisy = new BroadcastReceiver() {
-        @Override public void onReceive(Context context, Intent intent) { playback("pause", 0); }
+        @Override public void onReceive(Context context, Intent intent) { interrupt("Auriculares desconectados. Pulsa Reproducir para continuar."); }
     };
 
     MusicPlayer(Activity activity, FrameLayout root, WebView desktop, Listener listener) {
@@ -67,9 +69,7 @@ final class MusicPlayer {
         focus = new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
             .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA)
                 .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
-            .setOnAudioFocusChangeListener(change -> {
-                if (change < 0) { playback("pause", 0); releaseFocus(); }
-            }, ui).build();
+            .setWillPauseWhenDucked(true).setOnAudioFocusChangeListener(this::audioFocusChanged, ui).build();
         session = new MediaSession(activity, "REVERSE Music");
         session.setCallback(new MediaSession.Callback() {
             @Override public void onPlay() { playback("play", 0); }
@@ -111,7 +111,7 @@ final class MusicPlayer {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 if (!request.isForMainFrame()) return !"https".equals(request.getUrl().getScheme());
                 if (MusicPolicy.pageAllowed(request.getUrl().toString())) return false;
-                error = "Este enlace sale de YouTube. Usa una búsqueda o un enlace de música.";
+                notice = "Este enlace sale de YouTube. Usa una búsqueda o un enlace de música.";
                 publish(); return true;
             }
             @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
@@ -124,26 +124,29 @@ final class MusicPlayer {
                 return null;
             }
             @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap icon) {
-                error = ""; snapshot = new JSONObject(); publish();
+                if (disposed || view != remote) return;
+                documentEpoch++; stopPolling(); view.getSettings().setMediaPlaybackRequiresUserGesture(true); phase = "loading"; error = ""; notice = "";
+                snapshot = new JSONObject(); releaseFocus(); updateSession(); publish();
             }
             @Override public void onPageCommitVisible(WebView view, String url) { inject(view); }
             @Override public void onPageFinished(WebView view, String url) { inject(view); startPolling(); }
             @Override public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError failure) {
-                if (request.isForMainFrame()) {
-                    error = "No se pudo cargar YouTube. Comprueba la conexión y pulsa Recargar.";
-                    releaseFocus(); publish();
-                }
+                if (request.isForMainFrame() && view == remote) fail("No se pudo cargar YouTube. Comprueba la conexión y pulsa Recargar.");
+            }
+            @Override public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse response) {
+                if (request.isForMainFrame() && view == remote)
+                    fail("YouTube respondió con error " + response.getStatusCode() + ". Pulsa Recargar para reintentar.");
             }
             @Override public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
                 root.removeView(view); view.destroy();
                 if (remote == view) remote = null;
-                recovering = true; polling = false; ui.removeCallbacks(poll); releaseFocus();
-                error = "El reproductor se cerró. Pulsa Abrir YouTube para recuperarlo.";
-                publish(); return true;
+                recovering = true;
+                fail("El reproductor se cerró. Pulsa Abrir YouTube para recuperarlo.");
+                return true;
             }
         });
         remote.setDownloadListener((url, agent, disposition, mime, size) -> {
-            error = "Este reproductor reproduce en línea; no descarga archivos."; publish();
+            notice = "Este reproductor reproduce en línea; no descarga archivos."; publish();
         });
         root.addView(remote, new FrameLayout.LayoutParams(1, 1));
         layout(bounds);
@@ -153,8 +156,15 @@ final class MusicPlayer {
             Collections.emptyMap(), new ByteArrayInputStream(new byte[0]));
     }
     private void inject(WebView view) {
-        if (disposed || view != remote || !MusicPolicy.pageAllowed(view.getUrl())) return;
-        view.evaluateJavascript(injection + "\nwindow.__reverseMusic.setShield(" + shield + ");", null);
+        if (disposed || view != remote || phase.equals("error") || !MusicPolicy.pageAllowed(view.getUrl())) return;
+        final int epoch = documentEpoch;
+        String script = "(()=>{try{" + injection + "\nwindow.__reverseMusic.setShield(" + shield + ");"
+            + (suspended ? "window.__reverseMusic.command('hostPause');" : "") + "return true;}catch(e){return false;}})()";
+        view.evaluateJavascript(script, result -> {
+            if (disposed || view != remote || epoch != documentEpoch || phase.equals("error")) return;
+            if (!"true".equals(result)) { fail("No se pudo iniciar el reproductor. Pulsa Recargar."); return; }
+            phase = "ready"; publish(); startPolling();
+        });
     }
     void command(String action, JSONObject data) throws Exception {
         if (disposed) return;
@@ -167,9 +177,10 @@ final class MusicPlayer {
         }
         if (action.equals("open")) {
             String url = MusicPolicy.resolve(data.optString("input", ""));
-            createView(); error = ""; remote.loadUrl(url); startPolling(); publish(); return;
+            createView(); phase = "loading"; error = ""; notice = ""; snapshot = new JSONObject();
+            releaseFocus(); updateSession(); remote.loadUrl(url); publish(); return;
         }
-        if (action.equals("reload")) { if (remote != null) { error = ""; remote.reload(); } return; }
+        if (action.equals("reload")) { if (remote != null) { phase = "loading"; error = ""; notice = ""; remote.reload(); } return; }
         if (action.equals("back")) { if (remote != null && remote.canGoBack()) remote.goBack(); return; }
         if (!action.matches("play|pause|toggle|next|previous|seek"))
             throw new IllegalArgumentException("Control de música no permitido.");
@@ -194,75 +205,143 @@ final class MusicPlayer {
         }
         remote.setVisibility(visible ? View.VISIBLE : View.INVISIBLE);
     }
+    private void send(String action, double value) {
+        if (remote == null || disposed) return;
+        final WebView source = remote; final int epoch = documentEpoch;
+        source.evaluateJavascript("window.__reverseMusic?window.__reverseMusic.command(" + JSONObject.quote(action) + "," + value + "):false", raw -> {
+            if (disposed || source != remote || epoch != documentEpoch) return;
+            if ("false".equals(raw) && !action.matches("hold|pause|hostPause|hostResume")) {
+                notice = "Este control no está disponible en la pista o lista actual."; publish();
+            }
+        });
+    }
     private void playback(String action, double value) {
-        if (remote == null || suspended || !Double.isFinite(value)) return;
+        if (remote == null || suspended || disposed || phase.equals("error") || !Double.isFinite(value)) return;
+        if (action.equals("pause")) { interrupt(""); return; }
         if (action.equals("play") || action.equals("toggle")) {
-            // This command follows an explicit desktop/media-key action.
-            remote.getSettings().setMediaPlaybackRequiresUserGesture(false);
             if (!focused) focused = audio.requestAudioFocus(focus) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
-            if (!focused) { error = "Otra aplicación tiene el audio. Intenta reproducir de nuevo."; publish(); return; }
+            if (!focused) { interrupt("Otra aplicación tiene el audio. Intenta reproducir de nuevo."); return; }
+            remote.getSettings().setMediaPlaybackRequiresUserGesture(false);
         }
-        remote.evaluateJavascript("window.__reverseMusic&&window.__reverseMusic.command(" + JSONObject.quote(action) + "," + value + ")", null);
-        if (action.equals("pause")) releaseFocus();
+        notice = ""; send(action, value);
+    }
+    void audioFocusChanged(int change) {
+        if (!disposed && change < 0) interrupt("Audio interrumpido por otra aplicación. Pulsa Reproducir para continuar.");
+    }
+    private void interrupt(String message) {
+        if (disposed) return;
+        // Cancel callbacks sampled before the interruption; they must not reacquire focus.
+        stopPolling(); send("hold", 0); releaseFocus(); notice = message;
+        try { snapshot.put("paused", true).put("held", true); } catch (Exception ignored) {}
+        updateSession(); publish(); startPolling();
     }
     private void releaseFocus() {
         if (focused) audio.abandonAudioFocusRequest(focus);
-        focused = false; session.setActive(false);
+        focused = false;
+    }
+    private static double number(JSONObject value, String key) {
+        Object raw = value.opt(key);
+        double n = raw instanceof Number ? ((Number)raw).doubleValue() : 0;
+        return Double.isFinite(n) ? Math.max(0, Math.min(31536000, n)) : 0;
+    }
+    private static String text(JSONObject value, String key, int limit) {
+        Object raw = value.opt(key); String result = raw instanceof String ? (String)raw : "";
+        return result.substring(0, Math.min(limit, result.length()));
+    }
+    private static JSONObject cleanSnapshot(JSONObject value) throws Exception {
+        JSONObject result = new JSONObject();
+        String url = text(value, "url", 4096);
+        result.put("url", MusicPolicy.pageAllowed(url) ? url : "").put("title", text(value, "title", 240));
+        for (String key : new String[]{"hasMedia","ad","held","canNext","canPrevious","canSeek","live"})
+            result.put(key, Boolean.TRUE.equals(value.opt(key)));
+        result.put("paused", !Boolean.FALSE.equals(value.opt("paused")));
+        return result.put("time", number(value,"time")).put("duration",number(value,"duration"))
+            .put("mediaError",text(value,"mediaError",240));
+    }
+    private void updateSession() {
+        if (disposed) return;
+        boolean hasMedia = snapshot.optBoolean("hasMedia") && phase.equals("ready");
+        boolean playing = hasMedia && !snapshot.optBoolean("paused",true) && focused && !suspended;
+        long duration = (long)(snapshot.optDouble("duration",0)*1000);
+        session.setMetadata(new MediaMetadata.Builder().putString(MediaMetadata.METADATA_KEY_TITLE,
+            snapshot.optString("title","YouTube")).putLong(MediaMetadata.METADATA_KEY_DURATION,duration).build());
+        long actions = PlaybackState.ACTION_PLAY | PlaybackState.ACTION_PAUSE | PlaybackState.ACTION_PLAY_PAUSE;
+        if (snapshot.optBoolean("canNext")) actions |= PlaybackState.ACTION_SKIP_TO_NEXT;
+        if (snapshot.optBoolean("canPrevious")) actions |= PlaybackState.ACTION_SKIP_TO_PREVIOUS;
+        if (snapshot.optBoolean("canSeek")) actions |= PlaybackState.ACTION_SEEK_TO;
+        session.setPlaybackState(new PlaybackState.Builder().setActions(actions)
+            .setState(playing ? PlaybackState.STATE_PLAYING : PlaybackState.STATE_PAUSED,
+                (long)(snapshot.optDouble("time",0)*1000),playing ? 1 : 0).build());
+        // Paused foreground sessions must still receive the headset's Play action.
+        session.setActive(hasMedia && !suspended);
+    }
+    private void stopPolling() {
+        polling = false; pollGeneration++; ui.removeCallbacks(poll);
+        if (pollTimeout != null) ui.removeCallbacks(pollTimeout);
+        pollTimeout = null;
     }
     private void startPolling() {
-        if (polling || suspended || disposed) return;
+        if (polling || suspended || disposed || remote == null || phase.equals("error")) return;
         polling = true; ui.post(poll);
     }
     private void poll() {
-        if (disposed || suspended || remote == null) { polling = false; return; }
-        final WebView source = remote;
+        if (!polling || disposed || suspended || remote == null) return;
+        final WebView source = remote; final int generation = pollGeneration, epoch = documentEpoch;
+        pollTimeout = () -> {
+            if (!disposed && generation == pollGeneration) fail("El reproductor no responde. Pulsa Recargar para recuperarlo.");
+        };
+        ui.postDelayed(pollTimeout,8000);
         source.evaluateJavascript("JSON.stringify(window.__reverseMusic?window.__reverseMusic.snapshot():null)", raw -> {
-            if (disposed || suspended || source != remote) return;
+            if (disposed || suspended || source != remote || generation != pollGeneration) return;
+            ui.removeCallbacks(pollTimeout); pollTimeout = null;
             try {
-                if (raw != null && raw.length() <= 20000) {
+                if (epoch == documentEpoch && raw != null && raw.length() <= 20000) {
                     Object decoded = new JSONTokener(raw).nextValue();
-                    if (decoded instanceof String && !"null".equals(decoded)) snapshot = new JSONObject((String) decoded);
+                    if (decoded instanceof String && !"null".equals(decoded)) snapshot = cleanSnapshot(new JSONObject((String)decoded));
                 }
-                boolean playing = snapshot.optBoolean("hasMedia") && !snapshot.optBoolean("paused", true);
+                boolean playing = snapshot.optBoolean("hasMedia") && !snapshot.optBoolean("paused",true);
+                if (playing && snapshot.optBoolean("held")) { send("hold",0); playing = false; }
                 if (playing && !focused) {
                     focused = audio.requestAudioFocus(focus) == AudioManager.AUDIOFOCUS_REQUEST_GRANTED;
-                    if (!focused) { playback("pause", 0); error = "El audio está ocupado por otra aplicación."; }
+                    if (!focused) { interrupt("El audio está ocupado por otra aplicación."); return; }
                 }
                 if (!playing && focused) releaseFocus();
-                session.setMetadata(new MediaMetadata.Builder().putString(MediaMetadata.METADATA_KEY_TITLE,
-                    snapshot.optString("title", "YouTube")).build());
-                session.setPlaybackState(new PlaybackState.Builder().setActions(PlaybackState.ACTION_PLAY
-                    | PlaybackState.ACTION_PAUSE | PlaybackState.ACTION_PLAY_PAUSE | PlaybackState.ACTION_SKIP_TO_NEXT
-                    | PlaybackState.ACTION_SKIP_TO_PREVIOUS | PlaybackState.ACTION_SEEK_TO)
-                    .setState(playing && focused ? PlaybackState.STATE_PLAYING : PlaybackState.STATE_PAUSED,
-                        (long)(snapshot.optDouble("time", 0) * 1000), playing ? 1 : 0).build());
-                session.setActive(playing && focused); publish();
-            } catch (Exception ignored) { /* A navigating document can return a transient null. */ }
+                updateSession(); publish();
+            } catch (Exception ignored) { /* Navigation can transiently return null. */ }
+            if (polling && generation == pollGeneration) ui.postDelayed(poll,1000);
         });
-        ui.postDelayed(poll, 1000);
     }
     private void publish() {
         if (disposed) return;
         try {
-            JSONObject state = new JSONObject(snapshot.toString());
-            state.put("available", true).put("loaded", remote != null).put("shield", shield)
-                .put("blocked", blocked.get()).put("error", error).put("recovering", recovering);
+            // Always publish every track field; partial objects kept stale songs in the UI.
+            JSONObject state = cleanSnapshot(snapshot);
+            state.put("available",true).put("loaded",remote!=null).put("phase",phase).put("shield",shield)
+                .put("blocked",blocked.get()).put("error",error).put("notice",notice).put("recovering",recovering);
             listener.state(state);
         } catch (Exception ignored) {}
     }
-    void reportError(String message) { error = message; publish(); }
+    private void fail(String message) {
+        stopPolling(); send("hold",0); releaseFocus(); snapshot = new JSONObject();
+        error = message; phase = "error"; updateSession(); publish();
+    }
+    void reportError(String message) { notice = message; publish(); }
     void pause() {
-        playback("pause", 0); suspended = true; releaseFocus();
-        ui.removeCallbacks(poll); polling = false;
+        if (disposed) return;
+        suspended = true; stopPolling(); send("hostPause",0); releaseFocus();
+        try { snapshot.put("paused",true).put("held",true); } catch (Exception ignored) {}
         if (remote != null) { remote.onPause(); remote.setVisibility(View.INVISIBLE); }
+        updateSession(); publish();
     }
     void resume() {
+        if (disposed) return;
         suspended = false;
-        if (remote != null) { remote.onResume(); layout(bounds); startPolling(); }
+        if (remote != null) { remote.onResume(); send("hostResume",0); layout(bounds); startPolling(); }
+        updateSession(); publish();
     }
     void destroy() {
         if (disposed) return;
-        pause(); disposed = true;
+        pause(); disposed = true; stopPolling();
         if (receiverRegistered) { activity.unregisterReceiver(noisy); receiverRegistered = false; }
         session.release();
         if (remote != null) { root.removeView(remote); remote.stopLoading(); remote.destroy(); remote = null; }

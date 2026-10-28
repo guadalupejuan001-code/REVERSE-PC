@@ -17,3 +17,7 @@
 @media(max-height:450px){.music-heading{padding-top:6px;padding-bottom:5px}.music-search input{padding:6px 0}.music-tabs button{padding:5px 0}.music-controls{min-height:45px;padding-top:5px;padding-bottom:5px}.music-stage .music-empty{gap:5px;padding:6px}.music-stage .music-empty>.icon{display:none}.music-stage .music-empty p{display:none}.music-stage .music-empty strong{font-size:12px}.music-footer{min-height:23px}}
 
 .music-seek{width:100%;height:8px;min-height:8px;flex-shrink:0;margin:0;accent-color:#a7c58e;cursor:pointer}.music-seek:disabled{opacity:.3;cursor:default}
+
+.music-error{flex-shrink:0;max-height:54px;overflow:auto}.music-seek:focus-visible,.music-search input:focus-visible{outline:2px solid #a7c58e;outline-offset:-2px}
+body[data-keyboard="true"] .music-heading,body[data-keyboard="true"] .music-tabs,body[data-keyboard="true"] .music-footer,body[data-keyboard="true"] .music-controls,body[data-keyboard="true"] .music-seek{display:none}
+@container(max-width:360px){.music-tabs>span{display:none}.music-brand strong{font-size:11px}.music-shield{padding:4px}.music-controls{gap:3px}}

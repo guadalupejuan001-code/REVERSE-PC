@@ -53,6 +53,7 @@ public final class WorkbenchActivity extends Activity {
     private WebView web;
     private FrameLayout root;
     private MusicPlayer music;
+    private String musicWindowId;
     private ValueCallback<Uri[]> chooser;
     private byte[] pendingExport;
     private int insetTop,insetBottom,insetLeft,insetRight,keyboardInset;
@@ -203,13 +204,23 @@ public final class WorkbenchActivity extends Activity {
             if(closed||action==null||payload==null||payload.length()>8192)return;
             ui.post(()->{
                 if(closed)return;
-                if("close".equals(action)){if(music!=null){music.destroy();music=null;}return;}
-                if(music==null&&"bounds".equals(action))return;
                 try{
+                    JSONObject data=new JSONObject(payload);String owner=data.optString("windowId","");
+                    if(!owner.matches("[A-Za-z0-9_-]{1,128}"))return;
+                    if("close".equals(action)){
+                        if(owner.equals(musicWindowId)&&music!=null){music.destroy();music=null;musicWindowId=null;}return;
+                    }
+                    if(!owner.equals(musicWindowId)){
+                        if(!"status".equals(action)&&!"open".equals(action))return;
+                        if(music!=null)music.destroy();music=null;musicWindowId=owner;
+                    }
                     if(music==null)music=new MusicPlayer(WorkbenchActivity.this,root,web,state->{
-                        if(!closed)web.evaluateJavascript("window.ReverseMusic&&window.ReverseMusic.update("+state.toString()+");",null);
+                        if(!closed&&owner.equals(musicWindowId))try{
+                            state.put("windowId",owner);
+                            web.evaluateJavascript("window.ReverseMusic&&window.ReverseMusic.update("+state.toString()+");",null);
+                        }catch(Exception ignored){}
                     });
-                    music.command(action,new JSONObject(payload));
+                    music.command(action,data);
                 }catch(Exception error){if(music!=null)music.reportError(String.valueOf(error.getMessage()));}
             });
         }

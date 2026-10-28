@@ -36,8 +36,16 @@ java -cp build/music-policy com.reversepc.os.MusicPolicyTest
 NODE_PATH=/ruta/a/node_modules node reverse-os-android/tests/music-ui.cjs evidence/music
 ```
 
-`MusicPolicyTest` verifica enlaces, búsquedas UTF-8, navegación, dominios engañosos y conservación de solicitudes de contenido. `music-ui.cjs` usa los archivos empaquetados en Chromium, con transporte nativo controlado, en 640×360, 844×390 y 1440×900; comprueba persistencia, favoritos, límites, ventanas y medios/anuncios de prueba.
+`MusicPolicyTest` verifica enlaces, búsquedas UTF-8, navegación, dominios engañosos y conservación de solicitudes de contenido. `music-ui.cjs` usa los archivos empaquetados en Chromium, con transporte nativo controlado, en 640×360, 740×360, 844×390, 915×412, 1024×600 y 1440×900; comprueba persistencia, favoritos, límites, ventanas y medios/anuncios de prueba.
 
-El workflow de APK añade `mode=music` a `WorkbenchTestRunner`. `MusicPlayerChecks` verifica un WebView Android real con HTML local bajo un origen de prueba YouTube, sin solicitudes a YouTube: ausencia de puente, permisos de archivos, filtros, límites y ciclo de vida. Son pruebas con fixtures; no acreditan reproducción o bloqueo contra el servicio real. Sigue pendiente probar audio y anuncios reales en el teléfono.
+El workflow de APK añade `mode=music` a `WorkbenchTestRunner`. `MusicPlayerChecks` verifica un WebView Android real con HTML local bajo un origen de prueba YouTube, sin solicitudes a YouTube: ausencia de puente, permisos de archivos, filtros, límites y ciclo de vida. Además decodifica y reproduce un WAV PCM local real en el motor multimedia de Android: avance del reloj, pausa, interrupción de audio, reanudación manual y cierre. Las pruebas locales y de DOM no acreditan reproducción o bloqueo contra el servicio real. Sigue pendiente probar audio y anuncios reales en el teléfono.
 
 Las ediciones Workbench y REVERSE mantienen sus identificadores de paquete y elevan `versionCode` a 252. La actualización instalable exige la misma firma de distribución; la APK de CI usa una firma temporal y no debe presentarse como actualización firmada de 2.5.1.
+
+## Refinamiento de reproducción y ventanas
+
+Cada ventana identifica sus comandos y respuestas. Cerrar libera la sesión inmediatamente; una respuesta atrasada o el cierre de una ventana anterior no puede modificar una nueva. Importar un perfil con ventanas Music duplicadas conserva una sola sesión. La búsqueda escrita se conserva al cambiar de pestaña. La barra de posición sigue avanzando después de tocarla y solo se detiene visualmente mientras se arrastra.
+
+El reproductor publica un estado completo al cargar, fallar o recuperarse: se borran el título, tiempo, controles y favorito de la pista anterior. Los errores HTTP y un WebView sin respuesta ofrecen recarga. Solo hay una consulta de estado pendiente; se descartan respuestas de documentos o sesiones anteriores. Los controles de lista se habilitan cuando el reproductor dispone de ellos, y la sesión multimedia de Android conserva el control Reproducir cuando está en pausa en primer plano.
+
+Una interrupción de audio o desconexión de auriculares mantiene pausados todos los elementos multimedia hasta una interacción real o un comando explícito de reproducción. Volver a la aplicación conserva esa pausa. El filtro solo adelanta anuncios declarados por un contenedor que contiene el video actual; anuncios de otras partes de la página no alteran la canción. Las acciones de salto tienen un intervalo mínimo para evitar bucles de clics.

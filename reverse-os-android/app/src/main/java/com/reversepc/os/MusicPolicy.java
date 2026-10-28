@@ -3,7 +3,6 @@ package com.reversepc.os;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
-
 import java.util.Locale;
 
 /** Pure URL/filter policy shared by the native player and its host-side tests. */
@@ -37,6 +36,7 @@ public final class MusicPolicy {
         URI uri = uri(value);
         if (uri == null) return false;
         String host = uri.getHost().toLowerCase(Locale.ROOT);
+        if (host.endsWith(".")) host = host.substring(0,host.length()-1);
         for (String ad : AD_HOSTS) if (domain(host, ad)) return true;
         String path = uri.getPath() == null ? "" : uri.getPath();
         return domain(host, "youtube.com") && (
@@ -68,13 +68,14 @@ public final class MusicPolicy {
         if (!text.matches("(?i)^[a-z][a-z0-9+.-]*:.*")
             && text.matches("(?i)^(?:(?:www|m|music)\\.)?youtube\\.com(?:/.*)?$|^youtu\\.be(?:/.*)?$"))
             text = "https://" + text;
-        if (!text.matches("(?i)^[a-z][a-z0-9+.-]*:.*"))
+        // A colon in an artist/title is text, not an instruction to navigate.
+        if (!text.matches("(?i)^(?:[a-z][a-z0-9+.-]*://|(?:https?|javascript|data|file|content|intent|about|blob|mailto|tel):).*"))
             return "https://m.youtube.com/results?search_query=" + encode(text);
         URI uri = uri(text);
         if (uri == null || !pageAllowed(text) || "consent.youtube.com".equalsIgnoreCase(uri.getHost()))
             throw new IllegalArgumentException("Usa una búsqueda o un enlace HTTPS de YouTube.");
         String path = uri.getPath() == null ? "/" : uri.getPath();
-        String video = param(uri, "v"), list = param(uri, "list");
+        String video = path.equals("/watch") ? param(uri, "v") : "", list = param(uri, "list");
         if (uri.getHost().equalsIgnoreCase("youtu.be")) video = path.length() > 1 ? path.substring(1).split("/", 2)[0] : "";
         else if (path.startsWith("/shorts/") || path.startsWith("/live/") || path.startsWith("/embed/"))
             video = path.substring(path.indexOf('/', 1) + 1).split("/", 2)[0];

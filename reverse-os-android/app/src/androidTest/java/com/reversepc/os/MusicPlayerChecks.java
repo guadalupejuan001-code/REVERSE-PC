@@ -115,13 +115,52 @@ final class MusicPlayerChecks {
                 catch (Exception failure) { throw new RuntimeException(failure); }
             });
             waitFor(runner, web, "!document.getElementById('reverse-music-filter')");
+            runner.runOnMainSync(() -> player.get().audioFocusChanged(android.media.AudioManager.AUDIOFOCUS_LOSS));
+            waitFor(runner, web, "clock.paused&&window.__reverseMusic.snapshot().held");
+            js(runner, web, "clock.paused=false;document.querySelector('video').dispatchEvent(new Event('play'));true");
+            check(js(runner, web, "clock.paused").equals("true"), "Automatic playback escaped an audio interruption");
+            // Decode a real local PCM/WAV stream through HTMLMediaElement and Android audio.
+            String wav=android.util.Base64.encodeToString(tone(),android.util.Base64.NO_WRAP);
+            js(runner, web, "(()=>{const bytes=Uint8Array.from(atob("+JSONObject.quote(wav)+"),c=>c.charCodeAt(0));"
+                +"document.getElementById('movie_player').innerHTML='<video id=real preload=auto></video>';"
+                +"document.getElementById('real').src=URL.createObjectURL(new Blob([bytes],{type:'audio/wav'}));return true;})()");
+            runner.runOnMainSync(() -> player.get().layout(bounds(desktop.getWidth(), true)));
+            waitFor(runner, web, "document.getElementById('real').readyState>=2&&document.getElementById('real').duration>10");
+            control(runner,player.get(),"play");
+            waitFor(runner, web, "!document.getElementById('real').paused&&document.getElementById('real').currentTime>.15");
+            control(runner,player.get(),"pause");
+            waitFor(runner, web, "document.getElementById('real').paused");
+            double stopped=Double.parseDouble(js(runner,web,"document.getElementById('real').currentTime"));
+            Thread.sleep(400);
+            check(Math.abs(Double.parseDouble(js(runner,web,"document.getElementById('real').currentTime"))-stopped)<.1,"Paused PCM audio kept advancing");
+            control(runner,player.get(),"play");
+            waitFor(runner, web, "!document.getElementById('real').paused");
+            runner.runOnMainSync(() -> player.get().audioFocusChanged(android.media.AudioManager.AUDIOFOCUS_LOSS_TRANSIENT));
+            waitFor(runner, web, "document.getElementById('real').paused&&window.__reverseMusic.snapshot().held");
+            // Resuming the Activity must retain that pause even with a real media decoder.
+            runner.runOnMainSync(() -> {player.get().pause();player.get().resume();});
+            check(js(runner,web,"document.getElementById('real').paused").equals("true"),"Activity resume restarted PCM audio");
+            control(runner,player.get(),"play");
+            waitFor(runner, web, "!document.getElementById('real').paused");
             runner.runOnMainSync(() -> player.get().destroy());
             check(web.getParent() == null, "Closed player still owns a desktop view");
-            return 14;
+            return 22;
         } finally {
             runner.runOnMainSync(() -> { if (player.get() != null) player.get().destroy(); });
             activity.getSharedPreferences("reverse-music", Context.MODE_PRIVATE).edit().putBoolean("shield", previousShield).commit();
         }
+    }
+    private static void control(Instrumentation runner, MusicPlayer player, String action) {
+        runner.runOnMainSync(() -> {try {player.command(action,new JSONObject());} catch(Exception error){throw new RuntimeException(error);}});
+    }
+    private static byte[] tone() {
+        int samples=8000*12,bytes=samples*2;
+        java.nio.ByteBuffer wav=java.nio.ByteBuffer.allocate(44+bytes).order(java.nio.ByteOrder.LITTLE_ENDIAN);
+        wav.put("RIFF".getBytes(StandardCharsets.US_ASCII)).putInt(36+bytes).put("WAVEfmt ".getBytes(StandardCharsets.US_ASCII));
+        wav.putInt(16).putShort((short)1).putShort((short)1).putInt(8000).putInt(16000).putShort((short)2).putShort((short)16);
+        wav.put("data".getBytes(StandardCharsets.US_ASCII)).putInt(bytes);
+        for(int i=0;i<samples;i++)wav.putShort((short)(900*Math.sin(2*Math.PI*440*i/8000)));
+        return wav.array();
     }
     private static JSONObject bounds(int viewport, boolean visible) {
         try { return new JSONObject().put("viewport", viewport).put("x", 20).put("y", 30).put("w", 240).put("h", 100).put("visible", visible); }

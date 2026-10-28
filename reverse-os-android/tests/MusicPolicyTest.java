@@ -10,6 +10,11 @@ public final class MusicPolicyTest {
         catch (IllegalArgumentException expected) { checks++; }
     }
     public static void main(String[] args) {
+        check(MusicPolicy.resolve("Bach: concierto").contains("Bach%3A%20concierto"), "Artist/title colon is a search");
+        check(MusicPolicy.isAdRequest("https://googleads.g.doubleclick.net./pagead/id"), "DNS trailing dot cannot bypass ad filter");
+        reject("https://youtube.com/redirect?v=abcdefghijk");
+        reject("https:youtube.com/watch?v=abcdefghijk");
+        reject("data:text/html,hello");
         check(MusicPolicy.resolve("").equals(MusicPolicy.HOME), "Home");
         check(MusicPolicy.resolve("café & jazz").endsWith("caf%C3%A9%20%26%20jazz"), "UTF-8 search");
         for (String input : new String[]{"https://youtu.be/abcdefghijk?si=tracking", "youtube.com/watch?v=abcdefghijk",

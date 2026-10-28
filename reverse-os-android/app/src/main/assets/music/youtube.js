@@ -1,69 +1,81 @@
 /* Runs only in the unprivileged YouTube WebView. Never exposes a native bridge. */
 (() => {
   'use strict';
-  if (window.__reverseMusic) return;
-  let shield = false, timer = null, observer = null, altered = null;
-  const video = () => document.querySelector('video');
-  const adShowing = () => !!document.querySelector('.ad-showing,.ad-interrupting');
-  const selectors = 'ytd-ad-slot-renderer,ytm-ad-slot-renderer,ytd-display-ad-renderer,ytd-promoted-sparkles-web-renderer,ytm-promoted-sparkles-web-renderer,ytmusic-mealbar-promo-renderer,.ytp-ad-overlay-container,#player-ads';
-  function restore() {
-    if (!altered) return;
-    altered.video.muted = altered.muted;
-    altered = null;
+  if (window.__reverseMusic?.version === 2) return;
+  let shield=false,timer=null,observer=null,altered=null,lastAction=-Infinity;
+  let held=false,hostSuspended=false,mediaError='';
+  const video=()=>document.querySelector('#movie_player video')||document.querySelector('#player-container-id video')
+    ||document.querySelector('ytmusic-player video')||[...document.querySelectorAll('video')].find(v=>v.getClientRects().length)||document.querySelector('video');
+  // An unrelated ad elsewhere in the page must never seek the current song.
+  const adShowing=v=>!!v?.closest('.ad-showing,.ad-interrupting');
+  const visible=e=>!!e&&e.getClientRects().length>0&&getComputedStyle(e).visibility!=='hidden'&&!e.disabled&&e.getAttribute('aria-disabled')!=='true';
+  function transport(action,v=video()) {
+    const root=v?.closest('#movie_player,.html5-video-player,#player-container-id')||document;
+    return root.querySelector(action==='next'?'.ytp-next-button':'.ytp-prev-button')
+      ||document.querySelector(action==='next'?'ytmusic-player-bar .next-button':'ytmusic-player-bar .previous-button');
   }
-  function filter() {
-    if (!shield) return;
-    // Act only when the player explicitly identifies advertising. Never seek a song.
-    const v = video();
-    if (!adShowing() || !v) { restore(); return; }
-    if (altered?.video !== v) { restore(); altered = {video:v, muted:v.muted}; }
-    v.muted = true;
-    const skip = document.querySelector('.ytp-ad-skip-button,.ytp-ad-skip-button-modern,.ytp-skip-ad-button,button.ytp-ad-skip-button');
-    if (skip && !skip.disabled && skip.getClientRects().length) skip.click();
-    if (Number.isFinite(v.duration) && v.duration > 0 && v.duration < 600
-        && v.currentTime < v.duration - .1) {
-      try { v.currentTime = v.duration; } catch (_) {}
-    }
+  const selectors='ytd-ad-slot-renderer,ytm-ad-slot-renderer,ytd-display-ad-renderer,ytd-promoted-sparkles-web-renderer,ytm-promoted-sparkles-web-renderer,ytmusic-mealbar-promo-renderer,.ytp-ad-overlay-container,#player-ads';
+  function restore(){if(altered){altered.video.muted=altered.muted;altered=null;}}
+  function pauseAll(){for(const v of document.querySelectorAll('video,audio'))v.pause();}
+  function filter(){
+    if(!shield)return;
+    const v=video();
+    if(!adShowing(v)){restore();lastAction=-Infinity;return;}
+    if(altered?.video!==v){restore();altered={video:v,muted:v.muted};lastAction=-Infinity;}
+    v.muted=true;
+    const time=performance.now();if(time-lastAction<900)return;
+    lastAction=time;
+    const root=v.closest('.ad-showing,.ad-interrupting');
+    const skip=root.querySelector('.ytp-ad-skip-button,.ytp-ad-skip-button-modern,.ytp-skip-ad-button');
+    if(visible(skip)){skip.click();return;}
+    if(Number.isFinite(v.duration)&&v.duration>0&&v.duration<600&&v.currentTime<v.duration-.1){try{v.currentTime=v.duration;}catch{}}
   }
-  function setShield(enabled) {
-    shield = !!enabled;
-    clearInterval(timer); timer = null;
-    observer?.disconnect(); observer = null;
+  function setShield(enabled){
+    enabled=!!enabled;
+    if(shield===enabled&&timer!==null){filter();return;}
+    shield=enabled;clearInterval(timer);timer=null;observer?.disconnect();observer=null;
     document.getElementById('reverse-music-filter')?.remove();
-    if (!shield) { restore(); return; }
-    const style = document.createElement('style'); style.id = 'reverse-music-filter';
-    style.textContent = selectors + '{display:none!important}';
-    (document.head || document.documentElement).append(style);
-    observer = new MutationObserver(filter);
-    observer.observe(document.documentElement, {subtree:true, childList:true, attributes:true, attributeFilter:['class']});
-    timer = setInterval(filter, 600); filter();
+    if(!shield){restore();return;}
+    const style=document.createElement('style');style.id='reverse-music-filter';style.textContent=selectors+'{display:none!important}';
+    (document.head||document.documentElement).append(style);
+    observer=new MutationObserver(filter);
+    observer.observe(document.documentElement,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
+    timer=setInterval(filter,600);filter();
   }
-  async function command(action, value) {
-    const v = video();
-    if (action === 'play' || (action === 'toggle' && v?.paused)) {
-      if (!v) return false;
-      try { await v.play(); return true; } catch (_) { return false; }
+  function command(action,value){
+    if(action==='hostPause'){hostSuspended=true;held=true;pauseAll();return true;}
+    if(action==='hostResume'){hostSuspended=false;held=true;pauseAll();return true;}
+    if(action==='hold'||action==='pause'){held=true;pauseAll();return true;}
+    if(hostSuspended)return false;
+    const v=video();
+    if(action==='play'||(action==='toggle'&&v?.paused)){
+      if(!v)return false;held=false;mediaError='';
+      try{const playing=v.play();playing?.catch(()=>{mediaError='No se pudo reproducir. Toca el video o vuelve a pulsar Reproducir.';});return true;}
+      catch{mediaError='No se pudo reproducir. Toca el video para continuar.';return false;}
     }
-    if (action === 'pause' || action === 'toggle') { v?.pause(); return !!v; }
-    if (action === 'seek') {
-      if (!v || adShowing() || !Number.isFinite(v.duration) || !Number.isFinite(value)) return false;
-      v.currentTime = Math.max(0, Math.min(v.duration, value)); return true;
+    if(action==='toggle'){held=true;pauseAll();return !!v;}
+    if(action==='seek'){
+      if(!v||adShowing(v)||!Number.isFinite(v.duration)||v.duration<=0||!Number.isFinite(value))return false;
+      try{v.currentTime=Math.max(0,Math.min(v.duration,value));return true;}catch{return false;}
     }
-    const selector = action === 'next'
-      ? '.ytp-next-button,ytmusic-player-bar .next-button'
-      : action === 'previous' ? '.ytp-prev-button,ytmusic-player-bar .previous-button' : '';
-    const button = selector && document.querySelector(selector);
-    if (button && button.getClientRects().length && button.getAttribute('aria-disabled') !== 'true') { button.click(); return true; }
+    if(action==='next'||action==='previous'){
+      const button=transport(action,v);if(!visible(button))return false;
+      held=false;mediaError='';button.click();return true;
+    }
     return false;
   }
-  function snapshot() {
-    const v = video();
-    const title = document.querySelector('ytmusic-player-bar .title,ytm-slim-video-metadata-section-renderer h1,h1.ytd-watch-metadata,h1.title')?.textContent?.trim()
-      || document.title.replace(/ - YouTube(?: Music)?$/, '');
-    return {url:location.href.slice(0,4096),title:(title || 'YouTube').slice(0,240),
-      hasMedia:!!v,paused:v ? v.paused : true,ad:adShowing(),
-      time:v && Number.isFinite(v.currentTime) ? v.currentTime : 0,
-      duration:v && Number.isFinite(v.duration) ? v.duration : 0};
+  // Interruptions stay paused until a real interaction or an explicit native Play.
+  document.addEventListener('play',e=>{if((held||hostSuspended)&&e.target.matches?.('video,audio'))e.target.pause();},true);
+  const interact=e=>{if(e.isTrusted&&!hostSuspended){held=false;mediaError='';}};
+  document.addEventListener('pointerdown',interact,true);document.addEventListener('keydown',interact,true);
+  function snapshot(){
+    const v=video(),ad=adShowing(v);
+    const title=document.querySelector('ytmusic-player-bar .title,ytm-slim-video-metadata-section-renderer h1,h1.ytd-watch-metadata,h1.title')?.textContent?.trim()
+      ||document.title.replace(/ - YouTube(?: Music)?$/,'');
+    return {url:location.href.slice(0,4096),title:(title||'YouTube').slice(0,240),hasMedia:!!v,paused:v?v.paused:true,ad,held,
+      time:v&&Number.isFinite(v.currentTime)?v.currentTime:0,duration:v&&Number.isFinite(v.duration)?v.duration:0,
+      live:!!v&&v.duration===Infinity,canSeek:!!v&&!ad&&Number.isFinite(v.duration)&&v.duration>0,
+      canNext:visible(transport('next',v)),canPrevious:visible(transport('previous',v)),mediaError};
   }
-  window.__reverseMusic = {setShield, command, snapshot};
+  window.__reverseMusic={version:2,setShield,command,snapshot};
 })();

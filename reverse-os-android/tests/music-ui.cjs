@@ -26,7 +26,7 @@ async function desktop(width,height,profile=null){
 (async()=>{
   browser=await chromium.launch({headless:true,executablePath:process.env.REVERSE_BROWSER,args:['--no-sandbox','--no-zygote','--single-process','--disable-gpu','--disable-software-rasterizer']});
   context=await browser.newContext({locale:'es-ES'});
-  for(const [width,height] of [[640,360],[844,390],[1440,900]]){
+  for(const [width,height] of [[640,360],[740,360],[844,390],[915,412],[1024,600],[1440,900]]){
     const page=await desktop(width,height);
     await page.locator('#pinned-apps [data-task-app="music"]').click();await frame(page);
     check(await page.locator('.window[data-app="music"]').count()===1,'Music is a PC window');
@@ -37,10 +37,25 @@ async function desktop(width,height,profile=null){
     await page.screenshot({path:path.join(out,'music-'+width+'.png')});
     await page.locator('[data-music-search] input').fill('café & jazz');await page.locator('[data-music-search] button').click();
     check(await page.evaluate(()=>window.__musicCommands.some(c=>c.action==='open'&&c.data.input==='café & jazz')),'Search reaches native player unchanged');
-    await page.evaluate(()=>window.ReverseMusic.update({loaded:true,hasMedia:true,paused:false,time:72,duration:240,title:'Canción <img src=x onerror=alert(1)>',url:'https://www.youtube.com/watch?v=abcdefghijk&si=secret',blocked:3}));
+    await page.evaluate(()=>window.ReverseMusic.update({loaded:true,phase:'ready',hasMedia:true,canSeek:true,canNext:false,canPrevious:false,paused:false,time:72,duration:240,title:'Canción <img src=x onerror=alert(1)>',url:'https://www.youtube.com/watch?v=abcdefghijk&si=secret',blocked:3}));
     check(await page.locator('[data-music-time]').innerText()==='1:12 / 4:00','Real status controls time display');
+    check(await page.locator('[data-music-action="next"]').isDisabled(),'Next is disabled without a playlist control');
+    await page.locator('[data-music-seek]').focus();await page.evaluate(()=>window.ReverseMusic.update({time:73}));
+    check(await page.locator('[data-music-seek]').inputValue()==='73','Focused seek keeps following playback');
+    await page.locator('[data-music-seek]').evaluate(el=>{el.dataset.scrubbing='true';el.value='90';});
+    await page.evaluate(()=>window.ReverseMusic.update({time:74}));
+    check(await page.locator('[data-music-seek]').inputValue()==='90','Polling does not move a slider being dragged');
+    await page.locator('[data-music-seek]').evaluate(el=>el.dispatchEvent(new Event('change',{bubbles:true})));
+    await page.evaluate(()=>window.ReverseMusic.update({time:91}));
+    check(await page.locator('[data-music-seek]').inputValue()==='91','Progress follows playback again after seeking');
+    await page.locator('[data-music-search] input').fill('Bach: concierto');
+    await page.locator('[data-music-tab="favorites"]').click();await page.locator('[data-music-tab="player"]').click();
+    check(await page.locator('[data-music-search] input').inputValue()==='Bach: concierto','Draft search survives tab switches');
+
     await page.locator('[data-music-action="shield"]').click();
     check(await page.evaluate(()=>window.__musicCommands.some(c=>c.action==='shield'&&c.data.enabled===false)),'Shield toggle reaches native filtering preference');
+    await page.locator('[data-music-action="shield"]').click();
+    check(await page.evaluate(()=>window.__musicCommands.filter(c=>c.action==='shield').slice(-2).map(c=>c.data.enabled).join(',')==='false,true'),'Rapid shield toggles preserve each user action');
     await page.locator('[data-music-action="toggle"]').click();
     check(await page.evaluate(()=>window.__musicCommands.some(c=>c.action==='toggle')),'Playback button reaches native controls');
     await page.locator('[data-music-seek]').evaluate(el=>{el.value='120';el.dispatchEvent(new Event('change',{bubbles:true}));});
@@ -68,25 +83,35 @@ async function desktop(width,height,profile=null){
     await page.evaluate(()=>minimizeWindow(state.windows.find(w=>w.app==='music')));await frame(page);
     check(await page.evaluate(()=>window.__musicCommands.filter(c=>c.action==='bounds').at(-1).data.visible===false),'Minimizing hides the surface');
     check(await page.evaluate(()=>!window.__musicCommands.some(c=>c.action==='close')),'Minimizing keeps the player session');
+    await page.evaluate(()=>window.ReverseMusic.update({phase:'loading',loaded:true,hasMedia:false}));
+    check(await page.locator('[data-music-title]').innerText()==='Sin reproducción'&&await page.locator('[data-music-action="favorite"]').isDisabled(),'Navigation clears the previous track and favorite target');
     const profile=await page.evaluate(()=>JSON.parse(JSON.stringify(state)));
+    profile.windows.push({...profile.windows.find(w=>w.app==='music'),id:'duplicate-music',space:1});
     const restored=await desktop(width,height,profile);await frame(restored);
     check(await restored.evaluate(()=>state.music.favorites.length===1),'Favorites survive native profile restoration');
+    check(await restored.evaluate(()=>state.windows.filter(w=>w.app==='music').length===1),'Imported profiles cannot restore two native players');
     check(await restored.evaluate(()=>!window.__musicCommands.some(c=>c.action==='open')),'Restoration never starts playback');
     await restored.evaluate(()=>closeWindow(state.windows.find(w=>w.app==='music')));await frame(restored);
     check(await restored.evaluate(()=>window.__musicCommands.some(c=>c.action==='close')),'Closing releases native player');
+    await restored.evaluate(()=>{createWindow('music');const old=state.windows.find(w=>w.app==='music');closeWindow(old);createWindow('music');window.ReverseMusic.update({windowId:old.id,loaded:true,hasMedia:true,title:'Stale track'});});await frame(restored);
+    check(await restored.locator('[data-music-title]').innerText()!=='Stale track','A closed window cannot update a new player');
+    check(await restored.evaluate(()=>window.__musicCommands.filter(c=>c.action==='close').length===2),'Immediate reopen closes each old native instance exactly once');
     await restored.close();await page.close();
   }
   const page=await context.newPage();
-  await page.setContent('<div id="movie_player"><video></video></div><div id="player-ads">Ad</div><h1 class="title">Fixture song</h1><button class="ytp-ad-skip-button">Skip ad</button>');
+  await page.setContent('<div id="movie_player"><video></video><button class="ytp-ad-skip-button">Skip ad</button></div><div id="player-ads">Ad</div><h1 class="title">Fixture song</h1>');
   await page.evaluate(()=>{
     const v=document.querySelector('video');window.__clock={time:10,duration:180,paused:true,plays:0,skips:0};
     Object.defineProperties(v,{currentTime:{get:()=>__clock.time,set:t=>__clock.time=t},duration:{get:()=>__clock.duration},paused:{get:()=>__clock.paused}});
     v.play=async()=>{__clock.paused=false;__clock.plays++;};v.pause=()=>__clock.paused=true;
-    document.querySelector('button').onclick=()=>__clock.skips++;
+    document.querySelector('button').onclick=()=>{__clock.skips++;__clock.time=180;};
   });
   await page.addScriptTag({path:path.join(assets,'music/youtube.js')});
   await page.evaluate(()=>window.__reverseMusic.setShield(true));
   check(await page.evaluate(()=>__clock.time===10&&!document.querySelector('video').muted),'Enabling shield leaves songs and their sound unchanged');
+  await page.evaluate(()=>{const ad=document.createElement('div');ad.id='unrelated';ad.className='ad-showing';document.body.prepend(ad);});await page.waitForTimeout(700);
+  check(await page.evaluate(()=>__clock.time===10&&!document.querySelector('video').muted),'An unrelated ad cannot skip or mute the song');
+  await page.evaluate(()=>document.getElementById('unrelated').remove());
   check(await page.locator('#player-ads').isVisible()===false,'Cosmetic ad slots are hidden');
   await page.evaluate(()=>document.getElementById('movie_player').classList.add('ad-showing'));
   await page.waitForFunction(()=>__clock.time===180&&__clock.skips>0);
@@ -101,6 +126,11 @@ async function desktop(width,height,profile=null){
   await page.waitForTimeout(700);
   check(await page.evaluate(()=>__clock.time===7&&!document.querySelector('video').muted&&!document.getElementById('reverse-music-filter')),'Disabling removes ad actions/styles and restores audio');
   check(await page.locator('#player-ads').isVisible(),'Disabling restores cosmetic slots');
+  await page.evaluate(()=>window.__reverseMusic.command('hostPause'));
+  check(await page.evaluate(()=>window.__reverseMusic.command('play')===false&&__clock.paused),'A suspended host cannot start playback');
+  await page.evaluate(()=>{window.__reverseMusic.command('hostResume');__clock.paused=false;document.querySelector('video').dispatchEvent(new Event('play'));});
+  check(await page.evaluate(()=>__clock.paused&&window.__reverseMusic.snapshot().held),'Returning to the app keeps automatic playback paused');
+  await page.evaluate(()=>window.__reverseMusic.command('play'));check(await page.evaluate(()=>!__clock.paused&&!window.__reverseMusic.snapshot().held),'Explicit Play releases the interruption');
   check(errors.length===0,JSON.stringify(errors));check(requests.length===0,'Fixtures make no external requests');
   await browser.close();
   fs.writeFileSync(path.join(out,'results.json'),JSON.stringify({checks,page_errors:errors,external_requests:requests,scope:'Desktop/profile/transport and DOM media fixtures; no live YouTube streaming or Android device playback verified.'},null,2)+'\n');
