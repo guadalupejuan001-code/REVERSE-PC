@@ -89,6 +89,31 @@ export function inspect(boot,vendor,init=null){
     segments:{kernel:b.kernel.data,generic_ramdisk:generic.data,vendor_ramdisk:v.ramdisk.data,
       vendor_dtb:v.dtb.data,bootconfig:v.config.data}};
 }
+// Independent GKI kernel-image gate. This does NOT assemble an Android machine.
+export function inspectGkiKernelOnly(boot) {
+  const b=bootParts(boot);
+  check(b.kernel.size>0,'GKI boot.img is missing its kernel');
+  check(b.arm64,'GKI kernel must be an uncompressed AArch64 Linux Image');
+  const k=b.kernel.data;
+  const flags=k.readBigUInt64LE(24);
+  // Exact ARM64 Linux Image header fields; fail on big-endian or unsupported granules.
+  check((flags&1n)===0n&&((flags>>1n)&3n)<=1n,
+    'GKI kernel Image flags are not supported by the current XI/Ether loader');
+  const maximum=16*1024*1024;
+  const certainSizeBlock=b.kernel.size+32>=maximum;
+  return {manifest:{
+    status:'gki_kernel_only',android_boot:false,android_init_observed:false,adb:false,wild_rift:false,
+    container_sha256:b.hash,container_header_version:b.ver,
+    kernel:summary(b.kernel),arm64_image_magic:true,
+    linux_image_header:{text_offset:'0x'+k.readBigUInt64LE(8).toString(16),
+      image_size:k.readBigUInt64LE(16).toString(),flags:'0x'+flags.toString(16)},
+    existing_guest_image_budget_bytes:maximum,
+    guest_loader_certain_size_block:certainSizeBlock,
+    pending:['matching vendor_boot, init_boot or boot generic ramdisk, and Android system/vendor partitions',
+      'virtual-board compatibility, bootconfig, device support, Android /init and services not verified',
+      ...(certainSizeBlock?['kernel by itself exceeds current 16 MiB combined Image/DTB/initramfs budget']:[])]
+  },segments:{kernel:k}};
+}
 async function load(path){
   const st=await stat(path);
   check(st.size<=512*1024*1024,'host-only 512 MiB input limit exceeded');
@@ -96,14 +121,20 @@ async function load(path){
 }
 async function cli(){
   const args=new Map();
-  for(let n=2;n<process.argv.length;n+=2){
-    check(n+1<process.argv.length&&process.argv[n].startsWith('--'),'expected flag and path pair');
-    check(!args.has(process.argv[n]),'duplicate flag');
-    args.set(process.argv[n],process.argv[n+1]);
+  for(let n=2;n<process.argv.length;){
+    const key=process.argv[n++];
+    check(key.startsWith('--')&&!args.has(key),'invalid or duplicate flag');
+    if(key==='--gki-kernel-only'){args.set(key,true);continue;}
+    check(n<process.argv.length,'expected value for '+key);
+    args.set(key,process.argv[n++]);
   }
-  for(const key of args.keys())check(['--boot','--vendor-boot','--init-boot','--extract-dir'].includes(key),'unknown flag');
-  check(args.has('--boot')&&args.has('--vendor-boot'),'required: --boot and --vendor-boot');
-  const result=inspect(await load(args.get('--boot')),await load(args.get('--vendor-boot')),
+  for(const key of args.keys())check(['--boot','--vendor-boot','--init-boot','--extract-dir','--gki-kernel-only'].includes(key),'unknown flag');
+  check(args.has('--boot'),'required: --boot');
+  const gkiOnly=args.has('--gki-kernel-only');
+  if(gkiOnly)check(!args.has('--vendor-boot')&&!args.has('--init-boot'),'kernel-only forbids vendor_boot/init_boot');
+  else check(args.has('--vendor-boot'),'full inspection requires --vendor-boot');
+  const b=await load(args.get('--boot'));
+  const result=gkiOnly?inspectGkiKernelOnly(b):inspect(b,await load(args.get('--vendor-boot')),
     args.has('--init-boot')?await load(args.get('--init-boot')):null);
   if(args.has('--extract-dir')){
     const dest=resolve(args.get('--extract-dir'));
