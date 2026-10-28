@@ -27,10 +27,10 @@ async function refreshAndroid(force=false){
   androidReading=true;
   try{androidSnapshot=await nativeRequest('inspect');androidError=null;androidReadAt=Date.now();}
   catch(error){androidError=error.message;androidSnapshot=null;androidReadAt=Date.now();}
-  finally{androidReading=false;systemSnapshot=null;window.ReverseShell?.refresh();for(const w of state.windows.filter(w=>w.app==='control'&&w.tab==='system'))renderWindowContent(w);}
+  finally{androidReading=false;systemSnapshot=null;for(const w of state.windows.filter(w=>w.app==='control'&&w.tab==='system'))renderWindowContent(w);}
 }
 function collectSystemInfo(){
-  const report=collectWebSystemInfo();if(!nativeAvailable)return report;
+  const report=collectWebSystemInfo(!nativeAvailable);if(!nativeAvailable)return report;
   refreshAndroid();
   const nativeLabels=['Entorno','Procesador físico','Hilos lógicos disponibles','RAM física / consumo del sistema','XI / Ether','Interfaz','Datos guardados del escritorio'];
   report.rows=report.rows.filter(row=>!nativeLabels.includes(row.label));
@@ -47,6 +47,7 @@ function collectSystemInfo(){
   report.rows.push(diagnosticRow('PSS del proceso',mib(a.process_pss_kib*1024),'android.os.Debug.getPss()','read','Huella PSS del proceso anfitrión, no solo del núcleo.'));
   report.rows.push(diagnosticRow('CPU consumida por este proceso',a.process_cpu_ms+' ms acumulados','android.os.Process.getElapsedCpuTime()','read','Tiempo acumulado; no es un porcentaje de carga total de CPU.'));
   report.rows.push(diagnosticRow('Qubits activos',String(q.active_qubits),'Runtime.core().stats().active_qubits'));
+  if(window.REVERSE_CAPABILITIES){const limits=window.REVERSE_CAPABILITIES;report.rows.push(diagnosticRow('Límite de qubits activos',String(limits.max_active_qubits),'Perfil verificado de la compilación'));report.rows.push(diagnosticRow('Qubits por componente',String(limits.max_component_qubits),'Perfil verificado de la compilación'));}
   report.rows.push(diagnosticRow('Componentes / mayor componente',q.components+' / '+q.largest_component,'Runtime.core().stats()'));
   report.rows.push(diagnosticRow('Bytes de tableaux',q.tableau_bytes+' bytes','Runtime.core().stats().tableau_bytes'));
   report.rows.push(diagnosticRow('Reglas Ether',String(q.ether_rules),'Runtime.core().stats().ether_rules'));

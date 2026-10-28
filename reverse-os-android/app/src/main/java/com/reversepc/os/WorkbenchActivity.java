@@ -50,7 +50,7 @@ public final class WorkbenchActivity extends Activity {
     private WebView web;
     private ValueCallback<Uri[]> chooser;
     private byte[] pendingExport;
-    private int insetTop,insetBottom,keyboardInset;
+    private int insetTop,insetBottom,insetLeft,insetRight,keyboardInset;
 
     static void immersive(Activity activity){
         Window window=activity.getWindow();
@@ -82,6 +82,8 @@ public final class WorkbenchActivity extends Activity {
             keyboardInset=keyboard;
             insetTop=insets.getDisplayCutout()==null?0:insets.getDisplayCutout().getSafeInsetTop();
             insetBottom=insets.getMandatorySystemGestureInsets().bottom;
+            insetLeft=insets.getDisplayCutout()==null?0:insets.getDisplayCutout().getSafeInsetLeft();
+            insetRight=insets.getDisplayCutout()==null?0:insets.getDisplayCutout().getSafeInsetRight();
             root.setPadding(0,0,0,keyboard);publishInsets();return insets;
         });
         WebSettings settings=web.getSettings();
@@ -121,7 +123,7 @@ public final class WorkbenchActivity extends Activity {
     }
     private void publishInsets(){
         if(web==null)return;float density=getResources().getDisplayMetrics().density;
-        String script="document.documentElement.style.setProperty('--native-safe-top','"+(insetTop/density)+"px');document.documentElement.style.setProperty('--native-safe-bottom','"+(insetBottom/density)+"px');document.body&&(document.body.dataset.keyboard='"+(keyboardInset>0)+"');";
+        String script="document.documentElement.style.setProperty('--native-safe-top','"+(insetTop/density)+"px');document.documentElement.style.setProperty('--native-safe-bottom','"+(insetBottom/density)+"px');document.documentElement.style.setProperty('--native-safe-left','"+(insetLeft/density)+"px');document.documentElement.style.setProperty('--native-safe-right','"+(insetRight/density)+"px');document.body&&(document.body.dataset.keyboard='"+(keyboardInset>0)+"');";
         web.evaluateJavascript(script,null);
     }
     private static boolean trusted(Uri uri){return "https".equals(uri.getScheme())&&"reverse.local".equals(uri.getHost())&&(uri.getPort()==-1||uri.getPort()==443);}

@@ -226,7 +226,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
         runOnMainSync(()->{WebView view=activity.testingWebView();Bitmap bitmap=Bitmap.createBitmap(Math.max(1,view.getWidth()),Math.max(1,view.getHeight()),Bitmap.Config.ARGB_8888);view.draw(new Canvas(bitmap));try(FileOutputStream output=new FileOutputStream(new File(folder,mode+"-view.png"))){bitmap.compress(Bitmap.CompressFormat.PNG,100,output);}catch(Exception error){throw new RuntimeException(error);}finally{bitmap.recycle();}});
         require(visible,"Display stayed blank after committed WebView frame; "+geometry);
     }
-    private void nativeShellWorkflow(String requested,JSONObject snapshot)throws Exception{
+    private void desktopShellWorkflow(String requested,JSONObject snapshot)throws Exception{
         boolean restore=requested.equals("restore")||requested.equals("boot")||requested.equals("legacy")||requested.equals("upgrade");
         boolean upgrade=requested.equals("upgrade");
         require(js("REVERSE_CAPABILITIES.max_active_qubits").equals("4096"),"Missing verified core profile");
@@ -255,13 +255,16 @@ public final class WorkbenchTestRunner extends Instrumentation {
         require(experiment.getBoolean("ok")&&experiment.getBoolean("isolated"),"Ising did not execute natively");
         require(experiment.getJSONObject("core").getLong("active_qubits")==2,"Ising qubits mismatch");
         require(hash("session.rvp").equals(beforeExperiment),"Experiment replaced the work state");
-        if(js("innerWidth<=760").equals("true")){
-            require(js("document.querySelector('.window.focused').getBoundingClientRect().width===innerWidth").equals("true"),"Phone app is not full width");
-            tapDom("#mobile-navigation [data-shell-action=home]");
-            require(js("document.body.dataset.shellSurface").equals("home"),"Home action failed");
-            tapDom("#mobile-navigation [data-open=programs]");waitJs("document.querySelector('.program-card')");
-            tapDom("#mobile-navigation [data-open=bbyq]");
-        }
+        require(js("innerWidth>innerHeight").equals("true"),"APK must use the horizontal PC desktop");
+        require(js("document.querySelector('#shell-home,#mobile-navigation')===null").equals("true"),"Mobile home is still present");
+        js("createWindow('files');createWindow('programs');true");
+        require(js("state.windows.filter(w=>w.space===state.space&&!w.min).length>=2").equals("true"),"Focusing a PC window minimized its peers");
+        require(js("document.querySelector('.window.focused').getBoundingClientRect().width<document.querySelector('#desktop').clientWidth").equals("true"),"PC window was forced full width");
+        require(js("getComputedStyle(document.querySelector('.window.focused [data-window-action=max]')).display!=='none'").equals("true"),"PC controls are missing");
+        tapDom("#show-desktop");
+        require(js("state.windows.every(w=>w.space!==state.space||w.min)").equals("true"),"Show desktop did not minimize the windows");
+        tapDom("#show-desktop");
+        require(js("state.windows.filter(w=>w.space===state.space&&!w.min).length>=2").equals("true"),"Show desktop did not restore the windows");
         js("createWindow('xi');getWindow(activeId).xiTab='hamiltonian';renderWindowContent(getWindow(activeId));true");
         require(js("document.querySelector('.hamiltonian-equation').textContent.includes('Z₀Z₁')").equals("true"),"Hamiltonian surface missing");
         js("createWindow('bbyq');true");
@@ -286,7 +289,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
             require(snapshot.getJSONObject("core").getString("state_format").equals("RVPC2"),"Wrong checkpoint format");
             require(snapshot.getJSONObject("build").getString("source_commit").matches("[a-f0-9]{40}"),"Missing build provenance");
             if(!seed&&js("typeof window.ReverseShell==='object'").equals("true")){
-                nativeShellWorkflow(requested,snapshot);
+                desktopShellWorkflow(requested,snapshot);
                 result.putString("stream","WORKBENCH_TESTS_OK mode="+requested+" native=XI/Ether mobile-shell=verified\n");result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
             }
             boolean restore=boot||legacy||upgrade||requested.equals("restore");

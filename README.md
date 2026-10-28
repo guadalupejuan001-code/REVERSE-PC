@@ -1,8 +1,9 @@
 # REVERSE-PC
 
-**REVERSE 2.4:** interfaz priorizada para móvil, ventanas en PC, continuidad de
-BBY Q/W4u y operadores/Hamiltonianos ejecutados en XI.
-[Uso, capacidades, actualización y validación](docs/REVERSE_NATIVE_2_4.md).
+**REVERSE 2.4.1:** escritorio PC en horizontal dentro de la APK, con fondo,
+barra de tareas y ventanas superpuestas. BBY Q/W4u y las herramientas XI se
+abren desde sus programas.
+[Interfaz, actualización y validación](docs/REVERSE_DESKTOP_2_4_1.md).
 
 **W4u 0.1 — work for u:** BBY Q conversa y W4u coordina tres roles XI para
 operar la interfaz y ejecutar programas RXE internos.
