@@ -122,12 +122,22 @@ test('GKI-only gate refuses non-ARM64 and unsupported endianness',()=>{
   const k=Buffer.from(kernel);k.writeBigUInt64LE(1n,24);
   assert.throws(()=>inspectGkiKernelOnly(boot(4,{k,r:Buffer.alloc(0)})),/flags/);
 });
-test('actual kernel size above old 16 MiB budget is a precise gate not a boot claim',()=>{
-  const k=Buffer.alloc(16*1024*1024-31);
+test('authentic 35,777,024-byte GKI kernel crosses old ELF quota but fits revised Linux loader',()=>{
+  const k=Buffer.alloc(35777024);
+  k.write('ARMd',56);
+  const x=inspectGkiKernelOnly(boot(4,{k,r:Buffer.alloc(0)}));
+  assert.equal(x.manifest.kernel.size,35777024);
+  assert.equal(x.manifest.guest_linux_kernel_budget_bytes,64*1024*1024);
+  assert.equal(x.manifest.existing_guest_image_budget_bytes,128*1024*1024);
+  assert.equal(x.manifest.guest_loader_certain_size_block,false);
+  assert.equal(x.manifest.android_boot,false);
+});
+test('GKI kernel bigger than the revised 64 MiB host budget still fails closed',()=>{
+  const k=Buffer.alloc(64*1024*1024+1);
   k.write('ARMd',56);
   const x=inspectGkiKernelOnly(boot(4,{k,r:Buffer.alloc(0)}));
   assert.equal(x.manifest.guest_loader_certain_size_block,true);
-  assert.match(x.manifest.pending.join(' '),/16 MiB/);
+  assert.match(x.manifest.pending.join(' '),/64 MiB/);
   assert.equal(x.manifest.android_boot,false);
 });
 test('GKI kernel-only CLI extracts byte-identically and prevents overwrite',()=>{
