@@ -91,6 +91,51 @@ void image_boot_protocol(){
   machine.mdscr=0;auto legacy=machine.save();legacy[0]=1;legacy.erase(legacy.end()-16,legacy.end()-8);
   check(MachineState::restore(legacy).save()==machine.save(),"Previous RVG2 machine-state v1 no longer restores");
 }
+// Header-sized fixture using the *measured* 35,777,024-byte upstream GKI
+// length. Unlike the independent CI experiment, this is NOT an Android boot.
+void large_linux_gki_loader_budget(){
+  constexpr std::size_t authentic_kernel_bytes=35777024;
+  Bytes kernel(authentic_kernel_bytes,0);
+  const auto patch=[&](std::size_t at,std::uint64_t value,unsigned count){
+    for(unsigned i=0;i<count;++i)kernel.at(at+i)=std::uint8_t(value>>(8*i));
+  };
+  patch(0,0xd503201f,4); // one actual AArch64 NOP, not a fabricated /init
+  patch(8,0,8);patch(16,36503552,8);patch(24,0xa,8);
+  patch(56,0x644d5241,4);
+  kernel.back()=0xa5;
+  MinimalGuest guest(128*1024*1024);
+  guest.load_linux_image(kernel);
+  check(guest.image_bytes()>MinimalGuest::max_image,"Real-size GKI fixture still blocked by legacy ELF quota");
+  check(guest.image_bytes()<MinimalGuest::max_snapshot,"GKI fixture unexpectedly exceeds legacy RVG transport");
+  check(guest.registers().pc==MachineState::ram_base,"GKI text_offset=0 was not honored");
+  check(guest.read8(MachineState::ram_base+authentic_kernel_bytes-1)==0xa5,
+        "Large immutable Image backing lost its last physical byte");
+  check(guest.runtime().memory().stats().overrides==0,
+        "Large Linux Image materialized RAM deltas without any stores");
+  const auto before=guest.snapshot();
+  auto restored=MinimalGuest::from_snapshot(before);
+  check(restored.snapshot()==before,"Large Linux RVI1 RVG2 checkpoint did not round-trip byte-identically");
+  check(restored.read8(MachineState::ram_base+authentic_kernel_bytes-1)==0xa5,
+        "Large Linux restored backing is not byte-exact");
+  const auto result=restored.run(1);
+  check(result.executed==1&&restored.registers().pc==MachineState::ram_base+4,
+        "Large Linux immutable backing did not execute one actual NOP");
+  check(restored.runtime().memory().stats().overrides==0,
+        "Executing immutable GKI-sized backing unexpectedly changed XI memory");
+  const auto stable=guest.snapshot();
+  auto invalid=kernel;invalid[56]=0;
+  fails([&]{guest.load_linux_image(invalid);},"Malformed large Image was accepted");
+  check(guest.snapshot()==stable,"Rejected large Image modified old guest checkpoint");
+  invalid.clear();
+  auto oversized=system_demo_elf();oversized.resize(MinimalGuest::max_image+1);
+  fails([&]{guest.load_elf(oversized,true);},"Legacy ELF 16 MiB image cap was loosened");
+  check(guest.snapshot()==stable,"Rejected ELF mutated live GKI state");
+  MinimalGuest roomy(256*1024*1024);
+  Bytes kernel_over_limit(MinimalGuest::max_linux_kernel+1,0);
+  patch(0,0xd503201f,4); // patch only original fixture, not oversized candidate
+  fails([&]{roomy.load_linux_image(kernel_over_limit);},
+        "Linux kernel larger than host safety budget was accepted");
+}
 void cross_page_access(){
   auto guest=initial();for(unsigned i=0;i<60&&!(guest.machine().sctlr&1);++i)guest.run(1);
   guest.write(0x40010018,0x40011003,8);guest.write(0x40011000,0x40012003,8);
@@ -326,6 +371,6 @@ void interrupt_priority_initialization(){
   check(guest.snapshot()==before,"Rejected APR write changed CPU/device state");
 }
 }
-int main(){try{boot_and_restore();translation();shared_quantum_authority();exclusives();image_boot_protocol();cross_page_access();unprivileged_memory_access();eret_ssbs_saved_status();speculative_data_barrier();identification();uart_fifo_configuration();interrupt_priority_initialization();
+int main(){try{boot_and_restore();translation();shared_quantum_authority();exclusives();image_boot_protocol();large_linux_gki_loader_budget();cross_page_access();unprivileged_memory_access();eret_ssbs_saved_status();speculative_data_barrier();identification();uart_fifo_configuration();interrupt_priority_initialization();
   std::cout<<"{\"checks\":"<<checks<<",\"system\":\"own-EL1-MMU-IRQ-EL0-SVC\",\"existing_quantum_qubits\":4096,\"android_boot\":\"not_implemented\"}\n";return 0;
 }catch(const std::exception& error){std::cerr<<error.what()<<'\n';return 1;}}
