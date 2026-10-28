@@ -34,7 +34,13 @@ with tempfile.TemporaryDirectory() as directory:
     tree=root/'board.dtb';run('device-tree',tree)
     check(tree.read_bytes()[:4]==b'\xd0\x0d\xfe\xed','FDT magic differs from specification')
     if elf:
-        reference=subprocess.run(['qemu-system-aarch64','-M','virt','-cpu','cortex-a53','-m','128M','-nographic','-monitor','none','-kernel',str(elf),'-no-reboot'],capture_output=True,timeout=20)
+        trace=elf.parent/'qemu-system-trace.txt'
+        try:
+            reference=subprocess.run(['qemu-system-aarch64','-M','virt','-cpu','cortex-a53','-m','128M','-nographic','-monitor','none','-kernel',str(elf),'-no-reboot','-d','in_asm,int,guest_errors','-D',str(trace)],capture_output=True,timeout=20)
+        except subprocess.TimeoutExpired as error:
+            print('Independent system oracle timed out; trace:',trace,file=sys.stderr)
+            print('Oracle partial output:',error.stdout,file=sys.stderr)
+            raise
         check(reference.returncode==0 and reference.stdout.decode()==all['stdout'],'Independent QEMU system execution differs: '+reference.stderr.decode())
         oracle='clang/lld ELF + qemu-system-aarch64'
     else:oracle='embedded independently assembled bare-metal witness'

@@ -48,10 +48,17 @@ _start:
     msr cntp_tval_el0, x0
     mov x0, #1
     msr cntp_ctl_el0, x0
-    msr daifclr, #2
 .Lwait_irq:
+    // Mask IRQ while checking the completion flag. WFI still wakes for a
+    // pending IRQ; unmask afterwards. This also works if the timer expired
+    // before WFI on a differently paced, independent execution engine.
+    msr daifset, #2
+    cbnz x23, .Lirq_done
     wfi
-    cbz x23, .Lwait_irq
+    msr daifclr, #2
+    b .Lwait_irq
+.Lirq_done:
+    msr daifclr, #2
     // Enter EL0. The user cannot write PL011 or read/write system registers.
     mov x0, #0x1000
     movk x0, #0x4100, lsl #16
