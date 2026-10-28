@@ -1,0 +1,41 @@
+name: Deliver REVERSE 2.5.8 direct APK (public raw branch)
+on:
+  push:
+    branches: [deliver/reverse-pc-258-apk]
+    paths: ['.github/workflows/deliver-reverse-258-apk.yml']
+permissions:
+  contents: write
+  actions: read
+jobs:
+  deliver:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Fetch and verify original Android APK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/reverse-258
+          gh run download 40780181709 \
+            --repo "$GITHUB_REPOSITORY" \
+            --name REVERSE-2.5.8-music-clipped \
+            --dir /tmp/reverse-258
+          apk=/tmp/reverse-258/dist/REVERSE-v2.5.8-music-clip-ci.apk
+          test -s "$apk"
+          echo '21dc0203b3d68a01ecafd13836d84bad2894bc55f5f84e4d5619b494801bdd6c  '"$apk" | sha256sum -c -
+          unzip -tq "$apk"
+          mkdir -p downloads
+          cp "$apk" downloads/REVERSE-PC-2.5.8.apk
+          sha256sum downloads/REVERSE-PC-2.5.8.apk > downloads/REVERSE-PC-2.5.8.apk.sha256
+      - name: Publish APK in a dedicated public delivery branch
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add downloads/REVERSE-PC-2.5.8.apk downloads/REVERSE-PC-2.5.8.apk.sha256
+          git commit -m 'Publish integrity-checked REVERSE-PC 2.5.8 Android preview installer'
+          git push origin HEAD:refs/heads/deliver/reverse-pc-258-apk
