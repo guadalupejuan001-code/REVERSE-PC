@@ -3,6 +3,8 @@ package com.reversepc.os;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.Intent;
+import android.graphics.Insets;
+import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -18,6 +20,7 @@ import android.view.Window;
 import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
@@ -51,6 +54,7 @@ public final class WorkbenchActivity extends Activity {
     private ValueCallback<Uri[]> chooser;
     private byte[] pendingExport;
     private int insetTop,insetBottom,insetLeft,insetRight,keyboardInset;
+    private boolean keyboardVisible;
 
     static void immersive(Activity activity){
         Window window=activity.getWindow();
@@ -74,17 +78,31 @@ public final class WorkbenchActivity extends Activity {
         super.onCreate(previous);
         immersive(this);
         FrameLayout root=new FrameLayout(this);root.setBackgroundColor(0xff090b0d);
-        web=new WebView(this);root.addView(web,new FrameLayout.LayoutParams(-1,-1));setContentView(root);
+        web=new WorkbenchWebView(this);root.addView(web,new FrameLayout.LayoutParams(-1,-1));setContentView(root);
         root.setOnApplyWindowInsetsListener((v,insets)->{
             // The wallpaper fills the display, including cutout/system-bar areas.
             // Only the on-screen keyboard reserves space for the message composer.
             int keyboard=Build.VERSION.SDK_INT>=30&&insets.isVisible(WindowInsets.Type.ime())?insets.getInsets(WindowInsets.Type.ime()).bottom:0;
-            keyboardInset=keyboard;
+            if(Build.VERSION.SDK_INT>=30){keyboardInset=keyboard;keyboardVisible=insets.isVisible(WindowInsets.Type.ime());}
             insetTop=insets.getDisplayCutout()==null?0:insets.getDisplayCutout().getSafeInsetTop();
             insetBottom=insets.getMandatorySystemGestureInsets().bottom;
             insetLeft=insets.getDisplayCutout()==null?0:insets.getDisplayCutout().getSafeInsetLeft();
             insetRight=insets.getDisplayCutout()==null?0:insets.getDisplayCutout().getSafeInsetRight();
-            root.setPadding(0,0,0,keyboard);publishInsets();return insets;
+            if(Build.VERSION.SDK_INT>=30){
+                root.setPadding(0,0,0,keyboard);publishInsets();
+                // We reserve the IME space once, in the native parent. WebView
+                // M139+ must still receive updates, with the handled inset zeroed.
+                return new WindowInsets.Builder(insets).setInsets(WindowInsets.Type.ime(),Insets.NONE).build();
+            }
+            publishInsets();return insets;
+        });
+        if(Build.VERSION.SDK_INT<30)root.getViewTreeObserver().addOnGlobalLayoutListener(()->{
+            Rect visible=new Rect();root.getWindowVisibleDisplayFrame(visible);
+            int[] position=new int[2];root.getLocationOnScreen(position);
+            int overlap=Math.max(0,position[1]+root.getHeight()-visible.bottom);
+            boolean shown=overlap>80*getResources().getDisplayMetrics().density;
+            int height=shown?overlap:0;
+            if(keyboardInset!=height||keyboardVisible!=shown){keyboardInset=height;keyboardVisible=shown;root.setPadding(0,0,0,height);publishInsets();}
         });
         WebSettings settings=web.getSettings();
         settings.setJavaScriptEnabled(true);settings.setDomStorageEnabled(true);
@@ -123,8 +141,13 @@ public final class WorkbenchActivity extends Activity {
     }
     private void publishInsets(){
         if(web==null)return;float density=getResources().getDisplayMetrics().density;
-        String script="document.documentElement.style.setProperty('--native-safe-top','"+(insetTop/density)+"px');document.documentElement.style.setProperty('--native-safe-bottom','"+(insetBottom/density)+"px');document.documentElement.style.setProperty('--native-safe-left','"+(insetLeft/density)+"px');document.documentElement.style.setProperty('--native-safe-right','"+(insetRight/density)+"px');document.body&&(document.body.dataset.keyboard='"+(keyboardInset>0)+"');";
+        String script="window.ReverseShell&&window.ReverseShell.setInsets({top:"+(insetTop/density)+",bottom:"+(insetBottom/density)+",left:"+(insetLeft/density)+",right:"+(insetRight/density)+",imeVisible:"+keyboardVisible+",imeHeight:"+(keyboardInset/density)+"});";
         web.evaluateJavascript(script,null);
+    }
+    private void hideKeyboard(){
+        if(web==null)return;
+        ((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE)).hideSoftInputFromWindow(web.getWindowToken(),0);
+        if(Build.VERSION.SDK_INT>=30){WindowInsetsController controller=web.getWindowInsetsController();if(controller!=null)controller.hide(WindowInsets.Type.ime());}
     }
     private static boolean trusted(Uri uri){return "https".equals(uri.getScheme())&&"reverse.local".equals(uri.getHost())&&(uri.getPort()==-1||uri.getPort()==443);}
     private WebResourceResponse asset(Uri uri){
@@ -174,6 +197,7 @@ public final class WorkbenchActivity extends Activity {
         return result;
     }
     public final class Bridge {
+        @JavascriptInterface public void hideKeyboard(){ui.post(WorkbenchActivity.this::hideKeyboard);}
         @JavascriptInterface public void request(String id,String operation,String payload){
             if(closed||id==null||!id.matches("[A-Za-z0-9_-]{1,60}"))return;
             RuntimeExecutor.INSTANCE.execute(()->{
@@ -246,6 +270,7 @@ public final class WorkbenchActivity extends Activity {
         return new JSONObject().put("ok",true).put("output",result.output).put("core",core).put("isolated",true).put("elapsed_ns",System.nanoTime()-started);
     }
     @Override public void onBackPressed(){
+        if(keyboardVisible){hideKeyboard();return;}
         if(web==null){super.onBackPressed();return;}
         web.evaluateJavascript("window.ReverseShell?window.ReverseShell.back():false",handled->{if(!"true".equals(handled))WorkbenchActivity.super.onBackPressed();});
     }

@@ -1,9 +1,9 @@
 # REVERSE-PC
 
-**REVERSE 2.4.1:** escritorio PC en horizontal dentro de la APK, con fondo,
-barra de tareas y ventanas superpuestas. BBY Q/W4u y las herramientas XI se
-abren desde sus programas.
-[Interfaz, actualización y validación](docs/REVERSE_DESKTOP_2_4_1.md).
+**REVERSE 2.4.2:** escritorio PC horizontal con teclado integrado, borrador
+continuo en BBY Q y espacio de escritura ajustado al teclado Android.
+[Teclado, actualización y validación](docs/REVERSE_KEYBOARD_2_4_2.md).
+[Escritorio y ventanas](docs/REVERSE_DESKTOP_2_4_1.md).
 
 **W4u 0.1 — work for u:** BBY Q conversa y W4u coordina tres roles XI para
 operar la interfaz y ejecutar programas RXE internos.

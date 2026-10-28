@@ -61,7 +61,30 @@ body{min-height:0;overscroll-behavior:none;-webkit-tap-highlight-color:transpare
   #pinned-apps .task-app{width:34px;min-width:34px}
   .resize-handle{width:24px;height:24px}
 }
-body[data-keyboard="true"]{--desktop-taskbar:40px}
-body[data-keyboard="true"] .taskbar .dock-button{height:34px}
+.keyboard-dismiss{display:none!important}
+body[data-ime-visible="true"] .window.focused .keyboard-dismiss,body[data-ime-visible="true"] dialog[open] .keyboard-dismiss{display:inline-flex!important}
+body[data-keyboard="true"]{--desktop-taskbar:0px}
+body[data-keyboard="true"] .taskbar{display:none}
+body[data-keyboard="true"] .window{min-height:0}
+body[data-keyboard="true"] .rxe-layout{padding:6px;gap:4px}
 body[data-keyboard="true"] .rxe-heading,body[data-keyboard="true"] .rxe-status{display:none}
 body[data-keyboard="true"] .rxe-history{min-height:0}
+body[data-keyboard="true"] .rxe-composer [data-program-language]{display:none}
+body[data-keyboard="true"] .rxe-composer textarea{font-size:14px;min-height:36px;max-height:44px}
+body[data-keyboard="true"] .rxe-composer{flex-wrap:nowrap}
+body[data-keyboard="true"] .rxe-composer textarea{flex-basis:auto}
+body[data-keyboard="true"] .rxe-composer .program-actions{width:auto}
+body[data-keyboard="true"] .note-toolbar,body[data-keyboard="true"] .note-footer{display:none}
+body[data-keyboard="true"] .note-paper{padding:8px}
+body[data-keyboard="true"] .note-title{font-size:17px;padding-bottom:7px}
+body[data-keyboard="true"] .note-editor{min-height:32px;font-size:14px;line-height:1.6}
+body[data-keyboard="true"] .xi-tabs,body[data-keyboard="true"] .xi-toolbar,body[data-keyboard="true"] .xi-status,body[data-keyboard="true"] .xi-output{display:none}
+body[data-keyboard="true"] .xi-layout{padding:6px;gap:4px}
+body[data-keyboard="true"] .xi-label{min-height:0}
+body[data-keyboard="true"] .xi-source{min-height:32px;font-size:14px}
+body[data-keyboard="true"] dialog{max-height:calc(100dvh - 16px);overflow:auto;padding:12px}
+body[data-keyboard="true"] dialog .dialog-top,body[data-keyboard="true"] #dialog-description,body[data-keyboard="true"] #dialog-label{display:none}
+body[data-keyboard="true"] dialog h2{font-size:17px;margin-bottom:6px}
+body[data-keyboard="true"] dialog input{font-size:16px;padding:6px 9px}
+body[data-keyboard="true"] .dialog-actions{margin-top:8px}
+body[data-keyboard="true"] .dialog-actions button{padding-top:6px;padding-bottom:6px}

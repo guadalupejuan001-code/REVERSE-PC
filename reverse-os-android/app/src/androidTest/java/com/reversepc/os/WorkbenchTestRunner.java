@@ -20,6 +20,9 @@ import java.security.MessageDigest;
 import java.util.Arrays;
 import android.os.SystemClock;
 import android.view.MotionEvent;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputConnection;
+import android.view.inputmethod.InputMethodManager;
 
 /** Framework-only instrumentation: actual APK, WebView, JNI and saved RVPC2. */
 public final class WorkbenchTestRunner extends Instrumentation {
@@ -226,6 +229,28 @@ public final class WorkbenchTestRunner extends Instrumentation {
         runOnMainSync(()->{WebView view=activity.testingWebView();Bitmap bitmap=Bitmap.createBitmap(Math.max(1,view.getWidth()),Math.max(1,view.getHeight()),Bitmap.Config.ARGB_8888);view.draw(new Canvas(bitmap));try(FileOutputStream output=new FileOutputStream(new File(folder,mode+"-view.png"))){bitmap.compress(Bitmap.CompressFormat.PNG,100,output);}catch(Exception error){throw new RuntimeException(error);}finally{bitmap.recycle();}});
         require(visible,"Display stayed blank after committed WebView frame; "+geometry);
     }
+    private void keyboardWorkflow()throws Exception{
+        String frame=js("JSON.stringify({w:getWindow(activeId).w,h:getWindow(activeId).h,x:getWindow(activeId).x,y:getWindow(activeId).y})");
+        tapDom("[data-program-input]");
+        runOnMainSync(()->((InputMethodManager)activity.getSystemService(android.content.Context.INPUT_METHOD_SERVICE)).showSoftInput(activity.testingWebView(),InputMethodManager.SHOW_IMPLICIT));
+        waitJs("document.body.dataset.imeVisible==='true'");
+        EditorInfo info=new EditorInfo();AtomicReference<InputConnection> input=new AtomicReference<>();
+        runOnMainSync(()->input.set(activity.testingWebView().onCreateInputConnection(info)));
+        require(input.get()!=null,"No live Android input connection");
+        require((info.imeOptions&EditorInfo.IME_FLAG_NO_FULLSCREEN)!=0,"Fullscreen IME is not disabled");
+        CountDownLatch edited=new CountDownLatch(1);
+        Runnable edit=()->{try{input.get().commitText("Prueba á ñ",1);}finally{edited.countDown();}};
+        android.os.Handler handler=input.get().getHandler();if(handler!=null)handler.post(edit);else runOnMainSync(edit);
+        require(edited.await(10,TimeUnit.SECONDS),"Input connection edit timed out");
+        waitJs("document.querySelector('[data-program-input]').value.includes('Prueba á ñ')");
+        require(js("getWindow(activeId).rxeDraft.includes('Prueba á ñ')").equals("true"),"Native input did not reach the stored draft");
+        waitJs("(()=>{const r=document.querySelector('[data-program-input]').getBoundingClientRect();return r.top>=0&&r.bottom<=innerHeight;})()");
+        require(js("!window.visualViewport||Math.abs(visualViewport.height-innerHeight)<2").equals("true"),"IME space was subtracted twice");
+        tapDom(".window.focused [data-keyboard-dismiss]");
+        waitJs("document.body.dataset.imeVisible==='false'");
+        require(js("document.querySelector('[data-program-input]').value.includes('Prueba á ñ')").equals("true"),"Dismiss lost the draft");
+        require(js("JSON.stringify({w:getWindow(activeId).w,h:getWindow(activeId).h,x:getWindow(activeId).x,y:getWindow(activeId).y})").equals(frame),"Keyboard changed the saved frame");
+    }
     private void desktopShellWorkflow(String requested,JSONObject snapshot)throws Exception{
         boolean restore=requested.equals("restore")||requested.equals("boot")||requested.equals("legacy")||requested.equals("upgrade");
         boolean upgrade=requested.equals("upgrade");
@@ -243,6 +268,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
             js("createFile('text','Prueba-nativa.txt','personal','Texto persistente real');setPref('dim',23,false);true");
         }
         js("createWindow('bbyq');true");waitJs("document.querySelector('[data-program-input]:not(:disabled)')");
+        if(requested.equals("full"))keyboardWorkflow();
         if(restore&&!upgrade){retainedProof(false);fullDisplay();visualCheck("native-"+requested);return;}
         if(upgrade)sendMessage("cuántas manzanas tiene ana","Ana tiene cinco manzanas.");
         else{sendMessage("hola","Hola. Soy BBY Q.");sendMessage("ana tiene dos manzanas","Ana tiene dos manzanas.");sendMessage("ella recibe tres mas","Ana tiene cinco manzanas.");}
@@ -290,7 +316,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
             require(snapshot.getJSONObject("build").getString("source_commit").matches("[a-f0-9]{40}"),"Missing build provenance");
             if(!seed&&js("typeof window.ReverseShell==='object'").equals("true")){
                 desktopShellWorkflow(requested,snapshot);
-                result.putString("stream","WORKBENCH_TESTS_OK mode="+requested+" native=XI/Ether mobile-shell=verified\n");result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
+                result.putString("stream","WORKBENCH_TESTS_OK mode="+requested+" native=XI/Ether desktop-shell=verified\n");result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
             }
             boolean restore=boot||legacy||upgrade||requested.equals("restore");
             if(restore){

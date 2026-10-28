@@ -70,11 +70,12 @@ async function showAll(page){await page.evaluate(()=>{for(const w of state.windo
  await pinned(page,'bbyq');await page.waitForSelector('[data-program-input]');
  check(await page.locator('[aria-label="Respuesta BBY Q"]').innerText()==='Acción completada.','BBY Q acknowledged the native result');
  const normalFrame=await page.locator('.window.focused').boundingBox();
- await page.evaluate(()=>{document.body.dataset.keyboard='true';});await page.setViewportSize({width:844,height:230});await repaint(page);
- const composer=await page.locator('.rxe-composer').boundingBox(),keyboardTaskbar=await page.locator('.taskbar').boundingBox();
+ await page.evaluate(()=>{window.ReverseShell.setInsets({imeVisible:true,imeHeight:160});});await page.setViewportSize({width:844,height:230});await repaint(page);
+ const composer=await page.locator('.rxe-composer').boundingBox();
  await page.screenshot({path:path.join(out,'keyboard-landscape.png')});
- check(composer.y+composer.height<=keyboardTaskbar.y+1,'Composer fits above the taskbar with the keyboard open');
- await page.evaluate(()=>{document.body.dataset.keyboard='false';});await page.setViewportSize({width:844,height:390});await repaint(page);
+ check(composer.y+composer.height<=230,'Composer fits above the keyboard');
+ check(!(await page.locator('.taskbar').isVisible()),'Taskbar temporarily frees typing space');
+ await page.evaluate(()=>{window.ReverseShell.setInsets({imeVisible:false,imeHeight:0});});await page.setViewportSize({width:844,height:390});await repaint(page);
  const afterKeyboard=await page.locator('.window.focused').boundingBox();
  check(afterKeyboard.width===normalFrame.width&&afterKeyboard.height===normalFrame.height,'Keyboard preserves the saved PC window size');
  await page.screenshot({path:path.join(out,'bbyq-landscape.png')});

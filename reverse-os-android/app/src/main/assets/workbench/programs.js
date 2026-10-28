@@ -54,15 +54,33 @@ function programHTML(w){
   if(!chat)return '<div class="rxe-layout">'+heading+message+'<pre class="rxe-output" aria-label="Salida RXE">'+esc(saved.output||'Pulsa Ejecutar para iniciar.')+'</pre><button class="primary-button" data-program-action="run"'+(data.busy||data.uncertain?' disabled':'')+'>Ejecutar</button></div>';
   const history=saved.history.length?saved.history.map((item,i)=>'<div class="rxe-message '+(item.role==='user'?'from-user':'from-agent')+'"><small>'+esc(item.role==='user'?'TÚ':meta.title)+'</small><p'+(item.role==='assistant'&&i===saved.history.length-1?' aria-label="Respuesta BBY Q"':'')+'>'+esc(item.text)+'</p></div>').join(''):'<p class="muted">Memoria '+esc(meta.app_version)+' lista. Lista para conversar. W4u opera tus programas y ventanas.</p>';
   queueMicrotask(()=>{const el=$('.rxe-history',$('#'+w.id));if(el)el.scrollTop=el.scrollHeight;});
-  return '<div class="rxe-layout">'+heading+message+'<div class="rxe-history" aria-label="Conversación BBY Q">'+history+'</div><form class="rxe-composer" data-program-form><textarea aria-label="Mensaje para BBY Q" data-program-input maxlength="255" rows="2" placeholder="Escribe un mensaje…"'+disabled+'>'+esc(w.rxeDraft||'')+'</textarea><div class="program-actions"><button type="button" class="secondary-button '+(data.language===1?'selected':'')+'" data-program-language="1"'+disabled+'>Español</button><button type="button" class="secondary-button '+(data.language===2?'selected':'')+'" data-program-language="2"'+disabled+'>English</button><button type="submit" class="primary-button"'+(data.busy||data.uncertain?' disabled':'')+'>Enviar</button></div></form></div>';
+  return '<div class="rxe-layout">'+heading+message+'<div class="rxe-history" aria-label="Conversación BBY Q">'+history+'</div><form class="rxe-composer" data-program-form><textarea aria-label="Mensaje para BBY Q" data-program-input maxlength="255" rows="2" placeholder="Escribe un mensaje…">'+esc(w.rxeDraft||'')+'</textarea><div class="program-actions"><button type="button" class="secondary-button '+(data.language===1?'selected':'')+'" data-program-language="1"'+disabled+'>Español</button><button type="button" class="secondary-button '+(data.language===2?'selected':'')+'" data-program-language="2"'+disabled+'>English</button><button type="submit" class="primary-button"'+(data.busy||data.uncertain?' disabled':'')+'>Enviar</button></div></form></div>';
+}
+function renderProgramContent(w,body){
+  const next=document.createElement('div');next.innerHTML=programHTML(w);
+  const previous=body.querySelector('.rxe-layout'),layout=next.firstElementChild;
+  const composer=previous?.querySelector('[data-program-form]'),replacement=layout?.querySelector('[data-program-form]');
+  if(!composer||!replacement){body.replaceChildren(...next.childNodes);return;}
+  // Leave the live textarea connected: replacing it would reset Android's
+  // input connection, composing text and selection on every native reply.
+  for(const child of [...previous.children])if(child!==composer)child.remove();
+  for(const child of [...layout.children])if(child!==replacement)previous.insertBefore(child,composer);
+  const field=composer.querySelector('[data-program-input]'),nextField=replacement.querySelector('[data-program-input]');
+  if(field.value!==nextField.value)field.value=nextField.value;
+  composer.setAttribute('aria-busy',String(!!programSessions.get(w.id)?.busy));
+  for(const button of composer.querySelectorAll('button')){
+    const selector=button.dataset.programLanguage?'[data-program-language="'+button.dataset.programLanguage+'"]':'[type="submit"]';
+    const updated=replacement.querySelector(selector);button.disabled=updated.disabled;button.className=updated.className;
+  }
 }
 async function transactProgram(w,operation){
   const data=programSessions.get(w.id);if(!data?.snapshot||data.busy||data.uncertain)return;
-  const snapshot=data.snapshot,payload={path:w.rxePath,identity:snapshot.identity};
+  const snapshot=data.snapshot,payload={path:w.rxePath,identity:snapshot.identity},submittedDraft=w.rxeDraft||'';
   if(operation==='askApp'){
     payload.text=(w.rxeDraft||'').trim();payload.language=data.language;
     if(!payload.text)return;
     if(new TextEncoder().encode(payload.text).length>255){toast('Escribe un mensaje de hasta 255 bytes.','help');return;}
+    w.rxeDraft='';
   }
   data.busy=true;data.error='';renderWindowContent(w);
   try{
@@ -80,11 +98,11 @@ async function transactProgram(w,operation){
         if(!outcome.success)toast(outcome.reason,'help');
         if(!result.control&&(!getWindow(w.id)||w.min||w.space!==state.space))toast('BBY Q · '+result.history.at(-1).text);
       }
-      w.rxeDraft='';
       // Duplicate executables use the same native memory; refresh every open view.
-      for(const other of state.windows){const peer=programSessions.get(other.id);if(peer?.snapshot?.identity===result.identity){if(other.id===w.id)other.rxeDraft='';applyProgramSnapshot(other,result);}}
+      for(const other of state.windows){const peer=programSessions.get(other.id);if(peer?.snapshot?.identity===result.identity)applyProgramSnapshot(other,result);}
     }else{snapshot.output=result.output;data.busy=false;if(getWindow(w.id))renderWindowContent(w);refreshAndroid(true);}
   }catch(error){
+    if(operation==='askApp'&&!w.rxeDraft)w.rxeDraft=submittedDraft;
     data.busy=false;data.uncertain=true;data.error='No se confirmó la operación. Actualiza la memoria antes de repetirla. '+error.message;
     if(getWindow(w.id))renderWindowContent(w);
   }finally{queueSave();if(!getWindow(w.id))programSessions.delete(w.id);}
