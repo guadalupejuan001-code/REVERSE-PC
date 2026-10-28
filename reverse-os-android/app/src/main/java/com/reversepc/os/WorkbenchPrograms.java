@@ -33,6 +33,23 @@ final class WorkbenchPrograms {
                 "Hola REVERSE".getBytes(StandardCharsets.UTF_8)),false);
             prefs.edit().putBoolean("seeded",true).apply();
         }
+        upgradeBbyq();
+    }
+    private void upgradeBbyq()throws Exception{
+        byte[] bundled=BbyqInterface.asset(context,"native-apps/BBY-Q.rxe");
+        if(!"E022-Control-1".equals(info(bundled).optString("app_version")))return;
+        if(!exists(BBYQ))return; // A deliberately removed application stays removed.
+        byte[] previous=files.read(BBYQ);
+        if(identity(previous).equals(identity(bundled)))return;
+        if(!BbyqInterface.LEGACY_SHA.equals(identity(previous)))return; // Never replace a custom executable.
+        RxeAppStore.Saved old=new RxeAppStore(context,previous).load(previous);
+        byte[] migration=BbyqInterface.asset(context,"bbyq-interface/upgrade-e016.rxe");
+        ResultPacket converted=ResultPacket.parse(NativeRuntime.executeRxe(old.state,migration));
+        new RxeAppStore(context,bundled).migrate(bundled,old,converted.state);
+        // Existing private E016 data remain as a rollback copy. Publish the new
+        // executable only after its migrated state and transcript are durable.
+        files.write(BBYQ,bundled,true);
+        Log.i("ReverseWorkbench","BBYQ_INTERFACE_MIGRATED messages="+old.history.length());
     }
     private boolean exists(String path)throws Exception{
         for(WorkspaceFiles.Entry entry:files.list("Aplicaciones"))if(entry.path.equals(path))return true;
@@ -72,6 +89,7 @@ final class WorkbenchPrograms {
         if("chat".equals(metadata.optString("ui"))){
             RxeAppStore.Saved saved=new RxeAppStore(context,image).load(image);
             result.put("history",saved.history).put("language",saved.language);
+            result.put("desktop_control",BbyqInterface.trusted(context,image));
         }else result.put("output",context.getSharedPreferences("desktop-v1",0).getString("rxe-output:"+path,""));
         return result;
     }
@@ -84,9 +102,21 @@ final class WorkbenchPrograms {
         if(!"chat".equals(metadata.optString("ui")))throw new IOException("Este ejecutable no ofrece una conversación");
         String text=request.getString("text").trim();int language=request.getInt("language");
         if(text.isEmpty()||text.getBytes(StandardCharsets.UTF_8).length>255||(language!=1&&language!=2))throw new IOException("Escribe un mensaje de hasta 255 bytes y elige un idioma");
-        RxeAppStore app=new RxeAppStore(context,image);RxeAppStore.Saved saved=app.ask(image,text,language);
+        RxeAppStore app=new RxeAppStore(context,image);
+        JSONObject observation=BbyqInterface.trusted(context,image)?request.optJSONObject("desktop"):null;
+        RxeAppStore.Saved saved=app.ask(image,text,language,observation);
         Log.i("ReverseWorkbench","WORKBENCH_APP_TURN_OK "+app.identity);
-        return new JSONObject().put("ok",true).put("path",request.getString("path")).put("identity",app.identity).put("metadata",metadata).put("history",saved.history).put("language",saved.language);
+        JSONObject result=new JSONObject().put("ok",true).put("path",request.getString("path")).put("identity",app.identity).put("metadata",metadata).put("history",saved.history).put("language",saved.language).put("desktop_control",BbyqInterface.trusted(context,image));
+        // Only a freshly committed ask may dispatch an action. open/catalog and
+        // restoration never return this field and therefore never replay it.
+        if(saved.pending!=null)result.put("control",saved.pending);
+        return result;
+    }
+    JSONObject acknowledge(JSONObject request)throws Exception{
+        byte[] image=checked(request);
+        if(!BbyqInterface.trusted(context,image))throw new IOException("Este ejecutable no controla el escritorio");
+        new RxeAppStore(context,image).acknowledge(image,request.getString("ticket"),request.getBoolean("success"));
+        return snapshot(request.getString("path"),image,info(image));
     }
     JSONObject run(JSONObject request,SessionStore session)throws Exception{
         byte[] image=checked(request);

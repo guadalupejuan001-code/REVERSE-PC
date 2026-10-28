@@ -1,8 +1,16 @@
 # REVERSE-PC
 
+## BBY Q controla Workbench 2.2
+
+BBY Q E022 puede abrir herramientas, enfocar, minimizar, maximizar, restaurar y
+cerrar ventanas, ordenarlas, mostrar el escritorio y cambiar de espacio. Las
+órdenes ES/EN se interpretan en XI; el escritorio confirma el resultado antes de
+mostrar «Acción completada». Se conservan el conocimiento anterior y los estados
+privados por ejecutable. [Uso, pruebas y límites](docs/BBYQ_INTERFACE_CONTROL.md).
+
 ## Ejecutables propios RXE
 
-**BBY-Q.rxe** contiene BBY Q E016, su programa compilado y su memoria entrenada.
+El **BBY-Q.rxe original** contiene BBY Q E016, su programa compilado y su memoria entrenada.
 REVERSE Desktop RXE 1.2 lo abre con conversación ES/EN, contexto persistente y
 exportación de memoria. [Contrato, procedencia y límites](docs/BBYQ_RXE_APP.md).
 

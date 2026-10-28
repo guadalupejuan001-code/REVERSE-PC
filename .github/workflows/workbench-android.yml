@@ -2,10 +2,10 @@ name: REVERSE Workbench native APK
 on:
   push:
     branches: [main]
-    paths: ['reverse-os-android/**', '.github/workflows/workbench-android.yml']
+    paths: ['reverse-os-android/**', 'bbyq-interface/**', '.github/workflows/workbench-android.yml']
   pull_request:
     branches: [main]
-    paths: ['reverse-os-android/**', '.github/workflows/workbench-android.yml']
+    paths: ['reverse-os-android/**', 'bbyq-interface/**', '.github/workflows/workbench-android.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -40,6 +40,12 @@ jobs:
           ref: af1f9bff0e95cf78f0e03b5c289f7bd4dcdb9aa3
           path: deps/bbyq-app
           persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/BBY-Q
+          ref: e8498b765a6a95aa556d0e816aab926257769391
+          path: deps/bbyq-control
+          persist-credentials: false
       - uses: actions/setup-java@v4
         with: {distribution: temurin, java-version: '17'}
       - uses: gradle/actions/setup-gradle@v4
@@ -63,19 +69,23 @@ jobs:
           printf '{"source_commit":"%s","base_reverse_commit":"e0f893d3c13a05d201e57b06ec7f761f196caef1","mundo_x_commit":"e2778d962af22f6f1a0794058dd4685fc2573966"}\n' "$GITHUB_SHA" > reverse-os-android/app/src/main/assets/workbench/build-info.json
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc src/reverse_pc.cpp -o build/reverse_pc
           python3 scripts/build-bbyq-app.py build/reverse_pc deps/bbyq-app workbench-dist/BBY-Q.rxe > workbench-evidence/bbyq-package.json
-          mkdir -p reverse-os-android/app/src/main/assets/native-apps
-          cp workbench-dist/BBY-Q.rxe reverse-os-android/app/src/main/assets/native-apps/BBY-Q.rxe
+          git -C deps/bbyq-control apply --check "$GITHUB_WORKSPACE/bbyq-interface/patches/e022-parser.patch"
+          git -C deps/bbyq-control apply "$GITHUB_WORKSPACE/bbyq-interface/patches/e022-parser.patch"
+          node bbyq-interface/build.mjs build/reverse_pc deps/bbyq-control build/bbyq-control workbench-dist/BBY-Q.rxe --install-assets > workbench-evidence/bbyq-control-package.json
+          node bbyq-interface/tests/native-control.mjs build/reverse_pc build/bbyq-control > workbench-evidence/bbyq-control-native.log
+          node bbyq-interface/tests/desktop-control.cjs build/reverse_pc build/bbyq-control > workbench-evidence/bbyq-control-desktop.log
+          cp build/bbyq-control/BBY-Q.rxe workbench-dist/BBY-Q.rxe
       - name: Build signed native Workbench and instrumentation
         run: |
           set -euo pipefail
           gradle -p reverse-os-android --no-daemon :app:assembleWorkbenchDebug :app:assembleWorkbenchDebugAndroidTest > workbench-evidence/gradle.log 2>&1 || { tail -160 workbench-evidence/gradle.log; exit 1; }
-          cp reverse-os-android/app/build/outputs/apk/workbench/debug/app-workbench-debug.apk workbench-dist/REVERSE-Workbench-v2.1.1.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs workbench-dist/REVERSE-Workbench-v2.1.1.apk > workbench-evidence/signature.txt
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging workbench-dist/REVERSE-Workbench-v2.1.1.apk > workbench-evidence/package.txt
-          unzip -l workbench-dist/REVERSE-Workbench-v2.1.1.apk > workbench-evidence/apk-contents.txt
+          cp reverse-os-android/app/build/outputs/apk/workbench/debug/app-workbench-debug.apk workbench-dist/REVERSE-Workbench-v2.2.0.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs workbench-dist/REVERSE-Workbench-v2.2.0.apk > workbench-evidence/signature.txt
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging workbench-dist/REVERSE-Workbench-v2.2.0.apk > workbench-evidence/package.txt
+          unzip -l workbench-dist/REVERSE-Workbench-v2.2.0.apk > workbench-evidence/apk-contents.txt
           grep 'lib/arm64-v8a/libreverse_os.so' workbench-evidence/apk-contents.txt
           grep 'lib/x86_64/libreverse_os.so' workbench-evidence/apk-contents.txt
-          sha256sum workbench-dist/REVERSE-Workbench-v2.1.1.apk > workbench-evidence/SHA256SUMS
+          sha256sum workbench-dist/REVERSE-Workbench-v2.2.0.apk > workbench-evidence/SHA256SUMS
       - name: Download the exact previously delivered Workbench 2.0 for update testing
         uses: actions/download-artifact@v4
         with:
@@ -128,7 +138,7 @@ jobs:
           adb shell am force-stop com.android.launcher3 || true
           adb shell am force-stop com.reversepc.workbench
           # Real in-place update: same package and signature, no uninstall or clear.
-          adb install -r workbench-dist/REVERSE-Workbench-v2.1.1.apk
+          adb install -r workbench-dist/REVERSE-Workbench-v2.2.0.apk
           timeout 180s adb shell am instrument -w -e mode upgrade com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/upgrade.txt
           grep 'WORKBENCH_TESTS_OK mode=upgrade' workbench-evidence/upgrade.txt
           adb shell am force-stop com.reversepc.workbench
@@ -156,7 +166,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: REVERSE-Workbench-2.1.1-native
+          name: REVERSE-Workbench-2.2.0-native
           path: |
             workbench-dist/**
             workbench-evidence/**

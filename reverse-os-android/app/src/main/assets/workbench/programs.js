@@ -46,7 +46,7 @@ function programHTML(w){
   const saved=data.snapshot;
   if(!saved)return '<div class="programs-layout"><p role="status">'+esc(data.error||'Abriendo el ejecutable y su memoria…')+'</p>'+(data.error?'<button class="secondary-button" data-program-action="reload">Volver a abrir</button>':'')+'</div>';
   const meta=saved.metadata,chat=meta.ui==='chat',disabled=data.busy?' disabled':'';
-  const status=data.error|| (data.busy?'Procesando en el núcleo…':chat?'Memoria guardada · '+(data.language===1?'Español':'English'):'Ejecutar inicia el programa. Abrir la ventana conserva la última salida.');
+  const status=data.error|| (data.busy?'Procesando en el núcleo…':chat?'Memoria guardada · '+(data.language===1?'Español':'English')+(saved.desktop_control?' · Control del escritorio':''):'Ejecutar inicia el programa. Abrir la ventana conserva la última salida.');
   const heading='<div class="rxe-heading"><span>'+esc(meta.title)+' · '+esc(meta.app_version||'RXE1')+'</span><div class="program-actions"><button class="secondary-button" data-program-action="reload" aria-label="Actualizar memoria"'+disabled+'>'+icon('restore')+'</button><button class="secondary-button" data-program-action="export"'+disabled+'>Exportar .rxe</button>'+(chat?'<button class="secondary-button" data-program-action="memory"'+disabled+'>Memoria .rvp</button>':'')+'</div></div>';
   const message='<p class="rxe-status" role="status">'+esc(status)+'</p>';
   if(!chat)return '<div class="rxe-layout">'+heading+message+'<pre class="rxe-output" aria-label="Salida RXE">'+esc(saved.output||'Pulsa Ejecutar para iniciar.')+'</pre><button class="primary-button" data-program-action="run"'+(data.busy||data.uncertain?' disabled':'')+'>Ejecutar</button></div>';
@@ -61,11 +61,19 @@ async function transactProgram(w,operation){
     payload.text=(w.rxeDraft||'').trim();payload.language=data.language;
     if(!payload.text)return;
     if(new TextEncoder().encode(payload.text).length>255){toast('Escribe un mensaje de hasta 255 bytes.','help');return;}
+    if(snapshot.desktop_control)payload.desktop=captureBbyqDesktop(snapshot.identity);
   }
   data.busy=true;data.error='';renderWindowContent(w);
   try{
-    const result=await nativeRequest(operation,JSON.stringify(payload));
+    let result=await nativeRequest(operation,JSON.stringify(payload));
     if(operation==='askApp'){
+      if(result.control){
+        if(!snapshot.desktop_control||!payload.desktop)throw Error('La aplicación no tiene un escritorio asociado.');
+        const outcome=await executeBbyqControl(result.control,payload.desktop,snapshot.identity);
+        result=await nativeRequest('ackControl',JSON.stringify({path:w.rxePath,identity:snapshot.identity,ticket:result.control.ticket,success:outcome.success}));
+        if(!outcome.success)toast(outcome.reason,'help');
+        else if(!getWindow(w.id)||w.min||w.space!==state.space)toast('BBY Q · '+result.history.at(-1).text);
+      }
       w.rxeDraft='';
       // Duplicate executables use the same native memory; refresh every open view.
       for(const other of state.windows){const peer=programSessions.get(other.id);if(peer?.snapshot?.identity===result.identity){if(other.id===w.id)other.rxeDraft='';applyProgramSnapshot(other,result);}}
