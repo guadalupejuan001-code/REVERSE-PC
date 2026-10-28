@@ -2,7 +2,7 @@
 // Windows stay in Workbench; code and mutable memory belong to the native runtime.
 let programCatalog=null,programCatalogError='',programCatalogLoading=false;
 const programSessions=new Map();
-Object.assign(APP_DESCRIPTIONS,{programs:'Tus ejecutables .rxe en esta mesa.',bbyq:'Conversación y memoria privada de BBY Q.'});
+Object.assign(APP_DESCRIPTIONS,{programs:'Tus programas del dispositivo.',bbyq:'Conversación y memoria privada de BBY Q.'});
 
 function refreshProgramViews(){
   for(const w of state.windows)if(w.app==='programs')renderWindowContent(w);
@@ -22,7 +22,7 @@ function programCards(){
 }
 function programsHTML(){
   if(!programCatalog&&!programCatalogLoading&&!programCatalogError)queueMicrotask(refreshPrograms);
-  return '<div class="programs-layout"><div class="programs-heading"><div><span class="eyebrow">REVERSE WORKBENCH '+esc(UI_BUILD)+'</span><h2>Aplicaciones .rxe</h2><p>Abre tus programas en esta mesa.</p></div><div class="program-actions"><button class="primary-button" data-program-action="import">'+icon('plus')+'Agregar .rxe</button><button class="secondary-button" data-open="xi">Crear .rxe</button><button class="secondary-button" data-program-action="refresh" aria-label="Actualizar aplicaciones">'+icon('restore')+'</button></div></div><div class="program-list">'+programCards()+'</div></div>';
+  return '<div class="programs-layout"><div class="programs-heading"><div><span class="eyebrow">REVERSE WORKBENCH '+esc(UI_BUILD)+'</span><h2>Programas</h2><p>Abre tus programas en esta mesa.</p></div><div class="program-actions"><button class="primary-button" data-program-action="import">'+icon('plus')+'Agregar .rxe</button><button class="secondary-button" data-open="xi">Crear .rxe</button><button class="secondary-button" data-program-action="refresh" aria-label="Actualizar aplicaciones">'+icon('restore')+'</button></div></div><div class="program-list">'+programCards()+'</div></div>';
 }
 function openProgram(path){return createWindow('rxe',{rxePath:path});}
 function applyProgramSnapshot(w,result){
@@ -47,12 +47,12 @@ function programHTML(w){
   if(!saved)return '<div class="programs-layout"><p role="status">'+esc(data.error||'Abriendo el ejecutable y su memoria…')+'</p>'+(data.error?'<button class="secondary-button" data-program-action="reload">Volver a abrir</button>':'')+'</div>';
   const meta=saved.metadata,chat=meta.ui==='chat',disabled=data.busy?' disabled':'';
   const status=data.error|| (data.busy?'Procesando en el núcleo…':chat?'Memoria guardada · '+(data.language===1?'Español':'English')+(saved.desktop_control?' · W4u conectado':''):'Ejecutar inicia el programa. Abrir la ventana conserva la última salida.');
-  const heading='<div class="rxe-heading"><span>'+esc(meta.title)+' · '+esc(meta.app_version||'RXE1')+'</span><div class="program-actions"><button class="secondary-button" data-program-action="reload" aria-label="Actualizar memoria"'+disabled+'>'+icon('restore')+'</button><button class="secondary-button" data-program-action="export"'+disabled+'>Exportar .rxe</button>'+(chat?'<button class="secondary-button" data-program-action="memory"'+disabled+'>Memoria .rvp</button>':'')+'</div></div>';
+  const heading='<div class="rxe-heading"><span>'+(chat?'W4u 0.1':esc(meta.title)+' · '+esc(meta.app_version||'RXE1'))+'</span><div class="program-actions"><button class="secondary-button" data-program-action="reload" aria-label="Actualizar memoria"'+disabled+'>'+icon('restore')+'</button><button class="secondary-button" data-program-action="export"'+disabled+'>Exportar .rxe</button>'+(chat?'<button class="secondary-button" data-program-action="memory"'+disabled+'>Memoria</button>':'')+'</div></div>';
   const plan=saved.agents;
   const progress=plan&&plan.steps?'<p class="rxe-status">W4u · Plan: '+plan.steps+' paso'+(plan.steps===1?'':'s')+' · '+(plan.status===3?'Comprobado':plan.status===4?'Detenido':plan.completed+'/'+plan.steps+' completados')+'</p>':'';
   const message='<p class="rxe-status" role="status">'+esc(status)+'</p>'+progress;
   if(!chat)return '<div class="rxe-layout">'+heading+message+'<pre class="rxe-output" aria-label="Salida RXE">'+esc(saved.output||'Pulsa Ejecutar para iniciar.')+'</pre><button class="primary-button" data-program-action="run"'+(data.busy||data.uncertain?' disabled':'')+'>Ejecutar</button></div>';
-  const history=saved.history.length?saved.history.map((item,i)=>'<div class="rxe-message '+(item.role==='user'?'from-user':'from-agent')+'"><small>'+esc(item.role==='user'?'TÚ':meta.title)+'</small><p'+(item.role==='assistant'&&i===saved.history.length-1?' aria-label="Respuesta BBY Q"':'')+'>'+esc(item.text)+'</p></div>').join(''):'<p class="muted">Memoria '+esc(meta.app_version)+' lista. Puedes empezar con «hola», «maximiza calculadora» o «ejecuta programa 1». Consulta los números en Aplicaciones.</p>';
+  const history=saved.history.length?saved.history.map((item,i)=>'<div class="rxe-message '+(item.role==='user'?'from-user':'from-agent')+'"><small>'+esc(item.role==='user'?'TÚ':meta.title)+'</small><p'+(item.role==='assistant'&&i===saved.history.length-1?' aria-label="Respuesta BBY Q"':'')+'>'+esc(item.text)+'</p></div>').join(''):'<p class="muted">Memoria '+esc(meta.app_version)+' lista. Lista para conversar. W4u opera tus programas y ventanas.</p>';
   queueMicrotask(()=>{const el=$('.rxe-history',$('#'+w.id));if(el)el.scrollTop=el.scrollHeight;});
   return '<div class="rxe-layout">'+heading+message+'<div class="rxe-history" aria-label="Conversación BBY Q">'+history+'</div><form class="rxe-composer" data-program-form><textarea aria-label="Mensaje para BBY Q" data-program-input maxlength="255" rows="2" placeholder="Escribe un mensaje…"'+disabled+'>'+esc(w.rxeDraft||'')+'</textarea><div class="program-actions"><button type="button" class="secondary-button '+(data.language===1?'selected':'')+'" data-program-language="1"'+disabled+'>Español</button><button type="button" class="secondary-button '+(data.language===2?'selected':'')+'" data-program-language="2"'+disabled+'>English</button><button type="submit" class="primary-button"'+(data.busy||data.uncertain?' disabled':'')+'>Enviar</button></div></form></div>';
 }

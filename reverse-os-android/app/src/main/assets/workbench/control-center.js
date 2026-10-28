@@ -1,7 +1,7 @@
 'use strict';
 /* Lecturas locales con procedencia. Sin métricas sintéticas ni sondeos remotos. */
 const DEFAULT_WALL = 'assets/pliegue-default.webp';
-const UI_BUILD = '2.3.0';
+const UI_BUILD = '2.4.0';
 let systemSnapshot = null;
 let savedAt = null;
 let saveError = null;
@@ -18,7 +18,7 @@ function applyPrefs(){
   root.style.setProperty('--accent',p.accent);root.style.setProperty('--accent-ink',p.theme==='light'?'#233023':'#202428');root.style.setProperty('--radius',p.radius+'px');root.style.setProperty('--wall-dim',p.dim/100);
   const layer=$('#wall-image');layer.style.backgroundImage=['pliegue','image'].includes(p.wall)?'url("'+wallpaperURL()+'")':'';
   layer.style.backgroundSize=p.fit;layer.style.backgroundPosition=p.wallX+'% '+p.wallY+'%';layer.style.backgroundRepeat='no-repeat';layer.style.transform='scale('+(p.scale/100)+')';layer.style.setProperty('--wall-motion-scale',String(p.scale/100*1.07));layer.style.setProperty('--wall-motion-scale-end',String(p.scale/100*1.105));layer.style.filter='blur('+p.blur+'px) saturate('+p.saturation+'%)';
-  $('#wallpaper').style.backgroundImage='';$('#desktop-name').textContent=p.title||'REVERSE';$('#clock-widget').hidden=!p.clock;$('#shortcuts').hidden=!p.icons;
+  $('#wallpaper').style.backgroundImage='';if($('#desktop-name'))$('#desktop-name').textContent=p.title||'REVERSE';$('#clock-widget').hidden=!p.clock;$('#shortcuts').hidden=!p.icons;
   $$('[data-wallpaper-preview]').forEach(el=>{el.style.backgroundImage='url("'+wallpaperURL()+'")';el.style.backgroundSize=p.fit;el.style.backgroundPosition=p.wallX+'% '+p.wallY+'%';el.style.filter='brightness('+(1-p.dim/100)+') blur('+Math.min(p.blur,5)+'px) saturate('+p.saturation+'%)';});
   document.querySelector('meta[name="theme-color"]').content=getComputedStyle(root).getPropertyValue('--desktop').trim();
 }
@@ -29,7 +29,7 @@ function persistWeb(){
 }
 function renderShortcuts(){
   const count=state.files.filter(f=>f.trashRoot===f.id).length;
-  $('#shortcuts').innerHTML='<button class="desktop-shortcut" data-open="files"><span class="shortcut-icon">'+icon('folder')+'</span><span>Archivos</span></button><button class="desktop-shortcut" data-ui="bin" aria-label="Papelera, '+count+(count===1?' elemento':' elementos')+'"><span class="shortcut-icon">'+icon('trash')+(count?'<span class="bin-count">'+count+'</span>':'')+'</span><span>Papelera</span></button><button class="desktop-shortcut" data-open="xmarket"><span class="shortcut-icon">'+icon('market')+'</span><span>X MARKET</span></button>';
+  $('#shortcuts').innerHTML='';
 }
 function taskApp(w){return w.app==='rxe'&&w.rxePath==='Aplicaciones/BBY-Q.rxe'?'bbyq':w.app;}
 function taskButton(app){
@@ -40,7 +40,7 @@ function renderDock(){
   $('#pinned-apps').innerHTML=PINNED.map(taskButton).join('');
   const extra=[...new Set(state.windows.filter(w=>w.space===state.space&&w.app!=='wallpaper'&&!PINNED.includes(taskApp(w))).map(taskApp))];$('#running-apps').innerHTML=extra.map(taskButton).join('');
 }
-function selectTopWindow(){const top=state.windows.filter(w=>w.space===state.space&&!w.min).sort((a,b)=>b.z-a.z)[0];activeId=top?.id||null;$$('.window').forEach(el=>el.classList.toggle('focused',el.dataset.id===activeId));}
+function selectTopWindow(){const top=state.windows.filter(w=>w.space===state.space&&!w.min).sort((a,b)=>b.z-a.z)[0];activeId=top?.id||null;$$('.window').forEach(el=>el.classList.toggle('focused',el.dataset.id===activeId));window.ReverseShell?.refresh();}
 function updateClock(){
   const date=new Date();const time=new Intl.DateTimeFormat('es',{hour:'2-digit',minute:'2-digit',hour12:false}).format(date);const day=new Intl.DateTimeFormat('es',{weekday:'long',day:'numeric',month:'long'}).format(date);
   $('#desktop-time').textContent=time;$('#desktop-day').textContent=day;$('#top-date').textContent=new Intl.DateTimeFormat('es',{weekday:'short',day:'numeric',month:'short'}).format(date);$('#task-time').textContent=time;$('#task-time').title=day;
@@ -73,13 +73,13 @@ function webSystemHTML(){
 }
 const APP_DESCRIPTIONS={files:'Carpetas, documentos y papelera.',notes:'Texto con guardado automático.',calculator:'Operaciones y precedencia aritmética.',control:'Aplicaciones, ventanas y lecturas del entorno.',settings:'Apariencia y preferencias del escritorio.',help:'Uso, atajos y límites del entorno.',xmarket:'Terminal bursátil y laboratorio Laplace. Solo interfaz.'};
 function appsHTML(owner){
-  const apps=Object.keys(APP_DESCRIPTIONS);const visible=state.windows.filter(w=>w.space===(owner?.space??state.space));
+  const apps=SHELL_APPS;const visible=state.windows.filter(w=>w.space===(owner?.space??state.space));
   return '<div class="control-heading"><div><span class="eyebrow">HERRAMIENTAS INTEGRADAS</span><h2>Aplicaciones</h2><p>Herramientas y ejecutables de esta mesa.</p></div><span class="source-badge">'+apps.length+' integradas</span></div><div class="control-app-grid">'+apps.map(app=>'<button class="control-app-card" data-open="'+app+'">'+icon(APPS[app].icon)+'<span><strong>'+APPS[app].name+'</strong><small>'+APP_DESCRIPTIONS[app]+'</small></span>'+icon('arrow-right')+'</button>').join('')+'</div><div class="control-section-heading"><h3>Ventanas de '+(state.space?'Enfoque':'Principal')+'</h3><span>'+visible.length+' abiertas</span></div><div class="window-inventory">'+visible.map(w=>'<div class="inventory-row">'+icon(APPS[w.app].icon)+'<button data-ui-focus="'+w.id+'"><strong>'+esc(windowTitle(w))+'</strong><small>'+APPS[w.app].name+' · '+(w.min?'Minimizada':w.max?'Maximizada':'Visible')+'</small></button><button class="icon-button" data-ui-close="'+w.id+'" aria-label="Cerrar ventana '+esc(windowTitle(w))+'">'+icon('close')+'</button></div>').join('')+'</div><p class="control-note">Esta lista corresponde a las ventanas de la mesa. Las aplicaciones instaladas en Android y los procesos del sistema necesitan acceso nativo.</p>';
 }
 function backupHTML(){return '<div class="control-heading"><div><span class="eyebrow">TU ESPACIO</span><h2>Respaldo</h2><p>Conserva una copia de documentos, preferencias y ventanas.</p></div></div><div class="backup-card">'+icon('download')+'<h3>Exportar mi espacio</h3><p>Crea un archivo JSON que puedes guardar y restaurar en otra instalación de la mesa.</p><button class="primary-button" data-action="export-backup">Exportar respaldo</button></div><div class="backup-card">'+icon('upload')+'<h3>Restaurar una copia</h3><p>El archivo se valida antes de restaurar. Verás una confirmación antes de sustituir los datos actuales.</p><button class="secondary-button" data-action="import-backup">Importar respaldo</button></div><p class="control-note">Los ejecutables .rxe y la memoria de BBY Q se exportan desde sus ventanas. REVERSE Workbench guarda los datos en la aplicación; no hay sincronización automática.</p>';}
 function controlHTML(w){
   const tab=['apps','appearance','system','backup'].includes(w.tab)?w.tab:'apps';w.tab=tab;
-  const tabs=[['apps','Aplicaciones','grid'],['appearance','Apariencia','palette'],['system','Sistema','desktop'],['backup','Respaldo','download']];
+  const tabs=[['apps','Sesión','grid'],['appearance','Apariencia','palette'],['system','Sistema','desktop'],['backup','Respaldo','download']];
   return '<div class="control-layout"><nav class="control-sidebar" aria-label="Secciones del centro de control">'+tabs.map(([id,label,ico])=>'<button class="control-tab '+(tab===id?'selected':'')+'" data-ui-tab="'+id+'" aria-current="'+(tab===id?'page':'false')+'">'+icon(ico)+'<span>'+label+'</span></button>').join('')+'<div class="control-sidebar-footer">REVERSE<br><span>Workbench '+UI_BUILD+'</span></div></nav><div class="control-main">'+(tab==='apps'?appsHTML(w):tab==='system'?systemHTML():tab==='appearance'?'<div class="appearance-intro"><button class="secondary-button" data-open="wallpaper">'+icon('image')+'Abrir editor de fondo</button></div>'+settingsHTML():backupHTML())+'</div></div>';
 }
 function refreshControlLists(){for(const w of state.windows.filter(w=>w.app==='control'&&w.tab==='apps'))renderWindowContent(w);}

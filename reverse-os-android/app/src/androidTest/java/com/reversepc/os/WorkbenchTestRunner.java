@@ -226,6 +226,49 @@ public final class WorkbenchTestRunner extends Instrumentation {
         runOnMainSync(()->{WebView view=activity.testingWebView();Bitmap bitmap=Bitmap.createBitmap(Math.max(1,view.getWidth()),Math.max(1,view.getHeight()),Bitmap.Config.ARGB_8888);view.draw(new Canvas(bitmap));try(FileOutputStream output=new FileOutputStream(new File(folder,mode+"-view.png"))){bitmap.compress(Bitmap.CompressFormat.PNG,100,output);}catch(Exception error){throw new RuntimeException(error);}finally{bitmap.recycle();}});
         require(visible,"Display stayed blank after committed WebView frame; "+geometry);
     }
+    private void nativeShellWorkflow(String requested,JSONObject snapshot)throws Exception{
+        boolean restore=requested.equals("restore")||requested.equals("boot")||requested.equals("legacy")||requested.equals("upgrade");
+        boolean upgrade=requested.equals("upgrade");
+        require(js("REVERSE_CAPABILITIES.max_active_qubits").equals("4096"),"Missing verified core profile");
+        require(js("document.documentElement.scrollWidth<=innerWidth").equals("true"),"Viewport overflow");
+        if(restore){
+            require(snapshot.getJSONObject("core").getLong("active_qubits")>=128,"Quantum state not retained");
+            require(js("state.prefs.dim").equals("23"),"Preferences not retained");
+            require(js("state.files.some(f=>f.name==='Prueba-nativa.txt'&&!f.trashRoot)").equals("true"),"File not retained");
+        }else{
+            JSONObject arithmetic=op("calculate","2+3*4","shellArithmetic");
+            require(arithmetic.getString("value").equals("14"),"Native arithmetic failed");
+            JSONObject probe=op("execute",js("XI_PROBE"),"shellProbe");
+            require(probe.getJSONObject("core").getLong("active_qubits")==128,"Quantum probe failed");
+            js("createFile('text','Prueba-nativa.txt','personal','Texto persistente real');setPref('dim',23,false);true");
+        }
+        js("createWindow('bbyq');true");waitJs("document.querySelector('[data-program-input]:not(:disabled)')");
+        if(restore&&!upgrade){retainedProof(false);fullDisplay();visualCheck("native-"+requested);return;}
+        if(upgrade)sendMessage("cuántas manzanas tiene ana","Ana tiene cinco manzanas.");
+        else{sendMessage("hola","Hola. Soy BBY Q.");sendMessage("ana tiene dos manzanas","Ana tiene dos manzanas.");sendMessage("ella recibe tres mas","Ana tiene cinco manzanas.");}
+        JSONObject compiled=op("compileApp",new JSONObject().put("name","AAA-native-test.rxe").put("source","#!reverse-pc-machine-v1\nset r0 11\nmul r0 7\nprint r0\nhalt\n").toString(),"shellCompiled");
+        require(compiled.getBoolean("ok"),"Internal fixture compilation failed");
+        js("createWindow('bbyq');true");sendMessage("ejecuta programa 1","Acción completada.");
+        require(js("document.querySelector('.window.focused .rxe-output').textContent.includes('77')").equals("true"),"W4u did not execute the native program");
+        String beforeExperiment=hash("session.rvp");
+        JSONObject experiment=op("experiment",js("quantumProgram('ising',{coupling:1,field:1,steps:1})"),"shellExperiment");
+        require(experiment.getBoolean("ok")&&experiment.getBoolean("isolated"),"Ising did not execute natively");
+        require(experiment.getJSONObject("core").getLong("active_qubits")==2,"Ising qubits mismatch");
+        require(hash("session.rvp").equals(beforeExperiment),"Experiment replaced the work state");
+        if(js("innerWidth<=760").equals("true")){
+            require(js("document.querySelector('.window.focused').getBoundingClientRect().width===innerWidth").equals("true"),"Phone app is not full width");
+            tapDom("#mobile-navigation [data-shell-action=home]");
+            require(js("document.body.dataset.shellSurface").equals("home"),"Home action failed");
+            tapDom("#mobile-navigation [data-open=programs]");waitJs("document.querySelector('.program-card')");
+            tapDom("#mobile-navigation [data-open=bbyq]");
+        }
+        js("createWindow('xi');getWindow(activeId).xiTab='hamiltonian';renderWindowContent(getWindow(activeId));true");
+        require(js("document.querySelector('.hamiltonian-equation').textContent.includes('Z₀Z₁')").equals("true"),"Hamiltonian surface missing");
+        js("createWindow('bbyq');true");
+        js("window.shellSaved=null;persist().then(ok=>window.shellSaved=ok);true");
+        require(waitJs("window.shellSaved").equals("true"),"Profile not committed");
+        retainedProof(true);fullDisplay();visualCheck("native-"+requested);
+    }
     @Override public void onStart(){
         Bundle result=new Bundle();
         try{
@@ -242,6 +285,10 @@ public final class WorkbenchTestRunner extends Instrumentation {
             require(snapshot.getJSONObject("android").getLong("ram_total_bytes")>0,"No native RAM reading");
             require(snapshot.getJSONObject("core").getString("state_format").equals("RVPC2"),"Wrong checkpoint format");
             require(snapshot.getJSONObject("build").getString("source_commit").matches("[a-f0-9]{40}"),"Missing build provenance");
+            if(!seed&&js("typeof window.ReverseShell==='object'").equals("true")){
+                nativeShellWorkflow(requested,snapshot);
+                result.putString("stream","WORKBENCH_TESTS_OK mode="+requested+" native=XI/Ether mobile-shell=verified\n");result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
+            }
             boolean restore=boot||legacy||upgrade||requested.equals("restore");
             if(restore){
                 require(snapshot.getJSONObject("core").getLong("active_qubits")>=128,"Native state did not survive process restart");

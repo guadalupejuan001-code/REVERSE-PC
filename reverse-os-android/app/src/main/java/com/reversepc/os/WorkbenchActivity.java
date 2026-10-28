@@ -50,6 +50,7 @@ public final class WorkbenchActivity extends Activity {
     private WebView web;
     private ValueCallback<Uri[]> chooser;
     private byte[] pendingExport;
+    private int insetTop,insetBottom,keyboardInset;
 
     static void immersive(Activity activity){
         Window window=activity.getWindow();
@@ -78,7 +79,10 @@ public final class WorkbenchActivity extends Activity {
             // The wallpaper fills the display, including cutout/system-bar areas.
             // Only the on-screen keyboard reserves space for the message composer.
             int keyboard=Build.VERSION.SDK_INT>=30&&insets.isVisible(WindowInsets.Type.ime())?insets.getInsets(WindowInsets.Type.ime()).bottom:0;
-            root.setPadding(0,0,0,keyboard);return insets;
+            keyboardInset=keyboard;
+            insetTop=insets.getDisplayCutout()==null?0:insets.getDisplayCutout().getSafeInsetTop();
+            insetBottom=insets.getMandatorySystemGestureInsets().bottom;
+            root.setPadding(0,0,0,keyboard);publishInsets();return insets;
         });
         WebSettings settings=web.getSettings();
         settings.setJavaScriptEnabled(true);settings.setDomStorageEnabled(true);
@@ -101,7 +105,7 @@ public final class WorkbenchActivity extends Activity {
                 });
                 return true;
             }
-            @Override public void onPageFinished(WebView view,String url){Log.i("ReverseWorkbench","WORKBENCH_READY "+url);}
+            @Override public void onPageFinished(WebView view,String url){Log.i("ReverseWorkbench","WORKBENCH_READY "+url);publishInsets();}
         });
         web.setWebChromeClient(new WebChromeClient(){
             @Override public boolean onShowFileChooser(WebView view,ValueCallback<Uri[]> callback,FileChooserParams params){
@@ -114,6 +118,11 @@ public final class WorkbenchActivity extends Activity {
             }
         });
         web.loadUrl(ORIGIN);
+    }
+    private void publishInsets(){
+        if(web==null)return;float density=getResources().getDisplayMetrics().density;
+        String script="document.documentElement.style.setProperty('--native-safe-top','"+(insetTop/density)+"px');document.documentElement.style.setProperty('--native-safe-bottom','"+(insetBottom/density)+"px');document.body&&(document.body.dataset.keyboard='"+(keyboardInset>0)+"');";
+        web.evaluateJavascript(script,null);
     }
     private static boolean trusted(Uri uri){return "https".equals(uri.getScheme())&&"reverse.local".equals(uri.getHost())&&(uri.getPort()==-1||uri.getPort()==443);}
     private WebResourceResponse asset(Uri uri){
@@ -172,6 +181,7 @@ public final class WorkbenchActivity extends Activity {
                     if("inspect".equals(operation))result=WorkbenchActivity.this.inspect();
                     else if("calculate".equals(operation))result=calculateNative(payload);
                     else if("execute".equals(operation))result=executeNative(payload);
+                    else if("experiment".equals(operation))result=experimentNative(payload);
                     else if("saveProfile".equals(operation))result=saveProfile(payload);
                     else if("listApps".equals(operation))result=programs().catalog();
                     else if("openApp".equals(operation))result=programs().open(new JSONObject(payload).getString("path"));
@@ -225,6 +235,17 @@ public final class WorkbenchActivity extends Activity {
         try{stream=target.startWrite();stream.write(bytes);target.finishWrite(stream);}
         catch(Exception error){if(stream!=null)target.failWrite(stream);throw error;}
         return new JSONObject().put("ok",true).put("bytes",bytes.length).put("source","AtomicFile · workbench-profile.json");
+    }
+    private JSONObject experimentNative(String source)throws Exception{
+        if(source==null||source.getBytes(StandardCharsets.UTF_8).length>256*1024)throw new IllegalArgumentException("Programa demasiado grande");
+        long started=System.nanoTime();
+        ResultPacket result=ResultPacket.parse(NativeRuntime.execute(NativeRuntime.initialize(),source));
+        JSONObject core=new JSONObject(NativeRuntime.inspect(result.state));
+        return new JSONObject().put("ok",true).put("output",result.output).put("core",core).put("isolated",true).put("elapsed_ns",System.nanoTime()-started);
+    }
+    @Override public void onBackPressed(){
+        if(web==null){super.onBackPressed();return;}
+        web.evaluateJavascript("window.ReverseShell?window.ReverseShell.back():false",handled->{if(!"true".equals(handled))WorkbenchActivity.super.onBackPressed();});
     }
     private JSONObject executeNative(String source)throws Exception{
         if(source==null||source.getBytes(StandardCharsets.UTF_8).length>256*1024)throw new IllegalArgumentException("Programa supera 256 KiB");

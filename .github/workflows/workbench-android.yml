@@ -68,6 +68,8 @@ jobs:
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1' platform-tools emulator 'system-images;android-35;default;x86_64'
           printf '{"source_commit":"%s","base_reverse_commit":"e0f893d3c13a05d201e57b06ec7f761f196caef1","mundo_x_commit":"e2778d962af22f6f1a0794058dd4685fc2573966"}\n' "$GITHUB_SHA" > reverse-os-android/app/src/main/assets/workbench/build-info.json
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc src/reverse_pc.cpp -o build/reverse_pc
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tests/core-profile.cpp -o build/core-profile
+          node reverse-os-android/tests/quantum-workbench-native.cjs build/reverse_pc build/core-profile build/quantum-workbench > workbench-evidence/quantum-workbench.log
           python3 scripts/build-bbyq-app.py build/reverse_pc deps/bbyq-app workbench-dist/BBY-Q.rxe > workbench-evidence/bbyq-package.json
           node bbyq-interface/build.mjs build/reverse_pc deps/bbyq-control build/bbyq-control workbench-dist/BBY-Q.rxe --install-assets > workbench-evidence/bbyq-control-package.json
           node bbyq-interface/tests/native-control.mjs build/reverse_pc build/bbyq-control > workbench-evidence/bbyq-control-native.log
@@ -80,13 +82,13 @@ jobs:
         run: |
           set -euo pipefail
           gradle -p reverse-os-android --no-daemon :app:assembleWorkbenchDebug :app:assembleWorkbenchDebugAndroidTest > workbench-evidence/gradle.log 2>&1 || { tail -160 workbench-evidence/gradle.log; exit 1; }
-          cp reverse-os-android/app/build/outputs/apk/workbench/debug/app-workbench-debug.apk workbench-dist/REVERSE-Workbench-v2.3.0.apk
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs workbench-dist/REVERSE-Workbench-v2.3.0.apk > workbench-evidence/signature.txt
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging workbench-dist/REVERSE-Workbench-v2.3.0.apk > workbench-evidence/package.txt
-          unzip -l workbench-dist/REVERSE-Workbench-v2.3.0.apk > workbench-evidence/apk-contents.txt
+          cp reverse-os-android/app/build/outputs/apk/workbench/debug/app-workbench-debug.apk workbench-dist/REVERSE-Workbench-v2.4.0.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs workbench-dist/REVERSE-Workbench-v2.4.0.apk > workbench-evidence/signature.txt
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging workbench-dist/REVERSE-Workbench-v2.4.0.apk > workbench-evidence/package.txt
+          unzip -l workbench-dist/REVERSE-Workbench-v2.4.0.apk > workbench-evidence/apk-contents.txt
           grep 'lib/arm64-v8a/libreverse_os.so' workbench-evidence/apk-contents.txt
           grep 'lib/x86_64/libreverse_os.so' workbench-evidence/apk-contents.txt
-          sha256sum workbench-dist/REVERSE-Workbench-v2.3.0.apk > workbench-evidence/SHA256SUMS
+          sha256sum workbench-dist/REVERSE-Workbench-v2.4.0.apk > workbench-evidence/SHA256SUMS
       - name: Download the exact previously delivered Workbench 2.0 for update testing
         uses: actions/download-artifact@v4
         with:
@@ -114,11 +116,11 @@ jobs:
           test "$ready" = true
           adb shell wm size 720x1600
           adb shell wm density 280
-          # Keep the disposable emulator in the same landscape orientation as Workbench.
+          # Exercise the primary phone interface in portrait without repeated rotations.
           # Quickstep's system taskbar has shown ANR dialogs during repeated rotations,
           # which intercept instrumentation touches despite the Workbench view being ready.
           adb shell settings put system accelerometer_rotation 0
-          adb shell settings put system user_rotation 1
+          adb shell settings put system user_rotation 0
           adb shell settings put system screen_off_timeout 600000
           # Match AOSP CTS WindowInsetsBehaviorTests: suppress only the disposable
           # emulator's immersive-mode education overlay, never the shipped app.
@@ -139,7 +141,7 @@ jobs:
           adb shell am force-stop com.android.launcher3 || true
           adb shell am force-stop com.reversepc.workbench
           # Real in-place update: same package and signature, no uninstall or clear.
-          adb install -r workbench-dist/REVERSE-Workbench-v2.3.0.apk
+          adb install -r workbench-dist/REVERSE-Workbench-v2.4.0.apk
           timeout 180s adb shell am instrument -w -e mode upgrade com.reversepc.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee workbench-evidence/upgrade.txt
           grep 'WORKBENCH_TESTS_OK mode=upgrade' workbench-evidence/upgrade.txt
           adb shell am force-stop com.reversepc.workbench
@@ -167,7 +169,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: REVERSE-Workbench-2.3.0-native
+          name: REVERSE-Workbench-2.4.0-native
           path: |
             workbench-dist/**
             workbench-evidence/**

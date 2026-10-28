@@ -25,7 +25,7 @@ node - "$repo" "$out" "$assets" "$baseline" <<'JS'
 const fs=require('fs'),path=require('path'),crypto=require('crypto'),cp=require('child_process');const [repo,out,assets,baseline]=process.argv.slice(2);
 let manifest=fs.readFileSync(path.join(repo,'reverse-os-android/app/src/main/AndroidManifest.xml'),'utf8');
 manifest=manifest.replace('<manifest xmlns:android=', '<manifest package="com.reversepc.control.workbench" xmlns:android=')
- .replaceAll('${appLabel}','REVERSE Control').replaceAll('android:name=".','android:name="com.reversepc.os.')
+ .replaceAll('${appLabel}','REVERSE').replaceAll('android:name=".','android:name="com.reversepc.os.')
  .replace(/\s*<activity android:name="com\.reversepc\.os\.HomeActivity"[\s\S]*?<\/activity>/,'');
 fs.writeFileSync(path.join(out,'AndroidManifest.xml'),manifest);
 const build={source_commit:cp.execFileSync('git',['-C',repo,'rev-parse','HEAD'],{encoding:'utf8'}).trim(),base_reverse_commit:'cf7854fc0499801c3206fea38043806060b9ed5d',mundo_x_commit:'e2778d962af22f6f1a0794058dd4685fc2573966',variant:'parallel-control-test',native_engine_apk_sha256:crypto.createHash('sha256').update(fs.readFileSync(baseline)).digest('hex')};
@@ -33,7 +33,7 @@ fs.writeFileSync(path.join(assets,'workbench/build-info.json'),JSON.stringify(bu
 JS
 "$tools/aapt2" compile --dir "$repo/reverse-os-android/app/src/main/res" -o "$out/resources.zip"
 "$tools/aapt2" link -o "$out/resources.apk" -I "$platform" --manifest "$out/AndroidManifest.xml" \
-  --min-sdk-version 29 --target-sdk-version 35 --version-code 230 --version-name 2.3.0-control \
+  --min-sdk-version 29 --target-sdk-version 35 --version-code 240 --version-name 2.4.0-control \
   --auto-add-overlay -A "$assets" "$out/resources.zip"
 cp "$out/resources.apk" "$out/unaligned.apk"
 java -m jdk.jartool/sun.tools.jar.Main --update --no-compress --file "$out/unaligned.apk" -C "$out/dex" classes.dex -C "$out/stage" lib
@@ -45,9 +45,9 @@ if [[ ! -f "$key" ]]; then
     -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=REVERSE Control Development'
 fi
 "$tools/apksigner" sign --ks "$key" --ks-key-alias reverse-desktop --ks-pass pass:android --key-pass pass:android \
-  --out "$out/REVERSE-Control-v2.3.0.apk" "$out/aligned.apk"
-"$tools/apksigner" verify --verbose --print-certs "$out/REVERSE-Control-v2.3.0.apk" > "$out/signature.txt"
-"$tools/zipalign" -c -P 16 -v 4 "$out/REVERSE-Control-v2.3.0.apk" > "$out/alignment.txt"
-"$tools/aapt" dump badging "$out/REVERSE-Control-v2.3.0.apk" > "$out/package.txt"
-sha256sum "$out/REVERSE-Control-v2.3.0.apk" "$baseline" "$out/stage/lib/arm64-v8a/libreverse_os.so" "$out/stage/lib/x86_64/libreverse_os.so" > "$out/SHA256SUMS"
-printf 'CONTROL_APK_BUILT %s\n' "$out/REVERSE-Control-v2.3.0.apk"
+  --out "$out/REVERSE-Control-v2.4.0.apk" "$out/aligned.apk"
+"$tools/apksigner" verify --verbose --print-certs "$out/REVERSE-Control-v2.4.0.apk" > "$out/signature.txt"
+"$tools/zipalign" -c -P 16 -v 4 "$out/REVERSE-Control-v2.4.0.apk" > "$out/alignment.txt"
+"$tools/aapt" dump badging "$out/REVERSE-Control-v2.4.0.apk" > "$out/package.txt"
+sha256sum "$out/REVERSE-Control-v2.4.0.apk" "$baseline" "$out/stage/lib/arm64-v8a/libreverse_os.so" "$out/stage/lib/x86_64/libreverse_os.so" > "$out/SHA256SUMS"
+printf 'CONTROL_APK_BUILT %s\n' "$out/REVERSE-Control-v2.4.0.apk"

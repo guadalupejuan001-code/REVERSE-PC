@@ -27,7 +27,7 @@ async function refreshAndroid(force=false){
   androidReading=true;
   try{androidSnapshot=await nativeRequest('inspect');androidError=null;androidReadAt=Date.now();}
   catch(error){androidError=error.message;androidSnapshot=null;androidReadAt=Date.now();}
-  finally{androidReading=false;systemSnapshot=null;for(const w of state.windows.filter(w=>w.app==='control'&&w.tab==='system'))renderWindowContent(w);}
+  finally{androidReading=false;systemSnapshot=null;window.ReverseShell?.refresh();for(const w of state.windows.filter(w=>w.app==='control'&&w.tab==='system'))renderWindowContent(w);}
 }
 function collectSystemInfo(){
   const report=collectWebSystemInfo();if(!nativeAvailable)return report;

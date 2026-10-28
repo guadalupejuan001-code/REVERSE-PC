@@ -95,9 +95,13 @@ const conversation='#!reverse-pc-machine-v1\n'+link(source(path.join(bbyq,'ai/xi
   'label ui_finish\nhalt\nlabel bbyq_conversation\n'+linked.split('\n').slice(1).join('\n');
 fs.writeFileSync(path.join(out,'conversation.xi'),conversation);
 exec('compile',path.join(out,'conversation.xi'),path.join(out,'code.rxe'),'BBY Q interface XI');
-const sourceRef=execFileSync('git',['-C',repo,'rev-parse','HEAD'],{encoding:'utf8'}).trim();
+const hostSourceRef=execFileSync('git',['-C',repo,'rev-parse','HEAD'],{encoding:'utf8'}).trim();
+const frozen=JSON.parse(source(path.join(root,'data/w4u-v1-manifest.json')));
+if(digest(fs.readFileSync(path.join(out,'code.rxe')))!==frozen.bytecode_sha256||digest(fs.readFileSync(path.join(out,'controller.rvp')))!==frozen.controller_sha256||digest(Buffer.from(conversation))!==frozen.linked_source_sha256)throw Error('W4u engine changed: version and migrate it before replacing an installed identity');
+const sourceRef=frozen.interface_source_commit;
 const info=JSON.parse(exec('pack-app',path.join(out,'code.rxe'),path.join(out,'controller.rvp'),path.join(out,'BBY-Q.rxe'),'org.reverse.bbyq','BBY Q','E023-W4u-1',sourceRef));
 
+if(digest(fs.readFileSync(path.join(out,'BBY-Q.rxe')))!==frozen.executable_sha256)throw Error('W4u executable identity drift');
 // A guarded migration adds only the E016 -> E022/interface delta. Every changed
 // byte must still have its old or already-migrated value; unrelated user bytes,
 // quantum core and bindings are retained. Conflict aborts the whole runtime call.
@@ -134,12 +138,12 @@ const oldControl=fs.readFileSync(path.join(out,'control-v1.rvp'));
 if(digest(oldControl)!==oldInfo.controller_sha256)throw Error('Unreviewed Control-1 seed');
 const controlChanged=migration(oldControl,'upgrade-control');
 fs.writeFileSync(path.join(out,'legacy-e016.rvp'),legacy);
-const manifest={format:1,base_bbyq_commit:execFileSync('git',['-C',bbyq,'rev-parse','HEAD'],{encoding:'utf8'}).trim(),interface_source_commit:sourceRef,
+const manifest={format:1,base_bbyq_commit:execFileSync('git',['-C',bbyq,'rev-parse','HEAD'],{encoding:'utf8'}).trim(),interface_source_commit:sourceRef,host_source_commit:hostSourceRef,agent_image_reused:true,
   checkpoint_sha256:digest(seed),controller_sha256:digest(current),controller_bytes:current.length,executable_sha256:digest(fs.readFileSync(path.join(out,'BBY-Q.rxe'))),
   linked_source_sha256:digest(Buffer.from(conversation)),grammar_sha256:digest(Buffer.from(JSON.stringify(spec))),
   bytecode_sha256:digest(fs.readFileSync(path.join(out,'code.rxe'))),
   interface_words:words.length,target_aliases:names.length,command_frames:forms.length,grammar:spec.grammar,
-  prior_training_replayed:false,migration_bytes_changed:changed,control_migration_bytes_changed:controlChanged,legacy_control_sha256:oldInfo.executable_sha256,
+  prior_training_replayed:false,migration_bytes_changed:changed,control_migration_bytes_changed:controlChanged,legacy_control_sha256:oldInfo.executable_sha256,legacy_control_sha256s:JSON.parse(source(path.join(root,'data/control-v1-identities.json'))).identities.map(x=>x.sha256),
   agents:{engine:'W4u',version:'0.1',artifact_sha256:digest(fs.readFileSync(path.join(out,'W4u.rxe'))),architecture:'bounded cooperative XI roles; sequential over one RVPC2',max_steps:2,planner_sha256:digest(Buffer.from(agentSource('plan'))),explorer_sha256:digest(Buffer.from(agentSource('explore'))),verifier_sha256:digest(Buffer.from(agentSource('verify'))),advance_sha256:digest(Buffer.from(agentSource('advance')))},metadata:info};
 manifest.legacy_executable_sha256='2e189e11a9ceda2d4dfc2299e61892929dc696411d595b8e3c138c8134c2802f';
 if(legacyArg&&legacyArg!=='-'){

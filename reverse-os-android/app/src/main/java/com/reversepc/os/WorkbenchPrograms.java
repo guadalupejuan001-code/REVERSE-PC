@@ -16,6 +16,7 @@ final class WorkbenchPrograms {
     static final String BBYQ="Aplicaciones/BBY-Q.rxe";
     private final Context context;
     private final WorkspaceFiles files;
+    private byte[] retiredHello;
 
     WorkbenchPrograms(Context context)throws Exception{
         this.context=context.getApplicationContext();files=new WorkspaceFiles(context.getFilesDir());
@@ -27,10 +28,6 @@ final class WorkbenchPrograms {
             if(!exists(BBYQ)&&!previous.getBoolean("bbyq-rxe-e016-seeded",false))try(InputStream in=context.getAssets().open("native-apps/BBY-Q.rxe")){
                 byte[] image=read(in);info(image);files.write(BBYQ,image,false);
             }
-            String hello="Aplicaciones/Hola-REVERSE.rxe";
-            if(!exists(hello)&&!previous.getBoolean("rxe-seeded-v1",false))files.write(hello,NativeRuntime.compileRxe(
-                "#!reverse-pc-machine-v1\nset r0 6\nmul r0 7\nprint r0\nhalt\n".getBytes(StandardCharsets.UTF_8),
-                "Hola REVERSE".getBytes(StandardCharsets.UTF_8)),false);
             prefs.edit().putBoolean("seeded",true).apply();
         }
         upgradeBbyq();
@@ -43,7 +40,10 @@ final class WorkbenchPrograms {
         if(identity(previous).equals(identity(bundled)))return;
         JSONObject manifest=new JSONObject(new String(BbyqInterface.asset(context,"bbyq-interface/manifest.json"),StandardCharsets.UTF_8));
         boolean legacy=BbyqInterface.LEGACY_SHA.equals(identity(previous));
-        if(!legacy&&!manifest.getString("legacy_control_sha256").equals(identity(previous)))return; // Keep custom executables.
+        boolean knownControl=manifest.getString("legacy_control_sha256").equals(identity(previous));
+        JSONArray identities=manifest.optJSONArray("legacy_control_sha256s");
+        if(identities!=null)for(int i=0;i<identities.length();i++)knownControl|=identities.getString(i).equals(identity(previous));
+        if(!legacy&&!knownControl)return; // Keep custom executables.
         RxeAppStore.Saved old=new RxeAppStore(context,previous).load(previous);
         byte[] migration=BbyqInterface.asset(context,legacy?"bbyq-interface/upgrade-e016.rxe":"bbyq-interface/upgrade-control.rxe");
         ResultPacket converted=ResultPacket.parse(NativeRuntime.executeRxe(old.state,migration));
@@ -78,10 +78,15 @@ final class WorkbenchPrograms {
         if(!identity(image).equals(request.getString("identity")))throw new IOException("El ejecutable cambió. Vuelve a abrirlo antes de continuar");
         return image;
     }
+    private boolean stockDemo(String path,byte[] image)throws Exception{
+        if(!"Aplicaciones/Hola-REVERSE.rxe".equals(path))return false;
+        if(retiredHello==null)retiredHello=NativeRuntime.compileRxe("#!reverse-pc-machine-v1\nset r0 6\nmul r0 7\nprint r0\nhalt\n".getBytes(StandardCharsets.UTF_8),"Hola REVERSE".getBytes(StandardCharsets.UTF_8));
+        return java.util.Arrays.equals(retiredHello,image);
+    }
     JSONObject catalog()throws Exception{
         JSONArray apps=new JSONArray();int rejected=0;
         for(WorkspaceFiles.Entry entry:files.list("Aplicaciones"))if(!entry.directory&&entry.path.toLowerCase(Locale.ROOT).endsWith(".rxe")){
-            try{byte[] image=files.read(entry.path);apps.put(new JSONObject().put("path",entry.path).put("metadata",info(image)).put("bytes",image.length).put("identity",identity(image)));}
+            try{byte[] image=files.read(entry.path);if(stockDemo(entry.path,image))continue;apps.put(new JSONObject().put("path",entry.path).put("metadata",info(image)).put("bytes",image.length).put("identity",identity(image)));}
             catch(Exception invalid){rejected++;Log.w("ReverseWorkbench","RXE_CATALOG_REJECT "+entry.path,invalid);}
         }
         return new JSONObject().put("ok",true).put("apps",apps).put("rejected",rejected);
