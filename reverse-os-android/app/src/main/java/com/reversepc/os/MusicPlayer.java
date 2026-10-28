@@ -50,6 +50,8 @@ final class MusicPlayer {
     private boolean repeatOne, localSelected;
     private boolean suspended, disposed, polling, receiverRegistered, recovering;
     private WebView remote;
+    /** Parent clipped to the actual video stage. A remote web page can never draw or touch the desktop controls. */
+    private FrameLayout remoteClip;
     private String injection, error = "", notice = "", phase = "idle";
     private int pollGeneration, documentEpoch;
     private Runnable pollTimeout;
@@ -107,6 +109,12 @@ final class MusicPlayer {
         remote.setBackgroundColor(0xff101214);
         remote.setWebChromeClient(new WebChromeClient() {
             @Override public void onPermissionRequest(PermissionRequest request) { request.deny(); }
+            @Override public void onShowCustomView(View view, CustomViewCallback callback) {
+                // YouTube cannot take over the entire REVERSE desktop via HTML fullscreen.
+                notice = "La vista de YouTube permanece dentro de Music.";
+                if (callback != null) callback.onCustomViewHidden();
+                publish();
+            }
         });
         remote.setWebViewClient(new WebViewClient() {
             @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
@@ -138,7 +146,12 @@ final class MusicPlayer {
                     fail("YouTube respondió con error " + response.getStatusCode() + ". Pulsa Recargar para reintentar.");
             }
             @Override public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
-                root.removeView(view); view.destroy();
+                if (remoteClip != null) {
+                    remoteClip.removeView(view);
+                    root.removeView(remoteClip);
+                    remoteClip = null;
+                }
+                view.destroy();
                 if (remote == view) remote = null;
                 recovering = true;
                 fail("El reproductor se cerró. Pulsa Abrir YouTube para recuperarlo.");
@@ -148,7 +161,14 @@ final class MusicPlayer {
         remote.setDownloadListener((url, agent, disposition, mime, size) -> {
             notice = "YouTube se reproduce en línea. Para guardar archivos de audio directos, abre Descargar música."; publish();
         });
-        root.addView(remote, new FrameLayout.LayoutParams(1, 1));
+        remoteClip = new FrameLayout(activity);
+        remoteClip.setClipChildren(true);
+        remoteClip.setClipToPadding(true);
+        remoteClip.setFocusable(false);
+        remoteClip.setVisibility(View.INVISIBLE);
+        remoteClip.addView(remote, new FrameLayout.LayoutParams(
+            FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        root.addView(remoteClip, new FrameLayout.LayoutParams(1, 1));
         layout(bounds);
     }
     private static WebResourceResponse denied() {
@@ -208,7 +228,7 @@ final class MusicPlayer {
     }
     void layout(JSONObject data) {
         bounds = data;
-        if (remote == null) return;
+        if (remote == null || remoteClip == null) return;
         double viewport = data.optDouble("viewport", 0);
         double x = data.optDouble("x", 0), y = data.optDouble("y", 0);
         double w = data.optDouble("w", 0), h = data.optDouble("h", 0);
@@ -230,10 +250,12 @@ final class MusicPlayer {
                 Math.max(1, (int)Math.round(w * scale)), Math.max(1, (int)Math.round(h * scale)));
             // FrameLayout adds root padding; the desktop occupies that same content origin.
             params.leftMargin = (int)Math.round(x * scale); params.topMargin = (int)Math.round(y * scale);
-            remote.setLayoutParams(params);
+            // Move ONLY the clipped host; the WebView is MATCH_PARENT inside it.
+            remoteClip.setLayoutParams(params);
         }
         if (!visible && remote.getVisibility()==View.VISIBLE) remote.clearFocus();
         remote.setVisibility(visible ? View.VISIBLE : View.INVISIBLE);
+        remoteClip.setVisibility(visible ? View.VISIBLE : View.INVISIBLE);
     }
     private void beginNavigation() {
         documentEpoch++; stopPolling(); phase = "loading"; error = ""; notice = "";
@@ -360,6 +382,7 @@ final class MusicPlayer {
         ui.removeCallbacks(libraryPoll);
         try { snapshot.put("paused",true).put("held",true); } catch (Exception ignored) {}
         if (remote != null) { remote.getSettings().setMediaPlaybackRequiresUserGesture(true); remote.onPause(); remote.setVisibility(View.INVISIBLE); }
+        if (remoteClip != null) remoteClip.setVisibility(View.INVISIBLE);
         updateSession(); publish();
     }
     void resume() {
@@ -374,6 +397,10 @@ final class MusicPlayer {
         pause(); disposed = true; stopPolling();
         if (receiverRegistered) { activity.unregisterReceiver(noisy); receiverRegistered = false; }
         session.release();
-        if (remote != null) { root.removeView(remote); remote.stopLoading(); remote.destroy(); remote = null; }
+        if (remote != null) {
+            if (remoteClip != null) remoteClip.removeView(remote);
+            remote.stopLoading(); remote.destroy(); remote = null;
+        }
+        if (remoteClip != null) { root.removeView(remoteClip); remoteClip = null; }
     }
 }
