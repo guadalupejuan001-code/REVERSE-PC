@@ -6,6 +6,9 @@ import android.view.View;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import android.widget.FrameLayout;
 import java.util.Collections;
 import java.util.Map;
@@ -29,7 +32,8 @@ final class MusicPlayerChecks {
             if (js(runner, view, expression).equals("true")) return;
             Thread.sleep(100);
         }
-        throw new AssertionError("Music fixture timed out: " + expression);
+        throw new AssertionError("Music fixture timed out: " + expression + " document="
+            + js(runner, view, "JSON.stringify({url:location.href,ready:document.readyState,body:document.body?.innerHTML.slice(0,600)})"));
     }
     static int run(Instrumentation runner, WorkbenchActivity activity) throws Exception {
         AtomicReference<MusicPlayer> player = new AtomicReference<>();
@@ -49,11 +53,26 @@ final class MusicPlayerChecks {
                     java.lang.reflect.Field field = MusicPlayer.class.getDeclaredField("remote"); field.setAccessible(true);
                     WebView web = (WebView) field.get(p); remote.set(web); web.getSettings().setBlockNetworkLoads(true);
                     p.command("shield", new JSONObject().put("enabled", true));
-                    web.loadDataWithBaseURL("https://m.youtube.com/watch?v=abcdefghijk",
-                        "<html><head><meta name='viewport' content='width=device-width'></head><body><div id='movie_player'><video></video></div><div id='player-ads'>Ad</div>"
+                    final String html = "<html><head><meta name='viewport' content='width=device-width'></head><body><div id='movie_player'><video></video></div><div id='player-ads'>Ad</div>"
                         + "<script>window.clock={time:12,duration:120,paused:true};const v=document.querySelector('video');"
                         + "Object.defineProperties(v,{currentTime:{get:()=>clock.time,set:t=>clock.time=t},duration:{get:()=>clock.duration},paused:{get:()=>clock.paused}});"
-                        + "v.play=async()=>{clock.paused=false};v.pause=()=>{clock.paused=true};</script></body></html>", "text/html", "UTF-8", null);
+                        + "v.play=async()=>{clock.paused=false};v.pause=()=>{clock.paused=true};</script></body></html>";
+                    final WebViewClient production = web.getWebViewClient();
+                    // Exercise the normal HTTPS navigation/injection path; no synthetic data URL.
+                    web.setWebViewClient(new WebViewClient() {
+                        @Override public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                            WebResourceResponse filtered = production.shouldInterceptRequest(view, request);
+                            if (filtered != null) return filtered;
+                            if (request.isForMainFrame() && request.getUrl().toString().equals("https://m.youtube.com/watch?v=abcdefghijk"))
+                                return new WebResourceResponse("text/html", "UTF-8", new ByteArrayInputStream(html.getBytes(StandardCharsets.UTF_8)));
+                            return new WebResourceResponse("text/plain", "UTF-8", new ByteArrayInputStream(new byte[0]));
+                        }
+                        @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap icon) { production.onPageStarted(view, url, icon); }
+                        @Override public void onPageCommitVisible(WebView view, String url) { production.onPageCommitVisible(view, url); }
+                        @Override public void onPageFinished(WebView view, String url) { production.onPageFinished(view, url); }
+                        @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) { return production.shouldOverrideUrlLoading(view, request); }
+                    });
+                    p.command("open", new JSONObject().put("input", "https://m.youtube.com/watch?v=abcdefghijk"));
                 } catch (Throwable failure) { setupError.set(failure); }
             });
             if (setupError.get() != null) throw new AssertionError("Music setup failed", setupError.get());
