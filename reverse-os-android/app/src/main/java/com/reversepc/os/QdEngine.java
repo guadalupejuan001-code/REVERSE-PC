@@ -5,7 +5,9 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.security.SecureRandom;
 import java.util.regex.Pattern;
 
 /** Qd/Cody: bounded XI coding lessons backed by BBY Q's exact private RVPC2.
@@ -21,7 +23,24 @@ final class QdEngine {
         "(?:set|add|sub|mul|div|mod) r[0-3] (?:r[0-3]|-?[0-9]+|\\{\\{a\\}\\}|\\{\\{b\\}\\})"
         +"|mov r[0-3] r[0-3]|print r0|halt");
     private static final int[][] TRAIN={{6,7},{12,4},{9,3},{15,8}};
-    private static final int[][] HELD={{23,11},{7,19},{38,5},{61,9}};
+    // The independent host selects a NEW held-out exam for each attempted lesson.
+    // These examples are never fed back into XI as training data; XI receives only
+    // the pass/total verdict, not the answers. Keep counts within store8 (0..255).
+    private static final int HELDOUT_COUNT=28;
+    private static final int ACCEPTANCE_CASES=TRAIN.length+HELDOUT_COUNT;
+    private static int[][] heldout(){
+        List<int[]> cases=new ArrayList<>();
+        HashSet<Integer> seen=new HashSet<>();
+        for(int[] item:TRAIN)seen.add(item[0]*100+item[1]);
+        int[][] boundaries={{0,1},{99,99},{99,1},{0,99}};
+        for(int[] pair:boundaries)if(seen.add(pair[0]*100+pair[1]))cases.add(pair);
+        SecureRandom random=new SecureRandom();
+        while(cases.size()<HELDOUT_COUNT){
+            int a=random.nextInt(100),b=1+random.nextInt(99);
+            if(seen.add(a*100+b))cases.add(new int[]{a,b});
+        }
+        return cases.toArray(new int[0][]);
+    }
     private final Context context;
     private final byte[] bbyq;
     QdEngine(Context context,byte[] bbyq)throws Exception{
@@ -99,8 +118,9 @@ final class QdEngine {
     }
     private static JSONObject grade(String template,int skill,boolean includeHoldout)throws Exception{
         JSONArray rows=new JSONArray();int pass=0;
+        int[][] exam=includeHoldout?heldout():new int[0][];
         for(int section=0;section<(includeHoldout?2:1);section++){
-            for(int[] pair:(section==0?TRAIN:HELD)){
+            for(int[] pair:(section==0?TRAIN:exam)){
                 int a=pair[0],b=pair[1],truth=expected(skill,a,b);
                 JSONObject row=new JSONObject().put("a",a).put("b",b).put("expected",truth)
                     .put("set",section==0?"práctica":"evaluación");
@@ -117,6 +137,8 @@ final class QdEngine {
     }
     private JSONObject teach(int skill,String source)throws Exception{
         String template=checked(source);JSONObject result=grade(template,skill,true);
+        if(result.getInt("total")!=ACCEPTANCE_CASES)
+            throw new IllegalStateException("El examen Qd está incompleto.");
         // Independent host grading supplies evidence; XI decides acceptance.
         String evidence="store8 "+M+" 81\nstore8 "+(M+1)+" 3\n"
             +"store8 "+(M+4)+" "+result.getInt("passed")+"\n"
@@ -129,8 +151,8 @@ final class QdEngine {
         stage.append("store8 ").append(M).append(" 81\n");
         stage.append("store8 ").append(M+1).append(" 1\n");
         stage.append("store8 ").append(M+2).append(' ').append(skill).append('\n');
-        stage.append("store8 ").append(M+4).append(" 8\n");
-        stage.append("store8 ").append(M+5).append(" 8\n");
+        stage.append("store8 ").append(M+4).append(' ').append(ACCEPTANCE_CASES).append('\n');
+        stage.append("store8 ").append(M+5).append(' ').append(ACCEPTANCE_CASES).append('\n');
         byte[] code=template.getBytes(StandardCharsets.US_ASCII);
         stage.append("store8 ").append(M+3).append(' ').append(code.length).append('\n');
         for(int i=0;i<code.length;i++)stage.append("store8 ").append(M+16+i).append(' ').append(code[i]&255).append('\n');
