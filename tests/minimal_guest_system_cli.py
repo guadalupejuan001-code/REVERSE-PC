@@ -38,8 +38,12 @@ with tempfile.TemporaryDirectory() as directory:
         try:
             reference=subprocess.run(['qemu-system-aarch64','-M','virt','-cpu','cortex-a53','-m','128M','-nographic','-monitor','none','-kernel',str(elf),'-no-reboot','-d','in_asm,int,guest_errors','-D',str(trace)],capture_output=True,timeout=20)
         except subprocess.TimeoutExpired as error:
+            if trace.exists() and trace.stat().st_size>1024*1024:
+                with trace.open('rb') as stream:
+                    start=stream.read(512*1024);stream.seek(-512*1024,2);end=stream.read()
+                trace.write_bytes(start+b'\n[repeated middle trace omitted]\n'+end)
             print('Independent system oracle timed out; trace:',trace,file=sys.stderr)
-            print('Oracle partial output:',error.stdout,file=sys.stderr)
+            print('Oracle partial output:',(error.stdout or b'')[:4096],file=sys.stderr)
             raise
         check(reference.returncode==0 and reference.stdout.decode()==all['stdout'],'Independent QEMU system execution differs: '+reference.stderr.decode())
         oracle='clang/lld ELF + qemu-system-aarch64'

@@ -32,8 +32,10 @@ _start:
     movk x1, #0x8019, lsl #16
     msr tcr_el1, x1
     dsb sy
-    mrs x1, sctlr_el1
-    orr x1, x1, #1
+    // Establish the documented v8 baseline, rather than inherit firmware's
+    // write/execute policy from a different machine's reset path.
+    mov x1, #0x801
+    movk x1, #0x30d0, lsl #16
     msr sctlr_el1, x1
     isb
     // Enable the physical timer's PPI in a single-group GICv2.
