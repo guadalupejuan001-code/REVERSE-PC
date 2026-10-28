@@ -395,6 +395,11 @@ public final class WorkbenchTestRunner extends Instrumentation {
             activity=(WorkbenchActivity)waitForMonitorWithTimeout(desktopMonitor,15000);removeMonitor(desktopMonitor);
             require(activity!=null,"Entry did not reach Workbench: "+requested);
             waitJs("document.querySelector('[data-task-app]')&&typeof nativeRequest==='function'");
+            if(requested.equals("music")){
+                int checks=MusicPlayerChecks.run(this,activity);
+                result.putString("stream","WORKBENCH_TESTS_OK mode=music checks="+checks+" offline-webview=verified\n");
+                result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
+            }
             JSONObject snapshot=op("inspect","","testSnapshot");
             require(snapshot.getBoolean("ok"),snapshot.toString());
             require(snapshot.getJSONObject("android").getLong("ram_total_bytes")>0,"No native RAM reading");
