@@ -302,6 +302,11 @@ public final class WorkbenchTestRunner extends Instrumentation {
         Bundle result=new Bundle();
         try{
             String requested=arguments==null?"full":arguments.getString("mode","full");
+            if(requested.equals("migration")){
+                int checks=E025MigrationChecks.run(getTargetContext(),getContext());
+                result.putString("stream","WORKBENCH_TESTS_OK mode=migration checks="+checks+" native=XI/Ether\n");
+                result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
+            }
             boolean boot=requested.equals("boot"),seed=requested.equals("upgradeSeed"),upgrade=requested.equals("upgrade"),legacy=requested.equals("legacy");
             ActivityMonitor desktopMonitor=addMonitor(WorkbenchActivity.class.getName(),null,false);
             Class<?> entry=boot?BootActivity.class:legacy?DesktopActivity.class:WorkbenchActivity.class;
