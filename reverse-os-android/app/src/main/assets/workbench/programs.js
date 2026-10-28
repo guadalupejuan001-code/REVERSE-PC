@@ -7,6 +7,7 @@ Object.assign(APP_DESCRIPTIONS,{programs:'Tus programas del dispositivo.',bbyq:'
 function refreshProgramViews(){
   for(const w of state.windows)if(w.app==='programs')renderWindowContent(w);
   if(!$('#launcher').hidden)renderLauncher($('#global-search').value);
+  renderShortcuts();
 }
 async function refreshPrograms(){
   if(!nativeAvailable||programCatalogLoading)return;
@@ -18,7 +19,7 @@ async function refreshPrograms(){
 function programCards(){
   if(programCatalogError)return '<p role="alert">'+esc(programCatalogError)+'</p>';
   if(!programCatalog)return '<p class="muted">'+(nativeAvailable?'Leyendo tus ejecutables…':'Abre la aplicación Android para ejecutar programas .rxe.')+'</p>';
-  return programCatalog.apps.map(app=>'<article class="program-card"><div>'+icon(app.metadata.ui==='chat'?'help':'desktop')+'<span><strong>'+esc(app.metadata.title)+'</strong><small>'+esc(app.metadata.app_version||'RXE1')+(bbyqPrograms().find(p=>p.path===app.path)?' · Programa '+(bbyqPrograms().find(p=>p.path===app.path).target-15):'')+' · '+Math.ceil(app.bytes/1024)+' KB · '+esc(app.path.split('/').pop())+'</small></span></div><div class="program-actions"><button class="primary-button" data-program-path="'+esc(app.path)+'">Abrir</button><button class="secondary-button" data-program-export="'+esc(app.path)+'" aria-label="Exportar '+esc(app.metadata.title)+'">'+icon('download')+'</button></div></article>').join('')+(programCatalog.apps.length?'':'<p>No hay ejecutables. Agrega un .rxe o créalo desde XI Studio.</p>')+(programCatalog.rejected?'<p role="status">Se omitieron '+programCatalog.rejected+' archivos que no son ejecutables válidos.</p>':'');
+  return programCatalog.apps.map(app=>'<article class="program-card"><div>'+appIcon(programIconName(app))+'<span><strong>'+esc(app.metadata.title)+'</strong><small>'+esc(app.metadata.app_version||'RXE1')+(bbyqPrograms().find(p=>p.path===app.path)?' · Programa '+(bbyqPrograms().find(p=>p.path===app.path).target-15):'')+' · '+Math.ceil(app.bytes/1024)+' KB · '+esc(app.path.split('/').pop())+'</small></span></div><div class="program-actions"><button class="primary-button" data-program-path="'+esc(app.path)+'">Abrir</button><button class="secondary-button" data-program-export="'+esc(app.path)+'" aria-label="Exportar '+esc(app.metadata.title)+'">'+icon('download')+'</button></div></article>').join('')+(programCatalog.apps.length?'':'<p>No hay ejecutables. Agrega un .rxe o créalo desde XI Studio.</p>')+(programCatalog.rejected?'<p role="status">Se omitieron '+programCatalog.rejected+' archivos que no son ejecutables válidos.</p>':'');
 }
 function programsHTML(){
   if(!programCatalog&&!programCatalogLoading&&!programCatalogError)queueMicrotask(refreshPrograms);

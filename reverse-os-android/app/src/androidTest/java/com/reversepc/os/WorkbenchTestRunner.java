@@ -218,6 +218,13 @@ public final class WorkbenchTestRunner extends Instrumentation {
         File folder=new File(getTargetContext().getExternalFilesDir(null),"visual-evidence");folder.mkdirs();
         String geometry=js("JSON.stringify({width:innerWidth,height:innerHeight,body:document.body.getBoundingClientRect().toJSON(),desktop:document.querySelector('#desktop').getBoundingClientRect().toJSON(),taskbar:document.querySelector('.taskbar').getBoundingClientRect().toJSON(),wall:getComputedStyle(document.querySelector('#wall-image')).backgroundImage})");
         try(FileOutputStream output=new FileOutputStream(new File(folder,mode+"-geometry.json"))){output.write(geometry.getBytes(java.nio.charset.StandardCharsets.UTF_8));}
+        if(mode.equals("full")||mode.equals("native-full")){
+            tapDom("#show-desktop");
+            File iconsFolder=new File(getTargetContext().getExternalFilesDir(null),"ui-evidence");iconsFolder.mkdirs();
+            Bitmap icons=getUiAutomation().takeScreenshot();
+            if(icons!=null)try(FileOutputStream output=new FileOutputStream(new File(iconsFolder,"desktop-icons.png"))){icons.compress(Bitmap.CompressFormat.PNG,100,output);}finally{icons.recycle();}
+            tapDom("#show-desktop");
+        }
         boolean visible=false;
         for(int attempt=0;attempt<24;attempt++){
             Bitmap screen=getUiAutomation().takeScreenshot();require(screen!=null,"No display screenshot");
