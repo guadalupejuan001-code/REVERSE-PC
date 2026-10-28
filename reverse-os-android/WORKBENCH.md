@@ -1,5 +1,9 @@
 # REVERSE Workbench 2.1.1 para Android
 
+## REVERSE Music 2.5.2
+
+El escritorio incluye REVERSE Music: búsqueda y enlaces de YouTube, controles, favoritos persistentes y bloqueador experimental activado por defecto. La página se aloja en un WebView independiente sin puente nativo, dentro de la ventana de Music. El escritorio conserva su aislamiento. Consulta [Music](MUSIC.md) para uso, arquitectura, límites y pruebas. Las ediciones Workbench/REVERSE elevan `versionCode` a 252 y mantienen sus paquetes y datos.
+
 ## X MARKET instalado en Inicio
 
 X MARKET se integra en Inicio → Aplicaciones, búsqueda, acceso del escritorio, Centro de control y barra de tareas junto a BBY Q. Incluye cuatro pantallas: Mercado (sin cotizaciones hasta conectar fuentes), Laplace (escenario matemático sintético), Experimentos y Configuración. Todas son interfaces locales. El gráfico de Laplace usa solamente la regla y los resultados verificados en el experimento XI del PR #27; abrirlo no ejecuta operaciones, no invoca el núcleo, no altera BBY Q ni crea señales bursátiles.
