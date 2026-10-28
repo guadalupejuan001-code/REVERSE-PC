@@ -30,7 +30,7 @@ async function refreshAndroid(force=false){
   finally{androidReading=false;systemSnapshot=null;for(const w of state.windows.filter(w=>w.app==='control'&&w.tab==='system'))renderWindowContent(w);}
 }
 function collectSystemInfo(){
-  const report=collectWebSystemInfo();if(!nativeAvailable)return report;
+  const report=collectWebSystemInfo(!nativeAvailable);if(!nativeAvailable)return report;
   refreshAndroid();
   const nativeLabels=['Entorno','Procesador físico','Hilos lógicos disponibles','RAM física / consumo del sistema','XI / Ether','Interfaz','Datos guardados del escritorio'];
   report.rows=report.rows.filter(row=>!nativeLabels.includes(row.label));
@@ -47,6 +47,7 @@ function collectSystemInfo(){
   report.rows.push(diagnosticRow('PSS del proceso',mib(a.process_pss_kib*1024),'android.os.Debug.getPss()','read','Huella PSS del proceso anfitrión, no solo del núcleo.'));
   report.rows.push(diagnosticRow('CPU consumida por este proceso',a.process_cpu_ms+' ms acumulados','android.os.Process.getElapsedCpuTime()','read','Tiempo acumulado; no es un porcentaje de carga total de CPU.'));
   report.rows.push(diagnosticRow('Qubits activos',String(q.active_qubits),'Runtime.core().stats().active_qubits'));
+  if(window.REVERSE_CAPABILITIES){const limits=window.REVERSE_CAPABILITIES;report.rows.push(diagnosticRow('Límite de qubits activos',String(limits.max_active_qubits),'Perfil verificado de la compilación'));report.rows.push(diagnosticRow('Qubits por componente',String(limits.max_component_qubits),'Perfil verificado de la compilación'));}
   report.rows.push(diagnosticRow('Componentes / mayor componente',q.components+' / '+q.largest_component,'Runtime.core().stats()'));
   report.rows.push(diagnosticRow('Bytes de tableaux',q.tableau_bytes+' bytes','Runtime.core().stats().tableau_bytes'));
   report.rows.push(diagnosticRow('Reglas Ether',String(q.ether_rules),'Runtime.core().stats().ether_rules'));
@@ -74,7 +75,7 @@ async function calcKey(w,key){
 const XI_PROBE='#!reverse-pc-machine-v1\n# Aritmética y entrelazamiento reales; se conserva el checkpoint.\nset r0 6\nmul r0 7\nprint r0\nh 200\nset r1 200\nlabel unir\nmov r2 r1\nadd r2 1\ncx $r1 $r2\nmov r1 r2\ncmp r1 327\njlt unir\nt 327\nexpect Z:200 Z:327\nqstats\nhalt\n';
 function xiHTML(w){
   w.xiSource ||= XI_PROBE;
-  return '<div class="xi-layout"><div class="xi-toolbar"><span>XI / Ether · checkpoint RVPC2 compartido</span><button class="secondary-button" data-program-action="compile">Crear .rxe</button><button class="primary-button" data-native="run-xi">'+icon('arrow-right')+'Ejecutar</button></div><label class="xi-label">Programa XI<textarea class="xi-source" data-xi-source maxlength="262144" spellcheck="false">'+esc(w.xiSource)+'</textarea></label><div class="xi-status">'+esc(w.xiStatus||'La prueba modifica el estado: aritmética y puertas sobre q200–q327. Ejecutar es una acción explícita.')+'</div><pre class="xi-output" aria-label="Salida real XI">'+esc(w.xiOutput||'Esperando ejecución.')+'</pre></div>';
+  return '<div class="xi-layout"><div class="xi-toolbar"><span>XI / Ether · checkpoint RVPC2 compartido</span><button class="secondary-button" data-program-action="compile">Crear .rxe</button><button class="primary-button" data-native="run-xi">'+icon('arrow-right')+'Ejecutar</button></div><label class="xi-label">Programa XI<textarea class="xi-source" data-xi-source maxlength="262144" spellcheck="false">'+esc(w.xiSource)+'</textarea></label><div class="xi-status">'+esc(w.xiStatus||'Ejecutar aplica el programa a tu sesión de trabajo. Operadores y Hamiltonianos usan un estado aislado.')+'</div><pre class="xi-output" aria-label="Salida real XI">'+esc(w.xiOutput||'Esperando ejecución.')+'</pre></div>';
 }
 Object.assign(APP_DESCRIPTIONS,{xi:'Ejecutar programas en el núcleo local XI/Ether.',programs:'Ejecutables .rxe en esta mesa.',bbyq:'Conversación y memoria privada de BBY Q.'});
 document.addEventListener('input',e=>{if(e.target.matches('[data-xi-source]')){const w=getWindow(e.target.closest('.window')?.dataset.id);if(w){w.xiSource=e.target.value;queueSave();}}});

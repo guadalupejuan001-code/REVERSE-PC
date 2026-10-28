@@ -1,8 +1,27 @@
 # REVERSE-PC
 
+**REVERSE 2.5.1:** BBY Q E025 y W4u 0.1 integrados, memoria nativa ampliada y correcciones de teclado conservadas. [Fuentes, compilación y procedencia](docs/RELEASE_2_5_1.md).
+
+**REVERSE 2.4.2:** escritorio PC horizontal con teclado integrado, borrador
+continuo en BBY Q y espacio de escritura ajustado al teclado Android.
+[Teclado, actualización y validación](docs/REVERSE_KEYBOARD_2_4_2.md).
+[Escritorio y ventanas](docs/REVERSE_DESKTOP_2_4_1.md).
+
+**W4u 0.1 — work for u:** BBY Q conversa y W4u coordina tres roles XI para
+operar la interfaz y ejecutar programas RXE internos.
+[Uso, arquitectura y pruebas](docs/W4U_BBYQ.md).
+
+## BBY Q controla Workbench 2.2
+
+BBY Q E022 puede abrir herramientas, enfocar, minimizar, maximizar, restaurar y
+cerrar ventanas, ordenarlas, mostrar el escritorio y cambiar de espacio. Las
+órdenes ES/EN se interpretan en XI; el escritorio confirma el resultado antes de
+mostrar «Acción completada». Se conservan el conocimiento anterior y los estados
+privados por ejecutable. [Uso, pruebas y límites](docs/BBYQ_INTERFACE_CONTROL.md).
+
 ## Ejecutables propios RXE
 
-**BBY-Q.rxe** contiene BBY Q E016, su programa compilado y su memoria entrenada.
+El **BBY-Q.rxe original** contiene BBY Q E016, su programa compilado y su memoria entrenada.
 REVERSE Desktop RXE 1.2 lo abre con conversación ES/EN, contexto persistente y
 exportación de memoria. [Contrato, procedencia y límites](docs/BBYQ_RXE_APP.md).
 

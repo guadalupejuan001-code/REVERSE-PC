@@ -45,6 +45,11 @@ replacements['exact_t_experiment.hpp'] += [
 ]
 from ether_integration import configure
 configure(expected,replacements)
+# E025 retains the larger learned vocabulary and live working memory. Keep the
+# upstream checkout pinned and change only this verified, local compatibility copy.
+replacements['inverse_memory.hpp'].append((
+    '    std::size_t max_overrides = 65536;',
+    '    std::size_t max_overrides = 524288;'))
 # REVERSE-PC's experimental programmable XI profile is explicitly opted in by
 # a first-line marker. Historical XI keeps the original interpreter byte-for-byte.
 replacements['infinite_program.hpp'] += [

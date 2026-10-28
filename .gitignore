@@ -1,6 +1,7 @@
 /build/
 /build-signing/
 /reverse-os-android/app/src/main/assets/native-apps/*.rxe
+/reverse-os-android/app/src/main/assets/bbyq-interface/
 /deps/
 /evidence/
 /resultados/
