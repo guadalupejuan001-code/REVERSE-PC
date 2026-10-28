@@ -377,7 +377,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
             if(requested.equals("armSystem")||requested.equals("armSystemRestore")){
                 systemWorkflow(requested.equals("armSystemRestore"));visualCheck(requested);
                 result.putString("stream","WORKBENCH_TESTS_OK mode="+requested+" integration=XI engine=original-QuantumRuntime qubits=4096 android-boot=not-implemented\n");
-                finish(Activity.RESULT_OK,result);return;
+                result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
             }
             if(requested.equals("guest")||requested.equals("guestRestore")){
                 guestWorkflow(requested.equals("guestRestore"));visualCheck(requested);

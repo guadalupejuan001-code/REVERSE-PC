@@ -77,14 +77,14 @@ inline std::uint64_t MinimalGuest::cpu_read(std::uint64_t address,unsigned size,
   check_access(address,size,false,executing);
   if(!machine_.enabled)return read(address,size);
   const auto first=translate(address,false,executing);
-  if(device_address(first))return device_read(first,size);
+  if(device_address(first))return device_read(first,size)&low_mask(size*8);
   std::uint64_t value=0;for(unsigned i=0;i<size;++i)value|=std::uint64_t(read8(translate(address+i,false,executing)))<<(8*i);return value;
 }
 inline void MinimalGuest::cpu_write(std::uint64_t address,std::uint64_t value,unsigned size,RunResult& result) {
   check_access(address,size,true);machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;
   if(!machine_.enabled){write(address,value,size);return;}
   const auto first=translate(address,true);
-  if(device_address(first)){device_write(first,value,size,result);return;}
+  if(device_address(first)){device_write(first,value&low_mask(size*8),size,result);return;}
   std::string program;
   for(unsigned i=0;i<size;++i){const auto physical=translate(address+i,true);const auto delta=std::uint8_t(value>>(8*i))^backing(physical);
     program+="mem_store "+std::to_string(physical)+" "+std::to_string(delta)+"\n";}
@@ -115,6 +115,7 @@ inline std::uint64_t MinimalGuest::device_read(std::uint64_t address,unsigned si
     throw std::runtime_error("Unsupported GIC CPU register read "+hex(offset));
   }
   const auto offset=unsigned(address-MachineState::gic_dist);
+  require(size==4||(offset>=0x400&&offset+size<=0x440)||(offset>=0x800&&offset+size<=0x840),"GIC distributor control registers require 32-bit access");
   if(offset==0)return m.dist_ctl;if(offset==4)return 1; // 64 interrupt IDs, 1 CPU
   if(offset==8)return 0x0102043b;
   if(offset>=0x80&&offset<0x88)return UINT32_MAX;
@@ -149,6 +150,7 @@ inline void MinimalGuest::device_write(std::uint64_t address,std::uint64_t value
     throw std::runtime_error("Unsupported GIC CPU register write "+hex(offset));
   }
   const auto offset=unsigned(address-MachineState::gic_dist);
+  require(size==4||(offset>=0x400&&offset+size<=0x440)||(offset>=0x800&&offset+size<=0x840),"GIC distributor control registers require 32-bit access");
   if(offset==0){require((value&~UINT64_C(1))==0,"Only GICv2 single-group mode is implemented");m.dist_ctl=unsigned(value);return;}
   if(offset>=0x80&&offset<0x88)return; // Security extensions are not exposed.
   if(offset>=0x100&&offset<0x108&&size==4){m.enabled_irqs[(offset-0x100)/4]|=std::uint32_t(value);return;}
@@ -200,6 +202,8 @@ inline std::uint64_t MinimalGuest::system_read(unsigned id) const {
   if(id==guest_sysreg(3,3,14,3,0))return std::uint32_t(m.cntv_cval-m.ticks);
   if(id==guest_sysreg(3,3,14,2,1))return m.timer_control(true);if(id==guest_sysreg(3,3,14,3,1))return m.timer_control(false);
   if(id==guest_sysreg(3,3,14,2,2))return m.cntp_cval;if(id==guest_sysreg(3,3,14,3,2))return m.cntv_cval;
+  if(id==guest_sysreg(2,0,0,2,2))return m.mdscr;
+  if(id==guest_sysreg(2,0,0,2,0)||id==guest_sysreg(3,3,9,14,0))return 0;
   throw std::runtime_error("Unsupported AArch64 system register read "+hex(id));
 }
 inline void MinimalGuest::select_stack(unsigned el,unsigned selected) {
@@ -229,6 +233,15 @@ inline void MinimalGuest::system_write(unsigned id,std::uint64_t value) {
   if(id==guest_sysreg(3,3,14,2,1)){m.cntp_ctl=unsigned(value)&3;return;}if(id==guest_sysreg(3,3,14,3,1)){m.cntv_ctl=unsigned(value)&3;return;}
   if(id==guest_sysreg(3,3,14,2,2)){m.cntp_cval=value;return;}if(id==guest_sysreg(3,3,14,3,2)){m.cntv_cval=value;return;}
   if(id==guest_sysreg(3,2,0,0,0))return; // CSSELR: no data caches modeled.
+  if(id==guest_sysreg(2,0,0,2,2)){
+    require(!(value&~UINT64_C(0x1000)),"Hardware debug/stepping is not implemented");m.mdscr=value;return;
+  }
+  if(id==guest_sysreg(2,0,0,2,0)||id==guest_sysreg(2,0,1,0,4)||
+     id==guest_sysreg(2,0,1,3,4)||id==guest_sysreg(3,3,9,14,0)){
+    // No debug/PMU feature is advertised. Clearing its inactive control state
+    // is defined; attempts to enable an unimplemented feature fail explicitly.
+    require(value==0,"Debug/performance monitoring is not implemented");return;
+  }
   throw std::runtime_error("Unsupported AArch64 system register write "+hex(id));
 }
 inline void MinimalGuest::exception(std::uint64_t syndrome,std::uint64_t address,std::uint64_t return_pc,bool irq) {

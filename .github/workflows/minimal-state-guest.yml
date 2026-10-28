@@ -35,9 +35,11 @@ jobs:
         run: |
           clang --target=aarch64-linux-gnu -fuse-ld=lld -nostdlib -static -Wl,--build-id=none -o guest-evidence/clang-guest.elf examples/guest-aarch64.S
           python3 tests/minimal_guest_cli.py build/reverse_guest guest-evidence/clang-guest.elf > guest-evidence/independent-oracle.json
+          clang --target=aarch64-linux-gnu -fuse-ld=lld -nostdlib -static -Wl,--build-id=none -o guest-evidence/integer-extended.elf examples/guest-integer-extended.S
+          python3 tests/minimal_guest_integer_cli.py build/reverse_guest guest-evidence/integer-extended.elf > guest-evidence/integer-extended.json
           clang --target=aarch64-none-elf -c examples/guest-system-aarch64.S -o guest-evidence/system-witness.o
           python3 scripts/embed-guest-system-demo.py guest-evidence/system-witness.o --check
-          ld.lld -Ttext=0x40080000 --entry=_start --build-id=none -o guest-evidence/system-witness.elf guest-evidence/system-witness.o
+          ld.lld -T examples/guest-system-aarch64.ld --build-id=none -o guest-evidence/system-witness.elf guest-evidence/system-witness.o
           python3 tests/minimal_guest_system_cli.py build/reverse_guest guest-evidence/system-witness.elf > guest-evidence/system-oracle.json
           build/reverse_guest device-tree guest-evidence/reverse.dtb
           dtc -I dtb -O dts guest-evidence/reverse.dtb > guest-evidence/reverse.dts
@@ -147,6 +149,7 @@ jobs:
               sleep 2
             done
             test "$ready" = true
+            adb shell settings put secure immersive_mode_confirmations confirmed
             adb shell input keyevent 82
             adb shell wm size 720x1600
             adb shell wm density 280

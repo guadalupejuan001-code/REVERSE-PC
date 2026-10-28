@@ -56,6 +56,20 @@ void shared_quantum_authority(){
   check(guest.read8(0x40009008)==42,"XI and ARM64 did not share the same InverseMemory authority");
   check(MinimalGuest::from_snapshot(guest.snapshot()).runtime().core_snapshot()==core,"System checkpoint lost the original quantum authority");
 }
+void exclusives(){
+  const std::uint32_t code[]{0xd2880001,0xf2a80001,0xd2800520,0xf9000020,0xc85f7c20,0x91000400,0xc8027c20,
+    0xc85f7c23,0xd5033f5f,0xc8047c23,0xc8dffc25,0xd2800b06,0xc89ffc26,0xc8dffc27,0xd2800100,0xf2b08000,0xd4000002};
+  auto image=system_demo_elf();image.resize(256);
+  for(auto instruction:code)put(image,instruction,4);
+  for(unsigned i=0;i<8;++i){image[96+i]=std::uint8_t((sizeof(code))>>(8*i));image[104+i]=image[96+i];}
+  MinimalGuest guest(128*1024*1024);guest.load_elf(image,true);guest.run(5);
+  check(guest.machine().exclusive_size==8,"LDXR did not establish an exclusive monitor");
+  auto restored=MinimalGuest::from_snapshot(guest.snapshot());check(restored.snapshot()==guest.snapshot(),"Exclusive monitor was lost in checkpoint");
+  restored.run(100);check(restored.registers().x[2]==0&&restored.registers().x[4]==1,"STXR success/CLREX failure status is incorrect");
+  check(restored.registers().x[5]==42&&restored.registers().x[7]==88&&restored.read(0x40004000,8)==88,"Exclusive/acquire/release data values differ");
+  guest.apply_xi_delta("mem_store 1073758208 99\n");guest.run(100);
+  check(guest.registers().x[2]==1&&guest.registers().x[5]==99,"XI write did not invalidate the same exclusive monitor");
+}
 void image_boot_protocol(){
   Bytes kernel(64);auto patch=[&](std::size_t at,std::uint64_t value,unsigned size){for(unsigned i=0;i<size;++i)kernel[at+i]=std::uint8_t(value>>(i*8));};
   patch(0,0x14000010,4);patch(8,0x80000,8);patch(16,128,8);patch(24,2,8);patch(56,0x644d5241,4);
@@ -71,8 +85,12 @@ void image_boot_protocol(){
   const auto original=guest.machine().receive;guest.console_input("hello\n");
   check(MinimalGuest::from_snapshot(guest.snapshot()).machine().receive=="hello\n","Serial input queue was not persistent");
   const auto queued=guest.snapshot();fails([&]{guest.console_input(std::string(4096,'x'));},"Serial queue budget ignored");check(guest.snapshot()==queued,"Rejected serial input changed machine");
+  MachineState machine;machine.enabled=true;machine.image_kind=1;machine.mdscr=0x1000;
+  check(MachineState::restore(machine.save()).mdscr==0x1000,"MDSCR trap-control state did not persist");
+  machine.mdscr=0;auto legacy=machine.save();legacy[0]=1;legacy.erase(legacy.end()-16,legacy.end()-8);
+  check(MachineState::restore(legacy).save()==machine.save(),"Previous RVG2 machine-state v1 no longer restores");
 }
 }
-int main(){try{boot_and_restore();translation();shared_quantum_authority();image_boot_protocol();
+int main(){try{boot_and_restore();translation();shared_quantum_authority();exclusives();image_boot_protocol();
   std::cout<<"{\"checks\":"<<checks<<",\"system\":\"own-EL1-MMU-IRQ-EL0-SVC\",\"existing_quantum_qubits\":4096,\"android_boot\":\"not_implemented\"}\n";return 0;
 }catch(const std::exception& error){std::cerr<<error.what()<<'\n';return 1;}}

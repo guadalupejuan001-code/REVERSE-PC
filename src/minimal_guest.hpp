@@ -388,7 +388,15 @@ inline void MinimalGuest::step(RunResult& result) {
   auto next=pc+4;
   const unsigned bits=(instruction>>31)?64:32, rd=instruction&31, rn=(instruction>>5)&31, rm=(instruction>>16)&31;
   auto unsupported=[&](){throw std::runtime_error("Unsupported AArch64 instruction "+hex(instruction)+" at "+hex(pc));};
-  if (instruction==0xd503201f || instruction==0xd503203f) { /* NOP / YIELD */ }
+  if (instruction==0xd503201f || instruction==0xd503203f || instruction==0xd503241f ||
+      instruction==0xd503245f || instruction==0xd503249f || instruction==0xd50324df ||
+      instruction==0xd50320ff || instruction==0xd503233f || instruction==0xd503237f ||
+      instruction==0xd50323bf || instruction==0xd50323ff) {
+    // NOP/YIELD and BTI hints. ID registers do not advertise FEAT_BTI, so the
+    // architecturally backwards-compatible BTI/PAuth HINT encodings are NOPs.
+    // PAuth/BTI features are not advertised; authenticated branch opcodes are
+    // not accepted as ordinary branches.
+  }
   else if (instruction==0xd503205f || instruction==0xd503207f || instruction==0xd503209f || instruction==0xd50320bf) {
     require(machine_.enabled,"Wait/event instructions require the system machine");
     if(instruction==0xd503205f){if(machine_.event)machine_.event=false;else machine_.waiting=true;}
@@ -553,13 +561,17 @@ inline void MinimalGuest::step(RunResult& result) {
   }
   else if ((instruction&0x3f9f7c00)==0x089f7c00) { // LDAR/STLR
     const unsigned size=1u<<(instruction>>30);const auto address=reg(rn,64,true);
+    if(address&(size-1)){
+      require(machine_.enabled,"Unaligned acquire/release access");
+      throw MachineFault{(std::uint64_t(machine_.el?0x25:0x24)<<26)|(1u<<25)|((instruction&0x00400000)?0u:64u)|0x21,address};
+    }
     if(instruction&0x00400000)set(rd,cpu_read(address,size,result),size==8?64:32);
     else cpu_write(address,reg(rd),size,result);
   }
   else if ((instruction&0x3f207c00)==0x08007c00) { // LDXR/LDAXR/STXR/STLXR, single register
     require(machine_.enabled,"Exclusive instructions currently require system mode");
     const unsigned size=1u<<(instruction>>30),status=(instruction>>16)&31;const auto address=reg(rn,64,true);
-    if(address&(size-1))throw MachineFault{(std::uint64_t(machine_.el?0x25:0x24)<<26)|(1u<<25)|0x21,address};
+    if(address&(size-1))throw MachineFault{(std::uint64_t(machine_.el?0x25:0x24)<<26)|(1u<<25)|((instruction&0x00400000)?0u:64u)|0x21,address};
     if(instruction&0x00400000){set(rd,cpu_read(address,size,result),size==8?64:32);machine_.exclusive_address=translate(address);machine_.exclusive_size=size;}
     else{
       check_access(address,size,true);const bool success=machine_.exclusive_size==size&&machine_.exclusive_address==translate(address,true);
@@ -631,6 +643,20 @@ inline void MinimalGuest::step(RunResult& result) {
   else if ((instruction&0x7fe0f000)==0x1ac02000) { // LSLV/LSRV/ASRV/RORV
     set(rd,shift(reg(rn,bits),unsigned(reg(rm,bits))&(bits-1),(instruction>>10)&3,bits),bits);
   }
+  else if ((instruction&0x7fff0000)==0x5ac00000) { // RBIT/REV16/REV32/REV/CLZ/CLS
+    const unsigned opcode=(instruction>>10)&63;auto value=reg(rn,bits);std::uint64_t output=0;
+    if(opcode==0){for(unsigned i=0;i<bits;++i)output|=((value>>i)&1)<<(bits-1-i);}
+    else if(opcode<=3){
+      const unsigned group=1u<<(opcode+3);if(group>bits)unsupported();
+      for(unsigned start=0;start<bits;start+=group)for(unsigned byte=0;byte<group/8;++byte)
+        output|=((value>>(start+8*byte))&255)<<(start+group-8*(byte+1));
+    }else if(opcode==4||opcode==5){
+      if(opcode==5&&(value&(UINT64_C(1)<<(bits-1))))value=(~value)&mask(bits);
+      for(unsigned i=bits;i>0&&!(value&(UINT64_C(1)<<(i-1)));--i)++output;
+      if(opcode==5)--output;
+    }else unsupported();
+    set(rd,output,bits);
+  }
   else if ((instruction&0x7fe0fc00)==0x1ac00800 || (instruction&0x7fe0fc00)==0x1ac00c00) { // UDIV/SDIV
     const auto a=reg(rn,bits), b=reg(rm,bits); std::uint64_t value=0;
     if (b) {
@@ -642,6 +668,20 @@ inline void MinimalGuest::step(RunResult& result) {
       } else value=a/b;
     }
     set(rd,value,bits);
+  }
+  else if ((instruction&0xff600000)==0x9b200000) { // SMADDL/UMADDL/SMSUBL/UMSUBL
+    auto a=reg(rn,32),b=reg(rm,32);
+    if(!(instruction&0x00800000)){if(a&0x80000000)a|=UINT64_C(0xffffffff00000000);if(b&0x80000000)b|=UINT64_C(0xffffffff00000000);}
+    const auto product=a*b,accumulator=reg((instruction>>10)&31);
+    set(rd,(instruction&0x8000)?accumulator-product:accumulator+product);
+  }
+  else if ((instruction&0xff60fc00)==0x9b407c00) { // SMULH/UMULH, upper half of a 128-bit product
+    const auto a=reg(rn),b=reg(rm),a0=a&0xffffffff,b0=b&0xffffffff,a1=a>>32,b1=b>>32;
+    const auto p0=a0*b0,p1=a0*b1,p2=a1*b0,p3=a1*b1;
+    const auto middle=(p0>>32)+(p1&0xffffffff)+(p2&0xffffffff);
+    auto high=p3+(p1>>32)+(p2>>32)+(middle>>32);
+    if(!(instruction&0x00800000)){if(a>>63)high-=b;if(b>>63)high-=a;}
+    set(rd,high);
   }
   else if ((instruction&0x7fe00000)==0x1b000000) { // MADD/MSUB, including MUL alias
     const auto product=reg(rn,bits)*reg(rm,bits), accumulator=reg((instruction>>10)&31,bits);

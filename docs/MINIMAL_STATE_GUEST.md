@@ -1,156 +1,153 @@
-# Invitado ARM64 de estados mínimos — primera base ejecutable
+# Compatibilidad ARM64 en el ejecutor existente de REVERSE
 
-## Qué funciona y qué falta
+## Alcance real
 
-REVERSE incorpora un intérprete propio de un subconjunto entero AArch64 EL0.
-Carga un **ELF64 little-endian estático**, ejecuta sus instrucciones dentro del
-proceso de REVERSE y conserva el invitado en un checkpoint `RVG1`.
-El intérprete no lanza el programa como una aplicación Android externa.
+La función se abre en **XI → ARM64**, dentro del mismo escritorio REVERSE.
+No tiene un programa Guest independiente ni otra implementación de motor cuántico.
+Los accesos a memoria usan `QuantumRuntime`/`InfiniteCore`/`InverseMemory` originales.
+El módulo conserva una sesión de máquina propia, como los experimentos aislados:
+no mezcla direcciones, puertas ni checkpoints con el trabajo del escritorio o BBY Q.
 
-**Todavía no arranca Android ni ejecuta Wild Rift.** Faltan ejecución privilegiada,
-MMU, excepciones/interrupciones, SIMD/FP, un sistema operativo invitado, runtime y
-servicios Android, gráficos, audio y red del invitado. El shim de esta etapa solo
-atiende `write` a stdout/stderr y `exit`/`exit_group` del ABI Linux AArch64.
-Los syscalls e instrucciones no implementados producen un error explícito.
+El decodificador ARM64 y el control clásico del procesador están escritos en C++.
+Es emulación de instrucciones y de algunos dispositivos; **no es una traducción
+ARM64→XI, una ejecución de Android en qubits, ni un acelerador cuántico del juego**.
+XI/RXE transforman la autoridad de memoria que utiliza el módulo. MX, XASM, QX y
+MXVM no adquieren compatibilidad automática con aplicaciones Android.
 
-No se incorpora QEMU al producto. QEMU se usa únicamente en CI como referencia
-independiente para comparar un ELF generado por clang/lld.
+**Android completo y Wild Rift todavía no arrancan.** Esta entrega ejecuta
+programas estáticos sencillos y un testigo de sistema propio. El cargador acepta
+el protocolo de una Linux `Image` acotada, pero eso no demuestra un arranque Linux.
+La CI compila Linux 6.1 y registra dónde se detiene el intérprete propio.
 
-## Cómo se respetan los estados mínimos
+## Una base, reglas y diferencias exactas
 
-La memoria física del invitado se consulta mediante:
+`byte físico = imagen inmutable XOR delta XI/Ether`
 
-`byte(dirección) = imagen_inmutable(dirección) XOR delta_XI(dirección)`
+- ELF o contenedor `RVI1` de Image/DTB/initrd se conserva como respaldo inmutable.
+- RAM no modificada/BSS se describe con fondo cero. No se reserva un arreglo
+  proporcional al espacio lógico declarado.
+- Un store ARM64 se aplica como una transacción `mem_store` del mismo runtime XI.
+  Restaurar el byte de respaldo elimina la diferencia redundante. Escribir cero
+  sobre una imagen no cero sí necesita una diferencia.
+- XI/RXE pueden alterar ese delta y el núcleo cuántico original. Leer o escribir
+  un byte cuántico no determinista falla sin medirlo ni borrar su estado.
+- Registros, tablas escritas por el programa, bancos SP, excepciones, temporizador,
+  control del GIC y cola serial son información necesaria y se conservan.
+- Las copias candidatas comparten respaldo/shards sin cambios. Serializar un
+  checkpoint sí crea temporales acotados; también tienen coste físico.
 
-- La imagen es el archivo ELF conservado una sola vez. Las regiones BSS y la RAM
-  que no pertenece a una imagen tienen fondo cero, sin arreglos proporcionales
-  a su tamaño lógico.
-- El delta usa el `QuantumRuntime` e `InverseMemory` originales y las extensiones
-  ya verificadas de REVERSE. Una escritura se traduce a `mem_store` XI sobre
-  esa autoridad; no mantiene otra copia mutable de RAM.
-- Escribir el valor original elimina la excepción cuando coincide con el fondo
-  del delta. Escribir cero sobre un byte no cero de la imagen sí necesita una
-  excepción; no se confunde cero con ausencia de cambio.
-- XI puede establecer reglas globales del delta, diferencias y enlaces
-  cuánticos explícitos. RXE1 usa el compilador/cargador existente para aplicar
-  los mismos programas. La CPU falla si encuentra un byte cuántico no
-  determinista, sin medirlo ni inventar un valor clásico.
-- Los registros, SP, PC, NZCV y contador son estado arquitectónico necesario.
-  No se borra información del invitado para aparentar ahorro.
+«Estados mínimos» tiene este alcance concreto. No se afirma una representación
+matemáticamente mínima de todos los programas ni compresión universal. Muchas
+escrituras distintas pueden hacer costoso el mapa de excepciones por byte. Una
+memoria adaptativa por páginas y perfiles de rendimiento de cargas reales siguen
+pendientes antes de pretender ejecutar un Android con datos de juego.
 
-El intérprete de instrucciones está escrito en C++, como los intérpretes
-existentes. **No se afirma que ARM64 se traduzca a instrucciones XI ni que MX,
-XASM, QX o MXVM ejecuten automáticamente binarios Android.** En esta etapa XI y
-RXE configuran y transforman el estado/delta del invitado; el código ARM64
-conserva su ISA. Ether y el estado cuántico se guardan con la misma autoridad.
+Una prueba prepara **4.096 qubits independientes** con XI y luego ejecuta el testigo
+ARM64 sobre la misma autoridad. El snapshot/revisión del núcleo cuántico permanece
+idéntico. Esto preserva la capacidad existente, sin afirmar simulación arbitraria
+entre todos esos qubits ni mejora de FPS.
 
-El objetivo de «estado mínimo» aquí tiene un alcance concreto: reglas, imagen
-compartida y diferencias finitas exactas. No demuestra minimalidad matemática
-universal ni compresión de datos arbitrarios. Un montón de datos diferentes
-consume excepciones y puede ser más caro que páginas densas por su metadato.
-La siguiente memoria para un Android real deberá evaluar una representación
-adaptativa de páginas, con comparación de coste y sin pérdida de información.
+## Capacidades implementadas
 
-## Límites de esta implementación
+| Parte | Alcance |
+| --- | --- |
+| Aplicación | ELF64 little-endian AArch64 ET_EXEC estático; shim `write`/`exit`/`exit_group` |
+| Sistema | Un núcleo AArch64 EL1/EL0, bancos SP, DAIF/NZCV, MRS/MSR seleccionados, SVC/ERET |
+| Excepciones | Síncronas/IRQ, VBAR/ELR/SPSR/ESR/FAR; permisos y fallos de traducción |
+| MMU | Stage 1, TTBR0/TTBR1, 25–48 bits VA, granulo 4 KiB, bloques L1/L2 y páginas L3; AF/AP/APTable/PXN/UXN |
+| Consola | Subconjunto PL011 con entrada/salida y cola acotada |
+| Interrupciones | Subconjunto GICv2 de un grupo y un núcleo, 64 IDs; temporizadores físico/virtual |
+| Tiempo | Un tick virtual por transición de ejecución; WFI puede avanzar hasta el siguiente plazo; no es reloj de pared |
+| Arranque Image | Image AArch64 little-endian de 4 KiB, DTB v17 generado y opcional initrd |
+| PSCI | VERSION, FEATURES seleccionadas, SYSTEM_OFF; otras llamadas devuelven NOT_SUPPORTED |
+| Checkpoint | RVG1 legado para EL0; RVG2 conserva máquina/imagen/núcleo/memoria, contador y cola serial |
+
+El subconjunto entero incluye las variantes implementadas en el decoder para
+MOVN/Z/K, ADD/SUB inmediatos/desplazados/extendidos, ADC/SBC, lógica inmediata y con
+registro, bitfields, EXTR, desplazamientos variables, CSEL, CCMP, RBIT/REV/CLZ/CLS, divisiones,
+MADD/MSUB, ramas, cargas/stores enteros comunes y pares. Los exclusivos simples
+LDXR/STXR se habilitan en modo sistema; LDAR/STLR usan memoria coherente síncrona.
+El monitor exclusivo se invalida con escrituras/operaciones XI/RXE/excepciones y
+se conserva en RVG2. No hay cobertura completa del ISA.
+
+No se implementan FP/SIMD, EL2/EL3, virtualización KVM, multicore, enlazado ELF
+dinámico, arranque Android, Binder/ART/Bionic, almacenamiento/virtio, GPU de
+invitado, audio o red de invitado. Registros/instrucciones/dispositivos no soportados
+producen errores explícitos. Mantenimiento de caché seleccionado actúa sobre una
+máquina coherente sin caché/TLB arquitectónico modelado; no se simula su latencia.
+
+Un error de implementación no soportada descarta el bloque candidato completo.
+Un fallo arquitectónico implementado entra en el vector del invitado y permite
+que su manejador continúe. Un bloque con presupuesto agotado conserva el avance.
+
+## Probar desde REVERSE
+
+1. Abre **XI → ARM64**.
+2. **Comprobar modo de sistema** prepara el testigo propio; no es Android/Linux.
+3. **Ejecutar bloque** debe producir `REVERSE: EL1 MMU IRQ EL0 SVC FAULT OK`.
+4. Los botones permiten importar ELF de aplicación, ELF de sistema o Linux Image.
+   La imagen debe encajar en los límites y usar instrucciones/dispositivos soportados.
+5. En modo sistema, **Consola → Enviar** agrega entrada a PL011. Ejecuta otro bloque
+   para que el programa la procese. Cerrar/reabrir conserva la sesión de máquina.
+6. **XI sobre el delta de memoria** modifica esa misma memoria. Una dirección sin
+   respaldo tiene byte=delta; una dirección dentro de imagen combina por XOR.
+
+El testigo monta tablas reales, activa la MMU, programa un timer/GIC, entra por
+IRQ y retorna, pasa a EL0, ejecuta SVC y provoca una escritura denegada. Solo
+imprime éxito después de verificar esos efectos. QEMU se usa únicamente en CI
+para contrastar el ELF ensamblado independientemente; no se incluye en REVERSE.
+
+El flavor Android de integración es el **REVERSE existente**, paquete
+`com.reversepc.control.workbench`, versión de código 252. La compilación CI usa una
+clave desechable de pruebas: no es una actualización con firma verificada para
+el APK ya instalado por el usuario. No se pide desinstalar ni perder sus datos.
+
+## Límites
 
 | Recurso | Presupuesto |
 | --- | --- |
-| Espacio lógico configurable en CLI | 64 KiB a 256 TiB; no equivale a RAM residente |
-| Configuración inicial Android | 1 GiB lógico y 65.536 excepciones de byte |
-| Presupuesto de excepciones configurable en CLI | 1 a 1.048.576 |
-| Imagen ELF | 16 MiB, hasta 64 segmentos, sin solapamientos |
-| Checkpoint CLI | 48 MiB |
-| Transporte/checkpoint del anfitrión Android | 32 MiB |
-| Salida por bloque de ejecución | 65.536 bytes entre stdout y stderr |
-| Bloque de ejecución CLI | Hasta 1.000.000 instrucciones |
-| Bloque desde la interfaz Android | Hasta 10.000 instrucciones |
+| RAM lógica EL0 | 64 KiB–256 TiB; no representa RAM física disponible |
+| RAM lógica de sistema | 64 MiB hasta rango físico de 48 bits; UI usa 128 MiB |
+| RAM física de sistema | Comienza en `0x40000000` |
+| Imagen total | 16 MiB; ELF hasta 64 PT_LOAD sin solapamientos |
+| Excepciones de byte | 1–1.048.576; Android 65.536 |
+| Snapshot CLI / transporte Android | 48 MiB / 32 MiB; exportador UI adicional de 8 MiB |
+| Bloque CLI / Android | 1.000.000 / 10.000 transiciones máximo |
+| Salida por bloque / entrada serial | 65.536 / 4.096 bytes |
 
-Se implementan las variantes descritas por el decoder para MOVN/MOVZ/MOVK,
-ADD/SUB inmediatos y con registro desplazado, lógica con registro desplazado,
-ADR/ADRP, B/BL, B.cond, CBZ/CBNZ, TBZ/TBNZ, BR/BLR/RET, cargas/almacenamientos
-enteros comunes, pares LDP/STP, aliases de desplazamiento/extensión, UDIV/SDIV y
-MADD/MSUB. No se afirma cobertura completa de esas familias ni del ISA ARM64.
+El checksum FNV detecta corrupción accidental y no autentica snapshots. RVPC2 y
+RXE mantienen sus formatos y rutas actuales. La UI no tiene importación RVG;
+la restauración automática se realiza desde su archivo privado conservado.
 
-Los flags ELF se usan para validar la entrada, pero todavía no existe protección
-de páginas ni un proceso Linux completo. No se cargan ELF dinámicos ni APKs.
-No se prepara un stack Linux con argc/argv/auxv. El fixture empieza en `_start`
-y no depende de ese estado de arranque.
-
-Un bloque que encuentra un error descarta su estado candidato completo,
-incluidos registros, memoria, núcleo y salida. Agotar un presupuesto válido
-de instrucciones produce un **yield**, conserva el avance y permite continuar.
-
-## Uso desde el escritorio Android
-
-En **Aplicaciones → Invitado ARM64**:
-
-1. **Crear prueba 6×7** carga un ELF propio de prueba, sin ejecutarlo.
-2. **Ejecutar bloque** procesa instrucciones reales y conserva el checkpoint.
-3. **Importar ELF** permite seleccionar un ELF estático compatible, de hasta
-   16 MiB. Reemplaza la sesión del invitado después de validarlo.
-4. **XI sobre el delta de memoria** aplica programas XI al mismo estado. En una
-   dirección sin imagen, el delta coincide con el byte observado. Sobre la
-   imagen, el byte observado se obtiene con el XOR indicado arriba.
-5. **Exportar checkpoint** produce un `RVG1` para el CLI. El exportador actual del
-   escritorio tiene un límite adicional de 8 MiB. En Android, la restauración
-   automática usa el archivo privado conservado; no hay importador RVG en esta UI.
-
-La edición **REVERSE Guest Preview**, paquete `com.reversepc.guest.workbench`,
-permite probar este trabajo antes de integrarlo a la aplicación principal.
-Tiene un espacio de datos propio. Su clave de desarrollo es de esa compilación;
-no es una actualización firmada para el paquete REVERSE 2.5.1 del usuario.
-Los programas y recursos BBY Q/W4u de la preview se recuperan de la publicación
-propia 2.5.1 con SHA-256 verificado; no contiene la memoria privada del usuario.
-
-## Uso nativo
+## CLI y validación
 
 ```sh
 bash scripts/setup-ether.sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build --target reverse_guest reverse_pc_minimal_guest --parallel 2
-./build/reverse_guest demo
-./build/reverse_guest demo-init inicial.rvg
-./build/reverse_guest run inicial.rvg parcial.rvg 4
-./build/reverse_guest run parcial.rvg final.rvg 100
-./build/reverse_guest peek final.rvg 32768 8
-./build/reverse_guest xi final.rvg cambios.xi cambiado.rvg
-./build/reverse_guest rxe cambiado.rvg cambios.rxe continuado.rvg
+cmake --build build --target reverse_guest reverse_pc_minimal_guest reverse_pc_minimal_system --parallel 2
+build/reverse_pc_minimal_guest
+build/reverse_pc_minimal_system
+build/reverse_guest system-demo-init inicial.rvg
+build/reverse_guest run inicial.rvg parcial.rvg 30
+build/reverse_guest run parcial.rvg final.rvg 1000
+build/reverse_guest peek final.rvg 1073778696 8
+build/reverse_guest system-init propio.elf propio.rvg
+build/reverse_guest linux-init Image linux.rvg initrd.cpio
+build/reverse_guest device-tree reverse.dtb
+build/reverse_guest input linux.rvg entrada.txt con-entrada.rvg
+build/reverse_guest xi final.rvg cambios.xi cambiado.rvg
+build/reverse_guest rxe cambiado.rvg cambios.rxe continuado.rvg
 ```
 
-El demo incorporado produce `REVERSE ARM64: 6*7 = 42`, guarda 42 en la dirección
-32768 y termina después de 13 instrucciones. El fixture ensamblado por clang
-usa un símbolo BSS equivalente; su dirección la decide el linker.
+El testigo de sistema conserva 128 MiB lógicos con una imagen de 4.391 bytes y
+9 diferencias de byte al terminar. Es un test pequeño, no la huella de Android
+ni de Wild Rift. Las pruebas originales aportan 8.234 aserciones; las nuevas
+comprueban 45 condiciones de sistema/tabla/permisos/estado cuántico, además de
+CLI, UBSan y oráculos clang/lld/QEMU. La integración Android ejercita WebView/JNI,
+el ejecutor original y reinicio en emulador Android 15. No equivale a una prueba
+física en el teléfono.
 
-`RVG1` conserva imagen, segmentos reconstruibles desde ELF, estado de CPU y el
-par durable core/InverseMemory con revisiones/RNG. El checksum FNV detecta
-corrupción accidental, no autentica el archivo. RVPC2 y RXE no cambian de formato.
-La imagen y los shards no modificados se comparten en copias candidatas. Guardar
-o transportar un checkpoint crea copias temporales acotadas de esos bytes;
-esas copias también tienen coste y no se presentan como memoria gratuita.
-
-## Evidencia y alcance
-
-Las pruebas nativas comparan lecturas/escrituras contra un arreglo denso
-independiente, comprueban cero sobre imagen no cero, restauración del original,
-agotamiento de excepciones, wrap/flags A64, bloque por instrucciones, continuidad
-de checkpoints, RXE/XI y rechazo de bytes cuánticos sin medición.
-
-La CI ensambla además `examples/guest-aarch64.S` con clang/lld y compara su salida
-y código de terminación contra QEMU AArch64. Las pruebas Android operan la UI,
-WebView, JNI, guardado y reinicio en emulador Android 15. La compilación ARM64
-no sustituye una prueba física en el teléfono del usuario.
-
-La [medición local](evidence/minimal-guest-host.json) es del anfitrión de desarrollo,
-no de Android. Una ejecución de 13 instrucciones y un byte diferente no
-representa la memoria ni los FPS de Android o Wild Rift.
-
-## Próximo hito hacia Android
-
-La base siguiente requiere ampliar y verificar el ISA, dispositivos de máquina,
-MMU y excepciones hasta arrancar un kernel compatible. Después se podrán añadir
-el entorno Android y sus servicios, y finalmente probar el cliente del juego.
-Estos componentes no se declaran implementados por esta entrega.
-
-Referencias primarias: [ABI ELF AArch64](https://github.com/ARM-software/abi-aa/blob/main/aaelf64/aaelf64.rst),
-[ISA Armv8-A](https://developer.arm.com/-/media/Arm%20Developer%20Community/PDF/Learn%20the%20Architecture/Armv8-A%20Instruction%20Set%20Architecture.pdf),
-[ABI Linux AArch64 del kernel](https://github.com/torvalds/linux/blob/master/arch/arm64/include/uapi/asm/unistd.h).
+Referencias primarias: [arranque Linux AArch64](https://docs.kernel.org/arch/arm64/booting.html),
+[Linux 6.1 fijado](https://github.com/torvalds/linux/tree/830b3c68c1fb1e9176028d02ef86f3cf76aa2476),
+[ABI ELF AArch64](https://github.com/ARM-software/abi-aa/blob/main/aaelf64/aaelf64.rst),
+[arquitectura de memoria Arm](https://developer.arm.com/-/media/Arm%20Developer%20Community/PDF/Learn%20the%20Architecture/LearnTheArchitecture-MemoryManagement-101811_0100_00_en.pdf).
