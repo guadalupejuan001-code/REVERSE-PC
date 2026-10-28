@@ -47,7 +47,7 @@ async function desktop(width,height,profile=null){
     check(await page.evaluate(()=>[...document.querySelectorAll('.taskbar button')].filter(e=>e.getClientRects().length).every(e=>{const r=e.getBoundingClientRect();return r.x>=0&&r.right<=innerWidth;})),'Taskbar still fits');
     check(await page.evaluate(()=>!window.__musicCommands.some(c=>c.action==='open')),'Opening the window never autoplays or loads YouTube');
     await page.screenshot({path:path.join(out,'music-'+width+'.png')});
-    await page.locator('[data-music-search] input').fill('café & jazz');await page.locator('[data-music-search] button').click();
+    await page.locator('[data-music-search] input').fill('café & jazz');await page.locator('[data-music-search] button[type="submit"]').click();
     check(await page.evaluate(()=>window.__musicCommands.some(c=>c.action==='open'&&c.data.input==='café & jazz')),'Search reaches native player unchanged');
     await frame(page);await frame(page);
     check(await page.evaluate(()=>{
