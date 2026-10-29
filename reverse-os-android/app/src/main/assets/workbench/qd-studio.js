@@ -1,5 +1,5 @@
 'use strict';
-// Qd / Cody is the coding laboratory inside REVERSE-PC. Intelligence, pattern
+// QdU (formerly Qd/Cody) is the programming skill of the same BBY Q inside REVERSE-PC. Intelligence, pattern
 // storage and recall remain XI/Ether inside BBY Q's private RVPC2.
 // This JavaScript is only the PC interface and typed host transport.
 const QD_SKILLS=Object.freeze([
@@ -25,16 +25,16 @@ async function qdLoad(w){
  try{const status=await nativeRequest('qd',JSON.stringify({action:'status'}));if(!getWindow(w.id))return;
   s.learned=Array.isArray(status.learned)?status.learned.map(Boolean).slice(0,4):[false,false,false,false];
   s.approved=Number(status.approved_lessons)||0;s.loaded=true;
- }catch(e){s.error='No fue posible leer la memoria de Qd: '+e.message;}
+ }catch(e){s.error='No fue posible leer la memoria de QdU: '+e.message;}
  finally{s.loading=false;qdRender(w);}
 }
 function qdBadge(s,kind){return '<span class="qd-state '+kind+'">'+esc(s)+'</span>';}
 function qdReport(s){
- if(!s.result)return '<div class="qd-empty"><span class="qd-empty-glyph">'+icon('terminal')+'</span><strong>Laboratorio preparado</strong><p>Prueba un programa para obtener resultados auténticos del ejecutor XI. Qd sólo conservará patrones que superen la evaluación.</p></div>';
+ if(!s.result)return '<div class="qd-empty"><span class="qd-empty-glyph">'+icon('terminal')+'</span><strong>Laboratorio preparado</strong><p>Prueba un programa para obtener resultados auténticos del ejecutor XI. QdU sólo conservará patrones que superen la evaluación.</p></div>';
  const {action,data}=s.result;
  if(action==='solve'){
   if(!data.learned)return '<div class="qd-empty"><strong>Patrón sin aprender</strong><p>Enseña primero un programa que supere todas las pruebas. No se ha generado código.</p></div>';
-  return '<div class="qd-report-head">'+qdBadge(data.pass?'APROBADO':'FALLO',data.pass?'pass':'fail')+'<small>Qd recuperó un patrón de su memoria XI.</small></div>'+
+  return '<div class="qd-report-head">'+qdBadge(data.pass?'APROBADO':'FALLO',data.pass?'pass':'fail')+'<small>QdU recuperó un patrón de su memoria XI.</small></div>'+
    '<div class="qd-metric-row"><div><small>Resultado XI</small><strong>'+esc(data.actual)+'</strong></div><div><small>Esperado</small><strong>'+esc(data.expected)+'</strong></div></div>'+
    '<p class="qd-report-caption">Programa generado y ejecutado desde una sesión aislada:</p><pre class="qd-generated">'+esc(data.program||'')+'</pre>';
  }
@@ -49,7 +49,7 @@ function qdReport(s){
 }
 
 function qdOrderReport(s){
- if(!s.result)return '<div class="qd-empty"><strong>Introduce una orden</strong><p>Qd interpreta una gramática aritmética acotada mediante XI y genera código real. Si la orden es ambigua o está fuera de su alcance, se abstiene.</p></div>';
+ if(!s.result)return '<div class="qd-empty"><strong>Introduce una orden</strong><p>QdU interpreta una gramática aritmética acotada mediante XI y genera código real. Si la orden es ambigua o está fuera de su alcance, se abstiene.</p></div>';
  const {action,data}=s.result;
  if(action==='order'&&!data.understood)return '<div class="qd-error" role="status"><strong>Orden no interpretada</strong><p>'+esc(data.reason||'Sin interpretación verificable')+'</p></div>';
  const pass=data.pass===true;
@@ -65,13 +65,13 @@ function qdOrderHTML(w,s){
  const blocked=(!nativeAvailable||s.busy)?' disabled':'';
  const exportBlocked=(!s.generated||s.busy)?' disabled':'';
  return '<div class="qd-root">'+
-  '<header class="qd-top"><div><span class="qd-overline">REVERSE-PC / BBY Q / CODIFICACIÓN</span><h2>ReverseCoding <span>· Qd</span></h2><p>De una instrucción a código XI verificable. Qd es parte de BBY Q.</p></div><div class="qd-top-actions">'+
+  '<header class="qd-top"><div><span class="qd-overline">BBY Q / w4U / QdU</span><h2>ReverseCoding <span>· QdU</span></h2><p>QdU pertenece a BBY Q. La coordinación real por w4U todavía debe conectarse a esta entrada local.</p></div><div class="qd-top-actions">'+
   (nativeAvailable?'<span class="qd-live"><i></i>Ejecutor XI local</span>':qdBadge('REQUIERE APK NATIVA','fail'))+'</div></header>'+
-  '<nav class="qd-modes" aria-label="Áreas de ReverseCoding"><button class="qd-mode active" data-qd-mode="orders" aria-current="page">Órdenes a Qd</button>'+
+  '<nav class="qd-modes" aria-label="Áreas de ReverseCoding"><button class="qd-mode active" data-qd-mode="orders" aria-current="page">Órdenes a QdU</button>'+
   '<button class="qd-mode" data-qd-mode="lessons">Laboratorio de aprendizaje</button></nav>'+
   '<div class="qd-coding-grid">'+
   '<section class="qd-coding-prompt"><div class="qd-panel-heading"><div><span class="qd-section-caption">01 / INSTRUCCIÓN</span><strong>¿Qué programa necesitas?</strong></div></div>'+
-  '<label class="qd-editor-label" for="qd-order-'+esc(w.id)+'">Escribe tu orden para Qd</label>'+
+  '<label class="qd-editor-label" for="qd-order-'+esc(w.id)+'">Escribe tu orden para QdU</label>'+
   '<textarea id="qd-order-'+esc(w.id)+'" data-qd-order maxlength="180" class="qd-natural-input" placeholder="Crea un programa que multiplique 12 por 7"'+blocked+'>'+esc(w.qdOrder)+'</textarea>'+
   '<button class="primary-button qd-command-button" data-qd-action="order"'+blocked+'>Interpretar y generar XI</button>'+
   '<div class="qd-task qd-scope"><strong>Alcance comprobable</strong><p>Sumar, restar, multiplicar, dividir y resto con dos enteros de 0 a 99. Español e inglés, mediante reglas XI.</p>'+
@@ -87,7 +87,7 @@ function qdOrderHTML(w,s){
   (s.error?'<div role="alert" class="qd-error">'+esc(s.error)+'</div>':'')+
   '<div class="qd-results-scroll">'+qdOrderReport(s)+'</div>'+
   '<p class="qd-report-caption">No se ejecutarán instrucciones fuera del contrato. La compilación RXE requiere un resultado aprobado y acción explícita.</p></aside>'+
-  '</div><footer class="qd-footer"><span>Qd es un módulo de BBY Q · lógica y generación en XI/Ether</span>'+
+  '</div><footer class="qd-footer"><span>BBY Q · w4U · QdU · lógica y generación XI/Ether</span>'+
   '<span>ReverseCoding v0.2 · intérprete de operaciones, no agente programador general</span></footer></div>';
 }
 
@@ -101,26 +101,26 @@ function qdStudioHTML(w){
  const badges=QD_SKILLS.map(item=>'<button type="button" class="qd-skill '+(skill.id===item.id?'selected':'')+'" data-qd-skill="'+item.id+'" aria-current="'+(skill.id===item.id?'page':'false')+'"><span class="qd-skill-number">0'+item.id+'</span><span><strong>'+item.name+'</strong><small>'+((s.loaded&&s.learned[item.id-1])?'Aprendido':'Sin verificar')+'</small></span><span class="qd-skill-dot '+(s.loaded&&s.learned[item.id-1]?'learned':'')+'"></span></button>').join('');
  const disableNative=(!nativeAvailable||s.busy)?' disabled':'';
  return '<div class="qd-root">'+
-  '<header class="qd-top"><div><span class="qd-overline">REVERSE / INTELIGENCIA / PROGRAMACIÓN</span><h2>ReverseCoding <span>· Qd</span></h2><p>Laboratorio XI para enseñar programación a BBY Q. Pruebas antes de aprender.</p></div><div class="qd-top-actions">'+available+'<button type="button" class="secondary-button" data-qd-action="refresh"'+disableNative+'>'+icon('restore')+' Estado</button></div></header>'+
-  '<nav class="qd-modes" aria-label="Áreas de ReverseCoding"><button class="qd-mode" data-qd-mode="orders">Órdenes a Qd</button><button class="qd-mode active" data-qd-mode="lessons" aria-current="page">Laboratorio de aprendizaje</button></nav>'+
+  '<header class="qd-top"><div><span class="qd-overline">BBY Q / w4U / QdU</span><h2>ReverseCoding <span>· QdU</span></h2><p>QdU practica XI dentro de BBY Q. w4U es su coordinador de tareas, no otra IA.</p></div><div class="qd-top-actions">'+available+'<button type="button" class="secondary-button" data-qd-action="refresh"'+disableNative+'>'+icon('restore')+' Estado</button></div></header>'+
+  '<nav class="qd-modes" aria-label="Áreas de ReverseCoding"><button class="qd-mode" data-qd-mode="orders">Órdenes a QdU</button><button class="qd-mode active" data-qd-mode="lessons" aria-current="page">Laboratorio de aprendizaje</button></nav>'+
   '<div class="qd-workspace"><aside class="qd-sidebar"><span class="qd-section-caption">CURRÍCULO / NIVEL 01</span>'+badges+
   '<div class="qd-memory"><span>Memoria compartida con BBY Q</span><strong>'+(s.loaded?s.learned.filter(Boolean).length+'/4':'—')+'</strong><small>patrones aprendidos · '+(s.loaded?s.approved:'—')+' enseñanzas verificadas</small></div></aside>'+
   '<section class="qd-editor"><div class="qd-panel-heading"><div><span class="qd-section-caption">EDITOR XI</span><strong>'+esc(skill.name)+'.xi</strong></div><span class="qd-file-ext">.xi</span></div>'+
-  '<div class="qd-task"><strong>Objetivo</strong><p>'+esc(skill.description)+'</p><small>Los símbolos {{a}} y {{b}} son valores de entrada que Qd debe generalizar.</small></div>'+
+  '<div class="qd-task"><strong>Objetivo</strong><p>'+esc(skill.description)+'</p><small>Los símbolos {{a}} y {{b}} son valores de entrada que QdU debe generalizar.</small></div>'+
   '<label class="qd-editor-label" for="qd-src-'+esc(w.id)+'">Código fuente</label>'+
-  '<textarea class="qd-source" maxlength="192" data-qd-source id="qd-src-'+esc(w.id)+'" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" aria-label="Código XI de Qd"'+disabled+'>'+esc(draft)+'</textarea>'+
+  '<textarea class="qd-source" maxlength="192" data-qd-source id="qd-src-'+esc(w.id)+'" spellcheck="false" autocomplete="off" autocorrect="off" autocapitalize="off" aria-label="Código XI de QdU"'+disabled+'>'+esc(draft)+'</textarea>'+
   '<div class="qd-editor-foot"><span>XI Machine v1 · registros y aritmética · aislado</span><button class="secondary-button" data-qd-action="reset">Restablecer ejemplo</button></div>'+
-  '<div class="qd-editor-actions"><button class="secondary-button" data-qd-action="evaluate"'+disableNative+'>Probar código</button><button class="primary-button" data-qd-action="teach"'+disableNative+'>Enseñar a Qd</button></div></section>'+
+  '<div class="qd-editor-actions"><button class="secondary-button" data-qd-action="evaluate"'+disableNative+'>Probar código</button><button class="primary-button" data-qd-action="teach"'+disableNative+'>Enseñar a QdU</button></div></section>'+
   '<aside class="qd-results"><div class="qd-panel-heading"><div><span class="qd-section-caption">EVIDENCIA</span><strong>Resultados reales</strong></div>'+(s.busy?qdBadge('EJECUTANDO','busy'):s.loading?qdBadge('LEYENDO','busy'):qdBadge('LOCAL','neutral'))+'</div>'+
   (s.error?'<div role="alert" class="qd-error">'+esc(s.error)+'</div>':'')+
   '<div class="qd-results-scroll">'+qdReport(s)+'</div>'+
-  '<section class="qd-run"><strong>Qd aplica lo aprendido</strong><p>Introduce números distintos. Qd recupera su patrón aprendido y produce una variante ejecutable XI.</p><div class="qd-fields">'+
+  '<section class="qd-run"><strong>QdU aplica lo aprendido</strong><p>Introduce números distintos. QdU recupera su patrón aprendido y produce una variante ejecutable XI.</p><div class="qd-fields">'+
   '<label>Valor a<input data-qd-number="a" type="number" min="0" max="99" value="'+w.qdA+'"></label>'+
   '<label>Valor b<input data-qd-number="b" type="number" min="1" max="99" value="'+w.qdB+'"></label></div>'+
-  '<div class="qd-run-actions"><button class="primary-button" data-qd-action="solve"'+disableNative+'>Qd resuelve</button><button class="secondary-button" data-qd-action="export"'+(s.generated&&!s.busy?'':' disabled')+'>Crear .RXE</button></div></section></aside></div>'+
-  '<footer class="qd-footer"><span>BBY Q · memoria RVPC2 privada · ejecución aislada de ejemplos</span><span>Qd v0.1 / entrenamiento de patrones, no modelo general</span></footer></div>';
+  '<div class="qd-run-actions"><button class="primary-button" data-qd-action="solve"'+disableNative+'>QdU resuelve</button><button class="secondary-button" data-qd-action="export"'+(s.generated&&!s.busy?'':' disabled')+'>Crear .RXE</button></div></section></aside></div>'+
+  '<footer class="qd-footer"><span>BBY Q · memoria RVPC2 privada · ejecución aislada de ejemplos</span><span>QdU v0.1 / entrenamiento de patrones, no modelo general</span></footer></div>';
 }
-Object.assign(APP_DESCRIPTIONS,{qd:'ReverseCoding: dar órdenes a Qd, generar XI y probarlo aisladamente en REVERSE-PC.'});
+Object.assign(APP_DESCRIPTIONS,{qd:'ReverseCoding: dar órdenes a QdU, generar XI y probarlo aisladamente en REVERSE-PC.'});
 async function qdAction(w,action){
  const s=qdSessions.get(w.id);if(!s||s.busy)return;
  if(action==='reset'){w.qdDrafts[String(w.qdSkill)]=qdExample(qdSkill(w.qdSkill));s.generated=null;s.result=null;s.error='';qdRender(w);queueSave();return;}
@@ -129,9 +129,9 @@ async function qdAction(w,action){
  if(action==='export'){
   if(!s.generated)return;
   s.busy=true;s.error='';qdRender(w);
-  try{const name=w.qdMode==='orders'&&s.result?.data?.operation?('ReverseCoding-'+s.result.data.operation+'-'+s.result.data.a+'-'+s.result.data.b+'.rxe'):('Qd-Cody-'+qdSkill(w.qdSkill).name+'.rxe');
+  try{const name=w.qdMode==='orders'&&s.result?.data?.operation?('ReverseCoding-'+s.result.data.operation+'-'+s.result.data.a+'-'+s.result.data.b+'.rxe'):('QdU-'+qdSkill(w.qdSkill).name+'.rxe');
    const out=await nativeRequest('compileApp',JSON.stringify({source:s.generated,name}));
-   toast('Qd creó un ejecutable .rxe verificado.');if(typeof refreshPrograms==='function')refreshPrograms();
+   toast('QdU creó un ejecutable .rxe verificado.');if(typeof refreshPrograms==='function')refreshPrograms();
    if(getWindow(w.id)&&typeof openProgram==='function')openProgram(out.path);
   }catch(e){s.error=e.message;}finally{s.busy=false;qdRender(w);}return;
  }

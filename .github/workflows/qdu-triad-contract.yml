@@ -1,0 +1,45 @@
+name: QdU - BBY Q w4U QdU identity and compatibility
+on:
+  pull_request:
+    branches: [qd/reversecoding-orders-xi-20261029, main]
+    paths:
+      - '.github/workflows/qdu-triad-contract.yml'
+      - 'docs/BBYQ_W4U_QDU_CONTRACT.md'
+      - 'docs/QD_CODING_TASK_PROMPT.md'
+      - 'docs/REVERSECODING.md'
+      - 'docs/qd/autonomy/**'
+      - 'reverse-os-android/app/src/main/assets/workbench/qd-studio.js'
+      - 'reverse-os-android/tests/qdu-triad-contract.cjs'
+      - 'reverse-os-android/tests/qd-studio-ui.cjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: qdu-triad-${{ github.head_ref || github.ref }}
+  cancel-in-progress: false
+jobs:
+  validate-triad:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - name: Validate host JavaScript and canonical three roles
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check reverse-os-android/app/src/main/assets/workbench/qd-studio.js
+          node --check reverse-os-android/tests/qdu-triad-contract.cjs
+          node reverse-os-android/tests/qdu-triad-contract.cjs
+      - name: Retain existing ReverseCoding UI behavior
+        shell: bash
+        run: |
+          set -euo pipefail
+          node reverse-os-android/tests/qd-studio-ui.cjs
+      - name: Confirm planning-only scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f docs/qd/autonomy/evidencias/ciclo-20261029-04-criterio.json
+          grep -F 'FALTA LA CONEXIÓN' docs/BBYQ_W4U_QDU_CONTRACT.md
+          grep -F 'delegación real' docs/qd/autonomy/SIGUIENTE.md
