@@ -40,7 +40,7 @@ jobs:
           node --test tests/audit_gki_rvg.test.mjs | tee evidence/audit-regressions.tap
           node tools/audit_gki_rvg.mjs prior/current.rvg \
             8d8cf5254f0823655e06ffee100d9c19abbf4ce33adb107b66da3fdb3742e0be \
-            f483938bdf78117eb3a8f415087daf3a3bec4f48c78ffa568e0a89e43ccec843 \
+            ffaf1043478dc1a6b7dcb80ea0f6f195f45a58c5e52d63826abd1b673efec31d \
             > evidence/input-provenance.json
           jq -e '.status=="read_only_provenance_verified" and .instructions==35554096 and
             .kernel_bytes==35777024 and .dtb_bytes>0 and .initrd_bytes==0 and
