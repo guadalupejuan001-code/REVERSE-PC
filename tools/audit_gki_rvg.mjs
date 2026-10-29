@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Read-only independent RVG2/RVG3 -> RVI1 -> ARM64 Image provenance audit.
+// Read-only independent RVG2/RVG3 -> RVI1/RVI2 -> ARM64 provenance audit.
 // Execution and restoration remain exclusively in XI/Ether QuantumRuntime.
 import {readFileSync, statSync} from 'node:fs';
 import {createHash} from 'node:crypto';
@@ -27,22 +27,33 @@ export function auditGkiRvg(bytes,expectedKernelSha,expectedRvgSha) {
   check(systemBytes>0&&systemBytes<=8192&&fpBytes<=532,
     'system/fp section invalid');
   check(imageBytes>=32&&imageBytes<=128*1024*1024,
-    'RVI1 image bytes exceed 128 MiB');
+    'RVI image bytes exceed 128 MiB');
   check(BigInt(offset)+BigInt(imageBytes)+BigInt(coreBytes)+
     BigInt(memoryBytes)+BigInt(systemBytes)+BigInt(fpBytes)+8n===
     BigInt(bytes.length),'RVG section extents invalid');
   const image=bytes.subarray(offset,offset+imageBytes);
-  check(image.subarray(0,8).equals(Buffer.from([82,86,73,49,13,10,26,10])),
-    'RVI1 header invalid');
+  check(image.subarray(0,3).equals(Buffer.from('RVI')) &&
+    (image[3]===49||image[3]===50) &&
+    image.subarray(4,8).equals(Buffer.from([13,10,26,10])),
+    'RVI1/RVI2 header invalid');
+  const extended=image[3]===50;
+  const header=extended?40:32;
+  check(image.length>=header,'RVI2 extended header truncated');
   const kernelBytes=safe(image.readBigUInt64LE(8),'kernel bytes');
   const treeBytes=safe(image.readBigUInt64LE(16),'FDT bytes');
   const initrdBytes=safe(image.readBigUInt64LE(24),'initrd bytes');
+  const bootargsBytes=extended?safe(image.readBigUInt64LE(32),'bootargs bytes'):0;
   check(kernelBytes>=64&&kernelBytes<=64*1024*1024&&
-    treeBytes<=65536&&initrdBytes<=64*1024*1024,
-    'RVI1 payload limits exceeded');
-  check(32+kernelBytes+treeBytes+initrdBytes===imageBytes,
-    'RVI1 section extents invalid');
-  const kernel=image.subarray(32,32+kernelBytes);
+    treeBytes<=65536&&initrdBytes<=64*1024*1024&&
+    (!extended||(bootargsBytes>0&&bootargsBytes<=1024)),
+    'RVI payload limits exceeded');
+  check(header+kernelBytes+treeBytes+initrdBytes+bootargsBytes===imageBytes,
+    'RVI1/RVI2 section extents invalid');
+  const kernel=image.subarray(header,header+kernelBytes);
+  const args=image.subarray(header+kernelBytes+treeBytes+initrdBytes);
+  check(!extended||args.every(b=>b>=32&&b<=126),
+    'RVI2 bootargs not printable ASCII');
+  const bootargs=extended?args.toString('ascii'):null;
   check(kernel.readUInt32LE(56)===0x644d5241,
     'missing ARM64 Linux Image magic');
   const kernelSha=sha256(kernel),rvgSha=sha256(bytes);
@@ -64,6 +75,9 @@ export function auditGkiRvg(bytes,expectedKernelSha,expectedRvgSha) {
     status:'read_only_provenance_verified',
     kernel_sha256:kernelSha,checkpoint_sha256:rvgSha,
     rvg_version:version,checkpoint_bytes:bytes.length,
+    rvi_version:extended?'RVI2':'RVI1',
+    bootargs_sha256:extended?sha256(args):null,
+    bootargs_bytes:bootargsBytes,bootargs,
     instructions:read(4),kernel_bytes:kernelBytes,
     dtb_bytes:treeBytes,initrd_bytes:initrdBytes,
     immutable_image_bytes:imageBytes,
