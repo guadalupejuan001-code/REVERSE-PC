@@ -54,6 +54,28 @@ public final class WorkbenchTestRunner extends Instrumentation {
         }
         throw new AssertionError("Desktop did not settle after orientation/activity startup");
     }
+    private JSONObject startupSnapshot()throws Exception{
+        // The initial page can finish before a later orientation navigation.
+        // Only this read-only inspection may be resubmitted after that navigation;
+        // state-changing op() calls must never replay an uncertain transaction.
+        for(int navigation=0;navigation<4;navigation++){
+            waitDesktopReady();
+            String document=js("String(performance.timeOrigin)");
+            js("window.testSnapshot=null;nativeRequest('inspect').then(r=>window.testSnapshot=r).catch(e=>window.testSnapshot={ok:false,error:String(e)});true");
+            boolean changed=false;
+            for(int i=0;i<120;i++){
+                JSONObject probe=new JSONObject(js("JSON.stringify({document:String(performance.timeOrigin),snapshot:window.testSnapshot||null})"));
+                if(!document.equals(probe.getString("document"))){
+                    android.util.Log.i("ReverseWorkbenchTest","Startup inspection crossed a WebView navigation; inspecting the current document");
+                    changed=true;break;
+                }
+                if(!probe.isNull("snapshot"))return probe.getJSONObject("snapshot");
+                Thread.sleep(250);
+            }
+            if(!changed)throw new AssertionError("Native startup inspection did not answer in a stable document");
+        }
+        throw new AssertionError("Desktop kept navigating during startup inspection");
+    }
     private void openGuestView()throws Exception{
         String document=null;int stable=0;
         for(int i=0;i<300;i++){
@@ -492,8 +514,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
             runOnMainSync(()->getTargetContext().startActivity(new Intent(getTargetContext(),entry).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)));
             activity=(WorkbenchActivity)waitForMonitorWithTimeout(desktopMonitor,15000);removeMonitor(desktopMonitor);
             require(activity!=null,"Entry did not reach Workbench: "+requested);
-            waitDesktopReady();
-            JSONObject snapshot=op("inspect","","testSnapshot");
+            JSONObject snapshot=startupSnapshot();
             require(snapshot.getBoolean("ok"),snapshot.toString());
             require(snapshot.getJSONObject("android").getLong("ram_total_bytes")>0,"No native RAM reading");
             require(snapshot.getJSONObject("core").getString("state_format").equals("RVPC2"),"Wrong checkpoint format");
