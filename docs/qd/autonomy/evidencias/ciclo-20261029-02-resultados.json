@@ -1,0 +1,112 @@
+{
+  "ciclo": "QD-20261029-02",
+  "fecha_utc": "2026-10-29",
+  "estado": "ejecutado_ci_success",
+  "rama": "qd/cycle-20261029-02-xi-debug",
+  "base": "qd/cycle-20261028-independent-exams@770f3489181c876acdaee0a1caf25273f56f82bb",
+  "codigo_verificado_sha": "4e163f40cec7ec4a750cd9fb6b9701c60767e6d6",
+  "candidato_ci": {
+    "workflow": ".github/workflows/qd-debug.yml",
+    "run_id": 40886521655,
+    "conclusion": "success",
+    "url": "https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40886521655",
+    "artifact_id": 12901774917,
+    "artifact_url": "https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40886521655/artifacts/12901774917",
+    "artifact_zip_sha256": "3cf6248c7b07ae3b7f76109f421a78d0b285e720212fc4ed7b91c4631b85e353",
+    "artifact_expiracion_utc": "2026-11-28T13:56:21Z"
+  },
+  "fallo_intermedio": {
+    "run_id": 40886274371,
+    "url": "https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40886274371",
+    "causa": "La fuente de un caso reservado tenía el mismo texto que una fuente de práctica en otra operación objetivo.",
+    "correccion": "El caso reservado alterno admite un único mov r3 r3 inocuo, con parser seguro, para garantizar separación textual y sin cambiar el algoritmo ni reglas de XI; ninguna evaluación aprobada se inventó."
+  },
+  "hipotesis_inicial": "Qd 0.1 no tenía acción diagnosticar/corregir: solo status/evaluate/teach/solve y reproducción de cuatro patrones.",
+  "examen": {
+    "baseline_programas": 16,
+    "baseline_total_correctos": 0,
+    "baseline_resumen_pases_por_programa": {
+      "0_de_5": 14,
+      "1_de_5": 1,
+      "2_de_5": 1
+    },
+    "diagnosticos_y_reparaciones_baseline": 16,
+    "programas_reservados_distintos": 24,
+    "programas_reservados_reparados": 24,
+    "semilla_reservada": 3921104442,
+    "entradas_no_vistas_por_programa": 6,
+    "distribucion_baseline_reservado": {
+      "0_de_2": 21,
+      "1_de_2": 3
+    },
+    "tipos_reservados": [
+      "operacion_alternativa_mas_mov_neutro",
+      "registro_aritmetico_r2",
+      "operando_cero",
+      "registro_impresion_r2",
+      "orden_invertido",
+      "registro_inicial_r2"
+    ],
+    "clases_aceptadas": 7,
+    "no_desarrollado": "Algoritmos nuevos, varias faltas, flujo condicional y bucles"
+  },
+  "invariantes": {
+    "doble_error_abstencion": true,
+    "fuentes_fuera_de_contrato_rechazadas": true,
+    "entrada_corrupta_rechazada": true,
+    "programa_correcto_intacto": true,
+    "sha_estado_descartable_inalterado": true,
+    "ningun_rvpc2_usuario_leido_o_escrito": true
+  },
+  "regresion": {
+    "suite": "qd-native.cjs",
+    "checks": 164,
+    "plantillas": 4,
+    "validaciones_aritmeticas": 128,
+    "persistencia_rvpc2_descartable": true,
+    "centinela_w4u_preservado": true,
+    "rollback_sobre_error": true,
+    "e025_integral_en_este_ci": false,
+    "android_real_en_este_ci": false
+  },
+  "recursos": {
+    "ejecuciones_xi_nativas": 435,
+    "ejecuciones_entradas_estudiante": 352,
+    "consultas_diagnostico_xi": 82,
+    "tiempo_pared_acumulado_run_ms": 1082,
+    "tiempo_total_harness_ms": 1236,
+    "entorno": "GitHub Actions ubuntu-latest; no teléfono físico",
+    "estado_rvpc2_descartable_bytes": 5092,
+    "estado_rvpc2_descartable_sha256": "b18685010345e3125e56204105c0e1c72569893372772a00c7e28ee261a2b356",
+    "pico_rss_bytes": null,
+    "tamano_diagnose_xi_fuente_bytes": 2175,
+    "programas_rxe_compilados": 0
+  },
+  "aprendizaje": {
+    "reglas_codificadas_en_xi": 7,
+    "reglas_aprendidas_por_parametros": 0,
+    "plantillas_personales_guardadas": 0,
+    "checkpoint_usuario": "No abierto ni modificado; CI con estado RVPC2 nuevo.",
+    "alcance": "Corrección simbólica de un fallo en el subconjunto canónico, no generalización a síntesis libre de código."
+  },
+  "comandos_ejecutados_ci": [
+    "python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat",
+    "g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc src/reverse_pc.cpp -o build/reverse_pc",
+    "node --check reverse-os-android/tests/qd-debug-native.cjs",
+    "node --check reverse-os-android/tests/qd-native.cjs",
+    "node reverse-os-android/tests/qd-debug-native.cjs build/reverse_pc build/qd-debug",
+    "node reverse-os-android/tests/qd-native.cjs build/reverse_pc build/qd-regression"
+  ],
+  "integracion": {
+    "reverse_pc": "XI asset incluida en rama; evaluador nativo operativo como suite aislada.",
+    "qd_studio_android": "Interfaz y acciones existentes sin cambios; el diagnosticador nuevo aún no está conectado al UI ni instrumentado en Android.",
+    "bby_q_y_w4u": "Código, checkpoints, conversaciones, escritor y estado principal inalterados."
+  },
+  "limitaciones": [
+    "Sin memoria maestra nueva, no entrenó parámetros ni aprendió por ejemplos.",
+    "CI host nativa únicamente; no debe describirse como capacidad Android instalada.",
+    "24 fuentes reservadas distintas y entradas nuevas dentro de las mismas familias; no algoritmos inéditos.",
+    "Máximo RSS y energía no medidos.",
+    "Dependencias del PR #34 y #35 aún abiertas; candidato no fusionado."
+  ]
+}
