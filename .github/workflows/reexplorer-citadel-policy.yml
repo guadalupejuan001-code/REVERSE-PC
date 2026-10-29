@@ -1,0 +1,67 @@
+name: Citadel - XI policy prototype and explicit security-gaps contract
+on:
+  pull_request:
+    branches: [main, feature/reverse-portrait-landscape-20261028]
+    paths:
+      - 'security/reexplorer/**'
+      - 'docs/REEXPLORER_CITADEL_ZERO_TRUST.md'
+      - '.github/workflows/reexplorer-citadel-policy.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: citadel-design-${{ github.head_ref || github.ref }}
+  cancel-in-progress: false
+jobs:
+  xi-native-design:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: e2778d962af22f6f1a0794058dd4685fc2573966
+          path: deps/mundo-x
+          persist-credentials: false
+      - name: Build pinned original XI/Ether runtime
+        run: |
+          set -euo pipefail
+          mkdir -p build evidence/citadel
+          python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc src/reverse_pc.cpp -o build/reverse_pc
+      - name: Verify minimum states and non-overridable guard decisions in XI
+        run: |
+          set -euo pipefail
+          node --check security/reexplorer/tests/xi-policy.mjs
+          node security/reexplorer/tests/xi-policy.mjs build/reverse_pc evidence/citadel
+      - name: Verify gap disclosure and absence of false deployment claims
+        run: |
+          set -euo pipefail
+          node - <<'JS'
+          const fs=require('node:fs'),assert=require('node:assert/strict');
+          const c=JSON.parse(fs.readFileSync('security/reexplorer/CITADEL_CONTRACT.json','utf8'));
+          const report=JSON.parse(fs.readFileSync('evidence/citadel/citadel-xi-results.json','utf8'));
+          assert.equal(c.schema,'reverse.citadel.design.v1');
+          assert.equal(c.current_reexplorer.different_uid_from_reverse,false);
+          assert.equal(c.current_reexplorer.full_socket_egress_policy,false);
+          assert.equal(c.phases.find(p=>p.id==='P0').status,'not_implemented');
+          assert.equal(c.phases.find(p=>p.id==='P4').status,'native_policy_prototype_only');
+          assert.equal(report.deployed_in_browser,false);
+          assert.equal(report.android_uid_separation_verified,false);
+          assert.equal(report.all_egress_filtered,false);
+          assert.equal(report.quantum_tls_verified,false);
+          assert.equal(report.checks,808);
+          for(const claim of c.invariants)assert.ok(claim.length>20);
+          console.log(JSON.stringify({policy_prototype_checks:report.checks,known_gaps:'explicitly disclosed',browser_deployed:false}));
+          JS
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Citadel-XI-policy-design-evidence
+          path: |
+            evidence/citadel/citadel-xi-results.json
+            security/reexplorer/CITADEL_CONTRACT.json
+          retention-days: 7
