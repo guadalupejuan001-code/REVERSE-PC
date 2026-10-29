@@ -209,6 +209,10 @@ inline std::uint64_t MinimalGuest::system_read(unsigned id) const {
   if(id==guest_sysreg(3,0,0,0,5))return UINT64_C(1)<<31; // MPIDR
   if(id==guest_sysreg(3,0,0,0,6))return 0; // REVIDR: this software model has no implementation revision.
   if(id==guest_sysreg(3,0,0,4,0))return 0x11; // A64 EL0/EL1 and baseline FP/SIMD; unsupported opcodes fail.
+  // ID_AA64ISAR3_EL1 (S3_0_C0_C6_3): no CPA/FAMINMAX/TLBIW/PACM
+  // or newer ISAR3 extensions in this baseline CPU. Keep EL0 access rejected
+  // by the privilege check above; the read does not add instruction support.
+  if(id==guest_sysreg(3,0,0,6,3))return 0;
   if(id==guest_sysreg(3,0,0,4,1)||id==guest_sysreg(3,0,0,4,4)||id==guest_sysreg(3,0,0,4,5)|| // PFR1/ZFR0/SMFR0: extensions absent.
      id==guest_sysreg(3,0,0,5,0)||id==guest_sysreg(3,0,0,5,1)||
      id==guest_sysreg(3,0,0,6,0)||id==guest_sysreg(3,0,0,6,1)||id==guest_sysreg(3,0,0,6,2)||
