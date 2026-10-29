@@ -38,7 +38,9 @@ independent MSB-first polynomial oracle and standard `123456789` values.
 No CRC result, allocation result or syscall is supplied by a host shortcut.
 The later original code also uses immediate and per-lane register shifts;
 their signed-low-byte and boundary behavior is checked with an independent
-bit-position oracle. The expanded FP/SIMD suite has 7,649 checks; the
+bit-position oracle. REV16/REV32/REV64 preserve element ordering inside
+their encoded groups; scalar element copies clear the unused bits of the
+destination. The expanded FP/SIMD suite has 7,931 checks; the
 cache-access suite has 82 and CRC has 76. Cycle, system and PCI regression
 suites separately preserve native exception delivery and full-state restore.
 

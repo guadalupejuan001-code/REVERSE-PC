@@ -5,6 +5,12 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
   auto scalar=[&](unsigned index){return floating_.v[index].lane(0,bits);};
   auto valid_float=[&](){return bits==32||bits==64;};
   auto word_size=[&](){const auto opcode=(i>>22)&3,size=i>>30;return opcode&2?(size==0?16u:0u):(1u<<size);};
+  if((i&0xffe0fc00u)==0x5e000400u){ // DUP element to scalar B/H/S/D, including MOV Dd,Vn.D[index].
+    const unsigned immediate=(i>>16)&31;if(!immediate)return false;
+    unsigned size=0;while(!(immediate&(1u<<size)))++size;if(size>3)return false;
+    const unsigned lane_bits=8u<<size,index=immediate>>(size+1);
+    fp_access();const auto value=floating_.v[rn].lane(index,lane_bits);fp_set(rd,value,lane_bits);return true;
+  }
   // LD1/ST1 multiple structures: one through four consecutive V registers,
   // no offset or post-index. Transfers use the encoded element size, so
   // unaligned byte structures do not inherit a 16-byte scalar alignment rule.
@@ -266,8 +272,10 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
     }
     commit(value);return true;
   }
-  if((i&0xbf3ffc00)==0x0e200800){ // REV64
-    if(size==3)return false;fp_access();const auto a=floating_.v[rn];Vector128 value;const auto per_word=64/element;
+  const auto reverse=i&0xbf3ffc00u;
+  if(reverse==0x0e200800u||reverse==0x2e200800u||reverse==0x0e201800u){ // REV64, REV32, REV16.
+    const unsigned block_bits=reverse==0x0e200800u?64:reverse==0x2e200800u?32:16;
+    if(element>=block_bits)return false;fp_access();const auto a=floating_.v[rn];Vector128 value;const auto per_word=block_bits/element;
     for(unsigned n=0;n<width/element;++n)value.lane(n,element,a.lane((n/per_word)*per_word+per_word-1-n%per_word,element));commit(value);return true;
   }
   if((i&0xbf3ffc00)==0x0e31b800){ // ADDV

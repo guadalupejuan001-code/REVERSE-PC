@@ -15,6 +15,32 @@ Bytes elf(std::initializer_list<std::uint32_t> words,bool system=false){
   put(bytes,1,4);put(bytes,7,4);put(bytes,0x100);put(bytes,entry);put(bytes,entry);put(bytes,code.size());put(bytes,code.size());put(bytes,0x100);
   bytes.resize(0x100);bytes.insert(bytes.end(),code.begin(),code.end());return bytes;
 }
+void scalar_element_copy(){
+  for(unsigned size=0;size<4;size++)for(unsigned index=0;index<16/(1u<<size);index++)for(bool alias:{false,true}){
+    const unsigned bytes=1u<<size,rd=alias?1:3,encoded=(index<<(size+1))|(1u<<size);
+    const auto opcode=0x5e000400u|(encoded<<16)|(1<<5)|rd;
+    MinimalGuest g(65536);g.load_elf(elf({0xd2840002u,0x4c407041u,opcode}));
+    for(unsigned n=0;n<16;n++)g.write(0x2000+n,n*11+5,1);
+    auto split=MinimalGuest::from_snapshot(g.snapshot());g.run(3);for(unsigned n=0;n<3;n++)split.run(1);
+    std::uint64_t expected=0;for(unsigned n=0;n<bytes;n++)expected|=std::uint64_t((index*bytes+n)*11+5)<<(8*n);
+    check(g.floating().v[rd].low==expected&&!g.floating().v[rd].high,"Scalar element copy lost its selected lane or failed to clear other bits");
+    check(g.snapshot()==split.snapshot(),"Scalar element copy alias or chunk changed complete state");
+  }
+}
+void vector_reverse(){
+  for(bool wide:{false,true})for(unsigned block_bits:{16u,32u,64u})for(unsigned size=0;(8u<<size)<block_bits;size++){
+    const unsigned bytes=wide?16:8,element_bytes=1u<<size;
+    const auto opcode=(block_bits==64?0x0e200823u:block_bits==32?0x2e200823u:0x0e201823u)|(wide?0x40000000u:0u)|(size<<22);
+    MinimalGuest g(65536);g.load_elf(elf({0xd2840002u,0x0c407041u|(wide?0x40000000u:0u),opcode}));
+    for(unsigned n=0;n<bytes;n++)g.write(0x2000+n,n*7+3,1);auto split=MinimalGuest::from_snapshot(g.snapshot());g.run(3);for(unsigned n=0;n<3;n++)split.run(1);
+    check(g.snapshot()==split.snapshot(),"Vector reverse changed across chunks");
+    for(unsigned n=0;n<bytes;n++){
+      const unsigned group=block_bits/8,within=n%group,from=(n/group)*group+(group/element_bytes-1-within/element_bytes)*element_bytes+within%element_bytes;
+      check(g.floating().v[3].lane(n,8)==from*7+3,"Vector reverse changed element byte order or group extent");
+    }
+    if(!wide)check(!g.floating().v[3].high,"64-bit vector reverse retained upper bits");
+  }
+}
 void vector_shifts(){
   const auto expected_shift=[](std::uint64_t x,int amount,unsigned bits,bool unsigned_value){
     std::bitset<64> source(x),result;
@@ -210,4 +236,4 @@ void architectural_state(){
   check(MinimalGuest::from_snapshot(allowed.snapshot()).snapshot()==allowed.snapshot(),"System FP checkpoint lost architectural state");
 }
 }
-int main(){try{arithmetic();sparse_state();architectural_state();structure_memory();integer_reductions();shift_narrow();byte_population();widening_pairs();vector_shifts();std::cout<<"{\"checks\":"<<checks<<",\"fp\":\"ARMv8 bounded FP32/FP64 + SIMD\",\"state\":\"sparse RVG3\",\"quantum_engine\":\"unchanged\"}\n";}catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
+int main(){try{arithmetic();sparse_state();architectural_state();structure_memory();integer_reductions();shift_narrow();byte_population();widening_pairs();vector_shifts();vector_reverse();scalar_element_copy();std::cout<<"{\"checks\":"<<checks<<",\"fp\":\"ARMv8 bounded FP32/FP64 + SIMD\",\"state\":\"sparse RVG3\",\"quantum_engine\":\"unchanged\"}\n";}catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
