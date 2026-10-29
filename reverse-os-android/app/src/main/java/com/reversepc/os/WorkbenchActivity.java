@@ -269,6 +269,7 @@ public final class WorkbenchActivity extends Activity {
             });
         }
         @JavascriptInterface public void hideKeyboard(){ui.post(WorkbenchActivity.this::hideKeyboard);}
+        @JavascriptInterface public void launchVelocity(){ui.post(()->{if(!closed)startActivity(new Intent(WorkbenchActivity.this,VelocityActivity.class));});}
         @JavascriptInterface public void request(String id,String operation,String payload){
             if(closed||id==null||!id.matches("[A-Za-z0-9_-]{1,60}"))return;
             RuntimeExecutor.INSTANCE.execute(()->{

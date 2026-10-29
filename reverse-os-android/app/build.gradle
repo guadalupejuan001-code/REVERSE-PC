@@ -22,6 +22,7 @@ android {
   }
  }
  productFlavors {
+  velocity { dimension 'edition'; versionCode 260; versionName '2.6.0-xrender'; applicationId 'com.reversepc.velocity'; manifestPlaceholders = [appLabel:'REVERSE VELOCITY'] }
   classic { dimension 'edition'; applicationId 'com.reversepc.os'; manifestPlaceholders = [appLabel:'REVERSE OS'] }
   desktop { dimension 'edition'; applicationId 'com.reversepc.desktop'; manifestPlaceholders = [appLabel:'REVERSE Desktop'] }
   workbench { dimension 'edition'; versionCode 259; versionName '2.5.9-dual-orientation'; applicationId 'com.reversepc.workbench'; manifestPlaceholders = [appLabel:'REVERSE Workbench'] }
