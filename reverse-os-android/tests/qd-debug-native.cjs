@@ -181,7 +181,10 @@ assert.equal(baselineSources.size,16);
 for(const skill of [1,2,3,4])for(const fault of unseenFaults){
  const source=mutation(skill,fault),pairs=freshPairs(6);
  assert.ok(!baselineSources.has(source),'heldout source leaked into baseline');
- const before=grade(source,skill,pairs.slice(0,2));
+ // Reproduce a known defect on stable diagnostic witnesses, not on a lucky
+ // subset of the unseen randomly generated grading inputs. Keep all six
+ // reserved pairs separate and unchanged for the real after-repair exam.
+ const before=grade(source,skill,FIXED.slice(0,2));
  assert.equal(before.all_passed,false,'heldout fault was not reproduced');
  const decision=diagnose(source,skill);
  assert.equal(decision.status,1,'XI cannot diagnose heldout '+skill+'/'+fault);
