@@ -89,7 +89,7 @@ export function parseNewcCpio(bytes){
     need(size<=MAX_CPIO&&contentAt<=bytes.length&&size<=bytes.length-contentAt,
       'CPIO member data outside archive');
     if(name==='TRAILER!!!'){need(size===0,'nonempty CPIO trailer');ended=true;at=align(contentAt);break;}
-    need(!names.has(name),'duplicate CPIO path');
+    need(!names.has(name),'duplicate CPIO path: '+name);
     names.add(name);
     members.push({path:name,mode,size,
       contents:bytes.subarray(contentAt,contentAt+size)});
