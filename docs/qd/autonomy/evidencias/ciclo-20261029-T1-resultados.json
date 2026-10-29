@@ -1,0 +1,19 @@
+{
+  "cycle": "QDU-T1-20261029",
+  "predefined": "docs/qd/autonomy/evidencias/ciclo-20261029-T1-criterio.json",
+  "source": "GitHub Actions native XI, actual original REVERSE-PC interpreter on scratch RVPC2",
+  "url": "https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40915364219",
+  "artifact_url": "https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40915364219/artifacts/12915602154",
+  "observed": [
+    "QDU_T1_XI_OK tasks=14/14 negative=15 native_xi_runs=134 scratch_unchanged=true",
+    "REVERSECODING_XI_OK accepted=26 rejected=18 nativeRuns=93",
+    "QD_CODY_NATIVE_OK checks=164 patterns=4 validations=128",
+    "QD_DEBUG_XI_OK baseline=16/16 unseen=24/24"
+  ],
+  "disclosures": [
+    "CLI manually stages w4U schema identity for one scratch state; this is not the deployed E025 state",
+    "Android CI compilation does not verify the new delegate API directly",
+    "No general chat interface integration or unattended project actions"
+  ],
+  "checkpoint_status": "No personal RVPC2, W4u learned state or desktop state read/written"
+}
