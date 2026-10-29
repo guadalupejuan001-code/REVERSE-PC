@@ -71,6 +71,38 @@ void exclusives(){
   guest.apply_xi_delta("mem_store 1073758208 99\n");guest.run(100);
   check(guest.registers().x[2]==1&&guest.registers().x[5]==99,"XI write did not invalidate the same exclusive monitor");
 }
+void lazy_ram_range_error_parity(){
+  // Same exact permitted range, fault type and diagnostic text. No change to
+  // the single QuantumRuntime/InverseMemory byte authority.
+  MinimalGuest guest(128*1024*1024);
+  guest.load_elf(system_demo_elf(),true);
+  const auto initial=guest.snapshot();
+  // The high valid byte is addressable without constructing error text.
+  check(guest.read8(MachineState::ram_base+128*1024*1024-1)==0,
+        "Last legal guest RAM byte was rejected");
+  check(guest.snapshot()==initial,
+        "Read-only valid RAM access changed the original XI/Ether checkpoint");
+  bool caught=false;
+  try{(void)guest.read8(MachineState::ram_base+128*1024*1024);}
+  catch(const std::runtime_error& e){
+    caught=true;
+    check(std::string(e.what())=="Guest address outside logical RAM: 0x48000000",
+          "Lazy RAM fault did not retain the original exact text");
+  }
+  check(caught,"Out-of-bounds guest read was accepted");
+  caught=false;
+  try{(void)guest.read8(MachineState::ram_base-1);}
+  catch(const std::runtime_error& e){
+    caught=true;
+    check(std::string(e.what())=="Guest address outside logical RAM: 0x3fffffff",
+          "Lazy RAM underflow fault did not retain the exact text");
+  }
+  check(caught,"Guest RAM address underflow was accepted");
+  fails([&]{(void)guest.read(MachineState::ram_base+128*1024*1024-1,2);},
+        "Cross-boundary RAM read was accepted");
+  check(guest.snapshot()==initial,
+        "Rejected RAM reads modified the authoritative XI/Ether checkpoint");
+}
 void image_boot_protocol(){
   Bytes kernel(64);auto patch=[&](std::size_t at,std::uint64_t value,unsigned size){for(unsigned i=0;i<size;++i)kernel[at+i]=std::uint8_t(value>>(i*8));};
   patch(0,0x14000010,4);patch(8,0x80000,8);patch(16,128,8);patch(24,2,8);patch(56,0x644d5241,4);
@@ -484,6 +516,6 @@ void interrupt_priority_initialization(){
   check(guest.snapshot()==before,"Rejected APR write changed CPU/device state");
 }
 }
-int main(){try{boot_and_restore();translation();shared_quantum_authority();exclusives();image_boot_protocol();android_bootargs_snapshot_profile();large_linux_gki_loader_budget();cross_page_access();unprivileged_memory_access();eret_ssbs_saved_status();speculative_data_barrier();android_mmfr3_real_opcode();identification();uart_fifo_configuration();interrupt_priority_initialization();
+int main(){try{boot_and_restore();translation();shared_quantum_authority();exclusives();lazy_ram_range_error_parity();image_boot_protocol();android_bootargs_snapshot_profile();large_linux_gki_loader_budget();cross_page_access();unprivileged_memory_access();eret_ssbs_saved_status();speculative_data_barrier();android_mmfr3_real_opcode();identification();uart_fifo_configuration();interrupt_priority_initialization();
   std::cout<<"{\"checks\":"<<checks<<",\"system\":\"own-EL1-MMU-IRQ-EL0-SVC\",\"existing_quantum_qubits\":4096,\"android_boot\":\"not_implemented\"}\n";return 0;
 }catch(const std::exception& error){std::cerr<<error.what()<<'\n';return 1;}}
