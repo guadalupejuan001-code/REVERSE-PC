@@ -64,8 +64,8 @@ try{
  assert.equal(s[0],83,'XI spawn x');assert.equal(s[1],110000,'XI spawn z');
  assert.deepEqual(s.slice(2,9),[0,0,0,0,0,0,0],'XI reset state');
  const initialHash=digest(fs.readFileSync(state));
- for(let i=0;i<12;i++)s=tick(1,0,1,0,0);
- assert(s[3]>0&&s[1]<110000&&s[6]===12,'XI throttle and negative-z progress');
+ for(let i=0;i<38;i++)s=tick(1,0,1,0,0);
+ assert(s[3]>0&&s[1]<110000&&s[6]===38,'XI throttle and negative-z progress');
  const speed=s[3];
  for(let i=0;i<8;i++)s=tick(0,1,1,0,0);
  assert(s[3]<speed,'XI brake slows down');
