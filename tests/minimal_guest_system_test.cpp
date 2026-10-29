@@ -312,13 +312,44 @@ void speculative_data_barrier(){
   const auto result=restored.run(10);
   check(result.halted&&result.exit_code==0,"Guest execution did not continue after CSDB");
 }
+void android_mmfr3_real_opcode() {
+  // Exact 0xd5380761 observed in official Cuttlefish build 16644040 at
+  // XI/Ether guest instruction 30,950: MRS X1, ID_AA64MMFR3_EL1.
+  // Independent Clang AArch64 assembly must match this opcode in CI.
+  auto image=system_demo_elf();image.resize(256);
+  const std::uint32_t instructions[]{0xd28000e1u,0xd5380761u,0xd503201fu};
+  for(auto instruction:instructions)put(image,instruction,4);
+  for(unsigned i=0;i<8;++i){
+    image[96+i]=std::uint8_t(std::uint64_t(sizeof(instructions))>>(i*8));
+    image[104+i]=image[96+i];
+  }
+  MinimalGuest guest(128*1024*1024);
+  guest.load_elf(image,true);
+  const auto core=guest.runtime().core_snapshot();
+  const auto memory=guest.runtime().memory_persistent_snapshot();
+  guest.run(1);
+  check(guest.registers().x[1]==7,"Sentinel before ID_AA64MMFR3 read failed");
+  const auto before=guest.snapshot();
+  auto one=guest;one.run(1);
+  check(one.registers().x[1]==0&&
+        one.registers().pc==guest.registers().pc+4&&
+        one.machine().exceptions==0&&one.machine().el==1,
+        "Real Android MRS ID_AA64MMFR3_EL1 did not return absent features");
+  check(one.runtime().core_snapshot()==core&&
+        one.runtime().memory_persistent_snapshot()==memory,
+        "ID_AA64MMFR3 feature read changed XI/Ether state");
+  auto restored=MinimalGuest::from_snapshot(before);
+  restored.run(1);
+  check(restored.snapshot()==one.snapshot(),
+        "ID_AA64MMFR3 replay through RVG changed guest state");
+}
 void identification(){
   auto image=system_demo_elf();image.resize(260);const std::uint32_t instruction=0xd53800c0; // MRS X0,REVIDR_EL1
   for(unsigned i=0;i<4;++i)image[256+i]=std::uint8_t(instruction>>(8*i));
   for(unsigned i=0;i<8;++i){image[96+i]=std::uint8_t(UINT64_C(4)>>(8*i));image[104+i]=image[96+i];}
   MinimalGuest guest(128*1024*1024);guest.load_elf(image,true);guest.run(1);
   check(guest.registers().x[0]==0&&guest.machine().exceptions==0,"Software implementation revision is not readable");
-  for(auto id:{0xc024u,0xc025u}){
+  for(auto id:{0xc024u,0xc025u,0xc03bu}){
     const auto op=0xd5200000u|(id<<5);for(unsigned i=0;i<4;++i)image[256+i]=std::uint8_t(op>>(8*i));
     guest.load_elf(image,true);guest.run(1);check(guest.registers().x[0]==0,"Absent SVE/SME feature incorrectly advertised");
   }
@@ -370,6 +401,6 @@ void interrupt_priority_initialization(){
   check(guest.snapshot()==before,"Rejected APR write changed CPU/device state");
 }
 }
-int main(){try{boot_and_restore();translation();shared_quantum_authority();exclusives();image_boot_protocol();large_linux_gki_loader_budget();cross_page_access();unprivileged_memory_access();eret_ssbs_saved_status();speculative_data_barrier();identification();uart_fifo_configuration();interrupt_priority_initialization();
+int main(){try{boot_and_restore();translation();shared_quantum_authority();exclusives();image_boot_protocol();large_linux_gki_loader_budget();cross_page_access();unprivileged_memory_access();eret_ssbs_saved_status();speculative_data_barrier();android_mmfr3_real_opcode();identification();uart_fifo_configuration();interrupt_priority_initialization();
   std::cout<<"{\"checks\":"<<checks<<",\"system\":\"own-EL1-MMU-IRQ-EL0-SVC\",\"existing_quantum_qubits\":4096,\"android_boot\":\"not_implemented\"}\n";return 0;
 }catch(const std::exception& error){std::cerr<<error.what()<<'\n';return 1;}}
