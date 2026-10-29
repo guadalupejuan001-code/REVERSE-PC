@@ -69,7 +69,7 @@ function hexWord(bytes,at){
 export function parseNewcCpio(bytes){
   need(Buffer.isBuffer(bytes)&&bytes.length>110&&bytes.length<=MAX_CPIO,
     'newc CPIO byte limit exceeded');
-  const members=[],names=new Set();
+  const members=[],names=new Map();
   let at=0,ended=false;
   while(at<bytes.length){
     if(bytes.subarray(at).every(b=>b===0))break;
@@ -89,8 +89,14 @@ export function parseNewcCpio(bytes){
     need(size<=MAX_CPIO&&contentAt<=bytes.length&&size<=bytes.length-contentAt,
       'CPIO member data outside archive');
     if(name==='TRAILER!!!'){need(size===0,'nonempty CPIO trailer');ended=true;at=align(contentAt);break;}
-    need(!names.has(name),'duplicate CPIO path: '+name);
-    names.add(name);
+    // Android mkbootfs can record the same empty directory more than once.
+    // Never permit duplicate regular files, symlinks, or the /init executable.
+    if(names.has(name)){
+      const oldMode=names.get(name);
+      need((oldMode&0xf000)===0x4000&&(mode&0xf000)===0x4000&&size===0,
+        'duplicate non-directory CPIO path: '+name);
+    }
+    names.set(name,mode);
     members.push({path:name,mode,size,
       contents:bytes.subarray(contentAt,contentAt+size)});
     need(members.length<=20000,'too many CPIO files');
