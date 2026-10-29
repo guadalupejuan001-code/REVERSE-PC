@@ -14,5 +14,5 @@ assert.ok(bb.includes("qdAction(w,task[1]"),'Operator must be able to trigger re
 assert.ok(qd.includes("w.app==='rxe'&&w.rxePath==='Aplicaciones/BBY-Q.rxe'"),'Qd handler must accept BBY Q host window');
 assert.ok(music.includes("Filtro experimental"),'Ad filtering must be transparently labelled');
 assert.ok(xm.includes('SIN DATOS DE MERCADO'),'Do not label executable Laplace as display-only or claim real feeds');
-assert.ok(control.includes('UI_BUILD = \'2.5.8\''),'Version must reflect UX update');
+assert.ok(control.includes('UI_BUILD = \'2.5.9\''),'Version must reflect UX update');
 console.log(JSON.stringify({suite:'reverse_ux',compact:true,modules:['chat','work','cody'],music_layout:true,operator_to_qd:true,truthful_provenance:true}));

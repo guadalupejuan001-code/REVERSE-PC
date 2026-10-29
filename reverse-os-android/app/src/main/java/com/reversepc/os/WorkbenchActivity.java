@@ -3,6 +3,7 @@ package com.reversepc.os;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.content.ClipboardManager;
 import android.content.ClipData;
 import android.graphics.Insets;
@@ -396,6 +397,18 @@ public final class WorkbenchActivity extends Activity {
         });}
         if(request==PICK&&chooser!=null){chooser.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(result,data));chooser=null;}
         if(request==EXPORT){byte[] bytes=pendingExport;pendingExport=null;if(result==RESULT_OK&&bytes!=null&&data!=null&&data.getData()!=null){Uri target=data.getData();RuntimeExecutor.INSTANCE.execute(()->{try(OutputStream stream=getContentResolver().openOutputStream(target,"wt")){if(stream==null)throw new IllegalStateException("Destino no disponible");stream.write(bytes);message("Archivo exportado.");}catch(Exception error){message("No se pudo escribir el archivo.");}});}}
+    }
+    /** Preserve WebView, profile and Music state when the screen changes shape. */
+    @Override public void onConfigurationChanged(Configuration configuration){
+        super.onConfigurationChanged(configuration);
+        if(root==null||web==null||closed)return;
+        root.requestApplyInsets();
+        root.post(()->{
+            if(closed||web==null)return;
+            root.requestApplyInsets();
+            publishInsets();
+            web.evaluateJavascript("window.dispatchEvent(new Event('resize'));",null);
+        });
     }
     @Override public void onWindowFocusChanged(boolean focused){super.onWindowFocusChanged(focused);if(focused)immersive(this);}
     @Override protected void onPause(){hostResumed=false;if(music!=null)music.pause();if(web!=null){web.evaluateJavascript("document.body&&(document.body.dataset.appPaused='true')",null);web.onPause();}super.onPause();}
