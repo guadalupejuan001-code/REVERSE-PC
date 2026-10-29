@@ -8,6 +8,8 @@ public final class NativeRuntime {
     public static native byte[] compileRxe(byte[] sourceUtf8,byte[] titleUtf8);
     public static native byte[] inspectRxe(byte[] executable);
     public static native byte[] executeRxe(byte[] state,byte[] executable);
+    public static native byte[] velocityTick(byte[] state,byte[] executable,
+                              int gas,int brake,int steering,int drift,int reset);
     public static native byte[] graphicsAsset(byte[] executable,byte[] pathUtf8);
     public static native byte[] graphicsTurn(byte[] state,byte[] executable,int kind,int quality);
     static native long xRenderCreate();

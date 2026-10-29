@@ -1,0 +1,79 @@
+name: REVERSE VELOCITY - native X Render checks
+on:
+  push:
+    branches: [integrate/reverse-259-velocity-xrender-20261029]
+    paths:
+      - 'reverse-os-android/**'
+      - '.github/workflows/velocity-native.yml'
+      - 'README.md'
+  pull_request:
+    branches: [main, deliver/reverse-pc-259-dual-orientation]
+    paths:
+      - 'reverse-os-android/**'
+      - '.github/workflows/velocity-native.yml'
+permissions:
+  contents: read
+jobs:
+  native-xrender:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: 1f925786522aba91f72707ad1638a8edcdd31a8f
+          path: deps/mundo-x
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '17'}
+      - name: Verify native renderer owns all scene pixels
+        run: |
+          set -euo pipefail
+          test ! -f reverse-os-android/app/src/main/java/com/reversepc/os/VelocityRenderer.java
+          test -f deps/mundo-x/native/include/mundo_x/ether_render_engine.hpp
+          grep -q '#include "mundo_x/ether_render_engine.hpp"' reverse-os-android/app/src/main/cpp/velocity_xrender_jni.cpp
+          grep -q 'scene->export_image' reverse-os-android/app/src/main/cpp/velocity_xrender_jni.cpp
+          ! grep -E 'GLSurfaceView|GLES20|GLES30|WebGL|glDrawArrays' reverse-os-android/app/src/main/java/com/reversepc/os/Velocity*.java reverse-os-android/app/src/main/cpp/velocity_xrender_jni.cpp
+      - name: Compile original XI runtime and verify gameplay program
+        run: |
+          set -euo pipefail
+          mkdir -p build/velocity build/ether-compat
+          python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
+            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
+            src/reverse_pc.cpp -o build/velocity/reverse_pc
+          node reverse-os-android/tests/velocity-xi-contract.cjs \
+            build/velocity/reverse_pc build/velocity
+      - name: Compile the actual JNI scene against pinned X Render
+        run: |
+          set -euo pipefail
+          mkdir -p build/velocity
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -I "$JAVA_HOME/include" -I "$JAVA_HOME/include/linux" \
+            -I deps/mundo-x/native/include \
+            -c reverse-os-android/app/src/main/cpp/velocity_xrender_jni.cpp \
+            -o build/velocity/velocity_xrender_jni.o
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -I deps/mundo-x/native/include \
+            deps/mundo-x/native/tests/ether_ellipsoid.cpp -o build/velocity/ellipsoid-test
+          build/velocity/ellipsoid-test
+      - name: Render real gameplay scene and verify three distinct frames
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -I "$JAVA_HOME/include" -I "$JAVA_HOME/include/linux" \
+            -Ideps/mundo-x/native/include \
+            reverse-os-android/tests/velocity_scene_smoke.cpp -o build/velocity/scene-smoke
+          build/velocity/scene-smoke build/velocity/velocity-track-from-xi.txt
+      - name: Rebuild pinned XI overlay and verify original PRISMA geometry
+        run: |
+          set -euo pipefail
+          python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+          g++ -std=c++17 -O2 -Wall -Wextra -I build/ether-compat -I deps/mundo-x/native/include -I src \
+            tests/prisma_xrender.cpp -o build/velocity/prisma-smoke
+          build/velocity/prisma-smoke
+      - name: Verify real Mundo X native renderer API and pixel export
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Ideps/mundo-x/native/include \
+            reverse-os-android/tests/velocity_xrender_smoke.cpp -o build/velocity/xrender-smoke
+          ./build/velocity/xrender-smoke

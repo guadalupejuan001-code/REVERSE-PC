@@ -149,7 +149,7 @@ qubits con un número arbitrario de T.
 
 ## Límites y dependencia
 
-- Mundo X permanece fijado a `e2778d962af22f6f1a0794058dd4685fc2573966`.
+- Mundo X permanece fijado a `1f925786522aba91f72707ad1638a8edcdd31a8f`.
   Las extensiones de compilación verifican SHA-256 de los encabezados; el
   checkout original no se modifica. CI publica el diff utilizado.
 - Reduced admite componentes de hasta 1000 qubits; el presupuesto
@@ -192,3 +192,39 @@ papelera, imágenes, aplicaciones instaladas y calculadora ejecutada en XI.
 La edición `com.reversepc.desktop` se instala junto a versiones anteriores.
 El runtime, el formato RVPC2 y la dependencia fijada de Mundo X se conservan.
 [Uso, compilación y límites de REVERSE Desktop](reverse-os-android/README.md).
+
+## REVERSE VELOCITY — juego 3D nativo (base 2.5.9 preservada)
+
+Juego original con `EtherRenderEngine` de Mundo X, triángulos exactos,
+elipsoides, carretera por segmentos, conducción a 20 ms, seis puntos de control,
+cámaras, colores y cronómetro. REVERSE abre el juego desde Aplicaciones.
+Esta rama agrega la extensión de juego sobre la base de entrega 2.5.9
+sin borrar Música, BBY Q, PRISMA ni Qd Studio. La dependencia Mundo X queda
+fijada a `1f925786522aba91f72707ad1638a8edcdd31a8f`.
+
+Se mantiene el observador de cubos de PRISMA mediante
+`scripts/xrender_extension.py` con anclas revisadas; no hay otro motor de rayos.
+La salida Android presenta píxeles calculados por X Render en CPU.
+El ejecutable adicional `com.reversepc.velocity` permite instalar el
+prototipo en paralelo a la edición anterior de REVERSE.
+No declarar rendimiento HD/AAA ni APK validada sin pruebas de hardware.
+
+## REVERSE VELOCITY — código XI real (ciclo de corrección)
+
+- `reverse-os-android/app/src/main/assets/velocity/drive.xi` gobierna velocidad,
+  giro, desplazamiento lateral, tiempo, límites de la pista y puntos de control.
+- `reverse-os-android/app/src/main/assets/velocity/world.xi` genera en XI
+  los 241 puntos de la trayectoria, que X Render consume como muestras.
+- El estado del juego es un RVPC2 aislado que QuantumRuntime publica de manera
+  transaccional; BBY Q y el escritorio no comparten esos bytes.
+- Java presenta botones, un HUD y el buffer de píxeles. JNI transporta cinco
+  entradas limitadas y ejecuta el programa XI compilado a RXE; no calcula
+  ningún paso de física ni la ecuación de la carretera.
+- Se eliminan `VelocityPhysics.java` y su examen Java de esta integración.
+- Mundo X queda fijado a `1f925786522aba91f72707ad1638a8edcdd31a8f`;
+  el overlay de PRISMA está actualizado para conservar los cubos sin perder
+  triángulos ni elipsoides de X Render.
+- La validación usa el intérprete XI/RXE nativo y una prueba Android que abre
+  el juego desde REVERSE. El render HD 1280×720 permanece experimental:
+  **habilitar una resolución no garantiza FPS ni calidad comparable a Forza**.
+

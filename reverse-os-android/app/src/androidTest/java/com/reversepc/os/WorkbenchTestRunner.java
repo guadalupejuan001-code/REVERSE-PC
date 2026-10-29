@@ -465,6 +465,20 @@ public final class WorkbenchTestRunner extends Instrumentation {
         fullDisplay();
         runOnMainSync(()->activity.setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_FULL_USER));
     }
+    private static String velocityHud(android.view.View view){
+        if(view instanceof android.widget.TextView){
+            String text=((android.widget.TextView)view).getText().toString();
+            if(text.contains("FPS medidos")||text.startsWith("X Render:"))return text;
+        }
+        if(view instanceof android.view.ViewGroup){
+            android.view.ViewGroup group=(android.view.ViewGroup)view;
+            for(int i=0;i<group.getChildCount();++i){
+                String result=velocityHud(group.getChildAt(i));
+                if(!result.isEmpty())return result;
+            }
+        }
+        return "";
+    }
     @Override public void onStart(){
         Bundle result=new Bundle();
         try{
@@ -481,6 +495,30 @@ public final class WorkbenchTestRunner extends Instrumentation {
             activity=(WorkbenchActivity)waitForMonitorWithTimeout(desktopMonitor,15000);removeMonitor(desktopMonitor);
             require(activity!=null,"Entry did not reach Workbench: "+requested);
             waitJs("document.querySelector('[data-task-app]')&&typeof nativeRequest==='function'");
+            if(requested.equals("velocity")){
+                ActivityMonitor gameMonitor=addMonitor(VelocityActivity.class.getName(),null,false);
+                js("createWindow('velocity');true");
+                Activity game=waitForMonitorWithTimeout(gameMonitor,15000);
+                require(game instanceof VelocityActivity,"X Render game launch failed");
+                String hud="";
+                for(int attempt=0;attempt<50;attempt++){
+                    Thread.sleep(400);
+                    java.util.concurrent.atomic.AtomicReference<String> found=new java.util.concurrent.atomic.AtomicReference<>("");
+                    runOnMainSync(()->found.set(velocityHud(game.getWindow().getDecorView())));
+                    hud=found.get();
+                    if(hud.contains("FPS medidos"))break;
+                    if(hud.startsWith("X Render:"))throw new AssertionError(hud);
+                }
+                require(hud.contains("FPS medidos"),"Native X Render frames not presented: "+hud);
+                Bitmap screenshot=getUiAutomation().takeScreenshot();
+                File folder=new File(getTargetContext().getExternalFilesDir(null),"visual-evidence");folder.mkdirs();
+                try(FileOutputStream out=new FileOutputStream(new File(folder,"velocity-xrender-screen.png"))){
+                    screenshot.compress(Bitmap.CompressFormat.PNG,100,out);
+                }finally{screenshot.recycle();}
+                runOnMainSync(game::finish);
+                result.putString("stream","WORKBENCH_TESTS_OK mode=velocity renderer=XRender native=true\n");
+                result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
+            }
             if(requested.equals("music")){
                 int checks=MusicPlayerChecks.run(this,activity);
                 result.putString("stream","WORKBENCH_TESTS_OK mode=music checks="+checks+" offline-webview=verified\n");
