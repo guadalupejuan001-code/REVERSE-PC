@@ -3,8 +3,8 @@
 # Self-contained state on InverseMemory region 8755e15, completely separate from BBY Q.
 # +0 command 1=chunk,2=status,3=reset; +1 payload length <=224; +128 payload;
 # +4096 parser mode (0 text,1 tag,2 script,3 style,4 script close,5 style close)
-# +4097..4099 total bytes; +4100..4102 visible; +4103..4104 tag count;
-# +4105..4106 suppressed; +4107 tag prefix length; +4108 budget exceeded;
+# +4097..4099 total bytes; +4100..4102 visible; +4103..4105 tag count;
+# +4106..4108 suppressed; +4109 tag prefix length; +4110 budget exceeded;
 # +4120..4131 capped tag prefix. All response text appears in r14 only.
 load8 r4 8755000000000000000
 cmp r4 3
@@ -22,7 +22,7 @@ cmp r9 0
 jlt rx_reject_oversize
 jmp rx_restore
 label rx_reject_oversize
-store8 8755000000000004108 1
+store8 8755000000000004110 1
 jmp rx_restore
 label rx_restore
 load8 r0 8755000000000004097
@@ -43,13 +43,19 @@ load8 r2 8755000000000004103
 load8 r15 8755000000000004104
 mul r15 256
 add r2 r15
-load8 r3 8755000000000004105
-load8 r15 8755000000000004106
+load8 r15 8755000000000004105
+mul r15 65536
+add r2 r15
+load8 r3 8755000000000004106
+load8 r15 8755000000000004107
 mul r15 256
 add r3 r15
+load8 r15 8755000000000004108
+mul r15 65536
+add r3 r15
 load8 r12 8755000000000004096
-load8 r6 8755000000000004107
-load8 r13 8755000000000004108
+load8 r6 8755000000000004109
+load8 r13 8755000000000004110
 cmp r4 1
 jne rx_report
 cmp r13 0
@@ -293,8 +299,8 @@ label rx_full
 set r13 1
 label rx_commit
 store8 8755000000000004096 r12
-store8 8755000000000004107 r6
-store8 8755000000000004108 r13
+store8 8755000000000004109 r6
+store8 8755000000000004110 r13
 mov r15 r0
 mod r15 256
 store8 8755000000000004097 r15
@@ -324,13 +330,21 @@ mov r15 r2
 div r15 256
 mod r15 256
 store8 8755000000000004104 r15
-mov r15 r3
+mov r15 r2
+div r15 65536
 mod r15 256
 store8 8755000000000004105 r15
 mov r15 r3
-div r15 256
 mod r15 256
 store8 8755000000000004106 r15
+mov r15 r3
+div r15 256
+mod r15 256
+store8 8755000000000004107 r15
+mov r15 r3
+div r15 65536
+mod r15 256
+store8 8755000000000004108 r15
 label rx_report
 print r0
 print r1
