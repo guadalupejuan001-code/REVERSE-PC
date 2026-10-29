@@ -66,6 +66,7 @@ set r5 0
 set r6 0
 set r7 0
 set r8 0
+jmp commit
 label advance
 cmp r7 1
 je commit
