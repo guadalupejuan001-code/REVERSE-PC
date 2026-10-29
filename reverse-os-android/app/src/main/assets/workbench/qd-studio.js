@@ -51,13 +51,14 @@ function qdReport(s){
 function qdOrderReport(s){
  if(!s.result)return '<div class="qd-empty"><strong>Introduce una orden</strong><p>QdU interpreta una gramática aritmética acotada mediante XI y genera código real. Si la orden es ambigua o está fuera de su alcance, se abstiene.</p></div>';
  const {action,data}=s.result;
- if(action==='order'&&!data.understood)return '<div class="qd-error" role="status"><strong>Orden no interpretada</strong><p>'+esc(data.reason||'Sin interpretación verificable')+'</p></div>';
+ if((action==='order'||action==='delegate')&&!data.understood)return '<div class="qd-error" role="status"><strong>Orden no interpretada</strong><p>'+esc(data.reason||'Sin interpretación verificable')+'</p></div>';
  const pass=data.pass===true;
  return '<div class="qd-report-head">'+qdBadge(pass?'EJECUTADO · XI':'FALLO',pass?'pass':'fail')+
-   '<small>'+(action==='order'?'Orden interpretada por XI':'Fuente editada y ejecutada')+'</small></div>'+
+   '<small>'+(action==='delegate'?'BBY Q → w4U → QdU · revisado por w4U':action==='order'?'Orden local interpretada por XI':'Fuente editada y ejecutada')+'</small></div>'+
   '<div class="qd-metric-row"><div><small>Salida del sandbox</small><strong>'+esc(data.actual??'—')+'</strong></div>'+
   '<div><small>Comprobación independiente</small><strong>'+esc(data.expected??'—')+'</strong></div></div>'+
-  '<p class="qd-report-caption">Operación: '+esc(data.operation||'—')+' · Entradas: '+esc(data.a)+', '+esc(data.b)+'. Estado temporal; sin escritura en la memoria principal.</p>';
+  '<p class="qd-report-caption">Operación: '+esc(data.operation||'—')+' · Entradas: '+esc(data.a)+', '+esc(data.b)+'. Estado temporal; sin escritura en la memoria principal.</p>'+
+  (action==='delegate'&&Array.isArray(data.pipeline)?'<ol class="qd-trace">'+data.pipeline.map(item=>'<li>'+esc(item)+'</li>').join('')+'</ol>':'');
 }
 function qdOrderHTML(w,s){
  if(typeof w.qdOrder!=='string')w.qdOrder='';
@@ -65,7 +66,7 @@ function qdOrderHTML(w,s){
  const blocked=(!nativeAvailable||s.busy)?' disabled':'';
  const exportBlocked=(!s.generated||s.busy)?' disabled':'';
  return '<div class="qd-root">'+
-  '<header class="qd-top"><div><span class="qd-overline">BBY Q / w4U / QdU</span><h2>ReverseCoding <span>· QdU</span></h2><p>QdU pertenece a BBY Q. La coordinación real por w4U todavía debe conectarse a esta entrada local.</p></div><div class="qd-top-actions">'+
+  '<header class="qd-top"><div><span class="qd-overline">BBY Q / w4U / QdU</span><h2>ReverseCoding <span>· QdU</span></h2><p>QdU pertenece a BBY Q. La orden delegada usa w4U XI. El chat general de BBY Q sigue pendiente de conexión.</p></div><div class="qd-top-actions">'+
   (nativeAvailable?'<span class="qd-live"><i></i>Ejecutor XI local</span>':qdBadge('REQUIERE APK NATIVA','fail'))+'</div></header>'+
   '<nav class="qd-modes" aria-label="Áreas de ReverseCoding"><button class="qd-mode active" data-qd-mode="orders" aria-current="page">Órdenes a QdU</button>'+
   '<button class="qd-mode" data-qd-mode="lessons">Laboratorio de aprendizaje</button></nav>'+
@@ -73,7 +74,7 @@ function qdOrderHTML(w,s){
   '<section class="qd-coding-prompt"><div class="qd-panel-heading"><div><span class="qd-section-caption">01 / INSTRUCCIÓN</span><strong>¿Qué programa necesitas?</strong></div></div>'+
   '<label class="qd-editor-label" for="qd-order-'+esc(w.id)+'">Escribe tu orden para QdU</label>'+
   '<textarea id="qd-order-'+esc(w.id)+'" data-qd-order maxlength="180" class="qd-natural-input" placeholder="Crea un programa que multiplique 12 por 7"'+blocked+'>'+esc(w.qdOrder)+'</textarea>'+
-  '<button class="primary-button qd-command-button" data-qd-action="order"'+blocked+'>Interpretar y generar XI</button>'+
+  '<button class="primary-button qd-command-button" data-qd-action="delegate"'+blocked+'>Delegar: BBY Q → w4U → QdU</button>'+ '<'+'button class="secondary-button qd-command-button" data-qd-action="order"'+blocked+'>Probar orden local sin delegación</button>'+
   '<div class="qd-task qd-scope"><strong>Alcance comprobable</strong><p>Sumar, restar, multiplicar, dividir y resto con dos enteros de 0 a 99. Español e inglés, mediante reglas XI.</p>'+
   '<small>Ejemplos: «suma 23 y 18», «divide 84 entre 7», «create a program to multiply 12 times 7».</small></div></section>'+
   '<section class="qd-coding-editor"><div class="qd-panel-heading"><div><span class="qd-section-caption">02 / CÓDIGO</span><strong>Editor XI · sandbox</strong></div><span class="qd-file-ext">.xi</span></div>'+
@@ -137,7 +138,7 @@ async function qdAction(w,action){
  }
  const skill=qdSkill(w.qdSkill);
  const payload={action,skill:skill.id};
- if(action==='order')payload.text=w.qdOrder||'';
+ if(action==='order'||action==='delegate')payload.text=w.qdOrder||'';
  if(action==='run_code')payload.source=w.qdScratch||'';
  if(action==='evaluate'||action==='teach')payload.source=qdDraft(w);
  if(action==='solve'){payload.a=w.qdA;payload.b=w.qdB;}
@@ -146,7 +147,7 @@ async function qdAction(w,action){
   s.result={action,data:result};
   if(result.status){s.learned=result.status.learned;s.approved=result.status.approved_lessons;s.loaded=true;}
   if(action==='solve'&&result.learned&&result.pass)s.generated=result.program;
-  if(action==='order'){w.qdScratch=(result.understood&&result.pass)?result.program:'';if(result.understood&&result.pass)s.generated=result.program;}
+  if(action==='order'||action==='delegate'){w.qdScratch=(result.understood&&result.pass)?result.program:'';if(result.understood&&result.pass)s.generated=result.program;}
   if(action==='run_code'&&result.pass)s.generated=result.program;
  }catch(e){s.error='El núcleo rechazó la operación: '+e.message;}
  finally{s.busy=false;qdRender(w);queueSave();}
