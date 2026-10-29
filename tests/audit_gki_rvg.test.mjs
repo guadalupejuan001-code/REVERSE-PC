@@ -11,12 +11,16 @@ function setFnv(bytes) {
     h=((h^BigInt(bytes[i]))*1099511628211n)&mask;
   bytes.writeBigUInt64LE(h,bytes.length-8);
 }
-function fixture() {
+function fixture(bootargs=null) {
   // Synthetic *metadata* only; not an Android, Linux or CPU boot.
   const kernel=Buffer.alloc(64);kernel.writeUInt32LE(0x644d5241,56);
-  const image=Buffer.alloc(32+kernel.length);
-  image.set([82,86,73,49,13,10,26,10]);
-  image.writeBigUInt64LE(BigInt(kernel.length),8);kernel.copy(image,32);
+  const args=bootargs===null?Buffer.alloc(0):Buffer.from(bootargs,'ascii');
+  const header=bootargs===null?32:40;
+  const image=Buffer.alloc(header+kernel.length+args.length);
+  image.set([82,86,73,bootargs===null?49:50,13,10,26,10]);
+  image.writeBigUInt64LE(BigInt(kernel.length),8);
+  if(bootargs!==null)image.writeBigUInt64LE(BigInt(args.length),32);
+  kernel.copy(image,header);args.copy(image,header+kernel.length);
   const bytes=Buffer.alloc(8+43*8+image.length+1+8);
   bytes.set([82,86,71,50,13,10,26,10]);
   bytes.writeBigUInt64LE(134217728n,8); // 128 MiB logical RAM
@@ -54,7 +58,7 @@ test('reject forged RVI1 extent with correctly recomputed RVG checksum',()=>{
   bytes.writeBigUInt64LE(999n,8+43*8+8);
   setFnv(bytes);
   assert.throws(()=>auditGkiRvg(bytes,sha(kernel),sha(bytes)),
-    /RVI1 section extents invalid/);
+    /RVI1\/RVI2 section extents invalid/);
 });
 test('reject invalid magic and excessive snapshot',()=>{
   const {bytes,kernel}=fixture();bytes[0]=0;
@@ -62,4 +66,26 @@ test('reject invalid magic and excessive snapshot',()=>{
     /RVG2\/RVG3/);
   assert.throws(()=>auditGkiRvg(Buffer.alloc(256*1024*1024)),
     /snapshot size invalid/);
+});
+
+test('read-only RVI2 Android bootargs stored after real kernel bytes',()=>{
+  const args='console=ttyAMA0 earlycon=pl011,0x09000000 init=/init bootconfig';
+  const {bytes,kernel}=fixture(args);
+  const result=auditGkiRvg(bytes,sha(kernel),sha(bytes));
+  assert.equal(result.rvi_version,'RVI2');
+  assert.equal(result.bootargs,args);
+  assert.equal(result.bootargs_bytes,args.length);
+  assert.equal(result.bootargs_sha256,sha(Buffer.from(args)));
+  assert.equal(result.android_init_observed,false);
+});
+test('read-only RVI2 rejects forged profile length and control bytes with valid RVG checksum',()=>{
+  const {bytes,kernel}=fixture('init=/init bootconfig');
+  const bad=Buffer.from(bytes);
+  bad.writeBigUInt64LE(2048n,8+43*8+32);
+  setFnv(bad);
+  assert.throws(()=>auditGkiRvg(bad,sha(kernel),sha(bad)),/RVI payload limits/);
+  const changed=Buffer.from(bytes);
+  changed[8+43*8+40+kernel.length]=10;
+  setFnv(changed);
+  assert.throws(()=>auditGkiRvg(changed,sha(kernel),sha(changed)),/not printable/);
 });
