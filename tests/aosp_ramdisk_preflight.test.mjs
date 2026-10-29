@@ -77,3 +77,13 @@ test('reject invalid newc magic, traversal and truncated bodies',()=>{
   assert.throws(()=>parseNewcCpio(cpio([{name:'../init',data:fakeElf()}])),/unsafe/);
   assert.throws(()=>parseNewcCpio(data.subarray(0,data.length-60)),/truncated|terminator|extent/);
 });
+
+test('repeat empty device directory metadata, but never replace an ELF or symlink',()=>{
+  const first={name:'dev',data:Buffer.alloc(0),mode:0o40755};
+  const archive=cpio([first,first,{name:'init',data:fakeElf()}]);
+  assert.equal(parseNewcCpio(archive).length,3);
+  assert.equal(inspectRamdisk(legacy(archive)).report.init_size,64);
+  assert.throws(()=>parseNewcCpio(cpio([
+    first,{name:'dev',data:Buffer.from('file'),mode:0o100644},
+    {name:'init',data:fakeElf()}])),/duplicate non-directory/);
+});
