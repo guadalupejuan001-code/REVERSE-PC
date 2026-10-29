@@ -192,3 +192,43 @@ papelera, imágenes, aplicaciones instaladas y calculadora ejecutada en XI.
 La edición `com.reversepc.desktop` se instala junto a versiones anteriores.
 El runtime, el formato RVPC2 y la dependencia fijada de Mundo X se conservan.
 [Uso, compilación y límites de REVERSE Desktop](reverse-os-android/README.md).
+
+
+## REVERSE VELOCITY — prototipo X Render nativo (rama experimental)
+
+El juego original de carreras está en desarrollo en
+`feature/reverse-velocity-native-20261029`.
+Su primer corte usa **EtherRenderEngine/EtherSurfaceBuffer nativos de Mundo X**
+(`e2778d962af22f6f1a0794058dd4685fc2573966`) para
+generar cada píxel de una escena con cuerpos esféricos. Android Canvas
+**solo presenta** el framebuffer nativo; no hay un segundo renderizador GLES
+del juego. El estado de conducción tiene actualización fija de 20 ms,
+representación compacta de posición/orientación/velocidad y controles
+por teclado o táctiles. El juego se lanza desde el menú Aplicaciones
+de REVERSE y se presenta a pantalla completa.
+
+La API fijada de X Render **aún no soporta triángulos, mallas, texturas
+PBR, sombras, reflejos realistas, ni un backend GPU de producción**. Por
+tanto, la escena actual es una prueba de integración, no un equivalente
+visual de Forza Horizon, y la imagen se calcula por CPU. Los 320×180 píxeles
+actuales son un punto de partida por compatibilidad: la medición de FPS
+físicos sigue pendiente y la escala del mundo no implica que todos los
+objetos se carguen simultáneamente. No se adjudican capacidades a XI/RXE
+que no existen: el loop de la demostración se implementa como puente Android
+hasta tener una ABI de juegos XI/Ether.
+
+Pruebas del proyecto:
+```sh
+javac -d build/velocity-tests \
+ reverse-os-android/app/src/main/java/com/reversepc/os/VelocityPhysics.java \
+ reverse-os-android/tests/VelocityPhysicsTest.java
+java -cp build/velocity-tests com.reversepc.os.VelocityPhysicsTest
+c++ -std=c++17 -O2 -Ideps/mundo-x/native/include \
+ reverse-os-android/tests/velocity_xrender_smoke.cpp -o build/velocity-xrender-smoke
+./build/velocity-xrender-smoke
+```
+
+Para compilar APK se utiliza el workflow Android original de REVERSE
+con la misma revisión de Mundo X. La ruta GLES de la versión inicial
+se retiró antes de integrar el juego.
+
