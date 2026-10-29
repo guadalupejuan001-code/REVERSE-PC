@@ -2,6 +2,8 @@ plugins { id 'com.android.application' }
 android {
  namespace 'com.reversepc.os'
  compileSdk 35
+ // Match the exact NDK version installed by the integrated Android CI.
+ ndkVersion '27.2.12479018'
  defaultConfig {
   applicationId 'com.reversepc.os'
   minSdk 29
