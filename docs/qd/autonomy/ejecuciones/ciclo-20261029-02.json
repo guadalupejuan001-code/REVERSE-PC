@@ -1,0 +1,125 @@
+{
+  "id": "QD-20261029-02",
+  "fecha_utc": "2026-10-29",
+  "tipo": "ingenieria_depuracion_simbolica_xi",
+  "estado": "completado_con_ci_nativo_success_sin_fusion",
+  "repositorio": "guadalupejuan001-code/REVERSE-PC",
+  "rama": "qd/cycle-20261029-02-xi-debug",
+  "pr": "https://github.com/guadalupejuan001-code/REVERSE-PC/pull/56",
+  "base_pr": "https://github.com/guadalupejuan001-code/REVERSE-PC/pull/35",
+  "dependencia_inicial": "https://github.com/guadalupejuan001-code/REVERSE-PC/pull/34",
+  "refs_observadas_inicio": {
+    "reverse_main": "01829217cfb0a3a704d37f0c0f66527a23ec149d",
+    "reverse_pr34": "fe2ca5a27c810a18bc1082b47f767b6141f688b3",
+    "reverse_pr35": "770f3489181c876acdaee0a1caf25273f56f82bb",
+    "bbyq_main": "337e161af2b333b70c9bc938741e7c08097093e0",
+    "bbyq_autonomy_siguiente": "docs/autonomy/SIGUIENTE.md",
+    "bbyq_ultima_evidencia": "docs/autonomy/ejecuciones/composicion-relaciones-20261029-0242.json"
+  },
+  "concurrencia": {
+    "github_actions_activas_en_ambos_repos_al_inicio": 0,
+    "github_actions_encoladas_en_ambos_repos_al_inicio": 0,
+    "ciclo_bbyq_registrado_activo": false,
+    "uso_de_estado_real_bbyq_w4u": false,
+    "nota": "Sin acceso al lock writer.lock del dispositivo del usuario; se evitó deliberadamente usar el RVPC2 real. Tests sobre un RVPC2 inicializado en runner."
+  },
+  "checkpoint": {
+    "ci_estado_descartable": "build/qd-debug/disposable.rvp (creado por reverse_pc init)",
+    "bytes": 5092,
+    "sha256": "b18685010345e3125e56204105c0e1c72569893372772a00c7e28ee261a2b356",
+    "hash_final_identico": true,
+    "checkpoint_real_del_usuario": "No accesible ni tocado",
+    "checkpoint_bbyq_referencia": "BBY main conserva su propia continuidad E034; CI integrada PR #35 fijaba E025 y no se modificó.",
+    "codigo_checkpoint_previo": "qd/cycle-20261028-independent-exams@770f3489181c876acdaee0a1caf25273f56f82bb"
+  },
+  "objetivo": "Medir la carencia de reparación y crear una primera regla de depuración en XI, sin motor adicional, datos de usuario ni privilegios nuevos.",
+  "criterio_predefinido": {
+    "commit_criterio": "1f0e89a788d30b9675e02e2a0123a3de89a41f94",
+    "ruta": "docs/qd/autonomy/evidencias/ciclo-20261029-02-criterio.json",
+    "exigencia": "16/16 baseline corregidos, >=20/24 programas reservados distintos corregidos con 6 entradas nuevas cada uno, abstención multicause, regresión Qd y estado inalterado."
+  },
+  "diagnostico_antes": {
+    "fuente": "QdEngine.handle soporta status, evaluate, teach, solve; carece de acción de depuración.",
+    "fallos_programas_antes": "0/16 programas defectuosos completamente correctos sobre cinco entradas",
+    "conteo_antes": {
+      "sin_aciertos": 14,
+      "un_acierto": 1,
+      "dos_aciertos": 1
+    },
+    "autorrepairs_previos": "0 API disponible; no ejecutado un corrector previo",
+    "escala": "Cuatro familias aritméticas, no fallos generales de compilación"
+  },
+  "implementacion": [
+    "Nueva fuente reverse-os-android/app/src/main/assets/workbench/qd/diagnose.xi: compara hechos tipados sobre una única falta y decide siete tipos de edición; sin store8 en el script del diagnosticador ni estado maestro.",
+    "Nuevo reverse-os-android/tests/qd-debug-native.cjs: parser anfitrión de whitelist acotada, puente de datos, aplicación literal de parche devuelto por XI y oráculo externo de resultados.",
+    "Nueva .github/workflows/qd-debug.yml: compilación del host actual con mundo-X fijado, 16 mutaciones de práctica, 24 reservadas, pruebas negativas, Qd de 164 verificaciones de regresión.",
+    "No hay cambio a QdEngine.java, al UI Android, a código BBY-Q, W4u ni formato RVPC2."
+  ],
+  "examen": {
+    "separacion": "16 programas iniciales sobre cuatro causas; 24 programas reservados textualmente distintos con seis causas y seis pares nuevos únicos por programa; semilla anotada en evidencias.",
+    "antes": {
+      "completos_baseline": "0/16",
+      "completos_reservados": "0/24 (se verificó al menos una salida errónea por programa con dos entradas)"
+    },
+    "despues": {
+      "baseline": "16/16",
+      "reservados": "24/24",
+      "retencion_regresion": "4 plantillas persistidas y recuperadas en estado separado; W4u preservado"
+    },
+    "fallos_y_abstenciones": "Doble defecto -> abstención; programa correcto -> no mutación; sintaxis fuera de contrato -> rechazo; magic inválido -> rechazo XI."
+  },
+  "validacion": {
+    "codigo_ci_sha": "4e163f40cec7ec4a750cd9fb6b9701c60767e6d6",
+    "workflow_run": 40886521655,
+    "conclusion": "success",
+    "url": "https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40886521655",
+    "artefacto": "https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40886521655/artifacts/12901774917",
+    "proceso_anterior_fallido": {
+      "run": 40886274371,
+      "causa": "Colisión de fuente entre práctica y reserva al comparar textos sin tener en cuenta familia.",
+      "solucion": "Fuente alternativa reserva con único mov r3 r3 permitido por la whitelist, sin cambio al criterio de exactitud."
+    },
+    "comandos": [
+      "python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat",
+      "g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc src/reverse_pc.cpp -o build/reverse_pc",
+      "node --check reverse-os-android/tests/qd-debug-native.cjs",
+      "node --check reverse-os-android/tests/qd-native.cjs",
+      "node reverse-os-android/tests/qd-debug-native.cjs build/reverse_pc build/qd-debug",
+      "node reverse-os-android/tests/qd-native.cjs build/reverse_pc build/qd-regression"
+    ],
+    "mediciones": {
+      "runs_nativos": 435,
+      "ejecuciones_de_entradas": 352,
+      "consultas_xi_diagnosis": 82,
+      "latencia_acumulada_ms": 1082,
+      "tiempo_total_ms": 1236,
+      "tamano_rvpc2_descartable_bytes": 5092,
+      "memoria_rss_no_medida": true,
+      "rxe_compilados": 0,
+      "android_no_ejecutado_en_este_ciclo": true
+    },
+    "regresiones_observadas": 0,
+    "regresion_limitada": "164 checks del contrato Qd; NO reejecutó el CI integral Android de #35."
+  },
+  "aprendizaje": {
+    "reglas_ingenierizadas_xi": 7,
+    "aprendizaje_inducido_de_ejemplos": 0,
+    "ajustes_parametros": 0,
+    "modelo_nuevo": false,
+    "checkpoint_personal_actualizado": false
+  },
+  "integracion": {
+    "backend_xi": "Disponible y probado en rama dentro de assets Qd.",
+    "studio": "El usuario aún no dispone de botón/acción diagnosticar en la aplicación; falta puente seguro en Android y test instrumentado.",
+    "rxe": "Sin compilación RXE de programas reparados ni soporte multarchivo."
+  },
+  "problemas_pendientes": [
+    "Solo una falta a la vez en la forma canónica set/aritmética/print/halt, más un mov neutro opcional.",
+    "No puede reparar instrucciones condicionales, bucles o proyectos desconocidos.",
+    "Faltan Android instrumentation, métricas teléfono y pruebas E025 integradas en ESTA rama.",
+    "PR #34 y PR #35 continúan abiertas; #56 apilada como draft, sin fusión ni APK instalada."
+  ],
+  "evidencia": "docs/qd/autonomy/evidencias/ciclo-20261029-02-resultados.json",
+  "siguiente": "docs/qd/autonomy/SIGUIENTE.md",
+  "finalizado": true
+}
