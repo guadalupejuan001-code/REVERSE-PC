@@ -8,7 +8,7 @@ El host valida que la app que pidió el control sea el BBY Q original autorizado
 
 `https://robinhood.com/`
 
-La URL se define como constante literal en `WorkbenchActivity`; ni el mensaje ni el agente suministran una dirección URL arbitraria al puente Android. El anfitrión busca primero el navegador predeterminado registrado en Android, y después navegadores conocidos (Chrome, Samsung Internet, Firefox, Brave, Edge y otros). No abre aplicaciones de corretaje mediante enlaces profundos. Si no existe un navegador compatible, devuelve un fallo verificable.
+La URL se define como constante literal en `WorkbenchActivity`; ni el mensaje ni el agente suministran una dirección URL arbitraria al puente Android. El anfitrión prueba una lista limitada de navegadores reconocidos (Chrome, Samsung Internet, Firefox, Brave, Edge y otros); no requiere permisos especiales de roles del sistema. No abre aplicaciones de corretaje mediante enlaces profundos. Si no existe un navegador compatible, devuelve un fallo verificable.
 
 El navegador se abre **fuera del WebView de REVERSE**, que permanece en `https://reverse.local/` con la red desactivada y acceso al puente nativo. La autenticación, cookies, MFA, órdenes y saldos pertenecen únicamente al navegador/servicio externo. **BBY Q no recibe contraseñas ni acceso a la cuenta, no compra ni vende y no conecta ninguna API bursátil.**
 
