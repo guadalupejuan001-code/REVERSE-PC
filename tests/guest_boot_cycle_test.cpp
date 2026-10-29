@@ -37,7 +37,7 @@ static MinimalGuest demand_entry(bool irq){
   at=256+0x1480;emit(0x14000320); // Lower-EL IRQ vector -> timer acknowledgement.
   at=256+0x2000;mov(0,0x40010000);mov(1,0x400007c5);emit(0xf9000801);emit(0xd5033f9f);emit(0xd508871f);emit(0xd5033fdf);emit(0xd69f03e0);
   at=256+0x2100;mov(21,MachineState::gic_cpu);emit(0xb9400ea0);msr(guest_sysreg(3,3,14,2,1),31);emit(0xb90012a0);emit(0xd69f03e0);
-  at=256+0x3000;emit(0xd503201f);
+  at=256+0x3000;emit(0xd503201f);emit(0xd4000001);emit(0xd503201f);emit(0x14000000);
   MinimalGuest g(128*1024*1024,0);g.load_elf(image,true);return g;
 }
 static bool verify_demand_entry(MinimalGuest& g){
@@ -167,6 +167,35 @@ int main(){try{
   const auto post_bad_report=run_boot_cycle(post_bad,post_limits,{},[](MinimalGuest&)->bool{throw std::runtime_error("entry replay");},{},{},&bad_proof);
   check(post_bad_report.reason=="architectural_stop"&&!post_bad_report.error.empty()&&post_bad_report.prior_user_instruction_verified,"Userspace architecture failure was hidden or lost its proven origin");
   check(post_bad.snapshot()==post_bad_reference.snapshot(),"Userspace failure committed the rejected instruction or lost its prefix");
+  auto syscall=demand_entry(false);syscall.run(1000,true);syscall.run(1);syscall.run(1000,true);syscall.run(1);
+  BootCycleEntryProof syscall_proof{GuestSha256::hash(syscall.snapshot()),syscall.registers().instructions,syscall.registers().pc};
+  auto syscall_reference=syscall;syscall_reference.run(100);const auto before_exceptions=syscall.machine().exceptions;
+  post_limits.instructions=100;post_limits.chunk=3;
+  const auto syscall_report=run_boot_cycle(syscall,post_limits,{},[](MinimalGuest&)->bool{throw std::runtime_error("entry repeated after syscall");},{},{},&syscall_proof);
+  check(syscall_report.reason=="instruction_budget"&&syscall_report.prior_user_instruction_verified&&!syscall.machine().el&&syscall.machine().exceptions==before_exceptions+1,"Proven userspace did not execute native SVC, handler and ERET");
+  check(syscall.snapshot()==syscall_reference.snapshot(),"Proven syscall continuation changed CPU, mappings, clock or XI memory");
+  auto undefined=entry_reference;const auto undef_pc=undefined.registers().pc;
+  undefined.write(undefined.physical_address(undef_pc),0xd5300000u|(guest_sysreg(3,0,0,0,0)<<5),4);
+  const auto undef_before=undefined.snapshot();auto delivered_undefined=undefined;delivered_undefined.run(1);
+  check(delivered_undefined.machine().el==1&&delivered_undefined.machine().elr==undef_pc&&delivered_undefined.machine().esr==(1u<<25),"Default native EL0 undefined exception behavior changed");
+  BootCycleEntryProof undef_proof{GuestSha256::hash(undef_before),undefined.registers().instructions,undef_pc};
+  post_limits.stop_before_user_undefined=true;
+  const auto undef_report=run_boot_cycle(undefined,post_limits,{},{},{},{},&undef_proof);
+  check(undef_report.reason=="architectural_stop"&&undef_report.error.find("EL0 undefined instruction trap")!=std::string::npos&&undefined.snapshot()==undef_before,"Diagnostic boundary committed an undefined trap or hid its exact PC");
+  post_limits.stop_before_user_undefined=false;
+  auto panic_image=system_demo_elf();panic_image.resize(256);
+  auto panic_emit=[&](std::uint32_t w){put(panic_image,w,4);};
+  for(unsigned i=0;i<4;i++)panic_emit((i?0xf2800000u:0xd2800000u)|(i<<21)|(unsigned((MachineState::uart_base>>(16*i))&65535)<<5));
+  const std::string panic_text="Kernel panic - not syncing: test\n";
+  for(unsigned char c:panic_text){panic_emit(0x52800001u|(unsigned(c)<<5));panic_emit(0x39000001u);}
+  panic_emit(0x14000000u);
+  for(unsigned i=0;i<8;i++){panic_image[96+i]=std::uint8_t(std::uint64_t(panic_image.size()-256)>>(8*i));panic_image[104+i]=panic_image[96+i];}
+  MinimalGuest panic_guest(128*1024*1024,0);panic_guest.load_elf(panic_image,true);auto panic_reference=panic_guest;
+  post_limits.instructions=1000;post_limits.chunk=13;
+  const auto panic_report=run_boot_cycle(panic_guest,post_limits);
+  panic_reference.run(panic_guest.registers().instructions);
+  check(panic_report.reason=="guest_kernel_panic"&&panic_report.console.find("Kernel panic - not syncing")!=std::string::npos&&panic_guest.registers().instructions<100,"A kernel panic was counted as sustained boot progress");
+  check(panic_guest.snapshot()==panic_reference.snapshot(),"Panic observation changed the native successful prefix");
   const auto root=std::filesystem::path("evidence/c04/cycle-journal-test-"+std::to_string(::getpid()));
   std::filesystem::create_directories(root.parent_path());BootCycleJournal journal(root);
   journal.publish(bad,failed);journal.publish(split,report);journal.publish(bounded,bounded_report);

@@ -1,7 +1,7 @@
 name: Android C07 proven post-init continuation
 on:
   pull_request:
-    paths: ['.github/workflows/android-post-init-cycle.yml', 'experiments/android-post-init-cycle.json', 'src/guest_boot_cycle.hpp', 'src/guest_android_init_proof.hpp', 'tools/guest_pci_cycle.cpp', 'tools/android_verified_init_source.mjs', 'tests/guest_boot_cycle_test.cpp', 'src/minimal_guest*']
+    paths: ['.github/workflows/android-post-init-cycle.yml', 'experiments/android-post-init-cycle.json', 'src/guest*', 'src/minimal_guest*', 'tools/guest_pci_cycle.cpp', 'tools/android_verified_init_source.mjs', 'tests/guest_boot_cycle_test.cpp', 'tests/minimal_guest*_test.cpp', 'CMakeLists.txt']
   workflow_dispatch:
 permissions:
   contents: read
@@ -24,10 +24,17 @@ jobs:
       - name: Build and verify native continuation and its exact original source
         run: |
           mkdir -p build evidence/c07
+          cmake -S . -B build/cmake-c07 -DETHER_SOURCE_DIR="$PWD/deps/mundo-x" -DCMAKE_BUILD_TYPE=Release > evidence/c07/cmake-configure.txt
           python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
           python3 scripts/build-softfloat.py
           g++ -std=c++17 -O1 -pthread -fsanitize=undefined -fno-sanitize-recover=all -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tests/guest_boot_cycle_test.cpp build/softfloat/libreverse_softfloat.a -o build/cycle-test
           build/cycle-test > evidence/c07/cycle-tests.json
+          g++ -std=c++17 -O1 -pthread -fsanitize=undefined -fno-sanitize-recover=all -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tests/minimal_guest_el0_cache_test.cpp build/softfloat/libreverse_softfloat.a -o build/el0-cache-test
+          build/el0-cache-test > evidence/c07/el0-cache-tests.json
+          g++ -std=c++17 -O1 -pthread -fsanitize=undefined -fno-sanitize-recover=all -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tests/minimal_guest_fp_test.cpp build/softfloat/libreverse_softfloat.a -o build/fp-test
+          build/fp-test > evidence/c07/fp-tests.json
+          g++ -std=c++17 -O1 -pthread -fsanitize=undefined -fno-sanitize-recover=all -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tests/minimal_guest_crc_test.cpp build/softfloat/libreverse_softfloat.a -o build/crc-test
+          build/crc-test > evidence/c07/crc-tests.json
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tools/guest_pci_cycle.cpp build/softfloat/libreverse_softfloat.a -o build/cycle
           node tools/android_verified_init_source.mjs input/current.rvg input/current.json > evidence/c07/input-audit.json
           cp input/current.json evidence/c07/entry-proof.json
@@ -76,6 +83,7 @@ jobs:
           import {readFileSync} from 'node:fs';
           const p=JSON.parse(readFileSync('evidence/c07/milestone.json'));
           if(!p.source_entry_verified||p.advanced_instructions<=0)throw Error('No proved post-init progress');
-          if(p.stop_reason==='architectural_stop'||p.stop_reason==='no_instruction_progress'||p.stop_reason==='unverified_userspace_entry')throw Error('Native blocker preserved: '+p.error);
+          if(p.stop_reason==='architectural_stop'||p.stop_reason==='no_instruction_progress'||p.stop_reason==='unverified_userspace_entry'||p.stop_reason==='guest_kernel_panic')throw Error('Native blocker preserved: '+p.error);
+          if(/Kernel panic - not syncing|Attempted to kill init!/.test(readFileSync('evidence/c07/console.txt','utf8')))throw Error('Kernel panic cannot establish Android progress');
           console.log('REVERSE_PROVEN_POST_INIT_PROGRESS');
           JS

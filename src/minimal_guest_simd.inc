@@ -5,6 +5,29 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
   auto scalar=[&](unsigned index){return floating_.v[index].lane(0,bits);};
   auto valid_float=[&](){return bits==32||bits==64;};
   auto word_size=[&](){const auto opcode=(i>>22)&3,size=i>>30;return opcode&2?(size==0?16u:0u):(1u<<size);};
+  // LD1/ST1 multiple structures: one through four consecutive V registers,
+  // no offset or post-index. Transfers use the encoded element size, so
+  // unaligned byte structures do not inherit a 16-byte scalar alignment rule.
+  if((i&0xbf200000u)==0x0c000000u){
+    const bool post=i&0x00800000u,load=i&0x00400000u,wide=i&0x40000000u;
+    const unsigned operation=(i>>12)&15,element_bytes=1u<<((i>>10)&3),vector_bytes=wide?16:8;
+    const unsigned count=operation==7?1:operation==10?2:operation==6?3:operation==2?4:0;
+    if(!count||(!post&&rm))return false;
+    fp_access();const auto base=reg(rn,64,true),increment=post?(rm==31?std::uint64_t(count*vector_bytes):reg(rm)):0;
+    std::array<Vector128,4> values{};
+    for(unsigned n=0;n<count;n++)for(unsigned offset=0;offset<vector_bytes;offset+=element_bytes)
+      check_access(base+std::uint64_t(n)*vector_bytes+offset,element_bytes,!load);
+    if(load){
+      for(unsigned n=0;n<count;n++)for(unsigned offset=0;offset<vector_bytes;offset+=element_bytes)
+        values[n].lane(offset/element_bytes,element_bytes*8,cpu_read(base+std::uint64_t(n)*vector_bytes+offset,element_bytes,result));
+      for(unsigned n=0;n<count;n++)floating_.v[(rd+n)&31]=values[n];
+    }else{
+      for(unsigned n=0;n<count;n++)values[n]=floating_.v[(rd+n)&31];
+      for(unsigned n=0;n<count;n++)for(unsigned offset=0;offset<vector_bytes;offset+=element_bytes)
+        cpu_write(base+std::uint64_t(n)*vector_bytes+offset,values[n].lane(offset/element_bytes,element_bytes*8),element_bytes,result);
+    }
+    if(post)set(rn,base+increment,64,true);return true;
+  }
   // Scalar and Q memory operations use the same physical XI/Ether bytes.
   if((i&0x3b000000)==0x39000000 && (i&0x04000000)){
     const auto bytes=word_size();if(!bytes)return false;fp_access();
@@ -92,6 +115,70 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
   const bool q=i&0x40000000,u=i&0x20000000;
   const unsigned width=q?128:64,size=(i>>22)&3,element=8u<<size;
   auto commit=[&](Vector128 value){if(!q)value.high=0;floating_.v[rd]=value;};
+  const auto right_shift=[&](std::uint64_t x,unsigned amount,unsigned lane_bits,bool signed_value){
+    const bool negative=signed_value&&bool(x&(UINT64_C(1)<<(lane_bits-1)));
+    if(amount>=lane_bits)return negative?low_mask(lane_bits):UINT64_C(0);
+    if(!amount)return x;
+    return (x>>amount)|(negative?(low_mask(lane_bits)^low_mask(lane_bits-amount)):UINT64_C(0));
+  };
+  const auto immediate_shift=i&0x9f80fc00u;
+  if(immediate_shift==0x0f000400u||(immediate_shift==0x0f005400u&&!u)){ // S/USHR or SHL, immediate.
+    const unsigned encoded=(i>>16)&127;if(encoded<8)return false;
+    unsigned lane_bits=8;while(lane_bits*2<=encoded)lane_bits*=2;
+    if(lane_bits==64&&!q)return false;
+    const bool left=immediate_shift==0x0f005400u;
+    const unsigned amount=left?encoded-lane_bits:2*lane_bits-encoded;
+    fp_access();const auto source=floating_.v[rn];Vector128 value;
+    for(unsigned n=0;n<width/lane_bits;n++){
+      const auto x=source.lane(n,lane_bits);
+      value.lane(n,lane_bits,left?x<<amount:right_shift(x,amount,lane_bits,!u));
+    }commit(value);return true;
+  }
+  if((i&0x9f20fc00u)==0x0e204400u){ // SSHL/USHL: the signed low byte determines each lane's shift.
+    if(size==3&&!q)return false;fp_access();const auto source=floating_.v[rn],shifts=floating_.v[rm];Vector128 value;
+    for(unsigned n=0;n<width/element;n++){
+      const auto x=source.lane(n,element);const unsigned byte=unsigned(shifts.lane(n,element)&255);
+      const int amount=byte<128?int(byte):int(byte)-256;
+      value.lane(n,element,amount<0?right_shift(x,unsigned(-amount),element,!u):unsigned(amount)>=element?0:x<<unsigned(amount));
+    }commit(value);return true;
+  }
+  if((i&0x9f3ffc00u)==0x0e202800u){ // SADDLP/UADDLP, widening pairwise addition.
+    if(size==3)return false;fp_access();const auto source=floating_.v[rn];Vector128 value;
+    for(unsigned n=0;n<width/(2*element);n++){
+      auto x=source.lane(2*n,element),y=source.lane(2*n+1,element);
+      if(!u){const auto sign=UINT64_C(1)<<(element-1);if(x&sign)x|=~low_mask(element);if(y&sign)y|=~low_mask(element);}
+      value.lane(n,element*2,x+y);
+    }commit(value);return true;
+  }
+  if((i&0xbf80f400u)==0x0f008400u){ // SHRN/RSHRN and upper-half variants.
+    const unsigned encoded=(i>>16)&127;if(encoded<8||encoded>=64)return false;
+    unsigned narrow=8;while(narrow*2<=encoded)narrow*=2;
+    const unsigned shift=2*narrow-encoded;const bool rounded=i&0x800;
+    fp_access();const auto source=floating_.v[rn];Vector128 result;
+    for(unsigned n=0;n<64/narrow;n++){
+      const auto x=source.lane(n,2*narrow);
+      const auto carry=rounded&&((x&((UINT64_C(1)<<shift)-1))>=(UINT64_C(1)<<(shift-1)));
+      result.lane(n,narrow,(x>>shift)+unsigned(carry));
+    }
+    if(q)floating_.v[rd].high=result.low;else floating_.v[rd]={result.low,0};return true;
+  }
+  if((i&0xbf3ffc00u)==0x0e209800u){ // CMEQ vector, immediate zero.
+    if(size==3&&!q)return false;fp_access();const auto source=floating_.v[rn];Vector128 value;
+    for(unsigned n=0;n<width/element;n++)value.lane(n,element,source.lane(n,element)==0?UINT64_MAX:0);
+    commit(value);return true;
+  }
+  const auto pairwise=i&0x9f20fc00u;
+  if(pairwise==0x0e20bc00u||pairwise==0x0e20a400u||pairwise==0x0e20ac00u){ // ADDP, S/UMAXP, S/UMINP.
+    const bool add=pairwise==0x0e20bc00u,minimum=pairwise==0x0e20ac00u;
+    if((add&&u)||(size==3&&(!q||!add)))return false;
+    fp_access();const auto a=floating_.v[rn],b=floating_.v[rm];Vector128 value;const unsigned lanes=width/element;
+    for(unsigned n=0;n<lanes;n++){
+      const auto& source=n<lanes/2?a:b;const auto at=(n%(lanes/2))*2;
+      const auto x=source.lane(at,element),y=source.lane(at+1,element);
+      const auto sign=UINT64_C(1)<<(element-1),xx=u?x:x^sign,yy=u?y:y^sign;
+      value.lane(n,element,add?x+y:minimum?(xx<yy?x:y):(xx>yy?x:y));
+    }commit(value);return true;
+  }
   if((i&0x9f20fc00)==0x0e201c00){ // AND/BIC/ORR/ORN/EOR/BSL/BIT/BIF
     fp_access();const auto a=floating_.v[rn],b=floating_.v[rm],d=floating_.v[rd];Vector128 value;
     auto logic=[&](std::uint64_t x,std::uint64_t y,std::uint64_t old){
@@ -170,8 +257,14 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
       value.lane(n,8,index<16*length?floating_.v[(rn+index/16)&31].lane(index%16,8):extension?old.lane(n,8):0);}
     commit(value);return true;
   }
-  if((i&0x9ffffc00)==0x0e205800&&u){ // NOT
-    fp_access();const auto a=floating_.v[rn];commit({~a.low,~a.high});return true;
+  if((i&0x9ffffc00)==0x0e205800){ // CNT or NOT, byte vectors.
+    fp_access();const auto a=floating_.v[rn];Vector128 value;
+    if(u)value={~a.low,~a.high};
+    else for(unsigned n=0;n<width/8;n++){
+      auto byte=a.lane(n,8);unsigned count=0;for(unsigned bit=0;bit<8;bit++)count+=unsigned((byte>>bit)&1);
+      value.lane(n,8,count);
+    }
+    commit(value);return true;
   }
   if((i&0xbf3ffc00)==0x0e200800){ // REV64
     if(size==3)return false;fp_access();const auto a=floating_.v[rn];Vector128 value;const auto per_word=64/element;

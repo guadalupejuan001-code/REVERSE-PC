@@ -260,7 +260,7 @@ class MinimalGuest {
     override_limit_=0; // sentinel: constrained by actual host resources only
   }
 
-  RunResult run(std::uint64_t budget,bool stop_before_el0=false) {
+  RunResult run(std::uint64_t budget,bool stop_before_el0=false,bool stop_before_user_undefined=false) {
     require(image_!=nullptr, "No ELF guest is loaded");
     require(budget>0 && budget<=1000000, "Guest run budget must be 1..1000000 instructions");
     auto candidate=*this; // Immutable image and unchanged Ether shards are shared.
@@ -287,9 +287,17 @@ class MinimalGuest {
       if(candidate.machine_.enabled && !(candidate.machine_.daif&0x80) && candidate.machine_.next_irq()!=1023){
         candidate.exception(0,0,candidate.registers_.pc,true);
         candidate.advance();
-      }else try{candidate.step(result);}
+      }else {
+      const auto source_pc=candidate.registers_.pc;const auto source_el=candidate.machine_.el;
+      try{candidate.step(result);}
       catch(const MachineFault& fault){
+        // Optional host diagnostic boundary. The failed whole transaction is
+        // rolled back normally; prefix localization retains every earlier
+        // native transition. Default architectural exception delivery is unchanged.
+        if(stop_before_user_undefined&&candidate.machine_.enabled&&!source_el&&!(fault.syndrome>>26))
+          throw std::runtime_error("EL0 undefined instruction trap "+hex(candidate.read(candidate.physical_address(source_pc,false,true),4))+" at "+hex(source_pc)+" syndrome "+hex(fault.syndrome));
         candidate.exception(fault.syndrome,fault.address,candidate.registers_.pc,false);candidate.advance();
+      }
       }
       ++result.executed;
     }
@@ -572,7 +580,7 @@ class MinimalGuest {
  public:
   Bytes display_rgb() const;
  private:
-  std::uint64_t system_read(unsigned id);
+  std::uint64_t system_read(unsigned id,unsigned rt=31);
   void system_write(unsigned id,std::uint64_t value);
   void exception(std::uint64_t syndrome,std::uint64_t address,std::uint64_t return_pc,bool irq);
   void select_stack(unsigned el,unsigned selected);
@@ -632,7 +640,7 @@ inline void MinimalGuest::step(RunResult& result) {
   else if ((instruction&0xfffffeff)==0xd50040bf) {
     require(machine_.enabled,"SPSel requires system mode");if(!machine_.el)throw MachineFault{1u<<25,0};select_stack(1,(instruction>>8)&1);
   }
-  else if ((instruction&0xfff00000)==0xd5300000) { set(rd,system_read((instruction>>5)&65535)); }
+  else if ((instruction&0xfff00000)==0xd5300000) { set(rd,system_read((instruction>>5)&65535,rd)); }
   else if ((instruction&0xfff00000)==0xd5100000) { system_write((instruction>>5)&65535,reg(rd)); }
   else if (instruction==0xd69f03e0) { // ERET EL1 -> EL1h/EL1t/EL0t
     require(machine_.enabled,"ERET requires system mode");if(!machine_.el)throw MachineFault{1u<<25,0};
@@ -648,15 +656,22 @@ inline void MinimalGuest::step(RunResult& result) {
     machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;
   }
   else if ((instruction&0xfff80000)==0xd5080000) { // selected SYS operations
-    require(machine_.enabled,"SYS requires system mode");if(!machine_.el)throw MachineFault{1u<<25,0};
+    require(machine_.enabled,"SYS requires system mode");
     const auto op1=(instruction>>16)&7,crn=(instruction>>12)&15,crm=(instruction>>8)&15,op2=(instruction>>5)&7;
+    const bool zero=crn==7&&op1==3&&crm==4&&op2==1;
+    if(!machine_.el){
+      if(!zero)throw MachineFault{1u<<25,0};
+      if(!(machine_.sctlr&(UINT64_C(1)<<14)))throw MachineFault{guest_sys64_syndrome((instruction>>5)&65535,rd,false),0};
+    }
     if(crn==8 && (op1==0) && (crm==3||crm==7) && op2<=7){invalidate_translation_hints();}
     else if(crn==7 && ((op1==0&&(crm==1||crm==5||crm==6||crm==10||crm==11||crm==14)) || (op1==3&&(crm==5||crm==10||crm==11||crm==14)))){ /* coherent cache maintenance */ }
     else if(crn==7&&op1==0&&crm==8&&op2<=3){
       try{const auto physical=translate(reg(rd),op2&1);machine_.par=physical&~UINT64_C(4095);}
       catch(const MachineFault& fault){machine_.par=1|((fault.syndrome&63)<<1);}
     }
-    else if(crn==7&&op1==3&&crm==4&&op2==1){const auto address=reg(rd)&~UINT64_C(63);check_access(address,8,true);check_access(address+56,8,true);
+    else if(zero){const auto address=reg(rd)&~UINT64_C(63);
+      if(device_address(translate(address,true)))throw MachineFault{(std::uint64_t(machine_.el?0x25:0x24)<<26)|(1u<<25)|64u|0x21,address};
+      check_access(address,8,true);check_access(address+56,8,true);
       for(unsigned i=0;i<64;i+=8)cpu_write(address+i,0,8,result);}
     else unsupported();
   }
@@ -925,6 +940,17 @@ inline void MinimalGuest::step(RunResult& result) {
       if(opcode==5)--output;
     }else unsupported();
     set(rd,output,bits);
+  }
+  else if ((instruction&0x7fe0e000u)==0x1ac04000u) { // CRC32 / CRC32C, B/H/W/X register forms.
+    const unsigned size=(instruction>>10)&3;
+    if(bool(instruction>>31)!=(size==3))unsupported();
+    const auto polynomial=instruction&0x1000?UINT32_C(0x82f63b78):UINT32_C(0xedb88320);
+    auto crc=std::uint32_t(reg(rn,32));const auto data=reg(rm,size==3?64:32);
+    for(unsigned byte=0;byte<(1u<<size);byte++){
+      crc^=std::uint32_t((data>>(8*byte))&255);
+      for(unsigned bit=0;bit<8;bit++)crc=(crc>>1)^((crc&1)?polynomial:0u);
+    }
+    set(rd,crc,32);
   }
   else if ((instruction&0x7fe0fc00)==0x1ac00800 || (instruction&0x7fe0fc00)==0x1ac00c00) { // UDIV/SDIV
     const auto a=reg(rn,bits), b=reg(rm,bits); std::uint64_t value=0;

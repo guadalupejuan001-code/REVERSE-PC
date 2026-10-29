@@ -11,6 +11,14 @@
 #include "minimal_guest_counter.hpp"
 
 namespace reverse_pc::guest {
+// ESR_EL1 EC=0x18, IL=1, ISS for an AArch64 trapped MRS/MSR/SYS.
+// Register identity and Rt are carried to the guest's actual sysinstr handler.
+inline std::uint64_t guest_sys64_syndrome(unsigned id,unsigned rt,bool reading){
+  return (UINT64_C(0x18)<<26)|(UINT64_C(1)<<25)|
+    (std::uint64_t((id>>14)&3)<<20)|(std::uint64_t(id&7)<<17)|
+    (std::uint64_t((id>>11)&7)<<14)|(std::uint64_t((id>>7)&15)<<10)|
+    (std::uint64_t(rt&31)<<5)|(std::uint64_t((id>>3)&15)<<1)|(reading?1u:0u);
+}
 struct MachineFault {
   std::uint64_t syndrome=0, address=0;
 };

@@ -15,6 +15,7 @@ struct BootCycleLimits {
   std::uint64_t instructions=3000000000, wall_ms=1200000, chunk=50000;
   std::uint64_t checkpoint_ms=60000, checkpoint_instructions=100000000;
   bool stop_after_first_user_instruction=false;
+  bool stop_before_user_undefined=false;
 };
 struct BootCycleReport {
   std::uint64_t initial_instructions=0, elapsed_ms=0, chunks=0;
@@ -61,17 +62,17 @@ inline RunResult boot_cycle_entry_event(MinimalGuest& guest,const MachineFault* 
 // the exact successful prefix, including its UART, and leave the faulting
 // instruction unexecuted for diagnosis and subsequent repair.
 inline RunResult boot_cycle_prefix(MinimalGuest& guest,std::uint64_t count,
-                                   bool stop_el0,std::string& error) {
-  try {return guest.run(count,stop_el0);}
+                                   bool stop_el0,std::string& error,bool stop_undefined=false) {
+  try {return guest.run(count,stop_el0,stop_undefined);}
   catch(const std::exception& failure) {
     error=failure.what();const auto before=guest;auto good=before;
     std::uint64_t low=0,high=count;RunResult prefix;
     while(low+1<high){const auto middle=low+(high-low)/2;auto trial=before;
-      try{auto run=trial.run(middle,stop_el0);low=middle;good=std::move(trial);prefix=std::move(run);}
+      try{auto run=trial.run(middle,stop_el0,stop_undefined);low=middle;good=std::move(trial);prefix=std::move(run);}
       catch(const std::exception&){high=middle;}
     }
     auto rejected=good;bool failed=false;
-    try{rejected.run(1,stop_el0);}catch(const std::exception&){failed=true;}
+    try{rejected.run(1,stop_el0,stop_undefined);}catch(const std::exception&){failed=true;}
     require(failed,"Could not localize the rejected CPU transition");
     guest=std::move(good);return prefix;
   }
@@ -130,7 +131,7 @@ inline BootCycleReport run_boot_cycle(MinimalGuest& guest,const BootCycleLimits&
       }
     }else{
       std::string failure;const auto count=std::min(limit.chunk,limit.instructions-steps);
-      const auto run=boot_cycle_prefix(guest,count,bool(first_user)&&!report.first_user_instruction_verified&&!report.prior_user_instruction_verified,failure);
+      const auto run=boot_cycle_prefix(guest,count,bool(first_user)&&!report.first_user_instruction_verified&&!report.prior_user_instruction_verified,failure,limit.stop_before_user_undefined);
       output(run);++report.chunks;
       if(!failure.empty()){report.reason="architectural_stop";report.error=failure;break;}
       // WFI may be the final instruction of this transaction even though
@@ -141,6 +142,7 @@ inline BootCycleReport run_boot_cycle(MinimalGuest& guest,const BootCycleLimits&
         report.reason="no_instruction_progress";break;
       }
     }
+    if(report.console.find("Kernel panic - not syncing")!=std::string::npos){report.reason="guest_kernel_panic";report.error="Guest kernel reported a panic";break;}
     tick();if(progress)progress(guest,report);
     const auto now=std::chrono::steady_clock::now();
     if(save&&(now-saved_at>=std::chrono::milliseconds(limit.checkpoint_ms)||guest.registers().instructions-saved_steps>=limit.checkpoint_instructions)){

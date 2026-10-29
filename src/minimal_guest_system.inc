@@ -224,11 +224,18 @@ inline void MinimalGuest::device_write(std::uint64_t address,std::uint64_t value
   throw std::runtime_error("Unsupported GIC distributor register write "+hex(offset));
 }
 inline unsigned guest_sysreg(unsigned op0,unsigned op1,unsigned crn,unsigned crm,unsigned op2){return (op0<<14)|(op1<<11)|(crn<<7)|(crm<<3)|op2;}
-inline std::uint64_t MinimalGuest::system_read(unsigned id) {
+inline std::uint64_t MinimalGuest::system_read(unsigned id,unsigned rt) {
   auto& m=machine_;
   if(id==guest_sysreg(3,3,4,4,0)||id==guest_sysreg(3,3,4,4,1)){fp_access();return id==guest_sysreg(3,3,4,4,0)?floating_.fpcr:floating_.fpsr;}
   if(id==guest_sysreg(3,3,4,2,0))return std::uint64_t(registers_.nzcv)<<28;
   if(!m.enabled)throw std::runtime_error("System registers require the ARM64 compatibility system mode");
+  // DCZID is readable at EL0. DZP reports the guest kernel's DZE policy;
+  // BS=4 retains this machine's original 64-byte DC ZVA block size.
+  if(id==guest_sysreg(3,3,0,0,7))return 4u|(!m.el&&!(m.sctlr&(UINT64_C(1)<<14))?16u:0u);
+  if(!m.el&&id==guest_sysreg(3,3,0,0,1)){
+    if(!(m.sctlr&(UINT64_C(1)<<15)))throw MachineFault{guest_sys64_syndrome(id,rt,true),0};
+    return 0x8444c004;
+  }
   if(!m.el && id!=guest_sysreg(3,3,13,0,2)&&id!=guest_sysreg(3,3,13,0,3)&&id!=guest_sysreg(3,3,4,2,0)&&
      !(id==guest_sysreg(3,3,14,0,1)&&(m.cntkctl&1))&&!(id==guest_sysreg(3,3,14,0,2)&&(m.cntkctl&2)))throw MachineFault{1u<<25,0};
   if(id==guest_sysreg(3,0,0,0,0))return 0x410fd034; // MIDR, Cortex-A53 model, one core.
@@ -252,7 +259,6 @@ inline std::uint64_t MinimalGuest::system_read(unsigned id) {
      id==guest_sysreg(3,0,0,7,3))return 0; // ID_AA64MMFR3_EL1: advanced memory features absent.
   if(id==guest_sysreg(3,0,0,7,0))return 0x0ff00005; // 48-bit PA, 4 KiB only.
   if(id==guest_sysreg(3,3,0,0,1))return 0x8444c004; // CTR: 64-byte coherent cache lines.
-  if(id==guest_sysreg(3,3,0,0,7))return 4; // DCZID: 64-byte zero block.
   if(id==guest_sysreg(3,1,0,0,1))return 0; // CLIDR: no modeled caches.
   if(id==guest_sysreg(3,0,4,2,2))return m.el<<2;
   if(id==guest_sysreg(3,0,4,2,0))return m.sp_select;

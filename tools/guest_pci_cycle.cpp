@@ -36,7 +36,7 @@ static std::string next_instruction(const MinimalGuest& guest){
   catch(const MachineFault& e){return "{\"inspection_fault\":"+quote(hex(e.syndrome))+",\"address\":"+quote(hex(e.address))+"}";}
 }
 int main(int argc,char** argv){try{
-  require(argc>=6&&argc<=12,"Expected input.rvg disk.raw new-output-directory milliseconds input-sha256 [--chunk=N] [--instructions=N] [--counter-latency=host-entropy] [--stop-after-init] [--counter-instructions-per-tick=N] [--continue-verified-init=report.json]");
+  require(argc>=6&&argc<=13,"Expected input.rvg disk.raw new-output-directory milliseconds input-sha256 [--chunk=N] [--instructions=N] [--counter-latency=host-entropy] [--stop-after-init] [--counter-instructions-per-tick=N] [--continue-verified-init=report.json] [--stop-before-user-undefined]");
   BootCycleLimits limits;const std::string wall(argv[4]);
   require(!wall.empty()&&wall.find_first_not_of("0123456789")==std::string::npos,"Wall budget must be decimal milliseconds");
   limits.wall_ms=std::stoull(wall);require(limits.wall_ms&&limits.wall_ms<=1500000,"Wall budget must be 1..1500000 ms");
@@ -45,6 +45,7 @@ int main(int argc,char** argv){try{
   std::string prior_report_path;const std::string proof_prefix="--continue-verified-init=";
   for(int i=6;i<argc;i++){
     const std::string arg(argv[i]);if(arg=="--counter-latency=host-entropy"){require(!seed_clock,"Duplicate timing mode");seed_clock=true;continue;}
+    if(arg=="--stop-before-user-undefined"){require(!limits.stop_before_user_undefined,"Duplicate undefined diagnostic stop");limits.stop_before_user_undefined=true;continue;}
     if(arg.rfind(proof_prefix,0)==0){require(prior_report_path.empty(),"Duplicate verified init proof");prior_report_path=arg.substr(proof_prefix.size());require(!prior_report_path.empty(),"Missing verified init proof path");continue;}
     if(arg=="--stop-after-init"){require(!limits.stop_after_first_user_instruction,"Duplicate first-init stop");limits.stop_after_first_user_instruction=true;continue;}
     if(arg.rfind(rate_prefix,0)==0){
@@ -101,5 +102,5 @@ int main(int argc,char** argv){try{
   };
   const auto result=run_boot_cycle(guest,limits,save,entry,progress,[]{return stopping!=0;},prior_report_path.empty()?nullptr:&prior_entry);
   std::cout<<"{\"journal_generations\":"<<journal.sequence()<<",\"next_instruction\":"<<next_instruction(guest)<<",\"cycle\":"<<boot_cycle_json(guest,result,GuestSha256::hash(guest.snapshot()),source)<<"}\n";
-  return result.reason=="architectural_stop"||result.reason=="unverified_userspace_entry"||result.reason=="no_instruction_progress"?2:0;
+  return result.reason=="architectural_stop"||result.reason=="unverified_userspace_entry"||result.reason=="no_instruction_progress"||result.reason=="guest_kernel_panic"?2:0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
