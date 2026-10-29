@@ -5748,6 +5748,20 @@ print r14
 set r14 46
 print r14
 label browser_open_done
+# Clear the transient input mailbox before committing this browser action.
+load8 r9 7400000000000000017
+set r0 0
+label browser_scrub_loop
+cmp r0 r9
+jge browser_scrub_done
+set r7 7400000000000000128
+add r7 r0
+store8 $r7 0
+add r0 1
+jmp browser_scrub_loop
+label browser_scrub_done
+store8 7400000000000000016 0
+store8 7400000000000000017 0
 halt
 label no_browser_command
 halt
