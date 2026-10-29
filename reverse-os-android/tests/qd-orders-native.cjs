@@ -107,7 +107,11 @@ const invalid=[
  ['imprime acceso sistema 1 2',1],
  ['multiplica 12 por 7 y divide',3],
  ['suma 3',2],
- ['hello world',1]
+ ['hello world',1],
+ ['borra archivos y suma 2 y 3',1],
+ ['hackea sistema y multiplica 3 por 2',1],
+ ['crea una calculadora y suma 2 y 3',1],
+ ['calcula 5 por 3',1]
 ];
 for(const [prompt,status] of invalid){const d=understand(prompt);assert.equal(d[0],status,'Unexpected acceptance for '+prompt);}
 for(const rejected of ['resta -3 y 4','suma 3 y 4 y 5','create code to add 99 and 100'])assert.throws(()=>understand(rejected));
