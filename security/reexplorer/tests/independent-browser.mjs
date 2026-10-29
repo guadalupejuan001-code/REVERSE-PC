@@ -24,6 +24,11 @@ yes(kernel.includes('"reexplorer/navigation-core.xi"'),'Native Q-Core source shi
 yes(browser.includes('shouldOverrideUrlLoading'),'Real browser handles navigation');
 yes(browser.includes('allowNavigationByXi'),'Every explicit navigation runs through XI');
 yes(browser.includes('page.loadUrl(destination)'),'Browser actually loads web documents');
+const boot=read('reverse-os-android/app/src/main/java/com/reversepc/os/BootActivity.java');
+const gradle=read('reverse-os-android/app/build.gradle');
+yes(boot.includes('getPackageName().endsWith(".workbench")'),'Boot routes workbench-suffixed packages');
+yes(gradle.includes("applicationId 'com.reversepc.reexplorer.quantum.workbench'"),
+  'Quantum preview boots the native REVERSE desktop');
 yes(browser.includes('WebView.setDataDirectorySuffix("reexplorer")'),'Separate WebView data');
 yes(!browser.includes('addJavascriptInterface('),'No browser bridge to REVERSE');
 yes(browser.includes('handler.cancel()'),'TLS exception never overridden');
