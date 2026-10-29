@@ -72,18 +72,27 @@ public final class VelocityActivity extends Activity {
     private void controls(){
         if(surface==null)return;
         boolean l=left||keyLeft,r=right||keyRight;
-        surface.controls(gas||keyGas?1000:0,brake||keyBrake?1000:0,
-                         l==r?0:l?-1000:1000,drift||keyDrift);
+        surface.controls(gas||keyGas?1:0,brake||keyBrake?1:0,
+                         l==r?1:l?0:2,drift||keyDrift);
     }
     @Override public void onCreate(Bundle state){
         super.onCreate(state);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         WorkbenchActivity.immersive(this);
-        VelocityPhysics physics=new VelocityPhysics();
+        final VelocityXiEngine game;
+        try{game=new VelocityXiEngine(this);}
+        catch(Exception failure){
+            TextView error=text("REVERSE VELOCITY · XI\nNo se pudo iniciar el programa propio: "+
+                failure.getMessage(),17);
+            error.setPadding(dp(24),dp(24),dp(24),dp(24));
+            error.setBackgroundColor(0xff10191d);
+            setContentView(error);
+            return;
+        }
         FrameLayout root=new FrameLayout(this);
         root.setBackgroundColor(0xff17252c);
 
-        surface=new VelocityXSurface(this,physics,(kmh,checkpoints,total,seconds,
+        surface=new VelocityXSurface(this,game,(kmh,checkpoints,total,seconds,
                  offRoad,slide,finished,fps,rw,rh,error)->runOnUiThread(()->{
             if(speed!=null)speed.setText(kmh+" km/h");
             if(route!=null)route.setText(error.isEmpty()?
@@ -96,11 +105,11 @@ public final class VelocityActivity extends Activity {
         }));
         root.addView(surface,new FrameLayout.LayoutParams(-1,-1));
 
-        TextView brand=text("REVERSE / VELOCITY  ·  X RENDER",13);
+        TextView brand=text("REVERSE / VELOCITY  ·  XI + X RENDER",13);
         add(root,brand,-2,-2,Gravity.TOP|Gravity.LEFT,20,13,0,0);
         speed=text("0 km/h",24);
         add(root,speed,-2,-2,Gravity.TOP|Gravity.RIGHT,0,48,22,0);
-        route=text("Iniciando mundo nativo...",12);
+        route=text("Generando circuito XI y preparando X Render...",12);
         add(root,route,-2,-2,Gravity.TOP|Gravity.LEFT,20,46,0,0);
 
         Button camera=button("Cámara");
