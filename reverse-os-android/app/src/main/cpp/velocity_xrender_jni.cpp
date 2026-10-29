@@ -6,6 +6,7 @@
 #include <jni.h>
 #include <algorithm>
 #include <array>
+#include <limits>
 #include <cmath>
 #include <cstdint>
 #include <memory>
@@ -23,11 +24,25 @@ std::unique_ptr<Engine> scene;
 std::vector<jint> staging;
 int cached_width=0,cached_height=0;
 
+// The only road geometry authority is world.xi. This host interpolates
+// the 241 immutable samples produced by the real XI machine, not a C++
+// implementation of a second road formula.
+std::array<double,241> xiTrackX{};
+bool xiTrackReady=false;
 double route(double z){
-  return 22.0*std::sin(z/230.0)+8.0*std::sin(z/78.0);
+  if(!xiTrackReady)throw std::logic_error("XI track descriptor was not provided");
+  const double cell=(z+850.)/10.;
+  if(cell<=0.)return xiTrackX.front();
+  if(cell>=240.)return xiTrackX.back();
+  const auto index=static_cast<std::size_t>(cell);
+  const double frac=cell-double(index);
+  return xiTrackX[index]*(1.-frac)+xiTrackX[index+1]*frac;
 }
 double slope(double z){
-  return 22.0/230.0*std::cos(z/230.0)+8.0/78.0*std::cos(z/78.0);
+  if(!xiTrackReady)throw std::logic_error("XI track descriptor was not provided");
+  const auto index=static_cast<std::size_t>(std::clamp(
+    std::floor((z+850.)/10.),0.,239.));
+  return (xiTrackX[index+1]-xiTrackX[index])/10.;
 }
 std::uint32_t noise(std::uint32_t x){
   x^=x<<13;x^=x>>17;x^=x<<5;
@@ -203,12 +218,27 @@ void java_error(JNIEnv* env,const char* message){
 extern "C" JNIEXPORT void JNICALL
 Java_com_reversepc_os_VelocityXSurface_renderNative(
   JNIEnv* env,jclass,jintArray rgba,jint width,jint height,
-  jlong xMm,jlong zMm,jint yaw16,jint checkpoint,jint cameraMode,jint paintId){
+  jlong xMm,jlong zMm,jint yaw16,jint checkpoint,jint cameraMode,jint paintId,
+  jfloatArray trackSamples){
   try{
-    if(!rgba||width<128||height<72||width>1920||height>1080||
+    if(!rgba||width<128||height<72||width>1280||height>720||
        static_cast<std::int64_t>(width)*height>env->GetArrayLength(rgba))
       throw std::invalid_argument("Invalid X Render output buffer");
+    if(!trackSamples||env->GetArrayLength(trackSamples)!=482)
+      throw std::invalid_argument("XI track needs 241 coordinate pairs");
+    std::array<jfloat,482> fromXi{};
+    env->GetFloatArrayRegion(trackSamples,0,482,fromXi.data());
+    if(env->ExceptionCheck())return;
     std::lock_guard<std::mutex> guard(scene_mutex);
+    // Exactly 10m between XI vertices, starting at z=-850m.
+    for(std::size_t i=0;i<241;++i){
+      const double z=fromXi[i*2],x=fromXi[i*2+1];
+      if(!std::isfinite(z)||!std::isfinite(x)||
+         std::abs(z-(-850.+10.*i))>1e-3||std::abs(x)>80.)
+        throw std::invalid_argument("XI track coordinate invalid");
+      xiTrackX[i]=x;
+    }
+    xiTrackReady=true;
     if(!scene||cached_width!=width||cached_height!=height){
       scene=std::make_unique<Engine>(std::size_t(width),std::size_t(height),16);
       cached_width=width;cached_height=height;
