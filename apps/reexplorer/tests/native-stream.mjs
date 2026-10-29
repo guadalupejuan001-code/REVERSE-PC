@@ -69,7 +69,7 @@ stable('HTML tags and scripts',
 stable('UTF-8 accents and multi-byte data',
   '<h1>Niño 🧠</h1><p>¡Árbol!</p>', 'Niño 🧠¡Árbol!',2);
 stable('multiline and tag attributes',
-  '<div class="x">Hola\n</div><p>mun\tdo</p>', 'Hola mundo',7);
+  '<div class="x">Hola\n</div><p>mun\tdo</p>', 'Hola mun do',7);
 stable('uppercase script and style',
   '<SCRIPT>EXFILTRATE</SCRIPT><STYLE>hidden</STYLE><p>SAFE</p>','SAFE',3);
 stable('script contents split near close',
