@@ -18,7 +18,7 @@ execute_process(COMMAND git rev-parse HEAD WORKING_DIRECTORY "${ETHER_SOURCE}"
 if(NOT STATUS EQUAL 0 OR NOT HASH STREQUAL "e2778d962af22f6f1a0794058dd4685fc2573966")
  message(FATAL_ERROR "Wrong Mundo X dependency revision")
 endif()
-add_library(reverse_os SHARED reverse_os_jni.cpp)
+add_library(reverse_os SHARED reverse_os_jni.cpp velocity_xrender_jni.cpp)
 target_include_directories(reverse_os PRIVATE "${ETHER_PATCH}" "${ETHER_INCLUDE}" "${REPO_ROOT}/src")
 target_compile_options(reverse_os PRIVATE -O2 -fexceptions -frtti -Wall -Wextra -Wpedantic)
 find_library(LOG_LIBRARY log)
