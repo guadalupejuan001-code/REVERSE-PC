@@ -55,6 +55,13 @@ jobs:
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -I deps/mundo-x/native/include \
             deps/mundo-x/native/tests/ether_ellipsoid.cpp -o build/velocity/ellipsoid-test
           build/velocity/ellipsoid-test
+      - name: Render real gameplay scene and verify three distinct frames
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -I "$JAVA_HOME/include" -I "$JAVA_HOME/include/linux" \
+            -Ideps/mundo-x/native/include \
+            reverse-os-android/tests/velocity_scene_smoke.cpp -o build/velocity/scene-smoke
+          build/velocity/scene-smoke
       - name: Verify real Mundo X native renderer API and pixel export
         run: |
           set -euo pipefail
