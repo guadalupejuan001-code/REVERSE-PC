@@ -58,7 +58,7 @@ void help() {
       "reverse_guest system-init kernel.elf output.rvg [ram_bytes] [max_overrides]\n"
       "reverse_guest linux-init Image output.rvg [initrd]\n"
       "reverse_guest android-cuttlefish-init Image combined_initrd.bin output.rvg\n"
-      "reverse_guest android-cuttlefish-dtb output.dtb\n"
+      "reverse_guest android-cuttlefish-dtb output.dtb [initrd_bytes]\n"
       "reverse_guest run input.rvg output.rvg [steps]\n"
       "reverse_guest inspect input.rvg\n"
       "reverse_guest xi input.rvg delta.xi output.rvg\n"
@@ -81,9 +81,13 @@ int main(int argc,char** argv) {
       save_file(argv[2],guest_device_tree(ram));std::cout<<"{\"device_tree\":\"reverse-arm64-v1\"}\n";return 0;
     }
     if(operation=="android-cuttlefish-dtb"){
-      require(argc==3,"android-cuttlefish-dtb requires output DTB");
+      require(argc==3||argc==4,
+        "android-cuttlefish-dtb requires output DTB and optional initrd bytes");
+      const auto rd=argc==4?integer(argv[3]):0;
+      require(rd<=MinimalGuest::max_linux_initrd && rd<=64*1024*1024-2*1024*1024,
+        "DTB initrd bytes exceed 128 MiB guest memory layout");
       save_file(argv[2],guest_device_tree(
-        128*1024*1024,MachineState::ram_base+64*1024*1024,0,
+        128*1024*1024,MachineState::ram_base+64*1024*1024,rd,
         guest_android_cuttlefish_bootargs()));
       std::cout<<"{\"device_tree\":\"reverse-arm64-android-bootargs-v1\","
                   "\"android_boot\":false,\"adb\":false}\n";
