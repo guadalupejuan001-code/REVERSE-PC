@@ -44,7 +44,7 @@ final class QdOrders {
         if(ascii.isEmpty())throw new IllegalArgumentException("No se identificaron palabras.");
         for(String token:ascii.split(" +")){
             if(token.matches("[0-9]+")){
-                if(token.length()>2||result.values.size()>=3)
+                if(token.length()>2||result.values.size()>=2)
                     throw new IllegalArgumentException("Admite exactamente dos números de 0 a 99.");
                 result.values.add(Integer.parseInt(token));
             }else{
