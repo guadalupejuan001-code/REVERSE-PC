@@ -80,7 +80,10 @@ inline BootCycleReport run_boot_cycle(MinimalGuest& guest,const BootCycleLimits&
       const auto run=boot_cycle_prefix(guest,count,bool(first_user)&&!report.first_user_instruction_verified,failure);
       output(run);++report.chunks;
       if(!failure.empty()){report.reason="architectural_stop";report.error=failure;break;}
-      if(run.waiting){report.reason="waiting_for_device_or_interrupt";break;}
+      // WFI may be the final instruction of this transaction even though
+      // the native machine can wake at its scheduled timer on the next run.
+      // Ask that same native path again; only a zero-progress wait blocks.
+      if(run.waiting&&!run.executed){report.reason="waiting_for_device_or_interrupt";break;}
       if(!run.executed&&!(first_user&&guest.machine().enabled&&!guest.machine().el)){
         report.reason="no_instruction_progress";break;
       }

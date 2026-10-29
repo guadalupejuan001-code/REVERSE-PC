@@ -7,6 +7,12 @@ resource assignment. Its checkpoint SHA-256 is
 PID 1 had left the jitterentropy allocation path and was registering the
 serial driver. It had not executed the original Android init.
 
+The first C05 run (40938318558) continued that same counter stream to
+5,406,300,000 instructions. Its last stack is the genuine X.509/RSA
+certificate verification path (`mpi_powm` / `mpihelp_submul_1`). It reached
+the host time bound with no unsupported operation and no init entry yet.
+The next cycle pins that newer state and report, retaining all progress.
+
 C05 resumes that exact state, with its original disk attachment, RAM and
 persisted counter seed/cursor. It never draws a replacement seed. The source
 checkpoint, complete source report and timing seed identity are independently
@@ -18,6 +24,14 @@ immediately. Native verification still requires PC 0x2a4000, all 64 original
 entry bytes and an actual one-instruction transition to 0x2a4004. A stopped
 fixture exercises real ERET/EL0 execution; tests also prove that the verifier
 is mandatory and its rejection cannot mutate the caller's state.
+
+The host controller also distinguishes a WFI at a transaction boundary from
+an actual blocked wait. If a chunk retired instructions and ended on WFI,
+the next ordinary native run decides whether a scheduled timer can wake it.
+Only a zero-instruction native wait returns control as a blocked device.
+The former condition was reproduced with one-instruction chunks of the real
+EL1/MMU/timer/IRQ/EL0/SVC fixture. The repaired full snapshot and UART match
+uninterrupted execution; a WFI without a timer still blocks without mutation.
 
 The bounded genuine cycle runs for at most ten minutes or two billion
 instructions and preserves its last successful state on an architectural

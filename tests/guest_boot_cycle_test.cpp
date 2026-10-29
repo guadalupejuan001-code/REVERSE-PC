@@ -47,6 +47,17 @@ int main(){try{
   check(late_report.reason=="architectural_stop"&&late.snapshot()==late_reference.snapshot(),"Fault rollback/localization lost DMA or device state");
   check(late_report.console=="REVERSE: PCI GPU 2D OK\n","Fault localization lost the successful UART prefix");
   check(late.display_rgb()==direct.display_rgb(),"Fault localization changed the actual presented pixels");
+  MinimalGuest wake(128*1024*1024,0);wake.load_elf(system_demo_elf(),true);auto wake_reference=wake;
+  const auto wake_direct=wake_reference.run(10000);BootCycleLimits wake_limits;wake_limits.instructions=10000;wake_limits.wall_ms=30000;wake_limits.chunk=1;
+  const auto wake_report=run_boot_cycle(wake,wake_limits);
+  check(wake_report.reason=="halted","A timer-backed WFI at the transaction boundary was mistaken for an external-device wait");
+  check(wake.snapshot()==wake_reference.snapshot(),"One-instruction chunks changed actual timer/IRQ/ERET state");
+  check(wake_report.console==wake_direct.output,"Timer wakeup lost native UART output");
+  auto sleep_image=system_demo_elf();for(unsigned i=0;i<4;i++)sleep_image[256+i]=std::uint8_t(UINT32_C(0xd503207f)>>(i*8));
+  MinimalGuest sleep(128*1024*1024,0);sleep.load_elf(sleep_image,true);auto sleep_reference=sleep;sleep_reference.run(1);
+  const auto sleep_report=run_boot_cycle(sleep,wake_limits);
+  check(sleep_report.reason=="waiting_for_device_or_interrupt"&&sleep.registers().instructions==1,"A genuinely blocked WFI was not returned to the host");
+  check(sleep.snapshot()==sleep_reference.snapshot(),"A blocked WFI retry mutated the native state");
   auto entry=user_entry(),entry_reference=entry;entry_reference.run(7);limits.instructions=7;
   const auto entry_report=run_boot_cycle(entry,limits,{},[](MinimalGuest& g){
     require(!g.machine().el&&g.registers().pc==0x40080018,"The real ERET entry was missed");g.run(1);return g.registers().pc==0x4008001c;
