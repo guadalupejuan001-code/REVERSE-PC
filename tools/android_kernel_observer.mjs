@@ -185,8 +185,18 @@ export function observeAndroidKernel(bytes,expectedCheckpointSha){
   const name=read(dentry+BigInt(dent.d_name.offset+qstr.name.offset));
   rootfsFile.name=text(name,256);rootfsFile.file_pos=read(filePointer+BigInt(f.f_pos.offset)).toString();
  }catch(error){rootfsFile.read_error=error.message;}
+ const capacity={logical_ram_bytes:Number(u(0)),page_bytes:4096};
+ try{
+  const enums=types.filter(t=>t?.kind===6&&t.name==='zone_stat_item');
+  check(enums.length>0,'missing zone vmstat enum');
+  const entries=Array.from({length:enums[0].vlen},(_,i)=>{const at=enums[0].at+12+i*8;return {name:str(kernel.readUInt32LE(at)),value:kernel.readInt32LE(at+4)};});
+  const free=entries.filter(x=>x.name==='NR_FREE_PAGES');check(free.length===1&&free[0].value>=0&&free[0].value<128,'invalid free-page vmstat index');
+  const total=read(symbol('_totalram_pages')),reserve=read(symbol('totalreserve_pages')),available=read(symbol('vm_zone_stat')+BigInt(free[0].value*8));
+  check(total<=u(0)/4096n&&reserve<=total&&available<=total,'RAM counter sanity check');
+  Object.assign(capacity,{managed_pages:Number(total),reserved_pages:Number(reserve),global_free_pages:Number(available),managed_bytes:Number(total*4096n),global_free_bytes:Number(available*4096n),vmstat_per_cpu_batches_may_lag:true,android_framework_capacity_proven:false});
+ }catch(e){capacity.read_error=e.message;}
  check(createHash('sha256').update(bytes).digest('hex')===originalSha,'observation mutated input');
- return {status:'read_only_kernel_observation',checkpoint_sha256:originalSha,kernel_sha256:KERNEL,instructions:provenance.instructions,pc:hex(u(2)),pc_symbol:nearest(u(2)),next_opcode:hex(read(u(2),4)),physical_pc:hex(translate(u(2))),ticks:m(27).toString(),exceptions:m(28).toString(),current_task:hex(m(8)),current_pid:tasks.find(t=>t.running_on_cpu)?.pid??null,task_layout:layout,task_count:tasks.length,tasks,trace_event_sem:{address:hex(sem),count:hex(countValue),owner:hex(owner),owner_pid:ownerTask?.pid??null},initramfs:globals,rootfs_file:rootfsFile,android_init_observed:false,android_boot:false,input_unchanged:true};
+ return {status:'read_only_kernel_observation',checkpoint_sha256:originalSha,kernel_sha256:KERNEL,instructions:provenance.instructions,pc:hex(u(2)),pc_symbol:nearest(u(2)),next_opcode:hex(read(u(2),4)),physical_pc:hex(translate(u(2))),ticks:m(27).toString(),exceptions:m(28).toString(),current_task:hex(m(8)),current_pid:tasks.find(t=>t.running_on_cpu)?.pid??null,capacity,task_layout:layout,task_count:tasks.length,tasks,trace_event_sem:{address:hex(sem),count:hex(countValue),owner:hex(owner),owner_pid:ownerTask?.pid??null},initramfs:globals,rootfs_file:rootfsFile,android_init_observed:false,android_boot:false,input_unchanged:true};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  try{check(process.argv[2],'usage: node android_kernel_observer.mjs checkpoint.rvg [expected_sha256]');console.log(JSON.stringify(observeAndroidKernel(readFileSync(process.argv[2]),process.argv[3]),null,2));}catch(e){console.error(e.message);process.exitCode=1;}

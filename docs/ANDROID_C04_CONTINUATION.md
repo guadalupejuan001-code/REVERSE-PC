@@ -40,9 +40,12 @@ to diagnostic fixtures, not the genuine Android experiment. This timing
 model is not a claim of hardware entropy certification.
 
 The experiment compares 50 million instructions from the same pinned
-3,171,300,000-instruction input with and without latency, then runs a separate
-15-minute seeded continuation from that same input. Each seeded run receives
-its own host seed. Its report records the seed origin and SHA-256 identity,
+3,171,300,000-instruction input with and without latency. Two initial runs
+also exercise separate 15-minute seeded continuations from that input.
+Routine workflow validation then bounds its separate continuation to
+200 million instructions or five minutes, while preserving the longer-run
+evidence. Each seeded run receives its own host seed. Its report records the
+seed origin and SHA-256 identity,
 actual counter sample count, full checkpoint hash, UART and exact CPU stop.
 The counter model does not patch or skip a crypto initcall, alter the kernel,
 move its PC or replace XI/Ether's memory engine.
@@ -84,10 +87,23 @@ Prepare and pin a separate complete disk/boot profile when that stage is
 reached, with real filesystem and logical-partition validation.
 
 The current 128 MiB boot profile also needs a measured capacity decision
-before starting Android services. Then prove framework startup, Android's
+before starting Android services. Read-only pinned-symbol inspection of the
+3.1713B state reports 21,361 managed pages and 15,566 globally free pages
+(about 61 MiB free); per-CPU vmstat batches may lag. This is not a framework
+capacity proof. Then prove framework startup, Android's
 composer/EGL display path, input, networking and audio. The existing virtio
 GPU 2D pixel witness does not establish Android graphics or native game
 compatibility; those require separate Android and 3D driver evidence.
+
+`tools/android_partition_readiness.mjs` automates the selected-fstab audit.
+The workflow extracts the fstab from the pinned ramdisk and checks its exact
+hash independently of the acquisition manifest's disk identity. Required
+physical mounts, auxiliary entries, inactive recovery entries and logical
+partitions are reported separately. An eight-partition boot-input inventory
+cannot establish that `/data` exists. This manifest comparison does not claim
+GPT-sector, logical-filesystem, AVB or mount validation; six semantic tests
+cover that distinction and prevent optional/external devices becoming false
+missing-disk requirements.
 
 ## Validation
 
