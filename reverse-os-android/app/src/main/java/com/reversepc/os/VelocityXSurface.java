@@ -10,35 +10,32 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
 /**
- * Only an Android bitmap presenter and fixed-tick driver.
- * Actual ray tracing, depth and materials are produced by Mundo X
- * EtherRenderEngine through velocity_xrender_jni.cpp. Not a GLES renderer.
+ * X Render is the only scene renderer. This class merely schedules fixed ticks,
+ * copies its packed ARGB output and presents it with Android Canvas.
  */
 final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callback,Runnable {
     interface Hud {
-        void update(int speedKmh,int checkpoints,int total,long seconds,boolean offRoad,String error);
+        void update(int speedKmh,int checkpoints,int total,long seconds,
+                    boolean offRoad,int slideMmps,boolean finished,int fps,
+                    int renderWidth,int renderHeight,String error);
     }
-    private static final int W=320,H=180;
     static { System.loadLibrary("reverse_os"); }
     private static native void renderNative(int[] argb,int width,int height,
-                     long xMm,long zMm,int yaw16,int checkpoint);
+                     long xMm,long zMm,int yaw16,int checkpoint,int camera,int paint);
 
     private final VelocityPhysics physics;
     private final Hud hud;
-    private final int[] pixels=new int[W*H];
-    private final Bitmap image=Bitmap.createBitmap(W,H,Bitmap.Config.ARGB_8888);
     private final Paint paint=new Paint(Paint.FILTER_BITMAP_FLAG);
-    private final Rect sourceRect=new Rect(0,0,W,H);
+    private final Rect sourceRect=new Rect();
     private final Rect targetRect=new Rect();
     private volatile boolean running;
     private Thread worker;
     private volatile int gas,brake,steer;
     private volatile boolean handbrake,resetRequested;
+    private volatile int cameraMode,paintId,quality;
     private volatile String error="";
-
     VelocityXSurface(Context context,VelocityPhysics physics,Hud hud){
-        super(context);
-        this.physics=physics;this.hud=hud;
+        super(context);this.physics=physics;this.hud=hud;
         getHolder().addCallback(this);
         setKeepScreenOn(true);
     }
@@ -46,28 +43,32 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
         this.gas=gas;this.brake=brake;this.steer=steer;this.handbrake=handbrake;
     }
     void reset(){resetRequested=true;}
+    int cycleCamera(){cameraMode=(cameraMode+1)%3;return cameraMode;}
+    int cyclePaint(){paintId=(paintId+1)%5;return paintId;}
+    int cycleQuality(){quality=(quality+1)%3;return quality;}
+
     synchronized void startLoop(){
-        if(worker!=null&&worker.isAlive())return;
-        if(!getHolder().getSurface().isValid())return;
-        running=true;
-        worker=new Thread(this,"REVERSE-VELOCITY-XRENDER");
+        if(worker!=null||!getHolder().getSurface().isValid())return;
+        running=true;worker=new Thread(this,"REVERSE-VELOCITY-XRENDER");
         worker.start();
     }
-    synchronized void stopLoop(){
-        running=false;
-        Thread previous=worker;
-        if(previous!=null&&previous!=Thread.currentThread()){
-            try{previous.join(450);}catch(InterruptedException e){Thread.currentThread().interrupt();}
+    void stopLoop(){
+        Thread thread;
+        synchronized(this){running=false;thread=worker;}
+        if(thread!=null&&thread!=Thread.currentThread()){
+            try{thread.join(2500);}catch(InterruptedException ex){Thread.currentThread().interrupt();}
         }
-        if(previous!=null&&!previous.isAlive())worker=null;
     }
     @Override public void surfaceCreated(SurfaceHolder holder){startLoop();}
-    @Override public void surfaceChanged(SurfaceHolder holder,int format,int width,int height){}
+    @Override public void surfaceChanged(SurfaceHolder holder,int format,int w,int h){}
     @Override public void surfaceDestroyed(SurfaceHolder holder){stopLoop();}
 
     @Override public void run(){
-        long previous=SystemClock.elapsedRealtimeNanos(),frame=0;
-        int accumulator=0;
+        long previous=SystemClock.elapsedRealtimeNanos(),lastHud=0,lastFps=previous;
+        int accumulator=0,frames=0,fps=0,currentQuality=-1;
+        int width=0,height=0;
+        int[] pixels=null;
+        Bitmap image=null;
         try{
             while(running){
                 final long begin=SystemClock.elapsedRealtimeNanos();
@@ -80,9 +81,19 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     accumulator-=VelocityPhysics.TICK_MS;
                 }
                 if(accumulator>=VelocityPhysics.TICK_MS)accumulator=0;
-                renderNative(pixels,W,H,physics.xMm,physics.zMm,
-                             physics.yaw16,physics.checkpoint);
-                image.setPixels(pixels,0,W,0,0,W,H);
+                int selected=Math.max(0,Math.min(2,quality));
+                if(selected!=currentQuality){
+                    currentQuality=selected;
+                    width=selected==0?320:selected==1?400:480;
+                    height=width*9/16;
+                    pixels=new int[width*height];
+                    if(image!=null)image.recycle();
+                    image=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
+                    sourceRect.set(0,0,width,height);
+                }
+                renderNative(pixels,width,height,physics.xMm,physics.zMm,
+                             physics.yaw16,physics.checkpoint,cameraMode,paintId);
+                image.setPixels(pixels,0,width,0,0,width,height);
                 Canvas canvas=null;
                 try{
                     canvas=getHolder().lockCanvas();
@@ -94,22 +105,33 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 }finally{
                     if(canvas!=null)getHolder().unlockCanvasAndPost(canvas);
                 }
-                if(begin-frame>250_000_000L){
-                    frame=begin;
+                frames++;
+                if(begin-lastFps>=1_000_000_000L){
+                    fps=(int)Math.round(frames*1_000_000_000.0/(begin-lastFps));
+                    frames=0;lastFps=begin;
+                }
+                if(begin-lastHud>=250_000_000L){
+                    lastHud=begin;
                     hud.update((int)Math.round(physics.speedKmh()),physics.checkpoint,
                          physics.checkpointCount(),physics.elapsedMs/1000,
-                         physics.offRoad,error);
+                         physics.offRoad,physics.lateralSlipMmps(),physics.finished,
+                         fps,width,height,error);
                 }
                 final long cost=SystemClock.elapsedRealtimeNanos()-begin;
-                final long remaining=42_000_000L-cost; // target <=24 fps; not a guarantee
+                final long remaining=42_000_000L-cost; // cap target; real FPS is measured
                 if(remaining>1_000_000L)Thread.sleep(remaining/1_000_000L);
             }
         }catch(Throwable thrown){
             error="X Render: "+thrown.getClass().getSimpleName()+" — "+thrown.getMessage();
             hud.update(0,physics.checkpoint,physics.checkpointCount(),
-                physics.elapsedMs/1000,physics.offRoad,error);
+                physics.elapsedMs/1000,physics.offRoad,physics.lateralSlipMmps(),
+                physics.finished,0,width,height,error);
         }finally{
-            running=false;
+            if(image!=null&&!image.isRecycled())image.recycle();
+            synchronized(this){
+                running=false;
+                if(Thread.currentThread()==worker)worker=null;
+            }
         }
     }
 }
