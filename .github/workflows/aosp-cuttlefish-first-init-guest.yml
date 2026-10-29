@@ -68,9 +68,17 @@ jobs:
       - name: Independently unpack same verified AOSP boot/init_boot with upstream reference
         run: |
           set -euo pipefail
-          curl --fail --silent --show-error --location --retry 2 --max-time 45 \
-            'https://android.googlesource.com/platform/system/tools/mkbootimg/+/b78811e89d774685e9262339a8fedcbe2fc89efe/unpack_bootimg.py?format=TEXT' \
-            | base64 -d > build/aosp-unpack.py
+          # Official Gitiles mirrors of the exact upstream source commit.
+          # The SHA-256 was verified in earlier independent CI, so a mirror
+          # cannot silently substitute a different oracle.
+          for host in android.googlesource.com android.git.googlesource.com android.googleid.googlesource.com; do
+            url="https://$host/platform/system/tools/mkbootimg/+/b78811e89d774685e9262339a8fedcbe2fc89efe/unpack_bootimg.py?format=TEXT"
+            if curl --fail --silent --show-error --location --retry 3 --retry-all-errors --retry-delay 2 --max-time 60 \
+              "$url" -o build/oracle-base64.txt && base64 -d build/oracle-base64.txt > build/aosp-unpack.py; then
+              if echo 'a9d260978a63bd06a24b6347e7dee8a28ff96639793caea15dff6aa491316308  build/aosp-unpack.py' | sha256sum -c -; then break; fi
+            fi
+          done
+          echo 'a9d260978a63bd06a24b6347e7dee8a28ff96639793caea15dff6aa491316308  build/aosp-unpack.py' | sha256sum -c -
           mkdir -p build/oracle-boot build/oracle-init
           python3 build/aosp-unpack.py --boot_img input/boot/boot.img --out build/oracle-boot > evidence/oracle-boot.txt
           python3 build/aosp-unpack.py --boot_img input/boot/init_boot.img --out build/oracle-init > evidence/oracle-init.txt
