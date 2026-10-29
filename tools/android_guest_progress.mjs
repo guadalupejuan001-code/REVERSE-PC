@@ -15,6 +15,14 @@ const address=(x,label)=>{
     fail(label+' is not a hex address');
   return BigInt(x);
 };
+// These are host controls and observation boundaries, not ISA failures.
+export function classifyGuestStop(stop){
+  if(stop==='host_wall_budget')return 'host_time_pause';
+  if(stop==='instruction_budget')return 'instruction_budget';
+  if(stop==='waiting_for_device_or_interrupt')return 'device_or_interrupt_wait';
+  if(stop==='userspace_entry')return 'userspace_observation_boundary';
+  return 'architectural_stop';
+}
 export function analyzeGuestProgress(samples){
   if(!Array.isArray(samples)||samples.length<2||samples.length>64)
     fail('need 2..64 real checkpoint samples');
@@ -32,7 +40,8 @@ export function analyzeGuestProgress(samples){
     if(s?.android_boot!==false||s?.linux_userspace_init_observed!==false)
       fail('boot observation requires different explicit acceptance oracle');
     return {index,initial:start,instructions:steps,elapsed_ns:elapsed,
-      overrides,pc,x19,x20,uart_chars:uart.length,stop};
+      overrides,pc,x19,x20,uart_chars:uart.length,stop,
+      stop_classification:classifyGuestStop(stop)};
   });
   for(let i=1;i<records.length;i++){
     if(records[i].initial!==records[i-1].instructions)
@@ -47,8 +56,9 @@ export function analyzeGuestProgress(samples){
   const allBudget=records.every(x=>x.stop==='instruction_budget');
   const samePC=records.every(x=>x.pc===first.pc);
   const completelyStatic=total>0&&!pointerChanged&&!memoryChanged&&samePC;
-  const progressKind=records.some(x=>x.stop!=='instruction_budget')?'architectural_stop'
-    :pointerChanged&&memoryChanged?'active_kernel_table_processing'
+  const lastStop=last.stop_classification;
+  const progressKind=lastStop!=='instruction_budget'?lastStop
+    :pointerChanged&&memoryChanged?'cpu_state_changes_stage_unclassified'
     :completelyStatic?'possible_busy_wait_no_observed_data_progress'
     : 'instructions_executed_stage_unclassified';
   // These estimates are deliberately not UI/Android availability metrics.
@@ -64,7 +74,8 @@ export function analyzeGuestProgress(samples){
     observed_inverse_memory_deltas_changed:memoryChanged,
     samples:records.map(x=>({instruction:x.instructions,pc:'0x'+x.pc.toString(16),
       x19:'0x'+x.x19.toString(16),x20:'0x'+x.x20.toString(16),
-      overrides:x.overrides,stop:x.stop,elapsed_ns:x.elapsed_ns})),
+      overrides:x.overrides,stop:x.stop,stop_classification:x.stop_classification,
+      elapsed_ns:x.elapsed_ns})),
     suspected_no_progress:completelyStatic,
     all_stops_instruction_budget:allBudget,
     android_first_stage_init_observed:false,adb:false,
