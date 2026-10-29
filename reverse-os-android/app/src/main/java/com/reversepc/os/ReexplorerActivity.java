@@ -53,7 +53,9 @@ public final class ReexplorerActivity extends Activity {
     private EditText address;
     private TextView status;
     private ProgressBar progress;
+    private ReexplorerQuantumCore quantum;
     private boolean rendererGone;
+    private String lastHost;
 
     @Override protected void onCreate(Bundle state){
         super.onCreate(state);
@@ -108,7 +110,7 @@ public final class ReexplorerActivity extends Activity {
         status.setTextColor(MUTED);
         status.setTextSize(11);
         status.setPadding(dp(7),dp(4),dp(7),dp(4));
-        status.setText("REexplorer · HTTPS obligatorio · sesión separada de BBY Q");
+        status.setText("REexplorer · Q-Core XI/Ether · independiente de BBY Q");
         root.addView(status);
         progress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);
         progress.setMax(100);
@@ -119,6 +121,11 @@ public final class ReexplorerActivity extends Activity {
         page.setBackgroundColor(Color.WHITE);
         root.addView(page,new LinearLayout.LayoutParams(-1,0,1));
         setContentView(root);
+        // Isolated XI/Ether state: never read any BBY Q / REVERSE checkpoint.
+        try{quantum=new ReexplorerQuantumCore(getApplicationContext());}
+        catch(Throwable unavailable){
+            quantum=null;status.setText("Q-Core XI no disponible. Navegación bloqueada.");
+        }
 
         WebSettings options=page.getSettings();
         options.setJavaScriptEnabled(true); // Modern sites and sign-in require JS.
@@ -139,29 +146,45 @@ public final class ReexplorerActivity extends Activity {
         CookieManager.getInstance().setAcceptThirdPartyCookies(page,false);
         // No JavaScript-to-Java bridge is installed in REexplorer.
         // No WebView bridge and no host script injection, even for Robinhood.
-        page.setDownloadListener((url,agent,contentDisposition,mime,length)->
-                status.setText("Descarga bloqueada por REexplorer"));
+        page.setDownloadListener((url,agent,contentDisposition,mime,length)->{
+            inspectSecurityEvent(ReexplorerQuantumCore.DOWNLOAD);
+            status.setText("REexplorer bloqueó la descarga");
+        });
         page.setWebChromeClient(new WebChromeClient(){
             @Override public void onProgressChanged(WebView view,int value){
                 if(progress!=null){progress.setProgress(value);
                     progress.setVisibility(value>=100?android.view.View.GONE:android.view.View.VISIBLE);}
             }
-            @Override public void onPermissionRequest(PermissionRequest request){request.deny();}
+            @Override public void onPermissionRequest(PermissionRequest request){
+                request.deny();
+                inspectSecurityEvent(ReexplorerQuantumCore.PERMISSION);
+            }
             @Override public void onGeolocationPermissionsShowPrompt(String origin,
-                    GeolocationPermissions.Callback callback){callback.invoke(origin,false,false);}
+                    GeolocationPermissions.Callback callback){
+                callback.invoke(origin,false,false);
+                inspectSecurityEvent(ReexplorerQuantumCore.PERMISSION);
+            }
             @Override public boolean onShowFileChooser(WebView view,
                     ValueCallback<Uri[]> files,FileChooserParams params){
-                files.onReceiveValue(null);return true;
+                files.onReceiveValue(null);
+                inspectSecurityEvent(ReexplorerQuantumCore.PERMISSION);
+                return true;
             }
             @Override public boolean onCreateWindow(WebView view,boolean dialog,
-                    boolean gesture,android.os.Message resultMsg){return false;}
+                    boolean gesture,android.os.Message resultMsg){
+                inspectSecurityEvent(ReexplorerQuantumCore.POPUP);
+                return false;
+            }
         });
         page.setWebViewClient(new WebViewClient(){
             @Override public boolean shouldOverrideUrlLoading(WebView view,WebResourceRequest request){
                 String candidate=request.getUrl().toString();
-                if(ReexplorerPolicy.isSecureUrl(candidate))return false;
-                status.setText("Destino bloqueado: solo HTTPS público");
-                return true;
+                if(!ReexplorerPolicy.isSecureUrl(candidate)||
+                        !allowNavigationByXi(candidate)){
+                    status.setText("REexplorer Q-Core bloqueó la navegación");
+                    return true;
+                }
+                return false;
             }
             @Override public WebResourceResponse shouldInterceptRequest(WebView view,
                     WebResourceRequest request){
@@ -179,12 +202,16 @@ public final class ReexplorerActivity extends Activity {
             }
             @Override public void onPageStarted(WebView view,String url,android.graphics.Bitmap icon){
                 if("about:blank".equals(url))return;
-                if(!ReexplorerPolicy.isSecureUrl(url)){
+                if(!ReexplorerPolicy.isSecureUrl(url)||!allowNavigationByXi(url)){
                     view.stopLoading();
-                    status.setText("Navegación bloqueada");
-                    view.loadUrl("about:blank");
+                    status.setText("Q-Core impidió cargar el destino");
+                    if(quantum==null||!quantum.isQuarantined())view.loadUrl("about:blank");
                     return;
                 }
+                String currentHost=ReexplorerPolicy.host(url);
+                if(lastHost!=null&&!lastHost.equals(currentHost))
+                    inspectSecurityEvent(ReexplorerQuantumCore.ORIGIN_CHANGE);
+                lastHost=currentHost;
                 address.setText(url);
                 status.setText("HTTPS · "+ReexplorerPolicy.host(url)+
                         " · no conectado con la memoria Ether");
@@ -198,17 +225,28 @@ public final class ReexplorerActivity extends Activity {
             }
             @Override public void onReceivedSslError(WebView view,SslErrorHandler handler,
                     SslError error){
-                handler.cancel();status.setText("CERTIFICADO RECHAZADO · conexión cancelada");
+                handler.cancel();
+                inspectSecurityEvent(ReexplorerQuantumCore.TLS);
+                view.stopLoading();
+                status.setText("Q-Core · certificado TLS rechazado · cuarentena");
             }
             @Override public void onSafeBrowsingHit(WebView view,WebResourceRequest request,
                     int threatType,SafeBrowsingResponse callback){
                 callback.backToSafety(true);
-                status.setText("Sitio peligroso bloqueado por Navegación Segura");
+                inspectSecurityEvent(ReexplorerQuantumCore.KNOWN_THREAT);
+                view.stopLoading();
+                status.setText("Q-Core · amenaza conocida bloqueada · cuarentena");
             }
             @Override public void onReceivedHttpAuthRequest(WebView view,
-                    HttpAuthHandler handler,String host,String realm){handler.cancel();}
+                    HttpAuthHandler handler,String host,String realm){
+                handler.cancel();
+                inspectSecurityEvent(ReexplorerQuantumCore.PERMISSION);
+            }
             @Override public void onReceivedClientCertRequest(WebView view,
-                    ClientCertRequest request){request.cancel();}
+                    ClientCertRequest request){
+                request.cancel();
+                inspectSecurityEvent(ReexplorerQuantumCore.PERMISSION);
+            }
             @Override public void onReceivedError(WebView view,WebResourceRequest request,
                     WebResourceError error){
                 if(request.isForMainFrame())status.setText("No se pudo cargar la página");
@@ -216,7 +254,8 @@ public final class ReexplorerActivity extends Activity {
             @Override public boolean onRenderProcessGone(WebView view,
                     RenderProcessGoneDetail detail){
                 rendererGone=true;
-                status.setText("El proceso web se detuvo. Cierre y abra REexplorer.");
+                inspectSecurityEvent(ReexplorerQuantumCore.RENDERER);
+                status.setText("Proceso web detenido. Q-Core puso la sesión en cuarentena.");
                 view.destroy();page=null;
                 return true; // Renderer crashes must not crash the entire OS.
             }
@@ -254,12 +293,33 @@ public final class ReexplorerActivity extends Activity {
         return new WebResourceResponse("text/plain","UTF-8",
                 new ByteArrayInputStream(new byte[0]));
     }
+    /** Programmatic navigation is independently authorized by REexplorer XI,
+     * never by a BBY Q model or the JavaScript environment of the page. */
+    private boolean allowNavigationByXi(String candidate){
+        if(quantum==null||quantum.isQuarantined())return false;
+        boolean secure=ReexplorerPolicy.isSecureUrl(candidate);
+        int financial=secure&&ReexplorerPolicy.host(candidate).endsWith("robinhood.com")?1:0;
+        ReexplorerQuantumCore.Verdict decision=quantum.decide(
+                ReexplorerQuantumCore.NAVIGATE,secure?0:1,financial);
+        if(!decision.allow())
+            status.setText("Q-Core · solicitud denegada ("+decision.reason+")");
+        return secure&&decision.allow();
+    }
+    private void inspectSecurityEvent(int event){
+        if(quantum==null)return;
+        ReexplorerQuantumCore.Verdict decision=quantum.decide(event,0,0);
+        if(decision.quarantined()){
+            status.setText("Q-Core · cuarentena activa ("+decision.reason+")");
+            if(page!=null)page.stopLoading();
+        }
+    }
     private void navigate(String raw){
         if(page==null||rendererGone)return;
         try{
             String destination=ReexplorerPolicy.normalize(raw);
+            if(!allowNavigationByXi(destination))return;
             address.setText(destination);
-            status.setText("Solicitando HTTPS · "+ReexplorerPolicy.host(destination));
+            status.setText("XI/Ether · HTTPS · "+ReexplorerPolicy.host(destination));
             page.loadUrl(destination);
         }catch(IllegalArgumentException invalid){
             status.setText("Bloqueado: "+invalid.getMessage());
