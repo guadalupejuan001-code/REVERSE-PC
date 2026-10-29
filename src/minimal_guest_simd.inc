@@ -128,16 +128,19 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
     return (x>>amount)|(negative?(low_mask(lane_bits)^low_mask(lane_bits-amount)):UINT64_C(0));
   };
   const auto immediate_shift=i&0x9f80fc00u;
-  if(immediate_shift==0x0f000400u||(immediate_shift==0x0f005400u&&!u)){ // S/USHR or SHL, immediate.
+  if(immediate_shift==0x0f000400u||immediate_shift==0x0f005400u||(immediate_shift==0x0f004400u&&u)){ // S/USHR, SHL, SLI or SRI.
     const unsigned encoded=(i>>16)&127;if(encoded<8)return false;
     unsigned lane_bits=8;while(lane_bits*2<=encoded)lane_bits*=2;
     if(lane_bits==64&&!q)return false;
     const bool left=immediate_shift==0x0f005400u;
+    const bool insert=(left&&u)||immediate_shift==0x0f004400u;
     const unsigned amount=left?encoded-lane_bits:2*lane_bits-encoded;
-    fp_access();const auto source=floating_.v[rn];Vector128 value;
+    fp_access();const auto source=floating_.v[rn],old=floating_.v[rd];Vector128 value;
     for(unsigned n=0;n<width/lane_bits;n++){
       const auto x=source.lane(n,lane_bits);
-      value.lane(n,lane_bits,left?x<<amount:right_shift(x,amount,lane_bits,!u));
+      auto result=left?x<<amount:right_shift(x,amount,lane_bits,!u);
+      if(insert){const auto preserve=left?low_mask(amount):low_mask(lane_bits)^low_mask(lane_bits-amount);result|=old.lane(n,lane_bits)&preserve;}
+      value.lane(n,lane_bits,result);
     }commit(value);return true;
   }
   if((i&0x9f20fc00u)==0x0e204400u){ // SSHL/USHL: the signed low byte determines each lane's shift.

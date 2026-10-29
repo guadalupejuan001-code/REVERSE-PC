@@ -15,6 +15,25 @@ Bytes elf(std::initializer_list<std::uint32_t> words,bool system=false){
   put(bytes,1,4);put(bytes,7,4);put(bytes,0x100);put(bytes,entry);put(bytes,entry);put(bytes,code.size());put(bytes,code.size());put(bytes,0x100);
   bytes.resize(0x100);bytes.insert(bytes.end(),code.begin(),code.end());return bytes;
 }
+void shift_insert(){
+  for(bool wide:{false,true})for(unsigned bits:{8u,16u,32u,64u}){
+    if(bits==64&&!wide)continue;const unsigned bytes=wide?16:8,lanes=bytes*8/bits;
+    for(bool left:{false,true})for(unsigned n=0;n<bits;n++)for(bool alias:{false,true}){
+      const unsigned amount=left?n:n+1,encoded=left?bits+amount:2*bits-amount,rd=alias?1:2;
+      const auto opcode=(left?0x2f005400u:0x2f004400u)|(wide?0x40000000u:0u)|(encoded<<16)|(1<<5)|rd;
+      MinimalGuest g(65536);g.load_elf(elf({0xd2840002u,0x0c40a041u|(wide?0x40000000u:0u),opcode}));
+      for(unsigned j=0;j<bytes*2;j++)g.write(0x2000+j,(j*43+19)&255,1);
+      g.run(2);const auto source=g.floating().v[1],old=g.floating().v[rd];auto restored=MinimalGuest::from_snapshot(g.snapshot());g.run(1);restored.run(1);
+      check(g.snapshot()==restored.snapshot(),"Shift-insert alias or restore changed complete state");
+      for(unsigned lane=0;lane<lanes;lane++){
+        const std::bitset<64> from(source.lane(lane,bits)),before(old.lane(lane,bits));std::bitset<64> expected;
+        for(unsigned bit=0;bit<bits;bit++)expected[bit]=left?(bit<amount?before[bit]:from[bit-amount]):(bit+amount>=bits?before[bit]:from[bit+amount]);
+        check(g.floating().v[rd].lane(lane,bits)==expected.to_ullong(),"Shift-insert changed preserved destination bits or incoming source bits");
+      }
+      if(!wide)check(!g.floating().v[rd].high,"64-bit shift-insert retained upper bits");
+    }
+  }
+}
 void scalar_element_copy(){
   for(unsigned size=0;size<4;size++)for(unsigned index=0;index<16/(1u<<size);index++)for(bool alias:{false,true}){
     const unsigned bytes=1u<<size,rd=alias?1:3,encoded=(index<<(size+1))|(1u<<size);
@@ -236,4 +255,4 @@ void architectural_state(){
   check(MinimalGuest::from_snapshot(allowed.snapshot()).snapshot()==allowed.snapshot(),"System FP checkpoint lost architectural state");
 }
 }
-int main(){try{arithmetic();sparse_state();architectural_state();structure_memory();integer_reductions();shift_narrow();byte_population();widening_pairs();vector_shifts();vector_reverse();scalar_element_copy();std::cout<<"{\"checks\":"<<checks<<",\"fp\":\"ARMv8 bounded FP32/FP64 + SIMD\",\"state\":\"sparse RVG3\",\"quantum_engine\":\"unchanged\"}\n";}catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
+int main(){try{arithmetic();sparse_state();architectural_state();structure_memory();integer_reductions();shift_narrow();byte_population();widening_pairs();vector_shifts();vector_reverse();scalar_element_copy();shift_insert();std::cout<<"{\"checks\":"<<checks<<",\"fp\":\"ARMv8 bounded FP32/FP64 + SIMD\",\"state\":\"sparse RVG3\",\"quantum_engine\":\"unchanged\"}\n";}catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
