@@ -215,17 +215,27 @@ public final class WorkbenchActivity extends Activity {
         java.util.concurrent.FutureTask<Boolean> launch=new java.util.concurrent.FutureTask<>(()->{
             if(closed||!hostResumed)return false;
             Uri destination=Uri.parse("https://robinhood.com/");
-            Intent chrome=new Intent(Intent.ACTION_VIEW,destination);
-            chrome.addCategory(Intent.CATEGORY_BROWSABLE);
-            chrome.setPackage("com.android.chrome");
-            try{
-                startActivity(chrome);
-            }catch(android.content.ActivityNotFoundException noChrome){
-                Intent choose=new Intent(Intent.ACTION_VIEW,destination);
-                choose.addCategory(Intent.CATEGORY_BROWSABLE);
-                startActivity(Intent.createChooser(choose,"Abrir Robinhood en un navegador"));
+            // Only a browser may receive this link, never a deep-linked
+            // brokerage app or another app that claims a URL handler.
+            java.util.ArrayList<String> browserPackages=new java.util.ArrayList<>();
+            android.app.role.RoleManager roles=getSystemService(android.app.role.RoleManager.class);
+            if(roles!=null&&roles.isRoleAvailable(android.app.role.RoleManager.ROLE_BROWSER))
+                browserPackages.addAll(roles.getRoleHolders(android.app.role.RoleManager.ROLE_BROWSER));
+            for(String known:new String[]{"com.android.chrome","com.sec.android.app.sbrowser",
+                    "org.mozilla.firefox","com.brave.browser","com.microsoft.emmx",
+                    "com.opera.browser","com.duckduckgo.mobile.android"})
+                if(!browserPackages.contains(known))browserPackages.add(known);
+            for(String browserPackage:browserPackages){
+                if(browserPackage==null||browserPackage.isEmpty())continue;
+                Intent browser=new Intent(Intent.ACTION_VIEW,destination);
+                browser.addCategory(Intent.CATEGORY_BROWSABLE);
+                browser.setPackage(browserPackage);
+                try{startActivity(browser);return true;}
+                catch(android.content.ActivityNotFoundException missingBrowser){
+                    // Try the next *browser* package; never fall back to any app.
+                }
             }
-            return true;
+            throw new android.content.ActivityNotFoundException("No hay un navegador compatible instalado");
         });
         if(!ui.post(launch))throw new IllegalStateException("No se pudo solicitar el navegador");
         if(!launch.get(8,TimeUnit.SECONDS))
