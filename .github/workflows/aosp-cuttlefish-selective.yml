@@ -6,6 +6,8 @@ on:
       - 'tools/aosp_cuttlefish_zip_probe.mjs'
       - 'tests/aosp_cuttlefish_zip_probe.test.mjs'
       - 'tools/aosp_boot_preflight.mjs'
+      - 'tools/aosp_ramdisk_preflight.mjs'
+      - 'tests/aosp_ramdisk_preflight.test.mjs'
   workflow_dispatch:
 permissions:
   contents: read
@@ -24,6 +26,7 @@ jobs:
           mkdir -p evidence input
           node --test tests/aosp_cuttlefish_zip_probe.test.mjs | tee evidence/zip-regression.tap
           node --test tests/aosp_boot_preflight.test.mjs | tee evidence/aosp-boot-regression.tap
+          node --test tests/aosp_ramdisk_preflight.test.mjs | tee evidence/ramdisk-regression.tap
       - name: Read official exact-build ZIP central directory without full download
         run: |
           set -euo pipefail
@@ -87,6 +90,47 @@ jobs:
             jq '{boot,init_boot,vendor_boot,generic_ramdisk_from,pending}' \
               evidence/android-boot-manifest.json
             cat evidence/ramdisk-format.json
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Verify real LZ4 legacy newc and original AOSP init ELF with independent cpio/readelf oracles
+        run: |
+          set -euo pipefail
+          node tools/aosp_ramdisk_preflight.mjs input/cf-parts/generic_ramdisk.bin \
+            --out-cpio input/generic.cpio > evidence/first-stage-init.json
+          jq -e '.status=="genuine_arm64_android_init_found_not_executed" and
+            .init_size>64 and .file_count>0 and .init_elf_machine==183 and
+            .android_init_executed==false and .adb==false' evidence/first-stage-init.json
+          cpio --quiet -it < input/generic.cpio > evidence/independent-cpio-list.txt
+          grep -Eq '^\./?init$|^init        with:
+          name: aosp-cuttlefish-arm64-boot-manifest-evidence
+          path: |
+            evidence/zip-index.json
+            evidence/extraction-report.json
+            evidence/android-boot-manifest.json
+            evidence/ramdisk-format.json
+            evidence/first-stage-init.json
+            evidence/independent-init-readelf.txt
+            evidence/*.txt
+            evidence/*.tap
+          retention-days: 14
+ evidence/independent-cpio-list.txt
+          cpio --quiet --to-stdout -i init < input/generic.cpio > input/init-oracle.elf
+          if test ! -s input/init-oracle.elf; then
+            cpio --quiet --to-stdout -i ./init < input/generic.cpio > input/init-oracle.elf
+          fi
+          test -s input/init-oracle.elf
+          readelf -h input/init-oracle.elf > evidence/independent-init-readelf.txt
+          grep -q 'AArch64' evidence/independent-init-readelf.txt
+          checksum=$(sha256sum input/init-oracle.elf | cut -d' ' -f1)
+          jq --arg sha "$checksum" -e '.init_sha256==$sha' evidence/first-stage-init.json
+          {
+            echo ''
+            echo '## Authentic AOSP first-stage /init (read-only file verification)'
+            echo ''
+            jq '{status,init_path,init_size,init_sha256,init_elf_type,
+              decompressed_newc_bytes,file_count,android_init_executed,adb}' \
+              evidence/first-stage-init.json
+            echo 'Independent cpio extraction/readelf agrees with the newc/LZ4 host inspector.'
+            echo 'No /init guest execution or ADB validation is claimed.'
           } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: always()
