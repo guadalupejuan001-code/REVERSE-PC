@@ -53,3 +53,25 @@
 }
 
 @media(max-height:450px){.music-app:has(.music-downloads)>.music-heading{display:flex!important}.music-downloads{min-height:65px;overflow-y:auto}.music-tabs{flex-shrink:0}.music-app>.music-footer{display:flex;flex-shrink:0}}
+
+
+/* Portrait adaptation only. Existing wallpaper, icon artwork and theme untouched. */
+@media (orientation:portrait) {
+  .desktop-shortcuts{grid-template-rows:none!important;grid-auto-flow:row!important;grid-template-columns:repeat(auto-fill,minmax(64px,1fr))!important;grid-auto-columns:auto!important;align-content:start!important;justify-items:center!important;inset:12px 8px auto 8px!important;max-height:calc(100% - 18px);overflow:auto}
+  .desktop-shortcut{width:64px!important;height:64px!important}
+  #desktop .window.focused{left:5px!important;top:5px!important;width:calc(100% - 10px)!important;height:calc(100% - 10px)!important;min-width:0!important;min-height:0!important}
+  #desktop .window:not(.focused){display:none!important}
+  .taskbar{width:100%!important;max-width:100%!important;overflow:hidden!important}
+  #running-apps,#pinned-apps{min-width:0!important;overflow-x:auto!important}
+  .window-content,.music-app,.bbyq-shell{min-width:0!important;min-height:0!important}
+  .music-search{flex-wrap:wrap;gap:5px!important}
+  .music-search label{flex-basis:100%;min-height:36px}
+  .music-search button{flex:1 1 auto;min-height:32px}
+  .music-tabs{overflow-x:auto!important;flex-shrink:0}
+  .music-stage{min-height:120px!important;flex:1 1 auto}
+  .music-controls{flex-wrap:wrap;flex-shrink:0}
+  .bbyq-modules{overflow-x:auto;flex-shrink:0}
+  .bbyq-module-content .qd-workspace{display:flex!important;flex-direction:column!important;overflow:auto!important;min-height:0}
+  .bbyq-module-content .qd-sidebar,.bbyq-module-content .qd-editor,.bbyq-module-content .qd-results{width:100%!important;min-height:145px!important;flex:none!important}
+  .launcher{max-width:100%!important;left:0!important;right:0!important}
+}
