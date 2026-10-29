@@ -97,3 +97,33 @@ Java_com_reversepc_os_NativeRuntime_appTurn(JNIEnv* e,jclass,jbyteArray state,jb
   try{const auto text=bytes(e,message);const auto result=reverse_pc::rxe_app::turn(bytes(e,program),bytes(e,state),std::string(text.begin(),text.end()),unsigned(language));return output(e,reverse_os::packet(result.text,result.state));}
   catch(const std::exception& x){throw_java(e,x);return nullptr;}
 }
+
+
+// REVERSE VELOCITY is authored in XI/RXE. JNI only injects five bounded
+// physical inputs, executes the owner's *existing* QuantumRuntime transaction
+// and returns its original RXOS1 packet. No game physics in this adapter.
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_velocityTick(
+    JNIEnv* e,jclass,jbyteArray state,jbyteArray executable,
+    jint gas,jint brake,jint steering,jint drift,jint reset){
+  try{
+    if(gas<0||gas>1||brake<0||brake>1||steering<0||steering>2||
+       drift<0||drift>1||reset<0||reset>1)
+      throw std::invalid_argument("XI velocity input out of bounds");
+    const auto image=reverse_pc::rxe::decode(bytes(e,executable));
+    const auto compiled=reverse_pc::rxe::disassemble(image);
+    const std::string header=mundo_x::infinite_program_detail::machine_header;
+    if(compiled.compare(0,header.size(),header)!=0||
+       compiled.size()<=header.size()||compiled[header.size()]!='\n')
+      throw std::invalid_argument("Velocity program requires XI Machine v1");
+    const std::string input=
+      header+"\nstore8 128 "+std::to_string(gas)+
+      "\nstore8 129 "+std::to_string(brake)+
+      "\nstore8 130 "+std::to_string(steering)+
+      "\nstore8 131 "+std::to_string(drift)+
+      "\nstore8 132 "+std::to_string(reset)+"\n";
+    auto runtime=reverse_os::restore(bytes(e,state));
+    const auto output_lines=runtime.execute(input+compiled.substr(header.size()+1));
+    return output(e,reverse_os::packet(output_lines,reverse_os::save(runtime)));
+  }catch(const std::exception& error){throw_java(e,error);return nullptr;}
+}
