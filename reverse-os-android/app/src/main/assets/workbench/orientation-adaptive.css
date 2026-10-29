@@ -10,7 +10,8 @@
   }
   .desktop-shortcuts::-webkit-scrollbar{display:none}
   .taskbar{min-width:0;gap:1px!important;overflow:hidden}
-  .taskbar .launcher-toggle{flex:0 0 70px!important;width:70px!important;min-width:70px!important}
+  .taskbar .launcher-toggle{flex:0 0 42px!important;width:42px!important;min-width:42px!important;padding:0 7px!important}
+  .taskbar .launcher-toggle .launcher-label{display:none!important}
   #pinned-apps,#running-apps{min-width:0;max-width:100%;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
   #pinned-apps .task-app,#running-apps .task-app{flex:0 0 30px}
   .taskbar .dock-separator{margin:0 2px}
