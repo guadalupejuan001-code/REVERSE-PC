@@ -54,10 +54,11 @@ function parseStudent(source){
     Buffer.byteLength(source,'utf8')>192||/[^\x09\x0a\x20-\x7e]/.test(source))
   throw Error('unsafe student source');
  const lines=source.slice(HEADER.length).trimEnd().split('\n');
- if(lines.length<3||lines.length>4||lines.at(-1)!=='halt')throw Error('unsafe statement count or halt');
+ if(lines.length<3||lines.length>5||lines.at(-1)!=='halt')throw Error('unsafe statement count or halt');
  const set=/^set r([0-3]) \{\{a\}\}$/;
  const operation=/^(add|sub|mul|mod|div) r([0-3]) (\{\{a\}\}|\{\{b\}\}|0)$/;
  const printed=/^print r([0-3])$/;
+ const harmless=/^mov r3 r3$/;
  const p={lines,setIdx:-1,opIdx:-1,printIdx:-1,printReg:255};
  for(let i=0;i<lines.length-1;i++){
   let m=set.exec(lines[i]);
@@ -67,6 +68,7 @@ function parseStudent(source){
    p.opIdx=i;p.op=OP_IDS[m[1]];p.dest=Number(m[2]);p.rhs={'{{a}}':1,'{{b}}':2,'0':3}[m[3]];continue;}
   m=printed.exec(lines[i]);
   if(m){if(p.printIdx!==-1)throw Error('duplicate print');p.printIdx=i;p.printReg=Number(m[1]);continue;}
+  if(harmless.test(lines[i])){if(p.noopIdx!==undefined)throw Error('duplicate no-op');p.noopIdx=i;continue;}
   throw Error('unsafe XI statement');
  }
  if(p.setIdx<0||p.opIdx<0||p.setIdx===p.opIdx||
@@ -87,6 +89,7 @@ function mutation(skill,fault){
  else if(fault==='swappedOrder')[lines[0],lines[1]]=[lines[1],lines[0]];
  else if(fault==='initialReg2')lines[0]='set r2 {{a}}';
  else throw Error('unknown synthetic fault');
+ if(fault==='wrongOpB')lines.splice(2,0,'mov r3 r3'); // Unseen safe source form, not merely a relabelled baseline.
  const s=HEADER+lines.join('\n')+'\n';parseStudent(s);return s;
 }
 function diagnose(source,skill){
