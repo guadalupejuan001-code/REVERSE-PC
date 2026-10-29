@@ -71,6 +71,7 @@ inline BootCycleReport run_boot_cycle(MinimalGuest& guest,const BootCycleLimits&
         guest=std::move(checked);
         report.first_user_instruction_verified=true;
       }catch(const std::exception& failure){report.reason="unverified_userspace_entry";report.error=failure.what();break;}
+      catch(const MachineFault& failure){report.reason="unverified_userspace_entry";report.error="Architectural entry fault: "+hex(failure.syndrome)+" at "+hex(failure.address);break;}
     }else{
       std::string failure;const auto count=std::min(limit.chunk,limit.instructions-steps);
       const auto run=boot_cycle_prefix(guest,count,bool(first_user)&&!report.first_user_instruction_verified,failure);

@@ -2,6 +2,7 @@
 #include "guest_boot_cycle.hpp"
 #include "guest_file_session.hpp"
 #include <csignal>
+#include <sys/random.h>
 #include <iostream>
 using namespace reverse_pc::guest;
 static volatile std::sig_atomic_t stopping=0;
@@ -31,12 +32,22 @@ static std::string next_instruction(const MinimalGuest& guest){
   try{const auto pa=guest.physical_address(guest.registers().pc,false,true);
     return "{\"pc\":"+quote(hex(guest.registers().pc))+",\"physical_pc\":"+quote(hex(pa))+",\"opcode\":"+quote(hex(guest.read(pa,4)))+"}";
   }catch(const std::exception& e){return "{\"inspection_error\":"+quote(e.what())+"}";}
+  catch(const MachineFault& e){return "{\"inspection_fault\":"+quote(hex(e.syndrome))+",\"address\":"+quote(hex(e.address))+"}";}
 }
 int main(int argc,char** argv){try{
-  require(argc==6,"Expected input.rvg disk.raw new-output-directory milliseconds input-checkpoint-sha256");
+  require(argc>=6&&argc<=9,"Expected input.rvg disk.raw new-output-directory milliseconds input-sha256 [--chunk=N] [--instructions=N] [--counter-latency=host-entropy]");
   BootCycleLimits limits;const std::string wall(argv[4]);
   require(!wall.empty()&&wall.find_first_not_of("0123456789")==std::string::npos,"Wall budget must be decimal milliseconds");
   limits.wall_ms=std::stoull(wall);require(limits.wall_ms&&limits.wall_ms<=1500000,"Wall budget must be 1..1500000 ms");
+  bool seen_chunk=false,seen_steps=false,seed_clock=false;
+  for(int i=6;i<argc;i++){
+    const std::string arg(argv[i]);if(arg=="--counter-latency=host-entropy"){require(!seed_clock,"Duplicate timing mode");seed_clock=true;continue;}
+    const bool chunk=arg.rfind("--chunk=",0)==0,steps=arg.rfind("--instructions=",0)==0;
+    require(chunk||steps,"Unknown cycle option");bool& seen=chunk?seen_chunk:seen_steps;require(!seen,"Duplicate cycle option");seen=true;
+    const auto numeric=arg.substr(chunk?8:15);require(!numeric.empty()&&numeric.find_first_not_of("0123456789")==std::string::npos,"Cycle option must be a positive decimal integer");
+    const auto value=std::stoull(numeric);require(value&&value<=(chunk?1000000:UINT64_C(8000000000)),"Cycle option exceeds its bound");
+    if(chunk)limits.chunk=value;else limits.instructions=value;
+  }
   require(!std::filesystem::exists(argv[3]),"Cycle output must be a new directory");
   const auto input=guest_read_file(argv[1],MinimalGuest::max_adaptive_snapshot);validate_input(input,argv[5]);
   const auto disk=GuestBlockImage::open(argv[2]);require(disk->sha256()==disk_sha&&disk->size()==UINT64_C(8738832384),"Wrong external disk");
@@ -44,7 +55,15 @@ int main(int argc,char** argv){try{
   require(guest.machine().enabled&&guest.machine().image_kind==2&&guest.machine().pci.enabled,"Expected original PCI Linux machine");
   require(guest.machine().el||guest.registers().pc==0x2a4000,"Use the proven entry checkpoint to verify the first Android instruction");
   const auto initial=guest.snapshot();require(initial==input,"Restoring the checkpoint changed its bytes");
-  const std::string source="{\"input_checkpoint_sha256\":"+quote(argv[5])+",\"kernel_sha256\":"+quote(kernel_sha)+",\"ramdisk_sha256\":"+quote(ramdisk_sha)+",\"disk_sha256\":"+quote(disk_sha)+",\"disk_bytes\":8738832384,\"android_services_verified\":false,\"android_display_verified\":false,\"native_android_games_verified\":false}";
+  std::string seed_origin=guest.machine().counter_latency.enabled?"checkpoint":"disabled";
+  if(seed_clock&&!guest.machine().counter_latency.enabled){
+    std::array<std::uint8_t,32> seed{};std::size_t at=0;
+    while(at<seed.size()){const auto n=::getrandom(seed.data()+at,seed.size()-at,0);if(n<0&&errno==EINTR)continue;require(n>0,"Host OS entropy is unavailable");at+=std::size_t(n);}
+    guest.enable_counter_latency(seed);seed_origin="host_os_getrandom";
+  }
+  const auto& timing=guest.machine().counter_latency;
+  const std::string seed_id=timing.enabled?GuestSha256::hash(Bytes(timing.seed.begin(),timing.seed.end())):std::string{};
+  const std::string source="{\"input_checkpoint_sha256\":"+quote(argv[5])+",\"kernel_sha256\":"+quote(kernel_sha)+",\"ramdisk_sha256\":"+quote(ramdisk_sha)+",\"disk_sha256\":"+quote(disk_sha)+",\"disk_bytes\":8738832384,\"counter_latency\":"+(timing.enabled?"true":"false")+",\"timing_seed_origin\":"+quote(seed_origin)+",\"timing_seed_sha256\":"+quote(seed_id)+",\"run_chunk\":"+std::to_string(limits.chunk)+",\"android_services_verified\":false,\"android_display_verified\":false,\"native_android_games_verified\":false}";
   BootCycleJournal journal(argv[3]);std::signal(SIGTERM,stop_cycle);std::signal(SIGINT,stop_cycle);
   auto last=std::chrono::steady_clock::now();std::size_t uart=0;
   const auto save=[&](const MinimalGuest& g,const BootCycleReport& r){journal.publish(g,r,source);std::cerr<<"REVERSE_PCI_SAVED {\"instructions\":"<<g.registers().instructions<<",\"generation\":"<<journal.sequence()<<"}\n";};

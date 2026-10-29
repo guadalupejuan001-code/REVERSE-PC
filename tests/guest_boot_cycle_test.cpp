@@ -57,6 +57,9 @@ int main(){try{
   const auto unverified_report=run_boot_cycle(unverified,limits,{},[](MinimalGuest& trial){trial.run(1);return false;});
   check(unverified_report.reason=="unverified_userspace_entry"&&!unverified_report.first_user_instruction_verified,"Unverified entry was accepted");
   check(unverified.snapshot()==boundary,"Failed entry verifier committed a partial transition");
+  const auto faulted_entry=run_boot_cycle(unverified,limits,{},[](MinimalGuest&)->bool{throw MachineFault{0x96000004,0x1234};});
+  check(faulted_entry.reason=="unverified_userspace_entry"&&!faulted_entry.first_user_instruction_verified,"Architectural observation fault escaped its boundary");
+  check(unverified.snapshot()==boundary,"Architectural observation fault changed the CPU");
   const auto root=std::filesystem::path("evidence/c04/cycle-journal-test-"+std::to_string(::getpid()));
   std::filesystem::create_directories(root.parent_path());BootCycleJournal journal(root);
   journal.publish(bad,failed);journal.publish(split,report);journal.publish(bounded,bounded_report);

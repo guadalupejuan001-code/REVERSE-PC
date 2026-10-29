@@ -206,6 +206,10 @@ class MinimalGuest {
     require(text.size()<=4096-machine_.receive.size(),"Serial input queue exceeds 4096 bytes");
     machine_.receive+=text;
   }
+  void enable_counter_latency(const std::array<std::uint8_t,32>& host_seed){
+    require(machine_.enabled&&!machine_.counter_latency.enabled,"Counter latency requires a system guest and cannot replace an active seed");
+    machine_.counter_latency=GuestCounterLatency{};machine_.counter_latency.seed=host_seed;machine_.counter_latency.enabled=true;
+  }
 
   std::uint8_t read8(std::uint64_t address) const {
     range(address,1);
@@ -408,6 +412,7 @@ class MinimalGuest {
         << ",\"block_image_bytes\":" << machine_.pci.disk_bytes
         << ",\"display_width\":" << machine_.pci.scan_w << ",\"display_height\":" << machine_.pci.scan_h
         << ",\"display_frame\":" << machine_.pci.flushes
+        << (machine_.counter_latency.enabled?",\"counter_latency\":\"host-seeded-hmac-v1\",\"counter_samples\":"+std::to_string(machine_.counter_latency.reads):std::string{})
         << ",\"android_boot\":\"not_implemented\""
         << ",\"wild_rift\":\"not_supported\",\"hardware_acceleration\":false}";
     return out.str();
@@ -560,7 +565,7 @@ class MinimalGuest {
  public:
   Bytes display_rgb() const;
  private:
-  std::uint64_t system_read(unsigned id) const;
+  std::uint64_t system_read(unsigned id);
   void system_write(unsigned id,std::uint64_t value);
   void exception(std::uint64_t syndrome,std::uint64_t address,std::uint64_t return_pc,bool irq);
   void select_stack(unsigned el,unsigned selected);
