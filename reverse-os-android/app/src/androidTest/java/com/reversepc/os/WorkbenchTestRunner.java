@@ -14,6 +14,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -52,6 +53,20 @@ public final class WorkbenchTestRunner extends Instrumentation {
             Thread.sleep(100);
         }
         throw new AssertionError("Desktop did not settle after orientation/activity startup");
+    }
+    private void openGuestView()throws Exception{
+        String document=null;int stable=0;
+        for(int i=0;i<300;i++){
+            String ready=js("(()=>{if(document.readyState!=='complete'||typeof createWindow!=='function'||typeof guestUi==='undefined'||typeof state==='undefined')return null;"+
+                "if(!document.querySelector('[data-guest=inspect]')||!state.windows.some(w=>w.app==='xi'&&w.xiTab==='arm64'&&!w.min&&w.space===state.space))createWindow('guest');"+
+                "return guestUi.snapshot&&!guestUi.busy?String(performance.timeOrigin):null;})()");
+            if(!ready.equals("null")){if(ready.equals(document))stable++;else{document=ready;stable=1;}}
+            else{document=null;stable=0;}
+            if(stable>=15)return;
+            Thread.sleep(100);
+        }
+        throw new AssertionError("Guest view did not settle across initial WebView navigation: "+js(
+            "JSON.stringify({ready:document.readyState,url:location.href,guest:typeof guestUi==='undefined'?null:guestUi,windows:typeof state==='undefined'?null:state.windows})"));
     }
     private JSONObject op(String op,String payload,String target)throws Exception{
         js("window."+target+"=null;nativeRequest("+JSONObject.quote(op)+","+JSONObject.quote(payload)+").then(r=>window."+target+"=r).catch(e=>window."+target+"={ok:false,error:String(e)});true");
@@ -311,8 +326,9 @@ public final class WorkbenchTestRunner extends Instrumentation {
     }
     private void guestWorkflow(boolean restore)throws Exception{
         String desktopBefore=hash("session.rvp");
-        js("createWindow('guest');true");
-        waitJs("guestUi.snapshot&&!guestUi.busy");
+        if(restore)require(waitJs("!!document.querySelector('[data-guest=inspect]')").equals("true"),
+            "The saved ARM64 tab was not rendered during cold restoration");
+        openGuestView();
         if(restore){
             require(js("guestUi.snapshot.guest.instructions").equals("13"),"Guest PC/count did not persist after restart");
             require(js("guestUi.snapshot.guest.delta_overrides").equals("2"),"XI/ARM64 deltas did not persist");
@@ -342,9 +358,62 @@ public final class WorkbenchTestRunner extends Instrumentation {
         require(js("document.querySelector('.guest-boundary').textContent.includes('todavía no arrancan')").equals("true"),"UI falsely presents Android boot as implemented");
         require(desktopBefore.equals(hash("session.rvp")),"Guest operation changed the desktop state");
     }
+    private static String streamHash(File file)throws Exception{
+        MessageDigest hash=MessageDigest.getInstance("SHA-256");byte[] part=new byte[8192];int count;
+        try(java.io.InputStream input=new java.io.FileInputStream(file)){while((count=input.read(part))!=-1)hash.update(part,0,count);}
+        StringBuilder out=new StringBuilder();for(byte value:hash.digest())out.append(String.format(java.util.Locale.ROOT,"%02x",value&255));return out.toString();
+    }
+    private void continuousGuestWorkflow()throws Exception{
+        String before=hash("session.rvp");
+        openGuestView();js("window.confirm=()=>true;true");
+        tapDom("[data-guest=demo]");waitJs("guestUi.snapshot?.loaded&&!guestUi.busy");
+        tapDom("[data-guest=continuous]");waitJs("guestUi.snapshot.guest.halted&&!guestUi.busy&&!guestUi.running");
+        require(js("guestUi.output").contains("6*7 = 42"),"Continuous own guest did not execute and stop at real halt");
+        require(js("!!document.querySelector('[data-guest=checkpoint]')").equals("true"),"Checkpoint import control is missing");
+        require(before.equals(hash("session.rvp")),"Continuous guest changed the desktop core");
+    }
+    private void largeGuestWorkflow()throws Exception{
+        String desktopBefore=hash("session.rvp");File input=dataFile("large-guest-input.rvg");
+        require(input.length()>32L*1024*1024,"Genuine Android checkpoint did not exceed the former Java/JNI ceiling");
+        JSONObject imported=RuntimeExecutor.INSTANCE.submit(()->{
+            try(java.io.InputStream stream=new java.io.FileInputStream(input)){return new GuestStore(getTargetContext()).importCheckpoint(stream);}
+        }).get(60,TimeUnit.SECONDS);
+        require(imported.getJSONObject("guest").getLong("instructions")==180326448,"Imported checkpoint is not the pinned genuine Android state");
+        openGuestView();js("window.ReverseGuest.imported("+imported+");true");
+        JSONObject ran=op("guestRunContinuous","","largeGuestRun");
+        require(ran.getBoolean("ok")&&ran.getLong("executed_this_run")==250000&&
+            ran.getJSONObject("guest").getLong("instructions")==180576448,"Real Android checkpoint did not advance through UI/JNI/file persistence");
+        js("window.ReverseGuest.imported("+ran+");true");
+        String expected=arguments.getString("expected_guest_sha256");
+        require(expected!=null&&expected.matches("[0-9a-f]{64}"),"Missing independent native checkpoint digest");
+        require(streamHash(dataFile("guest-aarch64.rvg")).equals(expected),"Android file execution differs from independent host execution");
+        File exported=dataFile("large-guest-export.rvg");
+        RuntimeExecutor.INSTANCE.submit(()->{try(OutputStream stream=new FileOutputStream(exported)){new GuestStore(getTargetContext()).exportTo(stream);}return true;}).get(60,TimeUnit.SECONDS);
+        require(streamHash(exported).equals(expected),"Streaming export changed the real checkpoint");
+        tapDom("[data-guest=continuous]");waitJs("guestUi.snapshot.guest.instructions>180576448");
+        js("continueGuest();true");waitJs("!guestUi.running&&!guestUi.busy");
+        String paused=streamHash(dataFile("guest-aarch64.rvg"));Thread.sleep(500);
+        require(streamHash(dataFile("guest-aarch64.rvg")).equals(paused),"Paused continuation submitted another block");
+        JSONObject restored=RuntimeExecutor.INSTANCE.submit(()->{
+            try(java.io.InputStream stream=new java.io.FileInputStream(exported)){return new GuestStore(getTargetContext()).importCheckpoint(stream);}
+        }).get(60,TimeUnit.SECONDS);
+        js("window.ReverseGuest.imported("+restored+");true");
+        require(streamHash(dataFile("guest-aarch64.rvg")).equals(expected),"Restoring the streamed export changed its exact checkpoint");
+        boolean rejected=RuntimeExecutor.INSTANCE.submit(()->{
+            try(java.io.RandomAccessFile bad=new java.io.RandomAccessFile(input,"rw")){bad.writeByte('X');}
+            try(java.io.InputStream stream=new java.io.FileInputStream(input)){
+                try{new GuestStore(getTargetContext()).importCheckpoint(stream);return false;}catch(Exception invalid){return true;}
+            }
+        }).get(60,TimeUnit.SECONDS);
+        require(rejected&&streamHash(dataFile("guest-aarch64.rvg")).equals(expected),"Rejected large import replaced the valid guest");
+        require(desktopBefore.equals(hash("session.rvp")),"Large Android guest changed the desktop state");
+        Files.write(dataFile("large-guest-proof.json").toPath(),new JSONObject().put("input_instructions",180326448)
+            .put("instructions",180576448).put("checkpoint_bytes",exported.length()).put("sha256",expected)
+            .put("host_state_identical",true).put("continuous_pause_saved",true).put("corrupt_import_preserved",true).put("android_boot",false).toString().getBytes(StandardCharsets.UTF_8));
+    }
     private void systemWorkflow(boolean restore)throws Exception{
         String desktopBefore=hash("session.rvp");
-        js("createWindow('guest');true");waitJs("guestUi.snapshot&&!guestUi.busy");
+        openGuestView();
         require(js("state.windows.some(w=>w.app==='xi'&&w.xiTab==='arm64')&&!state.windows.some(w=>w.app==='guest')").equals("true"),"ARM64 was not integrated into existing XI window");
         require(js("!SHELL_APPS.includes('guest')").equals("true"),"Separate Guest application is still in the launcher");
         if(!restore){
@@ -366,7 +435,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
     }
     private void floatingWorkflow(boolean restore)throws Exception{
         String desktopBefore=hash("session.rvp");
-        js("createWindow('guest');true");waitJs("guestUi.snapshot&&!guestUi.busy");
+        openGuestView();
         if(!restore){
             js("window.confirm=()=>true;true");tapDom("[data-guest=float]");
             waitJs("guestUi.snapshot?.loaded&&!guestUi.busy");
@@ -405,6 +474,11 @@ public final class WorkbenchTestRunner extends Instrumentation {
             require(snapshot.getJSONObject("android").getLong("ram_total_bytes")>0,"No native RAM reading");
             require(snapshot.getJSONObject("core").getString("state_format").equals("RVPC2"),"Wrong checkpoint format");
             require(snapshot.getJSONObject("build").getString("source_commit").matches("[a-f0-9]{40}"),"Missing build provenance");
+            if(requested.equals("guestContinuous")||requested.equals("guestLarge")){
+                if(requested.equals("guestLarge"))largeGuestWorkflow();else continuousGuestWorkflow();
+                visualCheck(requested);
+                result.putString("stream","WORKBENCH_TESTS_OK mode="+requested+" ");result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
+            }
             if(requested.equals("armFloat")||requested.equals("armFloatRestore")){
                 floatingWorkflow(requested.equals("armFloatRestore"));visualCheck(requested);
                 result.putString("stream","WORKBENCH_TESTS_OK mode="+requested+" integration=XI fp=ARM64 SIMD state=RVG3 qubits=4096\n");

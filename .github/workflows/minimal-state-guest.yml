@@ -1,13 +1,14 @@
 name: REVERSE ARM64 compatibility
 on:
   pull_request:
-    paths: ['src/minimal_guest*', 'src/reverse_guest.cpp', 'tests/minimal_guest*', 'examples/guest-*.S', 'scripts/embed-guest-system-demo.py', 'third_party/softfloat/**', 'scripts/build-softfloat.py', 'scripts/prepare-ether-compat.py', 'tools/guest_linux_probe.cpp', 'reverse-os-android/**', 'CMakeLists.txt', '.github/workflows/minimal-state-guest.yml']
+    paths: ['src/minimal_guest*', 'src/guest_file_session.hpp', 'tests/guest_file_session_test.cpp', 'src/reverse_guest.cpp', 'tests/minimal_guest*', 'examples/guest-*.S', 'scripts/embed-guest-system-demo.py', 'third_party/softfloat/**', 'scripts/build-softfloat.py', 'scripts/prepare-ether-compat.py', 'tools/guest_linux_probe.cpp', 'reverse-os-android/**', 'CMakeLists.txt', '.github/workflows/minimal-state-guest.yml']
   push:
     branches: [main]
-    paths: ['src/minimal_guest*', 'src/reverse_guest.cpp', 'tests/minimal_guest*', 'examples/guest-*.S', 'scripts/embed-guest-system-demo.py', 'third_party/softfloat/**', 'scripts/build-softfloat.py', 'scripts/prepare-ether-compat.py', 'tools/guest_linux_probe.cpp', 'reverse-os-android/**', '.github/workflows/minimal-state-guest.yml']
+    paths: ['src/minimal_guest*', 'src/guest_file_session.hpp', 'tests/guest_file_session_test.cpp', 'src/reverse_guest.cpp', 'tests/minimal_guest*', 'examples/guest-*.S', 'scripts/embed-guest-system-demo.py', 'third_party/softfloat/**', 'scripts/build-softfloat.py', 'scripts/prepare-ether-compat.py', 'tools/guest_linux_probe.cpp', 'reverse-os-android/**', '.github/workflows/minimal-state-guest.yml']
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 jobs:
   native:
     runs-on: ubuntu-latest
@@ -26,6 +27,7 @@ jobs:
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_RELEASE=-O1 -DREVERSE_PC_BUILD_PREVIOUS_MAIN_REFERENCE=OFF
           cmake --build build --target reverse_guest reverse_pc_minimal_guest reverse_pc_minimal_system reverse_pc_minimal_fp reverse_pc_minimal_bytes reverse_pc_runtime_reference reverse_pc_runtime_contract --parallel 2
           mkdir -p guest-evidence
+          node --test tests/minimal_guest_tab_restore.test.mjs > guest-evidence/tab-restoration.txt
           build/reverse_pc_minimal_guest > guest-evidence/native-tests.json
           build/reverse_pc_minimal_system > guest-evidence/system-native.json
           build/reverse_pc_minimal_fp > guest-evidence/fp-native.json
@@ -62,6 +64,8 @@ jobs:
       - name: Check undefined behavior and failed transactions
         run: |
           python3 scripts/build-softfloat.py
+          g++ -std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tests/guest_file_session_test.cpp build/softfloat/libreverse_softfloat.a -o build/file-session-ubsan
+          build/file-session-ubsan build/file-session-checks > guest-evidence/file-session.json
           g++ -std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tests/minimal_guest_test.cpp build/softfloat/libreverse_softfloat.a -o build/guest-ubsan
           build/guest-ubsan > guest-evidence/ubsan.json
           g++ -std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tests/minimal_guest_system_test.cpp build/softfloat/libreverse_softfloat.a -o build/system-ubsan
@@ -192,6 +196,24 @@ jobs:
           cp reverse-os-android/app/build/outputs/apk/control/debug/app-control-debug.apk guest-dist/REVERSE-ARM64-integration-ci.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs guest-dist/REVERSE-ARM64-integration-ci.apk > guest-evidence/signature.txt
           sudo chmod a+rw /dev/kvm
+      - uses: actions/download-artifact@v4
+        with:
+          name: reverse-android-kernel-pairs-continuation
+          run-id: 40817697618
+          github-token: ${{ github.token }}
+          path: large-input
+      - name: Independently advance the exact genuine large Android checkpoint
+        run: |
+          set -euo pipefail
+          echo '4f139751053c39bc1d33c7012fe1d61a8135f002c67be6f0466b3e8f97e2eda3  large-input/current.rvg' | sha256sum -c -
+          python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+          python3 scripts/build-softfloat.py
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
+            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
+            tools/guest_linux_probe.cpp build/softfloat/libreverse_softfloat.a -o build/large-reference
+          build/large-reference large-input/current.rvg 250000 build/large-reference.rvg \
+            --chunk=250000 > guest-evidence/large-reference.json
+          sha256sum build/large-reference.rvg > guest-evidence/large-reference.sha256
       - name: Exercise integrated XI/ARM64, original quantum engine and persistence
         timeout-minutes: 10
         shell: bash
@@ -203,7 +225,7 @@ jobs:
             printf 'no\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --force -n guest -p "$ANDROID_AVD_HOME/guest.avd" -k 'system-images;android-35;default;x86_64'
             "$ANDROID_HOME/emulator/emulator" -avd guest -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -memory 2048 > guest-evidence/emulator.log 2>&1 &
             GUEST_EMULATOR_PID=$!
-            trap 'adb logcat -d > guest-evidence/logcat.txt 2>/dev/null || true; kill "$GUEST_EMULATOR_PID" 2>/dev/null || true' EXIT
+            trap 'adb logcat -d > guest-evidence/logcat.txt 2>/dev/null || true; adb pull /sdcard/Android/data/com.reversepc.control.workbench/files/visual-evidence guest-evidence/visual >/dev/null 2>&1 || true; kill "$GUEST_EMULATOR_PID" 2>/dev/null || true' EXIT
             ready=false
             for i in $(seq 1 115); do
               if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d "\r")" == 1 ]]; then ready=true;break;fi
@@ -231,7 +253,26 @@ jobs:
             adb shell am force-stop com.reversepc.control.workbench
             adb shell am instrument -w -e mode armFloatRestore com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee guest-evidence/android-fp-restore.txt
             grep 'WORKBENCH_TESTS_OK mode=armFloatRestore ' guest-evidence/android-fp-restore.txt
+            adb shell am instrument -w -e mode guestContinuous com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee guest-evidence/android-continuous.txt
+            grep 'WORKBENCH_TESTS_OK mode=guestContinuous ' guest-evidence/android-continuous.txt
+            adb shell -T "run-as com.reversepc.control.workbench sh -c 'cat > files/large-guest-input.rvg'" < large-input/current.rvg
+            expected_guest_sha256=$(cut -d ' ' -f 1 guest-evidence/large-reference.sha256)
+            adb shell am instrument -w -e mode guestLarge -e expected_guest_sha256 "$expected_guest_sha256" com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee guest-evidence/android-large.txt
+            grep 'WORKBENCH_TESTS_OK mode=guestLarge ' guest-evidence/android-large.txt
+            adb exec-out run-as com.reversepc.control.workbench cat files/large-guest-proof.json > guest-evidence/android-large-proof.json
+            adb exec-out run-as com.reversepc.control.workbench cat files/large-guest-export.rvg | sha256sum > guest-evidence/android-large-export.sha256
+            python3 - <<'PYPROOF'
+            import json,pathlib
+            p=pathlib.Path('guest-evidence')
+            expected=(p/'large-reference.sha256').read_text().split()[0]
+            assert (p/'android-large-export.sha256').read_text().split()[0]==expected
+            proof=json.loads((p/'android-large-proof.json').read_text())
+            assert proof['host_state_identical'] and proof['corrupt_import_preserved']
+            assert proof['instructions']==180576448 and proof['checkpoint_bytes']>32*1024*1024
+            assert proof['android_boot'] is False
+            PYPROOF
             adb exec-out screencap -p > guest-evidence/android-screen.png
+            adb pull /sdcard/Android/data/com.reversepc.control.workbench/files/visual-evidence guest-evidence/visual
       - uses: actions/upload-artifact@v4
         if: always()
         with:

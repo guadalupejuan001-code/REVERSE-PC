@@ -54,3 +54,8 @@ document.addEventListener('click',async e=>{
   }catch(error){w.quantumError=error.message;}
   finally{w.xiBusy=false;renderWindowContent(w);queueSave();}
 });
+
+// desktop.js mounts saved windows before this tab renderer is installed.
+// Re-render the restored XI views so the visible ARM64 pane inspects its
+// saved guest without needing another click after process restart.
+for(const w of state.windows)if(w.app==='xi')renderWindowContent(w);

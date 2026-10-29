@@ -4,6 +4,7 @@
 #include "minimal_guest_demo.hpp"
 #include "minimal_guest_system_demo.hpp"
 #include "minimal_guest_fp_demo.hpp"
+#include "guest_file_session.hpp"
 #include <jni.h>
 #include <exception>
 #include <limits>
@@ -153,4 +154,15 @@ extern "C" JNIEXPORT jbyteArray JNICALL
 Java_com_reversepc_os_NativeRuntime_guestInput(JNIEnv* e,jclass,jbyteArray state,jstring text){
   try{auto guest=reverse_pc::guest::MinimalGuest::from_snapshot(bytes(e,state));guest.console_input(source(e,text));return output(e,guest_packet(guest));}
   catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_guestFileOperation(JNIEnv* e,jclass,jstring input,jstring candidate,
+                                                      jint operation,jint steps,jstring text){
+  try{
+    reverse_pc::guest::require(operation>=0&&steps>=0,"Invalid guest file request");
+    const auto report=reverse_pc::guest::guest_file_operation(source(e,input),
+      candidate?source(e,candidate):std::string{},unsigned(operation),unsigned(steps),
+      text?source(e,text):std::string{});
+    return output(e,std::vector<std::uint8_t>(report.begin(),report.end()));
+  }catch(const std::exception& x){throw_java(e,x);return nullptr;}
 }

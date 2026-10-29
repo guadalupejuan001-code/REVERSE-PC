@@ -45,15 +45,18 @@ import java.util.concurrent.TimeUnit;
 /** Local packaged desktop. Only owned assets can access the native bridge. */
 public final class WorkbenchActivity extends Activity {
     static final String ORIGIN="https://reverse.local/";
-    private static final int PICK=7101,EXPORT=7102,IMPORT_RXE=7103,IMPORT_GUEST_ELF=7104,IMPORT_LINUX_IMAGE=7105,IMPORT_SYSTEM_ELF=7106;
+    private static final int PICK=7101,EXPORT=7102,IMPORT_RXE=7103,IMPORT_GUEST_ELF=7104,IMPORT_LINUX_IMAGE=7105,IMPORT_SYSTEM_ELF=7106,IMPORT_GUEST_CHECKPOINT=7107;
     private final Handler ui=new Handler(Looper.getMainLooper());
     private volatile boolean closed;
+    private volatile boolean activityActive;
+    private volatile long activityEpoch;
     private SessionStore store;
     private WorkbenchPrograms programs;
     private GuestStore guest;
     private WebView web;
     private ValueCallback<Uri[]> chooser;
     private byte[] pendingExport;
+    private boolean pendingGuestExport;
     private int insetTop,insetBottom,insetLeft,insetRight,keyboardInset;
     private boolean keyboardVisible;
 
@@ -199,9 +202,12 @@ public final class WorkbenchActivity extends Activity {
         return result;
     }
     public final class Bridge {
+        private String guestAutoToken;
+        private long guestAutoEpoch;
         @JavascriptInterface public void hideKeyboard(){ui.post(WorkbenchActivity.this::hideKeyboard);}
         @JavascriptInterface public void request(String id,String operation,String payload){
             if(closed||id==null||!id.matches("[A-Za-z0-9_-]{1,60}"))return;
+            final long submittedEpoch=activityEpoch;
             RuntimeExecutor.INSTANCE.execute(()->{
                 String response;
                 try{
@@ -215,6 +221,14 @@ public final class WorkbenchActivity extends Activity {
                     else if("guestSystem".equals(operation))result=guest().createSystem(null,0);
                     else if("guestFloat".equals(operation))result=guest().createSystem(null,3);
                     else if("guestRun".equals(operation))result=guest().run(new JSONObject(payload).getInt("steps"));
+                    else if("guestRunContinuous".equals(operation)){
+                        String token=payload==null||payload.isEmpty()?"single-"+submittedEpoch:new JSONObject(payload).getString("continuation");
+                        if(!token.matches("[A-Za-z0-9_-]{1,60}"))throw new IllegalArgumentException("Continuación no válida");
+                        if(!activityActive||submittedEpoch!=activityEpoch)throw new IllegalStateException("Ejecución pausada al salir de REVERSE.");
+                        if(!token.equals(guestAutoToken)){guestAutoToken=token;guestAutoEpoch=submittedEpoch;}
+                        if(guestAutoEpoch!=activityEpoch)throw new IllegalStateException("Pulsa Continuar para reanudar el invitado.");
+                        result=guest().runContinuous().put("continuation_paused",activityEpoch!=submittedEpoch);
+                    }
                     else if("guestXi".equals(operation))result=guest().xi(payload);
                     else if("guestInput".equals(operation))result=guest().input(payload);
                     else if("saveProfile".equals(operation))result=saveProfile(payload);
@@ -243,16 +257,25 @@ public final class WorkbenchActivity extends Activity {
             ui.post(()->{if(!closed)try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),IMPORT_RXE);}catch(Exception error){message("No se pudo abrir el selector de ejecutables.");}});
         }
         @JavascriptInterface public void importGuestElf(){
-            ui.post(()->{if(!closed)try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),IMPORT_GUEST_ELF);}catch(Exception error){message("No se pudo abrir el selector ELF.");}});
+            ui.post(()->{if(!closed)try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),IMPORT_GUEST_ELF);}catch(Exception error){cancelGuestImport();message("No se pudo abrir el selector ELF.");}});
         }
         @JavascriptInterface public void importLinuxImage(){
-            ui.post(()->{if(!closed)try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),IMPORT_LINUX_IMAGE);}catch(Exception error){message("No se pudo abrir el selector Image.");}});
+            ui.post(()->{if(!closed)try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),IMPORT_LINUX_IMAGE);}catch(Exception error){cancelGuestImport();message("No se pudo abrir el selector Image.");}});
         }
         @JavascriptInterface public void importSystemElf(){
-            ui.post(()->{if(!closed)try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),IMPORT_SYSTEM_ELF);}catch(Exception error){message("No se pudo abrir el selector ELF de sistema.");}});
+            ui.post(()->{if(!closed)try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),IMPORT_SYSTEM_ELF);}catch(Exception error){cancelGuestImport();message("No se pudo abrir el selector ELF de sistema.");}});
+        }
+        @JavascriptInterface public void importGuestCheckpoint(){
+            ui.post(()->{if(!closed)try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),IMPORT_GUEST_CHECKPOINT);}catch(Exception error){cancelGuestImport();message("No se pudo abrir el selector de checkpoints.");}});
         }
         @JavascriptInterface public void exportGuest(){
-            RuntimeExecutor.INSTANCE.execute(()->{try{export("REVERSE-invitado.rvg",guest().export(),"application/octet-stream");}catch(Exception error){message("No se pudo exportar: "+error.getMessage());}});
+            ui.post(()->{
+                if(closed)return;
+                if(pendingExport!=null||pendingGuestExport){message("Termina primero la exportación abierta.");return;}
+                pendingGuestExport=true;
+                try{startActivityForResult(new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("application/octet-stream").putExtra(Intent.EXTRA_TITLE,"REVERSE-invitado.rvg"),EXPORT);}
+                catch(Exception error){pendingGuestExport=false;message("No se pudo abrir el destino de exportación.");}
+            });
         }
         @JavascriptInterface public void exportRxe(String path,String identity,boolean memory){
             RuntimeExecutor.INSTANCE.execute(()->{try{
@@ -318,17 +341,24 @@ public final class WorkbenchActivity extends Activity {
         String type=mime!=null&&mime.matches("[a-zA-Z0-9.+-]+/[a-zA-Z0-9.+-]+(?:;.*)?")?mime.split(";")[0]:"application/octet-stream";
         ui.post(()->{
             if(closed)return;
-            if(pendingExport!=null){message("Termina primero la exportación abierta.");return;}
+            if(pendingExport!=null||pendingGuestExport){message("Termina primero la exportación abierta.");return;}
             pendingExport=bytes;
             try{startActivityForResult(new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType(type).putExtra(Intent.EXTRA_TITLE,safe),EXPORT);}
             catch(Exception error){pendingExport=null;message("No se pudo abrir el destino de exportación.");}
         });
     }
+    private void cancelGuestImport(){if(!closed&&web!=null)web.evaluateJavascript("window.ReverseGuest&&window.ReverseGuest.cancelImport()",null);}
     @Override protected void onActivityResult(int request,int result,Intent data){
         super.onActivityResult(request,result,data);
-        if((request==IMPORT_GUEST_ELF||request==IMPORT_LINUX_IMAGE||request==IMPORT_SYSTEM_ELF)&&result==RESULT_OK&&data!=null&&data.getData()!=null){Uri uri=data.getData();RuntimeExecutor.INSTANCE.execute(()->{
+        boolean guestImport=request==IMPORT_GUEST_ELF||request==IMPORT_LINUX_IMAGE||request==IMPORT_SYSTEM_ELF||request==IMPORT_GUEST_CHECKPOINT;
+        if(guestImport&&(result!=RESULT_OK||data==null||data.getData()==null))cancelGuestImport();
+        if((request==IMPORT_GUEST_ELF||request==IMPORT_LINUX_IMAGE||request==IMPORT_SYSTEM_ELF||request==IMPORT_GUEST_CHECKPOINT)&&result==RESULT_OK&&data!=null&&data.getData()!=null){Uri uri=data.getData();RuntimeExecutor.INSTANCE.execute(()->{
             String response;
-            try(InputStream input=getContentResolver().openInputStream(uri)){byte[] image=GuestStore.readElf(input);response=(request==IMPORT_GUEST_ELF?guest().create(image):guest().createSystem(image,request==IMPORT_LINUX_IMAGE?2:1)).toString();}
+            try(InputStream input=getContentResolver().openInputStream(uri)){
+                if(request==IMPORT_GUEST_CHECKPOINT)response=guest().importCheckpoint(input).toString();
+                else if(request==IMPORT_LINUX_IMAGE)response=guest().importLinuxImage(input).toString();
+                else{byte[] image=GuestStore.readElf(input);response=(request==IMPORT_GUEST_ELF?guest().create(image):guest().createSystem(image,1)).toString();}
+            }
             catch(Exception error){response=failure(error);}
             final String outcome=response;ui.post(()->{if(!closed)web.evaluateJavascript("window.ReverseGuest&&window.ReverseGuest.imported("+outcome+");",null);});
         });}
@@ -339,11 +369,11 @@ public final class WorkbenchActivity extends Activity {
             final String outcome=response;ui.post(()->{if(!closed)web.evaluateJavascript("window.ReversePrograms&&window.ReversePrograms.imported("+outcome+");",null);});
         });}
         if(request==PICK&&chooser!=null){chooser.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(result,data));chooser=null;}
-        if(request==EXPORT){byte[] bytes=pendingExport;pendingExport=null;if(result==RESULT_OK&&bytes!=null&&data!=null&&data.getData()!=null){Uri target=data.getData();RuntimeExecutor.INSTANCE.execute(()->{try(OutputStream stream=getContentResolver().openOutputStream(target,"wt")){if(stream==null)throw new IllegalStateException("Destino no disponible");stream.write(bytes);message("Archivo exportado.");}catch(Exception error){message("No se pudo escribir el archivo.");}});}}
+        if(request==EXPORT){byte[] bytes=pendingExport;boolean guestExport=pendingGuestExport;pendingExport=null;pendingGuestExport=false;if(result==RESULT_OK&&(bytes!=null||guestExport)&&data!=null&&data.getData()!=null){Uri target=data.getData();RuntimeExecutor.INSTANCE.execute(()->{try(OutputStream stream=getContentResolver().openOutputStream(target,"wt")){if(stream==null)throw new IllegalStateException("Destino no disponible");if(guestExport)guest().exportTo(stream);else stream.write(bytes);message("Archivo exportado.");}catch(Exception error){message("No se pudo escribir el archivo.");}});}}
     }
     @Override public void onWindowFocusChanged(boolean focused){super.onWindowFocusChanged(focused);if(focused)immersive(this);}
-    @Override protected void onPause(){if(web!=null){web.evaluateJavascript("document.body&&(document.body.dataset.appPaused='true')",null);web.onPause();}super.onPause();}
-    @Override protected void onResume(){super.onResume();immersive(this);if(web!=null){web.onResume();web.evaluateJavascript("document.body&&(document.body.dataset.appPaused='false')",null);}}
+    @Override protected void onPause(){activityActive=false;activityEpoch++;if(web!=null){web.evaluateJavascript("document.body&&(document.body.dataset.appPaused='true');window.ReverseGuest&&window.ReverseGuest.pause()",null);web.onPause();}super.onPause();}
+    @Override protected void onResume(){super.onResume();activityActive=true;immersive(this);if(web!=null){web.onResume();web.evaluateJavascript("document.body&&(document.body.dataset.appPaused='false')",null);}}
     @Override protected void onDestroy(){closed=true;if(chooser!=null){chooser.onReceiveValue(null);chooser=null;}if(web!=null){web.removeJavascriptInterface("ReverseNative");web.destroy();}super.onDestroy();}
     // Used only by the in-repository Android instrumentation tests.
     public WebView testingWebView(){return web;}
