@@ -1,169 +1,73 @@
 {
-  "version": 1,
-  "actualizado_utc": "2026-10-29",
-  "ciclo": "TRIAD-20261029-T0",
-  "estado": "identidad_bbyq_w4u_qdu_documentada_ci_estatica_aprobada_delegacion_pendiente",
-  "repositorio": "guadalupejuan001-code/REVERSE-PC",
-  "rama_codigo": "architecture/bbyq-w4u-qdu-20261029",
-  "codigo_ci_sha": "1dfadcfafacfecd357ab6ff9535ebadf60d85159",
-  "nota_revision": "La CI T0 es estática+UI mock; no verifica el camino funcional BBY Q→w4U→QdU. HEAD remoto posterior incluye documentos, no código nuevo probado. E025/E034 y memoria privada permanecen como antes.",
+  "version": 2,
+  "fecha": "2026-10-29",
+  "ciclo": "QDU-T1-20261029",
+  "estado": "nativa_xi_aprobada_android_no_verificado_delegacion_chat_pendiente",
+  "identidad": [
+    "BBY Q",
+    "w4U",
+    "QdU"
+  ],
+  "repo": "guadalupejuan001-code/REVERSE-PC",
+  "rama": "qdu/t1-delegation-20261029",
+  "codigo_ci_sha": "1786e3bea2118236ee1ed497647bd720b9426a71",
   "pr": {
-    "numero": 63,
-    "url": "https://github.com/guadalupejuan001-code/REVERSE-PC/pull/63",
-    "base": "qd/reversecoding-orders-xi-20261029",
-    "borrador": true,
+    "numero": 65,
+    "base": "architecture/bbyq-w4u-qdu-20261029",
     "integrado": false,
     "dependencias": [
+      63,
       59,
       56,
       35,
       34
     ]
   },
-  "qd_base_sha": "1bd99d42e66d310000a94303d9ddcc42dd91786f",
-  "reverse_main_sha": "01829217cfb0a3a704d37f0c0f66527a23ec149d",
-  "w4u": {
-    "version": "0.1",
-    "ref_fijada_ci": "86b52437d851c7c6db8a80a1d2d4c3e5e2affb09"
-  },
-  "mundo_x_fijado": "e2778d962af22f6f1a0794058dd4685fc2573966",
-  "ci": {
-    "tipo": "GitHub Actions",
-    "native": {
-      "workflow": ".github/workflows/qd-orders.yml",
-      "run_id": 40903779801,
-      "resultado": "success",
-      "url": "https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40903779801",
-      "head_sha": "77a863656f57c0e7bedee22d70d27e35569f32a0"
-    },
-    "android": {
-      "workflow": ".github/workflows/workbench-android.yml",
-      "run_id": 40903779746,
-      "resultado": "success",
-      "url": "https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40903779746",
-      "head_sha": "77a863656f57c0e7bedee22d70d27e35569f32a0",
-      "assertions": [
-        "WORKBENCH_TESTS_OK mode=migration checks=13 native=XI/Ether",
-        "WORKBENCH_TESTS_OK mode=full native=XI/Ether desktop-shell=verified",
-        "WORKBENCH_TESTS_OK mode=restore native=XI/Ether desktop-shell=verified",
-        "WORKBENCH_TESTS_OK mode=qd native=XI/Ether cases=32 rejected=32 saved=RVPC2",
-        "WORKBENCH_TESTS_OK mode=qd-orders native=XI/Ether generated=2 sandbox=verified"
-      ],
-      "artifact_id": 12911041370
-    },
-    "ndk_error_previo": {
-      "run_id": 40902449471,
-      "causa": "Gradle demandó NDK 27.0.12077973 y recibió archivo corrupto; se fijó 27.2.12479018, ya seleccionado por sdkmanager."
-    },
-    "entorno": "GitHub Actions Ubuntu; Android 15 emulado pendiente, no se afirma prueba física",
-    "triad": {
-      "workflow": ".github/workflows/qdu-triad-contract.yml",
-      "run_id": 40912551727,
-      "resultado": "success",
-      "url": "https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40912551727",
-      "head_sha": "1dfadcfafacfecd357ab6ff9535ebadf60d85159",
-      "checks": "7 assertions static; UI mock approved; NO functional delegation"
-    }
-  },
   "pruebas": {
-    "antes": "Qd Studio no tenía comando de texto ni ruta de orden a programa; 0 funcionalidad de orden por API.",
-    "despues": "26/26 órdenes aritméticas ES/EN diferentes generaron fuente XI exacta y salida correcta; 18/18 órdenes inválidas/ambiguas rechazadas; 93 invocaciones nativas; RVPC2 descartable con hash inalterado.",
-    "regresion": "164 checks, 4 patrones, 128 ejecuciones previas Qd; depurador previo 16/16 baseline y 24/24 casos nuevos.",
-    "android": "Aprobado: Android 15 ejecutó desde UI y JNI dos instrucciones ES/EN, sandbox de fuente editada, rechazo de orden incompleta/hostil y protección de session.rvp; migración, full, restore y Qd anterior aprobados.",
-    "ciclo_T0": "7 aserciones contrato estático + verificación UI; sin ejecución nueva XI/Android y sin aprendizaje"
+    "ci_native": 40915364219,
+    "resultado": "success",
+    "tareas": "14/14",
+    "rechazos": "15/15",
+    "ejecuciones_XI": 134,
+    "regresiones": "Qd 164; ReverseCoding 26/26,18/18; debugger 24/24"
   },
-  "aprendizaje": "0 patrones, 0 reglas inducidas, 0 parámetros y 0 memoria personal cambiada; nomenclatura/documentos/UI y pruebas estáticas",
-  "recursos_no_medidos": [
-    "RSS del teléfono real",
-    "latencia y energía Galaxy A16",
-    "tasa de generalización a programas distintos de aritmética",
-    "tamaño del estado tras aprendizaje real"
-  ],
-  "regresiones_observadas": "0 en UI y contrato estáticos; comprobar CI nativa/Android en T1, no inferirlas de pruebas previas",
+  "android": {
+    "run_id": 40915364146,
+    "estado": "queued",
+    "scope": "compilación y pruebas antiguas, sin instrumentación nueva de delegate"
+  },
+  "checkpoint": {
+    "referencia": "E025 preservado",
+    "usuario": "sin lectura ni modificación",
+    "estado_cli": "descartable y hash intacto"
+  },
   "bloqueos": [
-    "T1 BBY Q → w4U → QdU delegation not implemented",
-    "PR #34 #35 #56 #59 #63 are stacked, no merge",
-    "BBY E034 is not yet the app-pinned E025",
-    "Global consolidation conflicts with Music/UX/REexplorer and Android guest branches and needs a separate merge train"
+    "Falta integración al chat general de BBY Q",
+    "Falta prueba Android de delegate en E025 real",
+    "No crea apps completas ni edita proyectos"
   ],
   "ciclo_activo": null,
   "ultima_actividad": {
-    "id": "TRIAD-20261029-T0",
-    "registro": "docs/qd/autonomy/ejecuciones/ciclo-20261029-04-organizacion.json",
-    "criterio": "docs/qd/autonomy/evidencias/ciclo-20261029-04-criterio.json",
-    "evidencia_ci": "https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40912551727"
+    "registro": "docs/qd/autonomy/ejecuciones/ciclo-20261029-T1.json",
+    "evidencia": "docs/qd/autonomy/evidencias/ciclo-20261029-T1-resultados.json"
   },
   "siguiente": "docs/qd/autonomy/SIGUIENTE.md",
-  "bbyq": {
-    "main_sha": "337e161af2b333b70c9bc938741e7c08097093e0",
-    "app": "E025",
-    "ref_fijada_ci": "ed32ab6b73a31e96080b62269ad1eb9f3e15709d",
-    "checkpoint_ci": "reverse_pc init en un RVPC2 descartable de 5092 B; sin restaurar BBY real",
-    "sha256_checkpoint_no_comprobado_en_esta_sesion": true,
-    "memoria_usuario_sin_cambios": true,
-    "sha256_rvpc2_temporal_comprobado_en_ci": true,
-    "nota_checkpoint": "La SHA256 verificada es SOLO del nuevo RVPC2 descartable usado en pruebas; el checkpoint E025 real no se restauró ni fue verificado en este CI."
-  },
-  "pruebas_ciclo_anterior": {
-    "xi_nativo": "Aprobado: 4 habilidades x 32 entradas = 128 ejecuciones reales; acepta 32/32, rechaza 31/32 y 8/8; recuperación, rollback y región W4u",
-    "interfaz": "Aprobado: protocolo UI; usa stub y no demuestra ejecución nativa",
-    "android_qd": "WORKBENCH_TESTS_OK mode=qd native=XI/Ether cases=32 rejected=32 saved=RVPC2",
-    "android_migracion": "WORKBENCH_TESTS_OK mode=migration checks=13 native=XI/Ether",
-    "android_full": "WORKBENCH_TESTS_OK mode=full native=XI/Ether desktop-shell=verified",
-    "android_restore": "WORKBENCH_TESTS_OK mode=restore native=XI/Ether desktop-shell=verified",
-    "antes": {
-      "casos_practica": 4,
-      "holdout_publicos_fijos": 4,
-      "umbral": "8/8",
-      "evaluaciones_nativas_totales": 32
-    },
-    "despues": {
-      "casos_practica": 4,
-      "holdout_nuevos_por_ensayo": 28,
-      "umbral": "32/32",
-      "evaluaciones_nativas_totales": 128,
-      "formato_rvpc2": "inalterado"
-    }
-  },
-  "recursos_medidos": {
-    "ejecuciones_nativas": 435,
-    "consultas_xi": 82,
-    "ejecuciones_estudiante": 352,
-    "tiempo_run_ms": 1082,
-    "tiempo_suite_ms": 1236,
-    "estado_descartable_bytes": 5092,
-    "sha256_estado_descartable": "b18685010345e3125e56204105c0e1c72569893372772a00c7e28ee261a2b356",
-    "rxe_compilados": 0
-  },
-  "historial": [
+  "historial_anteriores": [
     {
       "id": "QD-20261028-01",
-      "pr": 35,
-      "ci": 40750976891,
-      "resultado": "success",
-      "fuente": "docs/qd/autonomy/ejecuciones/ciclo-20261028-01.json"
+      "registro": "docs/qd/autonomy/ejecuciones/ciclo-20261028-01.json"
     },
     {
       "id": "QD-20261029-02",
-      "pr": 56,
-      "ci": 40886521655,
-      "resultado": "success",
-      "fuente": "docs/qd/autonomy/ejecuciones/ciclo-20261029-02.json"
+      "registro": "docs/qd/autonomy/ejecuciones/ciclo-20261029-02.json"
     },
     {
       "id": "QD-20261029-03",
-      "pr": 59,
-      "native_ci": 40903779801,
-      "android_ci": 40903779746,
-      "resultado": "native_android_success",
-      "fuente": "docs/qd/autonomy/ejecuciones/reversecoding-20261029-03.json"
+      "registro": "docs/qd/autonomy/ejecuciones/reversecoding-20261029-03.json"
     },
     {
       "id": "TRIAD-20261029-T0",
-      "pr": 63,
-      "ci": 40912551727,
-      "resultado": "static_success_runtime_delegation_pending",
-      "fuente": "docs/qd/autonomy/ejecuciones/ciclo-20261029-04-organizacion.json"
+      "registro": "docs/qd/autonomy/ejecuciones/ciclo-20261029-04-organizacion.json"
     }
   ]
 }

@@ -22,6 +22,12 @@ const ctx=vm.createContext({
   const p=JSON.parse(raw);completed++;
   if(operation==='compileApp')return Promise.resolve({ok:true,path:'Aplicaciones/Qd-Cody-Suma.rxe'});
   assert.equal(operation,'qd');assert.equal(p.skill,undefined===p.skill?undefined:1);
+  if(p.action==='delegate'){
+    assert.equal(p.text,'crea un programa que multiplique 12 por 7');
+    return Promise.resolve({ok:true,understood:true,delegated:true,verified:true,pass:true,actual:84,expected:84,a:12,b:7,operation:'mul',
+      pipeline:['BBY Q · XI','w4U · XI plan','QdU · XI code','w4U · XI review','BBY Q · XI result'],
+      program:['#!reverse-pc-machine-v1','set r0 12','mul r0 7','print r0','halt',''].join('\\n')});
+  }
   if(p.action==='order'){
     assert.equal(p.text,'multiplica 12 por 7');
     return Promise.resolve({ok:true,understood:true,pass:true,actual:84,expected:84,a:12,b:7,operation:'mul',
@@ -63,6 +69,7 @@ async function main(){
  const reverseCoding=vm.runInContext('qdStudioHTML(w)',ctx);
  assert.match(reverseCoding,/ReverseCoding/);assert.match(reverseCoding,/data-qd-action="order"/);
  assert.match(reverseCoding,/data-qd-action="run_code"/);
+ assert.match(reverseCoding,/data-qd-action="delegate"/);
  await vm.runInContext("qdAction(w,'order')",ctx);
  assert.equal(s.result.data.actual,84);
  assert.match(w.qdScratch,/mul r0 7/);
@@ -73,6 +80,12 @@ async function main(){
   matches(sel){return sel==='[data-qd-scratch]';},
   closest(sel){return sel==='.window'?{dataset:{id:w.id},querySelector(){return {disabled:false};}}:undefined;}};
  listener.input({target:change});assert.equal(s.generated,null);
+ w.qdOrder='crea un programa que multiplique 12 por 7';
+ await vm.runInContext("qdAction(w,'delegate')",ctx);
+ assert.equal(s.result.data.delegated,true);
+ assert.equal(s.result.data.verified,true);
+ assert.equal(s.result.data.pipeline.length,5);
+ assert.match(vm.runInContext('qdStudioHTML(w)',ctx),/w4U · XI plan/);
  console.log(JSON.stringify({test:'qd_cody_studio_ui',passed:true,saves,renders,requests:completed,real_xi_execution_tested_here:false}));
 }
 main().catch(e=>{console.error(e);process.exitCode=1});

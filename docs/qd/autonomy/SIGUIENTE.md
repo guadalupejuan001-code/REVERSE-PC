@@ -1,39 +1,23 @@
-# Próximo ciclo único: T1 — delegación real BBY Q → w4U → QdU
+# QdU — siguiente ciclo después de T1
 
-## Contrato inamovible y contexto
+## Arquitectura obligatoria
 
-Los únicos nombres de roles son **BBY Q**, **w4U** y **QdU**, en ese orden. Se respeta el [contrato oficial](../../BBYQ_W4U_QDU_CONTRACT.md). ReverseCoding es la aplicación de QdU, XI/Ether la ejecución y REVERSE-PC el host. No crear modelos independientes, nueva memoria maestra ni nuevo runtime; no cambiar identificadores persistentes heredados.
+**BBY Q → w4U → QdU**. BBY Q es la única inteligencia principal y memoria; w4U es la coordinación; QdU programa en el mismo XI/Ether. ReverseCoding es una aplicación, no otra IA. Conservar IDs técnicos, RVPC2, W4u, E025 y el candidato E034 sin mezcla ni sobrescritura.
 
-Esta rama es **T0 de documentación, auditoría y rotulación**; no garantiza delegación real. La rama ReverseCoding PR #59 ya logró 26 órdenes aritméticas válidas, 18 negativas, pruebas XI y Android 15, pero la ruta actual `qd-studio.js → WorkbenchPrograms.qd → QdEngine` **omite w4U**. La prioridad siguiente es corregir esta discontinuidad, no aumentar la cantidad de sinónimos.
+## Estado observado del ciclo T1
 
-Al reanudar, consultar HEAD reales, PRs y GitHub Actions de BBY-Q y REVERSE-PC, su ejecutor, sus dependencias y checkpoints. Conservar BBY Q/docs/autonomy, E025 desplegado, E034 candidato aislado, writer.lock, w4U y session.rvp. No construir sobre el ID ni el commit de este registro como supuesto de estado actual.
+Rama `qdu/t1-delegation-20261029`, PR #65 apilada sobre #63 → #59 → #56 → #35 → #34, sin fusión. CI [nativa XI](https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40915364219) **success**: 14/14 tareas explícitas de programación, 15/15 rechazos, 134 ejecuciones XI. Regresiones aprobadas: 26 órdenes, 18 rechazos, 164 comprobaciones Qd y 24 reparaciones reservadas.
 
-## Objetivo preciso T1
+La ruta probada usa clasificación léxica BBY Q XI, autorización consumible w4U XI, generación QdU XI, comprobación independiente w4U XI y confirmación tipada BBY Q XI. La CLI inicializa **un RVPC2 descartable con la marca de w4U**, no el estado E025 de producción. La API `delegate` está conectada a ReverseCoding y copia el estado auténtico bajo writer.lock, pero todavía **no se ha probado esta llamada en Android ni integrado al chat general BBY Q**. Android [workflow 40915364146](https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40915364146) recompila esta clase y las regresiones anteriores: comprobar su conclusión real antes de reclamar APK lista.
 
-Demostrar una tarea de programación de principio a fin pasando por **BBY Q → w4U → QdU → w4U → BBY Q**. Comenzar con órdenes aritméticas que QdU ya conoce, pues prueban integración sin confundir capacidades nuevas de lenguaje. QdU mantiene el sandbox XI y ReverseCoding; w4U es el único autorizador de trabajos con efectos permanentes.
+## Siguiente ciclo T1.1 — autorización desde el chat y Android real
 
-### Primero reproducir defecto y fijar examen
+1. Resolver HEAD de los dos repos, PRs, workflows/runner, bloqueo activo y memoria E025/E034. Leer `docs/qd/autonomy/` y `BBY-Q/docs/autonomy/`; no tocar el ciclo general de BBY Q.
+2. Reproducir el límite actual: chat BBY Q `ask` no deriva a w4U/QdU; ReverseCoding sí puede llamar `delegate` de forma explícita. Anotar baseline y aceptación antes de código.
+3. Implementar un **contrato tipado** desde la solicitud de BBY Q, autorizado por w4U antes de cualquier ejecución, y conservar las conversaciones, tickets, hashes y confirmaciones de acciones de escritorio. No convertir entradas libres en poderes de archivos/red.
+4. Crear una instrumentación Android 15 que ejecute de verdad la acción `delegate` sobre `BBY-Q.rxe` E025, dos órdenes positivas ES/EN, dos negativas, y confirme que `session.rxas` y `session.rvp` no cambian; fallar si no existe W4u válido.
+5. Endurecer la unión de la tarea al texto y operandos originales en el verificador w4U; probar ticket modificado/repetido, permiso ausente, suplantación, ambigüedad, rollback y resultado numérico falso.
+6. Aceptación: >=10/12 tareas **desde el chat** en examen reservado, 12/12 controles negativos, y todas las suites nativas previas + Android E025/w4U/migración/restore sin regresión. Medir tiempo/RSS si el runner lo registra; no inventar métricas físicas.
+7. Publicar una PR apilada aislada; no fusionar en main antes de reconciliar otros cambios y validar la firma APK.
 
-1. Observar de nuevo la ruta directa actual y ejecutar un caso de control desde ReverseCoding; comprobar que no hay plan ni ticket w4U. Registrar baseline y evidencia antes de editar.
-2. Confirmar el contrato de `BBY Q.rxe`, las entradas/salidas `w4U plan/explore/verify/advance`, su número de operaciones, versión y direcciones RVPC2. Elegir un identificador de acción tipado disponible solo tras demostrar que no colisiona con los actuales. No inventar permisos ni modificar todos los handlers por estética.
-3. Definir `TaskEnvelope` tipado con `task_id`, intención/entradas, origen BBY Q, alcance de permisos, capacidades, presupuesto, firma/nonce de acción según el mecanismo existente, destino QdU y referencias de evaluación; w4U debe emitir/validar la autorización real. Evitar serializar información privada como log de entrenamiento.
-4. QdU sólo recibe ese sobre aprobado al ejecutar un trabajo delegado. En modo exploración, la edición de texto XI aislada puede seguir funcionando sin acceso al host; no convertir esa sesión de prueba en ejecución persistente con permisos.
-5. w4U coteja salida, artefacto y pruebas. BBY Q comunica qué hizo realmente y distingue fallo, bloqueo, propuesta pendiente y entrega completa.
-6. En caso de capacidad ausente, ticket falso, revisión obsoleta, duplicado, fallo de XI, límites de recursos o conflicto RVPC2: abortar/rollback y dejar registro, no repetir acciones con efectos.
-
-### Aceptación predefinida antes de modificar
-
-- Un examen separado de práctica con **12 tareas inéditas** de código aritmético que entren desde la conversación/solicitud BBY Q y recorran w4U, QdU, w4U y BBY Q; **al menos 10/12 correctas y trazadas**.
-- **12/12** controles negativos rechazados: ticket ausente/duplicado, permisos insuficientes, cambio de revisión, órdenes ambiguas, fuentes no autorizadas, presupuesto agotado, fallo de la operación y respuesta de la herramienta falsamente positiva.
-- Evidencia del mecanismo XI real para decisión de w4U y generación de código QdU, no sólo UI mock ni Java seleccionando operaciones.
-- Regresión de ReverseCoding **26/26 órdenes y 18/18 abstenciones**, protocolo Qd original **164 checks/128 entradas**, depurador anterior **24/24**, W4u y E025, migración/restauración Android 15 sin pérdida de información.
-- Hash/identidad de memoria principal RVPC2 y `session.rvp` antes/después conservados al operar únicamente en sandbox. Cualquier persistencia explícita debe ser permitida por w4U y probada con `writer.lock`.
-- Documentar tiempos/RAM reales donde haya medidas, tamaño de artefacto, compromisos y diferencias frente a T0. No proclamar autonomía Work si sólo se completan ejercicios.
-
-## Integración de ramas y orden posterior
-
-Mantener las PR Qd previas **#34 → #35 → #56 → #59** hasta revisión/CI; revisar el contrato T0 apilado antes de integrar. Para consolidación estable, auditar las ramas combinadas de escritorio (Music/PRISMA/Laplace, orientación, REexplorer) con sus conflictos; las ramas de Android guest/PCI/gráficos permanecen experimentales y no se mezclan ciegamente con el ejecutor del producto.
-
-**Después de T1**: T2 composición de instrucciones y requisitos, T3 depuración en editor, T4 tarea de un archivo como Work, T5 multarchivo y CI/PR autónomos revisables. No saltar a T4 por tener una interfaz con botones.
-
-Si T1 no puede construirse sin dañar estado, compatibilidad o dependencia, detener el ciclo, registrar el bloqueo exacto en `docs/qd/autonomy/` y conservar el checkpoint. Ejecutar **un ciclo** por activación; no duplicar BBY Q/w4U ni crear nuevas automatizaciones.
+Después de T1.1, T2 composición de dos pasos, T3 depuración en editor, T4 tareas autorizadas de un archivo y T5 proyectos multarchivo. No proclamar autonomía estilo Work hasta comprobar tareas externas reales.

@@ -1,0 +1,20 @@
+{
+  "cycle": "QDU-T1-20261029",
+  "phase": "test_definition_pre_code",
+  "date": "2026-10-29",
+  "user_invariant": "BBY Q -> w4U -> QdU",
+  "scope": "Un primer trayecto real, acotado y sin persistencia de solicitud explicitamente de programación: BBY Q XI classifies -> w4U XI authorizes single-use local sandbox operation -> QdU XI interprets/emits/executes -> w4U XI independently checks result -> BBY Q XI formats typed completion.",
+  "baseline": "Previous ReverseCoding 'order' calls QdOrders.order directly, no BBY Q task gate or w4U authorization; previous static triad test explicitly reported delegation_over_w4u_implemented=false.",
+  "limits": "No full BBY Q E025 conversational inference; lexical XI task-routing extension scoped to the same verified BBY Q runtime, no general Work-style autonomy, no disk/network operations. Existing chat route will remain unchanged until later validated.",
+  "pass_gate": [
+    "12 independent explicit code-request phrases in ES/EN, with >=10/12 full pipeline completed, real native XI and Android 15 instrumentation",
+    "12 negative cases covering missing/unrecognized task, missing capability, invalid magic, nonce wrong/zero, replayed grant, stale changed task, invalid operation, false result, failed QdU execution, and attempts to run without w4U",
+    "Every success has unbroken stage evidence: BBY Q XI route -> w4U XI plan/ticket -> w4U XI dispatch -> QdU XI implementation -> w4U XI review -> BBY Q XI result",
+    "No writes to real BBY Q RVPC2 or desktop session.rvp; snapshots checked before/after. One disposable state for BBYQ/w4U stages and independent sandbox for QdU",
+    "Keep original tests: qd-orders 26 accept/18 reject, Qd native 164 checks and 128 executions, debug 24/24, Android old modes migration/full/restore/qd",
+    "CI integrated on review branch and no merge until tests pass"
+  ],
+  "programming_interface": "A new explicit 'delegate' action in QdEngine and ReverseCoding w4U button, separate from existing 'order' exploration. Never implicitly elevate old 'order' into privileged workflows.",
+  "memory": "New W4u task slots M+768..776, BBY task mailbox B=8440000000000000000, used only in disposable copy; do not change W4u original plan/explore/verify/advance or persisted user memory. Preserve legacy technical IDs and pin.",
+  "benchmark": "Count actual XI executions, success/rejection, cases/regressions, state SHA, runtime time/size. Do not invent physical-device RAM."
+}

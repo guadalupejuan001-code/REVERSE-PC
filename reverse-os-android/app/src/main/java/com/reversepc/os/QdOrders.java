@@ -25,13 +25,13 @@ final class QdOrders {
     );
     private QdOrders(){}
 
-    private static final class Lexemes {
+    static final class Lexemes {
         final List<Integer> keys=new ArrayList<>();
         final List<Integer> values=new ArrayList<>();
     }
     // Purely lexical: no word is classified by Java. XI owns the vocabulary,
     // the disambiguation rules, operation selection, and emitted source bytes.
-    private static Lexemes tokenize(String input){
+    static Lexemes tokenize(String input){
         if(input==null||input.isBlank()||input.length()>180||
             input.getBytes(StandardCharsets.UTF_8).length>256)
             throw new IllegalArgumentException("La orden debe contener 1..180 caracteres.");
