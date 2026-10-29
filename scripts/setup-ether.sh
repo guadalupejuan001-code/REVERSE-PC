@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SHA="e2778d962af22f6f1a0794058dd4685fc2573966"
+SHA="1f925786522aba91f72707ad1638a8edcdd31a8f"
 TARGET="${ROOT}/deps/mundo-x"
 if [[ ! -d "${TARGET}/.git" ]]; then
   mkdir -p "${TARGET}"

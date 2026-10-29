@@ -298,10 +298,53 @@ public final class WorkbenchTestRunner extends Instrumentation {
         require(waitJs("window.shellSaved").equals("true"),"Profile not committed");
         retainedProof(true);fullDisplay();visualCheck("native-"+requested);
     }
+    private static String velocityHud(android.view.View view){
+        if(view instanceof android.widget.TextView){
+            String label=((android.widget.TextView)view).getText().toString();
+            if(label.contains("FPS medidos")||label.startsWith("X Render:"))return label;
+        }
+        if(view instanceof android.view.ViewGroup){
+            android.view.ViewGroup group=(android.view.ViewGroup)view;
+            for(int i=0;i<group.getChildCount();i++){
+                String label=velocityHud(group.getChildAt(i));
+                if(!label.isEmpty())return label;
+            }
+        }
+        return "";
+    }
     @Override public void onStart(){
         Bundle result=new Bundle();
         try{
             String requested=arguments==null?"full":arguments.getString("mode","full");
+            if(requested.equals("velocity")){
+                ActivityMonitor workbenchMonitor=addMonitor(WorkbenchActivity.class.getName(),null,false);
+                ActivityMonitor gameMonitor=addMonitor(VelocityActivity.class.getName(),null,false);
+                runOnMainSync(()->getTargetContext().startActivity(new Intent(getTargetContext(),WorkbenchActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)));
+                activity=(WorkbenchActivity)waitForMonitorWithTimeout(workbenchMonitor,15000);
+                require(activity!=null,"Workbench did not start for game smoke");
+                waitJs("typeof createWindow==='function'&&!!APPS.velocity");
+                js("createWindow('velocity');true");
+                Activity game=waitForMonitorWithTimeout(gameMonitor,15000);
+                require(game instanceof VelocityActivity,"Native game did not open from REVERSE");
+                String hud="";
+                for(int attempt=0;attempt<35;attempt++){
+                    Thread.sleep(500);
+                    java.util.concurrent.atomic.AtomicReference<String> value=new java.util.concurrent.atomic.AtomicReference<>("");
+                    runOnMainSync(()->value.set(velocityHud(game.getWindow().getDecorView())));
+                    hud=value.get();
+                    if(hud.contains("FPS medidos"))break;
+                    if(hud.startsWith("X Render:"))throw new AssertionError(hud);
+                }
+                require(hud.contains("FPS medidos"),"X Render HUD did not receive a native frame: "+hud);
+                Bitmap screenshot=getUiAutomation().takeScreenshot();
+                File folder=new File(getTargetContext().getExternalFilesDir(null),"visual-evidence");folder.mkdirs();
+                try(FileOutputStream out=new FileOutputStream(new File(folder,"velocity-xrender-screen.png"))){
+                    screenshot.compress(Bitmap.CompressFormat.PNG,100,out);
+                }finally{screenshot.recycle();}
+                runOnMainSync(game::finish);
+                result.putString("stream","WORKBENCH_TESTS_OK mode=velocity renderer=XRender native=true\n");
+                result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
+            }
             if(requested.equals("migration")){
                 int checks=E025MigrationChecks.run(getTargetContext(),getContext());
                 result.putString("stream","WORKBENCH_TESTS_OK mode=migration checks="+checks+" native=XI/Ether\n");
