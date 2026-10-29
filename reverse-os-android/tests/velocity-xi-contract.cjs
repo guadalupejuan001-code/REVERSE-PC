@@ -14,10 +14,16 @@ const call=(...args)=>{
  return p.stdout;
 };
 const parse=output=>output.trim().split('\n').filter(Boolean).map(line=>JSON.parse(line));
-const values=output=>parse(output).map((r,i)=>{
- assert.equal(r.type,'register','XI output type');assert.equal(r.register,'r'+i);
+const values=output=>parse(output).map(r=>{
+ assert.equal(r.type,'register','XI output type');
  return r.value;
 });
+const gameValues=output=>{
+ const rows=parse(output);
+ assert.equal(rows.length,9,'nine authoritative game registers');
+ rows.forEach((r,i)=>assert.equal(r.register,'r'+i,'XI game register order'));
+ return values(output);
+};
 const inputScript=(compiled,gas=0,brake=0,steer=1,drift=0,reset=0)=>
  '#!reverse-pc-machine-v1\n'+
  [128,129,130,131,132].map((address,i)=>'store8 '+address+' '+[gas,brake,steer,drift,reset][i]+'\n').join('')+
@@ -50,7 +56,7 @@ try{
    const script=path.join(temp,'input-'+count+'.xi');
    const dest=path.join(temp,'state-'+count+'.rvp');count++;
    fs.writeFileSync(script,inputScript(canonical,gas,brake,steer,drift,reset));
-   const stateValues=values(call('run',script,state,dest));
+   const stateValues=gameValues(call('run',script,state,dest));
    assert.equal(stateValues.length,9);
    state=dest;return stateValues;
  }
@@ -68,7 +74,7 @@ try{
  const command=inputScript(canonical,1,0,2,1,0);
  const script=path.join(temp,'deterministic.xi');fs.writeFileSync(script,command);
  const a=path.join(temp,'a.rvp'),b=path.join(temp,'b.rvp');
- const va=values(call('run',script,state,a)),vb=values(call('run',script,state,b));
+ const va=gameValues(call('run',script,state,a)),vb=gameValues(call('run',script,state,b));
  assert.deepEqual(va,vb,'XI deterministic observations');
  assert.equal(digest(fs.readFileSync(a)),digest(fs.readFileSync(b)),'XI deterministic state');
  assert.equal(digest(fs.readFileSync(state)),digest(original),'immutable source state');
