@@ -37,11 +37,53 @@ async function showAll(page){await page.evaluate(()=>{for(const w of state.windo
   check(await page.locator('.window.focused [data-window-action="max"]').isVisible(),'PC controls remain available');
   await page.locator('.window.focused [data-window-action="max"]').click();
   const maximized=await page.locator('.window.focused').boundingBox(),area=await page.locator('#desktop').boundingBox(),taskbar=await page.locator('.taskbar').boundingBox();
-  check(maximized.width===area.width&&maximized.height===area.height&&maximized.y+maximized.height<=taskbar.y,'Maximize fills the desktop above the taskbar');
+  const compact=width<=1050||height<=520;
+  check(Math.abs(maximized.width-(compact?area.width-10:area.width))<=2&&Math.abs(maximized.height-(compact?area.height-10:area.height))<=2&&maximized.y+maximized.height<=taskbar.y,'Maximize preserves the available desktop area');
+  if(compact)check(await page.locator('.window:visible').count()===1,'Compact landscape has exactly one foreground window');
   await page.locator('.window.focused [data-window-action="max"]').click();
   const restored=await page.locator('.window.focused').boundingBox();check(restored.width===program.width&&restored.height===program.height,'Restore returns to the saved frame');
   await page.screenshot({path:path.join(out,'windows-'+width+'.png')});
   layouts.push({width,height,windows:2,horizontal_overflow:false});await browser.close();
+ }
+
+ // Portrait uses the same PC shell, same wallpaper and same app icons.
+ for(const [width,height] of [[360,780],[390,844],[412,915]]){
+  const {browser,page}=await open(width,height,'portrait-'+width);
+  const wallpaper=await page.evaluate(()=>getComputedStyle(document.querySelector('#wall-image')).backgroundImage);
+  const originalIcons=await page.locator('#shortcuts').innerHTML();
+  check(await page.evaluate(()=>matchMedia('(orientation: portrait)').matches),'Portrait viewport must be detected');
+  check(await page.evaluate(()=>getComputedStyle(document.querySelector('#shortcuts')).gridAutoFlow==='row'),'Original desktop icons reflow into portrait rows');
+  check(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Portrait has no horizontal viewport overflow');
+  await page.screenshot({path:path.join(out,'portrait-desktop-'+width+'.png')});
+  await pinned(page,'files');await page.waitForSelector('.files-layout');
+  check(await page.evaluate(()=>getComputedStyle(document.querySelector('.files-layout')).flexDirection==='column'),'File navigation stacks vertically');
+  await pinned(page,'bbyq');await page.waitForSelector('[data-bbyq-module="chat"]');
+  check(await page.locator('.window:visible').count()===1,'Portrait uses the same focused PC window');
+  await page.locator('[data-bbyq-module="cody"]').click();
+  await page.waitForSelector('.qd-root');
+  check(await page.evaluate(()=>getComputedStyle(document.querySelector('.qd-workspace')).flexDirection==='column'),'Cody editor and test results stack vertically');
+  await page.locator('[data-bbyq-module="chat"]').click();
+  check(await page.locator('[data-program-input]').isVisible(),'BBY Q chat is accessible after Cody');
+  await pinned(page,'music');await page.waitForSelector('.music-search input');
+  check(await page.locator('.music-paste').isVisible(),'Music paste control remains visible in portrait');
+  check(await page.locator('.music-tabs').isVisible(),'Music navigation tabs remain visible');
+  const rect=await page.locator('.music-search').boundingBox();
+  check(rect.x>=0&&rect.x+rect.width<=width+1,'YouTube search stays inside portrait screen');
+  await page.locator('.music-search input').fill('Prueba de orientación');
+  check(await page.locator('.music-search input').inputValue()==='Prueba de orientación','Portrait keyboard field accepts text');
+  const id=await page.evaluate(()=>activeId),size=await page.evaluate(()=>state.windows.length);
+  await page.screenshot({path:path.join(out,'portrait-music-'+width+'.png')});
+  await page.setViewportSize({width:844,height:390});await repaint(page);
+  check(await page.evaluate(()=>matchMedia('(orientation: landscape)').matches),'Screen can rotate to landscape');
+  check(await page.evaluate(id=>activeId===id,id),'Rotation retains active app');
+  check(await page.evaluate(n=>state.windows.length===n,size),'Rotation retains window sessions');
+  check(await page.evaluate(()=>getComputedStyle(document.querySelector('#wall-image')).backgroundImage)===wallpaper,'Wallpaper stays unchanged when rotating');
+  check(await page.locator('#shortcuts').innerHTML()===originalIcons,'Desktop icon identities stay unchanged when rotating');
+  await page.setViewportSize({width,height});await repaint(page);
+  check(await page.evaluate(()=>matchMedia('(orientation: portrait)').matches),'Screen rotates back to portrait');
+  check(await page.locator('.music-search input').inputValue()==='Prueba de orientación','YouTube search draft survives repeated rotations');
+  layouts.push({width,height,portrait:true,windows:size,horizontal_overflow:false});
+  await browser.close();
  }
  const {browser,page,host}=await open(844,390,'interactive-landscape');
  const legacyProfile=JSON.parse(fs.readFileSync(path.join(__dirname,'fixtures/workbench-2.3-profile.json'),'utf8'));
@@ -54,11 +96,17 @@ async function showAll(page){await page.evaluate(()=>{for(const w of state.windo
  },legacyProfile);
  check(cleanProfiles.stock===3,'Only untouched template documents retire');
  check(cleanProfiles.renamed&&cleanProfiles.moved&&cleanProfiles.trashed,'Personalized documents are retained');
- await pinned(page,'files');const first=await page.locator('.window.focused').boundingBox();
- await page.mouse.move(first.x+100,first.y+18);await page.mouse.down();await page.mouse.move(first.x+140,first.y+22,{steps:4});await page.mouse.up();
- const moved=await page.locator('.window.focused').boundingBox();check(moved.x>first.x+25,'Window dragging works on a phone-sized desktop');
- await page.mouse.move(moved.x+moved.width-4,moved.y+moved.height-4);await page.mouse.down();await page.mouse.move(moved.x+moved.width+16,moved.y+moved.height-4,{steps:4});await page.mouse.up();
- const resized=await page.locator('.window.focused').boundingBox();check(resized.width>moved.width+10,'Window resizing works on a phone-sized desktop');
+ await pinned(page,'files');
+ await pinned(page,'programs');
+ check(await page.locator('.window:visible').count()===1,'Second app never obscures active window on mobile landscape');
+ await pinned(page,'files');check(await page.locator('.window.focused').getAttribute('data-app')==='files','Taskbar switches foreground app without destroying sessions');
+ await page.setViewportSize({width:1440,height:900});await repaint(page);
+ const first=await page.locator('.window.focused').boundingBox();
+ await page.mouse.move(first.x+90,first.y+15);await page.mouse.down();await page.mouse.move(first.x+132,first.y+19,{steps:4});await page.mouse.up();
+ const moved=await page.locator('.window.focused').boundingBox();check(moved.x>first.x+20,'Full PC layout still supports dragging');
+ await page.mouse.move(moved.x+moved.width-4,moved.y+moved.height-4);await page.mouse.down();await page.mouse.move(moved.x+moved.width+18,moved.y+moved.height+6,{steps:4});await page.mouse.up();
+ const resized=await page.locator('.window.focused').boundingBox();check(resized.width>moved.width+10,'Full PC layout still supports resizing');
+ await page.setViewportSize({width:844,height:390});await repaint(page);
  await pinned(page,'programs');await page.waitForSelector('.program-card');
  const beforeShow=await page.evaluate(()=>state.windows.filter(w=>!w.min).map(w=>w.id).sort());
  await page.locator('#show-desktop').click();check(await page.locator('.window:visible').count()===0,'Show desktop minimizes the visible windows');
@@ -98,7 +146,8 @@ async function showAll(page){await page.evaluate(()=>{for(const w of state.windo
  await showAll(page);const wide=await page.locator('.window.focused').boundingBox();
  await page.setViewportSize({width:640,height:360});await repaint(page);
  check(await page.evaluate(()=>state.windows.filter(w=>w.space===state.space&&!w.min).length>=2),'Narrow landscape keeps peer windows');
- check(await page.locator('.window.focused').boundingBox().then(b=>b.width<640),'Narrow landscape still uses windows');
+ check(await page.locator('.window.focused').boundingBox().then(b=>b.width>=620&&b.width<=640),'Narrow landscape gives the foreground window usable width');
+ check(await page.locator('.window:visible').count()===1,'Other windows are hidden, not lost, on narrow screens');
  await page.setViewportSize({width:844,height:390});await repaint(page);const wideAgain=await page.locator('.window.focused').boundingBox();
  check(wideAgain.width===wide.width&&wideAgain.height===wide.height,'Viewport changes preserve saved window sizes');
  await page.evaluate(()=>{createWindow('control',{tab:'system'});});
@@ -110,6 +159,6 @@ async function showAll(page){await page.evaluate(()=>{for(const w of state.windo
  check(await page.locator('.window:visible').count()===visibleBefore,'Back preserves the desktop windows');
  await browser.close();
  check(errors.length===0,JSON.stringify(errors));
- const report={checks,layouts,actual_internal_program_runs:host.stats().runs,actual_isolated_experiments:host.stats().experiments,page_errors:errors,scope:'PC desktop in six landscape Chromium viewports; transport fixtures call the real XI/RXE runtime. APK orientation checked separately. No Android device/emulator was launched.'};
+ const report={checks,layouts,actual_internal_program_runs:host.stats().runs,actual_isolated_experiments:host.stats().experiments,page_errors:errors,scope:'PC desktop in six landscape and three portrait Chromium viewports with repeated in-session rotation; transport fixtures use real XI/RXE runtime. Android rotation is tested separately in the emulator.'};
  fs.writeFileSync(path.join(out,'results.json'),JSON.stringify(report,null,2)+'\n');console.log('DESKTOP_SHELL_UI_PASS',checks);
 })().catch(async e=>{console.error(e.stack);console.error('PAGE_ERRORS',JSON.stringify(errors));await Promise.allSettled([...browsers].map(b=>b.close()));process.exitCode=1;});

@@ -1,0 +1,46 @@
+name: REVERSE Music
+on:
+  pull_request:
+    branches: [main]
+    paths: ['reverse-os-android/**', '.github/workflows/reverse-music.yml']
+  push:
+    branches: [main]
+    paths: ['reverse-os-android/**', '.github/workflows/reverse-music.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  music:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '17'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Verify native URL and request filtering policy
+        run: |
+          mkdir -p build/music-policy
+          javac -d build/music-policy reverse-os-android/app/src/main/java/com/reversepc/os/MusicPolicy.java reverse-os-android/app/src/main/java/com/reversepc/os/MusicDownloadPolicy.java reverse-os-android/tests/MusicPolicyTest.java reverse-os-android/tests/MusicDownloadPolicyTest.java
+          java -cp build/music-policy com.reversepc.os.MusicPolicyTest
+          java -cp build/music-policy com.reversepc.os.MusicDownloadPolicyTest
+      - name: Install browser test dependencies
+        run: |
+          npm install --prefix "$RUNNER_TEMP/music-ui" playwright@1.56.1
+          node "$RUNNER_TEMP/music-ui/node_modules/playwright/cli.js" install --with-deps chromium
+      - name: Verify desktop, persistence, controls and ad DOM fixtures
+        env:
+          NODE_PATH: ${{ runner.temp }}/music-ui/node_modules
+        run: |
+          node --check reverse-os-android/app/src/main/assets/workbench/music.js
+          node --check reverse-os-android/app/src/main/assets/music/youtube.js
+          node reverse-os-android/tests/music-ui.cjs evidence/music
+          node reverse-os-android/tests/x-market-ui-test.js
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reverse-music-ui
+          path: evidence/music/
+          retention-days: 14

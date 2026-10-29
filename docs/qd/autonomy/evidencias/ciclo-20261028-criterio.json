@@ -1,0 +1,51 @@
+{
+  "ciclo": "QD-20261028-01",
+  "titulo": "Aislar evaluación de ejemplos en Qd aritmético",
+  "origen": {
+    "repositorio": "guadalupejuan001-code/REVERSE-PC",
+    "rama": "feature/qd-cody-studio-xi",
+    "head_inicial": "fe2ca5a27c810a18bc1082b47f767b6141f688b3",
+    "pr": "https://github.com/guadalupejuan001-code/REVERSE-PC/pull/34",
+    "documentacion": "docs/QD_CODY_STUDIO.md",
+    "contrato_anterior": {
+      "practica_casos": 4,
+      "examen_fijo_publico_casos": 4,
+      "umbral_xi": "8/8",
+      "pruebas_nativas_totales": "4 familias × 8 entradas = 32"
+    },
+    "evidencia_ci_inicial": {
+      "run": 40746891634,
+      "intento_1": "falló por descarga NDK ZipFile unknown archive",
+      "intento_2": "success (compilación APK y Android 15)",
+      "url": "https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40746891634"
+    }
+  },
+  "debilidad": "Examen fijo publicado; éxito 8/8 no mide robustamente transferencia a entradas no observadas",
+  "criterio_predefinido": {
+    "contrato_nuevo": {
+      "practica_casos": 4,
+      "examen_reservado_casos": 28,
+      "pruebas_totales": 32,
+      "umbral_xi": "32/32",
+      "operaciones": 4,
+      "rechaza": "31/32 y 8/8 histórico"
+    },
+    "muestra_host": "4 pares de frontera definidos y 24 pares aleatorios únicos por intento, sin intersección con entrenamiento",
+    "pruebas_nativas": "4 familias × (8 smoke + 24 entradas sembradas distintas)=128 ejecuciones reales XI",
+    "persistencia": "Mismo BBY Q RVPC2 privado; misma región Qd y migración sin pérdida",
+    "regresiones": "CI E025, W4u, escritorio, teclado, Android 15 y aislamiento del desktop"
+  },
+  "delimitacion": "No demuestra algoritmos desconocidos ni un segundo modelo; el host solo calcula el oráculo, XI conserva la decisión y la plantilla",
+  "ruta_pruebas": {
+    "nativa": "reverse-os-android/tests/qd-native.cjs",
+    "ui": "reverse-os-android/tests/qd-studio-ui.cjs",
+    "android": "reverse-os-android/app/src/androidTest/java/com/reversepc/os/WorkbenchTestRunner.java; mode=qd",
+    "ci": ".github/workflows/workbench-android.yml"
+  },
+  "conclusiones_prohibidas": [
+    "Atribuir razonamiento autónomo o generación libre de código a reproducción de plantillas",
+    "Afirmar ventajas de RAM/tiempo no medidas",
+    "Afirmar APK de actualización firmada con llave de usuario",
+    "Concluir éxito de prueba Android antes de obtener resultado real CI"
+  ]
+}

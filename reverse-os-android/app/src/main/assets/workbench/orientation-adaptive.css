@@ -1,0 +1,85 @@
+/* REVERSE portrait layout: preserve wallpaper art and icon SVGs unchanged.
+   Landscape inherits the original 2.5.8 desktop styles. */
+@media (orientation:portrait) and (max-width:900px){
+  #desktop{min-width:0}
+  .desktop-shortcuts{
+    left:8px!important;top:8px!important;width:calc(100% - 16px)!important;height:calc(100% - 14px)!important;
+    grid-auto-flow:row!important;grid-template-columns:repeat(auto-fill,66px)!important;
+    grid-template-rows:none!important;grid-auto-rows:64px!important;grid-auto-columns:66px!important;
+    gap:4px 5px!important;overflow-y:auto;overflow-x:hidden;align-content:start;scrollbar-width:none
+  }
+  .desktop-shortcuts::-webkit-scrollbar{display:none}
+  .taskbar{min-width:0;gap:1px!important;overflow:hidden}
+  .taskbar .launcher-toggle{flex:0 0 42px!important;width:42px!important;min-width:42px!important;padding:0 7px!important}
+  .taskbar .launcher-toggle .launcher-label{display:none!important}
+  #pinned-apps,#running-apps{min-width:0;max-width:100%;overflow-x:auto;overflow-y:hidden;scrollbar-width:none}
+  #pinned-apps .task-app,#running-apps .task-app{flex:0 0 30px}
+  .taskbar .dock-separator{margin:0 2px}
+  .task-tray{margin-left:auto;flex-shrink:0}
+  #desktop .window.focused{left:4px!important;top:4px!important;width:calc(100% - 8px)!important;height:calc(100% - 8px)!important;min-width:0!important;min-height:0!important}
+  .window-titlebar{min-width:0;min-height:32px!important;height:32px!important;padding:0 4px 0 8px}
+  .window-caption{min-width:0;gap:5px}
+  .window-controls{gap:0;flex:0 0 auto}
+  .window-controls button{width:28px!important;height:28px!important;min-width:28px}
+  .window-content{min-width:0;min-height:0;overflow:auto;overscroll-behavior:contain}
+  .launcher{left:8px!important;right:8px!important;transform:none!important;width:auto!important;max-width:none!important;bottom:calc(var(--desktop-taskbar) + 7px);max-height:calc(100dvh - var(--desktop-taskbar) - 24px)!important;padding:12px 12px 0!important;border-radius:9px!important}
+  .launcher .launcher-apps{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+  .launcher-app{min-width:0;padding:8px 3px;overflow:hidden}
+  .context-menu{max-width:calc(100vw - 18px)}
+  dialog{width:calc(100vw - 24px);max-width:calc(100vw - 24px);max-height:calc(100dvh - 24px);overflow:auto}
+  .toasts{left:8px;right:8px;bottom:calc(var(--desktop-taskbar) + 8px)}
+  .toast{max-width:100%}
+  .files-layout{height:100%;min-height:0!important;flex-direction:column;overflow:hidden}
+  .files-sidebar{width:100%!important;min-width:0!important;max-height:62px;min-height:0;padding:5px!important;flex:0 0 auto;flex-direction:row!important;align-items:center;gap:4px;overflow-x:auto;overflow-y:hidden;border-right:0;border-bottom:1px solid var(--line);scrollbar-width:none}
+  .files-sidebar .sidebar-title,.files-sidebar .sidebar-bottom{display:none}
+  .files-sidebar .sidebar-link{white-space:nowrap;flex:0 0 auto;padding:8px 9px;gap:4px}
+  .files-main{flex:1;min-height:0;min-width:0}
+  .files-toolbar{min-height:0;flex-wrap:wrap;padding:8px 9px}
+  .files-scroll{flex:1;min-height:0;overflow-y:auto;padding:12px}
+  .folders-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .control-layout{min-height:0;max-height:100%;height:100%;flex-direction:column}
+  .control-sidebar{width:100%;max-width:100%;min-width:0;flex:0 0 auto;flex-direction:row;padding:5px;gap:4px;overflow-x:auto;overflow-y:hidden;border-right:0;border-bottom:1px solid var(--line)}
+  .control-tab{flex:0 0 auto;min-height:34px;padding:8px 11px;gap:5px}
+  .control-tab.selected:before,.control-sidebar-footer{display:none}
+  .control-main{flex:1;min-height:0;padding:12px;overflow:auto}
+  .control-heading{gap:8px;margin-bottom:12px;flex-wrap:wrap}
+  .control-heading h2{font-size:21px}
+  .diagnostic-row{grid-template-columns:minmax(0,1fr);gap:5px;padding:9px}
+  .bbyq-shell{height:100%;min-height:0;overflow:hidden}
+  .bbyq-shell>.rxe-heading{flex:0 0 auto;gap:4px;flex-wrap:wrap}
+  .bbyq-modules{flex:0 0 auto;gap:4px;overflow-x:auto;min-height:34px}
+  .bbyq-modules button{min-height:30px}
+  .bbyq-shell>.rxe-history{flex:1;min-height:0;overflow-y:auto}
+  .bbyq-shell>.rxe-composer{flex:0 0 auto}
+  .bbyq-module-content{flex:1;min-height:0;overflow:hidden}
+  .qd-root{min-height:0;height:100%}
+  .qd-root .qd-workspace,.bbyq-module-content .qd-workspace{display:flex!important;flex-direction:column!important;grid-template-columns:none!important;grid-template-rows:none!important;overflow-y:auto!important;overflow-x:hidden!important;min-height:0}
+  .qd-root .qd-sidebar,.bbyq-module-content .qd-sidebar{width:100%!important;min-width:0;max-height:103px;flex:0 0 auto!important;display:flex!important;flex-direction:row!important;align-items:center;gap:4px;padding:6px!important;overflow-x:auto!important;overflow-y:hidden!important;border-right:0;border-bottom:1px solid var(--line)}
+  .qd-sidebar>.qd-section-caption{display:none}
+  .qd-root .qd-skill{flex:0 0 92px;width:92px;min-height:52px;padding:5px 6px;margin:0}
+  .qd-skill-dot,.qd-skill small{display:none}
+  .qd-memory{flex:0 0 114px;margin:0;padding:4px 6px;border:0}
+  .qd-memory strong{font-size:16px;margin:1px 0}
+  .qd-root .qd-editor,.bbyq-module-content .qd-editor{flex:0 0 auto;min-height:275px;padding:9px;border-right:0;border-bottom:1px solid var(--line)}
+  .qd-root .qd-source{flex:1;min-height:120px;max-height:260px}
+  .qd-root .qd-results,.bbyq-module-content .qd-results{flex:1 0 auto;min-height:290px;padding:9px;border-top:0;grid-column:auto!important}
+  .qd-results-scroll{min-height:125px}
+  .qd-root .qd-top{gap:6px;flex-wrap:wrap;padding:8px}
+  .music-app{height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+  .music-heading{gap:6px;flex:0 0 auto;flex-wrap:wrap;padding:8px}
+  .music-brand strong{font-size:12px}
+  .music-heading-actions{gap:4px}
+  .music-search{flex:0 0 auto;min-height:39px;gap:4px;padding:3px 6px 5px}
+  .music-search label{min-width:0}
+  .music-search input{min-width:0;font-size:12px;padding:7px 0}
+  .music-search .music-paste{min-width:29px}
+  .music-search>.primary-button{min-width:46px;padding:5px}
+  .music-tabs{flex:0 0 auto;min-height:32px;padding:0 7px;gap:9px;overflow-x:auto;scrollbar-width:none}
+  .music-tabs button{white-space:nowrap;min-height:30px;padding:6px 0}
+  .music-stage{flex:1 1 auto;min-height:130px}
+  .music-controls{flex:0 0 auto;flex-wrap:wrap;gap:5px;padding:6px 8px;min-height:44px}
+  .music-transport{gap:2px}
+  .music-footer{display:flex;flex:0 0 auto;min-height:23px}
+  .music-downloads,.music-library{flex:1;min-height:0;overflow:auto}
+  body[data-keyboard="true"] .music-stage{min-height:0}
+}
