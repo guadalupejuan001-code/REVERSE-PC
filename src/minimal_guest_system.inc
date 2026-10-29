@@ -16,6 +16,15 @@ inline std::uint64_t MinimalGuest::translate(std::uint64_t address,bool writing,
   // EC always reflects the actual current EL, even for LDTR/STTR.
   const auto ec=executing?(m.el?0x21u:0x20u):(m.el?0x25u:0x24u);
   auto fault=[&](unsigned status){throw MachineFault{(std::uint64_t(ec)<<26)|(1u<<25)|(!executing&&writing?64u:0u)|status,address};};
+#ifndef REVERSE_PC_TRANSLATION_REFERENCE
+  const auto page=address>>12;
+  const unsigned mode=unsigned(writing)|(unsigned(executing)<<1)|
+                      (unsigned(unprivileged)<<2)|(m.el<<3);
+  auto& hint=translation_hints_[(page^(page>>12)^mode)&63];
+  if(hint.generation==translation_generation_&&hint.page==page&&hint.mode==mode&&
+     hint.ttbr0==m.ttbr0&&hint.ttbr1==m.ttbr1&&hint.tcr==m.tcr&&hint.sctlr==m.sctlr)
+    return hint.physical|(address&4095);
+#endif
   const bool upper=(address>>55)&1;
   auto canonical=address;
   if(m.tcr&(UINT64_C(1)<<(upper?38:37)))canonical=upper?address|UINT64_C(0xff00000000000000):address&UINT64_C(0x00ffffffffffffff);
@@ -49,7 +58,12 @@ inline std::uint64_t MinimalGuest::translate(std::uint64_t address,bool writing,
     if(executing&&m.el&&user&&!readonly)fault(12+level);
     if(executing && ((m.el?(pxn||bool(descriptor&(UINT64_C(1)<<53))):(uxn||bool(descriptor&(UINT64_C(1)<<54)))) ||
                     ((m.sctlr&(1u<<19))&&!readonly)))fault(12+level);
-    return (descriptor&UINT64_C(0x0000fffffffff000)&~offset_mask)|(canonical&offset_mask);
+    const auto physical=(descriptor&UINT64_C(0x0000fffffffff000)&~offset_mask)|(canonical&offset_mask);
+#ifndef REVERSE_PC_TRANSLATION_REFERENCE
+    hint={translation_generation_,page,physical&~UINT64_C(4095),
+          m.ttbr0,m.ttbr1,m.tcr,m.sctlr,mode};
+#endif
+    return physical;
   }
   fault(4);return 0;
 }
@@ -99,6 +113,9 @@ inline std::uint64_t MinimalGuest::cpu_read(std::uint64_t address,unsigned size,
 }
 inline void MinimalGuest::cpu_write(std::uint64_t address,std::uint64_t value,unsigned size,RunResult& result,bool unprivileged) {
   const auto physical=resolve_access(address,size,true,false,unprivileged);machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;
+  // Clear hints installed by validation too: the store may replace the
+  // page-table descriptor that resolved its own destination.
+  invalidate_translation_hints();
   if(!machine_.enabled){write(address,value,size);return;}
   const auto first=physical[0];
   if(device_address(first)){device_write(first,value&low_mask(size*8),size,result);return;}
@@ -213,6 +230,12 @@ inline std::uint64_t MinimalGuest::system_read(unsigned id) const {
   // or newer ISAR3 extensions in this baseline CPU. Keep EL0 access rejected
   // by the privilege check above; the read does not add instruction support.
   if(id==guest_sysreg(3,0,0,6,3))return 0;
+  // Exact additional reads in the same genuine Android CPU-info routine:
+  // PFR2: no FPMR/MTE extensions; FPFR0: no FP8 extensions. MMFR4 is
+  // baseline RES0 here; PFR0 already reports that EL2 is absent, so its
+  // E2H0 encoding cannot advertise an unimplemented hypervisor mode.
+  if(id==guest_sysreg(3,0,0,4,2)||id==guest_sysreg(3,0,0,4,7)||
+     id==guest_sysreg(3,0,0,7,4))return 0;
   if(id==guest_sysreg(3,0,0,4,1)||id==guest_sysreg(3,0,0,4,4)||id==guest_sysreg(3,0,0,4,5)|| // PFR1/ZFR0/SMFR0: extensions absent.
      id==guest_sysreg(3,0,0,5,0)||id==guest_sysreg(3,0,0,5,1)||
      id==guest_sysreg(3,0,0,6,0)||id==guest_sysreg(3,0,0,6,1)||id==guest_sysreg(3,0,0,6,2)||
@@ -244,6 +267,9 @@ inline std::uint64_t MinimalGuest::system_read(unsigned id) const {
   if(id==guest_sysreg(3,3,14,2,2))return m.cntp_cval;if(id==guest_sysreg(3,3,14,3,2))return m.cntv_cval;
   if(id==guest_sysreg(2,0,0,2,2))return m.mdscr;
   if(id==guest_sysreg(2,0,0,2,0)||id==guest_sysreg(3,3,9,14,0))return 0;
+  // DFR0's zero count fields encode one breakpoint/watchpoint slot. The
+  // inactive slot is readable, but enabling hardware debug remains rejected.
+  if(id>=guest_sysreg(2,0,0,0,4)&&id<=guest_sysreg(2,0,0,0,7))return 0;
   throw std::runtime_error("Unsupported AArch64 system register read "+hex(id));
 }
 inline void MinimalGuest::select_stack(unsigned el,unsigned selected) {
@@ -280,6 +306,12 @@ inline void MinimalGuest::system_write(unsigned id,std::uint64_t value) {
   if(id==guest_sysreg(3,2,0,0,0))return; // CSSELR: no data caches modeled.
   if(id==guest_sysreg(2,0,0,2,2)){
     require(!(value&~UINT64_C(0x1000)),"Hardware debug/stepping is not implemented");m.mdscr=value;return;
+  }
+  if(id>=guest_sysreg(2,0,0,0,4)&&id<=guest_sysreg(2,0,0,0,7)){
+    // Linux hw_breakpoint_reset clears BCR0/BVR0/WCR0/WVR0 on cold boot.
+    // Preserve only this defined inactive state; never silently enable a
+    // breakpoint, watchpoint or unimplemented additional slot.
+    require(value==0,"Hardware breakpoint/watchpoint programming is not implemented");return;
   }
   if(id==guest_sysreg(2,0,0,2,0)||id==guest_sysreg(2,0,1,0,4)||
      id==guest_sysreg(2,0,1,3,4)||id==guest_sysreg(3,3,9,14,0)){

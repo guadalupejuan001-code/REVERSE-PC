@@ -45,6 +45,17 @@ def configure(expected,replacements):
   if (command == "stats") {'''),
     ]
     replacements['inverse_memory.hpp']=[
+        ('  ReadResult read(const std::string& logical_address, const InfiniteCore& core) const {', '''  // Numeric callers share the original rule/delta and quantum bindings.
+  // Fall back to the original canonicalization when its digit budget may
+  // reject a uint64 address or when any quantum view needs resolution.
+  ReadResult read_numeric(std::uint64_t address, const InfiniteCore& core) const {
+    if (limits_.max_address_digits < 20 || !bindings_->empty())
+      return read(std::to_string(address), core);
+    const auto* changed = overrides_->get(address);
+    return {true, changed ? *changed : background_, {}};
+  }
+
+  ReadResult read(const std::string& logical_address, const InfiniteCore& core) const {'''),
         ('      const double probability = core.probability_one(q);', '      const auto deterministic=core.z_determinism(q);\n      const double probability = deterministic<0 ? 1.0 : 0.0;'),
         ('      if (probability == 0.5)','      if (deterministic == 0)'),
         ('  static InverseMemory from_snapshot(const std::string& saved, Limits limits) {','''  std::string persistent_snapshot() const {

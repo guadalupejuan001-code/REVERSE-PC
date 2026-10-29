@@ -7,7 +7,7 @@
 #include <sstream>
 using namespace reverse_pc::guest;
 int main(int argc,char** argv){try{
-  require(argc>=2&&argc<=6,"Expected Image-or-RVG [budget] [checkpoint] [initrd_for_Image] [android-cuttlefish] or RVG [budget] [checkpoint] [--chunk=N] [--wall-ms=N]");
+  require(argc>=2&&argc<=7,"Expected Image-or-RVG [budget] [checkpoint] [initrd_for_Image] [android-cuttlefish] or RVG [budget] [checkpoint] [--chunk=N] [--wall-ms=N] [--stop-el0=1]");
   const auto begin=std::chrono::steady_clock::now();
   const auto budget=argc>=3?std::stoull(argv[2]):500000;require(budget>0&&budget<=100000000,"Probe budget must be 1..100000000");std::ifstream in(argv[1],std::ios::binary);
   require(bool(in),"Cannot open Image");Bytes image((std::istreambuf_iterator<char>(in)),{});
@@ -16,18 +16,19 @@ int main(int argc,char** argv){try{
   // Host-side controls: one original XI/Ether core and unchanged guest
   // checkpoints. Soft wall budgets check at transaction boundaries, never
   // interrupt an instruction or record a virtual CPU timer in the RVG.
-  std::uint64_t run_chunk=10000,max_wall_ms=0;
+  std::uint64_t run_chunk=10000,max_wall_ms=0;bool stop_el0=false;
   if(checkpoint){
-    bool seen_chunk=false,seen_wall=false;
+    bool seen_chunk=false,seen_wall=false,seen_stop=false;
     for(int i=4;i<argc;++i){
       const std::string arg(argv[i]);
       const bool chunk=arg.rfind("--chunk=",0)==0;
       const bool wall=arg.rfind("--wall-ms=",0)==0;
-      require(chunk||wall,
-        "Checkpoint accepts only --chunk=N and --wall-ms=N host controls");
-      bool& seen=chunk?seen_chunk:seen_wall;
+      const bool stop=arg.rfind("--stop-el0=",0)==0;
+      require(chunk||wall||stop,
+        "Checkpoint accepts only --chunk=N, --wall-ms=N and --stop-el0=1");
+      bool& seen=chunk?seen_chunk:wall?seen_wall:seen_stop;
       require(!seen,"Duplicate checkpoint host control");seen=true;
-      const std::string numeric=arg.substr(chunk?8:10);
+      const std::string numeric=arg.substr(chunk?8:wall?10:11);
       require(!numeric.empty() &&
         numeric.find_first_not_of("0123456789")==std::string::npos,
         "Checkpoint host control must be a positive decimal integer");
@@ -36,18 +37,21 @@ int main(int argc,char** argv){try{
         require(value>0&&value<=1000000,
           "Transaction chunk must be 1..1000000 original ARM64 instructions");
         run_chunk=value;
-      }else{
+      }else if(wall){
         require(value>0&&value<=600000,
           "Host wall budget must be 1..600000 milliseconds");
         max_wall_ms=value;
+      }else{
+        require(value==1,"EL0 observation control must be --stop-el0=1");stop_el0=true;
       }
     }
   }else{
+    require(argc<=6,"EL0 observation is a checkpoint-only host control");
     require(argc!=6||std::string(argv[5])=="android-cuttlefish",
       "Only the named Android Cuttlefish bootargs profile is supported");
   }
   MinimalGuest guest(128*1024*1024,1048576);Bytes initrd;if(argc>=5&&!checkpoint){std::ifstream rd(argv[4],std::ios::binary);require(bool(rd),"Cannot open initrd");initrd.assign(std::istreambuf_iterator<char>(rd),{});}
-  if(checkpoint){require(argc<=6,"A checkpoint accepts at most two host controls");guest=MinimalGuest::from_snapshot(image);require(guest.machine().enabled&&guest.machine().image_kind==2,"Probe checkpoint must contain a Linux Image");}
+  if(checkpoint){guest=MinimalGuest::from_snapshot(image);require(guest.machine().enabled&&guest.machine().image_kind==2,"Probe checkpoint must contain a Linux Image");}
   else guest.load_linux_image(image,initrd,
     argc==6?guest_android_cuttlefish_bootargs():std::string{});
   auto last_heartbeat=std::chrono::steady_clock::now();
@@ -73,8 +77,9 @@ int main(int argc,char** argv){try{
   for(std::uint64_t step=0;step<budget && !guest.registers().halted;step+=run_chunk){
     const auto count=std::min<std::uint64_t>(run_chunk,budget-step);
     try{
-      auto result=guest.run(count);console+=result.output;
+      auto result=guest.run(count,stop_el0);console+=result.output;
       emit_heartbeat();
+      if(stop_el0&&!guest.machine().el){reason="userspace_entry";emit_heartbeat(true);break;}
       if(result.waiting){reason="waiting_for_device_or_interrupt";break;}
       if(max_wall_ms &&
          std::chrono::steady_clock::now()-begin>=std::chrono::milliseconds(max_wall_ms) &&

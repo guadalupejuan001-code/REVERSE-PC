@@ -54,6 +54,9 @@ jobs:
           qemu-aarch64 guest-evidence/fp-demo.elf > guest-evidence/fp-demo-qemu.txt
           python3 -c 'import json;from pathlib import Path;p=Path("guest-evidence");d=json.loads((p/"fp-demo.json").read_text());assert d["stdout"]=="REVERSE: FP32 FP64 SIMD OK\n"==(p/"fp-demo-qemu.txt").read_text() and d["guest"]["exit_code"]==0'
           python3 tests/minimal_guest_fp_cli.py build/reverse_guest guest-evidence/fp-simd.elf > guest-evidence/fp-simd-oracle.json
+          clang --target=aarch64-none-elf -c examples/guest-exclusive-pairs.S -o guest-evidence/exclusive-pairs.o
+          ld.lld -T examples/guest-system-aarch64.ld --build-id=none -o guest-evidence/exclusive-pairs.elf guest-evidence/exclusive-pairs.o
+          node tests/minimal_guest_exclusive_pairs_cli.mjs build/reverse_guest guest-evidence/exclusive-pairs.elf > guest-evidence/exclusive-pairs-oracle.json
           clang --version > guest-evidence/clang-version.txt
           qemu-aarch64 --version > guest-evidence/oracle-version.txt
       - name: Check undefined behavior and failed transactions

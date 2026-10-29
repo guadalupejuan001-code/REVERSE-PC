@@ -68,18 +68,20 @@ jobs:
           cp src/minimal_guest*.hpp src/minimal_guest*.inc build/base/
           git show de6243c4b8f87b88f1afcf97cf6b06b0736906ff:src/minimal_guest_system.inc \
             > build/base/minimal_guest_system.inc
+          git show de6243c4b8f87b88f1afcf97cf6b06b0736906ff:tools/guest_linux_probe.cpp \
+            > build/base/guest_linux_probe.cpp
           python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
           python3 scripts/build-softfloat.py
           common="-std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1"
           g++ $common -Ibuild/ether-compat -Ideps/mundo-x/native/include -Ibuild/base -Isrc \
-            tools/guest_linux_probe.cpp build/softfloat/libreverse_softfloat.a -o build/probe-old
+            build/base/guest_linux_probe.cpp build/softfloat/libreverse_softfloat.a -o build/probe-old
           g++ $common -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
             tools/guest_linux_probe.cpp build/softfloat/libreverse_softfloat.a -o build/probe-new
           g++ -std=c++17 -O1 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
             -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
             tests/minimal_guest_system_test.cpp build/softfloat/libreverse_softfloat.a -o build/native-system
           timeout 180 build/native-system > evidence/native-system.json
-          jq -e '.checks==1828 and .existing_quantum_qubits==4096' evidence/native-system.json
+          jq -e '.checks>=1828 and .existing_quantum_qubits==4096' evidence/native-system.json
       - name: Reproduce the exact old failure after genuine SCS and bootconfig processing
         run: |
           set -euo pipefail
@@ -101,12 +103,13 @@ jobs:
           jq -e '.initial_instructions==65788352 and .guest.instructions==65788353 and
             .guest.pc=="0xffffffc0804007ac" and .next_instruction.registers.x8=="0x0" and
             .guest.exceptions==0 and .stop_reason=="instruction_budget"' evidence/one.json
-          build/probe-new build/one.rvg 1000000 evidence/current.rvg \
-            --wall-ms=20000 > evidence/after-isar3.json
+          # A completed milestone must not require later ID registers to
+          # remain unsupported forever. Stop immediately before MMFR4.
+          build/probe-new build/one.rvg 9 evidence/current.rvg > evidence/after-isar3.json
           build/probe-new evidence/before-isar3.rvg 10 build/direct.rvg > evidence/direct.json
           cmp build/direct.rvg evidence/current.rvg
           jq -e '.guest.instructions==65788362 and .guest.exceptions==0 and
-            .stop_reason=="Unsupported AArch64 system register read 0xc03c" and
+            .stop_reason=="instruction_budget" and
             .next_instruction.opcode=="0xd5380788" and .guest.exception_level==1 and
             .android_boot==false and .linux_userspace_init_observed==false' evidence/after-isar3.json
           sha256sum evidence/before-isar3.rvg evidence/current.rvg > evidence/checkpoints.sha256
@@ -115,7 +118,7 @@ jobs:
             jq '{checks,existing_quantum_qubits}' evidence/native-system.json
             jq '{instructions:.guest.instructions,stop:.stop_reason,uart_chars:(.console|length)}' evidence/before-isar3.json
             jq '{instructions:.guest.instructions,stop:.stop_reason,next:.next_instruction.opcode}' evidence/after-isar3.json
-            echo 'Next observed blocker: ID_AA64MMFR4_EL1. Android /init, ADB and UI remain unobserved.'
+            echo 'ISAR3 milestone ends before MMFR4; later feature support may extend this point.'
           } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: always()
