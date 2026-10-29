@@ -91,7 +91,7 @@ jobs:
               evidence/android-boot-manifest.json
             cat evidence/ramdisk-format.json
           } >> "$GITHUB_STEP_SUMMARY"
-      - name: Verify real LZ4 legacy newc and original AOSP init ELF with independent cpio/readelf oracles
+      - name: Verify real LZ4 legacy newc and actual AOSP init ELF with independent cpio/readelf oracles
         run: |
           set -euo pipefail
           node tools/aosp_ramdisk_preflight.mjs input/cf-parts/generic_ramdisk.bin \
@@ -100,19 +100,7 @@ jobs:
             .init_size>64 and .file_count>0 and .init_elf_machine==183 and
             .android_init_executed==false and .adb==false' evidence/first-stage-init.json
           cpio --quiet -it < input/generic.cpio > evidence/independent-cpio-list.txt
-          grep -Eq '^\./?init$|^init        with:
-          name: aosp-cuttlefish-arm64-boot-manifest-evidence
-          path: |
-            evidence/zip-index.json
-            evidence/extraction-report.json
-            evidence/android-boot-manifest.json
-            evidence/ramdisk-format.json
-            evidence/first-stage-init.json
-            evidence/independent-init-readelf.txt
-            evidence/*.txt
-            evidence/*.tap
-          retention-days: 14
- evidence/independent-cpio-list.txt
+          grep -Eq '^\./?init$|^init$' evidence/independent-cpio-list.txt
           cpio --quiet --to-stdout -i init < input/generic.cpio > input/init-oracle.elf
           if test ! -s input/init-oracle.elf; then
             cpio --quiet --to-stdout -i ./init < input/generic.cpio > input/init-oracle.elf
@@ -141,6 +129,8 @@ jobs:
             evidence/extraction-report.json
             evidence/android-boot-manifest.json
             evidence/ramdisk-format.json
+            evidence/first-stage-init.json
+            evidence/independent-init-readelf.txt
             evidence/*.txt
             evidence/*.tap
           retention-days: 14
