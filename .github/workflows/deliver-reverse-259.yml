@@ -1,0 +1,42 @@
+name: Publish REVERSE 2.5.9 portrait-landscape APK direct
+on:
+  push:
+    branches: [deliver/reverse-pc-259-dual-orientation]
+    paths:
+      - '.github/workflows/deliver-reverse-259.yml'
+permissions:
+  contents: write
+  actions: read
+jobs:
+  deliver:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+      - name: Download verified dual-orientation APK from successful CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          test "$(gh run view 40800084494 --repo "$GITHUB_REPOSITORY" --json conclusion -q .conclusion)" = success
+          mkdir -p /tmp/reverse259
+          gh run download 40800084494 --repo "$GITHUB_REPOSITORY" \
+            --name REVERSE-2.5.9-portrait-landscape --dir /tmp/reverse259
+          apk=/tmp/reverse259/dist/REVERSE-v2.5.9-dual-orientation-ci.apk
+          test -s "$apk"
+          echo 'ec9bc0852828497feea4f5b7fb3d8cdf4655a37be293fc2755d4c3e11c80af69  '"$apk" | sha256sum -c -
+          unzip -tq "$apk"
+          grep 'WORKBENCH_TESTS_OK mode=orientation portrait=verified landscape=verified session=preserved wallpaper=unchanged icons=unchanged' /tmp/reverse259/evidence/android-orientation.txt
+          mkdir -p downloads
+          cp "$apk" downloads/REVERSE-PC-2.5.9.apk
+          sha256sum downloads/REVERSE-PC-2.5.9.apk > downloads/REVERSE-PC-2.5.9.apk.sha256
+      - name: Commit directly downloadable APK in public GitHub branch
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add downloads/REVERSE-PC-2.5.9.apk downloads/REVERSE-PC-2.5.9.apk.sha256
+          git commit -m 'Publish verified REVERSE 2.5.9 dual-orientation Android APK'
+          git push origin HEAD:refs/heads/deliver/reverse-pc-259-dual-orientation
