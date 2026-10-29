@@ -21,26 +21,29 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     }
     static { System.loadLibrary("reverse_os"); }
     private static native void renderNative(int[] argb,int width,int height,
-                     long xMm,long zMm,int yaw16,int checkpoint,int camera,int paint);
+                     long xMm,long zMm,int yaw16,int checkpoint,int camera,int paint,
+                     float[] xiTrack);
 
-    private final VelocityPhysics physics;
+    private final VelocityXiEngine game;
     private final Hud hud;
     private final Paint paint=new Paint(Paint.FILTER_BITMAP_FLAG);
     private final Rect sourceRect=new Rect();
     private final Rect targetRect=new Rect();
     private volatile boolean running;
     private Thread worker;
-    private volatile int gas,brake,steer;
+    private volatile int gas,brake,steer=1;
     private volatile boolean handbrake,resetRequested;
     private volatile int cameraMode,paintId,quality;
     private volatile int surfaceWidth=16,surfaceHeight=9;
     private volatile String error="";
-    VelocityXSurface(Context context,VelocityPhysics physics,Hud hud){
-        super(context);this.physics=physics;this.hud=hud;
+    VelocityXSurface(Context context,VelocityXiEngine game,Hud hud){
+        super(context);this.game=game;this.hud=hud;
         getHolder().addCallback(this);
         setKeepScreenOn(true);
     }
     void controls(int gas,int brake,int steer,boolean handbrake){
+        if(gas<0||gas>1||brake<0||brake>1||steer<0||steer>2)
+            throw new IllegalArgumentException("Control fuera del protocolo XI");
         this.gas=gas;this.brake=brake;this.steer=steer;this.handbrake=handbrake;
     }
     void reset(){resetRequested=true;}
@@ -77,13 +80,17 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 final long begin=SystemClock.elapsedRealtimeNanos();
                 final long delta=Math.min(100L,Math.max(0L,(begin-previous)/1_000_000L));
                 previous=begin;accumulator+=(int)delta;
-                if(resetRequested){physics.reset();resetRequested=false;accumulator=0;}
-                int ticks=0;
-                while(accumulator>=VelocityPhysics.TICK_MS&&ticks++<5){
-                    physics.step(gas,brake,steer,handbrake);
-                    accumulator-=VelocityPhysics.TICK_MS;
+                if(resetRequested){
+                    game.step(0,0,1,0,true);
+                    resetRequested=false;accumulator=0;
                 }
-                if(accumulator>=VelocityPhysics.TICK_MS)accumulator=0;
+                int ticks=0;
+                while(accumulator>=20&&ticks++<5){
+                    game.step(gas,brake,steer,handbrake?1:0,false);
+                    accumulator-=20;
+                }
+                if(accumulator>=20)accumulator=0;
+                final VelocityXiEngine.Snapshot frame=game.current();
                 int selected=Math.max(0,Math.min(2,quality));
                 int targetWidth=selected==0?320:selected==1?640:1280;
                 double ratio=Math.min(2.7,Math.max(1.2,(double)surfaceWidth/surfaceHeight));
@@ -96,8 +103,9 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     image=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
                     sourceRect.set(0,0,width,height);
                 }
-                renderNative(pixels,width,height,physics.xMm,physics.zMm,
-                             physics.yaw16,physics.checkpoint,cameraMode,paintId);
+                renderNative(pixels,width,height,frame.xCm*10L,frame.zCm*10L,
+                             frame.yaw4096*16,frame.checkpoint,cameraMode,paintId,
+                             game.track());
                 image.setPixels(pixels,0,width,0,0,width,height);
                 Canvas canvas=null;
                 try{
@@ -117,20 +125,20 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 }
                 if(begin-lastHud>=250_000_000L){
                     lastHud=begin;
-                    hud.update((int)Math.round(physics.speedKmh()),physics.checkpoint,
-                         physics.checkpointCount(),physics.elapsedMs/1000,
-                         physics.offRoad,physics.lateralSlipMmps(),physics.finished,
-                         fps,width,height,error);
+                    hud.update(frame.speedKmh(),frame.checkpoint,
+                         6,frame.seconds(),frame.offRoad,frame.slideCmps*10,
+                         frame.finished,fps,width,height,error);
                 }
                 final long cost=SystemClock.elapsedRealtimeNanos()-begin;
                 final long remaining=16_666_667L-cost; // up to 60 FPS; actual FPS remains measured
                 if(remaining>1_000_000L)Thread.sleep(remaining/1_000_000L);
             }
         }catch(Throwable thrown){
-            error="X Render: "+thrown.getClass().getSimpleName()+" — "+thrown.getMessage();
-            hud.update(0,physics.checkpoint,physics.checkpointCount(),
-                physics.elapsedMs/1000,physics.offRoad,physics.lateralSlipMmps(),
-                physics.finished,0,width,height,error);
+            error="XI / X Render: "+thrown.getClass().getSimpleName()+" — "+thrown.getMessage();
+            final VelocityXiEngine.Snapshot last=game.current();
+            hud.update(last==null?0:last.speedKmh(),last==null?0:last.checkpoint,6,
+                last==null?0:last.seconds(),last!=null&&last.offRoad,
+                last==null?0:last.slideCmps*10,last!=null&&last.finished,0,width,height,error);
         }finally{
             if(image!=null&&!image.isRecycled())image.recycle();
             synchronized(this){
