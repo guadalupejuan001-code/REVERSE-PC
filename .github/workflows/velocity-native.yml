@@ -36,14 +36,16 @@ jobs:
           grep -q '#include "mundo_x/ether_render_engine.hpp"' reverse-os-android/app/src/main/cpp/velocity_xrender_jni.cpp
           grep -q 'scene->export_image' reverse-os-android/app/src/main/cpp/velocity_xrender_jni.cpp
           ! grep -E 'GLSurfaceView|GLES20|GLES30|WebGL|glDrawArrays' reverse-os-android/app/src/main/java/com/reversepc/os/Velocity*.java reverse-os-android/app/src/main/cpp/velocity_xrender_jni.cpp
-      - name: Test fixed-step vehicle state with host JVM
+      - name: Compile original XI runtime and verify gameplay program
         run: |
           set -euo pipefail
-          mkdir -p build/velocity
-          javac -d build/velocity \
-            reverse-os-android/app/src/main/java/com/reversepc/os/VelocityPhysics.java \
-            reverse-os-android/tests/VelocityPhysicsTest.java
-          java -cp build/velocity com.reversepc.os.VelocityPhysicsTest
+          mkdir -p build/velocity build/ether-compat
+          python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
+            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
+            src/reverse_pc.cpp -o build/velocity/reverse_pc
+          node reverse-os-android/tests/velocity-xi-contract.cjs \
+            build/velocity/reverse_pc build/velocity
       - name: Compile the actual JNI scene against pinned X Render
         run: |
           set -euo pipefail
@@ -61,7 +63,7 @@ jobs:
           g++ -std=c++17 -O2 -Wall -Wextra -Werror -I "$JAVA_HOME/include" -I "$JAVA_HOME/include/linux" \
             -Ideps/mundo-x/native/include \
             reverse-os-android/tests/velocity_scene_smoke.cpp -o build/velocity/scene-smoke
-          build/velocity/scene-smoke
+          build/velocity/scene-smoke build/velocity/velocity-track-from-xi.txt
       - name: Verify real Mundo X native renderer API and pixel export
         run: |
           set -euo pipefail
