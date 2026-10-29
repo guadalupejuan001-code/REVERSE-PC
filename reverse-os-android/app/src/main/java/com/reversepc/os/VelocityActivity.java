@@ -83,14 +83,17 @@ public final class VelocityActivity extends Activity {
         FrameLayout root=new FrameLayout(this);
         root.setBackgroundColor(0xff17252c);
 
-        surface=new VelocityXSurface(this,physics,(kmh,checkpoints,total,seconds,offRoad,error)->
-            runOnUiThread(()->{
-                if(speed!=null)speed.setText(kmh+" km/h");
-                if(route!=null)route.setText(error.isEmpty()?
-                    "X RENDER / VELOCITY  •  "+checkpoints+"/"+total+" controles  •  "+
-                    (seconds/60)+":"+String.format(Locale.ROOT,"%02d",seconds%60)+
-                    (offRoad?"  •  FUERA DE CARRETERA":""):error);
-            }));
+        surface=new VelocityXSurface(this,physics,(kmh,checkpoints,total,seconds,
+                 offRoad,slide,finished,fps,rw,rh,error)->runOnUiThread(()->{
+            if(speed!=null)speed.setText(kmh+" km/h");
+            if(route!=null)route.setText(error.isEmpty()?
+                (finished?"META COMPLETADA":"CARRERA")+
+                "  •  "+checkpoints+"/"+total+" controles  •  "+
+                (seconds/60)+":"+String.format(Locale.ROOT,"%02d",seconds%60)+
+                (offRoad?"  •  FUERA DE CARRETERA":"")+
+                (Math.abs(slide)>2200?"  •  DERRAPE":"")+
+                "  •  "+fps+" FPS medidos  •  "+rw+"×"+rh+" X Render":error);
+        }));
         root.addView(surface,new FrameLayout.LayoutParams(-1,-1));
 
         TextView brand=text("REVERSE / VELOCITY  ·  X RENDER",13);
@@ -99,6 +102,19 @@ public final class VelocityActivity extends Activity {
         add(root,speed,-2,-2,Gravity.TOP|Gravity.RIGHT,0,48,22,0);
         route=text("Iniciando mundo nativo...",12);
         add(root,route,-2,-2,Gravity.TOP|Gravity.LEFT,20,46,0,0);
+
+        Button camera=button("Cámara");
+        camera.setOnClickListener(v->{int m=surface.cycleCamera();camera.setText("Vista "+(m+1));});
+        add(root,camera,92,40,Gravity.TOP|Gravity.RIGHT,0,110,16,0);
+        Button colors=button("Color");
+        colors.setOnClickListener(v->{int p=surface.cyclePaint();colors.setText("Color "+(p+1));});
+        add(root,colors,92,40,Gravity.TOP|Gravity.RIGHT,0,110,117,0);
+        Button quality=button("Calidad");
+        quality.setOnClickListener(v->{int q=surface.cycleQuality();quality.setText("Calidad "+(q+1));});
+        add(root,quality,92,40,Gravity.TOP|Gravity.RIGHT,0,110,218,0);
+        Button restart=button("Reiniciar");
+        restart.setOnClickListener(v->surface.reset());
+        add(root,restart,94,40,Gravity.TOP|Gravity.RIGHT,0,110,319,0);
 
         Button exit=button("Salir");
         exit.setOnClickListener(v->finish());
@@ -144,7 +160,11 @@ public final class VelocityActivity extends Activity {
         if(surface!=null)surface.startLoop();
     }
     @Override protected void onPause(){
-        if(surface!=null)surface.stopLoop();
+        if(surface!=null){
+            gas=brake=left=right=drift=false;
+            keyGas=keyBrake=keyLeft=keyRight=keyDrift=false;
+            controls();surface.stopLoop();
+        }
         super.onPause();
     }
     @Override protected void onDestroy(){
