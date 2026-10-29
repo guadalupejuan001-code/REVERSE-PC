@@ -212,7 +212,8 @@ inline std::uint64_t MinimalGuest::system_read(unsigned id) const {
   if(id==guest_sysreg(3,0,0,4,1)||id==guest_sysreg(3,0,0,4,4)||id==guest_sysreg(3,0,0,4,5)|| // PFR1/ZFR0/SMFR0: extensions absent.
      id==guest_sysreg(3,0,0,5,0)||id==guest_sysreg(3,0,0,5,1)||
      id==guest_sysreg(3,0,0,6,0)||id==guest_sysreg(3,0,0,6,1)||id==guest_sysreg(3,0,0,6,2)||
-     id==guest_sysreg(3,0,0,7,1)||id==guest_sysreg(3,0,0,7,2))return 0;
+     id==guest_sysreg(3,0,0,7,1)||id==guest_sysreg(3,0,0,7,2)||
+     id==guest_sysreg(3,0,0,7,3))return 0; // ID_AA64MMFR3_EL1: advanced memory features absent.
   if(id==guest_sysreg(3,0,0,7,0))return 0x0ff00005; // 48-bit PA, 4 KiB only.
   if(id==guest_sysreg(3,3,0,0,1))return 0x8444c004; // CTR: 64-byte coherent cache lines.
   if(id==guest_sysreg(3,3,0,0,7))return 4; // DCZID: 64-byte zero block.
