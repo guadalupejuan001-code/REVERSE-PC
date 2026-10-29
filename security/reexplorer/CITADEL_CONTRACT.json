@@ -1,0 +1,104 @@
+{
+  "schema": "reverse.citadel.design.v1",
+  "status": "architecture_and_offline_xi_policy_prototype",
+  "product": "REexplorer Citadel",
+  "base_revision": "1b613026d360c897f93ac29652b8461a0522e452",
+  "goals": {
+    "no_browser_access_to_reverse_files": true,
+    "manual_full_featured_https_browsing": true,
+    "no_automated_account_operations": true,
+    "dynamic_policy_based_on_metadata_only": true,
+    "absolute_anonymity_guarantee": false,
+    "post_quantum_encryption_claim_without_protocol_proof": false
+  },
+  "trust_boundaries": [
+    {
+      "id": "REVERSE",
+      "target": "separate_app_uid_A",
+      "implemented": false,
+      "evidence_required": "uid verified by Android instrumentation"
+    },
+    {
+      "id": "REexplorer",
+      "target": "separate_app_uid_B",
+      "implemented": false,
+      "evidence_required": "uidB!=uidA, no sharedUserId, app has no REVERSE native code or data access"
+    },
+    {
+      "id": "BrowserRenderer",
+      "target": "maintained WebView system renderer sandbox",
+      "implemented": "platform_dependent",
+      "evidence_required": "device runtime WebView renderer isolation inspection"
+    },
+    {
+      "id": "NetworkEgressGuard",
+      "target": "block local IP and DNS rebinding at socket/packet path",
+      "implemented": false,
+      "evidence_required": "IPv4/IPv6 and redirect fuzz with packet capture"
+    },
+    {
+      "id": "XI_Policy",
+      "target": "metadata-only deterministic decision gates",
+      "implemented": "offline_prototype_only",
+      "evidence_required": "native XI unit tests and real event bridge with secret-leak negative tests"
+    }
+  ],
+  "invariants": [
+    "No source content, credentials, cookies or DOM ever sent to XI/Ether",
+    "No website-provided script can call a REVERSE privileged JS bridge",
+    "TLS certificate validation cannot be bypassed",
+    "Host file access and sensitive device permissions require OS-enforced isolation",
+    "Origin-specific consent never elevates immutable policy ceilings",
+    "Missing mandatory broker/sensor => fail closed for hardened finance",
+    "Unknown destination requires explicit user action; AI-originated requests are allowlisted",
+    "Do not describe browser as indetectable, invulnerable or quantum encrypted without evidence"
+  ],
+  "phases": [
+    {
+      "id": "P0",
+      "name": "independent browser APK UID",
+      "status": "not_implemented"
+    },
+    {
+      "id": "P1",
+      "name": "in-device cross UID and IPC adversarial tests",
+      "status": "not_implemented"
+    },
+    {
+      "id": "P2",
+      "name": "network egress broker with DNS rebinding protection",
+      "status": "not_implemented"
+    },
+    {
+      "id": "P3",
+      "name": "site-bound permission grants and ephemeral financial profile",
+      "status": "not_implemented"
+    },
+    {
+      "id": "P4",
+      "name": "XI risk signals and actual enforcement bridge",
+      "status": "native_policy_prototype_only"
+    },
+    {
+      "id": "P5",
+      "name": "encrypted browser state / crypto provider verification and external audit",
+      "status": "not_implemented"
+    }
+  ],
+  "current_reexplorer": {
+    "separate_process": true,
+    "different_uid_from_reverse": false,
+    "webview_data_directory_suffix": true,
+    "no_javascript_interface_in_untrusted_view": true,
+    "https_only_navigation_check": true,
+    "full_socket_egress_policy": false,
+    "notes": "As observed from source on PR #50 branch; a device security audit is pending"
+  },
+  "permitted_site_data": [
+    "outbound_ip_or_relay_ip",
+    "browser_supported_features",
+    "user_submitted_fields",
+    "authorized_origin_cookies"
+  ],
+  "note": "The presence of this contract or a green CI report does NOT establish deployment of the incomplete boundaries."
+}
