@@ -13,7 +13,7 @@ El código `apps/reexplorer/xi/stream-reader.xi` contiene el lector de bytes inc
 - Estados 2 y 3: cuerpo de etiquetas `<script>` y `<style>` que se ignora, sin ejecutar JavaScript ni CSS.
 - Estados 4 y 5: búsqueda de sus terminadores a través de límites de paquete.
 - Tres contadores de 24 bits: bytes vistos, bytes visibles y bytes ocultos; otro contador registra etiquetas.
-- Presupuesto máximo de 1 MiB por documento; por operación se admiten hasta 224 bytes. Un desbordamiento suspende el análisis hasta el siguiente `reset`.
+- Presupuesto máximo de 1 MiB por documento; por operación se admiten hasta 2048 bytes. Un desbordamiento suspende el análisis hasta el siguiente `reset`.
 - Recuperación sin reconstruir el documento: se conserva el estado incremental y se emiten solo bytes de texto seleccionados.
 
 **Esto es lectura nativa de texto de páginas, no ejecución de sitios.** Los scripts se tratan como datos no ejecutables. El diseño sirve para comenzar una implementación propia de REexplorer, con una superficie de ataque deliberadamente pequeña y medible. No interpreta CSS, DOM completo, formularios, navegación por enlaces, sockets, TLS, HTTP/2, WebSocket, renderizado de fuentes ni inicio de sesión de Robinhood.
@@ -25,8 +25,8 @@ Todo ocurre en una región reservada de la memoria propia XI `875500000000000000
 | Desplazamiento | Significado |
 |---|---|
 | +0 | 1 = procesar paquete, 2 = consultar estadísticas, 3 = reiniciar |
-| +1 | número de bytes recibidos (0–224) |
-| +128 | inicio de la ventana de 224 bytes de entrada |
+| +1..+2 | número de bytes recibidos (0–2048), little-endian |
+| +128 | inicio de la ventana de 2048 bytes de entrada |
 | +4096 | estado del autómata |
 | +4097..4099 | bytes de entrada procesados |
 | +4100..4102 | bytes visibles emitidos |
