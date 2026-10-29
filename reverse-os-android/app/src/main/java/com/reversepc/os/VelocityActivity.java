@@ -1,0 +1,184 @@
+package com.reversepc.os;
+
+import android.app.Activity;
+import android.graphics.Color;
+import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
+import android.os.Bundle;
+import android.view.Gravity;
+import android.view.KeyEvent;
+import android.view.MotionEvent;
+import android.view.View;
+import android.view.WindowManager;
+import android.widget.Button;
+import android.widget.FrameLayout;
+import android.widget.TextView;
+import java.util.Locale;
+
+/**
+ * REVERSE VELOCITY: a full-screen game launched by the REVERSE desktop.
+ * The default scene is authored/executed in XI Machine v1.
+ * Android provides physical input, an ARGB span presenter and comparisons
+ * against the previous Mundo X native engine. No scene shading lives here.
+ */
+public final class VelocityActivity extends Activity {
+    private VelocityXSurface surface;
+    private TextView speed,route;
+    private boolean gas,brake,left,right,drift;
+    private boolean keyGas,keyBrake,keyLeft,keyRight,keyDrift;
+
+    private int dp(float value){return Math.round(getResources().getDisplayMetrics().density*value);}
+    private GradientDrawable background(int color){
+        GradientDrawable drawable=new GradientDrawable();
+        drawable.setColor(color);drawable.setCornerRadius(dp(15));
+        drawable.setStroke(dp(1),0x66d8e5ea);
+        return drawable;
+    }
+    private TextView text(String value,int size){
+        TextView t=new TextView(this);
+        t.setText(value);t.setTextColor(Color.WHITE);t.setTextSize(size);
+        t.setShadowLayer(dp(2),0,dp(2),0xff071016);
+        t.setTypeface(Typeface.create("sans-serif-medium",Typeface.BOLD));
+        return t;
+    }
+    private void add(FrameLayout root,View view,int w,int h,int gravity,
+                     int left,int top,int right,int bottom){
+        FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(w<0?w:dp(w),h<0?h:dp(h),gravity);
+        p.setMargins(dp(left),dp(top),dp(right),dp(bottom));
+        root.addView(view,p);
+    }
+    private Button button(String label){
+        Button b=new Button(this);
+        b.setText(label);b.setTextColor(Color.WHITE);b.setTextSize(15);
+        b.setAllCaps(false);b.setBackground(background(0xcc13232c));
+        b.setPadding(dp(8),0,dp(8),0);
+        return b;
+    }
+    private void hold(Button button,int which){
+        button.setOnTouchListener((view,event)->{
+            int action=event.getActionMasked();
+            if(action!=MotionEvent.ACTION_DOWN&&action!=MotionEvent.ACTION_UP
+                &&action!=MotionEvent.ACTION_CANCEL)return true;
+            boolean down=action==MotionEvent.ACTION_DOWN;
+            if(which==0)left=down;
+            if(which==1)right=down;
+            if(which==2)brake=down;
+            if(which==3)gas=down;
+            if(which==4)drift=down;
+            view.setAlpha(down?.72f:1f);
+            controls();
+            return true;
+        });
+    }
+    private void controls(){
+        if(surface==null)return;
+        boolean l=left||keyLeft,r=right||keyRight;
+        surface.controls(gas||keyGas?1:0,brake||keyBrake?1:0,
+                         l==r?1:l?0:2,drift||keyDrift);
+    }
+    @Override public void onCreate(Bundle state){
+        super.onCreate(state);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        WorkbenchActivity.immersive(this);
+        final VelocityXiEngine game;
+        try{game=new VelocityXiEngine(this);}
+        catch(Exception failure){
+            TextView error=text("REVERSE VELOCITY · XI\nNo se pudo iniciar el programa propio: "+
+                failure.getMessage(),17);
+            error.setPadding(dp(24),dp(24),dp(24),dp(24));
+            error.setBackgroundColor(0xff10191d);
+            setContentView(error);
+            return;
+        }
+        FrameLayout root=new FrameLayout(this);
+        root.setBackgroundColor(0xff17252c);
+
+        surface=new VelocityXSurface(this,game,(kmh,checkpoints,total,seconds,
+                 offRoad,slide,finished,fps,rw,rh,backend,error)->runOnUiThread(()->{
+            if(speed!=null)speed.setText(kmh+" km/h");
+            if(route!=null)route.setText(error.isEmpty()?
+                (finished?"META COMPLETADA":"CARRERA")+
+                "  •  "+checkpoints+"/"+total+" controles  •  "+
+                (seconds/60)+":"+String.format(Locale.ROOT,"%02d",seconds%60)+
+                (offRoad?"  •  FUERA DE CARRETERA":"")+
+                (Math.abs(slide)>2200?"  •  DERRAPE":"")+
+                "  •  "+fps+" FPS medidos  •  "+rw+"×"+rh+" "+backend:error);
+        }));
+        root.addView(surface,new FrameLayout.LayoutParams(-1,-1));
+
+        TextView brand=text("REVERSE / VELOCITY  ·  XI RENDER",13);
+        add(root,brand,-2,-2,Gravity.TOP|Gravity.LEFT,20,13,0,0);
+        speed=text("0 km/h",24);
+        add(root,speed,-2,-2,Gravity.TOP|Gravity.RIGHT,0,48,22,0);
+        route=text("Preparando pista XI y renderizador XI...",12);
+        add(root,route,-2,-2,Gravity.TOP|Gravity.LEFT,20,46,0,0);
+
+        Button camera=button("Cámara");
+        camera.setOnClickListener(v->{int m=surface.cycleCamera();camera.setText("Vista "+(m+1));});
+        add(root,camera,92,40,Gravity.TOP|Gravity.RIGHT,0,110,16,0);
+        Button colors=button("Color");
+        colors.setOnClickListener(v->{int p=surface.cyclePaint();colors.setText("Color "+(p+1));});
+        add(root,colors,92,40,Gravity.TOP|Gravity.RIGHT,0,110,117,0);
+        Button quality=button("Calidad");
+        quality.setOnClickListener(v->{int q=surface.cycleQuality();quality.setText("Calidad "+(q+1));});
+        add(root,quality,92,40,Gravity.TOP|Gravity.RIGHT,0,110,218,0);
+        Button restart=button("Reiniciar");
+        restart.setOnClickListener(v->surface.reset());
+        add(root,restart,94,40,Gravity.TOP|Gravity.RIGHT,0,110,319,0);
+
+        Button exit=button("Salir");
+        exit.setOnClickListener(v->finish());
+        add(root,exit,76,44,Gravity.TOP|Gravity.RIGHT,0,6,14,0);
+
+        Button bLeft=button("◀");hold(bLeft,0);
+        Button bRight=button("▶");hold(bRight,1);
+        Button bBrake=button("FRENO");hold(bBrake,2);
+        Button bGas=button("ACELERAR");hold(bGas,3);
+        Button bDrift=button("DERRAPE");hold(bDrift,4);
+        add(root,bLeft,104,77,Gravity.BOTTOM|Gravity.LEFT,18,0,0,18);
+        add(root,bRight,104,77,Gravity.BOTTOM|Gravity.LEFT,135,0,0,18);
+        add(root,bGas,121,77,Gravity.BOTTOM|Gravity.RIGHT,0,0,18,18);
+        add(root,bBrake,104,77,Gravity.BOTTOM|Gravity.RIGHT,0,0,152,18);
+        add(root,bDrift,104,56,Gravity.BOTTOM|Gravity.RIGHT,0,0,269,18);
+
+        TextView help=text("WASD / flechas · ESPACIO derrape · R reiniciar",11);
+        add(root,help,-2,-2,Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL,0,0,0,4);
+        setContentView(root);
+    }
+    @Override public boolean onKeyDown(int keyCode,KeyEvent event){
+        if(keyCode==KeyEvent.KEYCODE_R){if(surface!=null)surface.reset();return true;}
+        if(keyCode==KeyEvent.KEYCODE_W||keyCode==KeyEvent.KEYCODE_DPAD_UP)keyGas=true;
+        else if(keyCode==KeyEvent.KEYCODE_S||keyCode==KeyEvent.KEYCODE_DPAD_DOWN)keyBrake=true;
+        else if(keyCode==KeyEvent.KEYCODE_A||keyCode==KeyEvent.KEYCODE_DPAD_LEFT)keyLeft=true;
+        else if(keyCode==KeyEvent.KEYCODE_D||keyCode==KeyEvent.KEYCODE_DPAD_RIGHT)keyRight=true;
+        else if(keyCode==KeyEvent.KEYCODE_SPACE)keyDrift=true;
+        else return super.onKeyDown(keyCode,event);
+        controls();return true;
+    }
+    @Override public boolean onKeyUp(int keyCode,KeyEvent event){
+        if(keyCode==KeyEvent.KEYCODE_W||keyCode==KeyEvent.KEYCODE_DPAD_UP)keyGas=false;
+        else if(keyCode==KeyEvent.KEYCODE_S||keyCode==KeyEvent.KEYCODE_DPAD_DOWN)keyBrake=false;
+        else if(keyCode==KeyEvent.KEYCODE_A||keyCode==KeyEvent.KEYCODE_DPAD_LEFT)keyLeft=false;
+        else if(keyCode==KeyEvent.KEYCODE_D||keyCode==KeyEvent.KEYCODE_DPAD_RIGHT)keyRight=false;
+        else if(keyCode==KeyEvent.KEYCODE_SPACE)keyDrift=false;
+        else return super.onKeyUp(keyCode,event);
+        controls();return true;
+    }
+    @Override protected void onResume(){
+        super.onResume();
+        WorkbenchActivity.immersive(this);
+        if(surface!=null)surface.startLoop();
+    }
+    @Override protected void onPause(){
+        if(surface!=null){
+            gas=brake=left=right=drift=false;
+            keyGas=keyBrake=keyLeft=keyRight=keyDrift=false;
+            controls();surface.stopLoop();
+        }
+        super.onPause();
+    }
+    @Override protected void onDestroy(){
+        if(surface!=null)surface.stopLoop();
+        super.onDestroy();
+    }
+}

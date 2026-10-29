@@ -226,6 +226,11 @@ public final class WorkbenchActivity extends Activity {
         @JavascriptInterface public String loadProfile(){return task(()->new JSONObject().put("ok",true).put("profile",profileFile().getBaseFile().exists()?new String(profileFile().readFully(),StandardCharsets.UTF_8):JSONObject.NULL));}
         @JavascriptInterface public String execute(String source){return task(()->executeNative(source));}
         @JavascriptInterface public String calculate(String expression){return task(()->calculateNative(expression));}
+        @JavascriptInterface public void launchVelocity(){
+            ui.post(()->{if(!closed)try{
+                startActivity(new Intent(WorkbenchActivity.this,VelocityActivity.class));
+            }catch(Exception e){message("No se pudo iniciar REVERSE VELOCITY XI.");}});
+        }
         @JavascriptInterface public void openNativeDesktop(){
             // Compatibility for a restored old shortcut: stay in this Workbench.
             ui.post(()->{if(!closed)web.evaluateJavascript("createWindow('programs')",null);});

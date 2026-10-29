@@ -132,6 +132,9 @@ jobs:
           adb shell am force-stop com.reversepc.control.workbench
           timeout 180s adb shell am instrument -w -e mode restore com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee evidence/android-restore.txt
           grep 'WORKBENCH_TESTS_OK mode=restore' evidence/android-restore.txt
+          adb shell am force-stop com.reversepc.control.workbench
+          timeout 180s adb shell am instrument -w -e mode velocity com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee evidence/android-velocity.txt
+          grep 'WORKBENCH_TESTS_OK mode=velocity renderer=XI-Machine-v1' evidence/android-velocity.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:

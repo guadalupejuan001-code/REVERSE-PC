@@ -192,3 +192,30 @@ papelera, imágenes, aplicaciones instaladas y calculadora ejecutada en XI.
 La edición `com.reversepc.desktop` se instala junto a versiones anteriores.
 El runtime, el formato RVPC2 y la dependencia fijada de Mundo X se conservan.
 [Uso, compilación y límites de REVERSE Desktop](reverse-os-android/README.md).
+
+## REVERSE VELOCITY — motor y escena definidos en XI
+
+Esta rama integra el juego de carreras en REVERSE-PC sin agregar un motor
+gráfico C++ específico del videojuego. El código de conducción está en
+`velocity/drive.xi`, la ruta de 241 muestras en `velocity/world.xi`
+y la escena visible en `velocity/render.xi`. Las 241 muestras originales
+se guardan en InverseMemory privada del juego, que también utiliza el
+renderizador, conservando el estado del escritorio y BBY Q.
+
+El observador XI genera franjas RGB compactadas de 56 bits para un lienzo
+lógico de 1280×720. Java no calcula geometría, perspectiva, luz o materiales:
+solo valida, expande y presenta esos resultados mediante Android Canvas.
+El ejecutor XI genérico de REVERSE sigue implementado en el anfitrión
+Android/C++, por lo que **el sistema entero no está escrito en XI**.
+
+La escena actual es deliberadamente 2.5D (pista, cielo, horizonte, carrocería
+estilizada). Esto no sustituye el renderizador 3D de esferas/elipsoides/
+triángulos de Mundo X en otros proyectos. No se implementaron GPU, PBR,
+reflejos, mallas importadas ni realismo visual comparable a Forza Horizon.
+
+**Técnica medida:** la CI Linux con el intérprete XI original registró
+4,88 ms para 698 franjas, 7,25 ms para 1.397 y 11,94 ms para 2.797
+en tres perfiles, con la ejecución, observación y transporte del programa
+incluidos. No representan FPS Android ni una comparación justa con la
+escena 3D anterior. La integración requiere compilación Android y una
+prueba del lanzador que abra el juego en modo XI sin renderizador alterno.

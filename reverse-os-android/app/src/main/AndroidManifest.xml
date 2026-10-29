@@ -27,6 +27,7 @@
       </intent-filter>
     </activity>
     <activity android:name=".WorkbenchActivity" android:exported="false" android:launchMode="singleTask" android:screenOrientation="sensorLandscape" android:configChanges="orientation|screenSize|keyboardHidden" android:windowSoftInputMode="adjustResize"/>
+    <activity android:name=".VelocityActivity" android:exported="false" android:screenOrientation="sensorLandscape" android:hardwareAccelerated="true"/>
     <activity android:name=".DesktopActivity"
         android:exported="false"
         android:launchMode="singleTask"
