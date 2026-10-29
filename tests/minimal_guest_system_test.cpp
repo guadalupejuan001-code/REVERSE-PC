@@ -359,7 +359,8 @@ void android_bootargs_snapshot_profile(){
     const auto saved=target.snapshot();
     check(saved!=profile_state&&MinimalGuest::from_snapshot(saved).snapshot()==saved&&
           normal.find("androidboot.force_normal_boot=1")!=std::string::npos&&
-          normal.find("androidboot.fstab_suffix=cf.ext4.cts")!=std::string::npos,
+          normal.find("androidboot.fstab_suffix=cf.ext4.cts")!=std::string::npos&&
+          normal.find("androidboot.slot_suffix=_a")!=std::string::npos,
           "Explicit normal-boot RVI2 profile did not persist its actual Android inputs");
   }
   check(profile_state[8+43*8+3]=='2' &&

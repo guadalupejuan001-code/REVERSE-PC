@@ -161,7 +161,8 @@ inline const std::string& guest_android_cuttlefish_bootargs() {
 // first_stage_ramdisk and one of its actual packaged fstab suffixes.
 inline const std::string& guest_android_cuttlefish_normal_bootargs() {
   static const std::string args=guest_android_cuttlefish_bootargs()+
-      " androidboot.force_normal_boot=1 androidboot.fstab_suffix=cf.ext4.cts";
+      " androidboot.force_normal_boot=1 androidboot.fstab_suffix=cf.ext4.cts"
+      " androidboot.slot_suffix=_a";
   return args;
 }
 // Linux itself omits only the optional sched_ext initcall in this variant.

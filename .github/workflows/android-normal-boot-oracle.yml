@@ -60,7 +60,11 @@ jobs:
           import json
           text=Path('evidence/oracle-console.txt').read_text()
           assert 'init first stage started!' in text
-          Path('evidence/result.json').write_text(json.dumps({'independent_reference_only':True,'qemu_embedded_in_reverse':False,'normal_android_first_stage_payload_valid':True,'own_xi_ether_android_init_verified':False,'android_services_verified':False,'android_display_verified':False},indent=2)+'\n')
+          assert 'Loaded 19 modules from /lib/modules' in text
+          assert "Switching root to '/first_stage_ramdisk'" in text
+          assert 'Error updating for slotselect' not in text
+          assert 'failed to read default fstab for first stage mount' not in text
+          Path('evidence/result.json').write_text(json.dumps({'independent_reference_only':True,'qemu_embedded_in_reverse':False,'normal_android_first_stage_payload_valid':True,'all_19_modules_loaded':True,'first_stage_root_selected':True,'slotselect_error_observed':False,'own_xi_ether_android_init_verified':False,'android_partitions_mounted_verified':False,'android_services_verified':False,'android_display_verified':False,'remaining_console_failures':[line for line in text.splitlines() if any(word in line.lower() for word in ('failed', 'not found', 'panic', 'timed out'))]},indent=2)+'\n')
           PY
       - uses: actions/upload-artifact@v4
         if: always()

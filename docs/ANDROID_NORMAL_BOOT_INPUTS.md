@@ -13,6 +13,13 @@ profile did not select one of those actual suffixes.
 New opt-in RVI2 profiles explicitly select:
 - androidboot.force_normal_boot=1
 - androidboot.fstab_suffix=cf.ext4.cts
+- androidboot.slot_suffix=_a
+
+The genuine fstab uses slotselect. An independent first-stage run exposed a
+real failure without the slot suffix: libfstab rejected the fstab before
+looking for partitions. The explicit slot-A profile supplies that required
+input; it does not alter the fstab or bypass AVB. Older saved bootargs remain
+verbatim when restored, even if they lack this fresh-boot correction.
 
 The additional normal-no-scx variant sets initcall_blacklist=scx_init using
 Linux's own supported initcall policy, avoiding only optional sched_ext setup.
@@ -38,6 +45,12 @@ verified before any output is written.
 The actual kernel UART has confirmed the new force-normal, fstab-suffix and
 no-scx command-line arguments and consumption of the real bootconfig.
 This is a boot-input milestone, not proof of Android userspace or display.
+
+The separate QEMU payload oracle reached genuine Android first-stage init,
+loaded all 19 modules and switched root. This is an independent input check;
+QEMU is never embedded in REVERSE and its progress is never attributed to
+the XI/Ether interpreter. Its raw console and explicit negative capability
+fields distinguish missing Android partitions from early ramdisk defects.
 
 Hardware requirements remain real: this exact GKI has PCI_HOST_GENERIC=y,
 VIRTIO_PCI=m and VIRTIO_BLK=m, while VIRTIO_MMIO is not configured. A future

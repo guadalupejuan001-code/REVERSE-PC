@@ -36,7 +36,10 @@ export function buildNormalAndroidRamdisk(source){
  need(load,'missing genuine module load list');
  const requested=load.contents.toString().split(/\r?\n/).map(x=>x.trim()).filter(x=>x&&!x.startsWith('#'));
  for(const name of requested)need(names.has('lib/modules/'+name),'dropped requested module '+name);
- need(names.has('first_stage_ramdisk/system/etc/fstab.cf.ext4.cts'),'missing selected normal-boot fstab');
+ const fstab=names.get('first_stage_ramdisk/system/etc/fstab.cf.ext4.cts');
+ need(fstab,'missing selected normal-boot fstab');
+ const fstabText=fstab.contents.toString();
+ need(fstabText.includes('slotselect'),'unexpected non-slotted fstab');
  const init=g.members.find(m=>m.path==='init');
  need(init&&(init.mode&0xf000)===0x8000&&sha(init.contents)===INIT,'changed genuine Android /init');
  const elf=init.contents,entry=elf.readBigUInt64LE(24),ph=Number(elf.readBigUInt64LE(32)),stride=elf.readUInt16LE(54),number=elf.readUInt16LE(56);
@@ -70,6 +73,7 @@ export function buildNormalAndroidRamdisk(source){
   output_vendor_cpio_bytes:paddedVendor.length,output_initrd_bytes:stamped.result.length,
   output_initrd_sha256:sha(stamped.result),generic_cpio_sha256:sha(generic),
   original_init_sha256:INIT,init_entry:'0x2a4000',
+  selected_fstab_sha256:sha(fstab.contents),selected_fstab_requires_slot_suffix:true,
   init_entry_file_offset:entryOffset,init_entry_bytes_hex:elf.subarray(entryOffset,entryOffset+64).toString('hex'),
   bootconfig_sha256:sha(config),bootconfig_text:config.toString(),
   kept_vendor_files:selected.map(m=>({path:m.path,mode:m.mode,size:m.size,sha256:sha(m.contents)})),
