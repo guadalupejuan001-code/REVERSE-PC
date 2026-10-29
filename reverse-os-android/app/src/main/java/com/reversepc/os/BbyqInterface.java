@@ -95,7 +95,7 @@ final class BbyqInterface {
         }
         return state;
     }
-    private static String speech(String output)throws Exception{
+    static String speech(String output)throws Exception{
         ByteArrayOutputStream bytes=new ByteArrayOutputStream();
         for(String row:output.split("\\n"))if(row.startsWith("{")){
             JSONObject item=new JSONObject(row);String register=item.optString("register");
@@ -125,13 +125,59 @@ final class BbyqInterface {
         }
         return ResultPacket.parse(NativeRuntime.execute(state,source.toString())).state;
     }
+    /**
+     * XI-only intent interpreter for a tightly scoped browser action. This
+     * adapter transports bytes; it never compares command words in Java.
+     * A miss is evaluated on a disposable state and discarded.
+     */
+    static ResultPacket tryOpenRobinhood(Context ctx,byte[] state,String text,int language)throws Exception{
+        byte[] message=text.getBytes(StandardCharsets.UTF_8);
+        if(message.length==0||message.length>255||(language!=1&&language!=2))
+            throw new IOException("Mensaje fuera del contrato del agente");
+        String xi=new String(asset(ctx,"workbench/xi-open-robinhood.xi"),StandardCharsets.UTF_8);
+        int first=xi.indexOf('\n');
+        if(!xi.startsWith("#!reverse-pc-machine-v1\n")||first<0)
+            throw new IOException("Programa de acción XI inválido");
+        StringBuilder source=new StringBuilder("#!reverse-pc-machine-v1\n");
+        source.append(put(7400000000000000003L,language))
+              .append(put(7400000000000000016L,1))
+              .append(put(7400000000000000017L,message.length));
+        for(int i=0;i<message.length;i++)
+            source.append(put(7400000000000000128L+i,message[i]&255));
+        source.append(xi.substring(first+1));
+        ResultPacket candidate=ResultPacket.parse(NativeRuntime.execute(state,source.toString()));
+        JSONObject action=action(candidate.state);
+        if(action==null)return null; // Do not commit any probe writes.
+        if(action.getInt("op")!=11||action.getInt("target")!=11)
+            throw new IOException("El intérprete XI pidió un destino no permitido");
+        String reply=speech(candidate.output);
+        if(reply.isEmpty())throw new IOException("El programa XI no respondió");
+        return ResultPacket.parse(ResultPacket.encode(reply,candidate.state));
+    }
+    /**
+     * Successful/failed browser launch is acknowledged in XI, not inferred
+     * from market content. This action never modifies W4u's plan history.
+     */
+    static ResultPacket robinhoodFeedback(Context ctx,byte[] state,int language,boolean success)throws Exception{
+        String xi=new String(asset(ctx,"workbench/xi-robinhood-feedback.xi"),StandardCharsets.UTF_8);
+        int first=xi.indexOf('\n');
+        if(!xi.startsWith("#!reverse-pc-machine-v1\n")||first<0)
+            throw new IOException("Programa de confirmación XI inválido");
+        String source="#!reverse-pc-machine-v1\n"+
+            put(7400000000000000003L,language)+
+            put(M+80,success?1:0)+xi.substring(first+1);
+        ResultPacket result=ResultPacket.parse(NativeRuntime.execute(state,source));
+        String reply=speech(result.output);
+        if(reply.isEmpty())throw new IOException("Falta la confirmación de navegador XI");
+        return ResultPacket.parse(ResultPacket.encode(reply,result.state));
+    }
     static JSONObject action(byte[] state)throws Exception{
         String source="#!reverse-pc-machine-v1\nload8 r0 "+(A+64)+"\nprint r0\nload8 r1 "+(A+65)+"\nprint r1\n";
         ResultPacket read=ResultPacket.parse(NativeRuntime.execute(state,source));int[] values=new int[2];int i=0;
         for(String row:read.output.split("\\n"))if(row.startsWith("{")){JSONObject item=new JSONObject(row);if("register".equals(item.optString("type"))){if(i>=2)throw new IOException("Respuesta de control inválida");values[i++]=item.getInt("value");}}
         if(i!=2)throw new IOException("Respuesta de control incompleta");
         int op=values[0],target=values[1];if(op==0)return null;
-        boolean valid=(op==10&&target>=16&&target<=31)||(op==1&&((target>=1&&target<=10)||(target>=16&&target<=31)))||(op>=2&&op<=6&&((target>=1&&target<=10)||target==15||(target>=16&&target<=31)))||((op==7||op==8)&&target==0)||(op==9&&(target==13||target==14));
+        boolean valid=(op==10&&target>=16&&target<=31)||(op==1&&((target>=1&&target<=10)||(target>=16&&target<=31)))||(op>=2&&op<=6&&((target>=1&&target<=10)||target==15||(target>=16&&target<=31)))||((op==7||op==8)&&target==0)||(op==9&&(target==13||target==14))||(op==11&&target==11);
         if(!valid)throw new IOException("El programa devolvió una acción fuera del contrato");
         return new JSONObject().put("op",op).put("target",target);
     }
