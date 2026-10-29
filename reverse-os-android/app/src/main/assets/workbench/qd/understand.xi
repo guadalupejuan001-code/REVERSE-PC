@@ -3,7 +3,7 @@
 # Input at N=8430000000000000000: magic81,version1,words<=18,nums<=2,a,b;
 # N+16+2*i: u16 normalized word hash, polynomial 31 modulo 65521.
 # Output: status(0 accepted,1 unknown,2 numbers,3 ambiguous,4 negated,5 zero,6 invalid),op,a,b.
-# Rules recognize a bounded vocabulary; they do NOT comprehend arbitrary programming requests.
+# Rules recognize a bounded vocabulary; unknown words cause abstention, not partial interpretation.
 load8 r0 8430000000000000000
 cmp r0 81
 jne invalid
@@ -26,6 +26,7 @@ set r11 0
 set r1 0
 set r9 0
 set r10 0
+set r0 0
 label word_scan
 cmp r11 r8
 jge scan_done
@@ -142,6 +143,141 @@ cmp r6 9810
 je word_6
 cmp r6 43746
 je word_6
+cmp r6 48125
+je filler_word
+cmp r6 50527
+je filler_word
+cmp r6 59300
+je filler_word
+cmp r6 3737
+je filler_word
+cmp r6 50423
+je filler_word
+cmp r6 48992
+je filler_word
+cmp r6 7918
+je filler_word
+cmp r6 46800
+je filler_word
+cmp r6 3480
+je filler_word
+cmp r6 26348
+je filler_word
+cmp r6 45666
+je filler_word
+cmp r6 38179
+je filler_word
+cmp r6 43785
+je filler_word
+cmp r6 47029
+je filler_word
+cmp r6 3239
+je filler_word
+cmp r6 3445
+je filler_word
+cmp r6 41823
+je filler_word
+cmp r6 41389
+je filler_word
+cmp r6 3201
+je filler_word
+cmp r6 33818
+je filler_word
+cmp r6 3115
+je filler_word
+cmp r6 121
+je filler_word
+cmp r6 101
+je filler_word
+cmp r6 31206
+je filler_word
+cmp r6 97
+je filler_word
+cmp r6 3117
+je filler_word
+cmp r6 49280
+je filler_word
+cmp r6 3707
+je filler_word
+cmp r6 3365
+je filler_word
+cmp r6 41807
+je filler_word
+cmp r6 20748
+je filler_word
+cmp r6 58864
+je filler_word
+cmp r6 37552
+je filler_word
+cmp r6 32064
+je filler_word
+cmp r6 35785
+je filler_word
+cmp r6 54402
+je filler_word
+cmp r6 34792
+je filler_word
+cmp r6 24368
+je filler_word
+cmp r6 53304
+je filler_word
+cmp r6 9647
+je filler_word
+cmp r6 37211
+je filler_word
+cmp r6 48445
+je filler_word
+cmp r6 2283
+je filler_word
+cmp r6 59517
+je filler_word
+cmp r6 45215
+je filler_word
+cmp r6 18340
+je filler_word
+cmp r6 32721
+je filler_word
+cmp r6 52524
+je filler_word
+cmp r6 48910
+je filler_word
+cmp r6 39796
+je filler_word
+cmp r6 54412
+je filler_word
+cmp r6 48374
+je filler_word
+cmp r6 9342
+je filler_word
+cmp r6 34132
+je filler_word
+cmp r6 36920
+je filler_word
+cmp r6 10436
+je filler_word
+cmp r6 3211
+je filler_word
+cmp r6 46079
+je filler_word
+cmp r6 33169
+je filler_word
+cmp r6 77
+je filler_word
+cmp r6 26161
+je filler_word
+cmp r6 45662
+je filler_word
+cmp r6 50878
+je filler_word
+cmp r6 61831
+je filler_word
+cmp r6 3603
+je filler_word
+cmp r6 22114
+je filler_word
+add r0 1
+jmp next_word
+label filler_word
 jmp next_word
 label word_1
 set r7 1
@@ -180,6 +316,8 @@ cmp r10 0
 jne negated
 cmp r9 0
 jne ambiguous
+cmp r0 0
+jne unknown
 cmp r1 0
 je unknown
 load8 r4 8430000000000000003
