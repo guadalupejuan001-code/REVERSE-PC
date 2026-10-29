@@ -203,6 +203,42 @@ public final class WorkbenchActivity extends Activity {
         try(InputStream input=getAssets().open("workbench/build-info.json")){java.io.ByteArrayOutputStream bytes=new java.io.ByteArrayOutputStream();byte[] part=new byte[2048];int count;while((count=input.read(part))!=-1)bytes.write(part,0,count);result.put("build",new JSONObject(new String(bytes.toByteArray(),StandardCharsets.UTF_8)));}
         return result;
     }
+    /**
+     * Open a fixed official HTTPS destination in a separate browser process.
+     * Neither the authenticated page nor credentials enter the privileged
+     * reverse.local WebView or BBY Q's RVPC2 memory. No arbitrary URLs accepted.
+     */
+    private JSONObject openOfficialSite(String payload)throws Exception{
+        JSONObject request=new JSONObject(payload);
+        if(request.length()!=1||!"robinhood".equals(request.optString("service")))
+            throw new IllegalArgumentException("Sitio externo no autorizado");
+        java.util.concurrent.FutureTask<Boolean> launch=new java.util.concurrent.FutureTask<>(()->{
+            if(closed||!hostResumed)return false;
+            Uri destination=Uri.parse("https://robinhood.com/");
+            // Only a browser may receive this link, never a deep-linked
+            // brokerage app or another app that claims a URL handler.
+            java.util.ArrayList<String> browserPackages=new java.util.ArrayList<>();
+            for(String known:new String[]{"com.android.chrome","com.sec.android.app.sbrowser",
+                    "org.mozilla.firefox","com.brave.browser","com.microsoft.emmx",
+                    "com.opera.browser","com.duckduckgo.mobile.android"})
+                if(!browserPackages.contains(known))browserPackages.add(known);
+            for(String browserPackage:browserPackages){
+                if(browserPackage==null||browserPackage.isEmpty())continue;
+                Intent browser=new Intent(Intent.ACTION_VIEW,destination);
+                browser.addCategory(Intent.CATEGORY_BROWSABLE);
+                browser.setPackage(browserPackage);
+                try{startActivity(browser);return true;}
+                catch(android.content.ActivityNotFoundException missingBrowser){
+                    // Try the next *browser* package; never fall back to any app.
+                }
+            }
+            throw new android.content.ActivityNotFoundException("No hay un navegador compatible instalado");
+        });
+        if(!ui.post(launch))throw new IllegalStateException("No se pudo solicitar el navegador");
+        if(!launch.get(8,TimeUnit.SECONDS))
+            throw new IllegalStateException("REVERSE no está visible para abrir el navegador");
+        return new JSONObject().put("ok",true).put("opened",true).put("service","robinhood");
+    }
     public final class Bridge {
         /** Clipboard is queried only on an explicit UI action. No polling or storage. */
         @JavascriptInterface public String musicClipboard(){
@@ -288,6 +324,7 @@ public final class WorkbenchActivity extends Activity {
                     }
                     else if("askApp".equals(operation))result=programs().ask(new JSONObject(payload));
                     else if("ackControl".equals(operation))result=programs().acknowledge(new JSONObject(payload));
+                     else if("openOfficialSite".equals(operation))result=openOfficialSite(payload);
                     else if("runApp".equals(operation))result=programs().run(new JSONObject(payload),session());
                     else if("compileApp".equals(operation))result=programs().compile(new JSONObject(payload));
                     else if("qd".equals(operation))result=programs().qd(new JSONObject(payload));

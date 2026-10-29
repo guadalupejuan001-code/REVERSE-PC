@@ -51,7 +51,7 @@ final class RxeAppStore {
             if(!(i%2==0?"user":"assistant").equals(role)||text.getBytes(StandardCharsets.UTF_8).length>(i%2==0?255:4096))throw new IOException("Historial de aplicación inválido");
         }
         JSONObject pending=metadata.optJSONObject("pending_action");
-        if(pending!=null&&(!pending.getString("ticket").matches("[0-9a-f-]{36}")||pending.getInt("op")<1||pending.getInt("op")>10||pending.getInt("target")<0||pending.getInt("target")>31))throw new IOException("Confirmación pendiente inválida");
+        if(pending!=null&&(!pending.getString("ticket").matches("[0-9a-f-]{36}")||pending.getInt("op")<1||pending.getInt("op")>11||pending.getInt("target")<0||pending.getInt("target")>31))throw new IOException("Confirmación pendiente inválida");
         NativeRuntime.inspect(packet.state);return new Saved(packet.state,history,language,pending);
     }
     private void save(Saved saved)throws Exception{
@@ -77,7 +77,9 @@ final class RxeAppStore {
                 Saved before=load(executable);
                 boolean control=BbyqInterface.trusted(context,executable);
                 byte[] input=control?BbyqInterface.observe(before.state,observation):before.state;
-                ResultPacket response=ResultPacket.parse(NativeRuntime.appTurn(input,executable,text.getBytes(StandardCharsets.UTF_8),language));
+                ResultPacket browser=control?BbyqInterface.tryOpenRobinhood(context,input,text,language):null;
+                ResultPacket response=browser!=null?browser:
+                    ResultPacket.parse(NativeRuntime.appTurn(input,executable,text.getBytes(StandardCharsets.UTF_8),language));
                 JSONObject pending=control?BbyqInterface.action(response.state):null;
                 if(pending!=null){if(observation==null)throw new IOException("Falta el escritorio que originó la orden");pending.put("ticket",java.util.UUID.randomUUID().toString());pending.put("view",observation.getString("view"));}
                 byte[] committed=control?BbyqInterface.consume(context,response.state):response.state;
@@ -99,7 +101,10 @@ final class RxeAppStore {
                 if(!BbyqInterface.trusted(context,executable))throw new IOException("Este ejecutable no controla la interfaz");
                 if(observation==null)throw new IOException("Falta la observación posterior a la acción");
                 byte[] observed=BbyqInterface.observe(before.state,observation);
-                ResultPacket response=BbyqInterface.feedback(context,observed,before.language,success);
+                boolean browserAction=before.pending.getInt("op")==11&&before.pending.getInt("target")==11;
+                ResultPacket response=browserAction
+                    ?BbyqInterface.robinhoodFeedback(context,observed,before.language,success)
+                    :BbyqInterface.feedback(context,observed,before.language,success);
                 JSONObject pending=BbyqInterface.action(response.state);
                 if(pending!=null){pending.put("ticket",java.util.UUID.randomUUID().toString());pending.put("view",observation.getString("view"));}
                 byte[] committed=BbyqInterface.consume(context,response.state);
