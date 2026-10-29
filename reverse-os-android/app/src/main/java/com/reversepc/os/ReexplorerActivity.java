@@ -137,7 +137,7 @@ public final class ReexplorerActivity extends Activity {
         options.setDisplayZoomControls(false);
         CookieManager.getInstance().setAcceptCookie(true);
         CookieManager.getInstance().setAcceptThirdPartyCookies(page,false);
-        // Deliberately never call page.addJavascriptInterface(...).
+        // No JavaScript-to-Java bridge is installed in REexplorer.
         // No WebView bridge and no host script injection, even for Robinhood.
         page.setDownloadListener((url,agent,contentDisposition,mime,length)->
                 status.setText("Descarga bloqueada por REexplorer"));
