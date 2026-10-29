@@ -59,7 +59,7 @@ function action(op,target,view){const obs=evalx('captureBbyqDesktop("trusted")')
   assert.match(activity,/Uri\.parse\("https:\/\/robinhood\.com\/"\)/);checks++;
   assert.match(activity,/!"robinhood"\.equals\(request\.optString\("service"\)\)/);checks++;
   assert.match(activity,/settings\.setBlockNetworkLoads\(true\)/);checks++;
-  assert.match(activity,/RoleManager\.ROLE_BROWSER/);checks++;
+  assert.match(activity,/browser\.setPackage\(browserPackage\)/);checks++;
   assert.doesNotMatch(activity,/Intent\.createChooser\(choose/);checks++;
   assert.match(activity,/startActivity\(browser\)/);checks++;
   assert.match(interfaceSrc,/static ResultPacket tryOpenRobinhood\(/);checks++;
