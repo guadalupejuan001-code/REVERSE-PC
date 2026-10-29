@@ -436,6 +436,35 @@ public final class WorkbenchTestRunner extends Instrumentation {
             "Qd failed to retrieve and execute the pattern from the saved RVPC2");
         require(hash("session.rvp").equals(desktopBefore),"Qd changed desktop master state");
     }
+    /** The same live Workbench WebView, profile, icons and wallpaper survive both rotations. */
+    private void orientationWorkflow()throws Exception{
+        AtomicReference<WebView> original=new AtomicReference<>();
+        runOnMainSync(()->original.set(activity.testingWebView()));
+        String wallpaper=js("getComputedStyle(document.querySelector('#wall-image')).backgroundImage");
+        String icons=js("document.querySelector('#shortcuts').innerHTML");
+        js("window.__orientationProof='same-webview-same-session';createWindow('files');true");
+        String identity=js("activeId");
+        int windows=Integer.parseInt(js("state.windows.length"));
+        runOnMainSync(()->activity.setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT));
+        waitJs("innerHeight>innerWidth&&matchMedia('(orientation: portrait)').matches");
+        require(js("getComputedStyle(document.querySelector('#shortcuts')).gridAutoFlow").equals("row"),"Portrait shortcut grid did not reflow");
+        require(js("document.documentElement.scrollWidth<=innerWidth").equals("true"),"Portrait desktop overflows horizontally");
+        require(js("(()=>{const r=document.querySelector('.window.focused').getBoundingClientRect();return r.left>=0&&r.right<=innerWidth+1&&r.bottom<=innerHeight+1;})()").equals("true"),"Portrait foreground window is outside display");
+        require(js("getComputedStyle(document.querySelector('#wall-image')).backgroundImage").equals(wallpaper),"Wallpaper changed in portrait");
+        require(js("document.querySelector('#shortcuts').innerHTML").equals(icons),"Original icons changed in portrait");
+        require(activity.testingWebView()==original.get(),"Rotation recreated the trusted WebView");
+        fullDisplay();
+        visualCheck("portrait");
+        runOnMainSync(()->activity.setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE));
+        waitJs("innerWidth>innerHeight&&matchMedia('(orientation: landscape)').matches");
+        require(js("window.__orientationProof").equals("same-webview-same-session"),"Rotation reloaded the Workbench document");
+        require(js("activeId").equals(identity)&&Integer.parseInt(js("state.windows.length"))==windows,"Rotation lost the desktop session");
+        require(js("getComputedStyle(document.querySelector('#wall-image')).backgroundImage").equals(wallpaper),"Wallpaper changed in landscape");
+        require(js("document.querySelector('#shortcuts').innerHTML").equals(icons),"Original icons changed in landscape");
+        require(activity.testingWebView()==original.get(),"Rotation recreated the trusted WebView after landscape");
+        fullDisplay();
+        runOnMainSync(()->activity.setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_FULL_USER));
+    }
     @Override public void onStart(){
         Bundle result=new Bundle();
         try{
@@ -462,6 +491,11 @@ public final class WorkbenchTestRunner extends Instrumentation {
             require(snapshot.getJSONObject("android").getLong("ram_total_bytes")>0,"No native RAM reading");
             require(snapshot.getJSONObject("core").getString("state_format").equals("RVPC2"),"Wrong checkpoint format");
             require(snapshot.getJSONObject("build").getString("source_commit").matches("[a-f0-9]{40}"),"Missing build provenance");
+            if(requested.equals("orientation")){
+                orientationWorkflow();
+                result.putString("stream","WORKBENCH_TESTS_OK mode=orientation portrait=verified landscape=verified session=preserved wallpaper=unchanged icons=unchanged\n");
+                result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
+            }
             if(requested.equals("qd")){
                 qdWorkflow();
                 result.putString("stream","WORKBENCH_TESTS_OK mode=qd native=XI/Ether cases=32 rejected=32 saved=RVPC2\n");
