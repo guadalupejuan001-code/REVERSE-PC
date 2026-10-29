@@ -34,7 +34,7 @@ function tokenize(raw){
  value=value.replace(/[^a-z0-9]+/g,' ').trim();
  const words=[],values=[];
  for(const token of value.split(' ').filter(Boolean)){
-  if(/^\d+$/.test(token)){if(token.length>2||values.length>=3)throw Error('numbers out of bounds');values.push(Number(token));}
+  if(/^\d+$/.test(token)){if(token.length>2||values.length>=2)throw Error('numbers out of bounds');values.push(Number(token));}
   else{if(words.length>=18)throw Error('too many words');
    let hash=0;for(const ch of token)hash=(hash*31+ch.charCodeAt(0))%65521;words.push(hash);}
  }
