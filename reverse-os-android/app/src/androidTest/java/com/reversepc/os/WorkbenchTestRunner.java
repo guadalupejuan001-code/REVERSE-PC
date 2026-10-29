@@ -389,6 +389,18 @@ public final class WorkbenchTestRunner extends Instrumentation {
             .put("source","#!reverse-pc-machine-v1\nstore8 8300000000000000818 3\nhalt\n")
             .toString(),"qdSandboxBlocked");
         require(!blocked.optBoolean("ok",false),"Out-of-contract XI source was accepted");
+        // Also use the real ReverseCoding window, JavaScript action and native JNI bridge.
+        js("createWindow('qd');true");
+        require(waitJs("document.querySelector('[data-qd-order]')!==null").equals("true"),
+            "ReverseCoding command control missing from shipped UI");
+        js("(()=>{const w=state.windows.find(x=>x.app==='qd');w.qdOrder='multiplica 12 por 7';qdRender(w);qdAction(w,'order');return true;})()");
+        require(waitJs("(()=>{const w=state.windows.find(x=>x.app==='qd'),s=qdSessions.get(w.id);return !!s?.result&&!s.busy&&s.result.action==='order'&&s.result.data.actual===84;})()").equals("true"),
+            "ReverseCoding UI did not generate and execute the ordered XI program");
+        require(js("document.querySelector('[data-qd-scratch]').value.includes('mul r0 7')").equals("true"),
+            "Generated XI was not shown in the editable studio");
+        js("(()=>{const w=state.windows.find(x=>x.app==='qd');qdAction(w,'run_code');return true;})()");
+        require(waitJs("(()=>{const w=state.windows.find(x=>x.app==='qd'),s=qdSessions.get(w.id);return !!s?.result&&!s.busy&&s.result.action==='run_code'&&s.result.data.pass;})()").equals("true"),
+            "ReverseCoding editor did not execute through isolated XI");
         require(hash("session.rvp").equals(desktopBefore),"Qd replaced desktop master memory");
     }
     @Override public void onStart(){
