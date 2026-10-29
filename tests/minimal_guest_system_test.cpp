@@ -352,6 +352,16 @@ void android_bootargs_snapshot_profile(){
   MinimalGuest guest(128*1024*1024);
   guest.load_linux_image(kernel,initrd,args);
   const auto profile_state=guest.snapshot();
+  check(args.find("androidboot.force_normal_boot=")==std::string::npos&&args.find("initcall_blacklist=")==std::string::npos,
+        "Historical Android profile was silently changed to a new boot configuration");
+  for(const auto& normal:{guest_android_cuttlefish_normal_bootargs(),guest_android_cuttlefish_normal_no_scx_bootargs()}){
+    MinimalGuest target(128*1024*1024);target.load_linux_image(kernel,initrd,normal);
+    const auto saved=target.snapshot();
+    check(saved!=profile_state&&MinimalGuest::from_snapshot(saved).snapshot()==saved&&
+          normal.find("androidboot.force_normal_boot=1")!=std::string::npos&&
+          normal.find("androidboot.fstab_suffix=cf.ext4.cts")!=std::string::npos,
+          "Explicit normal-boot RVI2 profile did not persist its actual Android inputs");
+  }
   check(profile_state[8+43*8+3]=='2' &&
         guest.image_bytes()==40+kernel.size()+initrd.size()+
         guest_device_tree(128*1024*1024,0x44000000,initrd.size(),args).size()+
