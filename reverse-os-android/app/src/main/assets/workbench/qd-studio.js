@@ -15,7 +15,7 @@ function qdDraft(w){w.qdDrafts ||= {};const key=String(qdSkill(w.qdSkill).id);if
 function qdSession(w){
  let s=qdSessions.get(w.id);
  if(!s){s={busy:false,loading:false,loaded:false,learned:[false,false,false,false],approved:0,result:null,generated:null,error:''};qdSessions.set(w.id,s);}
- if(nativeAvailable&&!s.loaded&&!s.loading)queueMicrotask(()=>qdLoad(w));
+ if(nativeAvailable&&!s.loaded&&!s.loading&&!s.error)queueMicrotask(()=>qdLoad(w));
  return s;
 }
 function qdRender(w){if(getWindow(w.id))renderWindowContent(w);}
