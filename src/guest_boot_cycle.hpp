@@ -32,10 +32,18 @@ using UserEntry=std::function<bool(MinimalGuest&)>;
 inline RunResult boot_cycle_entry_event(MinimalGuest& guest,const MachineFault* fault){
   require(guest.machine().enabled&&!guest.machine().el&&!guest.machine().waiting,"Entry exception requires an active EL0 boundary");
   const auto pc=guest.registers().pc,count=guest.registers().instructions,exceptions=guest.machine().exceptions;
-  if(fault)require((fault->syndrome>>26)==0x20&&fault->address==pc,"Entry observation is not a lower-EL instruction abort");
+  if(fault){
+    require(fault->syndrome>=UINT64_C(0x82000004)&&fault->syndrome<=UINT64_C(0x82000007)&&fault->address==pc,
+            "Entry observation is not a lower-EL instruction translation fault");
+    bool same_fault=false;
+    try{guest.physical_address(pc,false,true);}
+    catch(const MachineFault& actual){same_fault=actual.syndrome==fault->syndrome&&actual.address==fault->address;}
+    require(same_fault,"Entry observation does not match the native instruction fetch");
+  }
   else require(!(guest.machine().daif&0x80)&&guest.machine().next_irq()!=1023,"Entry interrupt is not pending");
   auto candidate=guest;const auto run=candidate.run(1);
   require(run.executed==1&&candidate.registers().instructions==count+1&&candidate.machine().el==1&&candidate.machine().exceptions==exceptions+1&&candidate.machine().elr==pc,"Entry event did not produce the expected native exception");
+  require(candidate.registers().pc==guest.machine().vbar+(fault?0x400u:0x480u),"Native entry event selected a different exception vector");
   if(fault)require(candidate.machine().esr==fault->syndrome&&candidate.machine().far==fault->address,"Native entry fault differs from the observed translation fault");
   guest=std::move(candidate);return run;
 }
