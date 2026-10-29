@@ -355,6 +355,54 @@ public final class WorkbenchTestRunner extends Instrumentation {
             "Qd failed to retrieve and execute the pattern from the saved RVPC2");
         require(hash("session.rvp").equals(desktopBefore),"Qd changed desktop master state");
     }
+
+    // Real Android/JNI integration: user order -> XI semantics -> XI source ->
+    // disposable XI execution and scratch editor. Never touch saved RVPC2.
+    private void qdOrdersWorkflow()throws Exception{
+        String desktopBefore=hash("session.rvp");
+        require(js("typeof qdStudioHTML==='function'").equals("true"),"ReverseCoding was not shipped");
+        JSONObject multiplication=op("qd",new JSONObject().put("action","order")
+            .put("text","Crea un programa que multiplique 12 por 7").toString(),"qdOrderOne");
+        require(multiplication.getBoolean("ok")&&multiplication.getBoolean("understood")
+            &&multiplication.getBoolean("pass")&&multiplication.getInt("actual")==84
+            &&multiplication.getString("program").contains("mul r0 7"),
+            "Qd could not interpret and execute the Spanish order: "+multiplication);
+        JSONObject english=op("qd",new JSONObject().put("action","order")
+            .put("text","write code to subtract 70 minus 29").toString(),"qdOrderEnglish");
+        require(english.getBoolean("understood")&&english.getBoolean("pass")
+            &&english.getInt("actual")==41,"English order was not interpreted: "+english);
+        JSONObject ambiguous=op("qd",new JSONObject().put("action","order")
+            .put("text","suma 2 y multiplica 3").toString(),"qdOrderConflict");
+        require(!ambiguous.getBoolean("understood")&&ambiguous.getInt("status_code")==3
+            &&!ambiguous.has("program"),"Ambiguous order generated code: "+ambiguous);
+        JSONObject unknown=op("qd",new JSONObject().put("action","order")
+            .put("text","crea una aplicación con internet y archivos").toString(),"qdOrderUnknown");
+        require(!unknown.getBoolean("understood")&&!unknown.has("program"),
+            "Unimplemented program request was falsely accepted: "+unknown);
+        JSONObject edited=op("qd",new JSONObject().put("action","run_code")
+            .put("source",multiplication.getString("program").replace("mul r0 7","add r0 7"))
+            .toString(),"qdSandboxEdit");
+        require(edited.getBoolean("pass")&&edited.getInt("actual")==19
+            &&!edited.getBoolean("persisted"),"Edited source was not sandboxed: "+edited);
+        // Qd's sandbox must never be able to dispatch memory writes or shell code.
+        JSONObject blocked=op("qd",new JSONObject().put("action","run_code")
+            .put("source","#!reverse-pc-machine-v1\nstore8 8300000000000000818 3\nhalt\n")
+            .toString(),"qdSandboxBlocked");
+        require(!blocked.optBoolean("ok",false),"Out-of-contract XI source was accepted");
+        // Also use the real ReverseCoding window, JavaScript action and native JNI bridge.
+        js("createWindow('qd');true");
+        require(waitJs("document.querySelector('[data-qd-order]')!==null").equals("true"),
+            "ReverseCoding command control missing from shipped UI");
+        js("(()=>{const w=state.windows.find(x=>x.app==='qd');w.qdOrder='multiplica 12 por 7';qdRender(w);qdAction(w,'order');return true;})()");
+        require(waitJs("(()=>{const w=state.windows.find(x=>x.app==='qd'),s=qdSessions.get(w.id);return !!s?.result&&!s.busy&&s.result.action==='order'&&s.result.data.actual===84;})()").equals("true"),
+            "ReverseCoding UI did not generate and execute the ordered XI program");
+        require(js("document.querySelector('[data-qd-scratch]').value.includes('mul r0 7')").equals("true"),
+            "Generated XI was not shown in the editable studio");
+        js("(()=>{const w=state.windows.find(x=>x.app==='qd');qdAction(w,'run_code');return true;})()");
+        require(waitJs("(()=>{const w=state.windows.find(x=>x.app==='qd'),s=qdSessions.get(w.id);return !!s?.result&&!s.busy&&s.result.action==='run_code'&&s.result.data.pass;})()").equals("true"),
+            "ReverseCoding editor did not execute through isolated XI");
+        require(hash("session.rvp").equals(desktopBefore),"Qd replaced desktop master memory");
+    }
     @Override public void onStart(){
         Bundle result=new Bundle();
         try{
@@ -376,6 +424,11 @@ public final class WorkbenchTestRunner extends Instrumentation {
             require(snapshot.getJSONObject("android").getLong("ram_total_bytes")>0,"No native RAM reading");
             require(snapshot.getJSONObject("core").getString("state_format").equals("RVPC2"),"Wrong checkpoint format");
             require(snapshot.getJSONObject("build").getString("source_commit").matches("[a-f0-9]{40}"),"Missing build provenance");
+            if(requested.equals("qd-orders")){
+                qdOrdersWorkflow();
+                result.putString("stream","WORKBENCH_TESTS_OK mode=qd-orders native=XI/Ether generated=2 sandbox=verified\n");
+                result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
+            }
             if(requested.equals("qd")){
                 qdWorkflow();
                 result.putString("stream","WORKBENCH_TESTS_OK mode=qd native=XI/Ether cases=32 rejected=32 saved=RVPC2\n");

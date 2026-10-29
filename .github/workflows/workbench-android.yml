@@ -4,7 +4,7 @@ on:
     branches: [main]
     paths: ['reverse-os-android/**', 'bbyq-interface/**', 'src/**', 'scripts/**', '.github/workflows/workbench-android.yml']
   pull_request:
-    branches: [main]
+    branches: [main, qd/cycle-20261029-02-xi-debug]
     paths: ['reverse-os-android/**', 'bbyq-interface/**', 'src/**', 'scripts/**', '.github/workflows/workbench-android.yml']
   workflow_dispatch:
 permissions:
@@ -134,6 +134,10 @@ jobs:
           adb shell pm clear com.reversepc.control.workbench
           timeout 240s adb shell am instrument -w -e mode qd com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee evidence/android-qd.txt
           grep 'WORKBENCH_TESTS_OK mode=qd' evidence/android-qd.txt
+          # New ReverseCoding user-order journey in a disposable emulator profile.
+          adb shell pm clear com.reversepc.control.workbench
+          timeout 240s adb shell am instrument -w -e mode qd-orders com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee evidence/android-qd-orders.txt
+          grep 'WORKBENCH_TESTS_OK mode=qd-orders' evidence/android-qd-orders.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:

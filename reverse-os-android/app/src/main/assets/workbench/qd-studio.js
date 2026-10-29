@@ -47,7 +47,52 @@ function qdReport(s){
      (x.error?'<div class="qd-case-error">'+esc(x.error)+'</div>':'')).join('')+'</div>'+
   (action==='teach'?'<p class="qd-report-caption">'+(learned?'XI escribió la lección en el RVPC2 privado del mismo BBY Q.':'No se guardó ningún patrón: la evaluación falló.')+'</p>':'<p class="qd-report-caption">Esta ejecución no modifica la memoria de BBY Q ni el estado del escritorio.</p>');
 }
+
+function qdOrderReport(s){
+ if(!s.result)return '<div class="qd-empty"><strong>Introduce una orden</strong><p>Qd interpreta una gramática aritmética acotada mediante XI y genera código real. Si la orden es ambigua o está fuera de su alcance, se abstiene.</p></div>';
+ const {action,data}=s.result;
+ if(action==='order'&&!data.understood)return '<div class="qd-error" role="status"><strong>Orden no interpretada</strong><p>'+esc(data.reason||'Sin interpretación verificable')+'</p></div>';
+ const pass=data.pass===true;
+ return '<div class="qd-report-head">'+qdBadge(pass?'EJECUTADO · XI':'FALLO',pass?'pass':'fail')+
+   '<small>'+(action==='order'?'Orden interpretada por XI':'Fuente editada y ejecutada')+'</small></div>'+
+  '<div class="qd-metric-row"><div><small>Salida del sandbox</small><strong>'+esc(data.actual??'—')+'</strong></div>'+
+  '<div><small>Comprobación independiente</small><strong>'+esc(data.expected??'—')+'</strong></div></div>'+
+  '<p class="qd-report-caption">Operación: '+esc(data.operation||'—')+' · Entradas: '+esc(data.a)+', '+esc(data.b)+'. Estado temporal; sin escritura en la memoria principal.</p>';
+}
+function qdOrderHTML(w,s){
+ if(typeof w.qdOrder!=='string')w.qdOrder='';
+ if(typeof w.qdScratch!=='string')w.qdScratch='';
+ const blocked=(!nativeAvailable||s.busy)?' disabled':'';
+ const exportBlocked=(!s.generated||s.busy)?' disabled':'';
+ return '<div class="qd-root">'+
+  '<header class="qd-top"><div><span class="qd-overline">REVERSE-PC / BBY Q / CODIFICACIÓN</span><h2>ReverseCoding <span>· Qd</span></h2><p>De una instrucción a código XI verificable. Qd es parte de BBY Q.</p></div><div class="qd-top-actions">'+
+  (nativeAvailable?'<span class="qd-live"><i></i>Ejecutor XI local</span>':qdBadge('REQUIERE APK NATIVA','fail'))+'</div></header>'+
+  '<nav class="qd-modes" aria-label="Áreas de ReverseCoding"><button class="qd-mode active" data-qd-mode="orders" aria-current="page">Órdenes a Qd</button>'+
+  '<button class="qd-mode" data-qd-mode="lessons">Laboratorio de aprendizaje</button></nav>'+
+  '<div class="qd-coding-grid">'+
+  '<section class="qd-coding-prompt"><div class="qd-panel-heading"><div><span class="qd-section-caption">01 / INSTRUCCIÓN</span><strong>¿Qué programa necesitas?</strong></div></div>'+
+  '<label class="qd-editor-label" for="qd-order-'+esc(w.id)+'">Escribe tu orden para Qd</label>'+
+  '<textarea id="qd-order-'+esc(w.id)+'" data-qd-order maxlength="180" class="qd-natural-input" placeholder="Crea un programa que multiplique 12 por 7"'+blocked+'>'+esc(w.qdOrder)+'</textarea>'+
+  '<button class="primary-button qd-command-button" data-qd-action="order"'+blocked+'>Interpretar y generar XI</button>'+
+  '<div class="qd-task qd-scope"><strong>Alcance comprobable</strong><p>Sumar, restar, multiplicar, dividir y resto con dos enteros de 0 a 99. Español e inglés, mediante reglas XI.</p>'+
+  '<small>Ejemplos: «suma 23 y 18», «divide 84 entre 7», «create a program to multiply 12 times 7».</small></div></section>'+
+  '<section class="qd-coding-editor"><div class="qd-panel-heading"><div><span class="qd-section-caption">02 / CÓDIGO</span><strong>Editor XI · sandbox</strong></div><span class="qd-file-ext">.xi</span></div>'+
+  '<label class="qd-editor-label" for="qd-scratch-'+esc(w.id)+'">Programa generado (editable)</label>'+
+  '<textarea class="qd-source qd-coding-source" id="qd-scratch-'+esc(w.id)+'" data-qd-scratch maxlength="192" spellcheck="false" autocapitalize="off" autocorrect="off" placeholder="El código XI aparecerá aquí tras interpretar la orden."'+blocked+'>'+esc(w.qdScratch)+'</textarea>'+
+  '<div class="qd-editor-foot">Estado temporal · sin acceso a archivos, red ni memoria de BBY Q</div>'+
+  '<div class="qd-editor-actions"><button class="primary-button" data-qd-action="run_code"'+blocked+'>Ejecutar en sandbox</button>'+
+  '<button class="secondary-button" data-qd-action="export"'+exportBlocked+'>Crear .RXE</button></div></section>'+
+  '<aside class="qd-coding-results"><div class="qd-panel-heading"><div><span class="qd-section-caption">03 / VERIFICACIÓN</span><strong>Resultado real</strong></div>'+
+  (s.busy?qdBadge('EJECUTANDO','busy'):qdBadge('XI/Ether','neutral'))+'</div>'+
+  (s.error?'<div role="alert" class="qd-error">'+esc(s.error)+'</div>':'')+
+  '<div class="qd-results-scroll">'+qdOrderReport(s)+'</div>'+
+  '<p class="qd-report-caption">No se ejecutarán instrucciones fuera del contrato. La compilación RXE requiere un resultado aprobado y acción explícita.</p></aside>'+
+  '</div><footer class="qd-footer"><span>Qd es un módulo de BBY Q · lógica y generación en XI/Ether</span>'+
+  '<span>ReverseCoding v0.2 · intérprete de operaciones, no agente programador general</span></footer></div>';
+}
+
 function qdStudioHTML(w){
+ if(w.qdMode!=='lessons'){w.qdMode='orders';return qdOrderHTML(w,qdSession(w));}
  w.qdSkill=qdSkill(w.qdSkill).id;
  if(!Number.isInteger(w.qdA)||w.qdA<0||w.qdA>99)w.qdA=27;
  if(!Number.isInteger(w.qdB)||w.qdB<1||w.qdB>99)w.qdB=8;
@@ -56,7 +101,8 @@ function qdStudioHTML(w){
  const badges=QD_SKILLS.map(item=>'<button type="button" class="qd-skill '+(skill.id===item.id?'selected':'')+'" data-qd-skill="'+item.id+'" aria-current="'+(skill.id===item.id?'page':'false')+'"><span class="qd-skill-number">0'+item.id+'</span><span><strong>'+item.name+'</strong><small>'+((s.loaded&&s.learned[item.id-1])?'Aprendido':'Sin verificar')+'</small></span><span class="qd-skill-dot '+(s.loaded&&s.learned[item.id-1]?'learned':'')+'"></span></button>').join('');
  const disableNative=(!nativeAvailable||s.busy)?' disabled':'';
  return '<div class="qd-root">'+
-  '<header class="qd-top"><div><span class="qd-overline">REVERSE / INTELIGENCIA / PROGRAMACIÓN</span><h2>Qd <span>Cody</span></h2><p>Laboratorio XI para enseñar programación a BBY Q. Pruebas antes de aprender.</p></div><div class="qd-top-actions">'+available+'<button type="button" class="secondary-button" data-qd-action="refresh"'+disableNative+'>'+icon('restore')+' Estado</button></div></header>'+
+  '<header class="qd-top"><div><span class="qd-overline">REVERSE / INTELIGENCIA / PROGRAMACIÓN</span><h2>ReverseCoding <span>· Qd</span></h2><p>Laboratorio XI para enseñar programación a BBY Q. Pruebas antes de aprender.</p></div><div class="qd-top-actions">'+available+'<button type="button" class="secondary-button" data-qd-action="refresh"'+disableNative+'>'+icon('restore')+' Estado</button></div></header>'+
+  '<nav class="qd-modes" aria-label="Áreas de ReverseCoding"><button class="qd-mode" data-qd-mode="orders">Órdenes a Qd</button><button class="qd-mode active" data-qd-mode="lessons" aria-current="page">Laboratorio de aprendizaje</button></nav>'+
   '<div class="qd-workspace"><aside class="qd-sidebar"><span class="qd-section-caption">CURRÍCULO / NIVEL 01</span>'+badges+
   '<div class="qd-memory"><span>Memoria compartida con BBY Q</span><strong>'+(s.loaded?s.learned.filter(Boolean).length+'/4':'—')+'</strong><small>patrones aprendidos · '+(s.loaded?s.approved:'—')+' enseñanzas verificadas</small></div></aside>'+
   '<section class="qd-editor"><div class="qd-panel-heading"><div><span class="qd-section-caption">EDITOR XI</span><strong>'+esc(skill.name)+'.xi</strong></div><span class="qd-file-ext">.xi</span></div>'+
@@ -74,7 +120,7 @@ function qdStudioHTML(w){
   '<div class="qd-run-actions"><button class="primary-button" data-qd-action="solve"'+disableNative+'>Qd resuelve</button><button class="secondary-button" data-qd-action="export"'+(s.generated&&!s.busy?'':' disabled')+'>Crear .RXE</button></div></section></aside></div>'+
   '<footer class="qd-footer"><span>BBY Q · memoria RVPC2 privada · ejecución aislada de ejemplos</span><span>Qd v0.1 / entrenamiento de patrones, no modelo general</span></footer></div>';
 }
-Object.assign(APP_DESCRIPTIONS,{qd:'Enseñar y evaluar programación XI en el mismo BBY Q.'});
+Object.assign(APP_DESCRIPTIONS,{qd:'ReverseCoding: dar órdenes a Qd, generar XI y probarlo aisladamente en REVERSE-PC.'});
 async function qdAction(w,action){
  const s=qdSessions.get(w.id);if(!s||s.busy)return;
  if(action==='reset'){w.qdDrafts[String(w.qdSkill)]=qdExample(qdSkill(w.qdSkill));s.generated=null;s.result=null;s.error='';qdRender(w);queueSave();return;}
@@ -83,7 +129,7 @@ async function qdAction(w,action){
  if(action==='export'){
   if(!s.generated)return;
   s.busy=true;s.error='';qdRender(w);
-  try{const name='Qd-Cody-'+qdSkill(w.qdSkill).name+'.rxe';
+  try{const name=w.qdMode==='orders'&&s.result?.data?.operation?('ReverseCoding-'+s.result.data.operation+'-'+s.result.data.a+'-'+s.result.data.b+'.rxe'):('Qd-Cody-'+qdSkill(w.qdSkill).name+'.rxe');
    const out=await nativeRequest('compileApp',JSON.stringify({source:s.generated,name}));
    toast('Qd creó un ejecutable .rxe verificado.');if(typeof refreshPrograms==='function')refreshPrograms();
    if(getWindow(w.id)&&typeof openProgram==='function')openProgram(out.path);
@@ -91,6 +137,8 @@ async function qdAction(w,action){
  }
  const skill=qdSkill(w.qdSkill);
  const payload={action,skill:skill.id};
+ if(action==='order')payload.text=w.qdOrder||'';
+ if(action==='run_code')payload.source=w.qdScratch||'';
  if(action==='evaluate'||action==='teach')payload.source=qdDraft(w);
  if(action==='solve'){payload.a=w.qdA;payload.b=w.qdB;}
  s.busy=true;s.error='';s.result=null;s.generated=null;qdRender(w);
@@ -98,12 +146,22 @@ async function qdAction(w,action){
   s.result={action,data:result};
   if(result.status){s.learned=result.status.learned;s.approved=result.status.approved_lessons;s.loaded=true;}
   if(action==='solve'&&result.learned&&result.pass)s.generated=result.program;
+  if(action==='order'){w.qdScratch=(result.understood&&result.pass)?result.program:'';if(result.understood&&result.pass)s.generated=result.program;}
+  if(action==='run_code'&&result.pass)s.generated=result.program;
  }catch(e){s.error='El núcleo rechazó la operación: '+e.message;}
  finally{s.busy=false;qdRender(w);queueSave();}
 }
 document.addEventListener('input',event=>{
  const target=event.target,w=getWindow(target.closest('.window')?.dataset.id);
  if(!w||w.app!=='qd')return;
+ if(target.matches('[data-qd-order]')){
+  w.qdOrder=target.value;const session=qdSessions.get(w.id);if(session){session.generated=null;session.result=null;}queueSave();
+ }
+ if(target.matches('[data-qd-scratch]')){
+  w.qdScratch=target.value;const session=qdSessions.get(w.id);if(session){session.generated=null;session.result=null;}
+  const el=target.closest('.window');const exportBtn=el?.querySelector('[data-qd-action="export"]');if(exportBtn)exportBtn.disabled=true;
+  queueSave();
+ }
  if(target.matches('[data-qd-source]')){
   w.qdDrafts ||= {};w.qdDrafts[String(w.qdSkill)]=target.value;const s=qdSessions.get(w.id);if(s)s.generated=null;queueSave();
  }
@@ -115,6 +173,14 @@ document.addEventListener('input',event=>{
 document.addEventListener('click',event=>{
  const btn=event.target.closest('button');if(!btn)return;
  const w=getWindow(btn.closest('.window')?.dataset.id);if(!w||w.app!=='qd')return;
+ if(btn.dataset.qdMode){
+  if(w.qdMode!==btn.dataset.qdMode){
+   w.qdMode=btn.dataset.qdMode;
+   const s=qdSessions.get(w.id);if(s){s.result=null;s.generated=null;s.error='';}
+   qdRender(w);queueSave();
+  }
+  return;
+ }
  if(btn.dataset.qdSkill){
   const selected=qdSkill(btn.dataset.qdSkill).id;
   if(selected!==w.qdSkill){w.qdSkill=selected;const s=qdSessions.get(w.id);if(s){s.result=null;s.generated=null;s.error='';}qdRender(w);queueSave();}

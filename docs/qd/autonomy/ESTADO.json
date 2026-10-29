@@ -1,24 +1,25 @@
 {
   "version": 1,
-  "actualizado_utc": "2026-10-29T14:00:36.075Z",
-  "ciclo": "QD-20261029-02",
-  "estado": "depuracion_xi_una_falla_validada_ci_native_sin_fusion",
+  "actualizado_utc": "2026-10-29T15:47:00Z",
+  "ciclo": "QD-20261029-03",
+  "estado": "reversecoding_ordenes_xi_y_android15_aprobadas_pr_borrador",
   "repositorio": "guadalupejuan001-code/REVERSE-PC",
-  "rama_codigo": "qd/cycle-20261029-02-xi-debug",
-  "codigo_ci_sha": "4e163f40cec7ec4a750cd9fb6b9701c60767e6d6",
-  "nota_revision": "CI de código en 4e163f40; notas posteriores solo continuidad. Consultar HEAD remoto real antes de trabajar.",
+  "rama_codigo": "qd/reversecoding-orders-xi-20261029",
+  "codigo_ci_sha": "77a863656f57c0e7bedee22d70d27e35569f32a0",
+  "nota_revision": "El commit de código probado y el commit de registro son distintos. Resolver HEAD de ambos repos y conclusiones de CI en cada activación.",
   "pr": {
-    "numero": 56,
-    "url": "https://github.com/guadalupejuan001-code/REVERSE-PC/pull/56",
-    "base": "qd/cycle-20261028-independent-exams",
+    "numero": 59,
+    "url": "https://github.com/guadalupejuan001-code/REVERSE-PC/pull/59",
+    "base": "qd/cycle-20261029-02-xi-debug",
     "borrador": true,
     "integrado": false,
     "dependencias": [
-      34,
-      35
+      56,
+      35,
+      34
     ]
   },
-  "qd_base_sha": "770f3489181c876acdaee0a1caf25273f56f82bb",
+  "qd_base_sha": "1bd99d42e66d310000a94303d9ddcc42dd91786f",
   "reverse_main_sha": "01829217cfb0a3a704d37f0c0f66527a23ec149d",
   "w4u": {
     "version": "0.1",
@@ -27,40 +28,60 @@
   "mundo_x_fijado": "e2778d962af22f6f1a0794058dd4685fc2573966",
   "ci": {
     "tipo": "GitHub Actions",
-    "workflow": ".github/workflows/qd-debug.yml",
-    "run_id": 40886521655,
-    "resultado": "success",
-    "url": "https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40886521655",
-    "artifact_id": 12901774917,
-    "entorno": "Ubuntu native XI/Ether; sin emulador Android en este ciclo",
-    "codigo_validado": "4e163f40cec7ec4a750cd9fb6b9701c60767e6d6"
+    "native": {
+      "workflow": ".github/workflows/qd-orders.yml",
+      "run_id": 40903779801,
+      "resultado": "success",
+      "url": "https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40903779801",
+      "head_sha": "77a863656f57c0e7bedee22d70d27e35569f32a0"
+    },
+    "android": {
+      "workflow": ".github/workflows/workbench-android.yml",
+      "run_id": 40903779746,
+      "resultado": "success",
+      "url": "https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40903779746",
+      "head_sha": "77a863656f57c0e7bedee22d70d27e35569f32a0",
+      "assertions": [
+        "WORKBENCH_TESTS_OK mode=migration checks=13 native=XI/Ether",
+        "WORKBENCH_TESTS_OK mode=full native=XI/Ether desktop-shell=verified",
+        "WORKBENCH_TESTS_OK mode=restore native=XI/Ether desktop-shell=verified",
+        "WORKBENCH_TESTS_OK mode=qd native=XI/Ether cases=32 rejected=32 saved=RVPC2",
+        "WORKBENCH_TESTS_OK mode=qd-orders native=XI/Ether generated=2 sandbox=verified"
+      ],
+      "artifact_id": 12911041370
+    },
+    "ndk_error_previo": {
+      "run_id": 40902449471,
+      "causa": "Gradle demandó NDK 27.0.12077973 y recibió archivo corrupto; se fijó 27.2.12479018, ya seleccionado por sdkmanager."
+    },
+    "entorno": "GitHub Actions Ubuntu; Android 15 emulado pendiente, no se afirma prueba física"
   },
   "pruebas": {
-    "baseline": "16/16 fallos reproducidos (0 programas inicialmente correctos) y 16/16 corregidos",
-    "examen_reservado": "24/24 programas nuevos corregidos con seis entradas nuevas cada uno; semilla 3921104442",
-    "seguridad": "doble defecto abstención; whitelist y magic inválido rechazados; SHA RVPC2 inalterado",
-    "regresiones": "qd-native.cjs 164 checks, 4 plantillas y 128 ejecuciones; W4u intacto, rollback aprobado",
-    "anterior_ci_android": "PR #35 run 40750976891 success (evidencia histórica, no rerun en ciclo 02)"
+    "antes": "Qd Studio no tenía comando de texto ni ruta de orden a programa; 0 funcionalidad de orden por API.",
+    "despues": "26/26 órdenes aritméticas ES/EN diferentes generaron fuente XI exacta y salida correcta; 18/18 órdenes inválidas/ambiguas rechazadas; 93 invocaciones nativas; RVPC2 descartable con hash inalterado.",
+    "regresion": "164 checks, 4 patrones, 128 ejecuciones previas Qd; depurador previo 16/16 baseline y 24/24 casos nuevos.",
+    "android": "Aprobado: Android 15 ejecutó desde UI y JNI dos instrucciones ES/EN, sandbox de fuente editada, rechazo de orden incompleta/hostil y protección de session.rvp; migración, full, restore y Qd anterior aprobados."
   },
-  "aprendizaje": "Siete reglas simbólicas de depuración programadas en XI; 0 reglas inducidas por ejemplos, 0 pesos, 0 memoria de usuario escrita.",
+  "aprendizaje": "No se indujeron modelos ni nuevos parámetros. Se implementó y comprobó una gramática léxica/simbólica escrita en XI, generador de fuente XI y sandbox seguro. Ningún aprendizaje personal fue escrito.",
   "recursos_no_medidos": [
-    "RSS nativa",
-    "latencia y RAM en teléfono físico",
-    "energía",
-    "programas RXE reparados compilados"
+    "RSS del teléfono real",
+    "latencia y energía Galaxy A16",
+    "tasa de generalización a programas distintos de aritmética",
+    "tamaño del estado tras aprendizaje real"
   ],
-  "regresiones_observadas": 0,
+  "regresiones_observadas": "0 en CI nativa e integrada Android 15 de la revisión probada",
   "bloqueos": [
-    "PR #34 y #35 abiertas; PR #56 depende de su integración en orden.",
-    "Qd Studio Android aún no expone el diagnosticador; solo test nativo.",
-    "Ninguna medición CI de Android/E025 integrada actual en esta rama; PR #35 conserva la evidencia previa."
+    "Las PR apiladas #34,#35,#56 y #59 no están fusionadas; revisar en orden.",
+    "Solo operaciones binarias aritméticas, no comprensión general ni programación multarchivo.",
+    "El hash de palabras 16-bit puede colisionar; ampliar o reforzar con representación y pruebas verificables antes de permitir acciones privilegiadas.",
+    "APK CI firmada con credenciales de runner; no es actualización firmada con el certificado del usuario y no se instaló en el teléfono."
   ],
   "ciclo_activo": null,
   "ultima_actividad": {
-    "id": "QD-20261029-02",
-    "registro": "docs/qd/autonomy/ejecuciones/ciclo-20261029-02.json",
-    "evidencia": "docs/qd/autonomy/evidencias/ciclo-20261029-02-resultados.json",
-    "criterio": "docs/qd/autonomy/evidencias/ciclo-20261029-02-criterio.json"
+    "id": "QD-20261029-03",
+    "registro": "docs/qd/autonomy/ejecuciones/reversecoding-20261029-03.json",
+    "evidencia": "docs/qd/autonomy/evidencias/reversecoding-orders-20261029-criterio.json",
+    "ejecutor_actual_android": 40903779746
   },
   "siguiente": "docs/qd/autonomy/SIGUIENTE.md",
   "bbyq": {
@@ -118,6 +139,14 @@
       "ci": 40886521655,
       "resultado": "success",
       "fuente": "docs/qd/autonomy/ejecuciones/ciclo-20261029-02.json"
+    },
+    {
+      "id": "QD-20261029-03",
+      "pr": 59,
+      "native_ci": 40903779801,
+      "android_ci": 40903779746,
+      "resultado": "native_android_success",
+      "fuente": "docs/qd/autonomy/ejecuciones/reversecoding-20261029-03.json"
     }
   ]
 }

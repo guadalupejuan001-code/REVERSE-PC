@@ -1,0 +1,17 @@
+{
+  "id": "QD-ReverseCoding-Orders-20261029",
+  "fecha": "2026-10-29",
+  "rama": "qd/reversecoding-orders-xi-20261029",
+  "base": "qd/cycle-20261029-02-xi-debug@1bd99d42e66d310000a94303d9ddcc42dd91786f",
+  "problema": "Qd Studio solo acepta codigo XI y lecciones aritmeticas; carece de interpretación de ordenes en lenguaje humano, ejecucion de codigo generado por instrucciones y modo sandbox de editor",
+  "criterio_previamente_definido": {
+    "prototipo": "Reconocer instrucciones naturales acotadas en español/ingles para 5 operaciones binarias (+,-,×,÷,%) con dos enteros 0..99; generar fuente XI elegida por la logica XI y ejecutarla sobre NativeRuntime.initialize.",
+    "aceptacion": "Al menos 24/24 ordenes reservadas variadas con operandos nuevos, salida XI exacta; 12 rechazos/abstenciones entre ausencia, ambiguedad, negacion, operandos invalidos y orden peligrosa.",
+    "revision": "Interfaz ReverseCoding: caja de instrucciones, codigo generado y editable, ejecutor de codigo aislado, salida, errores y exportacion RXE solo despues de ejecucion verificada.",
+    "pruebas": "Suite nativa XI, suite de interfaz UI, prueba Android 15 real del puente Qd->XI->sandbox; integracion de BBY Q E025/W4u y regresiones previas.",
+    "seguridad": "Solo instrucciones expresables como programa aritmetico sencillo, sin instrucciones de archivos, memoria, redes, host, procesos ni bucles; no tocar session.rvp ni BBY Q RVPC2, no se necesita guardar aprendizaje.",
+    "honestidad": "Reconocimiento linguistico basado en diccionario XI con desambiguacion y operandos tipados, no generalizacion a solicitudes arbitrarias; Java/JS transportan tokens y presentan/validan resultados, no deciden el operador."
+  },
+  "ejecutor": "GitHub Actions fijado al runtime REVERSE y mundo-X observado",
+  "estado": "criterio_guardado_antes_de_editar_codigo"
+}

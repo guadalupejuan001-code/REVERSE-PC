@@ -1,0 +1,77 @@
+{
+  "id": "QD-20261029-03",
+  "fecha": "2026-10-29",
+  "repositorio": "guadalupejuan001-code/REVERSE-PC",
+  "rama": "qd/reversecoding-orders-xi-20261029",
+  "commit_codigo": "77a863656f57c0e7bedee22d70d27e35569f32a0",
+  "checkpoint_anterior": "Qd debugger #56 / base 1bd99d42e66d310000a94303d9ddcc42dd91786f",
+  "checkpoint_nativo": "RVPC2 inicializado en runner, descartable; hash conservado, no memoria privada BBY Q",
+  "problema": "Qd Studio no recibía órdenes en lenguaje natural ni las convertía en XI desde el módulo Qd.",
+  "criterio": "ver docs/qd/autonomy/evidencias/reversecoding-orders-20261029-criterio.json (pre-registrado antes del código).",
+  "cambios": [
+    "ReverseCoding en lanzador y ventana de REVERSE; pestaña órdenes, edición y sandbox, resultado y laboratorio Qd previo.",
+    "understand.xi clasifica intenciones restringidas de cinco familias aritméticas ES/EN, rechaza negaciones, conflictos, tokens desconocidos y divisores cero.",
+    "compose.xi genera código XI Machine v1 byte a byte; Java solo normaliza y transporta palabras y confirma con oráculo.",
+    "QdOrders.java puente JNI con NativeRuntime.initialize, política de whitelist de fuente de cuatro instrucciones y límite 192 bytes; sin escritura a memoria del escritorio ni BBY Q.",
+    "Pruebas nativas de 26 solicitudes y 18 negativas; integración en Android mode=qd-orders y regresiones Qd y W4u.",
+    "Fix CI: versión NDK 27.2.12479018 fijada en Gradle para igualar SDK instalado; gradle no debe intentar descargar 27.0 corrupto.",
+    "Test antiguo qd-debug-native: testigo inicial determinista distinto de seis pares aleatorios reservados; no se cambiaron sus reglas XI."
+  ],
+  "evaluacion": {
+    "antes": {
+      "ordenes_a_codigo_api": 0,
+      "alcance": "patrones en editor, sin orden natural"
+    },
+    "despues": {
+      "ordenes_aceptadas": 26,
+      "ordenes_rechazadas": 18,
+      "ejecuciones_nativas_xi": 93,
+      "checkpoint_descartable_inmutable": true
+    },
+    "regresion": {
+      "qd_legacy_checks": 164,
+      "qd_legacy_inputs": 128,
+      "debug_baseline": "16/16",
+      "debug_reservado": "24/24"
+    },
+    "native": {
+      "ci_run": 40903779801,
+      "resultado": "success",
+      "url": "https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40903779801"
+    },
+    "android": {
+      "ci_run": 40903779746,
+      "resultado": "success",
+      "url": "https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40903779746",
+      "artifact_id": 12911041370,
+      "log_verificado": "WORKBENCH_TESTS_OK mode=qd-orders native=XI/Ether generated=2 sandbox=verified",
+      "regresiones": [
+        "migration checks=13",
+        "full desktop-shell=verified",
+        "restore desktop-shell=verified",
+        "qd cases=32 rejected=32 saved=RVPC2"
+      ]
+    }
+  },
+  "aprendizaje": "No hay entrenamiento de pesos ni adquisición autónoma de algoritmos: se programó conocimiento léxico y reglas de decisión en XI.",
+  "integracion": "PR #59 en borrador, apilada sobre #56,#35,#34. CI Android 15 completada success, sin merge ni APK de usuario firmada.",
+  "bloqueos": [
+    "Limitado a enteros 0..99 y cinco operaciones; no entiende solicitudes generales ni proyectos. Un hash 16 bit puede colisionar.",
+    "APK CI con firma temporal, sin firma de actualización del teléfono real; PR #59 sigue en borrador."
+  ],
+  "pruebas_realmente_ejecutadas": [
+    "node --check reverse-os-android/app/src/main/assets/workbench/qd-studio.js",
+    "node reverse-os-android/tests/qd-studio-ui.cjs",
+    "node reverse-os-android/tests/qd-orders-native.cjs build/reverse_pc build/qd-orders",
+    "node reverse-os-android/tests/qd-native.cjs build/reverse_pc build/qd-regression",
+    "node reverse-os-android/tests/qd-debug-native.cjs build/reverse_pc build/qd-debug"
+  ],
+  "siguiente": "docs/qd/autonomy/SIGUIENTE.md",
+  "finalizado": true,
+  "mediciones_no_realizadas": [
+    "RSS pico Android",
+    "FPS del teléfono físico",
+    "latencia de terminal del teléfono",
+    "memoria personal del usuario"
+  ]
+}
