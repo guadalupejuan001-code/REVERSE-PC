@@ -70,6 +70,15 @@ jobs:
             > build/base/minimal_guest_system.inc
           git show de6243c4b8f87b88f1afcf97cf6b06b0736906ff:tools/guest_linux_probe.cpp \
             > build/base/guest_linux_probe.cpp
+          # The pinned historical implementation has a const MRS accessor.
+          # Keep its generated header declaration matched to that old body.
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('build/base/minimal_guest.hpp');s=p.read_text()
+          old='std::uint64_t system_read(unsigned id);'
+          assert s.count(old)==1
+          p.write_text(s.replace(old,'std::uint64_t system_read(unsigned id) const;'))
+          PY
           python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
           python3 scripts/build-softfloat.py
           common="-std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1"

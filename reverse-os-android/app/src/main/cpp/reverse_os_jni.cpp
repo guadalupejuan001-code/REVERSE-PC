@@ -6,6 +6,7 @@
 #include "minimal_guest_fp_demo.hpp"
 #include "guest_file_session.hpp"
 #include "minimal_guest_pci_demo.hpp"
+#include "minimal_guest_counter_demo.hpp"
 #include <jni.h>
 #include <exception>
 #include <limits>
@@ -130,6 +131,7 @@ Java_com_reversepc_os_NativeRuntime_guestInitializeSystem(JNIEnv* e,jclass,jbyte
     else if(kind==2)guest.load_linux_image(bytes(e,image));
     else if(kind==3){reverse_pc::guest::require(!image,"Built-in FP check does not accept an image");guest.load_elf(reverse_pc::guest::fp_demo_elf());}
     else if(kind==4){reverse_pc::guest::require(!image,"Built-in graphics check does not accept an image");guest.load_linux_image(reverse_pc::guest::pci_graphics_witness_image(),{},"console=ttyAMA0",nullptr,true);guest.enable_adaptive_memory();}
+    else if(kind==5){reverse_pc::guest::require(!image,"Built-in counter check does not accept an image");guest=reverse_pc::guest::counter_witness();}
     else throw std::invalid_argument("Unsupported system image kind");
     return output(e,guest_packet(guest));
   }catch(const std::exception& x){throw_java(e,x);return nullptr;}

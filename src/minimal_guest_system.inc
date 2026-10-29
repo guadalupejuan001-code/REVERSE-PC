@@ -224,8 +224,8 @@ inline void MinimalGuest::device_write(std::uint64_t address,std::uint64_t value
   throw std::runtime_error("Unsupported GIC distributor register write "+hex(offset));
 }
 inline unsigned guest_sysreg(unsigned op0,unsigned op1,unsigned crn,unsigned crm,unsigned op2){return (op0<<14)|(op1<<11)|(crn<<7)|(crm<<3)|op2;}
-inline std::uint64_t MinimalGuest::system_read(unsigned id) const {
-  const auto& m=machine_;
+inline std::uint64_t MinimalGuest::system_read(unsigned id) {
+  auto& m=machine_;
   if(id==guest_sysreg(3,3,4,4,0)||id==guest_sysreg(3,3,4,4,1)){fp_access();return id==guest_sysreg(3,3,4,4,0)?floating_.fpcr:floating_.fpsr;}
   if(id==guest_sysreg(3,3,4,2,0))return std::uint64_t(registers_.nzcv)<<28;
   if(!m.enabled)throw std::runtime_error("System registers require the ARM64 compatibility system mode");
@@ -269,7 +269,12 @@ inline std::uint64_t MinimalGuest::system_read(unsigned id) const {
   if(id==guest_sysreg(3,3,13,0,2))return m.tpidr0;if(id==guest_sysreg(3,3,13,0,3))return m.tpidrro;
   if(id==guest_sysreg(3,0,14,1,0))return m.cntkctl;
   if(id==guest_sysreg(3,3,14,0,0))return 1000000;
-  if(id==guest_sysreg(3,3,14,0,1)||id==guest_sysreg(3,3,14,0,2))return m.ticks;
+  if(id==guest_sysreg(3,3,14,0,1)||id==guest_sysreg(3,3,14,0,2)){
+    if(m.counter_latency.enabled){const auto delay=m.counter_latency.next();
+      require(delay<=UINT64_MAX-m.ticks,"Guest virtual timer overflow");m.ticks+=delay;
+    }
+    return m.ticks;
+  }
   if(id==guest_sysreg(3,3,14,2,0))return std::uint32_t(m.cntp_cval-m.ticks);
   if(id==guest_sysreg(3,3,14,3,0))return std::uint32_t(m.cntv_cval-m.ticks);
   if(id==guest_sysreg(3,3,14,2,1))return m.timer_control(true);if(id==guest_sysreg(3,3,14,3,1))return m.timer_control(false);
