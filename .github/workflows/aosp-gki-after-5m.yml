@@ -26,7 +26,7 @@ jobs:
         with:
           name: reverse-real-gki-extended-progress
           run-id: 40786442463
-          github-token: \${{ github.token }}
+          github-token: ${{ github.token }}
           path: prior
       - name: Verify original 5,504,096-step RVG and independently validate real GKI
         run: |
