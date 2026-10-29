@@ -117,7 +117,7 @@ int main(int argc,char** argv){try{
   const auto state=guest.snapshot();if(argc>=4){std::ofstream out(argv[3],std::ios::binary);out.write(reinterpret_cast<const char*>(state.data()),state.size());require(bool(out),"Cannot save probe checkpoint");}
   const auto elapsed=std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now()-begin).count();
   std::cout<<"{\"expected_upstream_linux\":\"6.1/830b3c68c1fb1e9176028d02ef86f3cf76aa2476\",\"initial_instructions\":"<<initial_instructions<<",\"guest\":"<<guest.statistics()
-    <<",\"run_chunk_instructions\":"<<run_chunk<<",\"host_elapsed_ns\":"<<elapsed<<",\"checkpoint_bytes\":"<<state.size()<<",\"checkpoint_fnv\":"<<quote(hex(digest(state,state.size())))<<",\"adaptive_classical_storage\":"<<(guest.runtime().memory().limits().max_overrides==0?"true":"false")
+    <<",\"run_chunk_instructions\":"<<run_chunk<<",\"max_wall_ms\":"<<max_wall_ms<<",\"host_elapsed_ns\":"<<elapsed<<",\"checkpoint_bytes\":"<<state.size()<<",\"checkpoint_fnv\":"<<quote(hex(digest(state,state.size())))<<",\"adaptive_classical_storage\":"<<(guest.runtime().memory().limits().max_overrides==0?"true":"false")
     <<",\"stop_reason\":"<<quote(reason)<<",\"next_instruction\":"<<next_instruction<<",\"console\":"<<quote(console)
     <<",\"linux_userspace_init_observed\":"<<(console.find("REVERSE_LINUX_INIT_OK")!=std::string::npos?"true":"false")
     <<",\"linux_boot_complete\":false,\"android_boot\":false}\n";
