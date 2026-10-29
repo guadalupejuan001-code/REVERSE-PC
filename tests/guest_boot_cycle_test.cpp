@@ -53,6 +53,17 @@ int main(){try{
   });
   check(entry_report.first_user_instruction_verified,"Verified first userspace opcode was not recorded");
   check(entry.snapshot()==entry_reference.snapshot(),"Entry observation changed CPU state or exceeded its budget");
+  auto milestone=user_entry();limits.instructions=1000;limits.stop_after_first_user_instruction=true;
+  std::vector<Bytes> milestone_saves;
+  const auto milestone_report=run_boot_cycle(milestone,limits,[&](const MinimalGuest& g,const BootCycleReport&){milestone_saves.push_back(g.snapshot());},[](MinimalGuest& g){
+    require(!g.machine().el&&g.registers().pc==0x40080018,"Milestone missed the ERET boundary");g.run(1);return g.registers().pc==0x4008001c;
+  });
+  check(milestone_report.first_user_instruction_verified&&milestone_report.reason=="first_user_instruction_verified","Verified first-instruction stop was not reported");
+  check(milestone.snapshot()==entry_reference.snapshot(),"Milestone executed beyond the single verified userspace instruction");
+  check(milestone_saves.size()==2&&milestone_saves.back()==entry_reference.snapshot(),"Milestone did not save the exact verified boundary");
+  bool needs_verifier=false;try{run_boot_cycle(milestone,limits);}catch(const std::exception&){needs_verifier=true;}
+  check(needs_verifier&&milestone.snapshot()==entry_reference.snapshot(),"Milestone stop without a verifier was accepted");
+  limits.stop_after_first_user_instruction=false;
   auto unverified=user_entry();unverified.run(6);const auto boundary=unverified.snapshot();
   const auto unverified_report=run_boot_cycle(unverified,limits,{},[](MinimalGuest& trial){trial.run(1);return false;});
   check(unverified_report.reason=="unverified_userspace_entry"&&!unverified_report.first_user_instruction_verified,"Unverified entry was accepted");

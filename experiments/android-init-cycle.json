@@ -1,0 +1,13 @@
+{
+  "input_run": 40933488319,
+  "input_artifact": "reverse-c04-android-pci-continuation",
+  "checkpoint_sha256": "1e06d2f22b6f34f0ec6a27f21e937b1a814267e2ac3b5634bd88cf4e3d5c7086",
+  "report_sha256": "618346a47155e01bac2dadf4781bbbd19bcc3f1e7040b3cc4cee4d9983037f23",
+  "instructions": 4187300000,
+  "counter_samples": 2064248,
+  "counter_seed_sha256": "3079c6396c3fdcdaea106572f5da7c1a26a81efb32f64e8d39de7521dd5a1c75",
+  "disk_run": 40910284394,
+  "disk_artifact": "reverse-android-c03-genuine-partition-disk",
+  "wall_ms": 600000,
+  "instructions_budget": 2000000000
+}

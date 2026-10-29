@@ -35,13 +35,14 @@ static std::string next_instruction(const MinimalGuest& guest){
   catch(const MachineFault& e){return "{\"inspection_fault\":"+quote(hex(e.syndrome))+",\"address\":"+quote(hex(e.address))+"}";}
 }
 int main(int argc,char** argv){try{
-  require(argc>=6&&argc<=9,"Expected input.rvg disk.raw new-output-directory milliseconds input-sha256 [--chunk=N] [--instructions=N] [--counter-latency=host-entropy]");
+  require(argc>=6&&argc<=10,"Expected input.rvg disk.raw new-output-directory milliseconds input-sha256 [--chunk=N] [--instructions=N] [--counter-latency=host-entropy] [--stop-after-init]");
   BootCycleLimits limits;const std::string wall(argv[4]);
   require(!wall.empty()&&wall.find_first_not_of("0123456789")==std::string::npos,"Wall budget must be decimal milliseconds");
   limits.wall_ms=std::stoull(wall);require(limits.wall_ms&&limits.wall_ms<=1500000,"Wall budget must be 1..1500000 ms");
   bool seen_chunk=false,seen_steps=false,seed_clock=false;
   for(int i=6;i<argc;i++){
     const std::string arg(argv[i]);if(arg=="--counter-latency=host-entropy"){require(!seed_clock,"Duplicate timing mode");seed_clock=true;continue;}
+    if(arg=="--stop-after-init"){require(!limits.stop_after_first_user_instruction,"Duplicate first-init stop");limits.stop_after_first_user_instruction=true;continue;}
     const bool chunk=arg.rfind("--chunk=",0)==0,steps=arg.rfind("--instructions=",0)==0;
     require(chunk||steps,"Unknown cycle option");bool& seen=chunk?seen_chunk:seen_steps;require(!seen,"Duplicate cycle option");seen=true;
     const auto numeric=arg.substr(chunk?8:15);require(!numeric.empty()&&numeric.find_first_not_of("0123456789")==std::string::npos,"Cycle option must be a positive decimal integer");
@@ -63,7 +64,7 @@ int main(int argc,char** argv){try{
   }
   const auto& timing=guest.machine().counter_latency;
   const std::string seed_id=timing.enabled?GuestSha256::hash(Bytes(timing.seed.begin(),timing.seed.end())):std::string{};
-  const std::string source="{\"input_checkpoint_sha256\":"+quote(argv[5])+",\"kernel_sha256\":"+quote(kernel_sha)+",\"ramdisk_sha256\":"+quote(ramdisk_sha)+",\"disk_sha256\":"+quote(disk_sha)+",\"disk_bytes\":8738832384,\"counter_latency\":"+(timing.enabled?"true":"false")+",\"timing_seed_origin\":"+quote(seed_origin)+",\"timing_seed_sha256\":"+quote(seed_id)+",\"run_chunk\":"+std::to_string(limits.chunk)+",\"android_services_verified\":false,\"android_display_verified\":false,\"native_android_games_verified\":false}";
+  const std::string source="{\"input_checkpoint_sha256\":"+quote(argv[5])+",\"kernel_sha256\":"+quote(kernel_sha)+",\"ramdisk_sha256\":"+quote(ramdisk_sha)+",\"disk_sha256\":"+quote(disk_sha)+",\"disk_bytes\":8738832384,\"counter_latency\":"+(timing.enabled?"true":"false")+",\"timing_seed_origin\":"+quote(seed_origin)+",\"timing_seed_sha256\":"+quote(seed_id)+",\"run_chunk\":"+std::to_string(limits.chunk)+",\"stop_after_init\":"+(limits.stop_after_first_user_instruction?"true":"false")+",\"android_services_verified\":false,\"android_display_verified\":false,\"native_android_games_verified\":false}";
   BootCycleJournal journal(argv[3]);std::signal(SIGTERM,stop_cycle);std::signal(SIGINT,stop_cycle);
   auto last=std::chrono::steady_clock::now();std::size_t uart=0;
   const auto save=[&](const MinimalGuest& g,const BootCycleReport& r){journal.publish(g,r,source);std::cerr<<"REVERSE_PCI_SAVED {\"instructions\":"<<g.registers().instructions<<",\"generation\":"<<journal.sequence()<<"}\n";};

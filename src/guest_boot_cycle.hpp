@@ -14,6 +14,7 @@ namespace reverse_pc::guest {
 struct BootCycleLimits {
   std::uint64_t instructions=3000000000, wall_ms=1200000, chunk=50000;
   std::uint64_t checkpoint_ms=60000, checkpoint_instructions=100000000;
+  bool stop_after_first_user_instruction=false;
 };
 struct BootCycleReport {
   std::uint64_t initial_instructions=0, elapsed_ms=0, chunks=0;
@@ -50,6 +51,7 @@ inline BootCycleReport run_boot_cycle(MinimalGuest& guest,const BootCycleLimits&
   require(limit.instructions&&limit.instructions<=UINT64_C(8000000000),"Cycle instruction budget must be 1..8000000000");
   require(limit.wall_ms&&limit.wall_ms<=1500000,"Cycle wall budget must be 1..1500000 ms");
   require(limit.chunk&&limit.chunk<=1000000&&limit.checkpoint_ms&&limit.checkpoint_instructions,"Invalid cycle transaction/save cadence");
+  require(!limit.stop_after_first_user_instruction||bool(first_user),"A userspace milestone stop requires its entry verifier");
   BootCycleReport report;report.initial_instructions=guest.registers().instructions;
   require(report.initial_instructions<=UINT64_MAX-limit.instructions,"Instruction counter would overflow");
   const auto start=std::chrono::steady_clock::now();auto saved_at=start;
@@ -70,6 +72,7 @@ inline BootCycleReport run_boot_cycle(MinimalGuest& guest,const BootCycleLimits&
         require(first_user(checked)&&checked.registers().instructions==count+1&&!checked.machine().el,"First userspace instruction was not verified");
         guest=std::move(checked);
         report.first_user_instruction_verified=true;
+        if(limit.stop_after_first_user_instruction){report.reason="first_user_instruction_verified";break;}
       }catch(const std::exception& failure){report.reason="unverified_userspace_entry";report.error=failure.what();break;}
       catch(const MachineFault& failure){report.reason="unverified_userspace_entry";report.error="Architectural entry fault: "+hex(failure.syndrome)+" at "+hex(failure.address);break;}
     }else{
