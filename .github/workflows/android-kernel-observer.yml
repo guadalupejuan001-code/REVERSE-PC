@@ -8,6 +8,7 @@ on:
       - 'tests/android_kernel_observer_cli.mjs'
       - 'tests/android_guest_progress.test.mjs'
       - '.github/workflows/android-kernel-observer.yml'
+      - '.github/workflows/reverse-android-boot-profile.yml'
   workflow_dispatch:
 permissions:
   contents: read

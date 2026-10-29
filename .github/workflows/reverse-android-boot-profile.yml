@@ -52,7 +52,7 @@ jobs:
             prior/batch-4.json prior/batch-5.json prior/batch-6.json \
             > evidence/real-12m-liveness.json
           jq -e '.status=="real_guest_diagnostic_only" and
-            .progress_kind=="active_kernel_table_processing" and
+              .progress_kind=="cpu_state_changes_stage_unclassified" and
             .observed_end_instruction==12020000 and
             .measured_instructions_per_second>0 and
             .suspected_no_progress==false and
