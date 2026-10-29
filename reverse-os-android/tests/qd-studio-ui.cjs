@@ -25,7 +25,7 @@ const ctx=vm.createContext({
   if(p.action==='order'){
     assert.equal(p.text,'multiplica 12 por 7');
     return Promise.resolve({ok:true,understood:true,pass:true,actual:84,expected:84,a:12,b:7,operation:'mul',
-     program:['#!reverse-pc-machine-v1','set r0 12','mul r0 7','print r0','halt',''].join('\\n')});
+     program:['#!reverse-pc-machine-v1','set r0 12','mul r0 7','print r0','halt',''].join('\n')});
   }
   if(p.action==='run_code')return Promise.resolve({ok:true,pass:true,actual:84,expected:84,a:12,b:7,operation:'mul',program:p.source});
   if(p.action==='status')return Promise.resolve({ok:true,learned:[false,false,false,false],approved_lessons:0});
