@@ -1,0 +1,46 @@
+{
+  "id": "QDU-T1-20261029",
+  "date": "2026-10-29",
+  "branch": "qdu/t1-delegation-20261029",
+  "pr": 65,
+  "architecture": "BBY Q -> w4U -> QdU",
+  "goal": "Code request XI classification, one-use w4U permit, QdU generation/execution, w4U independent arithmetic review, BBY Q typed return",
+  "baseline": "ReverseCoding order action bypassed w4U",
+  "native": {
+    "run_id": 40915364219,
+    "result": "success",
+    "tasks": "14/14",
+    "negative": "15/15",
+    "calls": 134,
+    "source_state_unchanged": true,
+    "artifact": 12915602154
+  },
+  "regressions": {
+    "orders": "26/26",
+    "rejections": "18/18",
+    "qd_checks": 164,
+    "qd_arithmetic": 128,
+    "debug_reservado": "24/24"
+  },
+  "android": {
+    "run_id": 40915364146,
+    "status": "queued at documentation creation",
+    "mode": "compilation and old modes; no dedicated delegate instrumentation"
+  },
+  "limits": [
+    "Native CLI simulates w4U seed bytes rather than full E025 user state",
+    "Entry is ReverseCoding not BBY Q chat",
+    "No file actions, project editing, or autonomous Work",
+    "No additional model or memory",
+    "No phone RAM/energy readings"
+  ],
+  "checkpoint": "Disposable only, no write to private BBY Q RVPC2 or desktop session",
+  "test_commands": [
+    "node reverse-os-android/tests/qdu-delegation-native.cjs build/reverse_pc build/qdu-t1",
+    "node reverse-os-android/tests/qd-orders-native.cjs build/reverse_pc build/qd-orders",
+    "node reverse-os-android/tests/qd-native.cjs build/reverse_pc build/qd-native",
+    "node reverse-os-android/tests/qd-debug-native.cjs build/reverse_pc build/qd-debug"
+  ],
+  "next": "docs/qd/autonomy/SIGUIENTE.md",
+  "complete": true
+}
