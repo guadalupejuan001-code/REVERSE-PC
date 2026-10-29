@@ -6,6 +6,7 @@
 #include "rxe.hpp"
 #include "minimal_guest_machine.hpp"
 #include "minimal_guest_fp.hpp"
+#include "minimal_guest_block.hpp"
 #include <algorithm>
 #include <array>
 #include <cstdint>
@@ -132,7 +133,7 @@ class MinimalGuest {
     auto immutable=std::make_shared<const Bytes>(std::move(bytes));
     auto empty=make_runtime(override_limit_);
     image_=std::move(immutable); segments_=std::move(candidate); runtime_=std::move(empty);invalidate_translation_hints();
-    machine_=MachineState{};machine_.enabled=privileged;machine_.image_kind=privileged?1:0;floating_=FloatingState{};
+    machine_=MachineState{};machine_.enabled=privileged;machine_.image_kind=privileged?1:0;floating_=FloatingState{};block_image_.reset();
     registers_=Registers{}; registers_.pc=entry; registers_.sp=(ram_base()+ram_)&~UINT64_C(15);
     machine_.sp1=registers_.sp;
   }
@@ -142,7 +143,9 @@ class MinimalGuest {
   // the exact optional Android bootargs in the immutable image so resuming
   // can never silently regenerate a different FDT.
   void load_linux_image(const Bytes& kernel,const Bytes& initrd={},
-                        const std::string& bootargs={}) {
+                        const std::string& bootargs={},
+                        std::shared_ptr<const GuestBlockImage> disk={},bool pci=false) {
+    require(!disk||pci,"Attached storage requires the explicit PCI board");
     require(ram_>=64*1024*1024 && ram_<=max_ram-MachineState::ram_base,
             "System RAM must be 64 MiB..48-bit physical range");
     require(kernel.size()>=64 && kernel.size()<=max_linux_kernel &&
@@ -164,18 +167,21 @@ class MinimalGuest {
     const auto kernel_address=MachineState::ram_base+offset;
     const auto initrd_address=MachineState::ram_base+ram_/2;
     const auto tree_address=MachineState::ram_base+ram_-2*1024*1024;
-    const auto tree=guest_device_tree(ram_,initrd_address,initrd.size(),bootargs);
-    const bool extended=!bootargs.empty();
-    const std::size_t prefix=extended?40:32;
-    require(prefix+kernel.size()+tree.size()+initrd.size()+bootargs.size()<=max_linux_container,
+    const auto tree=guest_device_tree(ram_,initrd_address,initrd.size(),bootargs,pci);
+    const bool extended=!bootargs.empty()||pci;
+    const std::size_t prefix=pci?48:extended?40:32;
+    Bytes devices;if(pci){put(devices,1);put(devices,disk?disk->size():0);const auto hash=disk?disk->sha256():std::string(64,'0');devices.insert(devices.end(),hash.begin(),hash.end());}
+    require(prefix+kernel.size()+tree.size()+initrd.size()+bootargs.size()+devices.size()<=max_linux_container,
             "Combined Linux Image/DTB/initrd/bootargs exceeds 128 MiB host image budget");
-    Bytes container{'R','V','I',std::uint8_t(extended?'2':'1'),13,10,26,10};
+    Bytes container{'R','V','I',std::uint8_t(pci?'3':extended?'2':'1'),13,10,26,10};
     put(container,kernel.size());put(container,tree.size());put(container,initrd.size());
     if(extended)put(container,bootargs.size());
+    if(pci)put(container,devices.size());
     container.insert(container.end(),kernel.begin(),kernel.end());
     container.insert(container.end(),tree.begin(),tree.end());
     container.insert(container.end(),initrd.begin(),initrd.end());
     if(extended)container.insert(container.end(),bootargs.begin(),bootargs.end());
+    container.insert(container.end(),devices.begin(),devices.end());
     auto immutable=std::make_shared<const Bytes>(std::move(container));
     auto empty=make_runtime(override_limit_);
     std::vector<Segment> segments{
@@ -190,6 +196,7 @@ class MinimalGuest {
     image_=std::move(immutable);segments_=std::move(segments);invalidate_translation_hints();
     runtime_=std::move(empty);machine_=MachineState{};
     machine_.enabled=true;machine_.image_kind=2;floating_=FloatingState{};
+    block_image_=std::move(disk);machine_.pci.enabled=pci;machine_.pci.disk_bytes=block_image_?block_image_->size():0;
     registers_=Registers{};registers_.pc=kernel_address;
     registers_.x[0]=tree_address;registers_.sp=MachineState::ram_base+ram_;
     machine_.sp1=registers_.sp;
@@ -302,7 +309,7 @@ class MinimalGuest {
             "Guest snapshot exceeds configured host transport capacity");
     put(result,digest(result,result.size())); return result;
   }
-  static MinimalGuest from_snapshot(const Bytes& bytes) {
+  static MinimalGuest from_snapshot(const Bytes& bytes,std::shared_ptr<const GuestBlockImage> disk={}) {
     const unsigned version=bytes.size()>=4?unsigned(bytes[3]):0;
     require(version=='1'||version=='2'||version=='3',"Unsupported guest checkpoint version");
     const Bytes magic{'R','V','G',std::uint8_t(version),13,10,26,10};
@@ -326,7 +333,7 @@ class MinimalGuest {
     // oversized ELF payloads; this check must not block valid GKI restores.
     require(image_size<=(system?max_linux_container:max_image) &&
             core_size<=max_input_bytes && memory_size<=max_input_bytes &&
-            system_size<=8192 && fp_size<=532 && (version!='2'||system) && (version!='3'||fp_size>=20) &&
+            system_size<=262144 && fp_size<=532 && (version!='2'||system) && (version!='3'||fp_size>=20) &&
             image_size+core_size+memory_size+system_size+fp_size==bytes.size()-at-8, "Guest snapshot extents are invalid");
     MachineState machine;
     if(system)machine=MachineState::restore(Bytes(bytes.end()-8-std::size_t(fp_size)-std::size_t(system_size),bytes.end()-8-std::size_t(fp_size)));
@@ -336,28 +343,34 @@ class MinimalGuest {
         const Bytes signature{'R','V','I',0,13,10,26,10};
         require(image.size()>=32 &&
                 std::equal(signature.begin(),signature.begin()+3,image.begin()) &&
-                (image[3]=='1'||image[3]=='2') &&
+                (image[3]=='1'||image[3]=='2'||image[3]=='3') &&
                 std::equal(signature.begin()+4,signature.end(),image.begin()+4),
                 "Invalid Linux Image container");
-        const bool extended=image[3]=='2';
-        const std::size_t prefix=extended?40:32;
+        const bool pci=image[3]=='3',extended=image[3]!='1';
+        const std::size_t prefix=pci?48:extended?40:32;
         require(image.size()>=prefix,"Truncated Linux boot profile header");
         const auto kernel_size=get(image,8,8),tree_size=get(image,16,8),
                    initrd_size=get(image,24,8),
-                   bootargs_size=extended?get(image,32,8):0;
+                   bootargs_size=extended?get(image,32,8):0,
+                   device_size=pci?get(image,40,8):0;
         require(kernel_size<=max_linux_kernel&&tree_size<=65536&&
                 initrd_size<=max_linux_initrd &&
-                (!extended || (bootargs_size>0&&bootargs_size<=1024)) &&
-                kernel_size+tree_size+initrd_size+bootargs_size==image.size()-prefix,
+                (!extended || ((pci||bootargs_size>0)&&bootargs_size<=1024)) &&
+                device_size==(pci?80:0) &&
+                kernel_size+tree_size+initrd_size+bootargs_size+device_size==image.size()-prefix,
                 "Invalid Linux Image container extents");
         const std::size_t k=std::size_t(kernel_size),
                           t=std::size_t(tree_size),
                           rd=std::size_t(initrd_size);
         const std::string args=extended ?
-          std::string(image.begin()+prefix+k+t+rd,image.end()):std::string{};
+          std::string(image.begin()+prefix+k+t+rd,image.begin()+prefix+k+t+rd+std::size_t(bootargs_size)):std::string{};
+        if(pci){const auto d=prefix+k+t+rd+std::size_t(bootargs_size);const auto size=get(image,d+8,8);const std::string hash(image.begin()+d+16,image.end());
+          require(get(image,d,8)==1&&machine.pci.enabled&&machine.pci.disk_bytes==size,"PCI image and device state disagree");
+          require(size?disk&&disk->size()==size&&disk->sha256()==hash:!disk&&hash==std::string(64,'0'),"Explicit disk attachment is missing or has the wrong SHA-256");
+        }else require(!machine.pci.enabled,"Legacy image cannot restore PCI state");
         candidate.load_linux_image(
           Bytes(image.begin()+prefix,image.begin()+prefix+k),
-          Bytes(image.begin()+prefix+k+t,image.begin()+prefix+k+t+rd),args);
+          Bytes(image.begin()+prefix+k+t,image.begin()+prefix+k+t+rd),args,pci?disk:nullptr,pci);
         require(*candidate.image_==image,
                 "Linux Image device tree or boot profile does not match this machine");
       }else candidate.load_elf(image,system);
@@ -391,6 +404,10 @@ class MinimalGuest {
         << ",\"virtual_ticks\":" << machine_.ticks << ",\"waiting\":" << (machine_.waiting?"true":"false")
         << ",\"fp_simd\":\"bounded-armv8-subset\",\"fpcr\":" << floating_.fpcr << ",\"fpsr\":" << floating_.fpsr
         << ",\"nonzero_vector_registers\":" << floating_.nonzero()
+        << ",\"pci_bus\":" << (machine_.pci.enabled?"true":"false")
+        << ",\"block_image_bytes\":" << machine_.pci.disk_bytes
+        << ",\"display_width\":" << machine_.pci.scan_w << ",\"display_height\":" << machine_.pci.scan_h
+        << ",\"display_frame\":" << machine_.pci.flushes
         << ",\"android_boot\":\"not_implemented\""
         << ",\"wild_rift\":\"not_supported\",\"hardware_acceleration\":false}";
     return out.str();
@@ -405,6 +422,7 @@ class MinimalGuest {
   Registers registers_;
   MachineState machine_;
   FloatingState floating_;
+  std::shared_ptr<const GuestBlockImage> block_image_; // Immutable external base, never a host path in RVG.
   mundo_x::QuantumRuntime::ByteAccess* byte_transaction_=nullptr; // Never persisted; scoped to run().
   // Nonpersistent address hints only: never guest bytes or a second RAM.
   // Native CPU data stores retain address hints only when a conservative
@@ -533,6 +551,15 @@ class MinimalGuest {
   std::uint64_t device_read(std::uint64_t address,unsigned size);
   void device_write(std::uint64_t address,std::uint64_t value,unsigned size,RunResult& result);
   bool device_address(std::uint64_t address) const;
+  std::uint64_t pci_read(std::uint64_t address,unsigned size);
+  void pci_write(std::uint64_t address,std::uint64_t value,unsigned size);
+  void pci_notify(unsigned device,unsigned queue);
+  void dma_write(std::uint64_t address,std::uint64_t value,unsigned size);
+  std::uint8_t logical_device_byte(std::uint64_t address) const {const auto r=byte_transaction_?byte_transaction_->read(address):runtime_.memory().read_numeric(address,runtime_.core());require(r.deterministic,"Device read reached unresolved quantum state; explicit observation required");return r.value;}
+  void logical_device_store(std::uint64_t address,std::uint8_t value){require(byte_transaction_,"Device write outside XI transaction");byte_transaction_->store(std::to_string(address),value);}
+ public:
+  Bytes display_rgb() const;
+ private:
   std::uint64_t system_read(unsigned id) const;
   void system_write(unsigned id,std::uint64_t value);
   void exception(std::uint64_t syndrome,std::uint64_t address,std::uint64_t return_pc,bool irq);
@@ -554,6 +581,7 @@ class MinimalGuest {
 };
 
 #include "minimal_guest_system.inc"
+#include "minimal_guest_pci.inc"
 #include "minimal_guest_simd.inc"
 
 inline void MinimalGuest::step(RunResult& result) {

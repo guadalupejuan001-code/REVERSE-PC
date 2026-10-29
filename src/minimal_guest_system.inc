@@ -1,5 +1,9 @@
 // Included after MinimalGuest's declaration, inside reverse_pc::guest.
 inline void MinimalGuest::validate_system_configuration() const {
+  if(machine_.pci.enabled){
+    for(const auto& d:machine_.pci.devices)for(const auto& q:d.queues)if(q.enabled){require(q.size&&q.size<=256&&!(q.size&(q.size-1))&&!(q.desc&15)&&!(q.avail&1)&&!(q.used&3),"Invalid restored virtqueue alignment/size");range(q.desc,q.size*16);range(q.avail,6+q.size*2);range(q.used,6+q.size*8);}
+    for(const auto& r:machine_.pci.resources)for(const auto& e:r.backing)range(e.address,e.length);
+  }
   require(!(machine_.sctlr&((UINT64_C(1)<<25)|(UINT64_C(1)<<24))),"Big-endian system memory is not implemented");
   if(machine_.sctlr&1){
     const auto& m=machine_;
@@ -69,7 +73,8 @@ inline std::uint64_t MinimalGuest::translate(std::uint64_t address,bool writing,
   fault(4);return 0;
 }
 inline bool MinimalGuest::device_address(std::uint64_t address) const {
-  return (address>=MachineState::uart_base&&address<MachineState::uart_base+4096)||
+  return (machine_.pci.enabled&&((address>=GuestPciState::ecam&&address<GuestPciState::ecam+GuestPciState::ecam_size)||(address>=GuestPciState::mmio&&address<GuestPciState::mmio+GuestPciState::mmio_size)))||
+         (address>=MachineState::uart_base&&address<MachineState::uart_base+4096)||
          (address>=MachineState::gic_dist&&address<MachineState::gic_dist+4096)||
          (address>=MachineState::gic_cpu&&address<MachineState::gic_cpu+4096);
 }
@@ -100,7 +105,8 @@ inline std::array<std::uint64_t,16> MinimalGuest::resolve_access(std::uint64_t a
     }
     if(!ram){
       const auto first=resolved[0];
-      require(size<=4 && !(address&(size-1)) && physical==first+i,"Unsupported split or unaligned device access");
+      const bool pci=machine_.pci.enabled&&((first>=GuestPciState::ecam&&first<GuestPciState::ecam+GuestPciState::ecam_size)||(first>=GuestPciState::mmio&&first<GuestPciState::mmio+GuestPciState::mmio_size));
+      require(size<=(pci?8u:4u) && !(address&(size-1)) && physical==first+i,"Unsupported split or unaligned device access");
     }
   }
   return resolved;
@@ -128,6 +134,7 @@ inline void MinimalGuest::cpu_write(std::uint64_t address,std::uint64_t value,un
 }
 inline std::uint64_t MinimalGuest::device_read(std::uint64_t address,unsigned size) {
   auto& m=machine_;
+  if(m.pci.enabled&&((address>=GuestPciState::ecam&&address<GuestPciState::ecam+GuestPciState::ecam_size)||(address>=GuestPciState::mmio&&address<GuestPciState::mmio+GuestPciState::mmio_size)))return pci_read(address,size);
   if(address>=MachineState::uart_base&&address<MachineState::uart_base+4096){
     const auto offset=unsigned(address-MachineState::uart_base);
     if(offset==0){if(m.receive.empty())return 0;const auto value=std::uint8_t(m.receive.front());m.receive.erase(0,1);return value;}
@@ -170,6 +177,7 @@ inline std::uint64_t MinimalGuest::device_read(std::uint64_t address,unsigned si
 }
 inline void MinimalGuest::device_write(std::uint64_t address,std::uint64_t value,unsigned size,RunResult& result) {
   auto& m=machine_;
+  if(m.pci.enabled&&((address>=GuestPciState::ecam&&address<GuestPciState::ecam+GuestPciState::ecam_size)||(address>=GuestPciState::mmio&&address<GuestPciState::mmio+GuestPciState::mmio_size))){pci_write(address,value,size);return;}
   if(address>=MachineState::uart_base&&address<MachineState::uart_base+4096){
     const auto offset=unsigned(address-MachineState::uart_base);
     if(offset==0){require(result.output.size()+result.error_output.size()<max_output,"Serial output budget exceeded");result.output.push_back(char(value&255));return;}

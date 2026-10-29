@@ -253,6 +253,13 @@ jobs:
             adb shell am force-stop com.reversepc.control.workbench
             adb shell am instrument -w -e mode armFloatRestore com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee guest-evidence/android-fp-restore.txt
             grep 'WORKBENCH_TESTS_OK mode=armFloatRestore ' guest-evidence/android-fp-restore.txt
+            adb shell am instrument -w -e mode armGraphics com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee guest-evidence/android-pci-graphics.txt
+            grep 'WORKBENCH_TESTS_OK mode=armGraphics ' guest-evidence/android-pci-graphics.txt
+            adb shell am force-stop com.reversepc.control.workbench
+            adb shell am instrument -w -e mode armGraphicsRestore com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee guest-evidence/android-pci-graphics-restore.txt
+            grep 'WORKBENCH_TESTS_OK mode=armGraphicsRestore ' guest-evidence/android-pci-graphics-restore.txt
+            adb exec-out run-as com.reversepc.control.workbench cat files/graphics-frame.png > guest-evidence/graphics-frame.png
+            adb exec-out run-as com.reversepc.control.workbench cat files/graphics-proof.json > guest-evidence/graphics-proof.json
             adb shell am instrument -w -e mode guestContinuous com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee guest-evidence/android-continuous.txt
             grep 'WORKBENCH_TESTS_OK mode=guestContinuous ' guest-evidence/android-continuous.txt
             adb shell -T "run-as com.reversepc.control.workbench sh -c 'cat > files/large-guest-input.rvg'" < large-input/current.rvg
@@ -281,3 +288,4 @@ jobs:
             guest-dist/
             guest-evidence/
           retention-days: 14
+

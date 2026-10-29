@@ -5,6 +5,7 @@
 #include "minimal_guest_system_demo.hpp"
 #include "minimal_guest_fp_demo.hpp"
 #include "guest_file_session.hpp"
+#include "minimal_guest_pci_demo.hpp"
 #include <jni.h>
 #include <exception>
 #include <limits>
@@ -128,6 +129,7 @@ Java_com_reversepc_os_NativeRuntime_guestInitializeSystem(JNIEnv* e,jclass,jbyte
     else if(kind==1)guest.load_elf(bytes(e,image),true);
     else if(kind==2)guest.load_linux_image(bytes(e,image));
     else if(kind==3){reverse_pc::guest::require(!image,"Built-in FP check does not accept an image");guest.load_elf(reverse_pc::guest::fp_demo_elf());}
+    else if(kind==4){reverse_pc::guest::require(!image,"Built-in graphics check does not accept an image");guest.load_linux_image(reverse_pc::guest::pci_graphics_witness_image(),{},"console=ttyAMA0",nullptr,true);guest.enable_adaptive_memory();}
     else throw std::invalid_argument("Unsupported system image kind");
     return output(e,guest_packet(guest));
   }catch(const std::exception& x){throw_java(e,x);return nullptr;}
@@ -166,3 +168,20 @@ Java_com_reversepc_os_NativeRuntime_guestFileOperation(JNIEnv* e,jclass,jstring 
     return output(e,std::vector<std::uint8_t>(report.begin(),report.end()));
   }catch(const std::exception& x){throw_java(e,x);return nullptr;}
 }
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_guestFileDevices(JNIEnv* e,jclass,jstring input,jstring candidate,
+                                                   jint operation,jint steps,jstring text,jstring disk_path){
+  try{
+    reverse_pc::guest::require(operation>=0&&operation<=6&&steps>=0,"Invalid device file request");
+    static std::mutex cache_mutex;static std::string cached_path;
+    static std::shared_ptr<const reverse_pc::guest::GuestBlockImage> cached_disk;
+    const auto path=disk_path?source(e,disk_path):std::string{};
+    std::shared_ptr<const reverse_pc::guest::GuestBlockImage> disk;
+    {std::lock_guard<std::mutex> lock(cache_mutex);if(path!=cached_path){auto next=path.empty()?nullptr:reverse_pc::guest::GuestBlockImage::open(path);cached_disk=std::move(next);cached_path=path;}disk=cached_disk;}
+    std::string report;
+    if(operation==6){reverse_pc::guest::require(bool(disk),"No disk selected");report="{\"ok\":true,\"disk_bytes\":"+std::to_string(disk->size())+",\"disk_sha256\":"+reverse_pc::guest::quote(disk->sha256())+"}";}
+    else report=reverse_pc::guest::guest_file_operation(source(e,input),candidate?source(e,candidate):std::string{},unsigned(operation),unsigned(steps),text?source(e,text):std::string{},disk);
+    return output(e,std::vector<std::uint8_t>(report.begin(),report.end()));
+  }catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+

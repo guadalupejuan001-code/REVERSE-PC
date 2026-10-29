@@ -15,11 +15,12 @@ const extras={1:4,2:0,3:12,4:12,5:12,6:8,7:0,8:0,9:0,10:0,11:0,12:0,13:8,14:4,15
 export function observeAndroidKernel(bytes,expectedCheckpointSha){
  const originalSha=createHash('sha256').update(bytes).digest('hex');
  const provenance=auditGkiRvg(bytes,KERNEL,expectedCheckpointSha);
- check(provenance.rvi_version==='RVI2'&&provenance.bootargs.split(' ').includes('nokaslr'),'observer profile requires the pinned nonrelocated Android boot');
+ check(['RVI2','RVI3'].includes(provenance.rvi_version)&&provenance.bootargs.split(' ').includes('nokaslr'),'observer profile requires the pinned nonrelocated Android boot');
  const u=i=>bytes.readBigUInt64LE(8+i*8), fields=provenance.rvg_version==='RVG3'?44:43;
  const imageAt=8+fields*8, imageBytes=Number(u(39)),coreBytes=Number(u(40)),memoryBytes=Number(u(41));
- const kernel=bytes.subarray(imageAt+40,imageAt+40+provenance.kernel_bytes);
- const rdAt=imageAt+40+provenance.kernel_bytes+provenance.dtb_bytes;
+ const imageHeader=provenance.rvi_version==='RVI3'?48:40;
+ const kernel=bytes.subarray(imageAt+imageHeader,imageAt+imageHeader+provenance.kernel_bytes);
+ const rdAt=imageAt+imageHeader+provenance.kernel_bytes+provenance.dtb_bytes;
  const rd=bytes.subarray(rdAt,rdAt+provenance.initrd_bytes);
  const dtb=bytes.subarray(rdAt-provenance.dtb_bytes,rdAt);
  const kernelAddress=RAM+kernel.readBigUInt64LE(8);

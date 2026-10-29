@@ -17,4 +17,6 @@ public final class NativeRuntime {
     public static native byte[] guestXi(byte[] state,String deltaProgram);
     public static native byte[] guestInput(byte[] state,String text);
     public static native byte[] guestFileOperation(String input,String candidate,int operation,int steps,String text);
+    public static native byte[] guestFileDevices(String input,String candidate,int operation,int steps,String text,String diskPath);
 }
+

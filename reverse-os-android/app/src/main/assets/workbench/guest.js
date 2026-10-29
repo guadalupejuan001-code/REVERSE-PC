@@ -1,5 +1,5 @@
 'use strict';
-const guestUi={snapshot:null,busy:false,error:'',output:'',draft:'mem_read 1073778696\n',steps:1000,input:'',running:false};
+const guestUi={snapshot:null,busy:false,error:'',output:'',draft:'mem_read 1073778696\n',steps:1000,input:'',running:false,frame:null,frameNumber:-1};
 function refreshGuestViews(){for(const w of state.windows)if(w.app==='xi'&&w.xiTab==='arm64')renderWindowContent(w);}
 function guestHTML(){
   if(nativeAvailable&&!guestUi.snapshot&&!guestUi.busy&&!guestUi.error)queueMicrotask(()=>guestOperation('guestInspect'));
@@ -13,7 +13,9 @@ function guestHTML(){
   return '<div class="programs-layout guest-layout"><span class="eyebrow">XI / ETHER · COMPATIBILIDAD</span><h2>ARM64 en REVERSE</h2>'+
     '<p class="guest-boundary">Extensión del ejecutor de REVERSE con memoria XI/Ether. Android y Wild Rift todavía no arrancan.</p>'+
     '<div class="program-actions"><button class="primary-button" data-guest="system"'+disabled+'>Comprobar modo de sistema</button><button class="secondary-button" data-guest="float"'+disabled+'>Comprobar FP/SIMD</button><button class="secondary-button" data-guest="demo"'+disabled+'>Prueba 6×7</button><button class="secondary-button" data-guest="import"'+disabled+'>Importar ELF</button><button class="secondary-button" data-guest="system-elf"'+disabled+'>ELF de sistema</button><button class="secondary-button" data-guest="linux"'+disabled+'>Importar Linux Image</button><button class="secondary-button" data-guest="checkpoint"'+disabled+'>Importar checkpoint</button><button class="secondary-button" data-guest="inspect"'+disabled+'>Consultar</button></div>'+
+    '<div class="program-actions"><button class="secondary-button" data-guest="graphics"'+disabled+'>Comprobar gráfica PCI</button><button class="secondary-button" data-guest="disk"'+disabled+'>Adjuntar disco GPT</button><button class="secondary-button" data-guest="display"'+(!g||guestUi.busy?' disabled':'')+'>Ver pantalla</button></div>'+
     '<p class="rxe-status" role="status">'+esc(guestUi.error||(guestUi.busy?(guestUi.running?'Ejecutando y guardando el avance…':'Procesando y guardando el invitado…'):guestUi.running?'Continuando el invitado…':nativeAvailable?'La sesión se conserva al cerrar la ventana.':'Abre REVERSE en Android para ejecutar el invitado.'))+'</p>'+details+
+    (guestUi.frame?'<figure><img src="'+esc(guestUi.frame)+'" alt="Salida gráfica del invitado" style="display:block;width:100%;max-width:640px;height:auto;image-rendering:pixelated"><figcaption>Salida gráfica del invitado. La comprobación PCI no inicia Android.</figcaption></figure>':'')+
     '<p class="guest-note">La RAM vacía se describe con una regla. El programa y sus cambios sí consumen memoria física; la RAM lógica no mide la RAM disponible del teléfono.</p>'+
     '<div class="program-actions"><label>Pasos <input class="guest-steps" type="number" min="1" max="10000" value="'+guestUi.steps+'" aria-label="Pasos del invitado"'+disabled+'></label><button class="primary-button" data-guest="run"'+(guestUi.busy||guestUi.running||!g||g.halted?' disabled':'')+'>Ejecutar bloque</button><button class="primary-button" data-guest="continuous"'+(!guestUi.running&&(guestUi.busy||!g||g.halted)?' disabled':'')+'>'+(guestUi.running?'Pausar al guardar':'Continuar arranque')+'</button><button class="secondary-button" data-guest="export"'+(guestUi.busy||guestUi.running||!g?' disabled':'')+'>Exportar checkpoint</button></div>'+
     '<pre class="rxe-output" aria-label="Salida del invitado">'+esc(guestUi.output||'La salida aparecerá cuando el programa la produzca.')+'</pre>'+
@@ -25,12 +27,15 @@ async function guestOperation(operation,payload=''){
   if(!nativeAvailable){guestUi.error='Esta función necesita la aplicación Android.';refreshGuestViews();return;}
   guestUi.busy=true;guestUi.error='';refreshGuestViews();
   try{
-    const response=await nativeRequest(operation,payload);guestUi.snapshot=response;
-    if(operation==='guestDemo'||operation==='guestSystem'||operation==='guestFloat')guestUi.output='';
+    const response=await nativeRequest(operation,payload);
+    if(operation==='guestDisplay'){guestUi.frame=response.display_ready?response.frame_png:null;guestUi.frameNumber=response.guest?.display_frame??-1;}
+    else guestUi.snapshot=response;
+    if(['guestDemo','guestSystem','guestFloat','guestGraphics'].includes(operation)){guestUi.output='';guestUi.frame=null;guestUi.frameNumber=-1;}
     if(response.stdout!==undefined||response.stderr!==undefined)guestUi.output=(guestUi.output+(response.stdout||'')+(response.stderr||'')).slice(-65536);
     if(response.xi_output!==undefined)guestUi.output=response.xi_output;
   }catch(error){guestUi.error=error.message;}
   finally{guestUi.busy=false;refreshGuestViews();}
+  if(operation!=='guestDisplay'&&!guestUi.error&&guestUi.snapshot?.guest?.display_width>0&&guestUi.snapshot.guest.display_frame!==guestUi.frameNumber)await guestOperation('guestDisplay');
 }
 async function continueGuest(){
   if(guestUi.running){guestUi.running=false;refreshGuestViews();return;}
@@ -47,7 +52,7 @@ async function continueGuest(){
 }
 window.ReverseGuest={cancelImport(){guestUi.busy=false;refreshGuestViews();},pause(){guestUi.running=false;refreshGuestViews();},imported(response){
   guestUi.running=false;guestUi.busy=false;
-  if(response.ok){guestUi.snapshot=response;guestUi.error='';guestUi.output='';}
+  if(response.ok){guestUi.snapshot=response;guestUi.error='';guestUi.output='';guestUi.frame=null;guestUi.frameNumber=-1;}
   else guestUi.error=response.error||'Archivo rechazado.';
   refreshGuestViews();
 }};
@@ -59,7 +64,7 @@ document.addEventListener('input',event=>{
 document.addEventListener('click',event=>{
   const button=event.target.closest('[data-guest]');if(!button||button.disabled)return;
   const action=button.dataset.guest;
-  if(action==='demo'||action==='system'||action==='float'||action==='import'||action==='system-elf'||action==='linux'||action==='checkpoint'){
+  if(action==='demo'||action==='system'||action==='float'||action==='graphics'||action==='import'||action==='system-elf'||action==='linux'||action==='checkpoint'){
     if(guestUi.snapshot?.loaded&&!confirm('Esto reemplazará el invitado guardado. Exporta su checkpoint antes si deseas conservarlo. ¿Continuar?'))return;
     if(['import','system-elf','linux','checkpoint'].includes(action)){
       if(!nativeAvailable){guestUi.error='Esta función necesita la aplicación Android.';refreshGuestViews();return;}
@@ -69,10 +74,13 @@ document.addEventListener('click',event=>{
     else if(action==='demo')guestOperation('guestDemo');
     else if(action==='system')guestOperation('guestSystem');
     else if(action==='float')guestOperation('guestFloat');
+    else if(action==='graphics')guestOperation('guestGraphics');
     else if(action==='linux'&&typeof window.ReverseNative?.importLinuxImage==='function')window.ReverseNative.importLinuxImage();
     else if(action==='system-elf'&&typeof window.ReverseNative?.importSystemElf==='function')window.ReverseNative.importSystemElf();
     else if(typeof window.ReverseNative?.importGuestElf==='function')window.ReverseNative.importGuestElf();
   }
+  if(action==='disk'&&typeof window.ReverseNative?.importGuestDisk==='function'){guestUi.busy=true;guestUi.error='';refreshGuestViews();window.ReverseNative.importGuestDisk();}
+  if(action==='display')guestOperation('guestDisplay');
   if(action==='continuous')continueGuest();
   if(action==='inspect')guestOperation('guestInspect');
   if(action==='run')guestOperation('guestRun',JSON.stringify({steps:guestUi.steps}));
@@ -82,3 +90,4 @@ document.addEventListener('click',event=>{
 });
 
 document.addEventListener('visibilitychange',()=>{if(document.hidden)window.ReverseGuest.pause();});
+

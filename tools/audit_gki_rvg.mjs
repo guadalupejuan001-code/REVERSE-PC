@@ -24,7 +24,7 @@ export function auditGkiRvg(bytes,expectedKernelSha,expectedRvgSha) {
   const read = i => safe(bytes.readBigUInt64LE(8+i*8),'RVG field '+i);
   const imageBytes=read(39),coreBytes=read(40),memoryBytes=read(41);
   const systemBytes=read(42),fpBytes=version==='RVG3'?read(43):0;
-  check(systemBytes>0&&systemBytes<=8192&&fpBytes<=532,
+  check(systemBytes>0&&systemBytes<=262144&&fpBytes<=532,
     'system/fp section invalid');
   check(imageBytes>=32&&imageBytes<=128*1024*1024,
     'RVI image bytes exceed 128 MiB');
@@ -33,24 +33,25 @@ export function auditGkiRvg(bytes,expectedKernelSha,expectedRvgSha) {
     BigInt(bytes.length),'RVG section extents invalid');
   const image=bytes.subarray(offset,offset+imageBytes);
   check(image.subarray(0,3).equals(Buffer.from('RVI')) &&
-    (image[3]===49||image[3]===50) &&
+    (image[3]===49||image[3]===50||image[3]===51) &&
     image.subarray(4,8).equals(Buffer.from([13,10,26,10])),
     'RVI1/RVI2 header invalid');
-  const extended=image[3]===50;
-  const header=extended?40:32;
+  const pci=image[3]===51,extended=image[3]!==49;
+  const header=pci?48:extended?40:32;
   check(image.length>=header,'RVI2 extended header truncated');
   const kernelBytes=safe(image.readBigUInt64LE(8),'kernel bytes');
   const treeBytes=safe(image.readBigUInt64LE(16),'FDT bytes');
   const initrdBytes=safe(image.readBigUInt64LE(24),'initrd bytes');
   const bootargsBytes=extended?safe(image.readBigUInt64LE(32),'bootargs bytes'):0;
+  const deviceBytes=pci?safe(image.readBigUInt64LE(40),'device bytes'):0;
   check(kernelBytes>=64&&kernelBytes<=64*1024*1024&&
     treeBytes<=65536&&initrdBytes<=64*1024*1024&&
-    (!extended||(bootargsBytes>0&&bootargsBytes<=1024)),
+    (!extended||((pci||bootargsBytes>0)&&bootargsBytes<=1024))&&deviceBytes===(pci?80:0),
     'RVI payload limits exceeded');
-  check(header+kernelBytes+treeBytes+initrdBytes+bootargsBytes===imageBytes,
+  check(header+kernelBytes+treeBytes+initrdBytes+bootargsBytes+deviceBytes===imageBytes,
     'RVI1/RVI2 section extents invalid');
   const kernel=image.subarray(header,header+kernelBytes);
-  const args=image.subarray(header+kernelBytes+treeBytes+initrdBytes);
+  const args=image.subarray(header+kernelBytes+treeBytes+initrdBytes,header+kernelBytes+treeBytes+initrdBytes+bootargsBytes);
   check(!extended||args.every(b=>b>=32&&b<=126),
     'RVI2 bootargs not printable ASCII');
   const bootargs=extended?args.toString('ascii'):null;
@@ -75,7 +76,9 @@ export function auditGkiRvg(bytes,expectedKernelSha,expectedRvgSha) {
     status:'read_only_provenance_verified',
     kernel_sha256:kernelSha,checkpoint_sha256:rvgSha,
     rvg_version:version,checkpoint_bytes:bytes.length,
-    rvi_version:extended?'RVI2':'RVI1',
+    rvi_version:pci?'RVI3':extended?'RVI2':'RVI1',
+    external_disk_bytes:pci?safe(image.readBigUInt64LE(imageBytes-deviceBytes+8),'disk bytes'):0,
+    external_disk_sha256:pci?image.subarray(imageBytes-64).toString('ascii'):null,
     bootargs_sha256:extended?sha256(args):null,
     bootargs_bytes:bootargsBytes,bootargs,
     instructions:read(4),kernel_bytes:kernelBytes,

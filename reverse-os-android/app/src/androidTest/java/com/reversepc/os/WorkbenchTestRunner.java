@@ -277,6 +277,30 @@ public final class WorkbenchTestRunner extends Instrumentation {
         require(js("document.querySelector('[data-program-input]').value.includes('Prueba á ñ')").equals("true"),"Dismiss lost the draft");
         require(js("JSON.stringify({w:getWindow(activeId).w,h:getWindow(activeId).h,x:getWindow(activeId).x,y:getWindow(activeId).y})").equals(frame),"Keyboard changed the saved frame");
     }
+    private void graphicsWorkflow(boolean restore)throws Exception{
+        openGuestView();
+        JSONObject saved;
+        if(!restore){
+            RuntimeExecutor.INSTANCE.submit(()->{try{byte[] raw=new byte[32768];raw[0]=0x37;raw[8192]=0x42;JSONObject imported=new GuestStore(getTargetContext()).importDisk(new java.io.ByteArrayInputStream(raw));JSONObject disk=imported.getJSONObject("disk_attached");require(disk.getLong("disk_bytes")==raw.length&&disk.getString("disk_sha256").equals(digest(raw)),"Disk catalog did not retain verified content identity");require(Arrays.equals(Files.readAllBytes(dataFile("guest-disks/"+disk.getString("disk_sha256")+".raw").toPath()),raw),"Sparse disk import changed bytes");return true;}catch(Exception error){throw new RuntimeException(error);}}).get(60,TimeUnit.SECONDS);
+            JSONObject created=op("guestGraphics","","graphicsCreated");require(created.getJSONObject("guest").getBoolean("pci_bus"),"Graphics test did not select the PCI board");
+            saved=op("guestRun","{\"steps\":1000}","graphicsRan");
+            require(saved.getJSONObject("guest").getBoolean("halted")&&saved.getString("stdout").equals("REVERSE: PCI GPU 2D OK\n"),"Actual AArch64 graphics program did not finish");
+        }else saved=op("guestInspect","","graphicsRan");
+        require(saved.getJSONObject("guest").getInt("display_width")==96&&saved.getJSONObject("guest").getInt("display_height")==64,"Wrong persisted GPU dimensions");
+        String before=hash("guest-aarch64.rvg");JSONObject frame=op("guestDisplay","","graphicsFrame");require(frame.getBoolean("display_ready"),"Native display is empty");
+        String encoded=frame.getString("frame_png");require(encoded.startsWith("data:image/png;base64,"),"Display was not encoded as a real PNG");
+        byte[] png=android.util.Base64.decode(encoded.substring(encoded.indexOf(',')+1),android.util.Base64.DEFAULT);
+        Bitmap bitmap=android.graphics.BitmapFactory.decodeByteArray(png,0,png.length);
+        require(bitmap!=null&&bitmap.getWidth()==96&&bitmap.getHeight()==64,"PNG does not contain the native dimensions");
+        require(bitmap.getPixel(0,0)==0xffff4040&&bitmap.getPixel(95,0)==0xff40ff80&&bitmap.getPixel(0,63)==0xff4080ff&&bitmap.getPixel(95,63)==0xffffffff,"Android display pixels differ from actual guest VRAM");bitmap.recycle();
+        require(hash("guest-aarch64.rvg").equals(before),"Displaying pixels mutated the guest checkpoint");
+        Files.write(dataFile("graphics-frame.png").toPath(),png);
+        if(!restore)Files.write(dataFile("graphics-proof.json").toPath(),new JSONObject().put("state_sha256",before).put("gpu_2d",true).put("cpu_program_instructions",saved.getJSONObject("guest").getLong("instructions")).put("android_boot",false).toString().getBytes(StandardCharsets.UTF_8));
+        else require(new JSONObject(new String(Files.readAllBytes(dataFile("graphics-proof.json").toPath()),StandardCharsets.UTF_8)).getString("state_sha256").equals(before),"Graphics did not survive process restart");
+        js("guestUi.snapshot=window.graphicsRan;guestUi.frame=window.graphicsFrame.frame_png;guestUi.frameNumber=window.graphicsFrame.guest.display_frame;refreshGuestViews();true");
+        waitJs("document.querySelector('img[alt=\"Salida gráfica del invitado\"]')?.complete&&document.querySelector('img[alt=\"Salida gráfica del invitado\"]').naturalWidth===96");
+        js("document.querySelector('img[alt=\"Salida gráfica del invitado\"]').scrollIntoView({block:'center'});true");
+    }
     private void desktopShellWorkflow(String requested,JSONObject snapshot)throws Exception{
         boolean restore=requested.equals("restore")||requested.equals("boot")||requested.equals("legacy")||requested.equals("upgrade");
         boolean upgrade=requested.equals("upgrade");
@@ -479,6 +503,10 @@ public final class WorkbenchTestRunner extends Instrumentation {
                 visualCheck(requested);
                 result.putString("stream","WORKBENCH_TESTS_OK mode="+requested+" ");result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
             }
+            if(requested.equals("armGraphics")||requested.equals("armGraphicsRestore")){
+                graphicsWorkflow(requested.equals("armGraphicsRestore"));visualCheck(requested);
+                result.putString("stream","WORKBENCH_TESTS_OK mode="+requested+" integration=XI pci=virtio-gpu pixels=verified android-boot=not-implemented\n");result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
+            }
             if(requested.equals("armFloat")||requested.equals("armFloatRestore")){
                 floatingWorkflow(requested.equals("armFloatRestore"));visualCheck(requested);
                 result.putString("stream","WORKBENCH_TESTS_OK mode="+requested+" integration=XI fp=ARM64 SIMD state=RVG3 qubits=4096\n");
@@ -543,3 +571,4 @@ public final class WorkbenchTestRunner extends Instrumentation {
         }
     }
 }
+
