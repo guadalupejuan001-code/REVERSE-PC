@@ -176,6 +176,9 @@ jobs:
           adb shell am force-stop com.reversepc.control.workbench
           timeout 240s adb shell am instrument -w -e mode orientation com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee evidence/android-orientation.txt
           grep 'WORKBENCH_TESTS_OK mode=orientation' evidence/android-orientation.txt
+          adb shell am force-stop com.reversepc.control.workbench
+          timeout 200s adb shell am instrument -w -e mode velocity com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee evidence/android-velocity.txt
+          grep 'WORKBENCH_TESTS_OK mode=velocity' evidence/android-velocity.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:

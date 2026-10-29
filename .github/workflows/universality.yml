@@ -29,12 +29,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: guadalupejuan001-code/mundo-X
-          ref: e2778d962af22f6f1a0794058dd4685fc2573966
+          ref: 1f925786522aba91f72707ad1638a8edcdd31a8f
           path: deps/mundo-x
           persist-credentials: false
       - name: Confirm canonical upstream is pinned
         run: |
-          test "$(git -C deps/mundo-x rev-parse HEAD)" = e2778d962af22f6f1a0794058dd4685fc2573966
+          test "$(git -C deps/mundo-x rev-parse HEAD)" = 1f925786522aba91f72707ad1638a8edcdd31a8f
           test -f deps/mundo-x/native/include/mundo_x/exact_t_experiment.hpp
       - name: Compile independent C++ research executable
         run: |
