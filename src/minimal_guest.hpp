@@ -697,6 +697,35 @@ inline void MinimalGuest::step(RunResult& result) {
     if(instruction&0x00400000)set(rd,cpu_read(address,size,result),size==8?64:32);
     else cpu_write(address,reg(rd),size,result);
   }
+  else if ((instruction&0xbfa00000)==0x88200000) { // LDXP/LDAXP/STXP/STLXP
+    require(machine_.enabled,"Exclusive pair instructions require system mode");
+    const bool load=instruction&0x00400000;
+    const unsigned size=(instruction&0x40000000)?8:4,total=2*size;
+    const unsigned second=(instruction>>10)&31,status=(instruction>>16)&31;
+    if((load&&(status!=31||rd==second))||
+       (!load&&(status==rd||status==second||(rn!=31&&status==rn))))unsupported();
+    const auto address=reg(rn,64,true);
+    if(address&(total-1))
+      throw MachineFault{(std::uint64_t(machine_.el?0x25:0x24)<<26)|
+                         (1u<<25)|(load?0u:64u)|0x21,address};
+    // Validate the entire pair before publishing either register or byte.
+    // The same XI/Ether authority owns both halves; there is no pair RAM.
+    const auto physical=resolve_access(address,total,!load);
+    if(load){
+      const auto first=read(physical[0],size),last=read(physical[size],size);
+      set(rd,first,size==8?64:32);set(second,last,size==8?64:32);
+      machine_.exclusive_address=physical[0];machine_.exclusive_size=total;
+    }else{
+      const bool success=machine_.exclusive_size==total&&
+                         machine_.exclusive_address==physical[0];
+      const auto first=reg(rd),last=reg(second);
+      if(success){cpu_write(address,first,size,result);cpu_write(address+size,last,size,result);}
+      set(status,success?0:1,32);
+      machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;
+    }
+    // Acquire/release variants retain program order in this coherent,
+    // synchronous single-core machine, as do the existing LDAR/STLR paths.
+  }
   else if ((instruction&0x3f207c00)==0x08007c00) { // LDXR/LDAXR/STXR/STLXR, single register
     require(machine_.enabled,"Exclusive instructions currently require system mode");
     const unsigned size=1u<<(instruction>>30),status=(instruction>>16)&31;const auto address=reg(rn,64,true);

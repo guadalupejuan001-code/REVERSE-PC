@@ -71,6 +71,70 @@ void exclusives(){
   guest.apply_xi_delta("mem_store 1073758208 99\n");guest.run(100);
   check(guest.registers().x[2]==1&&guest.registers().x[5]==99,"XI write did not invalidate the same exclusive monitor");
 }
+void exclusive_pairs(){
+  const auto fixture=[](bool wide,bool acquire,bool release,bool clear,std::uint64_t address=0x40004000){
+    const unsigned size=wide?8:4;
+    const std::uint32_t load=(wide?0xc87f06c0u:0x887f06c0u)|(acquire?0x8000u:0u);
+    const std::uint32_t store=(wide?0xc82a12c9u:0x882a12c9u)|(release?0x8000u:0u);
+    std::vector<std::uint32_t> code{
+      0xd2800016u|std::uint32_t((address&65535)<<5),
+      0xf2a00016u|std::uint32_t(((address>>16)&65535)<<5),
+      0xd2800229u,0xd2800444u,load // X9=17, X4=34
+    };
+    if(clear)code.push_back(0xd5033f5fu);
+    code.push_back(store);code.push_back(0x2a0a03ebu);code.push_back(store);
+    auto image=system_demo_elf();image.resize(256);
+    for(auto op:code)put(image,op,4);
+    for(unsigned i=0;i<8;++i){
+      image[96+i]=std::uint8_t(std::uint64_t(code.size()*4)>>(i*8));image[104+i]=image[96+i];
+    }
+    MinimalGuest g(128*1024*1024);g.load_elf(image,true);
+    g.write(0x40004000,wide?UINT64_C(0x1122334455667788):UINT64_C(0x87654321),size);
+    g.write(0x40004000+size,wide?UINT64_C(0x99aabbccddeeff00):UINT64_C(0xfedcba98),size);
+    return g;
+  };
+  for(bool wide:{false,true})for(bool acquire:{false,true})for(bool release:{false,true}){
+    const unsigned size=wide?8:4;auto g=fixture(wide,acquire,release,false);g.run(5);
+    check(g.registers().x[0]==(wide?UINT64_C(0x1122334455667788):UINT64_C(0x87654321))&&
+          g.registers().x[1]==(wide?UINT64_C(0x99aabbccddeeff00):UINT64_C(0xfedcba98)),
+          "Exclusive pair load order or 32-bit zero extension failed");
+    check(g.machine().exclusive_address==0x40004000&&g.machine().exclusive_size==2*size,
+          "Exclusive pair did not reserve the exact physical extent");
+    check(g.machine().save()[0]==(wide?4:2),"Exclusive monitor checkpoint version is wrong");
+    const auto before=g.snapshot();auto resumed=MinimalGuest::from_snapshot(before);
+    check(resumed.snapshot()==before,"Live pair monitor was lost during RVG restore");
+    auto direct=g;direct.run(1);resumed.run(1);
+    check(direct.snapshot()==resumed.snapshot(),"Resumed exclusive pair differs from direct execution");
+    check(direct.registers().x[10]==0&&direct.read(0x40004000,size)==17&&
+          direct.read(0x40004000+size,size)==34,"Exclusive pair successful store was not complete");
+    check(direct.machine().exclusive_size==0&&direct.machine().save()[0]==2,
+          "Completed exclusive pair retained a monitor or changed legacy state");
+    direct.run(2);
+    check(direct.registers().x[11]==0&&direct.registers().x[10]==1&&
+          direct.read(0x40004000,size)==17&&direct.read(0x40004000+size,size)==34,
+          "A second store without a new pair reservation succeeded");
+    check(g.snapshot()==before,"Pair execution mutated its source snapshot");
+  }
+  auto clear=fixture(true,false,true,true);clear.run(5);clear.run(1);
+  check(clear.machine().exclusive_size==0,"CLREX failed to clear a 16-byte reservation");
+  clear.run(1);check(clear.registers().x[10]==1&&clear.read(0x40004000,8)==UINT64_C(0x1122334455667788),
+    "CLREX did not prevent a paired store");
+  auto external=fixture(true,false,true,false);external.run(5);
+  external.apply_xi_delta("mem_store 1073758208 99\n");
+  const auto changed=external.read(0x40004000,8);external.run(1);
+  check(external.registers().x[10]==1&&external.read(0x40004000,8)==changed&&
+        external.read(0x40004008,8)==UINT64_C(0x99aabbccddeeff00),
+        "An XI write did not invalidate the same paired exclusive monitor");
+  auto unaligned=fixture(true,false,false,false,0x40004008);unaligned.run(4);
+  const auto memory=unaligned.runtime().memory_persistent_snapshot();
+  unaligned.run(1);
+  check(unaligned.machine().exceptions==1&&(unaligned.machine().esr&63)==0x21&&
+        unaligned.machine().far==0x40004008&&unaligned.machine().exclusive_size==0&&
+        unaligned.runtime().memory_persistent_snapshot()==memory,
+        "Unaligned pair failed to take an atomic alignment fault");
+  auto live=fixture(true,false,false,false);live.run(5);auto forged=live.machine().save();
+  forged[0]=2;fails([&]{MachineState::restore(forged);},"Legacy machine version accepted a 16-byte reservation");
+}
 void lazy_ram_range_error_parity(){
   // Same exact permitted range, fault type and diagnostic text. No change to
   // the single QuantumRuntime/InverseMemory byte authority.
@@ -458,11 +522,14 @@ void android_mmfr3_real_opcode() {
   check(restored.snapshot()==one.snapshot(),
         "ID_AA64MMFR3 replay through RVG changed guest state");
 }
-void android_isar3_real_opcode() {
-  // Actual Cuttlefish build 16644040 stop: 65,788,352 instructions,
-  // PC 0xffffffc0804007a8, MRS X8, S3_0_C0_C6_3 (0xd5380668).
+void android_baseline_identification_opcodes() {
+  // Actual instructions in the byte-pinned Cuttlefish CPU-info routine:
+  // ISAR3 at +0x4007a8, MMFR4 at +0x4007d0, PFR2 at +0x4007e8,
+  // FPFR0 at +0x400800. Test each named identification read, never a
+  // blanket "unknown registers read zero" fallback.
+  for(const std::uint32_t opcode:{0xd5380668u,0xd5380788u,0xd5380448u,0xd53804e8u}){
   auto image=system_demo_elf();image.resize(256);
-  const std::uint32_t code[]{0xd28000e8u,0xd5380668u,0xd503201fu};
+  const std::uint32_t code[]{0xd28000e8u,opcode,0xd503201fu};
   for(auto instruction:code)put(image,instruction,4);
   for(unsigned i=0;i<8;++i){
     image[96+i]=std::uint8_t(std::uint64_t(sizeof(code))>>(8*i));
@@ -497,20 +564,21 @@ void android_isar3_real_opcode() {
     const auto state=reject.snapshot();fails([&]{reject.run(1);},message);
     check(reject.snapshot()==state,"Rejected ISAR3/unknown access was not atomic");
   };
-  reject_opcode(0xd5180668u,"Read-only ISAR3 accepted a system register write");
+  reject_opcode(opcode&~UINT32_C(0x00200000),"Read-only identification register accepted a write");
   reject_opcode(0xd53806e8u,"Unimplemented adjacent ID register became readable");
 
   // An EL0 MRS must still take the existing architectural undefined trap.
   auto user=initial();for(unsigned i=0;i<150&&user.machine().el;++i)user.run(1);
   check(user.machine().el==0,"ISAR3 privilege witness did not reach EL0");
   const auto pc=user.registers().pc;
-  user.write(user.physical_address(pc,false,true),0xd5380668u,4);
+  user.write(user.physical_address(pc,false,true),opcode,4);
   const auto count=user.machine().exceptions;const auto x8=user.registers().x[8];
   user.run(1);
   check(user.machine().el==1&&user.machine().exceptions==count+1&&
         user.machine().elr==pc&&user.machine().esr==(UINT64_C(1)<<25)&&
         user.registers().x[8]==x8,
         "EL0 gained privileged ISAR3 access instead of taking the undefined trap");
+  }
 }
 void identification(){
   auto image=system_demo_elf();image.resize(260);const std::uint32_t instruction=0xd53800c0; // MRS X0,REVIDR_EL1
@@ -570,6 +638,6 @@ void interrupt_priority_initialization(){
   check(guest.snapshot()==before,"Rejected APR write changed CPU/device state");
 }
 }
-int main(){try{boot_and_restore();translation();shared_quantum_authority();exclusives();lazy_ram_range_error_parity();image_boot_protocol();android_bootargs_snapshot_profile();large_linux_gki_loader_budget();cross_page_access();unprivileged_memory_access();eret_ssbs_saved_status();speculative_data_barrier();android_mmfr3_real_opcode();android_isar3_real_opcode();identification();uart_fifo_configuration();interrupt_priority_initialization();
+int main(){try{boot_and_restore();translation();shared_quantum_authority();exclusives();exclusive_pairs();lazy_ram_range_error_parity();image_boot_protocol();android_bootargs_snapshot_profile();large_linux_gki_loader_budget();cross_page_access();unprivileged_memory_access();eret_ssbs_saved_status();speculative_data_barrier();android_mmfr3_real_opcode();android_baseline_identification_opcodes();identification();uart_fifo_configuration();interrupt_priority_initialization();
   std::cout<<"{\"checks\":"<<checks<<",\"system\":\"own-EL1-MMU-IRQ-EL0-SVC\",\"existing_quantum_qubits\":4096,\"android_boot\":\"not_implemented\"}\n";return 0;
 }catch(const std::exception& error){std::cerr<<error.what()<<'\n';return 1;}}

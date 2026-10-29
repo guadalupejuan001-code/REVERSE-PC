@@ -213,6 +213,12 @@ inline std::uint64_t MinimalGuest::system_read(unsigned id) const {
   // or newer ISAR3 extensions in this baseline CPU. Keep EL0 access rejected
   // by the privilege check above; the read does not add instruction support.
   if(id==guest_sysreg(3,0,0,6,3))return 0;
+  // Exact additional reads in the same genuine Android CPU-info routine:
+  // PFR2: no FPMR/MTE extensions; FPFR0: no FP8 extensions. MMFR4 is
+  // baseline RES0 here; PFR0 already reports that EL2 is absent, so its
+  // E2H0 encoding cannot advertise an unimplemented hypervisor mode.
+  if(id==guest_sysreg(3,0,0,4,2)||id==guest_sysreg(3,0,0,4,7)||
+     id==guest_sysreg(3,0,0,7,4))return 0;
   if(id==guest_sysreg(3,0,0,4,1)||id==guest_sysreg(3,0,0,4,4)||id==guest_sysreg(3,0,0,4,5)|| // PFR1/ZFR0/SMFR0: extensions absent.
      id==guest_sysreg(3,0,0,5,0)||id==guest_sysreg(3,0,0,5,1)||
      id==guest_sysreg(3,0,0,6,0)||id==guest_sysreg(3,0,0,6,1)||id==guest_sysreg(3,0,0,6,2)||
