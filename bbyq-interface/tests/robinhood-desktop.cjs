@@ -35,7 +35,7 @@ function action(op,target,view){const obs=evalx('captureBbyqDesktop("trusted")')
   let r=await action(11,11);
   yes(r.success,'browser request must succeed on confirmed native result');
   assert.equal(ctx.mock.requests.length,1);checks++;
-  assert.deepEqual(ctx.mock.requests[0],{operation:'openOfficialSite',payload:{service:'robinhood'}});checks++;
+  assert.equal(JSON.stringify(ctx.mock.requests[0]),JSON.stringify({operation:'openOfficialSite',payload:{service:'robinhood'}}));checks++;
   no(evalx('state.windows.length'),'no fake REVERSE browser window');
   ctx.observation=evalx('captureBbyqDesktop("trusted")');
   ctx.action=ctx.action;
