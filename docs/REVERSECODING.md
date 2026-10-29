@@ -1,5 +1,7 @@
 # ReverseCoding — programación mediante órdenes a Qd (Cody)
 
+**Identidad oficial de esta arquitectura:** **BBY Q → w4U → QdU**. En este documento, el nombre histórico «Qd» es el identificador técnico del mismo QdU; no implica una IA independiente. La ruta conversacional de delegación real por w4U sigue pendiente de implementación y no debe confundirse con el sandbox local. Ver [contrato oficial](BBYQ_W4U_QDU_CONTRACT.md).
+
 ## ¿Por qué cambió el nombre de Qd Studio?
 
 Qd Studio comenzó como un laboratorio pequeño para practicar y evaluar patrones XI. **ReverseCoding** designa la aplicación de programación completa dentro de REVERSE-PC. **Qd** sigue siendo el módulo programador del mismo agente BBY Q, no un modelo separado. El objetivo final es interpretar solicitudes, planificar cambios, generar código, depurarlo, verificarlo y producir ejecutables. Lo que existe hoy es solo el primer paso medido de esa cadena.
