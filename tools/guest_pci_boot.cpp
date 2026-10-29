@@ -13,7 +13,10 @@ int main(int argc,char** argv){try{
  const auto disk=GuestBlockImage::open(argv[3]);const auto kernel=read_file(argv[1],MinimalGuest::max_linux_kernel),initrd=read_file(argv[2],MinimalGuest::max_linux_initrd);
  require(GuestSha256::hash(kernel)=="f722bdd809bfd3485917a564b053b8a6d4938408734091f420c3297a8e3b20c8","Wrong genuine Android GKI");
  require(GuestSha256::hash(initrd)=="c9daaaf44bfc5ea2701a355a455a136fe4a98b91ad1e2a4965641a0c47fbc1da","Wrong normal Android ramdisk");
- MinimalGuest guest(128*1024*1024,0);guest.load_linux_image(kernel,initrd,guest_android_cuttlefish_normal_no_scx_bootargs(),disk,true);
+ // AOSP init creates global by-name links only for a declared boot device.
+ // Our root platform node is pcie@30000000 -> 30000000.pcie in sysfs.
+ const auto args=guest_android_cuttlefish_normal_no_scx_bootargs()+" androidboot.boot_devices=30000000.pcie";
+ MinimalGuest guest(128*1024*1024,0);guest.load_linux_image(kernel,initrd,args,disk,true);
  const auto start=std::chrono::steady_clock::now();auto last=start;std::string console,reason="host_wall_budget",error;bool init=false;
  const auto elapsed=[&](){return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now()-start).count();};
  while(elapsed()<std::int64_t(wall)&&guest.registers().instructions<UINT64_C(5000000000)&&!guest.registers().halted){

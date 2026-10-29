@@ -61,7 +61,10 @@ Acquisition alone does not demonstrate AVB validation or Android boot.
 
 `tools/guest_pci_boot.cpp` runs that real disk and the byte-pinned GKI and normal
 ramdisk on the own board for a bounded interval. One immutable disk attachment
-is retained across CPU chunks. It records an architectural stop honestly and
+is retained across CPU chunks. Its fresh profile adds
+`androidboot.boot_devices=30000000.pcie`, matching the root platform device;
+AOSP init requires that selector to create global `/dev/block/by-name` links.
+The existing profiles remain unchanged. It records an architectural stop honestly and
 requires the actual 64-byte /init entry and following CPU transition before
 claiming the first genuine Android instruction. Services, Android display and
 native games are separate evidence fields.
@@ -72,3 +75,4 @@ Primary protocol contracts:
 - https://github.com/torvalds/linux/blob/v6.12/include/uapi/linux/virtio_blk.h
 - https://github.com/torvalds/linux/blob/v6.12/include/uapi/linux/virtio_ring.h
 - https://github.com/torvalds/linux/blob/v6.12/include/uapi/linux/virtio_gpu.h
+- https://github.com/aosp-mirror/platform_system_core/blob/android-16.0.0_r1/init/devices.cpp
