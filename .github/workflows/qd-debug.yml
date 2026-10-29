@@ -1,0 +1,59 @@
+name: Qd XI isolated debugging and regression
+on:
+  pull_request:
+    branches: [main, qd/cycle-20261028-independent-exams]
+    paths:
+      - 'reverse-os-android/app/src/main/assets/workbench/qd/**'
+      - 'reverse-os-android/tests/qd-debug-native.cjs'
+      - 'reverse-os-android/tests/qd-native.cjs'
+      - '.github/workflows/qd-debug.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: qd-debug-${{ github.head_ref || github.ref }}
+  cancel-in-progress: false
+jobs:
+  xi-debug:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: e2778d962af22f6f1a0794058dd4685fc2573966
+          path: deps/mundo-x
+          persist-credentials: false
+      - name: Build original pinned XI/Ether host
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build evidence
+          python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc src/reverse_pc.cpp -o build/reverse_pc
+      - name: Check host examiner syntax
+        run: |
+          node --check reverse-os-android/tests/qd-debug-native.cjs
+          node --check reverse-os-android/tests/qd-native.cjs
+      - name: Run separate 16-case baseline and 24 unseen XI repairs
+        shell: bash
+        run: |
+          set -euo pipefail
+          node reverse-os-android/tests/qd-debug-native.cjs build/reverse_pc build/qd-debug | tee evidence/qd-debug.log
+      - name: Recheck existing Qd templates, RVPC2 and W4u rollback
+        shell: bash
+        run: |
+          set -euo pipefail
+          node reverse-os-android/tests/qd-native.cjs build/reverse_pc build/qd-regression | tee evidence/qd-regression.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qd-xi-debug-cycle02-evidence
+          path: |
+            build/qd-debug/qd-debug-evidence.json
+            build/qd-regression/qd-evidence.json
+            evidence/qd-debug.log
+            evidence/qd-regression.log
+          retention-days: 30
