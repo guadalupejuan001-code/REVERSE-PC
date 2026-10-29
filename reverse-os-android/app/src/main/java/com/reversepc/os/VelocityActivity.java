@@ -110,7 +110,7 @@ public final class VelocityActivity extends Activity {
         colors.setOnClickListener(v->{int p=surface.cyclePaint();colors.setText("Color "+(p+1));});
         add(root,colors,92,40,Gravity.TOP|Gravity.RIGHT,0,110,117,0);
         Button quality=button("Calidad");
-        quality.setOnClickListener(v->{int q=surface.cycleQuality();quality.setText("Calidad "+(q+1));});
+        quality.setOnClickListener(v->{int q=surface.cycleQuality();quality.setText(q==2?"HD nativo":q==1?"960 px":"640 px");});
         add(root,quality,92,40,Gravity.TOP|Gravity.RIGHT,0,110,218,0);
         Button restart=button("Reiniciar");
         restart.setOnClickListener(v->surface.reset());

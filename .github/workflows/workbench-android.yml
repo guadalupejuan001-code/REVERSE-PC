@@ -179,6 +179,7 @@ jobs:
           adb shell am force-stop com.reversepc.control.workbench
           timeout 200s adb shell am instrument -w -e mode velocity com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee evidence/android-velocity.txt
           grep 'WORKBENCH_TESTS_OK mode=velocity' evidence/android-velocity.txt
+          adb pull /sdcard/Android/data/com.reversepc.control.workbench/files/visual-evidence evidence/velocity-ui || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:

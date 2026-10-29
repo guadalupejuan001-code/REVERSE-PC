@@ -205,7 +205,7 @@ Java_com_reversepc_os_VelocityXSurface_renderNative(
   JNIEnv* env,jclass,jintArray rgba,jint width,jint height,
   jlong xMm,jlong zMm,jint yaw16,jint checkpoint,jint cameraMode,jint paintId){
   try{
-    if(!rgba||width<128||height<72||width>640||height>360||
+    if(!rgba||width<128||height<72||width>1920||height>1080||
        static_cast<std::int64_t>(width)*height>env->GetArrayLength(rgba))
       throw std::invalid_argument("Invalid X Render output buffer");
     std::lock_guard<std::mutex> guard(scene_mutex);

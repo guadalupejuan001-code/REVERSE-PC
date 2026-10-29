@@ -85,7 +85,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 }
                 if(accumulator>=VelocityPhysics.TICK_MS)accumulator=0;
                 int selected=Math.max(0,Math.min(2,quality));
-                int targetWidth=selected==0?320:selected==1?400:480;
+                int targetWidth=selected==0?640:selected==1?960:1280;
                 double ratio=Math.min(2.7,Math.max(1.2,(double)surfaceWidth/surfaceHeight));
                 int targetHeight=Math.max(72,Math.min(360,(int)Math.round(targetWidth/ratio)));
                 if(selected!=currentQuality||targetHeight!=height){
@@ -123,7 +123,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                          fps,width,height,error);
                 }
                 final long cost=SystemClock.elapsedRealtimeNanos()-begin;
-                final long remaining=16_666_667L-cost; // up to 60 FPS; actual FPS remains measured
+                final long remaining=(selected==2?33_333_333L:16_666_667L)-cost; // measured 30/60 FPS ceilings, not guarantees
                 if(remaining>1_000_000L)Thread.sleep(remaining/1_000_000L);
             }
         }catch(Throwable thrown){

@@ -40,6 +40,12 @@ int main(){
   build(route(760),760,.23,1,0,2);
   auto next=capture();
   assert(next.hash!=first.hash);
+  // HD 1280x720 native: actual camera rays and spatial surfaces, no upscaler.
+  scene=std::make_unique<Engine>(1280,720,16);
+  build(route(1100),1100,0,0,0,0);
+  auto hd=capture();
+  assert(hd.count==1280u*720u&&hd.hit>0&&hd.colors.size()>32);
+  std::cout<<"REVERSE_VELOCITY_HD_NATIVE_OK pixels="<<hd.count<<" hash="<<hd.hash<<"\n";
   std::cout<<"REVERSE_VELOCITY_SCENE_OK pixels="<<first.count
            <<" objects="<<scene->info().objects
            <<" uniqueColors="<<first.colors.size()
