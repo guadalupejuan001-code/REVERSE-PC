@@ -41,7 +41,7 @@ existing IFLS field. Historical states retain exact v2/v3 serialization.
 Once the reservation is cleared, legacy serialization is retained when
 the other state fields permit it. No second RAM/runtime is introduced.
 
-1,941 local system checks pass, including both pair widths, all
+1,976 local system checks pass, including both pair widths, all
 acquire/release combinations, success/failure status, no-reservation
 rejection, CLREX, shared XI invalidation, alignment aborts and byte-exact
 restoration. A separately assembled bare-metal pair witness is compared
@@ -52,6 +52,39 @@ The older ISAR3 milestone test now stops before MMFR4 without requiring
 that future register support remain absent. The RAM-formatting performance
 oracle compares only its intended bounds-formatting difference; subsequent
 CPU instructions are present in both measured variants.
+
+## Translation reuse and observation
+
+The interpreter retains 64 nonpersistent address hints, never guest RAM
+bytes. A hint includes the 4 KiB virtual page, access mode, current EL,
+TTBR0/TTBR1, TCR and SCTLR. Every store invalidates all hints, including
+hints installed while validating the store itself; XI/RXE writes and TLBI
+also invalidate them. Faults are not cached. Restoration starts with empty
+hints. REVERSE_PC_TRANSLATION_REFERENCE disables lookup/store for independent
+byte comparisons. No guest instruction, interrupt or virtual tick is skipped.
+
+Paired stores pin the entire validated physical extent before writing,
+even when their first half replaces their own page-table descriptor. Tests
+cover this edge and the equivalent single-store invalidation case.
+
+The optional development-probe --stop-el0=1 boundary stops after a real
+architectural transition and before the first EL0 instruction. It changes
+neither checkpoint layout nor guest behavior. It is an observer, not a
+claim that the entered program is Android /init. Program identity must be
+verified separately against the real initrd ELF.
+
+## Genuine debug-slot initialization
+
+The unchanged kernel reaches MSR DBGBCR0_EL1,X2 (0xd51000a2) at instruction
+179,326,448, PC 0xffffffc08040f2cc, with X2=0. Linux hw_breakpoint_reset clears
+the control and value registers of its one reported breakpoint/watchpoint
+slot during cold boot. Only the named slot-zero BCR/BVR/WCR/WVR inactive
+state is supported: zero writes and zero reads. Nonzero programming,
+additional slots and EL0 access remain rejected. No hardware debug
+exceptions or performance-monitoring support is claimed.
+
+Primary description of that initialization:
+https://github.com/torvalds/linux/blob/v6.12/arch/arm64/kernel/hw_breakpoint.c
 
 ## Observed kernel progress
 
@@ -70,6 +103,17 @@ unmodified kernel to the real allocator milestone and preserves the RVG.
 Read-only initrd analysis found 42,513,920 vendor CPIO bytes and 5,680,128
 generic CPIO bytes (48,194,048 total). The original guest still has 128 MiB
 logical RAM; an analysis of its size is not proof that Android services fit.
+
+Local continuation has passed 211 million original instructions. Real UART
+also shows RCU, ARM timer, SELinux/landlock/eBPF, NETLINK routing, audit,
+thermal governors, ASID allocator, and registration of the PL011 serial
+console. Timer IRQ exceptions after this point are expected architectural
+activity, not interpreter failures. First-stage /init has not yet been
+observed at this checkpoint.
+
+The dedicated workflow additionally compares cached and uncached execution
+in ABBA order with byte-identical RVGs, replays the exact debug-slot failure
+on the old CPU, and verifies continued execution after its zero reset.
 
 Continue from the latest genuine checkpoint rather than repeating SCS.
 Next gates are actual first-stage /init execution, required storage and

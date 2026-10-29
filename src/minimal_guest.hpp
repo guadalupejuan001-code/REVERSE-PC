@@ -131,7 +131,7 @@ class MinimalGuest {
       require(candidate[i-1].size<=candidate[i].address-candidate[i-1].address, "Overlapping ELF segments are not supported");
     auto immutable=std::make_shared<const Bytes>(std::move(bytes));
     auto empty=make_runtime(override_limit_);
-    image_=std::move(immutable); segments_=std::move(candidate); runtime_=std::move(empty);
+    image_=std::move(immutable); segments_=std::move(candidate); runtime_=std::move(empty);invalidate_translation_hints();
     machine_=MachineState{};machine_.enabled=privileged;machine_.image_kind=privileged?1:0;floating_=FloatingState{};
     registers_=Registers{}; registers_.pc=entry; registers_.sp=(ram_base()+ram_)&~UINT64_C(15);
     machine_.sp1=registers_.sp;
@@ -187,7 +187,7 @@ class MinimalGuest {
                           prefix+kernel.size()+tree.size(),initrd.size(),4});
     std::sort(segments.begin(),segments.end(),
               [](const Segment& a,const Segment& b){return a.address<b.address;});
-    image_=std::move(immutable);segments_=std::move(segments);
+    image_=std::move(immutable);segments_=std::move(segments);invalidate_translation_hints();
     runtime_=std::move(empty);machine_=MachineState{};
     machine_.enabled=true;machine_.image_kind=2;floating_=FloatingState{};
     registers_=Registers{};registers_.pc=kernel_address;
@@ -215,6 +215,7 @@ class MinimalGuest {
   }
   void write(std::uint64_t address,std::uint64_t value,unsigned size) {
     require(size==1 || size==2 || size==4 || size==8, "Invalid guest word size"); range(address,size);
+    invalidate_translation_hints();
     auto store=[&](mundo_x::QuantumRuntime::ByteAccess& bytes){
       for(unsigned i=0;i<size;++i)bytes.store(std::to_string(address+i),std::uint8_t(value>>(i*8))^backing(address+i));
     };
@@ -223,8 +224,8 @@ class MinimalGuest {
     if(byte_transaction_)store(*byte_transaction_);else runtime_.transact_bytes(store);
     machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;
   }
-  std::string apply_xi_delta(const std::string& source) { auto output=runtime_.execute(source);machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;return output; }
-  std::string apply_rxe_delta(const Bytes& image) { auto output=reverse_pc::rxe::execute(runtime_,image);machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;return output; }
+  std::string apply_xi_delta(const std::string& source) { invalidate_translation_hints();auto output=runtime_.execute(source);machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;return output; }
+  std::string apply_rxe_delta(const Bytes& image) { invalidate_translation_hints();auto output=reverse_pc::rxe::execute(runtime_,image);machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;return output; }
 
   // Explicit opt-in: migrate a legacy RVG to the same QuantumRuntime and
   // InverseMemory with adaptive classical storage and no count-only ceiling.
@@ -234,10 +235,11 @@ class MinimalGuest {
     auto candidate=make_runtime(0);
     candidate.restore(runtime_.core_snapshot(),runtime_.memory_persistent_snapshot());
     runtime_=std::move(candidate);
+    invalidate_translation_hints();
     override_limit_=0; // sentinel: constrained by actual host resources only
   }
 
-  RunResult run(std::uint64_t budget) {
+  RunResult run(std::uint64_t budget,bool stop_before_el0=false) {
     require(image_!=nullptr, "No ELF guest is loaded");
     require(budget>0 && budget<=1000000, "Guest run budget must be 1..1000000 instructions");
     auto candidate=*this; // Immutable image and unchanged Ether shards are shared.
@@ -246,6 +248,10 @@ class MinimalGuest {
     candidate.byte_transaction_=&bytes;
     struct Reset {mundo_x::QuantumRuntime::ByteAccess*& pointer;~Reset(){pointer=nullptr;}} reset{candidate.byte_transaction_};
     while (result.executed<budget && !candidate.registers_.halted) {
+      // Optional host observation boundary. Preserve the exact ERET result
+      // and stop before executing any EL0 instruction; no guest state flag
+      // is fabricated or added to the persistent CPU.
+      if(stop_before_el0&&candidate.machine_.enabled&&!candidate.machine_.el)break;
       if(candidate.machine_.enabled && candidate.machine_.waiting){
         if(candidate.machine_.next_irq()==1023 && !candidate.machine_.event){
           // Deterministic virtual time may advance only while the CPU waits.
@@ -396,6 +402,18 @@ class MinimalGuest {
   MachineState machine_;
   FloatingState floating_;
   mundo_x::QuantumRuntime::ByteAccess* byte_transaction_=nullptr; // Never persisted; scoped to run().
+  // Nonpersistent address hints only: never guest bytes or a second RAM.
+  // Every memory mutation invalidates them, including XI/RXE and page-table
+  // stores. The complete translation controls and access mode are keys.
+  struct TranslationHint {
+    std::uint64_t generation=0,page=0,physical=0,ttbr0=0,ttbr1=0,tcr=0,sctlr=0;
+    unsigned mode=0;
+  };
+  std::uint64_t translation_generation_=1;
+  mutable std::array<TranslationHint,64> translation_hints_{};
+  void invalidate_translation_hints() {
+    if(++translation_generation_==0){translation_hints_={};translation_generation_=1;}
+  }
 
   static mundo_x::QuantumRuntime make_runtime(std::size_t overrides) {
     // 0 disables the arbitrary override *count* cap; allocation, address,
@@ -555,7 +573,7 @@ inline void MinimalGuest::step(RunResult& result) {
   else if ((instruction&0xfff80000)==0xd5080000) { // selected SYS operations
     require(machine_.enabled,"SYS requires system mode");if(!machine_.el)throw MachineFault{1u<<25,0};
     const auto op1=(instruction>>16)&7,crn=(instruction>>12)&15,crm=(instruction>>8)&15,op2=(instruction>>5)&7;
-    if(crn==8 && (op1==0) && (crm==3||crm==7) && op2<=7){ /* no TLB cache: every access walks current tables */ }
+    if(crn==8 && (op1==0) && (crm==3||crm==7) && op2<=7){invalidate_translation_hints();}
     else if(crn==7 && ((op1==0&&(crm==1||crm==5||crm==6||crm==10||crm==11||crm==14)) || (op1==3&&(crm==5||crm==10||crm==11||crm==14)))){ /* coherent cache maintenance */ }
     else if(crn==7&&op1==0&&crm==8&&op2<=3){
       try{const auto physical=translate(reg(rd),op2&1);machine_.par=physical&~UINT64_C(4095);}
@@ -719,7 +737,18 @@ inline void MinimalGuest::step(RunResult& result) {
       const bool success=machine_.exclusive_size==total&&
                          machine_.exclusive_address==physical[0];
       const auto first=reg(rd),last=reg(second);
-      if(success){cpu_write(address,first,size,result);cpu_write(address+size,last,size,result);}
+      if(success){
+        // Pin the already checked physical extent for the whole atomic
+        // instruction, even if its first half changes a page-table entry.
+        invalidate_translation_hints();
+        auto store=[&](mundo_x::QuantumRuntime::ByteAccess& bytes){
+          for(unsigned i=0;i<total;++i){
+            const auto value=std::uint8_t((i<size?first:last)>>(8*(i%size)));
+            bytes.store(std::to_string(physical[i]),value^backing(physical[i]));
+          }
+        };
+        if(byte_transaction_)store(*byte_transaction_);else runtime_.transact_bytes(store);
+      }
       set(status,success?0:1,32);
       machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;
     }

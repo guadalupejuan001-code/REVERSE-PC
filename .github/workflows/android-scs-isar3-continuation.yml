@@ -68,11 +68,13 @@ jobs:
           cp src/minimal_guest*.hpp src/minimal_guest*.inc build/base/
           git show de6243c4b8f87b88f1afcf97cf6b06b0736906ff:src/minimal_guest_system.inc \
             > build/base/minimal_guest_system.inc
+          git show de6243c4b8f87b88f1afcf97cf6b06b0736906ff:tools/guest_linux_probe.cpp \
+            > build/base/guest_linux_probe.cpp
           python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
           python3 scripts/build-softfloat.py
           common="-std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1"
           g++ $common -Ibuild/ether-compat -Ideps/mundo-x/native/include -Ibuild/base -Isrc \
-            tools/guest_linux_probe.cpp build/softfloat/libreverse_softfloat.a -o build/probe-old
+            build/base/guest_linux_probe.cpp build/softfloat/libreverse_softfloat.a -o build/probe-old
           g++ $common -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
             tools/guest_linux_probe.cpp build/softfloat/libreverse_softfloat.a -o build/probe-new
           g++ -std=c++17 -O1 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \

@@ -26,6 +26,46 @@ void boot_and_restore(){
   fails([&]{reset.load_elf(broken,true);},"Wrong ISA system ELF accepted");check(reset.snapshot()==pristine,"Invalid system ELF replaced active state");
   auto corrupt=pristine;corrupt.back()^=1;fails([&]{MinimalGuest::from_snapshot(corrupt);},"Corrupt machine checkpoint accepted");
 }
+void observe_userspace_without_execution(){
+  auto stopped=initial();const auto event=stopped.run(10000,true);
+  check(event.executed>0&&event.executed<10000&&!event.halted&&stopped.machine().el==0,
+        "Host EL0 observation did not stop at an actual architectural entry");
+  const auto snapshot=stopped.snapshot();auto counted=initial();
+  counted.run(stopped.registers().instructions);
+  check(counted.snapshot()==snapshot,"EL0 observation changed the real CPU transition");
+  const auto again=stopped.run(10000,true);
+  check(again.executed==0&&again.output.empty()&&stopped.snapshot()==snapshot,
+        "EL0 observer executed or changed an already stopped userspace");
+  auto resumed=MinimalGuest::from_snapshot(snapshot);const auto tail=resumed.run(10000);
+  auto continuous=initial();const auto all=continuous.run(10000);
+  check(event.output+tail.output==all.output&&resumed.snapshot()==continuous.snapshot(),
+        "Observed/resumed userspace differs from continuous machine execution");
+}
+void inactive_debug_slot(){
+  for(unsigned op2=4;op2<=7;++op2){
+    const auto write=0xd5100002u|(op2<<5); // MSR slot0,X2
+    const auto read=0xd5300003u|(op2<<5); // MRS X3,slot0
+    auto guest=initial();const auto pc=guest.registers().pc;
+    guest.write(pc,write,4);guest.write(pc+4,read,4);
+    const auto clear=guest.run(2);
+    check(clear.executed==2&&guest.machine().exceptions==0&&guest.registers().x[3]==0,
+          "Inactive breakpoint/watchpoint slot did not clear/read as zero");
+    check(MinimalGuest::from_snapshot(guest.snapshot()).snapshot()==guest.snapshot(),
+          "Inactive debug state changed checkpoint restoration");
+    auto nonzero=initial();const auto start=nonzero.registers().pc;
+    nonzero.write(start,0xd2800022,4);nonzero.write(start+4,write,4);nonzero.run(1);
+    const auto before=nonzero.snapshot();
+    fails([&]{nonzero.run(1);},"Nonzero unsupported hardware debug programming accepted");
+    check(nonzero.snapshot()==before,"Rejected debug programming changed the machine");
+    auto unknown=initial();unknown.write(unknown.registers().pc,write|(1u<<8),4);
+    fails([&]{unknown.run(1);},"Unimplemented additional debug slot accepted");
+    auto user=initial();user.run(10000,true);const auto exceptions=user.machine().exceptions;
+    user.write(user.physical_address(user.registers().pc,false,true),write,4);user.run(1);
+    check(user.machine().el==1&&user.machine().exceptions==exceptions+1&&
+          ((user.machine().esr>>26)&63)==0,
+          "EL0 debug write bypassed the architectural undefined-instruction trap");
+  }
+}
 void translation(){
   auto guest=initial();for(unsigned i=0;i<60&&!(guest.machine().sctlr&1);++i)guest.run(1);
   check(guest.machine().sctlr&1,"Witness never enabled the MMU");
@@ -47,6 +87,19 @@ void translation(){
   check(user.machine().el==0,"ERET did not enter EL0");
   fault(user,MachineState::uart_base,false,false,13,"EL0 accessed privileged device mapping");
   check(user.physical_address(0x80080000,false,true)==0x40080000,"EL0 read-only code alias denied");
+}
+void store_invalidates_its_own_translation(){
+  auto g=initial();for(unsigned i=0;i<60&&!(g.machine().sctlr&1);++i)g.run(1);
+  g.write(0x40010010,0x40000705,8);
+  const auto pc=g.registers().pc;
+  const std::uint32_t code[]{0xd2800216,0xf2b00036,0xd280e020,0xf90002c0};
+  for(unsigned i=0;i<4;++i)g.write(pc+4*i,code[i],4);
+  check(g.physical_address(0x80010010,true)==0x40010010,"Writable table alias is incorrect");
+  g.run(4);
+  check(g.machine().exceptions==0&&g.read(0x40010010,8)==0x701,
+        "Single store did not update its own page-table descriptor");
+  check(g.physical_address(0x80010010,true)==0x10010,
+        "Store retained a stale write translation installed by its own validation");
 }
 void shared_quantum_authority(){
   auto guest=initial();guest.apply_xi_delta("#!reverse-pc-machine-v1\nset r0 0\nlabel loop\nh $r0\nadd r0 1\ncmp r0 4096\njlt loop\nhalt\n");
@@ -134,6 +187,29 @@ void exclusive_pairs(){
         "Unaligned pair failed to take an atomic alignment fault");
   auto live=fixture(true,false,false,false);live.run(5);auto forged=live.machine().save();
   forged[0]=2;fails([&]{MachineState::restore(forged);},"Legacy machine version accepted a 16-byte reservation");
+}
+void paired_store_pins_physical_translation(){
+  auto g=initial();for(unsigned i=0;i<60&&!(g.machine().sctlr&1);++i)g.run(1);
+  check(g.machine().sctlr&1,"Pair page-table witness did not enable the MMU");
+  // Writable alias VA 0x80000000 -> PA 0x40000000. The pair overwrites
+  // the very table entry that translates its own first destination.
+  g.write(0x40010010,0x40000705,8);
+  const auto pc=g.registers().pc;
+  const std::uint32_t code[]{
+    0xd2800216u,0xf2b00036u, // X22=0x80010010
+    0xd280e029u,0xd2800444u, // X9=0x701, X4=34
+    0xc87f06c0u,0xc82a92c9u,0xd503201fu
+  };
+  for(unsigned i=0;i<sizeof(code)/sizeof(code[0]);++i)
+    g.write(g.physical_address(pc+4*i,false,true),code[i],4);
+  check(g.physical_address(0x80010010)==0x40010010,
+        "Pair self-remapping alias was not initially valid");
+  g.run(6);
+  check(g.machine().exceptions==0&&g.registers().x[10]==0&&
+        g.read(0x40010010,8)==0x701&&g.read(0x40010018,8)==34,
+        "Paired store retranslated or partially published its second half");
+  check(g.physical_address(0x80010010)==0x10010,
+        "A paired page-table write left a stale translation hint");
 }
 void lazy_ram_range_error_parity(){
   // Same exact permitted range, fault type and diagnostic text. No change to
@@ -332,8 +408,8 @@ void cross_page_access(){
   guest.write(0x40012008,0x40050783,8);enter(guest,0xc0000ffc,UINT64_MAX);guest.run(1);
   check(guest.machine().exceptions==1&&guest.machine().far==0xc0001000&&(guest.machine().esr&63)==15,"Cross-page permission fault has incorrect address/status");
   check(guest.read(0x40030ffc,4)==0x9abcdef0&&guest.read(0x40050000,4)==0x12345678,"Faulting cross-page store changed an earlier byte");
-  // Changing the page table must affect the very next access: there is no
-  // retained translation cache that can hide a permission or alias change.
+  // Changing the page table must invalidate every retained translation hint
+  // before the very next access observes permissions or aliases.
   guest.write(0x40012008,0x40060703,8);enter(guest,0xc0000ffc,UINT64_C(0x0badcafe00000000));guest.run(2);
   check(guest.read(0x40060000,4)==0x0badcafe&&guest.read(0x40050000,4)==0x12345678,"Access-local mapping reuse became a stale persistent TLB");
 }
@@ -638,6 +714,6 @@ void interrupt_priority_initialization(){
   check(guest.snapshot()==before,"Rejected APR write changed CPU/device state");
 }
 }
-int main(){try{boot_and_restore();translation();shared_quantum_authority();exclusives();exclusive_pairs();lazy_ram_range_error_parity();image_boot_protocol();android_bootargs_snapshot_profile();large_linux_gki_loader_budget();cross_page_access();unprivileged_memory_access();eret_ssbs_saved_status();speculative_data_barrier();android_mmfr3_real_opcode();android_baseline_identification_opcodes();identification();uart_fifo_configuration();interrupt_priority_initialization();
+int main(){try{boot_and_restore();observe_userspace_without_execution();inactive_debug_slot();translation();store_invalidates_its_own_translation();shared_quantum_authority();exclusives();exclusive_pairs();paired_store_pins_physical_translation();lazy_ram_range_error_parity();image_boot_protocol();android_bootargs_snapshot_profile();large_linux_gki_loader_budget();cross_page_access();unprivileged_memory_access();eret_ssbs_saved_status();speculative_data_barrier();android_mmfr3_real_opcode();android_baseline_identification_opcodes();identification();uart_fifo_configuration();interrupt_priority_initialization();
   std::cout<<"{\"checks\":"<<checks<<",\"system\":\"own-EL1-MMU-IRQ-EL0-SVC\",\"existing_quantum_qubits\":4096,\"android_boot\":\"not_implemented\"}\n";return 0;
 }catch(const std::exception& error){std::cerr<<error.what()<<'\n';return 1;}}
