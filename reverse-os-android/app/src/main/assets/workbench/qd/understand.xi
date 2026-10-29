@@ -96,8 +96,8 @@ cmp r6 31324
 je word_3
 cmp r6 56316
 je word_3
-cmp r6 45666
-je word_3
+# 'por' alone is not an operation: it also appears in 'por favor'.
+# Multiplication requires an explicit verb/product noun or 'times'.
 cmp r6 27242
 je word_3
 cmp r6 27122
