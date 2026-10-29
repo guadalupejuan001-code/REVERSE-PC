@@ -19,7 +19,7 @@ const result={product:'REexplorer Q Stream',format:'RXE1',runtime:'XI/Ether',
   imported_from_bbyq:false,
   parser:'read-only, deterministic, transactional incremental document text',
   capacity_bytes:1048576,
-  chunk_bytes:224,
+  chunk_bytes:2048,
   transport:'not yet provided by XI runtime; a separate HTTPS host broker is needed',
   renders_html_css_javascript:false,
   production_browser_ready:false};
