@@ -218,9 +218,6 @@ public final class WorkbenchActivity extends Activity {
             // Only a browser may receive this link, never a deep-linked
             // brokerage app or another app that claims a URL handler.
             java.util.ArrayList<String> browserPackages=new java.util.ArrayList<>();
-            android.app.role.RoleManager roles=getSystemService(android.app.role.RoleManager.class);
-            if(roles!=null&&roles.isRoleAvailable(android.app.role.RoleManager.ROLE_BROWSER))
-                browserPackages.addAll(roles.getRoleHolders(android.app.role.RoleManager.ROLE_BROWSER));
             for(String known:new String[]{"com.android.chrome","com.sec.android.app.sbrowser",
                     "org.mozilla.firefox","com.brave.browser","com.microsoft.emmx",
                     "com.opera.browser","com.duckduckgo.mobile.android"})
