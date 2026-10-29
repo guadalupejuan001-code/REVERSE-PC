@@ -15,6 +15,30 @@ static MinimalGuest user_entry(){
   for(unsigned i=0;i<8;i++){image[96+i]=std::uint8_t(std::uint64_t(sizeof(code))>>(8*i));image[104+i]=image[96+i];}
   MinimalGuest g(128*1024*1024,0);g.load_elf(image,true);return g;
 }
+static MinimalGuest demand_entry(bool irq){
+  auto image=system_demo_elf();image.resize(256);image.resize(256+0x4000);
+  for(unsigned i=0;i<8;i++){image[96+i]=std::uint8_t(UINT64_C(0x4000)>>(8*i));image[104+i]=image[96+i];}
+  unsigned at=256;auto emit=[&](std::uint32_t word){for(unsigned i=0;i<4;i++)image.at(at++)=std::uint8_t(word>>(8*i));};
+  auto mov=[&](unsigned r,std::uint64_t n){for(unsigned i=0;i<4;i++)emit((i?0xf2800000u:0xd2800000u)|(i<<21)|(unsigned((n>>(16*i))&65535)<<5)|r);};
+  auto msr=[&](unsigned id,unsigned rt){emit(0xd5100000u|(id<<5)|rt);};
+  mov(0,0x40081000);msr(guest_sysreg(3,0,12,0,0),0);
+  mov(0,0x40010000);mov(1,0x401);emit(0xf9000001);mov(1,0x40000705);emit(0xf9000401);emit(0xf900081f);
+  msr(guest_sysreg(3,0,2,0,0),0);msr(guest_sysreg(3,0,2,0,1),0);
+  mov(1,0xff00);msr(guest_sysreg(3,0,10,2,0),1);mov(1,0x80190019);msr(guest_sysreg(3,0,2,0,2),1);
+  mov(1,0x30d00801);msr(guest_sysreg(3,0,1,0,0),1);emit(0xd5033fdf);
+  if(irq){
+    mov(20,MachineState::gic_dist);mov(21,MachineState::gic_cpu);mov(0,1);emit(0xb9000280);emit(0xb90002a0);
+    mov(0,255);emit(0xb90006a0);mov(0,0x40000000);emit(0xb9010280);
+    msr(guest_sysreg(3,3,14,2,0),31);mov(0,1);msr(guest_sysreg(3,3,14,2,1),0);
+  }
+  mov(0,0x81001000);msr(guest_sysreg(3,0,4,1,0),0);mov(0,0x80083000);msr(guest_sysreg(3,0,4,0,1),0);msr(guest_sysreg(3,0,4,0,0),31);emit(0xd69f03e0);
+  at=256+0x1400;emit(0x14000300); // Lower-EL synchronous vector -> native page-table handler.
+  at=256+0x1480;emit(0x14000320); // Lower-EL IRQ vector -> timer acknowledgement.
+  at=256+0x2000;mov(0,0x40010000);mov(1,0x400007c5);emit(0xf9000801);emit(0xd5033f9f);emit(0xd508871f);emit(0xd5033fdf);emit(0xd69f03e0);
+  at=256+0x2100;mov(21,MachineState::gic_cpu);emit(0xb9400ea0);msr(guest_sysreg(3,3,14,2,1),31);emit(0xb90012a0);emit(0xd69f03e0);
+  at=256+0x3000;emit(0xd503201f);
+  MinimalGuest g(128*1024*1024,0);g.load_elf(image,true);return g;
+}
 int main(){try{
   auto direct=graphics();direct.run(1000);auto split=graphics();split.run(200);
   const auto input=split.snapshot();split=MinimalGuest::from_snapshot(input);
@@ -47,12 +71,34 @@ int main(){try{
   check(late_report.reason=="architectural_stop"&&late.snapshot()==late_reference.snapshot(),"Fault rollback/localization lost DMA or device state");
   check(late_report.console=="REVERSE: PCI GPU 2D OK\n","Fault localization lost the successful UART prefix");
   check(late.display_rgb()==direct.display_rgb(),"Fault localization changed the actual presented pixels");
+  MinimalGuest wake(128*1024*1024,0);wake.load_elf(system_demo_elf(),true);auto wake_reference=wake;
+  const auto wake_direct=wake_reference.run(10000);BootCycleLimits wake_limits;wake_limits.instructions=10000;wake_limits.wall_ms=30000;wake_limits.chunk=1;
+  const auto wake_report=run_boot_cycle(wake,wake_limits);
+  check(wake_report.reason=="halted","A timer-backed WFI at the transaction boundary was mistaken for an external-device wait");
+  check(wake.snapshot()==wake_reference.snapshot(),"One-instruction chunks changed actual timer/IRQ/ERET state");
+  check(wake_report.console==wake_direct.output,"Timer wakeup lost native UART output");
+  auto sleep_image=system_demo_elf();for(unsigned i=0;i<4;i++)sleep_image[256+i]=std::uint8_t(UINT32_C(0xd503207f)>>(i*8));
+  MinimalGuest sleep(128*1024*1024,0);sleep.load_elf(sleep_image,true);auto sleep_reference=sleep;sleep_reference.run(1);
+  const auto sleep_report=run_boot_cycle(sleep,wake_limits);
+  check(sleep_report.reason=="waiting_for_device_or_interrupt"&&sleep.registers().instructions==1,"A genuinely blocked WFI was not returned to the host");
+  check(sleep.snapshot()==sleep_reference.snapshot(),"A blocked WFI retry mutated the native state");
   auto entry=user_entry(),entry_reference=entry;entry_reference.run(7);limits.instructions=7;
   const auto entry_report=run_boot_cycle(entry,limits,{},[](MinimalGuest& g){
     require(!g.machine().el&&g.registers().pc==0x40080018,"The real ERET entry was missed");g.run(1);return g.registers().pc==0x4008001c;
   });
   check(entry_report.first_user_instruction_verified,"Verified first userspace opcode was not recorded");
   check(entry.snapshot()==entry_reference.snapshot(),"Entry observation changed CPU state or exceeded its budget");
+  auto milestone=user_entry();limits.instructions=1000;limits.stop_after_first_user_instruction=true;
+  std::vector<Bytes> milestone_saves;
+  const auto milestone_report=run_boot_cycle(milestone,limits,[&](const MinimalGuest& g,const BootCycleReport&){milestone_saves.push_back(g.snapshot());},[](MinimalGuest& g){
+    require(!g.machine().el&&g.registers().pc==0x40080018,"Milestone missed the ERET boundary");g.run(1);return g.registers().pc==0x4008001c;
+  });
+  check(milestone_report.first_user_instruction_verified&&milestone_report.reason=="first_user_instruction_verified","Verified first-instruction stop was not reported");
+  check(milestone.snapshot()==entry_reference.snapshot(),"Milestone executed beyond the single verified userspace instruction");
+  check(milestone_saves.size()==2&&milestone_saves.back()==entry_reference.snapshot(),"Milestone did not save the exact verified boundary");
+  bool needs_verifier=false;try{run_boot_cycle(milestone,limits);}catch(const std::exception&){needs_verifier=true;}
+  check(needs_verifier&&milestone.snapshot()==entry_reference.snapshot(),"Milestone stop without a verifier was accepted");
+  limits.stop_after_first_user_instruction=false;
   auto unverified=user_entry();unverified.run(6);const auto boundary=unverified.snapshot();
   const auto unverified_report=run_boot_cycle(unverified,limits,{},[](MinimalGuest& trial){trial.run(1);return false;});
   check(unverified_report.reason=="unverified_userspace_entry"&&!unverified_report.first_user_instruction_verified,"Unverified entry was accepted");
@@ -60,6 +106,21 @@ int main(){try{
   const auto faulted_entry=run_boot_cycle(unverified,limits,{},[](MinimalGuest&)->bool{throw MachineFault{0x96000004,0x1234};});
   check(faulted_entry.reason=="unverified_userspace_entry"&&!faulted_entry.first_user_instruction_verified,"Architectural observation fault escaped its boundary");
   check(unverified.snapshot()==boundary,"Architectural observation fault changed the CPU");
+  const auto forged_entry=run_boot_cycle(unverified,limits,{},[](MinimalGuest& g)->bool{throw MachineFault{0x82000005,g.registers().pc};});
+  check(forged_entry.reason=="unverified_userspace_entry"&&!forged_entry.first_user_instruction_verified&&unverified.snapshot()==boundary,"A forged instruction-abort observation changed or verified the caller");
+  for(bool irq:{false,true}){
+    auto demand=demand_entry(irq),reference=demand;reference.run(1000,true);
+    if(irq){reference.run(1);reference.run(1000,true);}
+    reference.run(1);reference.run(1000,true);reference.run(1);
+    BootCycleLimits demand_limits;demand_limits.instructions=1000;demand_limits.wall_ms=30000;demand_limits.chunk=11;demand_limits.stop_after_first_user_instruction=true;
+    const auto demand_report=run_boot_cycle(demand,demand_limits,{},[](MinimalGuest& g){
+      require(g.registers().pc==0x80083000,"Demand fixture returned to a different EL0 PC");
+      require(g.read(g.physical_address(g.registers().pc,false,true),4)==0xd503201f,"Demand fixture instruction bytes differ");g.run(1);return !g.machine().el&&g.registers().pc==0x80083004;
+    });
+    check(demand_report.reason=="first_user_instruction_verified"&&demand_report.first_user_instruction_verified,"Native demand paging did not reach the verified first opcode");
+    check(demand_report.entry_instruction_faults==1&&demand_report.entry_interrupts==unsigned(irq),"Entry fault or pending timer was fabricated or lost");
+    check(demand.snapshot()==reference.snapshot(),"Observed demand paging changed the actual CPU, page tables or device state");
+  }
   const auto root=std::filesystem::path("evidence/c04/cycle-journal-test-"+std::to_string(::getpid()));
   std::filesystem::create_directories(root.parent_path());BootCycleJournal journal(root);
   journal.publish(bad,failed);journal.publish(split,report);journal.publish(bounded,bounded_report);

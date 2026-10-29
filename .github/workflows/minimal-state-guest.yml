@@ -270,6 +270,13 @@ jobs:
             adb shell am instrument -w -e mode armCounterRestore com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee guest-evidence/android-counter-restore.txt
             grep 'WORKBENCH_TESTS_OK mode=armCounterRestore ' guest-evidence/android-counter-restore.txt
             adb exec-out run-as com.reversepc.control.workbench cat files/counter-proof.json > guest-evidence/counter-proof.json
+            expected_counter_rate_sha256=$(python3 -c 'import json;print(json.load(open("guest-evidence/counter-native.json"))["expected_prescaled_finished_sha256"])')
+            adb shell am instrument -w -e mode armCounterRate -e expected_counter_sha256 "$expected_counter_rate_sha256" com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee guest-evidence/android-counter-rate.txt
+            grep 'WORKBENCH_TESTS_OK mode=armCounterRate ' guest-evidence/android-counter-rate.txt
+            adb shell am force-stop com.reversepc.control.workbench
+            adb shell am instrument -w -e mode armCounterRateRestore com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee guest-evidence/android-counter-rate-restore.txt
+            grep 'WORKBENCH_TESTS_OK mode=armCounterRateRestore ' guest-evidence/android-counter-rate-restore.txt
+            adb exec-out run-as com.reversepc.control.workbench cat files/counter-rate-proof.json > guest-evidence/counter-rate-proof.json
             adb shell am instrument -w -e mode guestContinuous com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee guest-evidence/android-continuous.txt
             grep 'WORKBENCH_TESTS_OK mode=guestContinuous ' guest-evidence/android-continuous.txt
             adb shell -T "run-as com.reversepc.control.workbench sh -c 'cat > files/large-guest-input.rvg'" < large-input/current.rvg
