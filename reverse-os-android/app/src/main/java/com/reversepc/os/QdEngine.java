@@ -177,6 +177,8 @@ final class QdEngine {
     JSONObject handle(JSONObject request)throws Exception{
         String action=request.optString("action","status");
         if("status".equals(action))return status();
+        if("order".equals(action))return QdOrders.order(context,request.getString("text"));
+        if("run_code".equals(action))return QdOrders.runCode(request.getString("source"));
         int skill=request.getInt("skill");
         if(skill<1||skill>4)throw new IllegalArgumentException("Lección Qd inválida.");
         if("evaluate".equals(action))return grade(checked(request.getString("source")),skill,false).put("ok",true);
