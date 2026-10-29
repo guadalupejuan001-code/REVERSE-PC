@@ -149,7 +149,7 @@ qubits con un número arbitrario de T.
 
 ## Límites y dependencia
 
-- Mundo X permanece fijado a `e2778d962af22f6f1a0794058dd4685fc2573966`.
+- Mundo X permanece fijado a `1f925786522aba91f72707ad1638a8edcdd31a8f`.
   Las extensiones de compilación verifican SHA-256 de los encabezados; el
   checkout original no se modifica. CI publica el diff utilizado.
 - Reduced admite componentes de hasta 1000 qubits; el presupuesto
@@ -192,3 +192,19 @@ papelera, imágenes, aplicaciones instaladas y calculadora ejecutada en XI.
 La edición `com.reversepc.desktop` se instala junto a versiones anteriores.
 El runtime, el formato RVPC2 y la dependencia fijada de Mundo X se conservan.
 [Uso, compilación y límites de REVERSE Desktop](reverse-os-android/README.md).
+
+## REVERSE VELOCITY — juego 3D nativo (base 2.5.9 preservada)
+
+Juego original con `EtherRenderEngine` de Mundo X, triángulos exactos,
+elipsoides, carretera por segmentos, conducción a 20 ms, seis puntos de control,
+cámaras, colores y cronómetro. REVERSE abre el juego desde Aplicaciones.
+Esta rama agrega la extensión de juego sobre la base de entrega 2.5.9
+sin borrar Música, BBY Q, PRISMA ni Qd Studio. La dependencia Mundo X queda
+fijada a `1f925786522aba91f72707ad1638a8edcdd31a8f`.
+
+Se mantiene el observador de cubos de PRISMA mediante
+`scripts/xrender_extension.py` con anclas revisadas; no hay otro motor de rayos.
+La salida Android presenta píxeles calculados por X Render en CPU.
+El ejecutable adicional `com.reversepc.velocity` permite instalar el
+prototipo en paralelo a la edición anterior de REVERSE.
+No declarar rendimiento HD/AAA ni APK validada sin pruebas de hardware.

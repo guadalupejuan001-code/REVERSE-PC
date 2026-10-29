@@ -1,7 +1,7 @@
-name: REVERSE 2.5.9 dual portrait and landscape, unchanged art
+name: REVERSE VELOCITY 2.6.0 preserve 2.5.9 features
 on:
   push:
-    branches: [main]
+    branches: [main, integrate/reverse-259-velocity-xrender-20261029]
     paths: ['reverse-os-android/**', 'bbyq-interface/**', 'src/**', 'scripts/**', '.github/workflows/workbench-android.yml']
   pull_request:
     branches: [main]
@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: guadalupejuan001-code/mundo-X
-          ref: e2778d962af22f6f1a0794058dd4685fc2573966
+          ref: 1f925786522aba91f72707ad1638a8edcdd31a8f
           path: deps/mundo-x
           persist-credentials: false
       - uses: actions/checkout@v4
@@ -95,7 +95,7 @@ jobs:
           bash reverse-os-android/scripts/prepare-bbyq.sh deps/bbyq-classic
           cp build/e025/BBY-Q.rxe dist/BBY-Q-E025.rxe
           cp build/e025/W4u.rxe dist/W4u-0.1.rxe
-          python3 -c 'import json,os; from pathlib import Path; Path("reverse-os-android/app/src/main/assets/workbench/build-info.json").write_text(json.dumps({"source_commit":os.environ["GITHUB_SHA"],"bbyq_commit":"ed32ab6b73a31e96080b62269ad1eb9f3e15709d","bbyq_version":"E025-Chain-1","w4u_version":"0.1","mundo_x_commit":"e2778d962af22f6f1a0794058dd4685fc2573966"})+"\n")'
+          python3 -c 'import json,os; from pathlib import Path; Path("reverse-os-android/app/src/main/assets/workbench/build-info.json").write_text(json.dumps({"source_commit":os.environ["GITHUB_SHA"],"bbyq_commit":"ed32ab6b73a31e96080b62269ad1eb9f3e15709d","bbyq_version":"E025-Chain-1","w4u_version":"0.1","mundo_x_commit":"1f925786522aba91f72707ad1638a8edcdd31a8f"})+"\n")'
       - name: Test desktop and keyboard with the real XI backend
         shell: bash
         run: |
@@ -115,8 +115,10 @@ jobs:
           umask 077
           keytool -genkeypair -keystore "$REVERSE_SIGNING_KEYSTORE" -storetype JKS -storepass android -keypass android -alias reverse-desktop -keyalg RSA -keysize 2048 -validity 30 -dname 'CN=REVERSE Disposable CI'
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1' platform-tools emulator 'system-images;android-35;default;x86_64' > evidence/sdk.log
-          gradle -p reverse-os-android --no-daemon :app:assembleControlDebug :app:assembleControlDebugAndroidTest > evidence/gradle.log 2>&1 || { tail -180 evidence/gradle.log; exit 1; }
+          gradle -p reverse-os-android --no-daemon :app:assembleVelocityDebug :app:assembleControlDebug :app:assembleControlDebugAndroidTest > evidence/gradle.log 2>&1 || { tail -180 evidence/gradle.log; exit 1; }
           cp reverse-os-android/app/build/outputs/apk/control/debug/app-control-debug.apk dist/REVERSE-v2.5.9-dual-orientation-ci.apk
+          cp reverse-os-android/app/build/outputs/apk/velocity/debug/app-velocity-debug.apk dist/REVERSE-VELOCITY-XRender-2.6.0-ci.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose dist/REVERSE-VELOCITY-XRender-2.6.0-ci.apk > evidence/velocity-signature.txt
           cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" dist/apksigner.jar
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/REVERSE-v2.5.9-dual-orientation-ci.apk > evidence/ci-signature.txt
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -p 4 dist/REVERSE-v2.5.9-dual-orientation-ci.apk > evidence/alignment.txt
