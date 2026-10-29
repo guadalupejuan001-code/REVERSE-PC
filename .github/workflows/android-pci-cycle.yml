@@ -66,6 +66,12 @@ jobs:
           DISK=$(find disk-input -name android-slot-a.raw -print -quit)
           build/guest-pci-cycle boot-input/current.rvg "$DISK" evidence/c04/control-journal 120000 10fc574e0b6fc582a1bc120c53d1f5bb50a95b35bd0f325034554da5a95409c7 --chunk=1000000 --instructions=50000000 > evidence/c04/control-result.json
           build/guest-pci-cycle boot-input/current.rvg "$DISK" evidence/c04/timing-journal 120000 10fc574e0b6fc582a1bc120c53d1f5bb50a95b35bd0f325034554da5a95409c7 --chunk=1000000 --instructions=50000000 --counter-latency=host-entropy > evidence/c04/timing-result.json
+      - name: Publish the bounded comparison before the longer continuation
+        uses: actions/upload-artifact@v4
+        with:
+          name: reverse-c04-counter-ab-reports
+          path: evidence/c04/*-result.json
+          retention-days: 14
       - name: Continue the pinned Android state for fifteen minutes with host-seeded counter latency
         run: |
           DISK=$(find disk-input -name android-slot-a.raw -print -quit)
