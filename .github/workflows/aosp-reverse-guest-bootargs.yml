@@ -145,7 +145,7 @@ jobs:
             f722bdd809bfd3485917a564b053b8a6d4938408734091f420c3297a8e3b20c8 \
             "$first_sha" > evidence/rvi2-provenance.json
           jq -e '.rvi_version=="RVI2" and .bootargs_bytes>50 and
-            .bootargs|contains("init=/init")' evidence/rvi2-provenance.json >/dev/null
+            (.bootargs | contains("init=/init"))' evidence/rvi2-provenance.json >/dev/null
       - name: Execute named Android guest profile on original XI/Ether and checkpoint exact first stop
         run: |
           set -euo pipefail
