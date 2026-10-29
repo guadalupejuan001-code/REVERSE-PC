@@ -257,16 +257,16 @@ public final class WorkbenchActivity extends Activity {
             ui.post(()->{if(!closed)try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),IMPORT_RXE);}catch(Exception error){message("No se pudo abrir el selector de ejecutables.");}});
         }
         @JavascriptInterface public void importGuestElf(){
-            ui.post(()->{if(!closed)try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),IMPORT_GUEST_ELF);}catch(Exception error){message("No se pudo abrir el selector ELF.");}});
+            ui.post(()->{if(!closed)try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),IMPORT_GUEST_ELF);}catch(Exception error){cancelGuestImport();message("No se pudo abrir el selector ELF.");}});
         }
         @JavascriptInterface public void importLinuxImage(){
-            ui.post(()->{if(!closed)try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),IMPORT_LINUX_IMAGE);}catch(Exception error){message("No se pudo abrir el selector Image.");}});
+            ui.post(()->{if(!closed)try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),IMPORT_LINUX_IMAGE);}catch(Exception error){cancelGuestImport();message("No se pudo abrir el selector Image.");}});
         }
         @JavascriptInterface public void importSystemElf(){
-            ui.post(()->{if(!closed)try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),IMPORT_SYSTEM_ELF);}catch(Exception error){message("No se pudo abrir el selector ELF de sistema.");}});
+            ui.post(()->{if(!closed)try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),IMPORT_SYSTEM_ELF);}catch(Exception error){cancelGuestImport();message("No se pudo abrir el selector ELF de sistema.");}});
         }
         @JavascriptInterface public void importGuestCheckpoint(){
-            ui.post(()->{if(!closed)try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),IMPORT_GUEST_CHECKPOINT);}catch(Exception error){message("No se pudo abrir el selector de checkpoints.");}});
+            ui.post(()->{if(!closed)try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),IMPORT_GUEST_CHECKPOINT);}catch(Exception error){cancelGuestImport();message("No se pudo abrir el selector de checkpoints.");}});
         }
         @JavascriptInterface public void exportGuest(){
             ui.post(()->{
@@ -347,8 +347,11 @@ public final class WorkbenchActivity extends Activity {
             catch(Exception error){pendingExport=null;message("No se pudo abrir el destino de exportación.");}
         });
     }
+    private void cancelGuestImport(){if(!closed&&web!=null)web.evaluateJavascript("window.ReverseGuest&&window.ReverseGuest.cancelImport()",null);}
     @Override protected void onActivityResult(int request,int result,Intent data){
         super.onActivityResult(request,result,data);
+        boolean guestImport=request==IMPORT_GUEST_ELF||request==IMPORT_LINUX_IMAGE||request==IMPORT_SYSTEM_ELF||request==IMPORT_GUEST_CHECKPOINT;
+        if(guestImport&&(result!=RESULT_OK||data==null||data.getData()==null))cancelGuestImport();
         if((request==IMPORT_GUEST_ELF||request==IMPORT_LINUX_IMAGE||request==IMPORT_SYSTEM_ELF||request==IMPORT_GUEST_CHECKPOINT)&&result==RESULT_OK&&data!=null&&data.getData()!=null){Uri uri=data.getData();RuntimeExecutor.INSTANCE.execute(()->{
             String response;
             try(InputStream input=getContentResolver().openInputStream(uri)){

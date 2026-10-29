@@ -45,10 +45,10 @@ async function continueGuest(){
   }
   refreshGuestViews();
 }
-window.ReverseGuest={pause(){guestUi.running=false;refreshGuestViews();},imported(response){
-  guestUi.running=false;
+window.ReverseGuest={cancelImport(){guestUi.busy=false;refreshGuestViews();},pause(){guestUi.running=false;refreshGuestViews();},imported(response){
+  guestUi.running=false;guestUi.busy=false;
   if(response.ok){guestUi.snapshot=response;guestUi.error='';guestUi.output='';}
-  else guestUi.error=response.error||'ELF rechazado.';
+  else guestUi.error=response.error||'Archivo rechazado.';
   refreshGuestViews();
 }};
 document.addEventListener('input',event=>{
@@ -61,6 +61,10 @@ document.addEventListener('click',event=>{
   const action=button.dataset.guest;
   if(action==='demo'||action==='system'||action==='float'||action==='import'||action==='system-elf'||action==='linux'||action==='checkpoint'){
     if(guestUi.snapshot?.loaded&&!confirm('Esto reemplazará el invitado guardado. Exporta su checkpoint antes si deseas conservarlo. ¿Continuar?'))return;
+    if(['import','system-elf','linux','checkpoint'].includes(action)){
+      if(!nativeAvailable){guestUi.error='Esta función necesita la aplicación Android.';refreshGuestViews();return;}
+      guestUi.busy=true;guestUi.error='';refreshGuestViews();
+    }
     if(action==='checkpoint'&&typeof window.ReverseNative?.importGuestCheckpoint==='function')window.ReverseNative.importGuestCheckpoint();
     else if(action==='demo')guestOperation('guestDemo');
     else if(action==='system')guestOperation('guestSystem');
