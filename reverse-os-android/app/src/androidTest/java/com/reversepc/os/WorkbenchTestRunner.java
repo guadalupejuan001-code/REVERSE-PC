@@ -386,7 +386,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
             &&!edited.getBoolean("persisted"),"Edited source was not sandboxed: "+edited);
         // Qd's sandbox must never be able to dispatch memory writes or shell code.
         JSONObject blocked=op("qd",new JSONObject().put("action","run_code")
-            .put("source","#!reverse-pc-machine-v1\\nstore8 8300000000000000818 3\\nhalt\\n")
+            .put("source","#!reverse-pc-machine-v1\nstore8 8300000000000000818 3\nhalt\n")
             .toString(),"qdSandboxBlocked");
         require(!blocked.optBoolean("ok",false),"Out-of-contract XI source was accepted");
         require(hash("session.rvp").equals(desktopBefore),"Qd replaced desktop master memory");
@@ -414,7 +414,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
             require(snapshot.getJSONObject("build").getString("source_commit").matches("[a-f0-9]{40}"),"Missing build provenance");
             if(requested.equals("qd-orders")){
                 qdOrdersWorkflow();
-                result.putString("stream","WORKBENCH_TESTS_OK mode=qd-orders native=XI/Ether generated=2 sandbox=verified\\n");
+                result.putString("stream","WORKBENCH_TESTS_OK mode=qd-orders native=XI/Ether generated=2 sandbox=verified\n");
                 result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
             }
             if(requested.equals("qd")){
