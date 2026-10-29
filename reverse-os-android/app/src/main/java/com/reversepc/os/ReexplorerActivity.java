@@ -72,7 +72,7 @@ public final class ReexplorerActivity extends Activity {
         LinearLayout heading=new LinearLayout(this);
         heading.setGravity(Gravity.CENTER_VERTICAL);
         TextView brand=new TextView(this);
-        brand.setText("REexplorer");
+        brand.setText("REexplorer Quantum");
         brand.setTextSize(19);
         brand.setTextColor(INK);
         brand.setTypeface(Typeface.DEFAULT,Typeface.BOLD);
