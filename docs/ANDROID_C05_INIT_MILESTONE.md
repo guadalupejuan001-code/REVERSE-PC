@@ -37,6 +37,27 @@ cycle now pins the 6.2443B input and its old cadence separately from the new
 requested timing policy. Existing v6 APKs need the updated native engine to
 load a v7 checkpoint.
 
+The first paced run (40945076273) finished kernel initialization in another
+6,477,180 steps and printed `Run /init as init process`. It stopped at EL0
+PC 0x2a4000 before executing an opcode: the observer encountered the expected
+lower-EL instruction translation fault 0x82000006 because Linux demand-pages
+the ELF text. Its checkpoint SHA-256 is
+`dc5cd800e10b15fbde4d35242897fc15c478cb231724edfc102266142d13ecdf`.
+
+The entry controller now lets the same native CPU deliver an instruction
+abort to the guest kernel, verifying ESR, FAR, ELR, exception count and the
+single architectural transition before committing it. The guest's actual
+handler must populate the mapping and return to EL0 before the original
+bytes and instruction are verified. An unmasked pending IRQ is likewise
+handled by the native CPU before checking an opcode. Neither event counts
+as an executed init instruction. Forged fault observations, unrelated
+faults and mismatched transitions remain rejected without caller mutation.
+The report records entry faults and interrupts separately. Tests exercise
+real EL1 table writes, ERET, an absent EL0 code mapping, a guest mapping
+handler, pending timer acknowledgement and exact direct-versus-observed
+full-state equality. The next source pin is the saved, still-unexecuted
+entry; its v7 cadence and nonzero phase are retained exactly.
+
 C05 resumes that exact state, with its original disk attachment, RAM and
 persisted counter seed/cursor. It never draws a replacement seed. The source
 checkpoint, complete source report and timing seed identity are independently

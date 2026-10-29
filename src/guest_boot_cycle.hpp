@@ -18,11 +18,27 @@ struct BootCycleLimits {
 };
 struct BootCycleReport {
   std::uint64_t initial_instructions=0, elapsed_ms=0, chunks=0;
+  std::uint64_t entry_instruction_faults=0,entry_interrupts=0;
   std::string reason="running", error, console;
   bool first_user_instruction_verified=false;
 };
 using CycleSave=std::function<void(const MinimalGuest&,const BootCycleReport&)>;
 using UserEntry=std::function<bool(MinimalGuest&)>;
+
+// Entry code may be demand-paged. The native CPU, not the observer, must
+// raise that exception and let the guest kernel populate its own mappings.
+// Commit only the exact architectural exception transition, never a guessed
+// page, instruction, permission or instruction pointer.
+inline RunResult boot_cycle_entry_event(MinimalGuest& guest,const MachineFault* fault){
+  require(guest.machine().enabled&&!guest.machine().el&&!guest.machine().waiting,"Entry exception requires an active EL0 boundary");
+  const auto pc=guest.registers().pc,count=guest.registers().instructions,exceptions=guest.machine().exceptions;
+  if(fault)require((fault->syndrome>>26)==0x20&&fault->address==pc,"Entry observation is not a lower-EL instruction abort");
+  else require(!(guest.machine().daif&0x80)&&guest.machine().next_irq()!=1023,"Entry interrupt is not pending");
+  auto candidate=guest;const auto run=candidate.run(1);
+  require(run.executed==1&&candidate.registers().instructions==count+1&&candidate.machine().el==1&&candidate.machine().exceptions==exceptions+1&&candidate.machine().elr==pc,"Entry event did not produce the expected native exception");
+  if(fault)require(candidate.machine().esr==fault->syndrome&&candidate.machine().far==fault->address,"Native entry fault differs from the observed translation fault");
+  guest=std::move(candidate);return run;
+}
 
 // A failed run() rolls back the complete CPU/device/XI transaction. Retain
 // the exact successful prefix, including its UART, and leave the faulting
@@ -67,6 +83,11 @@ inline BootCycleReport run_boot_cycle(MinimalGuest& guest,const BootCycleLimits&
     if(report.elapsed_ms>=limit.wall_ms){report.reason="host_wall_budget";break;}
     if(first_user&&!report.first_user_instruction_verified&&guest.machine().enabled&&!guest.machine().el){
       const auto count=guest.registers().instructions;
+      if(!(guest.machine().daif&0x80)&&guest.machine().next_irq()!=1023){
+        try{output(boot_cycle_entry_event(guest,nullptr));++report.entry_interrupts;++report.chunks;}
+        catch(const std::exception& failure){report.reason="unverified_userspace_entry";report.error=failure.what();break;}
+        catch(const MachineFault& failure){report.reason="unverified_userspace_entry";report.error="Native entry interrupt fault: "+hex(failure.syndrome);break;}
+      }else{
       try{
         auto checked=guest;
         require(first_user(checked)&&checked.registers().instructions==count+1&&!checked.machine().el,"First userspace instruction was not verified");
@@ -74,7 +95,12 @@ inline BootCycleReport run_boot_cycle(MinimalGuest& guest,const BootCycleLimits&
         report.first_user_instruction_verified=true;
         if(limit.stop_after_first_user_instruction){report.reason="first_user_instruction_verified";break;}
       }catch(const std::exception& failure){report.reason="unverified_userspace_entry";report.error=failure.what();break;}
-      catch(const MachineFault& failure){report.reason="unverified_userspace_entry";report.error="Architectural entry fault: "+hex(failure.syndrome)+" at "+hex(failure.address);break;}
+      catch(const MachineFault& failure){
+        try{output(boot_cycle_entry_event(guest,&failure));++report.entry_instruction_faults;++report.chunks;}
+        catch(const std::exception& rejected){report.reason="unverified_userspace_entry";report.error=rejected.what();break;}
+        catch(const MachineFault& rejected){report.reason="unverified_userspace_entry";report.error="Native entry fault delivery failed: "+hex(rejected.syndrome);break;}
+      }
+      }
     }else{
       std::string failure;const auto count=std::min(limit.chunk,limit.instructions-steps);
       const auto run=boot_cycle_prefix(guest,count,bool(first_user)&&!report.first_user_instruction_verified,failure);
@@ -106,6 +132,7 @@ inline std::string boot_cycle_json(const MinimalGuest& guest,const BootCycleRepo
     <<",\"checkpoint_sha256\":"<<quote(sha)<<",\"host_elapsed_ms\":"<<report.elapsed_ms
     <<",\"completed_chunks\":"<<report.chunks
     <<",\"first_user_instruction_verified\":"<<(report.first_user_instruction_verified?"true":"false")
+    <<",\"entry_instruction_faults\":"<<report.entry_instruction_faults<<",\"entry_interrupts\":"<<report.entry_interrupts
     <<",\"provenance\":"<<provenance<<"}";return out.str();
 }
 

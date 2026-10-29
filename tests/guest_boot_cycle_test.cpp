@@ -15,6 +15,30 @@ static MinimalGuest user_entry(){
   for(unsigned i=0;i<8;i++){image[96+i]=std::uint8_t(std::uint64_t(sizeof(code))>>(8*i));image[104+i]=image[96+i];}
   MinimalGuest g(128*1024*1024,0);g.load_elf(image,true);return g;
 }
+static MinimalGuest demand_entry(bool irq){
+  auto image=system_demo_elf();image.resize(256);image.resize(256+0x4000);
+  for(unsigned i=0;i<8;i++){image[96+i]=std::uint8_t(UINT64_C(0x4000)>>(8*i));image[104+i]=image[96+i];}
+  unsigned at=256;auto emit=[&](std::uint32_t word){for(unsigned i=0;i<4;i++)image.at(at++)=std::uint8_t(word>>(8*i));};
+  auto mov=[&](unsigned r,std::uint64_t n){for(unsigned i=0;i<4;i++)emit((i?0xf2800000u:0xd2800000u)|(i<<21)|(unsigned((n>>(16*i))&65535)<<5)|r);};
+  auto msr=[&](unsigned id,unsigned rt){emit(0xd5100000u|(id<<5)|rt);};
+  mov(0,0x40081000);msr(guest_sysreg(3,0,12,0,0),0);
+  mov(0,0x40010000);mov(1,0x401);emit(0xf9000001);mov(1,0x40000705);emit(0xf9000401);emit(0xf900081f);
+  msr(guest_sysreg(3,0,2,0,0),0);msr(guest_sysreg(3,0,2,0,1),0);
+  mov(1,0xff00);msr(guest_sysreg(3,0,10,2,0),1);mov(1,0x80190019);msr(guest_sysreg(3,0,2,0,2),1);
+  mov(1,0x30d00801);msr(guest_sysreg(3,0,1,0,0),1);emit(0xd5033fdf);
+  if(irq){
+    mov(20,MachineState::gic_dist);mov(21,MachineState::gic_cpu);mov(0,1);emit(0xb9000280);emit(0xb90002a0);
+    mov(0,255);emit(0xb90006a0);mov(0,0x40000000);emit(0xb9010280);
+    msr(guest_sysreg(3,3,14,2,0),31);mov(0,1);msr(guest_sysreg(3,3,14,2,1),0);
+  }
+  mov(0,0x81001000);msr(guest_sysreg(3,0,4,1,0),0);mov(0,0x80083000);msr(guest_sysreg(3,0,4,0,1),0);msr(guest_sysreg(3,0,4,0,0),31);emit(0xd69f03e0);
+  at=256+0x1400;emit(0x14000300); // Lower-EL synchronous vector -> native page-table handler.
+  at=256+0x1480;emit(0x14000320); // Lower-EL IRQ vector -> timer acknowledgement.
+  at=256+0x2000;mov(0,0x40010000);mov(1,0x400007c5);emit(0xf9000801);emit(0xd5033f9f);emit(0xd508871f);emit(0xd5033fdf);emit(0xd69f03e0);
+  at=256+0x2100;mov(21,MachineState::gic_cpu);emit(0xb9400ea0);msr(guest_sysreg(3,3,14,2,1),31);emit(0xb90012a0);emit(0xd69f03e0);
+  at=256+0x3000;emit(0xd503201f);
+  MinimalGuest g(128*1024*1024,0);g.load_elf(image,true);return g;
+}
 int main(){try{
   auto direct=graphics();direct.run(1000);auto split=graphics();split.run(200);
   const auto input=split.snapshot();split=MinimalGuest::from_snapshot(input);
@@ -82,6 +106,21 @@ int main(){try{
   const auto faulted_entry=run_boot_cycle(unverified,limits,{},[](MinimalGuest&)->bool{throw MachineFault{0x96000004,0x1234};});
   check(faulted_entry.reason=="unverified_userspace_entry"&&!faulted_entry.first_user_instruction_verified,"Architectural observation fault escaped its boundary");
   check(unverified.snapshot()==boundary,"Architectural observation fault changed the CPU");
+  const auto forged_entry=run_boot_cycle(unverified,limits,{},[](MinimalGuest& g)->bool{throw MachineFault{0x82000005,g.registers().pc};});
+  check(forged_entry.reason=="unverified_userspace_entry"&&!forged_entry.first_user_instruction_verified&&unverified.snapshot()==boundary,"A forged instruction-abort observation changed or verified the caller");
+  for(bool irq:{false,true}){
+    auto demand=demand_entry(irq),reference=demand;reference.run(1000,true);
+    if(irq){reference.run(1);reference.run(1000,true);}
+    reference.run(1);reference.run(1000,true);reference.run(1);
+    BootCycleLimits demand_limits;demand_limits.instructions=1000;demand_limits.wall_ms=30000;demand_limits.chunk=11;demand_limits.stop_after_first_user_instruction=true;
+    const auto demand_report=run_boot_cycle(demand,demand_limits,{},[](MinimalGuest& g){
+      require(g.registers().pc==0x80083000,"Demand fixture returned to a different EL0 PC");
+      require(g.read(g.physical_address(g.registers().pc,false,true),4)==0xd503201f,"Demand fixture instruction bytes differ");g.run(1);return !g.machine().el&&g.registers().pc==0x80083004;
+    });
+    check(demand_report.reason=="first_user_instruction_verified"&&demand_report.first_user_instruction_verified,"Native demand paging did not reach the verified first opcode");
+    check(demand_report.entry_instruction_faults==1&&demand_report.entry_interrupts==unsigned(irq),"Entry fault or pending timer was fabricated or lost");
+    check(demand.snapshot()==reference.snapshot(),"Observed demand paging changed the actual CPU, page tables or device state");
+  }
   const auto root=std::filesystem::path("evidence/c04/cycle-journal-test-"+std::to_string(::getpid()));
   std::filesystem::create_directories(root.parent_path());BootCycleJournal journal(root);
   journal.publish(bad,failed);journal.publish(split,report);journal.publish(bounded,bounded_report);

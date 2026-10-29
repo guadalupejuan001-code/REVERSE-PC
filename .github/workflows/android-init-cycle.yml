@@ -48,7 +48,7 @@ jobs:
           const c=JSON.parse(readFileSync('experiments/android-init-cycle.json')),r=readFileSync('input/current.json');
           if(createHash('sha256').update(r).digest('hex')!==c.report_sha256)throw Error('Source report mismatch');
           const p=JSON.parse(r),audit=auditGkiRvg(readFileSync('input/current.rvg'),'f722bdd809bfd3485917a564b053b8a6d4938408734091f420c3297a8e3b20c8',c.checkpoint_sha256);
-          if(audit.instructions!==c.instructions||p.guest.instructions!==c.instructions||p.checkpoint_sha256!==c.checkpoint_sha256||p.first_user_instruction_verified||p.guest.exception_level!==1)throw Error('Unexpected source milestone');
+          if(audit.instructions!==c.instructions||p.guest.instructions!==c.instructions||p.checkpoint_sha256!==c.checkpoint_sha256||p.first_user_instruction_verified||!(p.guest.exception_level===1||(p.guest.exception_level===0&&p.guest.pc==='0x2a4000')))throw Error('Unexpected source milestone');
           if(p.guest.counter_samples!==c.counter_samples||p.provenance.timing_seed_sha256!==c.counter_seed_sha256)throw Error('Different persisted counter stream');
           if((p.guest.counter_instructions_per_tick??1)!==c.input_counter_instructions_per_tick)throw Error('Different source counter cadence');
           writeFileSync('evidence/c05/input-audit.json',JSON.stringify(audit,null,2));
