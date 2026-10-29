@@ -1,0 +1,40 @@
+name: REVERSE VELOCITY XI-only scene renderer
+on:
+  push:
+    branches: [feature/xi-render-native-first-20261029]
+    paths:
+      - 'reverse-os-android/app/src/main/assets/velocity/**'
+      - 'reverse-os-android/tests/velocity-xi-render-contract.cjs'
+      - '.github/workflows/velocity-xi-render.yml'
+  pull_request:
+    branches: [main]
+    paths: ['reverse-os-android/app/src/main/assets/velocity/**', '.github/workflows/velocity-xi-render.yml']
+permissions: {contents: read}
+jobs:
+  xi-render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: 1f925786522aba91f72707ad1638a8edcdd31a8f
+          path: deps/mundo-x
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Build real XI interpreter with unchanged verified Ether overlays
+        run: |
+          set -euo pipefail
+          mkdir -p build/velocity build/ether-compat
+          python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
+            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
+            src/reverse_pc.cpp -o build/velocity/reverse_pc
+      - name: Execute XI world, XI physics and XI renderer
+        run: |
+          set -euo pipefail
+          node reverse-os-android/tests/velocity-xi-contract.cjs build/velocity/reverse_pc build/velocity
+          node reverse-os-android/tests/velocity-xi-render-contract.cjs build/velocity/reverse_pc build/velocity
