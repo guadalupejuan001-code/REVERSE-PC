@@ -149,7 +149,7 @@ qubits con un número arbitrario de T.
 
 ## Límites y dependencia
 
-- Mundo X permanece fijado a `e2778d962af22f6f1a0794058dd4685fc2573966`.
+- Mundo X permanece fijado a `f2ed901202b4332eb4034b8edec273b7b0a76ed3`.
   Las extensiones de compilación verifican SHA-256 de los encabezados; el
   checkout original no se modifica. CI publica el diff utilizado.
 - Reduced admite componentes de hasta 1000 qubits; el presupuesto
@@ -199,7 +199,7 @@ El runtime, el formato RVPC2 y la dependencia fijada de Mundo X se conservan.
 El juego original de carreras está en desarrollo en
 `feature/reverse-velocity-native-20261029`.
 Su primer corte usa **EtherRenderEngine/EtherSurfaceBuffer nativos de Mundo X**
-(`e2778d962af22f6f1a0794058dd4685fc2573966`) para
+(`f2ed901202b4332eb4034b8edec273b7b0a76ed3`) para
 generar cada píxel de una escena con cuerpos esféricos. Android Canvas
 **solo presenta** el framebuffer nativo; no hay un segundo renderizador GLES
 del juego. El estado de conducción tiene actualización fija de 20 ms,

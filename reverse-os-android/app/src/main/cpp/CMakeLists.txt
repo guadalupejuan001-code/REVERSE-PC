@@ -15,7 +15,7 @@ if(NOT EXISTS "${ETHER_PATCH}/mundo_x/quantum_runtime.hpp")
 endif()
 execute_process(COMMAND git rev-parse HEAD WORKING_DIRECTORY "${ETHER_SOURCE}"
  OUTPUT_VARIABLE HASH OUTPUT_STRIP_TRAILING_WHITESPACE RESULT_VARIABLE STATUS ERROR_QUIET)
-if(NOT STATUS EQUAL 0 OR NOT HASH STREQUAL "e2778d962af22f6f1a0794058dd4685fc2573966")
+if(NOT STATUS EQUAL 0 OR NOT HASH STREQUAL "f2ed901202b4332eb4034b8edec273b7b0a76ed3")
  message(FATAL_ERROR "Wrong Mundo X dependency revision")
 endif()
 add_library(reverse_os SHARED reverse_os_jni.cpp velocity_xrender_jni.cpp)
