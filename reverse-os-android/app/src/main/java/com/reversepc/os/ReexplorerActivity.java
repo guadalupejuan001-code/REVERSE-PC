@@ -14,7 +14,6 @@ import android.webkit.ClientCertRequest;
 import android.webkit.CookieManager;
 import android.webkit.GeolocationPermissions;
 import android.webkit.HttpAuthHandler;
-import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.SafeBrowsingResponse;
@@ -49,6 +48,7 @@ public final class ReexplorerActivity extends Activity {
     private static final int MUTED=Color.rgb(154,170,171);
     private static final int PANEL=Color.rgb(24,29,32);
     private static final int BACKGROUND=Color.rgb(13,17,20);
+    private static boolean dataDirectoryReady=false;
     private WebView page;
     private EditText address;
     private TextView status;
@@ -58,7 +58,7 @@ public final class ReexplorerActivity extends Activity {
     @Override protected void onCreate(Bundle state){
         super.onCreate(state);
         // This MUST run before any WebView/WebKit access in this process.
-        WebView.setDataDirectorySuffix("reexplorer");
+        if(!dataDirectoryReady){WebView.setDataDirectorySuffix("reexplorer");dataDirectoryReady=true;}
         WebView.setWebContentsDebuggingEnabled(false);
         getWindow().setStatusBarColor(BACKGROUND);
         getWindow().setNavigationBarColor(BACKGROUND);
