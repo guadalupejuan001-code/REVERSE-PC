@@ -39,6 +39,7 @@ inline std::uint64_t MinimalGuest::translate(std::uint64_t address,bool writing,
     const unsigned shift=12+(3-level)*9;
     const auto slot=table+((canonical>>shift)&511)*8;
     if(slot<MachineState::ram_base || slot-MachineState::ram_base>ram_ || ram_-(slot-MachineState::ram_base)<8)fault(0x14+level);
+    note_translation_table_page(slot);
     const auto descriptor=read(slot,8);
     if(!(descriptor&1))fault(4+level);
     if(level<3 && (descriptor&2)){
@@ -113,9 +114,9 @@ inline std::uint64_t MinimalGuest::cpu_read(std::uint64_t address,unsigned size,
 }
 inline void MinimalGuest::cpu_write(std::uint64_t address,std::uint64_t value,unsigned size,RunResult& result,bool unprivileged) {
   const auto physical=resolve_access(address,size,true,false,unprivileged);machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;
-  // Clear hints installed by validation too: the store may replace the
-  // page-table descriptor that resolved its own destination.
-  invalidate_translation_hints();
+  // Include table pages used by validation itself: the store can replace
+  // the descriptor that resolved its own destination, including its tail.
+  invalidate_cpu_store_hints(physical,size);
   if(!machine_.enabled){write(address,value,size);return;}
   const auto first=physical[0];
   if(device_address(first)){device_write(first,value&low_mask(size*8),size,result);return;}

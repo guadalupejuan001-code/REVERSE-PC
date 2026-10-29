@@ -407,16 +407,49 @@ class MinimalGuest {
   FloatingState floating_;
   mundo_x::QuantumRuntime::ByteAccess* byte_transaction_=nullptr; // Never persisted; scoped to run().
   // Nonpersistent address hints only: never guest bytes or a second RAM.
-  // Every memory mutation invalidates them, including XI/RXE and page-table
-  // stores. The complete translation controls and access mode are keys.
+  // Native CPU data stores retain address hints only when a conservative
+  // footprint proves their physical pages were not used for a page-table
+  // walk. XI/RXE/public writes still invalidate all hints. No bytes cached.
   struct TranslationHint {
     std::uint64_t generation=0,page=0,physical=0,ttbr0=0,ttbr1=0,tcr=0,sctlr=0;
     unsigned mode=0;
   };
   std::uint64_t translation_generation_=1;
   mutable std::array<TranslationHint,64> translation_hints_{};
+  // Bloom footprint of physical table pages read in this generation.
+  // Collisions can only force extra invalidations, never retain stale data.
+  mutable std::array<std::uint64_t,4> translation_table_pages_{};
+  static unsigned translation_page_slot(std::uint64_t address) {
+    const auto page=address>>12;
+    return unsigned((page^(page>>8)^(page>>16))&255);
+  }
+  void note_translation_table_page(std::uint64_t address) const {
+#ifndef REVERSE_PC_STORE_INVALIDATION_REFERENCE
+    const auto slot=translation_page_slot(address);
+    translation_table_pages_[slot/64]|=UINT64_C(1)<<(slot%64);
+#endif
+  }
   void invalidate_translation_hints() {
+    translation_table_pages_={};
     if(++translation_generation_==0){translation_hints_={};translation_generation_=1;}
+  }
+  void invalidate_cpu_store_hints(const std::array<std::uint64_t,16>& physical,unsigned size) {
+#ifdef REVERSE_PC_STORE_INVALIDATION_REFERENCE
+    invalidate_translation_hints();
+#else
+    // A classical store through a quantum binding can change other linked
+    // bytes without touching their physical pages. Keep historical full
+    // invalidation whenever the transaction starts with any such binding.
+    if(runtime_.memory().stats().quantum_bindings){invalidate_translation_hints();return;}
+    // resolve_access() is linear within each 4-KiB virtual page. A <=16-byte
+    // store can touch at most two physical pages, including disjoint aliases.
+    for(const auto address:{physical[0],physical[size-1]}){
+      const auto slot=translation_page_slot(address);
+      if(translation_table_pages_[slot/64]&(UINT64_C(1)<<(slot%64))){
+        invalidate_translation_hints();return;
+      }
+    }
+#endif
   }
 
   static mundo_x::QuantumRuntime make_runtime(std::size_t overrides) {

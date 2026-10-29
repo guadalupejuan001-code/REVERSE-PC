@@ -47,13 +47,15 @@ int main(int argc,char** argv){try{
     }
   }else{
     require(argc<=6,"EL0 observation is a checkpoint-only host control");
-    require(argc!=6||std::string(argv[5])=="android-cuttlefish",
-      "Only the named Android Cuttlefish bootargs profile is supported");
+    require(argc!=6||std::string(argv[5])=="android-cuttlefish"||std::string(argv[5])=="android-cuttlefish-normal"||std::string(argv[5])=="android-cuttlefish-normal-no-scx",
+      "Only named Android Cuttlefish bootargs profiles are supported");
   }
   MinimalGuest guest(128*1024*1024,1048576);Bytes initrd;if(argc>=5&&!checkpoint){std::ifstream rd(argv[4],std::ios::binary);require(bool(rd),"Cannot open initrd");initrd.assign(std::istreambuf_iterator<char>(rd),{});}
   if(checkpoint){guest=MinimalGuest::from_snapshot(image);require(guest.machine().enabled&&guest.machine().image_kind==2,"Probe checkpoint must contain a Linux Image");}
   else guest.load_linux_image(image,initrd,
-    argc==6?guest_android_cuttlefish_bootargs():std::string{});
+    argc==6?(std::string(argv[5])=="android-cuttlefish-normal-no-scx"?
+      guest_android_cuttlefish_normal_no_scx_bootargs():std::string(argv[5])=="android-cuttlefish-normal"?
+      guest_android_cuttlefish_normal_bootargs():guest_android_cuttlefish_bootargs()):std::string{});
   auto last_heartbeat=std::chrono::steady_clock::now();
   const auto emit_heartbeat=[&](bool force=false){
     const auto now=std::chrono::steady_clock::now();
@@ -115,7 +117,19 @@ int main(int argc,char** argv){try{
       if(i)details<<',';
       details<<quote("x"+std::to_string(i))<<':'<<quote(hex(guest.registers().x[i]));
     }
-    details<<"}}";next_instruction=details.str();
+    details<<"}";
+    if(reason=="userspace_entry"){
+      try{
+        constexpr char digits[]="0123456789abcdef";std::string window;
+        for(unsigned i=0;i<64;++i){
+          const auto address=guest.physical_address(virtual_pc+i,false,true);
+          const auto byte=guest.read8(address);
+          window.push_back(digits[byte>>4]);window.push_back(digits[byte&15]);
+        }
+        details<<",\"window64_hex\":"<<quote(window);
+      }catch(...){details<<",\"window64_error\":\"entry code window unavailable\"";}
+    }
+    details<<"}";next_instruction=details.str();
   }catch(const std::exception& error){
     next_instruction="{\"inspection_error\":"+quote(error.what())+"}";
   }catch(...){next_instruction="{\"inspection_error\":\"architectural translation fault\"}";}
