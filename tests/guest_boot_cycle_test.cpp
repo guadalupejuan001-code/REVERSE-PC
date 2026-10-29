@@ -39,6 +39,10 @@ static MinimalGuest demand_entry(bool irq){
   at=256+0x3000;emit(0xd503201f);
   MinimalGuest g(128*1024*1024,0);g.load_elf(image,true);return g;
 }
+static bool verify_demand_entry(MinimalGuest& g){
+  require(g.registers().pc==0x80083000,"Demand fixture returned to a different EL0 PC");
+  require(g.read(g.physical_address(g.registers().pc,false,true),4)==0xd503201f,"Demand fixture instruction bytes differ");g.run(1);return !g.machine().el&&g.registers().pc==0x80083004;
+}
 int main(){try{
   auto direct=graphics();direct.run(1000);auto split=graphics();split.run(200);
   const auto input=split.snapshot();split=MinimalGuest::from_snapshot(input);
@@ -113,14 +117,24 @@ int main(){try{
     if(irq){reference.run(1);reference.run(1000,true);}
     reference.run(1);reference.run(1000,true);reference.run(1);
     BootCycleLimits demand_limits;demand_limits.instructions=1000;demand_limits.wall_ms=30000;demand_limits.chunk=11;demand_limits.stop_after_first_user_instruction=true;
-    const auto demand_report=run_boot_cycle(demand,demand_limits,{},[](MinimalGuest& g){
-      require(g.registers().pc==0x80083000,"Demand fixture returned to a different EL0 PC");
-      require(g.read(g.physical_address(g.registers().pc,false,true),4)==0xd503201f,"Demand fixture instruction bytes differ");g.run(1);return !g.machine().el&&g.registers().pc==0x80083004;
-    });
+    const auto demand_report=run_boot_cycle(demand,demand_limits,{},verify_demand_entry);
     check(demand_report.reason=="first_user_instruction_verified"&&demand_report.first_user_instruction_verified,"Native demand paging did not reach the verified first opcode");
     check(demand_report.entry_instruction_faults==1&&demand_report.entry_interrupts==unsigned(irq),"Entry fault or pending timer was fabricated or lost");
     check(demand.snapshot()==reference.snapshot(),"Observed demand paging changed the actual CPU, page tables or device state");
   }
+  auto fault_budget=demand_entry(false);fault_budget.run(1000,true);auto fault_reference=fault_budget;fault_reference.run(1);
+  BootCycleLimits fault_limits;fault_limits.instructions=1;fault_limits.wall_ms=30000;fault_limits.chunk=1;fault_limits.stop_after_first_user_instruction=true;
+  const auto budget_report=run_boot_cycle(fault_budget,fault_limits,{},verify_demand_entry);
+  check(budget_report.reason=="instruction_budget"&&!budget_report.first_user_instruction_verified&&budget_report.entry_instruction_faults==1,"A native fetch fault falsely established the first-instruction milestone");
+  check(fault_budget.snapshot()==fault_reference.snapshot(),"Demand-fault delivery exceeded its one-transition budget");
+  auto recovered_fault=MinimalGuest::from_snapshot(fault_budget.snapshot());fault_limits.instructions=1000;
+  const auto recovered_report=run_boot_cycle(recovered_fault,fault_limits,{},verify_demand_entry);
+  fault_reference.run(1000,true);fault_reference.run(1);
+  check(recovered_report.first_user_instruction_verified&&recovered_report.entry_instruction_faults==0,"A restart inside the native fault handler did not reach the original first opcode");
+  check(recovered_fault.snapshot()==fault_reference.snapshot(),"Restarting after an entry fault changed the complete native state");
+  auto wrong_fault=demand_entry(false);wrong_fault.run(1000,true);const auto wrong_before=wrong_fault.snapshot();
+  const auto wrong_report=run_boot_cycle(wrong_fault,fault_limits,{},[](MinimalGuest& g)->bool{throw MachineFault{0x82000005,g.registers().pc+4};});
+  check(wrong_report.reason=="unverified_userspace_entry"&&wrong_fault.snapshot()==wrong_before,"A different observed fault address was delivered to the native CPU");
   const auto root=std::filesystem::path("evidence/c04/cycle-journal-test-"+std::to_string(::getpid()));
   std::filesystem::create_directories(root.parent_path());BootCycleJournal journal(root);
   journal.publish(bad,failed);journal.publish(split,report);journal.publish(bounded,bounded_report);
