@@ -24,7 +24,7 @@ function validBbyqAction(action){
   return Number.isInteger(op)&&Number.isInteger(target)&&(
     (op===1&&(target>=1&&target<=10||target>=16&&target<=31))||
     (op>=2&&op<=6&&(target>=1&&target<=10||target===15||target>=16&&target<=31))||
-    (op===10&&target>=16&&target<=31)||(op===11&&target===11)||
+    (op===10&&target>=16&&target<=31)||
     ((op===7||op===8)&&target===0)||(op===9&&(target===13||target===14)));
 }
 function restoreBbyqScene(before){
@@ -39,18 +39,6 @@ async function executeBbyqControl(action,observation,identity){
   if(bbyqControlTickets.has(action.ticket))return {success:false,reason:'Esta acción ya fue procesada.'};
   bbyqControlTickets.add(action.ticket);if(bbyqControlTickets.size>256)bbyqControlTickets.delete(bbyqControlTickets.values().next().value);
   if(action.view!==observation.view||captureBbyqDesktop(identity).view!==observation.view)return {success:false,reason:'El escritorio cambió mientras BBY Q respondía. Pide la acción otra vez.'};
-  // A browser launch does not create a simulated REVERSE window. The only
-  // permitted service is resolved to a fixed HTTPS URL inside Android.
-  // The trusted XI program selected op=11/target=11; JS never parses text.
-  if(action.op===11&&action.target===11){
-    try{
-      const result=await nativeRequest('openOfficialSite',JSON.stringify({service:'robinhood'}));
-      return result.opened===true?{success:true,reason:''}:
-        {success:false,reason:'Android no confirmó la apertura del navegador.'};
-    }catch(error){
-      return {success:false,reason:error.message||'No se pudo abrir Robinhood.'};
-    }
-  }
   const before={windows:JSON.parse(JSON.stringify(state.windows)),files:JSON.parse(JSON.stringify(state.files)),space:state.space,sessions:new Map(programSessions)};
   try{
     const {op,target}=action;
