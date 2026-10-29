@@ -208,36 +208,38 @@ public final class WorkbenchActivity extends Activity {
      * Neither the authenticated page nor credentials enter the privileged
      * reverse.local WebView or BBY Q's RVPC2 memory. No arbitrary URLs accepted.
      */
+    /** A separate Android process displays untrusted content; the Workbench
+     *  NEVER injects a privileged reverse.local bridge into remote websites. */
+    private JSONObject launchReexplorer(String rawUrl)throws Exception{
+        final String destination=ReexplorerPolicy.normalize(rawUrl);
+        java.util.concurrent.FutureTask<Boolean> launch=new java.util.concurrent.FutureTask<>(()->{
+            if(closed||!hostResumed)return false;
+            Intent internal=new Intent(WorkbenchActivity.this,ReexplorerActivity.class);
+            internal.putExtra(ReexplorerActivity.EXTRA_URL,destination);
+            startActivity(internal);
+            return true;
+        });
+        if(!ui.post(launch))throw new IllegalStateException("No se pudo solicitar REexplorer");
+        if(!launch.get(8,TimeUnit.SECONDS))
+            throw new IllegalStateException("REVERSE no está visible para abrir REexplorer");
+        return new JSONObject().put("ok",true).put("opened",true)
+            .put("browser","REexplorer").put("url",destination);
+    }
+    /** Only the signed trusted XI action may invoke this route; JS cannot
+     *  change the service URL, and general navigation uses another operation. */
     private JSONObject openOfficialSite(String payload)throws Exception{
         JSONObject request=new JSONObject(payload);
         if(request.length()!=1||!"robinhood".equals(request.optString("service")))
-            throw new IllegalArgumentException("Sitio externo no autorizado");
-        java.util.concurrent.FutureTask<Boolean> launch=new java.util.concurrent.FutureTask<>(()->{
-            if(closed||!hostResumed)return false;
-            Uri destination=Uri.parse("https://robinhood.com/");
-            // Only a browser may receive this link, never a deep-linked
-            // brokerage app or another app that claims a URL handler.
-            java.util.ArrayList<String> browserPackages=new java.util.ArrayList<>();
-            for(String known:new String[]{"com.android.chrome","com.sec.android.app.sbrowser",
-                    "org.mozilla.firefox","com.brave.browser","com.microsoft.emmx",
-                    "com.opera.browser","com.duckduckgo.mobile.android"})
-                if(!browserPackages.contains(known))browserPackages.add(known);
-            for(String browserPackage:browserPackages){
-                if(browserPackage==null||browserPackage.isEmpty())continue;
-                Intent browser=new Intent(Intent.ACTION_VIEW,destination);
-                browser.addCategory(Intent.CATEGORY_BROWSABLE);
-                browser.setPackage(browserPackage);
-                try{startActivity(browser);return true;}
-                catch(android.content.ActivityNotFoundException missingBrowser){
-                    // Try the next *browser* package; never fall back to any app.
-                }
-            }
-            throw new android.content.ActivityNotFoundException("No hay un navegador compatible instalado");
-        });
-        if(!ui.post(launch))throw new IllegalStateException("No se pudo solicitar el navegador");
-        if(!launch.get(8,TimeUnit.SECONDS))
-            throw new IllegalStateException("REVERSE no está visible para abrir el navegador");
-        return new JSONObject().put("ok",true).put("opened",true).put("service","robinhood");
+            throw new IllegalArgumentException("Sitio externo no autorizado por XI");
+        JSONObject result=launchReexplorer(ReexplorerPolicy.HOME);
+        return result.put("service","robinhood");
+    }
+    /** Manual address bar entered in the REVERSE desktop, not an XI operation. */
+    private JSONObject openReexplorer(String payload)throws Exception{
+        JSONObject request=new JSONObject(payload);
+        if(request.length()!=1||!(request.opt("url") instanceof String))
+            throw new IllegalArgumentException("La dirección no es válida");
+        return launchReexplorer(request.getString("url"));
     }
     public final class Bridge {
         /** Clipboard is queried only on an explicit UI action. No polling or storage. */
@@ -325,6 +327,7 @@ public final class WorkbenchActivity extends Activity {
                     else if("askApp".equals(operation))result=programs().ask(new JSONObject(payload));
                     else if("ackControl".equals(operation))result=programs().acknowledge(new JSONObject(payload));
                      else if("openOfficialSite".equals(operation))result=openOfficialSite(payload);
+                    else if("openReexplorer".equals(operation))result=openReexplorer(payload);
                     else if("runApp".equals(operation))result=programs().run(new JSONObject(payload),session());
                     else if("compileApp".equals(operation))result=programs().compile(new JSONObject(payload));
                     else if("qd".equals(operation))result=programs().qd(new JSONObject(payload));
