@@ -7,7 +7,7 @@ import {createInflateRaw,crc32} from 'node:zlib';
 import {createHash} from 'node:crypto';
 import {pipeline} from 'node:stream/promises';
 import {Transform,PassThrough} from 'node:stream';
-import {join,resolve} from 'node:path';
+import {join,resolve,dirname} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {withOfficialArchive} from './aosp_cuttlefish_zip_probe.mjs';
 import {bootParts} from './aosp_boot_preflight.mjs';
@@ -15,7 +15,7 @@ import {buildAndroidPartitionDisk,REQUIRED} from './android_partition_disk.mjs';
 const need=(v,m)=>{if(!v)throw Error('Official Android partitions: '+m);};
 const sha=b=>createHash('sha256').update(b).digest('hex');
 export async function acquireAndroidPartitions(directory){
- const dir=resolve(directory);await mkdir(dir); // Never reuse a partial previous attempt.
+ const dir=resolve(directory);await mkdir(dirname(dir),{recursive:true});await mkdir(dir); // Never reuse a partial previous attempt.
  return withOfficialArchive(async({url,index,readRange})=>{
   need(index.total===1101174958,'unexpected same-build archive extent');
   await writeFile(join(dir,'archive-members.json'),JSON.stringify(index.entries.map(e=>({name:e.name,compressed:e.compressed,bytes:e.uncompressed})),null,2)+'\n');
