@@ -129,3 +129,32 @@ Esto no crea una segunda autoridad de RAM ni hace una copia de QEMU. Hasta que
 existan ramdisks y particiones Android compatibles, una ejecución de GKI sin
 `/init` Android sigue siendo **una prueba de arranque del kernel**, no de Android
 completo ni ADB. No hay FPS ni ejecución de Wild Rift.
+
+## Continued authentic GKI kernel after 5.5 million instructions (experiment)
+
+The original XI/Ether guest RVG2 at 5,504,096 instructions is pinned to
+SHA-256 f483938bdf78117eb3a8f415087daf3a3bec4f48c78ffa568e0a89e43ccec843.
+The immutable RVI1 contains the real official Android Common kernel Image
+(35,777,024 bytes, SHA-256
+8d8cf5254f0823655e06ffee100d9c19abbf4ce33adb107b66da3fdb3742e0be),
+a 1,456-byte REVERSE virtual-board DTB, and **zero initrd bytes**.
+Android first-stage /init cannot be claimed from this kernel-only image.
+
+The new read-only tools/audit_gki_rvg.mjs validates RVG2/3 and RVI1
+section extents, the SHA-256 of the embedded kernel and RVG, and the
+internal RVG FNV-1a checksum. It never executes guest code or modifies
+QuantumRuntime/InverseMemory. Five synthetic-metadata regressions
+cover wrong kernel, wrong checkpoint, corruption and out-of-bounds sizes.
+
+The separate .github/workflows/aosp-gki-after-5m.yml pulls the exact
+prior CI artifact by run ID, verifies both hashes, and replays 50,000
+original XI/Ether instructions both directly and split 1 + 49,999.
+The two resulting RVG states must be byte-identical. Only after that
+does it continue in ten bounded batches of up to 3,000,000 transitions
+each, recording actual PC, next opcode, architectural stop, console
+and the exact saved RVG. An instruction-budget stop never proves boot.
+
+Unchanged limitations: no matching init_boot, vendor_boot, system/vendor
+partitions, Binder, Android /init, ADB, graphics, Wild Rift execution
+or performance evidence. The 16 MiB ELF limit and all pinned dependencies
+remain unchanged; the current Linux-only kernel quota is 64 MiB.
