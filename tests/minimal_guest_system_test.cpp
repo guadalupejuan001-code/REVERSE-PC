@@ -101,6 +101,63 @@ void store_invalidates_its_own_translation(){
   check(g.physical_address(0x80010010,true)==0x10010,
         "Store retained a stale write translation installed by its own validation");
 }
+void page_table_store_dependencies(){
+  for(const bool tail:{false,true}){
+    auto g=initial();for(unsigned i=0;i<60&&!(g.machine().sctlr&1);++i)g.run(1);
+    g.write(0x40010018,0x40011003,8);
+    g.write(0x40011000,0x40012003,8);
+    g.write(0x40012000,0x40030703,8);
+    g.write(0x40012008,0x40012703,8);
+    g.write(0x40013000,0x40050703,8);
+    g.write(0x40030000,0x1111222233334444,8);
+    g.write(0x40050000,0x5555666677778888,8);
+    g.write(0x400a0000,0xf9000020,4); // STR X0,[X1]
+    g.write(0x400a0004,0xf9400062,4); // LDR X2,[X3]
+    auto saved=g.snapshot();
+    auto patch=[&](std::size_t at,std::uint64_t value){
+      for(unsigned i=0;i<8;++i)saved[at+i]=std::uint8_t(value>>(i*8));
+    };
+    patch(24,0x400a0000);
+    patch(72,tail?UINT64_C(0x4005070312345678):UINT64_C(0x40013003));
+    patch(80,tail?UINT64_C(0xc0000ffc):UINT64_C(0x40011000));
+    patch(96,0xc0000000);
+    patch(saved.size()-8,digest(saved,saved.size()-8));
+    g=MinimalGuest::from_snapshot(saved);
+    check(g.physical_address(0xc0000000)==0x40030000,"Dependency witness initial mapping is incorrect");
+    g.run(2);
+    check(g.machine().exceptions==0&&g.registers().x[2]==UINT64_C(0x5555666677778888),
+          "Ancestor or store-tail PTE update retained stale address hints");
+    check(g.physical_address(0xc0000000)==0x40050000,
+          "Page-table dependency update did not affect the next translation");
+    if(tail)check(g.read(0x40030ffc,4)==0x12345678&&g.read(0x40012000,4)==0x40050703,
+                  "Cross-page table write changed a different physical extent");
+    auto restored=MinimalGuest::from_snapshot(g.snapshot());
+    check(restored.snapshot()==g.snapshot()&&restored.physical_address(0xc0000000)==0x40050000,
+          "Nonpersistent table footprint changed restoration");
+  }
+}
+void quantum_alias_invalidates_translation(){
+  auto g=initial();for(unsigned i=0;i<60&&!(g.machine().sctlr&1);++i)g.run(1);
+  g.write(0x40010018,0x40011003,8);g.write(0x40011000,0x40012003,8);
+  g.write(0x40012000,0x40030703,8);
+  g.write(0x40030000,0x1111222233334444,8);g.write(0x40050000,0x5555666677778888,8);
+  g.write(0x400a0000,0x39000020,4); // STRB W0,[X1], into the other quantum view.
+  g.write(0x400a0004,0xf9400062,4); // LDR X2,[X3], using the changed PTE.
+  auto saved=g.snapshot();
+  auto patch=[&](std::size_t at,std::uint64_t value){for(unsigned i=0;i<8;++i)saved[at+i]=std::uint8_t(value>>(8*i));};
+  patch(24,0x400a0000);patch(72,5);patch(80,0x40060000);patch(96,0xc0000000);
+  patch(saved.size()-8,digest(saved,saved.size()-8));g=MinimalGuest::from_snapshot(saved);
+  const auto pte=std::to_string(UINT64_C(0x40012002)),other=std::to_string(UINT64_C(0x40060000));
+  g.apply_xi_delta("mem_bind "+pte+" 20000\nmem_bind "+other+" 20000\nmem_store "+pte+" 3\n");
+  check(g.physical_address(0xc0000000)==0x40030000,"Quantum PTE alias initial mapping is incorrect");
+  g.run(2);
+  check(g.machine().exceptions==0&&g.registers().x[2]==UINT64_C(0x5555666677778888),
+        "Store through a remote quantum alias retained a stale PTE hint");
+  check(g.read8(0x40012002)==5&&g.read8(0x40060000)==5&&g.runtime().memory().stats().quantum_bindings==2,
+        "Quantum PTE alias stopped sharing the original runtime authority");
+  check(MinimalGuest::from_snapshot(g.snapshot()).snapshot()==g.snapshot(),
+        "Quantum-linked page-table state did not restore exactly");
+}
 void shared_quantum_authority(){
   auto guest=initial();guest.apply_xi_delta("#!reverse-pc-machine-v1\nset r0 0\nlabel loop\nh $r0\nadd r0 1\ncmp r0 4096\njlt loop\nhalt\n");
   check(guest.runtime().core().stats().active_qubits==4096,"Existing XI 4096-qubit capability was not preserved");
@@ -714,6 +771,6 @@ void interrupt_priority_initialization(){
   check(guest.snapshot()==before,"Rejected APR write changed CPU/device state");
 }
 }
-int main(){try{boot_and_restore();observe_userspace_without_execution();inactive_debug_slot();translation();store_invalidates_its_own_translation();shared_quantum_authority();exclusives();exclusive_pairs();paired_store_pins_physical_translation();lazy_ram_range_error_parity();image_boot_protocol();android_bootargs_snapshot_profile();large_linux_gki_loader_budget();cross_page_access();unprivileged_memory_access();eret_ssbs_saved_status();speculative_data_barrier();android_mmfr3_real_opcode();android_baseline_identification_opcodes();identification();uart_fifo_configuration();interrupt_priority_initialization();
+int main(){try{boot_and_restore();observe_userspace_without_execution();inactive_debug_slot();translation();store_invalidates_its_own_translation();page_table_store_dependencies();quantum_alias_invalidates_translation();shared_quantum_authority();exclusives();exclusive_pairs();paired_store_pins_physical_translation();lazy_ram_range_error_parity();image_boot_protocol();android_bootargs_snapshot_profile();large_linux_gki_loader_budget();cross_page_access();unprivileged_memory_access();eret_ssbs_saved_status();speculative_data_barrier();android_mmfr3_real_opcode();android_baseline_identification_opcodes();identification();uart_fifo_configuration();interrupt_priority_initialization();
   std::cout<<"{\"checks\":"<<checks<<",\"system\":\"own-EL1-MMU-IRQ-EL0-SVC\",\"existing_quantum_qubits\":4096,\"android_boot\":\"not_implemented\"}\n";return 0;
 }catch(const std::exception& error){std::cerr<<error.what()<<'\n';return 1;}}

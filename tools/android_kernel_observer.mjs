@@ -137,6 +137,10 @@ export function observeAndroidKernel(bytes,expectedCheckpointSha){
   const fp=current?u(37):read(pointer+BigInt(contextOffset+context.fp.offset)),sp=current?u(3):read(pointer+BigInt(contextOffset+context.sp.offset)),pc=current?u(2):read(pointer+BigInt(contextOffset+context.pc.offset));
   const item={pid,name:text(pointer+BigInt(layout.comm),16),task:hex(pointer),state:Number(read(pointer+BigInt(layout.__state),4)),running_on_cpu:current,context_pc:hex(pc),context_sp:hex(sp),stack:[]};
   for(const name of ['on_rq','on_cpu'])if(task[name])item[name]=Number(read(pointer+BigInt(task[name].offset),4));
+  item.accounting={};
+  for(const name of ['nvcsw','nivcsw','utime','stime'])if(task[name])item.accounting[name]=read(pointer+BigInt(task[name].offset)).toString();
+  const se=members(types[task.se.type]);
+  for(const name of ['sum_exec_runtime','vruntime','exec_start'])if(se[name])item.accounting[name]=read(pointer+BigInt(task.se.offset+se[name].offset)).toString();
   let frame=fp;const frames=new Set();for(let i=0;i<40&&frame;i++){
    if(frames.has(frame.toString())){item.unwind_stop='repeated_frame';break;}frames.add(frame.toString());
    try{
@@ -148,6 +152,9 @@ export function observeAndroidKernel(bytes,expectedCheckpointSha){
      if(pc===read(prev+8n)&&read(regs+29n*8n)===read(prev)){
       entry.interrupted_pc=hex(pc);entry.interrupted_symbol=nearest(pc);
       entry.interrupted_registers=Array.from({length:31},(_,i)=>hex(read(regs+BigInt(i*8))));
+      if(pid===1&&(entry.interrupted_symbol?.startsWith('btf_find_by_name_kind+')||entry.interrupted_symbol?.startsWith('strcmp+'))){
+       try{entry.btf_query=text(BigInt(entry.interrupted_registers[20]),128);}catch(error){entry.btf_query_read_error=error.message;}
+      }
      }else entry.irq_frame_unverified=true;
     }
     item.stack.push(entry);if(!lr)break;frame=prev;
@@ -162,12 +169,23 @@ export function observeAndroidKernel(bytes,expectedCheckpointSha){
  // generic names such as "state" in the same immutable kernel.
  const globals={};
  for(const [name,index]of [['name_buf',93094],['state',93095],['this_header',93096],['message',93097],
-  ['byte_count',93099],['remains',93103],['name_len',93106],['body_len',93107],['next_header',93108],['wfile_pos',93120]]){
+  ['byte_count',93099],['remains',93103],['name_len',93106],['body_len',93107],['next_header',93108],['wfile',93119],['wfile_pos',93120]]){
   const s=symbols[index];check(s.name===name,'initramfs symbol profile mismatch');const value=read(s.address);globals[name]={address:hex(s.address),value:hex(value)};
   if((name==='message'||name==='name_buf')&&value){try{globals[name].text=text(value,256);}catch(e){globals[name].text_error=e.message;}}
  }
+ const filePointer=BigInt(globals.wfile.value),rootfsFile={pointer:hex(filePointer)};
+ if(filePointer&&globals.state.value==='0x5')try{
+  const f=members(type('file')),ino=members(type('inode')),path=members(type('path')),
+   dent=members(type('dentry')),qstr=members(type('qstr'));
+  const inode=read(filePointer+BigInt(f.f_inode.offset));
+  rootfsFile.inode=hex(inode);rootfsFile.size=read(inode+BigInt(ino.i_size.offset)).toString();
+  rootfsFile.blocks=read(inode+BigInt(ino.i_blocks.offset)).toString();
+  const dentry=read(filePointer+BigInt(f.f_path.offset+path.dentry.offset));
+  const name=read(dentry+BigInt(dent.d_name.offset+qstr.name.offset));
+  rootfsFile.name=text(name,256);rootfsFile.file_pos=read(filePointer+BigInt(f.f_pos.offset)).toString();
+ }catch(error){rootfsFile.read_error=error.message;}
  check(createHash('sha256').update(bytes).digest('hex')===originalSha,'observation mutated input');
- return {status:'read_only_kernel_observation',checkpoint_sha256:originalSha,kernel_sha256:KERNEL,instructions:provenance.instructions,pc:hex(u(2)),pc_symbol:nearest(u(2)),next_opcode:hex(read(u(2),4)),physical_pc:hex(translate(u(2))),ticks:m(27).toString(),exceptions:m(28).toString(),current_task:hex(m(8)),current_pid:tasks.find(t=>t.running_on_cpu)?.pid??null,task_layout:layout,task_count:tasks.length,tasks,trace_event_sem:{address:hex(sem),count:hex(countValue),owner:hex(owner),owner_pid:ownerTask?.pid??null},initramfs:globals,android_init_observed:false,android_boot:false,input_unchanged:true};
+ return {status:'read_only_kernel_observation',checkpoint_sha256:originalSha,kernel_sha256:KERNEL,instructions:provenance.instructions,pc:hex(u(2)),pc_symbol:nearest(u(2)),next_opcode:hex(read(u(2),4)),physical_pc:hex(translate(u(2))),ticks:m(27).toString(),exceptions:m(28).toString(),current_task:hex(m(8)),current_pid:tasks.find(t=>t.running_on_cpu)?.pid??null,task_layout:layout,task_count:tasks.length,tasks,trace_event_sem:{address:hex(sem),count:hex(countValue),owner:hex(owner),owner_pid:ownerTask?.pid??null},initramfs:globals,rootfs_file:rootfsFile,android_init_observed:false,android_boot:false,input_unchanged:true};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  try{check(process.argv[2],'usage: node android_kernel_observer.mjs checkpoint.rvg [expected_sha256]');console.log(JSON.stringify(observeAndroidKernel(readFileSync(process.argv[2]),process.argv[3]),null,2));}catch(e){console.error(e.message);process.exitCode=1;}
