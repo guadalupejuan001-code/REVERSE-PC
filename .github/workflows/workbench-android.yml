@@ -4,7 +4,7 @@ on:
     branches: [main, integrate/reverse-259-velocity-xrender-20261029]
     paths: ['reverse-os-android/**', 'bbyq-interface/**', 'src/**', 'scripts/**', '.github/workflows/workbench-android.yml']
   pull_request:
-    branches: [main]
+    branches: [main, deliver/reverse-pc-259-dual-orientation]
     paths: ['reverse-os-android/**', 'bbyq-interface/**', 'src/**', 'scripts/**', '.github/workflows/workbench-android.yml']
   workflow_dispatch:
 permissions:

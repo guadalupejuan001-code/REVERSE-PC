@@ -208,3 +208,23 @@ La salida Android presenta píxeles calculados por X Render en CPU.
 El ejecutable adicional `com.reversepc.velocity` permite instalar el
 prototipo en paralelo a la edición anterior de REVERSE.
 No declarar rendimiento HD/AAA ni APK validada sin pruebas de hardware.
+
+## REVERSE VELOCITY — código XI real (ciclo de corrección)
+
+- `reverse-os-android/app/src/main/assets/velocity/drive.xi` gobierna velocidad,
+  giro, desplazamiento lateral, tiempo, límites de la pista y puntos de control.
+- `reverse-os-android/app/src/main/assets/velocity/world.xi` genera en XI
+  los 241 puntos de la trayectoria, que X Render consume como muestras.
+- El estado del juego es un RVPC2 aislado que QuantumRuntime publica de manera
+  transaccional; BBY Q y el escritorio no comparten esos bytes.
+- Java presenta botones, un HUD y el buffer de píxeles. JNI transporta cinco
+  entradas limitadas y ejecuta el programa XI compilado a RXE; no calcula
+  ningún paso de física ni la ecuación de la carretera.
+- Se eliminan `VelocityPhysics.java` y su examen Java de esta integración.
+- Mundo X queda fijado a `1f925786522aba91f72707ad1638a8edcdd31a8f`;
+  el overlay de PRISMA está actualizado para conservar los cubos sin perder
+  triángulos ni elipsoides de X Render.
+- La validación usa el intérprete XI/RXE nativo y una prueba Android que abre
+  el juego desde REVERSE. El render HD 1280×720 permanece experimental:
+  **habilitar una resolución no garantiza FPS ni calidad comparable a Forza**.
+
