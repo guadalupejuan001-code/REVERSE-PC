@@ -1,0 +1,37 @@
+{
+  "ciclo": "QD-20261029-02",
+  "fecha_utc": "2026-10-29",
+  "fase": "criterio_fijado_antes_de_codigo",
+  "parent": "qd/cycle-20261028-independent-exams@770f3489181c876acdaee0a1caf25273f56f82bb",
+  "debilidad": "Qd v0.1 solo evalúa/guarda/recupera plantillas; no existe diagnóstico ni parche XI de errores en el subconjunto aritmético.",
+  "objetivo": "Introducir un depurador simbólico XI de un único fallo sobre cuatro plantillas aritméticas canónicas, con oráculo externo y ejecución siempre descartable.",
+  "baseline_a_reproducir": "16 fuentes mutadas (4 destrezas × operación errónea, registro destino, print ausente, operando equivocado); cada fuente debe fallar en >=1 entrada, sin reparación automática previa.",
+  "aceptacion": {
+    "baseline_programas_fallidos": "16/16",
+    "baseline_reparados_autonomamente_por_qd_actual": "0/16 (función no disponible; contrastar API)",
+    "diagnostico_y_reparacion_16": "16/16",
+    "holdout_programas_distintos": 24,
+    "holdout_minimo_correcto": 20,
+    "holdout_entradas_nuevas_por_programa": 6,
+    "abstenciones_dobles": "100%",
+    "rechazos_fuentes_fuera_de_contrato": "100%",
+    "clean_passthrough": "100%",
+    "persistencia": "sha256 del estado RVPC2 descartable no cambia",
+    "regresion": "qd-native.cjs completo pasa tras la edición",
+    "ci": "Workflow en PR aislada debe concluir success antes de promocionar"
+  },
+  "separacion": {
+    "practica": "16 defectos con cuatro variantes de fallo y cinco entradas por programa",
+    "examen": "24 programas de seis mutaciones distintas de práctica, combinadas con las cuatro destrezas; cada programa usa seis pares de entrada no presentes en práctica; semilla de examen registrada por ejecución",
+    "oraculo": "JavaScript verifica aritmética y transporta tokens; nunca elige tipo de fallo ni parche",
+    "inteligencia": "diagnose.xi toma decisiones codificadas en XI; no se entrenan parámetros ni se guarda ninguna regla en la memoria personal"
+  },
+  "limites": [
+    "Únicamente forma set, operación binaria, print opcional, halt. Sin instrucciones arbitrarias.",
+    "Un único defecto estructural; múltiples defectos exigen abstención.",
+    "La aplicación de parches de prueba es anfitrión determinista a partir de una acción emitida por XI; no cambia la interfaz Android en este ciclo.",
+    "Las pruebas aleatorias de esta misma familia no prueban generalización a algoritmos no vistos.",
+    "No tocar la memoria real de BBY Q ni cambiar referencias fijadas de CI.",
+    "No promover antes de CI verde."
+  ]
+}
