@@ -123,7 +123,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                          fps,width,height,error);
                 }
                 final long cost=SystemClock.elapsedRealtimeNanos()-begin;
-                final long remaining=42_000_000L-cost; // cap target; real FPS is measured
+                final long remaining=16_666_667L-cost; // up to 60 FPS; actual FPS remains measured
                 if(remaining>1_000_000L)Thread.sleep(remaining/1_000_000L);
             }
         }catch(Throwable thrown){

@@ -41,6 +41,26 @@ void oval(std::uint32_t& id,V p,V axes,double yaw,Color c){
   if(id>=4096)throw std::length_error("X Render: 4096 body scene limit");
   scene->ellipsoid(id++,p,axes,yaw,c);
 }
+// Geometry is submitted to the canonical EtherRenderEngine; no pixels,
+// rays, depth buffers, or lighting are calculated by this game adapter.
+void triangle(std::uint32_t& id,V a,V b,V c,Color color){
+  if(id>=4096)throw std::length_error("X Render: 4096 body scene limit");
+  scene->triangle(id++,a,b,c,color);
+}
+void quad(std::uint32_t& id,V a,V b,V c,V d,Color color){
+  triangle(id,a,b,c,color);
+  triangle(id,a,c,d,color);
+}
+V road_point(double zz,double lateral,double y){
+  const double derivative=slope(zz);
+  const double inv=1./std::sqrt(1.+derivative*derivative);
+  return {route(zz)+lateral*inv,y,zz-derivative*lateral*inv};
+}
+void road_strip(std::uint32_t& id,double z0,double z1,
+                double left,double right,double y,Color color){
+  quad(id,road_point(z0,left,y),road_point(z0,right,y),
+          road_point(z1,right,y),road_point(z1,left,y),color);
+}
 V car_point(double x,double z,double yaw,double lateral,double forward,double height){
   const double sx=std::sin(yaw),cx=std::cos(yaw);
   return {x+cx*lateral+sx*forward,height,z-sx*lateral-cx*forward};
@@ -60,7 +80,11 @@ void build(double x,double z,double yaw,int checkpoint,int camera,int paint){
   // Sky and earth are observed by the native same-owner analytic sphere path.
   // Presenting the pixels on Android does not create a new shader or raytracer.
   ball(id,{eyeX,0,eyeZ},6200.,{.31,.57,.82});
-  ball(id,{eyeX,-3000.,eyeZ},3000.0,{.24,.41,.23});
+  // Flat native X Render ground; a giant tangent sphere made distant roads
+  // appear suspended when the vehicle moved hundreds of meters.
+  quad(id,{eyeX-3400.,-.18,eyeZ-3400.},{eyeX+3400.,-.18,eyeZ-3400.},
+          {eyeX+3400.,-.18,eyeZ+3400.},{eyeX-3400.,-.18,eyeZ+3400.},
+          {.24,.41,.23});
   oval(id,{eyeX-470.,-75.,eyeZ-650.},{300.,155.,270.},.1,
        {.30,.39,.34});
   oval(id,{eyeX-670.,-60.,eyeZ-950.},{250.,110.,260.},.2,
@@ -70,19 +94,18 @@ void build(double x,double z,double yaw,int checkpoint,int camera,int paint){
   oval(id,{470.,-.43,z-210.},{290.,.47,700.},0.,
        {.13,.37,.51}); // distant coast
 
-  // Stream only the road ahead; the mathematical road exists independently
-  // of this fixed-size body window and keeps precise driving checkpoints.
-  const int first=int(std::floor((z+50.)/14.));
-  for(int k=0;k<48;++k){
-    const double zz=(first-k)*14.,xx=route(zz),angle=std::atan(slope(zz));
-    oval(id,{xx,-.055,zz},{11.25,.32,17.8},angle,
-         {.095,.115,.14});
-    oval(id,{xx-8.9,.15,zz},{.20,.065,13.8},angle,
-         {.83,.82,.73});
-    oval(id,{xx+8.9,.15,zz},{.20,.065,13.8},angle,
-         {.83,.82,.73});
-    if((int(std::floor(zz/14.))&3)<2)
-      oval(id,{xx,.258,zz},{.15,.045,5.2},angle,{.92,.73,.32});
+  // Road surfaces are true triangle strips along the original mathematical
+  // centerline, with tangent-adjusted lateral borders and stable IDs.
+  // Streaming uses world coordinates; the route itself is not a tiled texture.
+  constexpr double roadStep=10.;
+  const int first=int(std::floor((z+53.)/roadStep));
+  for(int k=0;k<62;++k){
+    const double z0=(first-k)*roadStep,z1=z0-roadStep;
+    road_strip(id,z0,z1,-9.0,9.0,.13,{.087,.103,.122});
+    road_strip(id,z0,z1,-8.65,-8.49,.147,{.87,.84,.78});
+    road_strip(id,z0,z1,8.49,8.65,.147,{.87,.84,.78});
+    if(((first-k)&3)==0)
+      road_strip(id,z0,z1,-.13,.13,.159,{.93,.76,.29});
   }
 
   // Vegetation / side objects positioned by coordinate hash only;
@@ -129,18 +152,44 @@ void build(double x,double z,double yaw,int checkpoint,int camera,int paint){
     {.93,.60,.13}  // warm gold
   };
   const Color body=colors[std::clamp(paint,0,4)];
+  const Color side={body[0]*.74,body[1]*.74,body[2]*.74};
+  const Color roof={body[0]*.85,body[1]*.85,body[2]*.85};
   if(camera!=2){
-    oval(id,car_point(x,z,yaw,0,0,.96),{1.05,.41,2.52},yaw,body);
-    oval(id,car_point(x,z,yaw,0,1.20,.98),{1.00,.31,1.11},yaw,body);
-    oval(id,car_point(x,z,yaw,0,-1.10,1.01),{1.00,.34,1.07},yaw,body);
-    oval(id,car_point(x,z,yaw,0,-.05,1.56),{.84,.35,1.18},yaw,{.16,.29,.38});
-    oval(id,car_point(x,z,yaw,0,-.13,1.89),{.67,.10,.81},yaw,body);
-    oval(id,car_point(x,z,yaw,0,2.04,.88),{1.00,.11,.19},yaw,{.14,.15,.16});
-    for(int side=-1;side<=1;side+=2){
-      oval(id,car_point(x,z,yaw,side*.99,1.55,.50),{.33,.48,.62},yaw,{.06,.07,.09});
-      oval(id,car_point(x,z,yaw,side*.99,-1.53,.50),{.33,.48,.62},yaw,{.06,.07,.09});
-      oval(id,car_point(x,z,yaw,side*.69,2.35,1.10),{.30,.13,.12},yaw,{.87,.07,.04});
-      oval(id,car_point(x,z,yaw,side*.75,-2.36,.97),{.34,.14,.11},yaw,{.96,.91,.66});
+    // Original compact polygonal roadster, all triangles rendered by X Render.
+    const auto point=[&](double lateral,double forward,double height){
+      return car_point(x,z,yaw,lateral,forward,height);
+    };
+    // Body: top, front, rear, two sides, and a dark undercarriage.
+    quad(id,point(-1.03,2.40,1.02),point(1.03,2.40,1.02),
+         point(1.04,-2.40,1.07),point(-1.04,-2.40,1.07),body);
+    quad(id,point(-1.03,2.40,.48),point(1.03,2.40,.48),
+         point(1.03,2.40,1.02),point(-1.03,2.40,1.02),side);
+    quad(id,point(-1.04,-2.40,.49),point(1.04,-2.40,.49),
+         point(1.04,-2.40,1.07),point(-1.04,-2.40,1.07),side);
+    for(int sideSign=-1;sideSign<=1;sideSign+=2){
+      const double l=double(sideSign);
+      quad(id,point(l*1.03,2.40,.49),point(l*1.03,2.40,1.02),
+           point(l*1.04,-2.40,1.07),point(l*1.04,-2.40,.49),side);
+    }
+    // Cabin roof and sloping glass, clearly distinct from the paint.
+    const Color glass={.10,.23,.31};
+    quad(id,point(-.73,.70,1.91),point(.73,.70,1.91),
+         point(.75,-.95,1.91),point(-.75,-.95,1.91),roof);
+    quad(id,point(-.88,1.32,1.06),point(.88,1.32,1.06),
+         point(.73,.70,1.88),point(-.73,.70,1.88),glass);
+    quad(id,point(-.73,-.95,1.88),point(.73,-.95,1.88),
+         point(.92,-1.50,1.07),point(-.92,-1.50,1.07),glass);
+    quad(id,point(-.80,.68,1.86),point(-.82,-1.00,1.86),
+         point(-1.01,-1.42,1.08),point(-.92,1.29,1.08),glass);
+    quad(id,point(.80,.68,1.86),point(.82,-1.00,1.86),
+         point(1.01,-1.42,1.08),point(.92,1.29,1.08),glass);
+    quad(id,point(-1.02,2.30,.54),point(1.02,2.30,.54),
+         point(1.02,2.30,.66),point(-1.02,2.30,.66),{.11,.12,.14});
+    for(int sideSign=-1;sideSign<=1;sideSign+=2){
+      oval(id,point(sideSign*.97,1.55,.49),{.28,.47,.49},yaw,{.065,.07,.085});
+      oval(id,point(sideSign*.98,-1.55,.49),{.28,.47,.49},yaw,{.065,.07,.085});
+      oval(id,point(sideSign*.75,2.39,.92),{.29,.115,.11},yaw,{.97,.92,.70});
+      oval(id,point(sideSign*.75,-2.42,.94),{.30,.12,.11},yaw,{.89,.07,.04});
     }
   }
 }

@@ -149,7 +149,7 @@ qubits con un número arbitrario de T.
 
 ## Límites y dependencia
 
-- Mundo X permanece fijado a `f2ed901202b4332eb4034b8edec273b7b0a76ed3`.
+- Mundo X permanece fijado a `1f925786522aba91f72707ad1638a8edcdd31a8f`.
   Las extensiones de compilación verifican SHA-256 de los encabezados; el
   checkout original no se modifica. CI publica el diff utilizado.
 - Reduced admite componentes de hasta 1000 qubits; el presupuesto
@@ -199,7 +199,7 @@ El runtime, el formato RVPC2 y la dependencia fijada de Mundo X se conservan.
 El juego original de carreras está en desarrollo en
 `feature/reverse-velocity-native-20261029`.
 Su primer corte usa **EtherRenderEngine/EtherSurfaceBuffer nativos de Mundo X**
-(`f2ed901202b4332eb4034b8edec273b7b0a76ed3`) para
+(`1f925786522aba91f72707ad1638a8edcdd31a8f`) para
 generar cada píxel de una escena con esferas y elipsoides orientados. Android Canvas
 **solo presenta** el framebuffer nativo; no hay un segundo renderizador GLES
 del juego. El estado de conducción tiene actualización fija de 20 ms,
@@ -243,3 +243,5 @@ se mantiene bajo la plataforma anfitriona, no dentro de XI/RXE.
 El escenario actual no tiene mallas triangulares, texturas PBR ni backend GPU de X Render.
 El workflow de validación incluye la escena X Render real y una prueba de arranque Android
 con captura de pantalla. No declarar APK jugable hasta tener resultado de esa CI.
+
+**Ciclo siguiente:** X Render incorpora triángulos analíticos en su observador original (Mundo X PR #76). REVERSE VELOCITY usa segmentos de carretera, líneas y carrocería con esos triángulos, conserva elipsoides para ruedas/objetos y no añade otro rasterizador. La compilación Android de esta revisión debe validarse antes de distribuir una APK.
