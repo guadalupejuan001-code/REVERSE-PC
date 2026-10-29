@@ -41,15 +41,23 @@
     },
     "android": {
       "ci_run": 40903779746,
-      "resultado": "in_progress",
-      "url": "https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40903779746"
+      "resultado": "success",
+      "url": "https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40903779746",
+      "artifact_id": 12911041370,
+      "log_verificado": "WORKBENCH_TESTS_OK mode=qd-orders native=XI/Ether generated=2 sandbox=verified",
+      "regresiones": [
+        "migration checks=13",
+        "full desktop-shell=verified",
+        "restore desktop-shell=verified",
+        "qd cases=32 rejected=32 saved=RVPC2"
+      ]
     }
   },
   "aprendizaje": "No hay entrenamiento de pesos ni adquisición autónoma de algoritmos: se programó conocimiento léxico y reglas de decisión en XI.",
-  "integracion": "PR #59 draft, apilada sobre #56,#35,#34; sin fusión ni APK de usuario firmada.",
+  "integracion": "PR #59 en borrador, apilada sobre #56,#35,#34. CI Android 15 completada success, sin merge ni APK de usuario firmada.",
   "bloqueos": [
-    "La CI Android integrada aún no se completó al registrar este archivo.",
-    "Limitado a enteros 0..99 y cinco operaciones; no entiende solicitudes generales ni proyectos. Un hash 16 bit puede colisionar."
+    "Limitado a enteros 0..99 y cinco operaciones; no entiende solicitudes generales ni proyectos. Un hash 16 bit puede colisionar.",
+    "APK CI con firma temporal, sin firma de actualización del teléfono real; PR #59 sigue en borrador."
   ],
   "pruebas_realmente_ejecutadas": [
     "node --check reverse-os-android/app/src/main/assets/workbench/qd-studio.js",
@@ -59,5 +67,11 @@
     "node reverse-os-android/tests/qd-debug-native.cjs build/reverse_pc build/qd-debug"
   ],
   "siguiente": "docs/qd/autonomy/SIGUIENTE.md",
-  "finalizado": true
+  "finalizado": true,
+  "mediciones_no_realizadas": [
+    "RSS pico Android",
+    "FPS del teléfono físico",
+    "latencia de terminal del teléfono",
+    "memoria personal del usuario"
+  ]
 }

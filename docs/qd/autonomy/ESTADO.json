@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "actualizado_utc": "2026-10-29",
+  "actualizado_utc": "2026-10-29T15:47:00Z",
   "ciclo": "QD-20261029-03",
-  "estado": "reversecoding_ordenes_nativas_xi_aprobadas_android_en_validacion",
+  "estado": "reversecoding_ordenes_xi_y_android15_aprobadas_pr_borrador",
   "repositorio": "guadalupejuan001-code/REVERSE-PC",
   "rama_codigo": "qd/reversecoding-orders-xi-20261029",
   "codigo_ci_sha": "77a863656f57c0e7bedee22d70d27e35569f32a0",
@@ -38,9 +38,17 @@
     "android": {
       "workflow": ".github/workflows/workbench-android.yml",
       "run_id": 40903779746,
-      "resultado": "in_progress (no declarar success)",
+      "resultado": "success",
       "url": "https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40903779746",
-      "head_sha": "77a863656f57c0e7bedee22d70d27e35569f32a0"
+      "head_sha": "77a863656f57c0e7bedee22d70d27e35569f32a0",
+      "assertions": [
+        "WORKBENCH_TESTS_OK mode=migration checks=13 native=XI/Ether",
+        "WORKBENCH_TESTS_OK mode=full native=XI/Ether desktop-shell=verified",
+        "WORKBENCH_TESTS_OK mode=restore native=XI/Ether desktop-shell=verified",
+        "WORKBENCH_TESTS_OK mode=qd native=XI/Ether cases=32 rejected=32 saved=RVPC2",
+        "WORKBENCH_TESTS_OK mode=qd-orders native=XI/Ether generated=2 sandbox=verified"
+      ],
+      "artifact_id": 12911041370
     },
     "ndk_error_previo": {
       "run_id": 40902449471,
@@ -51,7 +59,8 @@
   "pruebas": {
     "antes": "Qd Studio no tenía comando de texto ni ruta de orden a programa; 0 funcionalidad de orden por API.",
     "despues": "26/26 órdenes aritméticas ES/EN diferentes generaron fuente XI exacta y salida correcta; 18/18 órdenes inválidas/ambiguas rechazadas; 93 invocaciones nativas; RVPC2 descartable con hash inalterado.",
-    "regresion": "164 checks, 4 patrones, 128 ejecuciones previas Qd; depurador previo 16/16 baseline y 24/24 casos nuevos."
+    "regresion": "164 checks, 4 patrones, 128 ejecuciones previas Qd; depurador previo 16/16 baseline y 24/24 casos nuevos.",
+    "android": "Aprobado: Android 15 ejecutó desde UI y JNI dos instrucciones ES/EN, sandbox de fuente editada, rechazo de orden incompleta/hostil y protección de session.rvp; migración, full, restore y Qd anterior aprobados."
   },
   "aprendizaje": "No se indujeron modelos ni nuevos parámetros. Se implementó y comprobó una gramática léxica/simbólica escrita en XI, generador de fuente XI y sandbox seguro. Ningún aprendizaje personal fue escrito.",
   "recursos_no_medidos": [
@@ -60,12 +69,12 @@
     "tasa de generalización a programas distintos de aritmética",
     "tamaño del estado tras aprendizaje real"
   ],
-  "regresiones_observadas": "0 en CI nativa; Android pendiente de veredicto final",
+  "regresiones_observadas": "0 en CI nativa e integrada Android 15 de la revisión probada",
   "bloqueos": [
     "Las PR apiladas #34,#35,#56 y #59 no están fusionadas; revisar en orden.",
-    "Falta veredicto integrado Android 15 de la rama con NDK fijado; no publicar APK de usuario.",
     "Solo operaciones binarias aritméticas, no comprensión general ni programación multarchivo.",
-    "El hash de palabras 16-bit puede colisionar; ampliar o reforzar con representación y pruebas verificables antes de permitir acciones privilegiadas."
+    "El hash de palabras 16-bit puede colisionar; ampliar o reforzar con representación y pruebas verificables antes de permitir acciones privilegiadas.",
+    "APK CI firmada con credenciales de runner; no es actualización firmada con el certificado del usuario y no se instaló en el teléfono."
   ],
   "ciclo_activo": null,
   "ultima_actividad": {
@@ -136,7 +145,7 @@
       "pr": 59,
       "native_ci": 40903779801,
       "android_ci": 40903779746,
-      "resultado": "native_success_android_pending",
+      "resultado": "native_android_success",
       "fuente": "docs/qd/autonomy/ejecuciones/reversecoding-20261029-03.json"
     }
   ]

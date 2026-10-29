@@ -38,7 +38,7 @@ El programa generado sigue la estructura **set r0 A / operación r0 B / print r0
 
 - El criterio se declaró en `docs/qd/autonomy/evidencias/reversecoding-orders-20261029-criterio.json` antes de editar código.
 - [CI nativa XI/Ether](https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40903779801): 26 órdenes diferentes ES/EN admitidas, 18 negadas/rechazadas (incluidas ambiguas y hostiles), 93 invocaciones del ejecutor XI y hash de estado descartable inalterado; además 164 comprobaciones del módulo de plantillas y 24/24 reparaciones del depurador anterior. Las frases son pruebas de esta gramática, no órdenes de software arbitrarias. Los resultados de la prueba del corrector anterior provienen de las familias ya admitidas.
-- [CI integrada Android 15](https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40903779746): comprobar su conclusión actual antes de declarar un APK verificable o pruebas de extremo a extremo. El workflow comprueba BBY Q E025, W4u, migración, teclado, escritorio y el nuevo modo de instrumentación `qd-orders`; la compilación debe usar NDK `27.2.12479018` fijado también en Gradle.
+- [CI integrada Android 15](https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40903779746): **completed / success** sobre la revisión de código `77a863656f57c0e7bedee22d70d27e35569f32a0` con NDK `27.2.12479018` fijado. Android 15 pasó migración (13 controles), escritorio, restauración, modo Qd anterior y `qd-orders`: interpretación ES/EN desde el puente real, fuente XI generada y visible, sandbox editable, rechazo de código fuera del contrato y `session.rvp` intacta. La APK es de **firma temporal CI**, no una actualización firmada para el usuario.
 
 ## Qué falta para obedecer órdenes de programación amplias
 

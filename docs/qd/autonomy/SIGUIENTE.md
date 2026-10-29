@@ -1,5 +1,9 @@
 # ReverseCoding / Qd — siguiente ciclo después de QD-20261029-03
 
+## Estado verificado al cierre del ciclo
+
+La [CI nativa](https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40903779801) y la [CI integrada Android 15](https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40903779746) terminaron en **success** para la revisión de código `77a863656f57c0e7bedee22d70d27e35569f32a0`. No equivalen a instalación en teléfono físico ni a comprensión general de programas. El run Android verificó `mode=qd-orders` con la UI real, generación XI y sandbox, más migración, escritorio, restauración y modo Qd previo. PR #59 continúa abierta como borrador sobre #56.
+
 ## Verificación obligatoria
 
 Al empezar, resolver HEAD de BBY-Q y REVERSE-PC; comprobar PR #34, #35, #56 y #59, restricciones, dependencia fijada de Mundo X, E025 en Android y E034 experimental de BBY Q. Leer ESTADO.json, el registro del ciclo y los logs reales [CI nativa](https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40903779801) y [Android](https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40903779746); no reutilizar sus resultados como ejecución del siguiente ciclo. Comprobar escritor de RVPC2, W4u y runs en progreso. No cambiar estado vivo ni sobrescribir memoria del usuario.
