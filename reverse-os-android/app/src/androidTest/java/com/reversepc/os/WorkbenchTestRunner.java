@@ -58,14 +58,15 @@ public final class WorkbenchTestRunner extends Instrumentation {
         String document=null;int stable=0;
         for(int i=0;i<300;i++){
             String ready=js("(()=>{if(document.readyState!=='complete'||typeof createWindow!=='function'||typeof guestUi==='undefined'||typeof state==='undefined')return null;"+
-                "if(!state.windows.some(w=>w.app==='xi'&&w.xiTab==='arm64'&&!w.min&&w.space===state.space))createWindow('guest');"+
+                "if(!document.querySelector('[data-guest=inspect]')||!state.windows.some(w=>w.app==='xi'&&w.xiTab==='arm64'&&!w.min&&w.space===state.space))createWindow('guest');"+
                 "return guestUi.snapshot&&!guestUi.busy?String(performance.timeOrigin):null;})()");
             if(!ready.equals("null")){if(ready.equals(document))stable++;else{document=ready;stable=1;}}
             else{document=null;stable=0;}
             if(stable>=15)return;
             Thread.sleep(100);
         }
-        throw new AssertionError("Guest view did not settle across initial WebView navigation");
+        throw new AssertionError("Guest view did not settle across initial WebView navigation: "+js(
+            "JSON.stringify({ready:document.readyState,url:location.href,guest:typeof guestUi==='undefined'?null:guestUi,windows:typeof state==='undefined'?null:state.windows})"));
     }
     private JSONObject op(String op,String payload,String target)throws Exception{
         js("window."+target+"=null;nativeRequest("+JSONObject.quote(op)+","+JSONObject.quote(payload)+").then(r=>window."+target+"=r).catch(e=>window."+target+"={ok:false,error:String(e)});true");
@@ -325,6 +326,8 @@ public final class WorkbenchTestRunner extends Instrumentation {
     }
     private void guestWorkflow(boolean restore)throws Exception{
         String desktopBefore=hash("session.rvp");
+        if(restore)require(waitJs("!!document.querySelector('[data-guest=inspect]')").equals("true"),
+            "The saved ARM64 tab was not rendered during cold restoration");
         openGuestView();
         if(restore){
             require(js("guestUi.snapshot.guest.instructions").equals("13"),"Guest PC/count did not persist after restart");
