@@ -136,10 +136,28 @@ class GuestDeviceTree {
     be64(result,0);be64(result,0);result.insert(result.end(),structure.begin(),structure.end());result.insert(result.end(),strings.begin(),strings.end());return result;
   }
 };
-inline std::vector<std::uint8_t> guest_device_tree(std::uint64_t ram,std::uint64_t initrd_address=0,std::uint64_t initrd_size=0) {
+// Stable boot profiles for the same XI/Ether AArch64 virtual board.
+// The Android profile appends the *actual build 16644040* vendor cmdline,
+// while retaining REVERSE's real PL011/GIC/timer addresses. These strings
+// do not advertise Cuttlefish devices that REVERSE has not implemented.
+inline const std::string& guest_default_linux_bootargs() {
+  static const std::string args=
+      "console=ttyAMA0 earlycon=pl011,0x09000000 keep_bootcon nokaslr maxcpus=1";
+  return args;
+}
+inline const std::string& guest_android_cuttlefish_bootargs() {
+  static const std::string args=guest_default_linux_bootargs()+
+      " printk.devkmsg=on audit=1 panic=-1 8250.nr_uarts=1"
+      " binder.impl=rust cma=0 firmware_class.path=/vendor/etc/"
+      " loop.max_part=7 init=/init bootconfig";
+  return args;
+}
+inline std::vector<std::uint8_t> guest_device_tree(std::uint64_t ram,
+    std::uint64_t initrd_address=0,std::uint64_t initrd_size=0,
+    const std::string& bootargs={}) {
   GuestDeviceTree tree;tree.begin("");tree.string("compatible","reverse,minimal-arm64-v1");tree.string("model","REVERSE own ARM64 machine");
   tree.cells("#address-cells",{2});tree.cells("#size-cells",{2});tree.cells("interrupt-parent",{1});
-  tree.begin("chosen");tree.string("bootargs","console=ttyAMA0 earlycon=pl011,0x09000000 keep_bootcon nokaslr maxcpus=1");tree.string("stdout-path","/pl011@9000000");
+  tree.begin("chosen");tree.string("bootargs",bootargs.empty()?guest_default_linux_bootargs():bootargs);tree.string("stdout-path","/pl011@9000000");
   if(initrd_size){GuestDeviceTree::Data data;GuestDeviceTree::be64(data,initrd_address);tree.property("linux,initrd-start",data);data.clear();GuestDeviceTree::be64(data,initrd_address+initrd_size);tree.property("linux,initrd-end",data);}tree.end();
   tree.begin("memory@40000000");tree.string("device_type","memory");tree.reg(MachineState::ram_base,ram);tree.end();
   tree.begin("cpus");tree.cells("#address-cells",{1});tree.cells("#size-cells",{0});tree.begin("cpu@0");tree.string("device_type","cpu");tree.string("compatible","arm,armv8");tree.cells("reg",{0});tree.end();tree.end();

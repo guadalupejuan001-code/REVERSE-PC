@@ -7,15 +7,18 @@
 #include <sstream>
 using namespace reverse_pc::guest;
 int main(int argc,char** argv){try{
-  require(argc>=2&&argc<=5,"Expected Image-or-RVG [additional_instruction_budget] [output_checkpoint] [initrd_for_Image]");
+  require(argc>=2&&argc<=6,"Expected Image-or-RVG [additional_instruction_budget] [output_checkpoint] [initrd_for_Image] [android-cuttlefish]");
+  require(argc!=6||std::string(argv[5])=="android-cuttlefish",
+          "Only the named Android Cuttlefish bootargs profile is supported");
   const auto begin=std::chrono::steady_clock::now();
   const auto budget=argc>=3?std::stoull(argv[2]):500000;require(budget>0&&budget<=100000000,"Probe budget must be 1..100000000");std::ifstream in(argv[1],std::ios::binary);
   require(bool(in),"Cannot open Image");Bytes image((std::istreambuf_iterator<char>(in)),{});
   require(image.size()<=MinimalGuest::max_adaptive_snapshot,"Linux probe input too large");
   const bool checkpoint=image.size()>=4&&image[0]=='R'&&image[1]=='V'&&image[2]=='G';
-  MinimalGuest guest(128*1024*1024,1048576);Bytes initrd;if(argc==5){std::ifstream rd(argv[4],std::ios::binary);require(bool(rd),"Cannot open initrd");initrd.assign(std::istreambuf_iterator<char>(rd),{});}
-  if(checkpoint){require(argc<5,"A checkpoint already contains its initrd");guest=MinimalGuest::from_snapshot(image);require(guest.machine().enabled&&guest.machine().image_kind==2,"Probe checkpoint must contain a Linux Image");}
-  else guest.load_linux_image(image,initrd);
+  MinimalGuest guest(128*1024*1024,1048576);Bytes initrd;if(argc>=5){std::ifstream rd(argv[4],std::ios::binary);require(bool(rd),"Cannot open initrd");initrd.assign(std::istreambuf_iterator<char>(rd),{});}
+  if(checkpoint){require(argc<5,"A checkpoint already contains its initrd and boot profile");guest=MinimalGuest::from_snapshot(image);require(guest.machine().enabled&&guest.machine().image_kind==2,"Probe checkpoint must contain a Linux Image");}
+  else guest.load_linux_image(image,initrd,
+    argc==6?guest_android_cuttlefish_bootargs():std::string{});
   // Preserve the old input RVG unchanged on disk; explicitly promote only the
   // guest running this development probe to the paged unbounded authority.
   guest.enable_adaptive_memory();

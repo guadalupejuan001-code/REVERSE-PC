@@ -137,31 +137,62 @@ class MinimalGuest {
     machine_.sp1=registers_.sp;
   }
 
-  // Linux's documented Image boot protocol, not an APK loader. A compact RVI1
-  // immutable container preserves Image/DTB/initrd without materializing RAM.
-  void load_linux_image(const Bytes& kernel,const Bytes& initrd={}) {
-    require(ram_>=64*1024*1024 && ram_<=max_ram-MachineState::ram_base,"System RAM must be 64 MiB..48-bit physical range");
-    require(kernel.size()>=64 && kernel.size()<=max_linux_kernel && get(kernel,56,4)==0x644d5241,"Expected an uncompressed AArch64 Linux Image (up to 64 MiB)");
+  // Linux Image boot, always backed by the single original XI/Ether runtime.
+  // RVI1 stays byte-for-byte for historical Linux checkpoints; RVI2 stores
+  // the exact optional Android bootargs in the immutable image so resuming
+  // can never silently regenerate a different FDT.
+  void load_linux_image(const Bytes& kernel,const Bytes& initrd={},
+                        const std::string& bootargs={}) {
+    require(ram_>=64*1024*1024 && ram_<=max_ram-MachineState::ram_base,
+            "System RAM must be 64 MiB..48-bit physical range");
+    require(kernel.size()>=64 && kernel.size()<=max_linux_kernel &&
+            get(kernel,56,4)==0x644d5241,
+            "Expected an uncompressed AArch64 Linux Image (up to 64 MiB)");
+    require(bootargs.size()<=1024 &&
+            std::all_of(bootargs.begin(),bootargs.end(),[](unsigned char c){
+              return c>=32&&c<=126;
+            }),"Guest kernel bootargs must be <=1024 printable ASCII bytes");
     const auto offset=get(kernel,8,8),effective=get(kernel,16,8),flags=get(kernel,24,8);
-    require(!(flags&1) && ((flags>>1)&3)<=1,"Only little-endian 4 KiB-page Linux Images are supported");
+    require(!(flags&1) && ((flags>>1)&3)<=1,
+            "Only little-endian 4 KiB-page Linux Images are supported");
     const auto extent=std::max<std::uint64_t>(kernel.size(),effective);
-    require(offset<ram_/2 && extent<=ram_/2-offset,"Linux Image does not fit the lower half of system RAM");
+    require(offset<ram_/2 && extent<=ram_/2-offset,
+            "Linux Image does not fit the lower half of system RAM");
     require(offset%4==0 && initrd.size()<=max_linux_initrd &&
-            initrd.size()<=ram_/2-2*1024*1024,"Linux Image/initrd placement is invalid");
+            initrd.size()<=ram_/2-2*1024*1024,
+            "Linux Image/initrd placement is invalid");
     const auto kernel_address=MachineState::ram_base+offset;
     const auto initrd_address=MachineState::ram_base+ram_/2;
     const auto tree_address=MachineState::ram_base+ram_-2*1024*1024;
-    const auto tree=guest_device_tree(ram_,initrd_address,initrd.size());
-    require(32+kernel.size()+tree.size()+initrd.size()<=max_linux_container,
-            "Combined Linux Image/DTB/initrd exceeds 128 MiB host image budget");
-    Bytes container{'R','V','I','1',13,10,26,10};put(container,kernel.size());put(container,tree.size());put(container,initrd.size());
-    container.insert(container.end(),kernel.begin(),kernel.end());container.insert(container.end(),tree.begin(),tree.end());container.insert(container.end(),initrd.begin(),initrd.end());
-    auto immutable=std::make_shared<const Bytes>(std::move(container));auto empty=make_runtime(override_limit_);
-    std::vector<Segment> segments{{kernel_address,extent,32,kernel.size(),5},{tree_address,tree.size(),32+kernel.size(),tree.size(),4}};
-    if(!initrd.empty())segments.push_back({initrd_address,initrd.size(),32+kernel.size()+tree.size(),initrd.size(),4});
-    std::sort(segments.begin(),segments.end(),[](const Segment& a,const Segment& b){return a.address<b.address;});
-    image_=std::move(immutable);segments_=std::move(segments);runtime_=std::move(empty);machine_=MachineState{};machine_.enabled=true;machine_.image_kind=2;floating_=FloatingState{};
-    registers_=Registers{};registers_.pc=kernel_address;registers_.x[0]=tree_address;registers_.sp=MachineState::ram_base+ram_;machine_.sp1=registers_.sp;
+    const auto tree=guest_device_tree(ram_,initrd_address,initrd.size(),bootargs);
+    const bool extended=!bootargs.empty();
+    const std::size_t prefix=extended?40:32;
+    require(prefix+kernel.size()+tree.size()+initrd.size()+bootargs.size()<=max_linux_container,
+            "Combined Linux Image/DTB/initrd/bootargs exceeds 128 MiB host image budget");
+    Bytes container{'R','V','I',std::uint8_t(extended?'2':'1'),13,10,26,10};
+    put(container,kernel.size());put(container,tree.size());put(container,initrd.size());
+    if(extended)put(container,bootargs.size());
+    container.insert(container.end(),kernel.begin(),kernel.end());
+    container.insert(container.end(),tree.begin(),tree.end());
+    container.insert(container.end(),initrd.begin(),initrd.end());
+    if(extended)container.insert(container.end(),bootargs.begin(),bootargs.end());
+    auto immutable=std::make_shared<const Bytes>(std::move(container));
+    auto empty=make_runtime(override_limit_);
+    std::vector<Segment> segments{
+      {kernel_address,extent,prefix,kernel.size(),5},
+      {tree_address,tree.size(),prefix+kernel.size(),tree.size(),4}
+    };
+    if(!initrd.empty())
+      segments.push_back({initrd_address,initrd.size(),
+                          prefix+kernel.size()+tree.size(),initrd.size(),4});
+    std::sort(segments.begin(),segments.end(),
+              [](const Segment& a,const Segment& b){return a.address<b.address;});
+    image_=std::move(immutable);segments_=std::move(segments);
+    runtime_=std::move(empty);machine_=MachineState{};
+    machine_.enabled=true;machine_.image_kind=2;floating_=FloatingState{};
+    registers_=Registers{};registers_.pc=kernel_address;
+    registers_.x[0]=tree_address;registers_.sp=MachineState::ram_base+ram_;
+    machine_.sp1=registers_.sp;
   }
   void console_input(const std::string& text) {
     require(machine_.enabled,"Serial input requires the system machine");
@@ -292,14 +323,33 @@ class MinimalGuest {
     if(image_size){
       const Bytes image(bytes.begin()+at,bytes.begin()+at+std::size_t(image_size));
       if(system&&machine.image_kind==2){
-        const Bytes signature{'R','V','I','1',13,10,26,10};
-        require(image.size()>=32&&std::equal(signature.begin(),signature.end(),image.begin()),"Invalid Linux Image container");
-        const auto kernel_size=get(image,8,8),tree_size=get(image,16,8),initrd_size=get(image,24,8);
-        require(kernel_size<=max_linux_kernel&&tree_size<=65536&&initrd_size<=max_linux_initrd &&
-                kernel_size+tree_size+initrd_size==image.size()-32,
+        const Bytes signature{'R','V','I',0,13,10,26,10};
+        require(image.size()>=32 &&
+                std::equal(signature.begin(),signature.begin()+3,image.begin()) &&
+                (image[3]=='1'||image[3]=='2') &&
+                std::equal(signature.begin()+4,signature.end(),image.begin()+4),
+                "Invalid Linux Image container");
+        const bool extended=image[3]=='2';
+        const std::size_t prefix=extended?40:32;
+        require(image.size()>=prefix,"Truncated Linux boot profile header");
+        const auto kernel_size=get(image,8,8),tree_size=get(image,16,8),
+                   initrd_size=get(image,24,8),
+                   bootargs_size=extended?get(image,32,8):0;
+        require(kernel_size<=max_linux_kernel&&tree_size<=65536&&
+                initrd_size<=max_linux_initrd &&
+                (!extended || (bootargs_size>0&&bootargs_size<=1024)) &&
+                kernel_size+tree_size+initrd_size+bootargs_size==image.size()-prefix,
                 "Invalid Linux Image container extents");
-        candidate.load_linux_image(Bytes(image.begin()+32,image.begin()+32+kernel_size),Bytes(image.begin()+32+kernel_size+tree_size,image.end()));
-        require(*candidate.image_==image,"Linux Image device tree does not match this machine");
+        const std::size_t k=std::size_t(kernel_size),
+                          t=std::size_t(tree_size),
+                          rd=std::size_t(initrd_size);
+        const std::string args=extended ?
+          std::string(image.begin()+prefix+k+t+rd,image.end()):std::string{};
+        candidate.load_linux_image(
+          Bytes(image.begin()+prefix,image.begin()+prefix+k),
+          Bytes(image.begin()+prefix+k+t,image.begin()+prefix+k+t+rd),args);
+        require(*candidate.image_==image,
+                "Linux Image device tree or boot profile does not match this machine");
       }else candidate.load_elf(image,system);
     }
     require(!system||image_size,"System snapshot is missing its boot image");

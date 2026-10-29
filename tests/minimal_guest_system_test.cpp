@@ -93,6 +93,89 @@ void image_boot_protocol(){
 }
 // Header-sized fixture using the *measured* 35,777,024-byte upstream GKI
 // length. Unlike the independent CI experiment, this is NOT an Android boot.
+void android_bootargs_snapshot_profile(){
+  // One original XI/Ether CPU; opt-in Android bootargs are data in RVI2,
+  // never a new CPU, a fake /init, or a change to legacy Linux RVG states.
+  Bytes kernel(64);
+  const auto write=[&](std::size_t at,std::uint64_t value,unsigned n){
+    for(unsigned i=0;i<n;++i)kernel.at(at+i)=std::uint8_t(value>>(8*i));
+  };
+  write(0,0xd503201f,4); // real AArch64 NOP
+  write(8,0,8);write(16,128,8);write(24,0,8);
+  write(56,0x644d5241,4);
+  const Bytes initrd{1,2,3,4,5};
+  const auto& args=guest_android_cuttlefish_bootargs();
+  check(args.find("init=/init")!=std::string::npos &&
+        args.find("bootconfig")!=std::string::npos &&
+        args.find("binder.impl=rust")!=std::string::npos &&
+        args.find("console=ttyAMA0")!=std::string::npos,
+        "Opt-in Android bootargs do not preserve official vendor and REVERSE board values");
+
+  MinimalGuest legacy(128*1024*1024);
+  legacy.load_linux_image(kernel,initrd);
+  const auto legacy_state=legacy.snapshot();
+  // RVG2 image begins after 8+43*8 bytes. Legacy must remain RVI1.
+  check(legacy_state[8+43*8+3]=='1',
+        "Default Linux startup changed away from historical RVI1");
+  check(MinimalGuest::from_snapshot(legacy_state).snapshot()==legacy_state,
+        "Legacy Linux RVI1 checkpoint was modified by Android profile support");
+
+  MinimalGuest guest(128*1024*1024);
+  guest.load_linux_image(kernel,initrd,args);
+  const auto profile_state=guest.snapshot();
+  check(profile_state[8+43*8+3]=='2' &&
+        guest.image_bytes()==40+kernel.size()+initrd.size()+
+        guest_device_tree(128*1024*1024,0x44000000,initrd.size(),args).size()+
+        args.size(),"Android boot profile is not backed by bounded immutable RVI2");
+  const auto expected=guest_device_tree(128*1024*1024,0x44000000,initrd.size(),args);
+  const auto addr=guest.registers().x[0];
+  for(std::size_t i=0;i<expected.size();++i)
+    check(guest.read8(addr+i)==expected[i],
+          "Real guest physical FDT differs from RVI2 bootargs device tree");
+  const auto contains=[&](const std::string& text){
+    return std::search(expected.begin(),expected.end(),text.begin(),text.end())
+      !=expected.end();
+  };
+  check(contains("bootconfig") && contains("init=/init") &&
+        contains("stdout-path") && !contains("virtio,block"),
+        "FDT does not contain the authentic Android startup parameters");
+  check(guest.runtime().memory().stats().overrides==0,
+        "Boot profile unexpectedly materialized guest RAM deltas");
+
+  guest.enable_adaptive_memory();
+  const auto adaptive=guest.snapshot();
+  const auto restored=MinimalGuest::from_snapshot(adaptive);
+  check(restored.snapshot()==adaptive,
+        "RVI2 adaptive RVG checkpoint failed byte-identical roundtrip");
+  auto one=guest;one.run(1);
+  auto sliced=MinimalGuest::from_snapshot(adaptive);sliced.run(1);
+  check(one.snapshot()==sliced.snapshot() &&
+        one.registers().pc==MachineState::ram_base+4,
+        "RVI2 guest instruction replay diverged after checkpoint restoration");
+
+  const auto stable=guest.snapshot();
+  fails([&]{guest.load_linux_image(kernel,initrd,"init=/init\nbootconfig");},
+        "Injected newline accepted in kernel command line");
+  check(guest.snapshot()==stable,
+        "Invalid Android boot profile changed live XI/Ether state");
+  fails([&]{guest.load_linux_image(kernel,initrd,std::string(1025,'x'));},
+        "Kernel bootargs accepted beyond 1024 byte budget");
+  check(guest.snapshot()==stable,
+        "Oversized bootargs mutated live XI/Ether guest");
+
+  // A recomputed RVG FNV alone is NOT enough: the RVI2 tree must still match
+  // the immutable bootargs payload. Reject a forged trailing profile.
+  auto forged=adaptive;
+  const std::string original="init=/init";
+  const auto found=std::search(forged.begin(),forged.end(),
+                               original.begin(),original.end());
+  check(found!=forged.end(),"Could not locate saved RVI2 Android boot profile");
+  *std::next(found,original.size()-1)='x';
+  const std::uint64_t checksum=digest(forged,forged.size()-8);
+  for(unsigned i=0;i<8;++i)forged[forged.size()-8+i]=std::uint8_t(checksum>>(i*8));
+  fails([&]{MinimalGuest::from_snapshot(forged);},
+        "Tampered RVI2 bootargs with recomputed checksum silently accepted");
+}
 void large_linux_gki_loader_budget(){
   constexpr std::size_t authentic_kernel_bytes=35777024;
   Bytes kernel(authentic_kernel_bytes,0);
@@ -401,6 +484,6 @@ void interrupt_priority_initialization(){
   check(guest.snapshot()==before,"Rejected APR write changed CPU/device state");
 }
 }
-int main(){try{boot_and_restore();translation();shared_quantum_authority();exclusives();image_boot_protocol();large_linux_gki_loader_budget();cross_page_access();unprivileged_memory_access();eret_ssbs_saved_status();speculative_data_barrier();android_mmfr3_real_opcode();identification();uart_fifo_configuration();interrupt_priority_initialization();
+int main(){try{boot_and_restore();translation();shared_quantum_authority();exclusives();image_boot_protocol();android_bootargs_snapshot_profile();large_linux_gki_loader_budget();cross_page_access();unprivileged_memory_access();eret_ssbs_saved_status();speculative_data_barrier();android_mmfr3_real_opcode();identification();uart_fifo_configuration();interrupt_priority_initialization();
   std::cout<<"{\"checks\":"<<checks<<",\"system\":\"own-EL1-MMU-IRQ-EL0-SVC\",\"existing_quantum_qubits\":4096,\"android_boot\":\"not_implemented\"}\n";return 0;
 }catch(const std::exception& error){std::cerr<<error.what()<<'\n';return 1;}}

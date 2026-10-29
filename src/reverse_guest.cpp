@@ -57,6 +57,8 @@ void help() {
       "reverse_guest system-demo-init output.rvg\n"
       "reverse_guest system-init kernel.elf output.rvg [ram_bytes] [max_overrides]\n"
       "reverse_guest linux-init Image output.rvg [initrd]\n"
+      "reverse_guest android-cuttlefish-init Image combined_initrd.bin output.rvg\n"
+      "reverse_guest android-cuttlefish-dtb output.dtb [initrd_bytes]\n"
       "reverse_guest run input.rvg output.rvg [steps]\n"
       "reverse_guest inspect input.rvg\n"
       "reverse_guest xi input.rvg delta.xi output.rvg\n"
@@ -77,6 +79,33 @@ int main(int argc,char** argv) {
       const auto ram=argc==4?integer(argv[3]):128*1024*1024;
       require(ram>=64*1024*1024&&ram<=MinimalGuest::max_ram-MachineState::ram_base,"Invalid system RAM size");
       save_file(argv[2],guest_device_tree(ram));std::cout<<"{\"device_tree\":\"reverse-arm64-v1\"}\n";return 0;
+    }
+    if(operation=="android-cuttlefish-dtb"){
+      require(argc==3||argc==4,
+        "android-cuttlefish-dtb requires output DTB and optional initrd bytes");
+      const auto rd=argc==4?integer(argv[3]):0;
+      require(rd<=MinimalGuest::max_linux_initrd && rd<=64*1024*1024-2*1024*1024,
+        "DTB initrd bytes exceed 128 MiB guest memory layout");
+      save_file(argv[2],guest_device_tree(
+        128*1024*1024,MachineState::ram_base+64*1024*1024,rd,
+        guest_android_cuttlefish_bootargs()));
+      std::cout<<"{\"device_tree\":\"reverse-arm64-android-bootargs-v1\","
+                  "\"android_boot\":false,\"adb\":false}\n";
+      return 0;
+    }
+    if(operation=="android-cuttlefish-init"){
+      require(argc==5,
+        "android-cuttlefish-init requires Image, combined_initrd.bin and output RVG");
+      // The same original XI/Ether runtime, not QEMU or a second guest.
+      // 0 explicitly chooses adaptive InverseMemory; 256 MiB RVG transport.
+      MinimalGuest guest(128*1024*1024,0);
+      guest.load_linux_image(
+        read_file(argv[2],MinimalGuest::max_linux_kernel),
+        read_file(argv[3],MinimalGuest::max_linux_initrd),
+        guest_android_cuttlefish_bootargs());
+      save_file(argv[4],guest.snapshot());
+      std::cout<<guest.statistics()<<'\n';
+      return 0;
     }
     if(operation=="system-demo-init"){
       require(argc==3,"system-demo-init requires output state");MinimalGuest guest(128*1024*1024);
@@ -113,7 +142,7 @@ int main(int argc,char** argv) {
       std::cout<<guest.statistics()<<'\n';return 0;
     }
     require(argc>=3,"Guest state filename required");
-    auto guest=MinimalGuest::from_snapshot(read_file(argv[2],MinimalGuest::max_snapshot));
+    auto guest=MinimalGuest::from_snapshot(read_file(argv[2],MinimalGuest::max_adaptive_snapshot));
     if (operation=="inspect") { require(argc==3,"inspect accepts one state filename");std::cout<<guest.statistics()<<'\n';return 0; }
     if (operation=="run") {
       require(argc==4||argc==5,"run requires input and output state, optional step budget");
