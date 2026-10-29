@@ -26,7 +26,9 @@ final class VelocityPhysics {
     }
 
     long xMm,zMm;
-    int yaw16,speedMmps,checkpoint;
+    int yaw16,speedMmps,checkpoint,slipMmps;
+    boolean finished;
+    long finishMs;
     long elapsedMs;
     boolean offRoad;
     private static final int[] GATES={900,600,300,0,-300,-600};
@@ -36,7 +38,8 @@ final class VelocityPhysics {
     void reset(){
         zMm=1100_000L;
         xMm=Math.round(roadX(1100)*1000);
-        yaw16=0;speedMmps=0;checkpoint=0;elapsedMs=0;offRoad=false;
+        yaw16=0;speedMmps=0;checkpoint=0;slipMmps=0;
+        elapsedMs=0;finishMs=0;finished=false;offRoad=false;
     }
 
     static double roadX(double z){
@@ -56,7 +59,7 @@ final class VelocityPhysics {
     void step(int gas,int brake,int steering,boolean handbrake){
         gas=clamp(gas,0,1000);brake=clamp(brake,0,1000);
         steering=clamp(steering,-1000,1000);
-        long beforeZ=zMm;
+        long beforeZ=zMm,beforeX=xMm;
         offRoad=Math.abs(xMm/1000.0-roadX(zMm/1000.0))>10.5;
 
         int acceleration=gas*10000/1000;
@@ -71,23 +74,43 @@ final class VelocityPhysics {
         if(handbrake)turn=turn*16/10;
         yaw16=(yaw16+turn)&(ANGLE_STEPS-1);
 
+        // Low grip permits real lateral motion independent of the nose heading.
+        // All evolving quantities are integers: reproducible on every host.
+        int desiredSlide=(int)((long)steering*speedMmps*(handbrake?340:58)/1_000_000L);
+        int response=handbrake?135:offRoad?100:290;
+        slipMmps=clamp(slipMmps+(desiredSlide-slipMmps)*response/1000,-26000,26000);
+        if(speedMmps<1000)slipMmps=0;
+
         int index=yaw16>>>4,fraction=yaw16&15;
         long sin=((long)SIN[index]*(16-fraction)+(long)SIN[index+1]*fraction)/16;
         long cos=((long)COS[index]*(16-fraction)+(long)COS[index+1]*fraction)/16;
-        long advance=(long)speedMmps*TICK_MS/1000;
-        xMm+=advance*sin/TRIG;
-        zMm-=advance*cos/TRIG;
+        long forward=(long)speedMmps*TICK_MS/1000;
+        long lateral=(long)slipMmps*TICK_MS/1000;
+        xMm+=(forward*sin+lateral*cos)/TRIG;
+        zMm+=(-forward*cos+lateral*sin)/TRIG;
+        offRoad=Math.abs(xMm/1000.0-roadX(zMm/1000.0))>10.5;
 
-        elapsedMs+=TICK_MS;
-        if(checkpoint<GATES.length){
+        if(!finished)elapsedMs+=TICK_MS;
+        if(!finished&&checkpoint<GATES.length){
             int gate=GATES[checkpoint];
-            if(beforeZ>gate*1000L&&zMm<=gate*1000L
-                    &&Math.abs(xMm/1000.0-roadX(gate))<18)checkpoint++;
+            long gateMm=gate*1000L;
+            if(beforeZ>gateMm&&zMm<=gateMm){
+                // Intersect the *swept* vehicle trajectory with the gate plane.
+                // Evaluating only the new end point could award a missed gate.
+                double t=(double)(beforeZ-gateMm)/(beforeZ-zMm);
+                double crossingX=(beforeX+t*(xMm-beforeX))/1000.0;
+                if(Math.abs(crossingX-roadX(gate))<=15.0){
+                    checkpoint++;
+                    if(checkpoint==GATES.length){finished=true;finishMs=elapsedMs;}
+                }
+            }
         }
     }
 
     double speedKmh(){return speedMmps*0.0036;}
     double headingRadians(){return yaw16*(2.0*Math.PI/ANGLE_STEPS);}
     int checkpointCount(){return GATES.length;}
+    int nextGateZ(){return GATES[Math.min(checkpoint,GATES.length-1)];}
+    int lateralSlipMmps(){return slipMmps;}
     double progressKm(){return Math.max(0.0,(1100_000L-zMm)/1_000_000.0);}
 }
