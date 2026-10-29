@@ -23,19 +23,19 @@
     <service android:name=".MusicAudioService" android:exported="false" android:foregroundServiceType="mediaPlayback"/>
     <activity android:name=".BootActivity"
         android:exported="true"
-        android:screenOrientation="sensorLandscape"
+        android:screenOrientation="fullSensor"
         android:configChanges="orientation|screenSize|keyboardHidden">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
     </activity>
-    <activity android:name=".RxeGraphicsActivity" android:exported="false" android:screenOrientation="sensorLandscape" android:hardwareAccelerated="true" android:configChanges="orientation|screenSize|keyboardHidden"/>
-    <activity android:name=".WorkbenchActivity" android:exported="false" android:launchMode="singleTask" android:screenOrientation="sensorLandscape" android:configChanges="orientation|screenSize|keyboardHidden" android:windowSoftInputMode="adjustResize"/>
+    <activity android:name=".RxeGraphicsActivity" android:exported="false" android:screenOrientation="fullSensor" android:hardwareAccelerated="true" android:configChanges="orientation|screenSize|keyboardHidden"/>
+    <activity android:name=".WorkbenchActivity" android:exported="false" android:launchMode="singleTask" android:screenOrientation="fullSensor" android:configChanges="orientation|screenSize|keyboardHidden" android:windowSoftInputMode="adjustResize"/>
     <activity android:name=".DesktopActivity"
         android:exported="false"
         android:launchMode="singleTask"
-        android:screenOrientation="sensorLandscape"
+        android:screenOrientation="fullSensor"
         android:windowSoftInputMode="adjustResize"/>
     <activity android:name=".HomeActivity"
         android:exported="true"
@@ -48,7 +48,7 @@
     </activity>
     <activity android:name=".MainActivity"
         android:exported="false"
-        android:screenOrientation="sensorLandscape"
+        android:screenOrientation="fullSensor"
         android:windowSoftInputMode="adjustResize"/>
   </application>
 </manifest>
