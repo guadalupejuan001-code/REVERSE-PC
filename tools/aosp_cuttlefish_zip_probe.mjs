@@ -155,6 +155,9 @@ function extractOne(url,total,entry){
   need(data.total===total,'remote archive changed during member transfer');
   return unpackSelectedLocalMember(hdr.bytes,data.bytes,entry).data;
 }
+// Share the verified transport with the streaming partition acquisition tool.
+// The callback must keep the ephemeral signed URL out of reports and files.
+export function withOfficialArchive(action){const url=getViewerSignedUrl();return action({url,index:readArchiveIndex(url),readRange:(a,b,n)=>range(url,a,b,n)});}
 export function runOfficialProbe(mode='list',directory=null){
   need(mode==='list'||mode==='extract','invalid mode');
   const signed=getViewerSignedUrl(),index=readArchiveIndex(signed);
@@ -199,3 +202,4 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
     console.log(JSON.stringify(report,null,2));
   }catch(e){console.error(e.message);process.exitCode=1;}
 }
+
