@@ -1,4 +1,22 @@
 plugins { id 'com.android.application' }
+// The primary APK must carry the personal curriculum. A later packaging step
+// cannot silently substitute the older BBY Q executable.
+tasks.register('verifyBbyqPersonalX01') {
+ doLast {
+  def assetsDir = file('src/main/assets')
+  def manifestFile = new File(assetsDir, 'bbyq-interface/manifest.json')
+  if (!manifestFile.isFile()) throw new GradleException('Prepare BBY Q X01 assets before building the APK')
+  def personal = new groovy.json.JsonSlurper().parse(manifestFile).personalization
+  if (personal?.version != 'X01' || personal.schema != 1 || personal.lessons != 59 || personal.upgrade_file != 'upgrade-x01.rxe') throw new GradleException('X01 personal curriculum is required')
+  ['native-apps/BBY-Q.rxe': personal.executable_sha256, 'bbyq-interface/upgrade-x01.rxe': personal.upgrade_sha256].each { name, expected ->
+   def asset = new File(assetsDir, name)
+   if (!asset.isFile() || java.security.MessageDigest.getInstance('SHA-256').digest(asset.bytes).encodeHex().toString() != expected) throw new GradleException('BBY Q X01 asset missing or replaced: '+name)
+  }
+ }
+}
+tasks.configureEach { task ->
+ if (task.name ==~ /merge(Control|Workbench).*Assets/) task.dependsOn('verifyBbyqPersonalX01')
+}
 android {
  namespace 'com.reversepc.os'
  compileSdk 35

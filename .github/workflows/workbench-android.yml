@@ -59,15 +59,19 @@ jobs:
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tests/core-profile.cpp -o build/core-profile
           python3 deps/bbyq-latest/ai/releases/e025/build.py build/reverse_pc build/e025 --assets reverse-os-android/app/src/main/assets > evidence/e025-build.json
           python3 deps/bbyq-latest/ai/releases/e025/test.py build/reverse_pc build/e025-tests > evidence/e025-tests.json
+          node bbyq-interface/install-personal-x01.mjs build/reverse_pc build/e025 build/personal-x01 reverse-os-android/app/src/main/assets > evidence/x01-build.json
+          node bbyq-interface/verify-personal-x01.mjs reverse-os-android/app/src/main/assets > evidence/x01-assets.json
+          node bbyq-interface/tests/personal-x01.mjs build/reverse_pc build/e025 build/personal-x01 build/x01-tests > evidence/x01-tests.json
           node deps/bbyq-latest/ai/xi/w4u/tests/native-w4u.mjs build/reverse_pc build/w4u > evidence/w4u.log
           node reverse-os-android/tests/quantum-workbench-native.cjs build/reverse_pc build/core-profile build/quantum > evidence/quantum.log
           node bbyq-interface/build.mjs build/reverse_pc deps/bbyq-legacy build/legacy - > evidence/legacy-build.json
           mkdir -p reverse-os-android/app/src/androidTest/assets
           cp build/legacy/BBY-Q.rxe reverse-os-android/app/src/androidTest/assets/legacy-BBY-Q.rxe
+          cp build/e025/BBY-Q.rxe reverse-os-android/app/src/androidTest/assets/legacy-e025-BBY-Q.rxe
           bash reverse-os-android/scripts/prepare-bbyq.sh deps/bbyq-classic
-          cp build/e025/BBY-Q.rxe dist/BBY-Q-E025.rxe
+          cp build/personal-x01/BBY-Q.rxe dist/BBY-Q-E025-X01.rxe
           cp build/e025/W4u.rxe dist/W4u-0.1.rxe
-          python3 -c 'import json,os; from pathlib import Path; Path("reverse-os-android/app/src/main/assets/workbench/build-info.json").write_text(json.dumps({"source_commit":os.environ["GITHUB_SHA"],"bbyq_commit":"ed32ab6b73a31e96080b62269ad1eb9f3e15709d","bbyq_version":"E025-Chain-1","w4u_version":"0.1","mundo_x_commit":"e2778d962af22f6f1a0794058dd4685fc2573966"})+"\n")'
+          python3 -c 'import json,os; from pathlib import Path; Path("reverse-os-android/app/src/main/assets/workbench/build-info.json").write_text(json.dumps({"source_commit":os.environ["GITHUB_SHA"],"bbyq_commit":"ed32ab6b73a31e96080b62269ad1eb9f3e15709d","bbyq_version":"E025-Chain-X01-1","bbyq_personalization":"X01","w4u_version":"0.1","mundo_x_commit":"e2778d962af22f6f1a0794058dd4685fc2573966"})+"\n")'
       - name: Test desktop and keyboard with the real XI backend
         shell: bash
         run: |

@@ -1,0 +1,11 @@
+{
+  "version": "X01",
+  "schema": 1,
+  "personal_namespace": "9050000000000000000",
+  "prefix_sha256": "1706e0da8fcb3c880e173d4fe0751a3d2f9415dcdcd62ff1655c64bc11cd7e2c",
+  "upgrade_source_sha256": "13bb09e4f2a7849489cbbe2238c91bddabacac80263385eb4f6f7ab3ba47b605",
+  "parent_executable_sha256": "34fb9f5b96c2d218bff43970c54c89c2f629e7668ee78f52619afa765961d730",
+  "app_version": "E025-Chain-X01-1",
+  "lessons": 59,
+  "scope": "XI supervised short-expression dictionary; preserves E025 Android state. No arbitrary language understanding or autonomous work claim."
+}

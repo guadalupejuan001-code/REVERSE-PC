@@ -146,7 +146,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
             JSONObject proof=new JSONObject(new String(Files.readAllBytes(dataFile("upgrade-before.json").toPath()),StandardCharsets.UTF_8));
             require(hash("rxe-apps/"+proof.getString("identity")+"/session.rxas").equals(proof.getString("record_sha256")),"Upgrade replaced the retained agent");
             require(js("document.querySelector('[aria-label=\"Respuesta BBY Q\"]').textContent").equals("Ana tiene cinco manzanas."),"Old conversation not restored in the new window");
-        }else{sendMessage("hola","Hola. Soy BBY Q.");sendMessage("ana tiene dos manzanas","Ana tiene dos manzanas.");sendMessage("ella recibe tres mas","Ana tiene cinco manzanas.");}
+        }else{sendMessage("hola","Hola, X. Te leo.");sendMessage("ana tiene dos manzanas","Ana tiene dos manzanas.");sendMessage("ella recibe tres mas","Ana tiene cinco manzanas.");}
         sendMessage("cuantas manzanas tiene ana?","Ana tiene cinco manzanas.");
         tapDom("[data-program-language=\"2\"]");sendMessage("how many apples does she have?","Ana has five apples.");
         require(Arrays.equals(desktopBefore,Files.readAllBytes(dataFile("session.rvp").toPath())),"BBY Q wrote the shared desktop checkpoint");
@@ -271,7 +271,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
         if(requested.equals("full"))keyboardWorkflow();
         if(restore&&!upgrade){retainedProof(false);fullDisplay();visualCheck("native-"+requested);return;}
         if(upgrade)sendMessage("cuántas manzanas tiene ana","Ana tiene cinco manzanas.");
-        else{sendMessage("hola","Hola. Soy BBY Q.");sendMessage("ana tiene dos manzanas","Ana tiene dos manzanas.");sendMessage("ella recibe tres mas","Ana tiene cinco manzanas.");}
+        else{sendMessage("hola","Hola, X. Te leo.");sendMessage("ana tiene dos manzanas","Ana tiene dos manzanas.");sendMessage("ella recibe tres mas","Ana tiene cinco manzanas.");}
         JSONObject compiled=op("compileApp",new JSONObject().put("name","AAA-native-test.rxe").put("source","#!reverse-pc-machine-v1\nset r0 11\nmul r0 7\nprint r0\nhalt\n").toString(),"shellCompiled");
         require(compiled.getBoolean("ok"),"Internal fixture compilation failed");
         js("createWindow('bbyq');true");sendMessage("ejecuta programa 1","Acción completada.");

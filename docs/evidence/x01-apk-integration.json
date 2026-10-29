@@ -1,0 +1,10 @@
+{
+  "checks": 40,
+  "apk_personalization": "X01",
+  "app_sha256": "677521bdfde989397aff16402b61af70cc897d192c30a03f0ea5ab6b2a4f911c",
+  "lessons": 59,
+  "preserved_e025_memory": true,
+  "existing_learning_and_w4u_verified": true,
+  "pending_actions_not_replayed": true,
+  "android_device_tested": false
+}
