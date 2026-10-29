@@ -17,8 +17,9 @@ import java.util.Locale;
 
 /**
  * REVERSE VELOCITY: a full-screen game launched by the REVERSE desktop.
- * The scene is generated exclusively by the native X Render CPU implementation.
- * Android provides the screen and touch/key input.
+ * The default scene is authored/executed in XI Machine v1.
+ * Android provides physical input, an ARGB span presenter and comparisons
+ * against the previous Mundo X native engine. No scene shading lives here.
  */
 public final class VelocityActivity extends Activity {
     private VelocityXSurface surface;
@@ -93,7 +94,7 @@ public final class VelocityActivity extends Activity {
         root.setBackgroundColor(0xff17252c);
 
         surface=new VelocityXSurface(this,game,(kmh,checkpoints,total,seconds,
-                 offRoad,slide,finished,fps,rw,rh,error)->runOnUiThread(()->{
+                 offRoad,slide,finished,fps,rw,rh,backend,error)->runOnUiThread(()->{
             if(speed!=null)speed.setText(kmh+" km/h");
             if(route!=null)route.setText(error.isEmpty()?
                 (finished?"META COMPLETADA":"CARRERA")+
@@ -101,17 +102,23 @@ public final class VelocityActivity extends Activity {
                 (seconds/60)+":"+String.format(Locale.ROOT,"%02d",seconds%60)+
                 (offRoad?"  •  FUERA DE CARRETERA":"")+
                 (Math.abs(slide)>2200?"  •  DERRAPE":"")+
-                "  •  "+fps+" FPS medidos  •  "+rw+"×"+rh+" X Render":error);
+                "  •  "+fps+" FPS medidos  •  "+rw+"×"+rh+" "+backend:error);
         }));
         root.addView(surface,new FrameLayout.LayoutParams(-1,-1));
 
-        TextView brand=text("REVERSE / VELOCITY  ·  XI + X RENDER",13);
+        TextView brand=text("REVERSE / VELOCITY  ·  XI RENDER",13);
         add(root,brand,-2,-2,Gravity.TOP|Gravity.LEFT,20,13,0,0);
         speed=text("0 km/h",24);
         add(root,speed,-2,-2,Gravity.TOP|Gravity.RIGHT,0,48,22,0);
-        route=text("Generando circuito XI y preparando X Render...",12);
+        route=text("Preparando pista XI y renderizador XI...",12);
         add(root,route,-2,-2,Gravity.TOP|Gravity.LEFT,20,46,0,0);
 
+        Button renderer=button("Motor: XI");
+        renderer.setOnClickListener(v->{
+            boolean xi=surface.cycleRenderer();
+            renderer.setText(xi?"Motor: XI":"Comparar: X Render");
+        });
+        add(root,renderer,152,40,Gravity.TOP|Gravity.LEFT,20,110,0,0);
         Button camera=button("Cámara");
         camera.setOnClickListener(v->{int m=surface.cycleCamera();camera.setText("Vista "+(m+1));});
         add(root,camera,92,40,Gravity.TOP|Gravity.RIGHT,0,110,16,0);

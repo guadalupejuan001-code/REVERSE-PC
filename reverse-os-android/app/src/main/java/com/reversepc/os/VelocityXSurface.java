@@ -8,6 +8,7 @@ import android.graphics.Rect;
 import android.os.SystemClock;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import java.util.Arrays;
 
 /**
  * X Render is the only scene renderer. This class merely schedules fixed ticks,
@@ -17,7 +18,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     interface Hud {
         void update(int speedKmh,int checkpoints,int total,long seconds,
                     boolean offRoad,int slideMmps,boolean finished,int fps,
-                    int renderWidth,int renderHeight,String error);
+                    int renderWidth,int renderHeight,String backend,String error);
     }
     static { System.loadLibrary("reverse_os"); }
     private static native void renderNative(int[] argb,int width,int height,
@@ -34,6 +35,9 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     private volatile int gas,brake,steer=1;
     private volatile boolean handbrake,resetRequested;
     private volatile int cameraMode,paintId,quality;
+    // All game visuals are computed in XI by default; retain native CPU
+    // X Render as an explicit A/B comparison mode, never a silent substitution.
+    private volatile boolean xiVisual=true;
     private volatile int surfaceWidth=16,surfaceHeight=9;
     private volatile String error="";
     VelocityXSurface(Context context,VelocityXiEngine game,Hud hud){
@@ -50,6 +54,28 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     int cycleCamera(){cameraMode=(cameraMode+1)%3;return cameraMode;}
     int cyclePaint(){paintId=(paintId+1)%5;return paintId;}
     int cycleQuality(){quality=(quality+1)%3;return quality;}
+    boolean cycleRenderer(){xiVisual=!xiVisual;return xiVisual;}
+    boolean usesXiRenderer(){return xiVisual;}
+
+    // Pure presentation: expand already-shaded XI RGB spans into Android ARGB
+    // pixels. Java does not compute light, 3-D geometry or road perspective.
+    private static void presentXi(VelocityXiEngine.RenderFrame frame,
+                                  int[] dest,int width,int height){
+        Arrays.fill(dest,0xff000000);
+        for(long encoded:frame.spans){
+            int y=(int)(encoded>>>46);
+            int x0=(int)((encoded>>>35)&2047L);
+            int x1=(int)((encoded>>>24)&2047L);
+            int argb=0xff000000|(int)(encoded&0xffffffL);
+            int left=x0*width/1280;
+            int right=Math.min(width,(x1*width+1279)/1280);
+            int top=y*height/720;
+            int bottom=Math.min(height,((y+frame.stride)*height+719)/720);
+            if(left>=right||top>=bottom)continue;
+            for(int row=top;row<bottom;row++)
+                Arrays.fill(dest,row*width+left,row*width+right,argb);
+        }
+    }
 
     synchronized void startLoop(){
         if(worker!=null||!getHolder().getSurface().isValid())return;
@@ -103,9 +129,24 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     image=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
                     sourceRect.set(0,0,width,height);
                 }
-                renderNative(pixels,width,height,frame.xCm*10L,frame.zCm*10L,
-                             frame.yaw4096*16,frame.checkpoint,cameraMode,paintId,
-                             game.track());
+                if(xiVisual){
+                    // The XI program draws all scene materials; only unpack its
+                    // spans. HD is a sampling choice, not a proven 60 FPS mode.
+                    int stride=selected==0?4:selected==1?2:1;
+                    try{
+                        presentXi(game.renderFrame(stride,cameraMode,paintId),pixels,width,height);
+                    }catch(Exception xiFailure){
+                        xiVisual=false;
+                        error="XI Render: "+xiFailure.getMessage()+" — usando X Render anterior";
+                        renderNative(pixels,width,height,frame.xCm*10L,frame.zCm*10L,
+                                     frame.yaw4096*16,frame.checkpoint,cameraMode,paintId,
+                                     game.track());
+                    }
+                }else{
+                    renderNative(pixels,width,height,frame.xCm*10L,frame.zCm*10L,
+                                 frame.yaw4096*16,frame.checkpoint,cameraMode,paintId,
+                                 game.track());
+                }
                 image.setPixels(pixels,0,width,0,0,width,height);
                 Canvas canvas=null;
                 try{
@@ -127,7 +168,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     lastHud=begin;
                     hud.update(frame.speedKmh(),frame.checkpoint,
                          6,frame.seconds(),frame.offRoad,frame.slideCmps*10,
-                         frame.finished,fps,width,height,error);
+                         frame.finished,fps,width,height,xiVisual?"XI":"X Render",error);
                 }
                 final long cost=SystemClock.elapsedRealtimeNanos()-begin;
                 final long remaining=16_666_667L-cost; // up to 60 FPS; actual FPS remains measured
@@ -138,7 +179,8 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
             final VelocityXiEngine.Snapshot last=game.current();
             hud.update(last==null?0:last.speedKmh(),last==null?0:last.checkpoint,6,
                 last==null?0:last.seconds(),last!=null&&last.offRoad,
-                last==null?0:last.slideCmps*10,last!=null&&last.finished,0,width,height,error);
+                last==null?0:last.slideCmps*10,last!=null&&last.finished,0,width,height,
+                xiVisual?"XI":"X Render",error);
         }finally{
             if(image!=null&&!image.isRecycled())image.recycle();
             synchronized(this){

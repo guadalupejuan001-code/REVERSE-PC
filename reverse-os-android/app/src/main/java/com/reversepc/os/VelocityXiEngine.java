@@ -38,12 +38,22 @@ final class VelocityXiEngine {
     }
 
     private byte[] privateState,compiledXi;
+    private final String xiRenderer;
+    private static final String XI_HEADER="#!reverse-pc-machine-v1\n";
     private final float[] worldPoints; // read-only XI generated geometry samples
+    static final class RenderFrame {
+        final long[] spans;
+        final int stride;
+        RenderFrame(long[] values,int scanStep){spans=values;stride=scanStep;}
+    }
     private Snapshot snapshot;
 
     VelocityXiEngine(Context context)throws Exception{
         String drive=asset(context,"velocity/drive.xi");
         String world=asset(context,"velocity/world.xi");
+        xiRenderer=asset(context,"velocity/render.xi");
+        if(!xiRenderer.startsWith(XI_HEADER))
+            throw new IllegalStateException("XI renderer source header missing");
         if(!drive.startsWith("#!reverse-pc-machine-v1\n")||
            !world.startsWith("#!reverse-pc-machine-v1\n"))
             throw new IllegalStateException("XI game code header missing");
@@ -52,7 +62,9 @@ final class VelocityXiEngine {
             "REVERSE VELOCITY XI".getBytes(StandardCharsets.UTF_8));
         ResultPacket generated=ResultPacket.parse(NativeRuntime.execute(NativeRuntime.initialize(),world));
         worldPoints=parseRoute(generated.output);
-        privateState=NativeRuntime.initialize(); // isolated from REVERSE Desktop/BBY Q
+        // Preserve world.xi's 241 packed route points in *this* isolated RVPC2.
+        // Reinitializing here would discard the renderer's only geometry source.
+        privateState=generated.state; // isolated from REVERSE Desktop/BBY Q
         step(0,0,1,0,true);
         if(snapshot.ticks!=0)throw new IllegalStateException("XI game reset consumed a tick");
     }
@@ -116,6 +128,43 @@ final class VelocityXiEngine {
         snapshot=observed;
         return observed;
     }
+    /**
+     * Execute the actual XI renderer on a private snapshot. No Java geometry,
+     * projection, shading or collision equations are implemented here.
+     * Host validates and unpacks the bounded surface observations only.
+     */
+    synchronized RenderFrame renderFrame(int stride,int camera,int paint)throws Exception{
+        if(stride!=1&&stride!=2&&stride!=4)throw new IllegalArgumentException("XI frame stride must be 1,2 or 4");
+        if(camera<0||camera>2||paint<0||paint>4)throw new IllegalArgumentException("XI visual input out of range");
+        final String source=XI_HEADER+"store8 200 "+stride+
+            "\nstore8 201 "+camera+"\nstore8 202 "+paint+"\n"+
+            xiRenderer.substring(XI_HEADER.length());
+        // Return state is deliberately discarded: frames are observations.
+        ResultPacket packet=ResultPacket.parse(NativeRuntime.execute(privateState,source));
+        final int max=(720/stride)*12;
+        long[] packed=new long[max];
+        boolean[] covered=new boolean[720/stride];
+        int size=0,lastRow=-1;
+        for(String line:packet.output.split("\n")){
+            if(line.isEmpty())continue;
+            if(size>=max)throw new IllegalStateException("XI span budget exceeded");
+            JSONObject row=new JSONObject(line);
+            if(!"register".equals(row.getString("type"))||!"r4".equals(row.getString("register")))
+                throw new IllegalStateException("XI renderer must emit packed register r4");
+            // Parse decimal as int64 exactly; never round the 56-bit packet to double.
+            long value=Long.parseLong(row.get("value").toString());
+            if(value<0||value>=(1L<<56))throw new IllegalStateException("XI span exceeds 56 bits");
+            int y=(int)(value>>>46);
+            int x0=(int)((value>>>35)&2047L),x1=(int)((value>>>24)&2047L);
+            if(y>=720||y%stride!=0||y<lastRow||x0>=x1||x1>1280)
+                throw new IllegalStateException("Malformed XI span coordinates");
+            covered[y/stride]=true;lastRow=y;packed[size++]=value;
+        }
+        if(size==0)throw new IllegalStateException("XI renderer returned no visible geometry");
+        for(boolean found:covered)if(!found)
+            throw new IllegalStateException("XI renderer omitted a required scanline");
+        return new RenderFrame(java.util.Arrays.copyOf(packed,size),stride);
+    }
     synchronized Snapshot current(){return snapshot;}
-    float[] track(){return worldPoints;} // Adapter must never mutate this array.
+    float[] track(){return worldPoints;} // Existing engine comparison adapter only.
 }
