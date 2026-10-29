@@ -71,7 +71,7 @@ final class ReexplorerPolicy {
         try{
             URI uri=new URI(normalize(url));
             return "robinhood.com".equalsIgnoreCase(uri.getHost())&&
-                    (uri.getRawPath()==null||uri.getRawPath().equals("/"))&&
+                    (uri.getRawPath()==null||uri.getRawPath().isEmpty()||uri.getRawPath().equals("/"))&&
                     uri.getRawQuery()==null&&uri.getRawFragment()==null;
         }catch(IllegalArgumentException|URISyntaxException invalid){return false;}
     }
