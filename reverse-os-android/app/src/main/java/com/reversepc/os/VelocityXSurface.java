@@ -85,9 +85,9 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 }
                 if(accumulator>=VelocityPhysics.TICK_MS)accumulator=0;
                 int selected=Math.max(0,Math.min(2,quality));
-                int targetWidth=selected==0?320:selected==1?400:480;
+                int targetWidth=selected==0?320:selected==1?640:1280;
                 double ratio=Math.min(2.7,Math.max(1.2,(double)surfaceWidth/surfaceHeight));
-                int targetHeight=Math.max(72,Math.min(360,(int)Math.round(targetWidth/ratio)));
+                int targetHeight=Math.max(72,Math.min(720,(int)Math.round(targetWidth/ratio)));
                 if(selected!=currentQuality||targetHeight!=height){
                     currentQuality=selected;
                     width=targetWidth;height=targetHeight;
