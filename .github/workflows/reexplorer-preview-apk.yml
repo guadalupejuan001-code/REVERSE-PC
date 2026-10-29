@@ -1,0 +1,90 @@
+name: REexplorer - signed side by side Android preview
+on:
+  pull_request:
+    branches: [main, feature/reverse-portrait-landscape-20261028]
+    paths:
+      - 'reverse-os-android/**'
+      - 'bbyq-interface/**'
+      - '.github/workflows/reexplorer-preview-apk.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: reexplorer-preview-${{ github.head_ref || github.ref }}
+  cancel-in-progress: false
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      REVERSE_SIGNING_KEYSTORE: ${{ github.workspace }}/build-signing/reexplorer-preview.jks
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: e2778d962af22f6f1a0794058dd4685fc2573966
+          path: deps/mundo-x
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/BBY-Q
+          ref: ed32ab6b73a31e96080b62269ad1eb9f3e15709d
+          path: deps/bbyq-e025
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/BBY-Q
+          ref: 7dfa6c31247cf609128db78908313a6ce41c0b80
+          path: deps/bbyq-classic
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '17'}
+      - uses: gradle/actions/setup-gradle@v4
+        with: {gradle-version: '8.9'}
+      - name: Install Android 35 and pinned native toolchain
+        run: |
+          set -euo pipefail
+          mkdir -p build dist evidence build-signing
+          python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1' >/dev/null
+      - name: Prepare exact original E025 capsule and XI assets
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc src/reverse_pc.cpp -o build/reverse_pc
+          python3 deps/bbyq-e025/ai/releases/e025/build.py build/reverse_pc build/e025 --assets reverse-os-android/app/src/main/assets > evidence/e025-build.json
+          bash reverse-os-android/scripts/prepare-bbyq.sh deps/bbyq-classic > evidence/bbyq-assets.log
+          test -s reverse-os-android/app/src/main/assets/native-apps/BBY-Q.rxe
+          test -s reverse-os-android/app/src/main/assets/reexplorer/navigation-core.xi
+          test -s reverse-os-android/app/src/main/assets/workbench/reexplorer.js
+      - name: Use an isolated development signing identity
+        run: |
+          set -euo pipefail
+          umask 077
+          keytool -genkeypair -keystore "$REVERSE_SIGNING_KEYSTORE" -storetype JKS -storepass android -keypass android -alias reverse-desktop -keyalg RSA -keysize 2048 -validity 30 -dname 'CN=REexplorer Temporary Preview'
+      - name: Build installable REVERSE plus REexplorer, without overwriting user's REVERSE
+        run: |
+          set -euo pipefail
+          gradle -p reverse-os-android --no-daemon :app:assembleReexplorerDebug > evidence/gradle.log 2>&1 || { tail -180 evidence/gradle.log; exit 1; }
+          cp reverse-os-android/app/build/outputs/apk/reexplorer/debug/app-reexplorer-debug.apk dist/REVERSE-REexplorer-Quantum-preview.apk
+          "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/REVERSE-REexplorer-Quantum-preview.apk > evidence/apk-signature.txt
+          "${ANDROID_HOME}/build-tools/35.0.0/zipalign" -c -p 4 dist/REVERSE-REexplorer-Quantum-preview.apk > evidence/apk-alignment.txt
+          "${ANDROID_HOME}/build-tools/35.0.0/aapt" dump badging dist/REVERSE-REexplorer-Quantum-preview.apk > evidence/package.txt
+          grep -q "com.reversepc.reexplorer.quantum.workbench" evidence/package.txt
+          unzip -l dist/REVERSE-REexplorer-Quantum-preview.apk | grep -E 'classes.dex|libreverse_os.so' > evidence/native-included.txt
+          sha256sum dist/REVERSE-REexplorer-Quantum-preview.apk > evidence/SHA256SUMS.txt
+          test -s dist/REVERSE-REexplorer-Quantum-preview.apk
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: REexplorer-Quantum-APK-preview
+          path: |
+            dist/REVERSE-REexplorer-Quantum-preview.apk
+            evidence/e025-build.json
+            evidence/apk-signature.txt
+            evidence/apk-alignment.txt
+            evidence/package.txt
+            evidence/native-included.txt
+            evidence/SHA256SUMS.txt
+          retention-days: 7

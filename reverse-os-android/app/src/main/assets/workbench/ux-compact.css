@@ -1,0 +1,77 @@
+/* Compact navigation: original PC functions and stored window state remain unchanged. */
+.desktop-shortcuts{gap:4px 5px!important;grid-template-rows:repeat(auto-fill,64px)!important;grid-auto-columns:66px!important;top:8px!important;left:8px!important}
+.desktop-shortcut{width:64px!important;height:64px!important;padding:3px!important;gap:2px!important;border-radius:7px!important;font-size:9px!important}
+.desktop-shortcuts .desktop-shortcut .shortcut-icon,.desktop-shortcuts .app-icon{width:37px!important;height:37px!important}
+.desktop-shortcut>.shortcut-label{max-width:62px;font-size:9px;line-height:1.2}
+.taskbar .task-app .app-icon{width:23px;height:23px}.taskbar .task-app{min-width:32px!important;padding:0 4px}
+.launcher-app .shortcut-icon,.launcher-app .app-icon{width:35px!important;height:35px!important}
+.window-titlebar{height:30px!important;min-height:30px!important}.window-caption>.app-icon{width:17px;height:17px}
+.window-controls button{height:26px!important;width:27px!important}.window-content{min-height:0;overflow:auto}
+.bbyq-shell{display:flex;flex-direction:column;gap:0!important;padding:0!important;height:100%;min-height:0;overflow:hidden}
+.bbyq-shell>.rxe-heading{flex-shrink:0;padding:7px 10px;border-bottom:1px solid var(--line);margin:0}
+.bbyq-modules{display:flex;flex:none;gap:3px;align-items:center;padding:4px 9px;border-bottom:1px solid var(--line);overflow-x:auto}
+.bbyq-modules button{font-size:11px;white-space:nowrap;color:var(--muted);background:transparent;border:1px solid transparent;border-radius:5px;padding:7px 11px;min-height:30px}
+.bbyq-modules button.selected{background:var(--surface-2);border-color:var(--line);color:var(--ink)}
+.bbyq-shell>.rxe-status{margin:5px 11px;font-size:10px;flex:none}
+.bbyq-shell>.rxe-history{margin:0 9px;min-height:0;flex:1;overflow:auto}
+.bbyq-shell>.rxe-composer{padding:6px 9px;border-top:1px solid var(--line);flex-shrink:0}
+.bbyq-module-content{min-height:0;flex:1;overflow:hidden}.bbyq-module-content .qd-root{height:100%}
+.bbyq-module-content .qd-top{padding:7px 10px}.bbyq-module-content .qd-top h2{font-size:17px;margin:2px 0}
+.bbyq-module-content .qd-top p,.bbyq-module-content .qd-footer{display:none}
+.bbyq-module-content .qd-workspace{grid-template-columns:130px minmax(175px,1fr) minmax(180px,.85fr)}
+.bbyq-module-content .qd-editor,.bbyq-module-content .qd-results{padding:8px}.bbyq-module-content .qd-sidebar{padding:7px}
+.bbyq-work{overflow:auto;min-height:0;flex:1;padding:16px;display:flex;flex-direction:column;gap:12px}
+.bbyq-work h2{font-size:19px;font-weight:600;margin:0}.bbyq-work p{font-size:11px;color:var(--muted);line-height:1.6;margin:0}
+.bbyq-work-status{border:1px solid var(--line);padding:10px 12px;border-radius:6px;background:var(--surface-2);display:grid;gap:6px}
+.bbyq-work-status strong{font-size:11px}.bbyq-work-status span{font-size:11px;color:var(--muted)}
+.bbyq-work>.primary-button{align-self:flex-start}
+.window[data-app="music"] .window-content{overflow:hidden}
+.music-heading{padding:7px 10px 5px;gap:8px}.music-search{padding:0 10px 4px}.music-search input{padding:6px 0}
+.music-tabs{padding:0 10px;gap:9px;min-height:29px;flex:none;overflow-x:auto}
+.music-tabs button{padding:6px 0;white-space:nowrap;font-size:10px;min-height:28px}
+.music-controls{min-height:42px;padding:4px 8px;gap:8px}.music-stage{min-height:74px;flex:1}
+.music-footer{min-height:22px;padding:0 8px}.music-shield{font-size:9px;padding:5px}
+.music-downloads{padding:8px 10px}.music-downloads,.music-library{overscroll-behavior:contain}
+@media(max-width:1050px), (max-height:520px){
+ #desktop .window:not(.focused){display:none!important}
+ #desktop .window.focused{left:5px!important;top:5px!important;width:calc(100% - 10px)!important;height:calc(100% - 10px)!important;min-width:0!important;min-height:0!important;border-radius:7px!important;transform:none!important}
+ #desktop .window.focused .resize-handle{display:none}
+ .taskbar{width:100%;max-width:100%;left:0!important;bottom:0!important;transform:none!important;border-radius:0!important;gap:2px!important}
+ #pinned-apps,#running-apps{min-width:0;overflow-x:auto;scrollbar-width:none}
+ #pinned-apps::-webkit-scrollbar,#running-apps::-webkit-scrollbar{display:none}
+ .taskbar .task-app{min-width:29px!important;width:30px!important}.taskbar .task-app .app-icon{width:22px;height:22px}
+ .taskbar .task-app-label{display:none}.taskbar .launcher-toggle{width:78px!important;min-width:78px!important}
+ .window-titlebar{height:27px!important;min-height:27px!important}.window-controls button{height:24px!important;width:27px!important}
+ .bbyq-module-content .qd-workspace{grid-template-columns:110px minmax(160px,1fr);overflow:auto;grid-template-rows:minmax(175px,1fr) minmax(180px,.8fr)}
+ .bbyq-module-content .qd-results{grid-column:2;border-top:1px solid var(--line)}.bbyq-module-content .qd-sidebar{grid-row:1 / 3}
+}
+@media(max-height:410px){
+ .music-heading{padding:4px 8px}.music-brand strong{font-size:11px}.music-brand>span{display:none}
+ .music-search input{padding:4px 0}.music-tabs{min-height:26px}.music-tabs button{min-height:25px;padding:3px}
+ .music-controls{min-height:36px;padding:3px}.music-footer{display:flex;min-height:20px}.music-stage{min-height:70px}
+ .bbyq-modules{padding:2px 6px}.bbyq-modules button{min-height:25px;padding:4px 8px}
+}
+
+@media(max-height:450px){.music-app:has(.music-downloads)>.music-heading{display:flex!important}.music-downloads{min-height:65px;overflow-y:auto}.music-tabs{flex-shrink:0}.music-app>.music-footer{display:flex;flex-shrink:0}}
+
+
+/* Portrait adaptation only. Existing wallpaper, icon artwork and theme untouched. */
+@media (orientation:portrait) {
+  .desktop-shortcuts{grid-template-rows:none!important;grid-auto-flow:row!important;grid-template-columns:repeat(auto-fill,minmax(64px,1fr))!important;grid-auto-columns:auto!important;align-content:start!important;justify-items:center!important;inset:12px 8px auto 8px!important;max-height:calc(100% - 18px);overflow:auto}
+  .desktop-shortcut{width:64px!important;height:64px!important}
+  #desktop .window.focused{left:5px!important;top:5px!important;width:calc(100% - 10px)!important;height:calc(100% - 10px)!important;min-width:0!important;min-height:0!important}
+  #desktop .window:not(.focused){display:none!important}
+  .taskbar{width:100%!important;max-width:100%!important;overflow:hidden!important}
+  #running-apps,#pinned-apps{min-width:0!important;overflow-x:auto!important}
+  .window-content,.music-app,.bbyq-shell{min-width:0!important;min-height:0!important}
+  .music-search{flex-wrap:wrap;gap:5px!important}
+  .music-search label{flex-basis:100%;min-height:36px}
+  .music-search button{flex:1 1 auto;min-height:32px}
+  .music-tabs{overflow-x:auto!important;flex-shrink:0}
+  .music-stage{min-height:120px!important;flex:1 1 auto}
+  .music-controls{flex-wrap:wrap;flex-shrink:0}
+  .bbyq-modules{overflow-x:auto;flex-shrink:0}
+  .bbyq-module-content .qd-workspace{display:flex!important;flex-direction:column!important;overflow:auto!important;min-height:0}
+  .bbyq-module-content .qd-sidebar,.bbyq-module-content .qd-editor,.bbyq-module-content .qd-results{width:100%!important;min-height:145px!important;flex:none!important}
+  .launcher{max-width:100%!important;left:0!important;right:0!important}
+}

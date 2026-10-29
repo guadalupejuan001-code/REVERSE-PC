@@ -1,0 +1,33 @@
+/* REexplorer launcher, deliberately not a privileged embedded remote web page. */
+.reexplorer-shell{display:flex;flex-direction:column;gap:16px;min-height:100%;padding:24px;
+  background:linear-gradient(150deg,rgba(37,64,66,.19),transparent 38%),var(--window,#1a1d20);
+  color:var(--ink,#f0f3f2);overflow-y:auto;box-sizing:border-box}
+.reexplorer-heading{display:flex;gap:14px;align-items:center}
+.reexplorer-emblem{display:grid;place-items:center;width:56px;height:56px;flex:none;
+  background:rgba(108,204,187,.08);border:1px solid rgba(130,219,202,.22);border-radius:14px;color:#9de3d5}
+.reexplorer-emblem svg{width:30px;height:30px}
+.reexplorer-heading h2{margin:0;font-size:24px;letter-spacing:-.03em;font-weight:660}
+.reexplorer-heading p{color:var(--muted,#a2acae);font-size:12px;margin:4px 0 0}
+.reexplorer-form{display:flex;flex-direction:column;gap:7px}
+.reexplorer-form label{font-size:11px;color:var(--muted,#b4c1c1);font-weight:600}
+.reexplorer-address-row{display:flex;gap:9px}
+.reexplorer-address-row input{flex:1;min-width:0;border:1px solid rgba(180,220,214,.19);
+  background:rgba(8,16,19,.68);padding:10px 13px;border-radius:9px;color:var(--ink,#f4f7f6);
+  font:inherit;font-size:13px}
+.reexplorer-address-row input:focus-visible{outline:2px solid #91ddc7;outline-offset:1px}
+.reexplorer-address-row .primary-button{white-space:nowrap}
+.reexplorer-quick{display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:11px;
+  color:var(--muted,#a8b3b3)}
+.reexplorer-protection{border:1px solid rgba(184,217,212,.13);border-radius:12px;
+  background:rgba(0,0,0,.13);padding:15px}
+.reexplorer-protection>p{margin:0 0 12px;display:flex;gap:8px;align-items:center;font-size:13px}
+.reexplorer-protection>p .icon{color:#9be0c8}
+.reexplorer-security-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 14px;
+  color:var(--muted,#a9b9b7);font-size:11px}
+.reexplorer-security-grid>span:before{content:"•";color:#91d3bc;padding-right:7px}
+.reexplorer-protection small{display:block;color:var(--muted,#aebaba);line-height:1.5;
+  font-size:10px;margin-top:13px}
+.reexplorer-status{margin:0;min-height:22px;font-size:11px;color:#a2d4cb}
+@media(max-width:640px){.reexplorer-shell{padding:14px;gap:13px}
+  .reexplorer-heading h2{font-size:21px}.reexplorer-security-grid{grid-template-columns:1fr}
+  .reexplorer-address-row input{font-size:12px}}

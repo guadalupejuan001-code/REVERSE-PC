@@ -95,7 +95,7 @@ final class BbyqInterface {
         }
         return state;
     }
-    private static String speech(String output)throws Exception{
+    static String speech(String output)throws Exception{
         ByteArrayOutputStream bytes=new ByteArrayOutputStream();
         for(String row:output.split("\\n"))if(row.startsWith("{")){
             JSONObject item=new JSONObject(row);String register=item.optString("register");
@@ -124,6 +124,23 @@ final class BbyqInterface {
             source.append(put(M+512+target,cap));
         }
         return ResultPacket.parse(NativeRuntime.execute(state,source.toString())).state;
+    }
+    /**
+     * Successful/failed browser launch is acknowledged in XI, not inferred
+     * from market content. This action never modifies W4u's plan history.
+     */
+    static ResultPacket robinhoodFeedback(Context ctx,byte[] state,int language,boolean success)throws Exception{
+        String xi=new String(asset(ctx,"workbench/xi-robinhood-feedback.xi"),StandardCharsets.UTF_8);
+        int first=xi.indexOf('\n');
+        if(!xi.startsWith("#!reverse-pc-machine-v1\n")||first<0)
+            throw new IOException("Programa de confirmación XI inválido");
+        String source="#!reverse-pc-machine-v1\n"+
+            put(7400000000000000003L,language)+
+            put(M+80,success?1:0)+xi.substring(first+1);
+        ResultPacket result=ResultPacket.parse(NativeRuntime.execute(state,source));
+        String reply=speech(result.output);
+        if(reply.isEmpty())throw new IOException("Falta la confirmación de navegador XI");
+        return ResultPacket.parse(ResultPacket.encode(reply,result.state));
     }
     static JSONObject action(byte[] state)throws Exception{
         String source="#!reverse-pc-machine-v1\nload8 r0 "+(A+64)+"\nprint r0\nload8 r1 "+(A+65)+"\nprint r1\n";

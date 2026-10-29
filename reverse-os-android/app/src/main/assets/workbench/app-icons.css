@@ -1,0 +1,41 @@
+/* Application marks have their own optical sizes; command glyphs stay compact. */
+.app-icon{display:block;width:32px;height:32px;flex:none;pointer-events:none;overflow:visible}
+.desktop-shortcuts{
+  top:18px;left:18px;width:max-content;height:calc(100% - 36px);
+  display:grid;grid-auto-flow:column;grid-template-rows:repeat(auto-fill,92px);
+  grid-auto-columns:88px;gap:8px 10px;align-content:start;justify-content:start;
+  pointer-events:none;
+}
+.desktop-shortcut{
+  width:88px;height:92px;gap:6px;padding:6px 4px 5px;justify-content:flex-start;
+  border:1px solid transparent;border-radius:9px;pointer-events:auto;
+  color:#f0f2f5;font-size:11px;line-height:1.3;text-align:center;
+  text-shadow:0 1px 3px #000,0 2px 8px #0009;
+}
+.desktop-shortcut:hover{background:#e8eeff0d;border-color:#edf4ff16;color:#fff}
+.desktop-shortcut:focus-visible{background:#e8eeff14;outline:2px solid var(--accent);outline-offset:1px}
+.desktop-shortcuts .desktop-shortcut .shortcut-icon{
+  width:58px;height:58px;background:none!important;border:0;box-shadow:none;
+  position:relative;color:inherit!important;
+}
+.desktop-shortcuts .app-icon{width:58px;height:58px;filter:drop-shadow(0 4px 5px #0003)}
+.desktop-shortcut>.shortcut-label{display:block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.shortcut-badge{position:absolute;right:0;bottom:1px;min-width:17px;height:17px;padding:1px 4px;border:1px solid #496069;background:#253941;color:#eaf7fa;border-radius:6px;font-size:9px;text-shadow:none}
+.taskbar .task-app .app-icon{width:30px;height:30px}
+.window-caption>.app-icon{width:21px;height:21px}
+.launcher-app .shortcut-icon{width:52px;height:52px;background:none!important;border:0;box-shadow:none}
+.launcher-app .app-icon{width:52px;height:52px}
+.program-card>div:first-child>.app-icon{width:45px;height:45px}
+.control-app-card>.app-icon{width:39px;height:39px}
+.inventory-row>.app-icon{width:27px;height:27px}
+body[data-theme="light"] .desktop-shortcut{color:#eef2f6}
+body[data-keyboard="true"] .desktop-shortcuts{display:none}
+@media(max-height:450px){
+  .desktop-shortcuts{top:12px;left:12px;height:calc(100% - 24px);grid-template-rows:repeat(auto-fill,82px);grid-auto-columns:80px;gap:6px 8px}
+  .desktop-shortcut{width:80px;height:82px;font-size:10px;gap:5px;padding:4px}
+  .desktop-shortcuts .desktop-shortcut .shortcut-icon,.desktop-shortcuts .app-icon{width:52px;height:52px}
+}
+@media(max-width:760px){
+  .taskbar .task-app .app-icon{width:27px;height:27px}
+  .launcher-app .shortcut-icon,.launcher-app .app-icon{width:46px;height:46px}
+}

@@ -6,6 +6,7 @@ const vm=require('node:vm');
 const path=require('node:path');
 const root=path.join(__dirname,'..','app','src','main','assets','workbench');
 const ui=fs.readFileSync(path.join(root,'x-market.js'),'utf8');
+const laplace=fs.readFileSync(path.join(root,'laplace-native.js'),'utf8');
 const desktop=fs.readFileSync(path.join(root,'desktop.js'),'utf8');
 const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
 const controls=fs.readFileSync(path.join(root,'control-center.js'),'utf8');
@@ -13,7 +14,7 @@ const listener={};
 const w={id:'test-window',app:'xmarket'};
 let redraws=0,saves=0;
 const ctx=vm.createContext({
-  document:{addEventListener(type,cb){listener[type]=cb;}},
+  document:{addEventListener(type,cb){(listener[type]||=[]).push(cb);}},
   icon(name){return '<i data-icon="'+name+'"></i>';},
   esc(v){return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');},
   getWindow(id){return id===w.id?w:undefined;},
@@ -21,11 +22,12 @@ const ctx=vm.createContext({
   queueSave(){saves++;}
 });
 vm.runInContext(ui,ctx,{filename:'x-market.js'});
+vm.runInContext(laplace,ctx,{filename:'laplace-native.js'});
 function render(){return vm.runInContext('xMarketHTML(w)',Object.assign(ctx,{w}));}
 function press(key,value){
   const windowEl={dataset:{id:'test-window'}};
   const button={dataset:{[key]:value},closest(selector){return selector==='.window'?windowEl:null;}};
-  listener.click({target:{closest(selector){return selector.startsWith('button[')?button:null;}}});
+  for(const callback of listener.click)callback({target:{closest(selector){return selector==='button[data-xm-predict]'?null:selector.startsWith('button[')?button:null;}}});
 }
 const landing=render();
 assert.match(landing,/X MARKET/);
@@ -51,6 +53,8 @@ assert.match(render(),/NVIDIA/);
 assert.match(render(),/5 días/);
 press('xmTab','laplace');
 assert.match(render(),/12 620/);
+assert.match(render(),/data-xm-predict/);
+assert.match(html,/src="laplace-native.js"/);
 assert.match(render(),/Sistema cerrado/);
 assert.equal(w.marketShock,false);
 press('xmShock','on');
@@ -65,7 +69,7 @@ press('xmShock','off');
 assert.doesNotMatch(render(),/class="xm-graph-shock"/);
 press('xmTab','research');
 assert.match(render(),/Primera prueba de la hipótesis/);
-assert.match(render(),/no ejecuta XI/);
+assert.match(render(),/solo ejecuta XI bajo petición explícita/);
 press('xmTab','about');
 assert.match(render(),/Operaciones reales/);
 assert.match(render(),/Deshabilitadas/);

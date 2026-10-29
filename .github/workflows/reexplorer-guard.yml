@@ -1,0 +1,98 @@
+name: REexplorer - Ether Guard browser security
+on:
+  pull_request:
+    branches: [main, feature/reverse-portrait-landscape-20261028]
+    paths:
+      - 'reverse-os-android/app/src/main/java/com/reversepc/os/Reexplorer*'
+      - 'reverse-os-android/app/src/main/java/com/reversepc/os/WorkbenchActivity.java'
+      - 'reverse-os-android/app/src/main/AndroidManifest.xml'
+      - 'reverse-os-android/app/src/main/assets/workbench/**'
+      - 'reverse-os-android/tests/*eexplorer*'
+      - 'docs/REEXPLORER_SECURITY.md'
+      - '.github/workflows/reexplorer-guard.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: reexplorer-guard-${{ github.head_ref || github.ref }}
+  cancel-in-progress: false
+jobs:
+  policy-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '17'}
+      - name: Pure Java hostile URL rejection and XI allowlist tests
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/reexplorer/java
+          javac -encoding UTF-8 -d evidence/reexplorer/java reverse-os-android/app/src/main/java/com/reversepc/os/ReexplorerPolicy.java reverse-os-android/tests/ReexplorerPolicyTest.java
+          java -cp evidence/reexplorer/java com.reversepc.os.ReexplorerPolicyTest | tee evidence/reexplorer/policy.json
+      - name: REexplorer desktop, portrait/landscape launcher and secure bridge wiring
+        run: |
+          set -euo pipefail
+          node --check reverse-os-android/app/src/main/assets/workbench/desktop.js
+          node --check reverse-os-android/app/src/main/assets/workbench/reexplorer.js
+          node --check reverse-os-android/app/src/main/assets/workbench/bbyq-control.js
+          node --check reverse-os-android/tests/reexplorer-desktop.cjs
+          node --check security/reexplorer/tests/independent-browser.mjs
+          node reverse-os-android/tests/reexplorer-desktop.cjs evidence/reexplorer/desktop.json
+          node security/reexplorer/tests/independent-browser.mjs evidence/reexplorer/independence.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: REexplorer-policy-ui-evidence
+          path: evidence/reexplorer/*.json
+  android-native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '17'}
+      - name: Install Android SDK 35
+        run: |
+          set -euo pipefail
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' > /dev/null
+      - name: Compile isolated REexplorer process and entire original Android host
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/reexplorer/classes
+          javac -encoding UTF-8 -source 17 -target 17 -cp "${ANDROID_HOME}/platforms/android-35/android.jar" -d evidence/reexplorer/classes reverse-os-android/app/src/main/java/com/reversepc/os/*.java
+          test -s evidence/reexplorer/classes/com/reversepc/os/ReexplorerActivity.class
+          test -s evidence/reexplorer/classes/com/reversepc/os/ReexplorerPolicy.class
+          test -s evidence/reexplorer/classes/com/reversepc/os/WorkbenchActivity.class
+          printf '{"android_api":35,"class_compilation":"pass","separate_process":true}\n' > evidence/reexplorer/android.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: REexplorer-android-compile-evidence
+          path: evidence/reexplorer/*.json
+  xi-command:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: e2778d962af22f6f1a0794058dd4685fc2573966
+          path: deps/mundo-x
+          persist-credentials: false
+      - name: Build original XI runtime and execute REexplorer's independent navigation policy
+        run: |
+          set -euo pipefail
+          mkdir -p build evidence/reexplorer
+          python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc src/reverse_pc.cpp -o build/reverse_pc
+          node security/reexplorer/tests/native-qcore.mjs build/reverse_pc evidence/reexplorer
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: REexplorer-XI-action-evidence
+          path: evidence/reexplorer/*.json
