@@ -1,7 +1,7 @@
 name: REVERSE 2.5.1 integrated APK
 on:
   push:
-    branches: [main]
+    branches: [main, feature/xi-render-native-first-20261029]
     paths: ['reverse-os-android/**', 'bbyq-interface/**', 'src/**', 'scripts/**', '.github/workflows/workbench-android.yml']
   pull_request:
     branches: [main]
@@ -130,7 +130,7 @@ jobs:
           grep 'WORKBENCH_TESTS_OK mode=restore' evidence/android-restore.txt
           adb shell am force-stop com.reversepc.control.workbench
           timeout 140s adb shell am instrument -w -e mode velocity com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee evidence/android-velocity.txt
-          grep 'WORKBENCH_TESTS_OK mode=velocity' evidence/android-velocity.txt
+          grep 'WORKBENCH_TESTS_OK mode=velocity renderer=XI-Machine-v1' evidence/android-velocity.txt
       - uses: actions/upload-artifact@v4
         if: always()
         with:
