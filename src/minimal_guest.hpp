@@ -210,6 +210,12 @@ class MinimalGuest {
     require(machine_.enabled&&!machine_.counter_latency.enabled,"Counter latency requires a system guest and cannot replace an active seed");
     machine_.counter_latency=GuestCounterLatency{};machine_.counter_latency.seed=host_seed;machine_.counter_latency.enabled=true;
   }
+  void configure_counter_rate(std::uint64_t instructions_per_tick){
+    auto& c=machine_.counter_latency;
+    require(machine_.enabled&&c.enabled&&c.instructions_per_tick==1&&!c.subtick,"A counter cadence upgrade requires the original seeded timing model");
+    require(instructions_per_tick>=2&&instructions_per_tick<=4096,"Counter cadence must be 2..4096 instructions per tick");
+    c.instructions_per_tick=instructions_per_tick;
+  }
 
   std::uint8_t read8(std::uint64_t address) const {
     range(address,1);
@@ -273,7 +279,7 @@ class MinimalGuest {
           auto deadline=UINT64_MAX;
           if((candidate.machine_.cntp_ctl&3)==1 && candidate.machine_.cntp_cval>candidate.machine_.ticks)deadline=candidate.machine_.cntp_cval;
           if((candidate.machine_.cntv_ctl&3)==1 && candidate.machine_.cntv_cval>candidate.machine_.ticks)deadline=std::min(deadline,candidate.machine_.cntv_cval);
-          if(deadline!=UINT64_MAX)candidate.machine_.ticks=deadline;
+          if(deadline!=UINT64_MAX){candidate.machine_.ticks=deadline;candidate.machine_.counter_latency.subtick=0;}
         }
         if(candidate.machine_.next_irq()==1023 && !candidate.machine_.event)break;
         candidate.machine_.waiting=false;
@@ -413,6 +419,7 @@ class MinimalGuest {
         << ",\"display_width\":" << machine_.pci.scan_w << ",\"display_height\":" << machine_.pci.scan_h
         << ",\"display_frame\":" << machine_.pci.flushes
         << (machine_.counter_latency.enabled?",\"counter_latency\":\"host-seeded-hmac-v1\",\"counter_samples\":"+std::to_string(machine_.counter_latency.reads):std::string{})
+        << (machine_.counter_latency.instructions_per_tick>1?",\"counter_instructions_per_tick\":"+std::to_string(machine_.counter_latency.instructions_per_tick)+",\"counter_subtick\":"+std::to_string(machine_.counter_latency.subtick):std::string{})
         << ",\"android_boot\":\"not_implemented\""
         << ",\"wild_rift\":\"not_supported\",\"hardware_acceleration\":false}";
     return out.str();
@@ -546,7 +553,7 @@ class MinimalGuest {
   }
   void step(RunResult& result);
   void advance(){require(registers_.instructions!=UINT64_MAX,"Guest instruction counter overflow");++registers_.instructions;
-    if(machine_.enabled){require(machine_.ticks!=UINT64_MAX,"Guest virtual timer overflow");++machine_.ticks;}}
+    if(machine_.enabled){require(machine_.ticks!=UINT64_MAX,"Guest virtual timer overflow");machine_.ticks+=machine_.counter_latency.instruction_tick();}}
   void validate_system_configuration() const;
   std::uint64_t translate(std::uint64_t address,bool writing=false,bool executing=false,bool unprivileged=false) const;
   std::uint64_t cpu_read(std::uint64_t address,unsigned size,RunResult& result,bool executing=false,bool unprivileged=false);

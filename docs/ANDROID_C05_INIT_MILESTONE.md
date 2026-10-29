@@ -13,6 +13,30 @@ certificate verification path (`mpi_powm` / `mpihelp_submul_1`). It reached
 the host time bound with no unsupported operation and no init entry yet.
 The next cycle pins that newer state and report, retaining all progress.
 
+The next run (40940689989) reached 6,244,300,000 instructions, successfully
+loaded the genuine X.509 certificate and registered fscrypt. Its final
+trace contains repeatedly nested timer/softirq/preemption frames. The old
+one-counter-tick-per-instruction cadence models a 1 MHz instruction stream
+against a 1 MHz architected counter, making interrupt handling expensive
+relative to timer deadlines.
+
+An explicit `--counter-instructions-per-tick=64` upgrade now models 64 CPU
+steps per counter tick, retaining the published 1 MHz CNTFRQ and monotonic
+counter value. Every CPU instruction still executes. Seed and sample cursor
+are preserved; a finite fractional phase is also saved. Idle timer jumps
+clear that phase at the native deadline. Machine v7 / counter model v2
+encode this cadence and phase; v1..v6 restore and historical v6 bytes remain
+unchanged. The upgrade changes hardware timing explicitly, not guest kernel,
+PC, RAM or disk. A later v7 continuation retains its exact phase.
+
+Tests cover all 64 physical/virtual MRS samples, unchanged CNTFRQ, nonzero
+phase restart, actual timer/IRQ/ERET execution with one-step chunks, PCI
+pixels and rejection of invalid cadence/phase metadata. Android host
+instrumentation adds native-hash and cold-restart checks for v7. The genuine
+cycle now pins the 6.2443B input and its old cadence separately from the new
+requested timing policy. Existing v6 APKs need the updated native engine to
+load a v7 checkpoint.
+
 C05 resumes that exact state, with its original disk attachment, RAM and
 persisted counter seed/cursor. It never draws a replacement seed. The source
 checkpoint, complete source report and timing seed identity are independently

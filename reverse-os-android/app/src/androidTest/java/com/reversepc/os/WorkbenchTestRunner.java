@@ -299,21 +299,23 @@ public final class WorkbenchTestRunner extends Instrumentation {
         require(js("document.querySelector('[data-program-input]').value.includes('Prueba á ñ')").equals("true"),"Dismiss lost the draft");
         require(js("JSON.stringify({w:getWindow(activeId).w,h:getWindow(activeId).h,x:getWindow(activeId).x,y:getWindow(activeId).y})").equals(frame),"Keyboard changed the saved frame");
     }
-    private void counterWorkflow(boolean restore)throws Exception{
+    private void counterWorkflow(boolean restore,boolean paced)throws Exception{
         openGuestView();
         if(!restore){
-            RuntimeExecutor.INSTANCE.submit(()->{try{return new GuestStore(getTargetContext()).createSystem(null,5);}catch(Exception error){throw new RuntimeException(error);}}).get(60,TimeUnit.SECONDS);
+            RuntimeExecutor.INSTANCE.submit(()->{try{return new GuestStore(getTargetContext()).createSystem(null,paced?6:5);}catch(Exception error){throw new RuntimeException(error);}}).get(60,TimeUnit.SECONDS);
             JSONObject run=op("guestRun","{\"steps\":1000}","counterRan");
             require(run.getString("stdout").equals("REVERSE: COUNTER LATENCY OK\n"),"Real counter sampling program did not execute");
         }
         JSONObject report=op("guestInspect","","counterState"),guest=report.getJSONObject("guest");
         require(guest.getBoolean("halted")&&guest.getLong("counter_samples")==64&&guest.getString("counter_latency").equals("host-seeded-hmac-v1"),"Counter hardware state did not persist");
+        if(paced)require(guest.getLong("counter_instructions_per_tick")==64,"Counter instruction cadence did not persist");
+        String proofName=paced?"counter-rate-proof.json":"counter-proof.json";
         String sha=hash("guest-aarch64.rvg");
         if(!restore){
             require(sha.equals(arguments.getString("expected_counter_sha256")),"Android counter state differs from the independent native result");
-            Files.write(dataFile("counter-proof.json").toPath(),new JSONObject().put("state_sha256",sha).put("counter_samples",64).put("test_seed_only",true).put("android_boot",false).toString().getBytes(StandardCharsets.UTF_8));
+            Files.write(dataFile(proofName).toPath(),new JSONObject().put("state_sha256",sha).put("counter_samples",64).put("instructions_per_tick",paced?64:1).put("test_seed_only",true).put("android_boot",false).toString().getBytes(StandardCharsets.UTF_8));
         }else{
-            JSONObject prior=new JSONObject(new String(Files.readAllBytes(dataFile("counter-proof.json").toPath()),StandardCharsets.UTF_8));
+            JSONObject prior=new JSONObject(new String(Files.readAllBytes(dataFile(proofName).toPath()),StandardCharsets.UTF_8));
             require(sha.equals(prior.getString("state_sha256")),"Restart changed the counter seed/cursor or guest state");
         }
         js("guestUi.snapshot=window.counterState;guestUi.frame=null;guestUi.frameNumber=-1;refreshGuestViews();true");
@@ -543,9 +545,9 @@ public final class WorkbenchTestRunner extends Instrumentation {
                 visualCheck(requested);
                 result.putString("stream","WORKBENCH_TESTS_OK mode="+requested+" ");result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
             }
-            if(requested.equals("armCounter")||requested.equals("armCounterRestore")){
-                counterWorkflow(requested.equals("armCounterRestore"));visualCheck(requested);
-                result.putString("stream","WORKBENCH_TESTS_OK mode="+requested+" clock=host-seeded-hmac-v1 samples=64 state=v6 test-seed-only\n");result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
+            if(requested.equals("armCounter")||requested.equals("armCounterRestore")||requested.equals("armCounterRate")||requested.equals("armCounterRateRestore")){
+                boolean paced=requested.startsWith("armCounterRate");counterWorkflow(requested.endsWith("Restore"),paced);visualCheck(requested);
+                result.putString("stream","WORKBENCH_TESTS_OK mode="+requested+" clock=host-seeded-hmac-v1 samples=64 state="+(paced?"v7":"v6")+" test-seed-only\n");result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
             }
             if(requested.equals("armGraphics")||requested.equals("armGraphicsRestore")){
                 graphicsWorkflow(requested.equals("armGraphicsRestore"));visualCheck(requested);

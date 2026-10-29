@@ -7,6 +7,11 @@ struct GuestCounterLatency {
   bool enabled=false;
   std::array<std::uint8_t,32> seed{};
   std::uint64_t reads=0;
+  std::uint64_t instructions_per_tick=1,subtick=0;
+  unsigned instruction_tick(){
+    if(!enabled||instructions_per_tick==1)return 1;
+    if(++subtick==instructions_per_tick){subtick=0;return 1;}return 0;
+  }
   unsigned next(){
     if(!enabled||reads==UINT64_MAX)throw std::runtime_error("Counter latency source is disabled or exhausted");
     const auto index=reads/32;
@@ -24,13 +29,19 @@ struct GuestCounterLatency {
   }
   std::vector<std::uint8_t> save()const{
     if(!enabled)throw std::runtime_error("Cannot serialize disabled counter latency");
-    std::vector<std::uint8_t> b;for(unsigned i=0;i<8;i++)b.push_back(std::uint8_t(UINT64_C(1)>>(8*i)));
-    b.insert(b.end(),seed.begin(),seed.end());for(unsigned i=0;i<8;i++)b.push_back(std::uint8_t(reads>>(8*i)));return b;
+    if(instructions_per_tick<1||instructions_per_tick>4096||subtick>=instructions_per_tick)throw std::runtime_error("Invalid counter instruction cadence");
+    const std::uint64_t version=instructions_per_tick==1?1:2;
+    std::vector<std::uint8_t> b;auto put=[&](std::uint64_t n){for(unsigned i=0;i<8;i++)b.push_back(std::uint8_t(n>>(8*i)));};
+    put(version);b.insert(b.end(),seed.begin(),seed.end());put(reads);
+    if(version==2){put(instructions_per_tick);put(subtick);}return b;
   }
   static GuestCounterLatency restore(const std::vector<std::uint8_t>& b){
-    if(b.size()!=48||b[0]!=1||std::any_of(b.begin()+1,b.begin()+8,[](std::uint8_t v){return v!=0;}))throw std::runtime_error("Invalid counter latency state");
+    if((b.size()!=48&&b.size()!=64)||(b[0]!=1&&b[0]!=2)||std::any_of(b.begin()+1,b.begin()+8,[](std::uint8_t v){return v!=0;})||(b[0]==1)!=(b.size()==48))throw std::runtime_error("Invalid counter latency state");
     GuestCounterLatency c;c.enabled=true;std::copy(b.begin()+8,b.begin()+40,c.seed.begin());
-    for(unsigned i=0;i<8;i++)c.reads|=std::uint64_t(b[40+i])<<(8*i);return c;
+    for(unsigned i=0;i<8;i++)c.reads|=std::uint64_t(b[40+i])<<(8*i);
+    if(b[0]==2){c.instructions_per_tick=0;for(unsigned i=0;i<8;i++){c.instructions_per_tick|=std::uint64_t(b[48+i])<<(8*i);c.subtick|=std::uint64_t(b[56+i])<<(8*i);}
+      if(c.instructions_per_tick<2||c.instructions_per_tick>4096||c.subtick>=c.instructions_per_tick)throw std::runtime_error("Invalid counter instruction cadence");}
+    return c;
   }
  private:
   static std::array<std::uint8_t,32> decode(const std::string& text){

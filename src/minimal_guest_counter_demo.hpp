@@ -17,4 +17,5 @@ inline Bytes counter_witness_image(){
 }
 inline std::array<std::uint8_t,32> counter_test_seed(){std::array<std::uint8_t,32> s{};for(unsigned i=0;i<s.size();i++)s[i]=std::uint8_t(i);return s;}
 inline MinimalGuest counter_witness(){MinimalGuest g(128*1024*1024,0);g.load_linux_image(counter_witness_image());g.enable_counter_latency(counter_test_seed());return g;}
+inline MinimalGuest counter_prescaled_witness(){auto g=counter_witness();g.configure_counter_rate(64);return g;}
 } // namespace reverse_pc::guest

@@ -71,7 +71,7 @@ struct MachineState {
     // Preserve byte-for-byte legacy v2 snapshots unless IFLS has a new value.
     // A live 16-byte exclusive monitor uses v4. Historical states retain
     // their exact v2/v3 encoding; no RAM or runtime state is duplicated.
-    const unsigned version=counter_latency.enabled?6:pci.enabled?5:exclusive_size==16?4:uart_ifls?3:2;
+    const unsigned version=counter_latency.enabled?(counter_latency.instructions_per_tick>1?7:6):pci.enabled?5:exclusive_size==16?4:uart_ifls?3:2;
     put(version);put(enabled);put(waiting);put(event);put(el);put(sp_select);put(daif);put(image_kind);
     for(auto value:{sp0,sp1,sctlr,tcr,ttbr0,ttbr1,mair,vbar,elr,spsr,esr,far,par,cpacr,contextidr,
                    tpidr0,tpidrro,tpidr1,cntkctl,ticks,exceptions,cntp_cval,cntv_cval,exclusive_address})put(value);
@@ -94,7 +94,7 @@ struct MachineState {
       std::uint64_t value=0;for(unsigned i=0;i<8;++i)value|=std::uint64_t(bytes[at++])<<(8*i);return value;
     };
     auto small=[&](std::uint64_t maximum){auto value=take();if(value>maximum)throw std::runtime_error("Invalid machine state field");return unsigned(value);};
-    const auto version=take();if(version<1||version>6)throw std::runtime_error("Unsupported machine state version");
+    const auto version=take();if(version<1||version>7)throw std::runtime_error("Unsupported machine state version");
     MachineState m;m.enabled=small(1);m.waiting=small(1);m.event=small(1);m.el=small(1);m.sp_select=small(1);
     m.daif=small(0x3c0);m.image_kind=small(2);
     if(!m.enabled||(m.daif&~0x3c0u)||(!m.el&&m.sp_select)||!m.image_kind)throw std::runtime_error("Invalid machine execution state");
@@ -117,11 +117,12 @@ struct MachineState {
     const auto count=take();
     if(count>4096||count>bytes.size()-at)throw std::runtime_error("Invalid serial input state");
     m.receive.assign(bytes.begin()+at,bytes.begin()+at+std::size_t(count));at+=std::size_t(count);
-    if(version>=5){const auto n=take();const auto tail=version>=6?48u:0u;
+    if(version>=5){const auto n=take();const auto tail=version>=7?64u:version>=6?48u:0u;
       if(n>196608||bytes.size()-at<tail||n!=bytes.size()-at-tail||(!n&&version==5))throw std::runtime_error("Invalid PCI section");
       if(n)m.pci=GuestPciState::restore(std::vector<std::uint8_t>(bytes.begin()+at,bytes.begin()+at+std::size_t(n)));at+=std::size_t(n);
     }
-    if(version>=6){m.counter_latency=GuestCounterLatency::restore(std::vector<std::uint8_t>(bytes.begin()+at,bytes.end()));at=bytes.size();}
+    if(version>=6){m.counter_latency=GuestCounterLatency::restore(std::vector<std::uint8_t>(bytes.begin()+at,bytes.end()));at=bytes.size();
+      if((version==7)!=(m.counter_latency.instructions_per_tick>1))throw std::runtime_error("Counter model differs from machine version");}
     if(at!=bytes.size())throw std::runtime_error("Trailing machine state");
     if(m.vbar&2047)throw std::runtime_error("Unaligned exception vectors in machine state");
     return m;
