@@ -52,7 +52,7 @@ jobs:
             .source_boot_sha256=="b6f1c12a695e99c761f6a23713f4601dba06e690e77acfb5d1906b0d32f5c967" and
             .source_vendor_boot_sha256=="6f88b6c7164814bef200100763f9880733fe99aed17ee8e937f46b185b24fa8c" and
             .source_init_boot_sha256=="c4f820039ef9c2d1957461f33916f4d24b94d7b866e03ff91dbd7e9f72793d29" and
-            .vendor_ramdisk.fragments|length==1' evidence/staged-manifest.json
+            (.vendor_ramdisk.fragments|length)==1' evidence/staged-manifest.json
           jq -e '.combined_initrd.bytes<=67108864 and
             .bootconfig.raw_bytes==117 and .reverse_bootconfig_option_present==false and
             .android_init_executed==false and .adb==false' evidence/staged-manifest.json
