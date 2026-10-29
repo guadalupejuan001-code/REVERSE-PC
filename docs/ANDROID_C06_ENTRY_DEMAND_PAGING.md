@@ -50,7 +50,9 @@ fault addresses and fabricated faults over already mapped instructions.
 The existing pixel, UART, rollback and journal checks remain included.
 
 The genuine workflow is still required to establish the Android milestone;
-fixtures alone do not do so. After first entry, remaining work includes
+fixtures alone do not do so. Its final gate requires the verified original
+instruction. A bounded timeout or partial continuation still preserves its
+checkpoint, but cannot produce a successful milestone job. After first entry, remaining work includes
 userspace instruction/syscall coverage, normal mounts (including missing
 userdata), measured RAM capacity, Android framework/composer, input,
 networking, audio and the 3D path required by native games.

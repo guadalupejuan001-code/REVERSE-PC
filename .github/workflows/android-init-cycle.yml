@@ -106,3 +106,12 @@ jobs:
             evidence/c05/
             !evidence/c05/journal/**
           retention-days: 14
+      - name: Require the verified original Android init instruction
+        if: always()
+        run: |
+          node --input-type=module - <<'JS'
+          import {readFileSync} from 'node:fs';
+          const p=JSON.parse(readFileSync('evidence/c05/milestone.json'));
+          if(p.original_init_first_instruction_verified!==true)throw Error('Original Android init instruction is not verified; the saved prefix remains diagnostic evidence');
+          console.log('REVERSE_ORIGINAL_ANDROID_INIT_INSTRUCTION_VERIFIED');
+          JS
