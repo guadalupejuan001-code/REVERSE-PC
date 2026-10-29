@@ -407,7 +407,12 @@ class MinimalGuest {
     ram_range(address,size,ram_base());
   }
   void ram_range(std::uint64_t address,std::uint64_t size,std::uint64_t base) const {
-    require(address>=base && address-base<=ram_ && size<=ram_-(address-base), "Guest address outside logical RAM: "+hex(address));
+    // Error formatting was previously eager even for *valid* accesses.
+    // During a real AOSP kernel boot this constructed a hex stream on
+    // millions of XI/Ether memory reads. Preserve exactly the same
+    // short-circuit bounds check; create its text only on an actual fault.
+    if(!(address>=base && address-base<=ram_ && size<=ram_-(address-base)))
+      throw std::runtime_error("Guest address outside logical RAM: "+hex(address));
   }
   std::uint8_t backing(std::uint64_t address) const {
     auto found=std::upper_bound(segments_.begin(),segments_.end(),address,
