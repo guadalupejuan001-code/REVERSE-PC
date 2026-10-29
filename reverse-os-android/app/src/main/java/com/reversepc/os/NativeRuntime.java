@@ -10,4 +10,7 @@ public final class NativeRuntime {
     public static native byte[] executeRxe(byte[] state,byte[] executable);
     public static native byte[] appSeed(byte[] executable);
     public static native byte[] appTurn(byte[] state,byte[] executable,byte[] messageUtf8,int language);
+    // Existing XI Machine v1; input mailbox and one atomic isolated game transaction.
+    public static native byte[] velocityTick(byte[] state,byte[] executable,
+                      int gas,int brake,int steering,int drift,int reset);
 }
