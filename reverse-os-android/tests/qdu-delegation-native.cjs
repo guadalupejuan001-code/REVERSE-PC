@@ -110,7 +110,7 @@ for(const [prompt,answer] of examples){
  cases.push({prompt,oracle:answer,actual:qdu.actual,opcode:qdu.op,program_sha:crypto.createHash('sha256').update(qdu.source).digest('hex')});
 }
 const basePrompt='crea un programa que sume 31 y 44';
-function deny(name,fn){const accepted=fn();assert.equal(accepted,false,'negative control failed: '+name);denials++;}
+function deny(name,fn){const rejected=fn();assert.equal(rejected,true,'negative control failed: '+name);denials++;}
 deny('missing code task',()=>role(seed,'gate',stage('suma 12 y 8')).values[0]!==0);
 deny('explicit negation',()=>role(seed,'gate',stage('no crea programa suma 12 y 8')).values[0]!==0);
 deny('bad envelope magic',()=>role(seed,'gate',stage(basePrompt,{magic:0})).values[0]!==0);
