@@ -1,0 +1,64 @@
+name: ReverseCoding Qd natural-order XI acceptance
+on:
+  pull_request:
+    branches: [qd/cycle-20261029-02-xi-debug, main]
+    paths:
+      - 'reverse-os-android/app/src/main/assets/workbench/qd/**'
+      - 'reverse-os-android/app/src/main/assets/workbench/qd-studio.js'
+      - 'reverse-os-android/app/src/main/assets/workbench/desktop.js'
+      - 'reverse-os-android/app/src/main/java/com/reversepc/os/QdOrders.java'
+      - 'reverse-os-android/app/src/main/java/com/reversepc/os/QdEngine.java'
+      - 'reverse-os-android/tests/qd-orders-native.cjs'
+      - 'reverse-os-android/tests/qd-studio-ui.cjs'
+      - '.github/workflows/qd-orders.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: qd-orders-${{ github.head_ref || github.ref }}
+  cancel-in-progress: false
+jobs:
+  xi-orders:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: e2778d962af22f6f1a0794058dd4685fc2573966
+          path: deps/mundo-x
+          persist-credentials: false
+      - name: Build original pinned XI / Ether executor
+        run: |
+          set -euo pipefail
+          mkdir -p build evidence
+          python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc src/reverse_pc.cpp -o build/reverse_pc
+      - name: Validate actual PC interface code
+        run: |
+          node --check reverse-os-android/app/src/main/assets/workbench/qd-studio.js
+          node --check reverse-os-android/app/src/main/assets/workbench/desktop.js
+          node --check reverse-os-android/tests/qd-orders-native.cjs
+          node --check reverse-os-android/tests/qd-studio-ui.cjs
+          node reverse-os-android/tests/qd-studio-ui.cjs | tee evidence/qd-ui.log
+      - name: Execute genuine XI order interpretation and source-byte generation
+        run: |
+          set -euo pipefail
+          node reverse-os-android/tests/qd-orders-native.cjs build/reverse_pc build/qd-orders | tee evidence/qd-orders.log
+      - name: Preserve independent Qd XI regression suites
+        run: |
+          set -euo pipefail
+          node reverse-os-android/tests/qd-native.cjs build/reverse_pc build/qd-regression | tee evidence/qd-regression.log
+          node reverse-os-android/tests/qd-debug-native.cjs build/reverse_pc build/qd-debug | tee evidence/qd-debug.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reversecoding-qd-orders-evidence
+          path: |
+            build/qd-orders/reversecoding-evidence.json
+            build/qd-regression/qd-evidence.json
+            build/qd-debug/qd-debug-evidence.json
+            evidence/*.log
+          retention-days: 30
