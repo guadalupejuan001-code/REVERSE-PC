@@ -27,6 +27,7 @@ jobs:
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_FLAGS_RELEASE=-O1 -DREVERSE_PC_BUILD_PREVIOUS_MAIN_REFERENCE=OFF
           cmake --build build --target reverse_guest reverse_pc_minimal_guest reverse_pc_minimal_system reverse_pc_minimal_fp reverse_pc_minimal_bytes reverse_pc_runtime_reference reverse_pc_runtime_contract --parallel 2
           mkdir -p guest-evidence
+          node --test tests/minimal_guest_tab_restore.test.mjs > guest-evidence/tab-restoration.txt
           build/reverse_pc_minimal_guest > guest-evidence/native-tests.json
           build/reverse_pc_minimal_system > guest-evidence/system-native.json
           build/reverse_pc_minimal_fp > guest-evidence/fp-native.json
