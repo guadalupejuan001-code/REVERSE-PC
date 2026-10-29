@@ -68,6 +68,14 @@ jobs:
             x19_last:'0xffffffc009f01484',
             data_start:nearest('0xffffffc009d666d0'),
             data_end:nearest('0xffffffc009f01484'),
+            post_eh_frame:{
+              checkpoint_sha256:'7bfbdb74a4cdcea31167f00202edafb9265406c0c7dbc2f7cb1e5c6c3d93577f',
+              total_instructions:59604096,
+              pc_after_49m:nearest('0xffffffc008fe09c4'),
+              pc_after_51m:nearest('0xffffffc0082b42fc'),
+              pc_after_53m:nearest('0xffffffc0086d29c0'),
+              pc_after_59m:nearest('0xffffffc0086d2a60')
+            },
             alternative_symbols:related.slice(0,80),
             android_init_observed:false,adb:false
           },null,2));
@@ -78,7 +86,7 @@ jobs:
             echo ''
             echo 'No Android init/vendor partitions and no guest boot asserted.'
             echo ''
-            jq '{pc_symbol,data_start,data_end}' evidence/symbol-context.json
+            jq '{pc_symbol,data_start,data_end,post_eh_frame}' evidence/symbol-context.json
             cat evidence/system-map.sha256
           } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
