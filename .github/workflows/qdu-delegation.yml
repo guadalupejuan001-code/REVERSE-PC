@@ -1,0 +1,64 @@
+name: QdU T1 delegated XI tasks via BBY Q and w4U
+on:
+  pull_request:
+    branches: [architecture/bbyq-w4u-qdu-20261029, main]
+    paths:
+      - 'reverse-os-android/app/src/main/assets/workbench/bbyq/**'
+      - 'reverse-os-android/app/src/main/assets/workbench/w4u/**'
+      - 'reverse-os-android/app/src/main/assets/workbench/qd/**'
+      - 'reverse-os-android/app/src/main/assets/workbench/qd-studio.js'
+      - 'reverse-os-android/app/src/main/java/com/reversepc/os/QdDelegation.java'
+      - 'reverse-os-android/app/src/main/java/com/reversepc/os/QdEngine.java'
+      - 'reverse-os-android/tests/qdu-delegation-native.cjs'
+      - 'reverse-os-android/tests/qd-studio-ui.cjs'
+      - '.github/workflows/qdu-delegation.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native-delegation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: e2778d962af22f6f1a0794058dd4685fc2573966
+          path: deps/mundo-x
+          persist-credentials: false
+      - name: Build pinned original XI/Ether executor
+        run: |
+          set -euo pipefail
+          mkdir -p build evidence
+          python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc src/reverse_pc.cpp -o build/reverse_pc
+      - name: Verify T1 syntax, immutable triad and UI
+        run: |
+          set -euo pipefail
+          node --check reverse-os-android/tests/qdu-delegation-native.cjs
+          node --check reverse-os-android/app/src/main/assets/workbench/qd-studio.js
+          node reverse-os-android/tests/qdu-triad-contract.cjs | tee evidence/qdu-triad.log
+          node reverse-os-android/tests/qd-studio-ui.cjs | tee evidence/qdu-ui.log
+      - name: Execute authentic XI task delegation and negative cases
+        run: |
+          set -euo pipefail
+          node reverse-os-android/tests/qdu-delegation-native.cjs build/reverse_pc build/qdu-t1 | tee evidence/qdu-t1.log
+      - name: Preserve earlier QdU XI behavior and debugging
+        run: |
+          set -euo pipefail
+          node reverse-os-android/tests/qd-orders-native.cjs build/reverse_pc build/qd-orders | tee evidence/qd-orders.log
+          node reverse-os-android/tests/qd-native.cjs build/reverse_pc build/qd-native | tee evidence/qd-native.log
+          node reverse-os-android/tests/qd-debug-native.cjs build/reverse_pc build/qd-debug | tee evidence/qd-debug.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: qdu-t1-xi-delegation
+          path: |
+            build/qdu-t1/qdu-delegation-evidence.json
+            build/qd-orders/reversecoding-evidence.json
+            build/qd-native/qd-evidence.json
+            build/qd-debug/qd-debug-evidence.json
+            evidence/*.log
+          retention-days: 30
