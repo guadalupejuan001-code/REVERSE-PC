@@ -84,8 +84,8 @@ try{
  }
  const second=path.join(temp,'without-world.xi');
  fs.writeFileSync(second,shader(4,0,0));
- const missing=unpack(values(run('run',second,initial,path.join(temp,'missing.rvp'))),4);
- assert(missing.spans>0,'XI renderer unexpectedly depends on second C++ engine');
+ const missing=values(run('run',second,initial,path.join(temp,'missing.rvp')));
+ assert.equal(missing.length,0,'XI renderer must reject a state without world.xi geometry');
  console.log(JSON.stringify({result:'REVERSE_VELOCITY_XI_RENDER_PASS',language:'XI Machine v1',
   output:'packed spans 1280x720',worldSource:'shared XI InverseMemory',
   measured,legacyNativeEngineUntouched:true}));

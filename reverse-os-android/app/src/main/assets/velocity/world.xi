@@ -1,6 +1,9 @@
 #!reverse-pc-machine-v1
 # World source authority: all centerline points are computed in XI, centimeters.
 # Each two print lines encode z_cm,x_cm for X Render's read-only observer.
+# XI renderer requires this two-byte world-source marker.
+store8 1000 88
+store8 1001 73
 set r0 -85000
 label vertex
 mov r1 r0

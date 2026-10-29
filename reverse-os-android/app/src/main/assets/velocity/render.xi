@@ -7,6 +7,13 @@
 # Each print is one packed 56-bit span: y:10 | x0:11 | x1:11 | RGB:24.
 # 1280x720 canvas; samples at quality stride can be expanded vertically.
 # Bounds are checked in the presenter, never inferred from untrusted output.
+# Reject incomplete/foreign states before painting the first span.
+load8 r11 1000
+cmp r11 88
+jne missing_world
+load8 r11 1001
+cmp r11 73
+jne missing_world
 load8 r5 200
 cmp r5 1
 je stride_ready
@@ -394,4 +401,6 @@ cmp r12 13
 je after_light_right
 halt
 label finished
+halt
+label missing_world
 halt

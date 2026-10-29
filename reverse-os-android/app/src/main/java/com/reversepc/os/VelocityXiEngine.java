@@ -152,7 +152,14 @@ final class VelocityXiEngine {
             if(!"register".equals(row.getString("type"))||!"r4".equals(row.getString("register")))
                 throw new IllegalStateException("XI renderer must emit packed register r4");
             // Parse decimal as int64 exactly; never round the 56-bit packet to double.
-            long value=Long.parseLong(row.get("value").toString());
+            // Android's JSONObject number conversion may round 56-bit values
+            // through double on some versions: decode the original JSON text.
+            int start=line.indexOf("\"value\":");
+            if(start<0)throw new IllegalStateException("XI packet without numeric value");
+            start+=8;
+            int end=line.indexOf('}',start);
+            if(end<=start)throw new IllegalStateException("Malformed XI span integer");
+            long value=Long.parseLong(line.substring(start,end).trim());
             if(value<0||value>=(1L<<56))throw new IllegalStateException("XI span exceeds 56 bits");
             int y=(int)(value>>>46);
             int x0=(int)((value>>>35)&2047L),x1=(int)((value>>>24)&2047L);

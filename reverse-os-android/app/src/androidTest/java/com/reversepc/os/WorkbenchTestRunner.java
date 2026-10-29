@@ -301,7 +301,8 @@ public final class WorkbenchTestRunner extends Instrumentation {
     private static String velocityHud(android.view.View view){
         if(view instanceof android.widget.TextView){
             String label=((android.widget.TextView)view).getText().toString();
-            if(label.contains("FPS medidos")||label.startsWith("X Render:"))return label;
+            if(label.contains("FPS medidos")||label.startsWith("X Render:")||
+               label.startsWith("XI Render:")||label.contains("usando X Render anterior"))return label;
         }
         if(view instanceof android.view.ViewGroup){
             android.view.ViewGroup group=(android.view.ViewGroup)view;
@@ -333,16 +334,19 @@ public final class WorkbenchTestRunner extends Instrumentation {
                     runOnMainSync(()->value.set(velocityHud(game.getWindow().getDecorView())));
                     hud=value.get();
                     if(hud.contains("FPS medidos"))break;
-                    if(hud.startsWith("X Render:"))throw new AssertionError(hud);
+                    if(hud.startsWith("X Render:")||hud.startsWith("XI Render:")||
+                       hud.contains("usando X Render anterior"))
+                        throw new AssertionError("XI mode fell back: "+hud);
                 }
-                require(hud.contains("FPS medidos"),"X Render HUD did not receive a native frame: "+hud);
+                require(hud.contains("FPS medidos")&&hud.contains(" XI"),
+                    "Native XI render mode did not paint a verified frame: "+hud);
                 Bitmap screenshot=getUiAutomation().takeScreenshot();
                 File folder=new File(getTargetContext().getExternalFilesDir(null),"visual-evidence");folder.mkdirs();
-                try(FileOutputStream out=new FileOutputStream(new File(folder,"velocity-xrender-screen.png"))){
+                try(FileOutputStream out=new FileOutputStream(new File(folder,"velocity-xi-render-screen.png"))){
                     screenshot.compress(Bitmap.CompressFormat.PNG,100,out);
                 }finally{screenshot.recycle();}
                 runOnMainSync(game::finish);
-                result.putString("stream","WORKBENCH_TESTS_OK mode=velocity renderer=XRender native=true\n");
+                result.putString("stream","WORKBENCH_TESTS_OK mode=velocity renderer=XI-Machine-v1 native=true\n");
                 result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
             }
             if(requested.equals("migration")){
