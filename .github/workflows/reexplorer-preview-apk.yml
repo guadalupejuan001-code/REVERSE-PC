@@ -71,7 +71,7 @@ jobs:
           "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/REVERSE-REexplorer-preview.apk > evidence/apk-signature.txt
           "${ANDROID_HOME}/build-tools/35.0.0/zipalign" -c -p 4 dist/REVERSE-REexplorer-preview.apk > evidence/apk-alignment.txt
           "${ANDROID_HOME}/build-tools/35.0.0/aapt" dump badging dist/REVERSE-REexplorer-preview.apk > evidence/package.txt
-          grep -q "com.reversepc.reexplorer.preview" evidence/package.txt
+          grep -q "com.reversepc.reexplorer.quantum.workbench" evidence/package.txt
           unzip -l dist/REVERSE-REexplorer-preview.apk | grep -E 'classes.dex|libreverse_os.so' > evidence/native-included.txt
           sha256sum dist/REVERSE-REexplorer-preview.apk > evidence/SHA256SUMS.txt
           test -s dist/REVERSE-REexplorer-preview.apk
