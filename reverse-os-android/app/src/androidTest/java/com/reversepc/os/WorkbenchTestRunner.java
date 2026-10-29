@@ -54,6 +54,19 @@ public final class WorkbenchTestRunner extends Instrumentation {
         }
         throw new AssertionError("Desktop did not settle after orientation/activity startup");
     }
+    private void openGuestView()throws Exception{
+        String document=null;int stable=0;
+        for(int i=0;i<300;i++){
+            String ready=js("(()=>{if(document.readyState!=='complete'||typeof createWindow!=='function'||typeof guestUi==='undefined'||typeof state==='undefined')return null;"+
+                "if(!state.windows.some(w=>w.app==='xi'&&w.xiTab==='arm64'&&!w.min&&w.space===state.space))createWindow('guest');"+
+                "return guestUi.snapshot&&!guestUi.busy?String(performance.timeOrigin):null;})()");
+            if(!ready.equals("null")){if(ready.equals(document))stable++;else{document=ready;stable=1;}}
+            else{document=null;stable=0;}
+            if(stable>=15)return;
+            Thread.sleep(100);
+        }
+        throw new AssertionError("Guest view did not settle across initial WebView navigation");
+    }
     private JSONObject op(String op,String payload,String target)throws Exception{
         js("window."+target+"=null;nativeRequest("+JSONObject.quote(op)+","+JSONObject.quote(payload)+").then(r=>window."+target+"=r).catch(e=>window."+target+"={ok:false,error:String(e)});true");
         return new JSONObject(waitJs("window."+target+"?JSON.stringify(window."+target+"):null"));
@@ -312,8 +325,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
     }
     private void guestWorkflow(boolean restore)throws Exception{
         String desktopBefore=hash("session.rvp");
-        js("createWindow('guest');true");
-        waitJs("guestUi.snapshot&&!guestUi.busy");
+        openGuestView();
         if(restore){
             require(js("guestUi.snapshot.guest.instructions").equals("13"),"Guest PC/count did not persist after restart");
             require(js("guestUi.snapshot.guest.delta_overrides").equals("2"),"XI/ARM64 deltas did not persist");
@@ -350,7 +362,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
     }
     private void continuousGuestWorkflow()throws Exception{
         String before=hash("session.rvp");
-        js("createWindow('guest');window.confirm=()=>true;true");waitJs("guestUi.snapshot&&!guestUi.busy");
+        openGuestView();js("window.confirm=()=>true;true");
         tapDom("[data-guest=demo]");waitJs("guestUi.snapshot?.loaded&&!guestUi.busy");
         tapDom("[data-guest=continuous]");waitJs("guestUi.snapshot.guest.halted&&!guestUi.busy&&!guestUi.running");
         require(js("guestUi.output").contains("6*7 = 42"),"Continuous own guest did not execute and stop at real halt");
@@ -364,7 +376,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
             try(java.io.InputStream stream=new java.io.FileInputStream(input)){return new GuestStore(getTargetContext()).importCheckpoint(stream);}
         }).get(60,TimeUnit.SECONDS);
         require(imported.getJSONObject("guest").getLong("instructions")==180326448,"Imported checkpoint is not the pinned genuine Android state");
-        js("createWindow('guest');window.ReverseGuest.imported("+imported+");true");
+        openGuestView();js("window.ReverseGuest.imported("+imported+");true");
         JSONObject ran=op("guestRunContinuous","","largeGuestRun");
         require(ran.getBoolean("ok")&&ran.getLong("executed_this_run")==250000&&
             ran.getJSONObject("guest").getLong("instructions")==180576448,"Real Android checkpoint did not advance through UI/JNI/file persistence");
@@ -398,7 +410,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
     }
     private void systemWorkflow(boolean restore)throws Exception{
         String desktopBefore=hash("session.rvp");
-        js("createWindow('guest');true");waitJs("guestUi.snapshot&&!guestUi.busy");
+        openGuestView();
         require(js("state.windows.some(w=>w.app==='xi'&&w.xiTab==='arm64')&&!state.windows.some(w=>w.app==='guest')").equals("true"),"ARM64 was not integrated into existing XI window");
         require(js("!SHELL_APPS.includes('guest')").equals("true"),"Separate Guest application is still in the launcher");
         if(!restore){
@@ -420,7 +432,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
     }
     private void floatingWorkflow(boolean restore)throws Exception{
         String desktopBefore=hash("session.rvp");
-        js("createWindow('guest');true");waitJs("guestUi.snapshot&&!guestUi.busy");
+        openGuestView();
         if(!restore){
             js("window.confirm=()=>true;true");tapDom("[data-guest=float]");
             waitJs("guestUi.snapshot?.loaded&&!guestUi.busy");

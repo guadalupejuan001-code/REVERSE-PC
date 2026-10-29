@@ -271,6 +271,7 @@ jobs:
             assert proof['android_boot'] is False
             PYPROOF
             adb exec-out screencap -p > guest-evidence/android-screen.png
+            adb pull /sdcard/Android/data/com.reversepc.control.workbench/files/visual-evidence guest-evidence/visual
       - uses: actions/upload-artifact@v4
         if: always()
         with:
