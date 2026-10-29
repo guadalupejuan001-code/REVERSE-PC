@@ -9,3 +9,16 @@ The original interpreter reached exactly **30,950** ARM64 instructions in [CI 40
 **Independent CI:** `.github/workflows/aosp-cuttlefish-mmfr3-resume.yml` downloads exact previous artifact, verifies both RVA/kernel hashes, checks original 30,950-step state and opcode, compiles pinned XI/Ether against unchanged Mundo-X SHA `e2778d962af22f6f1a0794058dd4685fc2573966`, replays exactly one formerly rejected instruction, demands byte-identical direct vs restored 50,000-instruction continuation, and attempts up to 800,000 more real instructions or the next actual ISA/device stop. Logs full JSON and RVG+SHA.
 
 **Safety and evidence gates:** No second QuantumRuntime, no changed InverseMemory, no modified dependency SHA, no `main` merge, no game client/splits. Real Android `/init` has **not** executed; vendor_boot ramdisk and super.img/system/vendor not yet mounted, Binder/ADB and Wild Rift unproven. Do not claim success without CI verification.
+
+## Verified results — 2026-10-28 (actual XI/Ether, not QEMU)
+
+- [MMFR3 fix CI #40799212140](https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40799212140): **passed**, 118 native ARM64 system checks and independently assembled Clang MRS opcode `0xd5380761`; the exact previous rejected register instruction advanced **30,950 → 30,951** with PC `0x421207cc → 0x421207d0`, no exceptions and no extra feature flags. A direct 50,000-step run and 1+49,999-step checkpoint restoration were byte-identical. The same real kernel+original generic CPIO reached **880,950** instructions with budget stop; RVG SHA-256 `dfc478363ffa0fa808b08f093eedea33466c650cc90eca34fc525fe9636a2ca0`. [Checkpoint artifact #12864718950](https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40799212140/artifacts/12864718950).
+- [Extended CI #40799502063](https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40799502063): **passed**; the 880,950-step RVG was verified against the original GKI SHA-256 and RVG digest, and another 10,000-instruction direct vs 1+9,999 restored checkpoint was byte-identical. Eight bounded blocks then reached **8,890,950** genuine AOSP kernel instructions, EL1, **MMU active**, **zero architectural exceptions**, UART **empty**, latest PC `0x404075a8`, next opcode `0x38c0158e`, stop `instruction_budget`. The exact RVG SHA-256 is `b613833f175dc1adf3a53edd4e9002f69bde5ab2e8ec8fe57372c7394302ffb6`, with 96,958 classical delta overrides in the original adaptive InverseMemory. [Checkpoint artifact #12865760498](https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40799502063/artifacts/12865760498).
+
+The experiment contains the authentic `/init` ELF file in an uncompressed
+newc initramfs, but **no execution of Android `/init` is observed**. No
+Android first-stage userspace, Binder, ADB, Wild Rift, graphics or game FPS
+is claimed. The next gate is to diagnose the kernel's repeating early-init
+routine using matching build symbols and assemble the verified Cuttlefish
+vendor ramdisk / bootconfig / storage devices within the **same original**
+XI/Ether virtual board, without claiming compatibility before checking it.
