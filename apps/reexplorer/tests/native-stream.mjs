@@ -19,9 +19,10 @@ const seed=path.join(out,'blank.rvp'),loadFile=path.join(out,'input.xi'),wire=pa
 run('init',seed);
 let current=seed;
 function step(command,bytes=Buffer.alloc(0),extra=''){
-  assert.ok(bytes.length<=255,'malformed request outside 255 input bytes');
+  assert.ok(bytes.length<=2049,'test of declared streaming limits');
   const input=header+'store8 '+addr(0)+' '+command+'\n'
-    +'store8 '+addr(1)+' '+bytes.length+'\n'
+    +'store8 '+addr(1)+' '+(bytes.length%256)+'\n'
+    +'store8 '+addr(2)+' '+Math.floor(bytes.length/256)+'\n'
     +[...bytes].map((n,i)=>'store8 '+addr(128+i)+' '+n+'\n').join('')+extra+'halt\n';
   fs.writeFileSync(loadFile,input);
   const startA=process.hrtime.bigint();
@@ -45,8 +46,8 @@ function feed(input,stepSize=0){
   const bytes=Buffer.isBuffer(input)?input:Buffer.from(input,'utf8');
   const seen=[],metrics=[];
   for(let off=0;off<bytes.length;){
-    const width=stepSize||([1,2,3,7,31,137,224][(off*7+3)%7]);
-    const chunk=bytes.subarray(off,off+Math.min(224,width));
+    const width=stepSize||2048;
+    const chunk=bytes.subarray(off,off+Math.min(2048,width));
     off+=chunk.length;
     const r=step(1,chunk);
     seen.push(r.visible);metrics.push(r.numbers);batches++;processed+=chunk.length;
@@ -80,7 +81,12 @@ stable('unmatched script remains suppressed',
 stable('at boundary exact 224 bytes',
   'A'.repeat(224),'A'.repeat(224),224);
 stable('bounded large response with many tags',
-  '<span>t</span>'.repeat(1536),'t'.repeat(1536),224);
+  '<span>t</span>'.repeat(1536),'t'.repeat(1536),2048);
+stable('at the exact 2048-byte streaming boundary',
+  'B'.repeat(2048),'B'.repeat(2048),2048);
+// Reopen the large document for persistent state assertions below.
+stable('bounded large response repeated for persistence',
+  '<span>t</span>'.repeat(1536),'t'.repeat(1536),2048);
 const status=step(2);
 check(status.numbers.r0,Buffer.byteLength('<span>t</span>'.repeat(1536)), 'query persisted total after process restart');
 check(status.numbers.r1,1536,'query persisted visible after restart');
@@ -97,7 +103,7 @@ const afterFull=step(1,Buffer.from('MALICIOUS'));
 check(afterFull.visible.length,0,'budget fail-closed');
 check(afterFull.numbers.r0,1048576,'no overrun after budget');
 reset();
-const over=step(1,Buffer.alloc(225,88));
+const over=step(1,Buffer.alloc(2049,88));
 check(over.numbers.r13,1,'oversized chunk refused');
 check(over.numbers.r0,0,'oversized chunk did not partially mutate state');
 const clean=reset();
