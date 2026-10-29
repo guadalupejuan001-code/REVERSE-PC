@@ -51,12 +51,15 @@ jobs:
       - name: Enforce short host budget and preserve exact original CPU state
         run: |
           set -euo pipefail
-          timeout 120 build/linux-probe prior/current.rvg 1000000 \
+          # Keep the instruction allowance above what a faster interpreter
+          # can finish before the host deadline; this test exercises a wall
+          # stop, not a particular historical instructions/second rate.
+          timeout 120 build/linux-probe prior/current.rvg 100000000 \
             build/watchdog.rvg --chunk=10000 --wall-ms=2000 \
             > evidence/watchdog.json 2> evidence/heartbeats.txt
           jq -e '.max_wall_ms==2000 and .run_chunk_instructions==10000 and
             .stop_reason=="host_wall_budget" and
-            .guest.instructions>12020000 and .guest.instructions<13020000 and
+            .guest.instructions>12020000 and .guest.instructions<112020000 and
             .android_boot==false and .linux_userspace_init_observed==false' evidence/watchdog.json >/dev/null
           grep -q '^REVERSE_ANDROID_GUEST_HEARTBEAT ' evidence/heartbeats.txt
           # A budget stop never fabricates a guest halt or changes its clock
