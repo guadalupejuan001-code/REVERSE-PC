@@ -77,9 +77,10 @@ final class RxeAppStore {
                 Saved before=load(executable);
                 boolean control=BbyqInterface.trusted(context,executable);
                 byte[] input=control?BbyqInterface.observe(before.state,observation):before.state;
-                ResultPacket browser=control?BbyqInterface.tryOpenRobinhood(context,input,text,language):null;
-                ResultPacket response=browser!=null?browser:
-                    ResultPacket.parse(NativeRuntime.appTurn(input,executable,text.getBytes(StandardCharsets.UTF_8),language));
+                // BBY Q owns only its conversation and original W4u tools.
+                // REexplorer is an independent native REVERSE application.
+                ResultPacket response=ResultPacket.parse(NativeRuntime.appTurn(
+                    input,executable,text.getBytes(StandardCharsets.UTF_8),language));
                 JSONObject pending=control?BbyqInterface.action(response.state):null;
                 if(pending!=null){if(observation==null)throw new IOException("Falta el escritorio que originó la orden");pending.put("ticket",java.util.UUID.randomUUID().toString());pending.put("view",observation.getString("view"));}
                 byte[] committed=control?BbyqInterface.consume(context,response.state):response.state;

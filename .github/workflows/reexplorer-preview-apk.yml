@@ -56,7 +56,7 @@ jobs:
           python3 deps/bbyq-e025/ai/releases/e025/build.py build/reverse_pc build/e025 --assets reverse-os-android/app/src/main/assets > evidence/e025-build.json
           bash reverse-os-android/scripts/prepare-bbyq.sh deps/bbyq-classic > evidence/bbyq-assets.log
           test -s reverse-os-android/app/src/main/assets/native-apps/BBY-Q.rxe
-          test -s reverse-os-android/app/src/main/assets/workbench/xi-open-robinhood.xi
+          test -s reverse-os-android/app/src/main/assets/reexplorer/navigation-core.xi
           test -s reverse-os-android/app/src/main/assets/workbench/reexplorer.js
       - name: Use an isolated development signing identity
         run: |
@@ -67,20 +67,20 @@ jobs:
         run: |
           set -euo pipefail
           gradle -p reverse-os-android --no-daemon :app:assembleReexplorerDebug > evidence/gradle.log 2>&1 || { tail -180 evidence/gradle.log; exit 1; }
-          cp reverse-os-android/app/build/outputs/apk/reexplorer/debug/app-reexplorer-debug.apk dist/REVERSE-REexplorer-preview.apk
-          "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/REVERSE-REexplorer-preview.apk > evidence/apk-signature.txt
-          "${ANDROID_HOME}/build-tools/35.0.0/zipalign" -c -p 4 dist/REVERSE-REexplorer-preview.apk > evidence/apk-alignment.txt
-          "${ANDROID_HOME}/build-tools/35.0.0/aapt" dump badging dist/REVERSE-REexplorer-preview.apk > evidence/package.txt
-          grep -q "com.reversepc.reexplorer.preview" evidence/package.txt
-          unzip -l dist/REVERSE-REexplorer-preview.apk | grep -E 'classes.dex|libreverse_os.so' > evidence/native-included.txt
-          sha256sum dist/REVERSE-REexplorer-preview.apk > evidence/SHA256SUMS.txt
-          test -s dist/REVERSE-REexplorer-preview.apk
+          cp reverse-os-android/app/build/outputs/apk/reexplorer/debug/app-reexplorer-debug.apk dist/REVERSE-REexplorer-Quantum-preview.apk
+          "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/REVERSE-REexplorer-Quantum-preview.apk > evidence/apk-signature.txt
+          "${ANDROID_HOME}/build-tools/35.0.0/zipalign" -c -p 4 dist/REVERSE-REexplorer-Quantum-preview.apk > evidence/apk-alignment.txt
+          "${ANDROID_HOME}/build-tools/35.0.0/aapt" dump badging dist/REVERSE-REexplorer-Quantum-preview.apk > evidence/package.txt
+          grep -q "com.reversepc.reexplorer.quantum.workbench" evidence/package.txt
+          unzip -l dist/REVERSE-REexplorer-Quantum-preview.apk | grep -E 'classes.dex|libreverse_os.so' > evidence/native-included.txt
+          sha256sum dist/REVERSE-REexplorer-Quantum-preview.apk > evidence/SHA256SUMS.txt
+          test -s dist/REVERSE-REexplorer-Quantum-preview.apk
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: REexplorer-APK-preview
+          name: REexplorer-Quantum-APK-preview
           path: |
-            dist/REVERSE-REexplorer-preview.apk
+            dist/REVERSE-REexplorer-Quantum-preview.apk
             evidence/e025-build.json
             evidence/apk-signature.txt
             evidence/apk-alignment.txt

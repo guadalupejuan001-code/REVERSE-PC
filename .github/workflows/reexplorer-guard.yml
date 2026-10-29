@@ -38,9 +38,9 @@ jobs:
           node --check reverse-os-android/app/src/main/assets/workbench/reexplorer.js
           node --check reverse-os-android/app/src/main/assets/workbench/bbyq-control.js
           node --check reverse-os-android/tests/reexplorer-desktop.cjs
-          node --check bbyq-interface/tests/robinhood-desktop.cjs
+          node --check security/reexplorer/tests/independent-browser.mjs
           node reverse-os-android/tests/reexplorer-desktop.cjs evidence/reexplorer/desktop.json
-          node bbyq-interface/tests/robinhood-desktop.cjs evidence/reexplorer/agent-desktop.json
+          node security/reexplorer/tests/independent-browser.mjs evidence/reexplorer/independence.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -84,13 +84,13 @@ jobs:
           ref: e2778d962af22f6f1a0794058dd4685fc2573966
           path: deps/mundo-x
           persist-credentials: false
-      - name: Build original XI runtime and execute real BBY Q browser actions
+      - name: Build original XI runtime and execute REexplorer's independent navigation policy
         run: |
           set -euo pipefail
           mkdir -p build evidence/reexplorer
           python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc src/reverse_pc.cpp -o build/reverse_pc
-          node bbyq-interface/tests/robinhood-native.cjs build/reverse_pc evidence/reexplorer
+          node security/reexplorer/tests/native-qcore.mjs build/reverse_pc evidence/reexplorer
       - uses: actions/upload-artifact@v4
         if: always()
         with:

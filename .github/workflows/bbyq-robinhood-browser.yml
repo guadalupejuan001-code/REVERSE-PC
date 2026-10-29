@@ -1,80 +1,26 @@
-name: REVERSE BBY Q Robinhood browser action
+name: REVERSE BBY Q - REexplorer separation check
 on:
   pull_request:
     branches: [main, feature/reverse-portrait-landscape-20261028]
     paths:
-      - 'bbyq-interface/xi/*robinhood*.xi'
-      - 'bbyq-interface/tests/robinhood-*.cjs'
-      - 'reverse-os-android/app/src/main/assets/workbench/xi-*robinhood*.xi'
       - 'reverse-os-android/app/src/main/assets/workbench/bbyq-control.js'
       - 'reverse-os-android/app/src/main/java/com/reversepc/os/BbyqInterface.java'
       - 'reverse-os-android/app/src/main/java/com/reversepc/os/RxeAppStore.java'
       - 'reverse-os-android/app/src/main/java/com/reversepc/os/WorkbenchActivity.java'
+      - 'security/reexplorer/tests/independent-browser.mjs'
       - '.github/workflows/bbyq-robinhood-browser.yml'
   workflow_dispatch:
 permissions:
   contents: read
-concurrency:
-  group: reverse-robinhood-${{ github.head_ref || github.ref }}
-  cancel-in-progress: false
 jobs:
-  xi-and-host:
+  isolation:
     runs-on: ubuntu-latest
-    timeout-minutes: 16
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
         with: {persist-credentials: false}
-      - uses: actions/checkout@v4
-        with:
-          repository: guadalupejuan001-code/mundo-X
-          ref: e2778d962af22f6f1a0794058dd4685fc2573966
-          path: deps/mundo-x
-          persist-credentials: false
-      - name: Build REVERSE's fixed native XI runtime
+      - name: BBY Q cannot command or inspect REexplorer
         run: |
           set -euo pipefail
-          mkdir -p build evidence/robinhood
-          python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
-          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc src/reverse_pc.cpp -o build/reverse_pc
-      - name: Real XI intent interpreter and negative controls
-        run: |
-          set -euo pipefail
-          node --check bbyq-interface/tests/robinhood-native.cjs
-          node bbyq-interface/tests/robinhood-native.cjs build/reverse_pc evidence/robinhood
-      - name: Browser action host and immutable URL policy
-        run: |
-          set -euo pipefail
+          node security/reexplorer/tests/independent-browser.mjs
           node --check reverse-os-android/app/src/main/assets/workbench/bbyq-control.js
-          node --check bbyq-interface/tests/robinhood-desktop.cjs
-          node bbyq-interface/tests/robinhood-desktop.cjs evidence/robinhood/desktop.json
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: reverse-robinhood-xi-contract
-          path: evidence/robinhood
-          retention-days: 7
-  android-java:
-    runs-on: ubuntu-latest
-    timeout-minutes: 16
-    steps:
-      - uses: actions/checkout@v4
-        with: {persist-credentials: false}
-      - uses: actions/setup-java@v4
-        with: {distribution: temurin, java-version: '17'}
-      - name: Install Android 35 compile-only SDK
-        run: |
-          set -euo pipefail
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' > /dev/null
-      - name: Compile the real Java bridge and Android host
-        run: |
-          set -euo pipefail
-          mkdir -p build/browser-android-classes
-          javac -source 17 -target 17 -cp "${ANDROID_HOME}/platforms/android-35/android.jar" -d build/browser-android-classes reverse-os-android/app/src/main/java/com/reversepc/os/*.java
-          find build/browser-android-classes -name 'BbyqInterface.class' -o -name 'RxeAppStore.class' -o -name 'WorkbenchActivity.class' | sort | tee build/browser-android-classes/verified.txt
-          test "$(wc -l < build/browser-android-classes/verified.txt)" -eq 3
-      - uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: robinhood-android-compile-errors
-          path: build/browser-android-classes/verified.txt
-          retention-days: 7

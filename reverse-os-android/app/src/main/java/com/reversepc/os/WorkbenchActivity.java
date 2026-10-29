@@ -225,15 +225,6 @@ public final class WorkbenchActivity extends Activity {
         return new JSONObject().put("ok",true).put("opened",true)
             .put("browser","REexplorer").put("url",destination);
     }
-    /** Only the signed trusted XI action may invoke this route; JS cannot
-     *  change the service URL, and general navigation uses another operation. */
-    private JSONObject openOfficialSite(String payload)throws Exception{
-        JSONObject request=new JSONObject(payload);
-        if(request.length()!=1||!"robinhood".equals(request.optString("service")))
-            throw new IllegalArgumentException("Sitio externo no autorizado por XI");
-        JSONObject result=launchReexplorer(ReexplorerPolicy.HOME);
-        return result.put("service","robinhood");
-    }
     /** Manual address bar entered in the REVERSE desktop, not an XI operation. */
     private JSONObject openReexplorer(String payload)throws Exception{
         JSONObject request=new JSONObject(payload);
@@ -326,8 +317,7 @@ public final class WorkbenchActivity extends Activity {
                     }
                     else if("askApp".equals(operation))result=programs().ask(new JSONObject(payload));
                     else if("ackControl".equals(operation))result=programs().acknowledge(new JSONObject(payload));
-                     else if("openOfficialSite".equals(operation))result=openOfficialSite(payload);
-                    else if("openReexplorer".equals(operation))result=openReexplorer(payload);
+                     else if("openReexplorer".equals(operation))result=openReexplorer(payload);
                     else if("runApp".equals(operation))result=programs().run(new JSONObject(payload),session());
                     else if("compileApp".equals(operation))result=programs().compile(new JSONObject(payload));
                     else if("qd".equals(operation))result=programs().qd(new JSONObject(payload));

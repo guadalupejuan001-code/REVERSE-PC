@@ -4,8 +4,8 @@
 function reexplorerHTML(){
   return '<section class="reexplorer-shell">'+
     '<div class="reexplorer-heading"><div class="reexplorer-emblem">'+icon('globe')+
-    '</div><div><h2>REexplorer</h2>'+
-    '<p>El navegador de REVERSE · protección de sesión separada</p></div></div>'+
+    '</div><div><h2>REexplorer Quantum</h2>'+
+    '<p>Navegador de REVERSE · Q-Core XI/Ether · autónomo</p></div></div>'+
     '<form class="reexplorer-form" data-reexplorer-form>'+
       '<label for="reexplorer-address">Dirección HTTPS</label>'+
       '<div class="reexplorer-address-row"><input id="reexplorer-address" name="url" '+
@@ -17,7 +17,7 @@ function reexplorerHTML(){
     '<div class="reexplorer-quick"><button type="button" class="secondary-button" data-reexplorer-robinhood>'+
     'Robinhood oficial</button><span>HTTPS obligatorio · sin puentes web a XI</span></div>'+
     '<div class="reexplorer-protection">'+
-      '<p>'+icon('lock')+' <strong>Ether Guard — aislamiento</strong></p>'+
+      '<p>'+icon('lock')+' <strong>Ether Guard · Q-Core XI/Ether</strong></p>'+
       '<div class="reexplorer-security-grid">'+
       '<span>Proceso de navegación independiente</span>'+
       '<span>Cookies separadas del escritorio</span>'+
@@ -28,7 +28,7 @@ function reexplorerHTML(){
       '</div>'+
       '<small>El contenido se procesa mediante Android WebView actualizado, no mediante un motor HTML creado desde cero. '+
       'El aislamiento reduce riesgos; no garantiza protección absoluta.</small>'+
-    '</div><p class="reexplorer-status" role="status" data-reexplorer-status>Listo para abrir una sesión privada del escritorio.</p>'+
+    '</div><p class="reexplorer-status" role="status" data-reexplorer-status>REexplorer Quantum listo · navegador independiente de BBY Q.</p>'+
     '</section>';
 }
 async function openReexplorerFromDesktop(form,url){

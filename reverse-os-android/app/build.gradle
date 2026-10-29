@@ -26,7 +26,7 @@ android {
   desktop { dimension 'edition'; applicationId 'com.reversepc.desktop'; manifestPlaceholders = [appLabel:'REVERSE Desktop'] }
   workbench { dimension 'edition'; versionCode 258; versionName '2.5.8-music-clip'; applicationId 'com.reversepc.workbench'; manifestPlaceholders = [appLabel:'REVERSE Workbench'] }
   control { dimension 'edition'; versionCode 258; versionName '2.5.8-music-clip-control'; applicationId 'com.reversepc.control.workbench'; manifestPlaceholders = [appLabel:'REVERSE'] }
-  reexplorer { dimension 'edition'; versionCode 260; versionName '2.6.0-REexplorer-preview'; applicationId 'com.reversepc.reexplorer.preview'; manifestPlaceholders = [appLabel:'REVERSE · REexplorer'] }
+  reexplorer { dimension 'edition'; versionCode 261; versionName '2.6.1-REexplorer-Quantum'; applicationId 'com.reversepc.reexplorer.quantum.workbench'; manifestPlaceholders = [appLabel:'REVERSE · REexplorer Quantum'] }
   rxe { dimension 'edition'; applicationId 'com.reversepc.desktop.rxe'; manifestPlaceholders = [appLabel:'REVERSE Desktop RXE'] }
  }
  externalNativeBuild {
