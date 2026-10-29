@@ -68,8 +68,10 @@
     "app": "E025",
     "ref_fijada_ci": "ed32ab6b73a31e96080b62269ad1eb9f3e15709d",
     "checkpoint_ci": "reverse_pc init en un RVPC2 descartable de 5092 B; sin restaurar BBY real",
-    "sha256_checkpoint_no_comprobado_en_esta_sesion": false,
-    "memoria_usuario_sin_cambios": true
+    "sha256_checkpoint_no_comprobado_en_esta_sesion": true,
+    "memoria_usuario_sin_cambios": true,
+    "sha256_rvpc2_temporal_comprobado_en_ci": true,
+    "nota_checkpoint": "La SHA256 verificada es SOLO del nuevo RVPC2 descartable usado en pruebas; el checkpoint E025 real no se restauró ni fue verificado en este CI."
   },
   "pruebas_ciclo_anterior": {
     "xi_nativo": "Aprobado: 4 habilidades x 32 entradas = 128 ejecuciones reales; acepta 32/32, rechaza 31/32 y 8/8; recuperación, rollback y región W4u",
