@@ -10,7 +10,8 @@ static MinimalGuest graphics(){MinimalGuest g(128*1024*1024,0);g.load_linux_imag
 static MinimalGuest user_entry(){
   // Real MSR/ERET transition and a NOP at EL0, derived from the existing
   // independently assembled SPSR.SSBS witness. This fixture is not Android.
-  const std::uint32_t code[]{0xd2820000u,0xd5184000u,0xd2800301u,0xf2a80101u,0xd5184021u,0xd69f03e0u,0xd503201fu};
+  const std::uint32_t code[]{0xd2820000u,0xd5184000u,0xd2800301u,0xf2a80101u,0xd5184021u,0xd69f03e0u,0xd503201fu,
+    0xd503201fu,0xd503201fu,0xd503201fu,0xd503201fu};
   auto image=system_demo_elf();image.resize(256);for(auto word:code)put(image,word,4);
   for(unsigned i=0;i<8;i++){image[96+i]=std::uint8_t(std::uint64_t(sizeof(code))>>(8*i));image[104+i]=image[96+i];}
   MinimalGuest g(128*1024*1024,0);g.load_elf(image,true);return g;
@@ -135,6 +136,37 @@ int main(){try{
   auto wrong_fault=demand_entry(false);wrong_fault.run(1000,true);const auto wrong_before=wrong_fault.snapshot();
   const auto wrong_report=run_boot_cycle(wrong_fault,fault_limits,{},[](MinimalGuest& g)->bool{throw MachineFault{0x82000005,g.registers().pc+4};});
   check(wrong_report.reason=="unverified_userspace_entry"&&wrong_fault.snapshot()==wrong_before,"A different observed fault address was delivered to the native CPU");
+  // Continue an already verified native EL0 boundary. A proof is bound to
+  // the entire source; it must never re-run the first-entry callback.
+  auto continuation=entry_reference;
+  const auto proof_state=continuation.snapshot();
+  BootCycleEntryProof prior{GuestSha256::hash(proof_state),continuation.registers().instructions,continuation.registers().pc};
+  BootCycleLimits post_limits;post_limits.instructions=3;post_limits.wall_ms=30000;post_limits.chunk=2;
+  auto post_reference=continuation;post_reference.run(3);
+  unsigned entry_calls=0;
+  const auto post_report=run_boot_cycle(continuation,post_limits,{},[&](MinimalGuest&)->bool{++entry_calls;throw std::runtime_error("Entry repeated");},{},{},&prior);
+  check(post_report.reason=="instruction_budget"&&entry_calls==0,"Proven continuation repeated the original entry verifier");
+  check(post_report.prior_user_instruction_verified&&!post_report.first_user_instruction_verified&&post_report.verified_entry_checkpoint_sha256==prior.checkpoint_sha256,"Carried proof was falsely reported as newly executed");
+  check(continuation.snapshot()==post_reference.snapshot(),"Proven continuation changed the complete native state or exceeded budget");
+  auto reject_proof=[&](MinimalGuest& g,const BootCycleEntryProof& proof,const BootCycleLimits& bound){
+    const auto before=g.snapshot();unsigned saves=0;bool rejected=false;
+    try{run_boot_cycle(g,bound,[&](const MinimalGuest&,const BootCycleReport&){++saves;},[](MinimalGuest&)->bool{return true;},{},{},&proof);}catch(const std::exception&){rejected=true;}
+    check(rejected&&saves==0&&g.snapshot()==before,"Rejected continuation proof saved or mutated native state");
+  };
+  auto proof_guest=entry_reference;auto forged=prior;forged.checkpoint_sha256[0]=forged.checkpoint_sha256[0]=='0'?'1':'0';reject_proof(proof_guest,forged,post_limits);
+  forged=prior;++forged.pc;reject_proof(proof_guest,forged,post_limits);
+  forged=prior;++forged.instructions;reject_proof(proof_guest,forged,post_limits);
+  forged=prior;forged.checkpoint_sha256="not-a-hash";reject_proof(proof_guest,forged,post_limits);
+  auto changed_ram=proof_guest;changed_ram.write(0x40090000,0x42,1);reject_proof(changed_ram,prior,post_limits);
+  auto changed_clock=proof_guest;changed_clock.enable_counter_latency({});reject_proof(changed_clock,prior,post_limits);
+  auto repeat_limits=post_limits;repeat_limits.stop_after_first_user_instruction=true;reject_proof(proof_guest,prior,repeat_limits);
+  // Real unsupported userspace opcode: preserve the precise successful prefix.
+  auto post_bad=proof_guest;post_bad.write(post_bad.physical_address(post_bad.registers().pc+8),0xffffffff,4);
+  BootCycleEntryProof bad_proof{GuestSha256::hash(post_bad.snapshot()),post_bad.registers().instructions,post_bad.registers().pc};
+  auto post_bad_reference=post_bad;post_bad_reference.run(2);post_limits.instructions=20;post_limits.chunk=20;
+  const auto post_bad_report=run_boot_cycle(post_bad,post_limits,{},[](MinimalGuest&)->bool{throw std::runtime_error("entry replay");},{},{},&bad_proof);
+  check(post_bad_report.reason=="architectural_stop"&&!post_bad_report.error.empty()&&post_bad_report.prior_user_instruction_verified,"Userspace architecture failure was hidden or lost its proven origin");
+  check(post_bad.snapshot()==post_bad_reference.snapshot(),"Userspace failure committed the rejected instruction or lost its prefix");
   const auto root=std::filesystem::path("evidence/c04/cycle-journal-test-"+std::to_string(::getpid()));
   std::filesystem::create_directories(root.parent_path());BootCycleJournal journal(root);
   journal.publish(bad,failed);journal.publish(split,report);journal.publish(bounded,bounded_report);

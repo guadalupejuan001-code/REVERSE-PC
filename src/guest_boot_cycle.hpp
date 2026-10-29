@@ -21,6 +21,15 @@ struct BootCycleReport {
   std::uint64_t entry_instruction_faults=0,entry_interrupts=0;
   std::string reason="running", error, console;
   bool first_user_instruction_verified=false;
+  bool prior_user_instruction_verified=false;
+  std::string verified_entry_checkpoint_sha256;
+};
+// A caller supplies an independently accepted entry proof. Bind it to every
+// byte of this restored CPU/device/XI state before any save or transition.
+// This is host evidence; it never becomes a guest flag or a new RAM owner.
+struct BootCycleEntryProof {
+  std::string checkpoint_sha256;
+  std::uint64_t instructions=0,pc=0;
 };
 using CycleSave=std::function<void(const MinimalGuest&,const BootCycleReport&)>;
 using UserEntry=std::function<bool(MinimalGuest&)>;
@@ -71,12 +80,22 @@ inline RunResult boot_cycle_prefix(MinimalGuest& guest,std::uint64_t count,
 inline BootCycleReport run_boot_cycle(MinimalGuest& guest,const BootCycleLimits& limit,
     const CycleSave& save={},const UserEntry& first_user={},
     const std::function<void(const MinimalGuest&,const BootCycleReport&)>& progress={},
-    const std::function<bool()>& interrupted={}) {
+    const std::function<bool()>& interrupted={},
+    const BootCycleEntryProof* prior_entry=nullptr) {
   require(limit.instructions&&limit.instructions<=UINT64_C(8000000000),"Cycle instruction budget must be 1..8000000000");
   require(limit.wall_ms&&limit.wall_ms<=1500000,"Cycle wall budget must be 1..1500000 ms");
   require(limit.chunk&&limit.chunk<=1000000&&limit.checkpoint_ms&&limit.checkpoint_instructions,"Invalid cycle transaction/save cadence");
   require(!limit.stop_after_first_user_instruction||bool(first_user),"A userspace milestone stop requires its entry verifier");
   BootCycleReport report;report.initial_instructions=guest.registers().instructions;
+  if(prior_entry){
+    require(!limit.stop_after_first_user_instruction,"Cannot repeat the entry milestone during a proven continuation");
+    require(prior_entry->checkpoint_sha256.size()==64&&prior_entry->checkpoint_sha256.find_first_not_of("0123456789abcdef")==std::string::npos,"Invalid proven entry hash");
+    require(guest.machine().enabled&&!guest.machine().el&&!guest.registers().halted&&!guest.machine().waiting,"Proven entry must be an active EL0 state");
+    require(guest.registers().instructions==prior_entry->instructions&&guest.registers().pc==prior_entry->pc,"Proven entry count or PC differs");
+    require(GuestSha256::hash(guest.snapshot())==prior_entry->checkpoint_sha256,"Proven entry does not match the complete native state");
+    report.prior_user_instruction_verified=true;
+    report.verified_entry_checkpoint_sha256=prior_entry->checkpoint_sha256;
+  }
   require(report.initial_instructions<=UINT64_MAX-limit.instructions,"Instruction counter would overflow");
   const auto start=std::chrono::steady_clock::now();auto saved_at=start;
   auto saved_steps=report.initial_instructions;
@@ -89,7 +108,7 @@ inline BootCycleReport run_boot_cycle(MinimalGuest& guest,const BootCycleLimits&
     if(interrupted&&interrupted()){report.reason="host_interrupted";break;}
     if(steps>=limit.instructions){report.reason="instruction_budget";break;}
     if(report.elapsed_ms>=limit.wall_ms){report.reason="host_wall_budget";break;}
-    if(first_user&&!report.first_user_instruction_verified&&guest.machine().enabled&&!guest.machine().el){
+    if(first_user&&!report.first_user_instruction_verified&&!report.prior_user_instruction_verified&&guest.machine().enabled&&!guest.machine().el){
       const auto count=guest.registers().instructions;
       if(!(guest.machine().daif&0x80)&&guest.machine().next_irq()!=1023){
         try{output(boot_cycle_entry_event(guest,nullptr));++report.entry_interrupts;++report.chunks;}
@@ -111,7 +130,7 @@ inline BootCycleReport run_boot_cycle(MinimalGuest& guest,const BootCycleLimits&
       }
     }else{
       std::string failure;const auto count=std::min(limit.chunk,limit.instructions-steps);
-      const auto run=boot_cycle_prefix(guest,count,bool(first_user)&&!report.first_user_instruction_verified,failure);
+      const auto run=boot_cycle_prefix(guest,count,bool(first_user)&&!report.first_user_instruction_verified&&!report.prior_user_instruction_verified,failure);
       output(run);++report.chunks;
       if(!failure.empty()){report.reason="architectural_stop";report.error=failure;break;}
       // WFI may be the final instruction of this transaction even though
@@ -140,6 +159,8 @@ inline std::string boot_cycle_json(const MinimalGuest& guest,const BootCycleRepo
     <<",\"checkpoint_sha256\":"<<quote(sha)<<",\"host_elapsed_ms\":"<<report.elapsed_ms
     <<",\"completed_chunks\":"<<report.chunks
     <<",\"first_user_instruction_verified\":"<<(report.first_user_instruction_verified?"true":"false")
+    <<",\"prior_user_instruction_verified\":"<<(report.prior_user_instruction_verified?"true":"false")
+    <<",\"verified_entry_checkpoint_sha256\":"<<quote(report.verified_entry_checkpoint_sha256)
     <<",\"entry_instruction_faults\":"<<report.entry_instruction_faults<<",\"entry_interrupts\":"<<report.entry_interrupts
     <<",\"provenance\":"<<provenance<<"}";return out.str();
 }
