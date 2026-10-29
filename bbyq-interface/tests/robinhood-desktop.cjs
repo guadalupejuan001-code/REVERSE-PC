@@ -56,18 +56,31 @@ function action(op,target,view){const obs=evalx('captureBbyqDesktop("trusted")')
   r=await action(11,11);
   no(r.success,'browser launcher failure not silently swallowed');checks++;
   assert.equal(ctx.mock.requests.length,3);checks++;
-  assert.match(activity,/Uri\.parse\("https:\/\/robinhood\.com\/"\)/);checks++;
+  assert.match(activity,/launchReexplorer\(ReexplorerPolicy\.HOME\)/);checks++;
   assert.match(activity,/!"robinhood"\.equals\(request\.optString\("service"\)\)/);checks++;
   assert.match(activity,/settings\.setBlockNetworkLoads\(true\)/);checks++;
-  assert.match(activity,/browser\.setPackage\(browserPackage\)/);checks++;
+  assert.match(activity,/new Intent\(WorkbenchActivity\.this,ReexplorerActivity\.class\)/);checks++;
   assert.doesNotMatch(activity,/Intent\.createChooser\(choose/);checks++;
-  assert.match(activity,/startActivity\(browser\)/);checks++;
+  assert.match(activity,/startActivity\(internal\)/);checks++;
+  const browserSrc=fs.readFileSync(path.join(root,'reverse-os-android/app/src/main/java/com/reversepc/os/ReexplorerActivity.java'),'utf8');
+  const manifest=fs.readFileSync(path.join(root,'reverse-os-android/app/src/main/AndroidManifest.xml'),'utf8');
+  assert.match(manifest,/android:process=":reexplorer"/);checks++;
+  assert.match(manifest,/android:name="\.ReexplorerActivity"[\s\S]*?android:exported="false"/);checks++;
+  assert.match(browserSrc,/WebView\.setDataDirectorySuffix\("reexplorer"\)/);checks++;
+  assert.match(browserSrc,/CookieManager\.getInstance\(\)\.setAcceptThirdPartyCookies\(page,false\)/);checks++;
+  assert.match(browserSrc,/handler\.cancel\(\)/);checks++;
+  assert.match(browserSrc,/callback\.backToSafety\(true\)/);checks++;
+  assert.match(browserSrc,/options\.setAllowFileAccess\(false\)/);checks++;
+  assert.match(browserSrc,/options\.setAllowContentAccess\(false\)/);checks++;
+  assert.match(browserSrc,/options\.setMixedContentMode\(WebSettings\.MIXED_CONTENT_NEVER_ALLOW\)/);checks++;
+  assert.doesNotMatch(browserSrc,/\.addJavascriptInterface\s*\(/);checks++;
+
   assert.match(interfaceSrc,/static ResultPacket tryOpenRobinhood\(/);checks++;
   assert.match(interfaceSrc,/op==11&&target==11/);checks++;
   assert.match(store,/BbyqInterface\.tryOpenRobinhood\(/);checks++;
   assert.match(store,/BbyqInterface\.robinhoodFeedback\(/);checks++;
   const report={checks,native_requests:ctx.mock.requests.length,approved_url:'https://robinhood.com/',
-    allowed_action:{op:11,target:11},ui:'external Android browser, never privileged REVERSE WebView',
+    allowed_action:{op:11,target:11},ui:'REexplorer Android process, without REVERSE privileged WebView bridge',
     note:'Host state machine tests use a stub for Android ACTION_VIEW. Real device launch requires Android test.'};
   const out=process.argv[2];
   if(out){fs.mkdirSync(path.dirname(path.resolve(out)),{recursive:true});fs.writeFileSync(out,JSON.stringify(report,null,2)+'\n');}

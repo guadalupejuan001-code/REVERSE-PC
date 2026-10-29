@@ -31,6 +31,15 @@
       </intent-filter>
     </activity>
     <activity android:name=".RxeGraphicsActivity" android:exported="false" android:screenOrientation="fullSensor" android:hardwareAccelerated="true" android:configChanges="orientation|screenSize|keyboardHidden"/>
+    <!-- Remote pages run in their own activity/process and WebView data store.
+         No exported entry point, no reverse.local native bridge in this process. -->
+    <activity android:name=".ReexplorerActivity"
+        android:exported="false"
+        android:process=":reexplorer"
+        android:launchMode="singleTop"
+        android:screenOrientation="fullSensor"
+        android:hardwareAccelerated="true"
+        android:windowSoftInputMode="adjustResize"/>
     <activity android:name=".WorkbenchActivity" android:exported="false" android:launchMode="singleTask" android:screenOrientation="fullSensor" android:configChanges="orientation|screenSize|keyboardHidden" android:windowSoftInputMode="adjustResize"/>
     <activity android:name=".DesktopActivity"
         android:exported="false"
