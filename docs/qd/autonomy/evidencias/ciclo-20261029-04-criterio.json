@@ -1,0 +1,57 @@
+{
+  "cycle": "TRIAD-20261029-04",
+  "stage": "definicion_del_criterio_antes_de_cambios",
+  "date": "2026-10-29",
+  "immutable_display_identity": [
+    "BBY Q",
+    "w4U",
+    "QdU"
+  ],
+  "source": "Instrucción explícita del propietario en el chat actual",
+  "base_branch": "qd/reversecoding-orders-xi-20261029",
+  "purpose": "Fijar una jerarquía de tres módulos, detectar el bypass real de w4U en Qd Studio y organizar el siguiente ciclo técnico; no fusionar ni sustituir IA.",
+  "planned_deliverables": [
+    "Contrato arquitectónico explícito de BBY Q -> w4U -> QdU y equivalencia de alias técnicos legados",
+    "Diagnóstico verificable de rutas reales y responsables, diferenciando lo probado de lo no implementado",
+    "Etiquetas visibles QdU en ReverseCoding; sin renombrar identificadores persistentes ni archivos/ABI",
+    "Prueba estática reproducible de contrato y pruebas de regresión de UI; CI antes de proponer integración",
+    "Ruta docs/qd/autonomy/SIGUIENTE.md con un solo siguiente ciclo orientado a delegación real"
+  ],
+  "acceptance_before_edit": {
+    "visible_identity": "ReverseCoding muestra QdU, no crea identidad extra; BBY Q sigue titular y w4U coordinador",
+    "code_guard": "Prueba CI que exige las tres identidades y detecta desviaciones visibles; no declarará delegación ya implementada",
+    "legacy": "Mantener id qd, clase QdEngine, claves qdDrafts, direcciones de slots y ruta de RVPC2 de la app, así como W4u real",
+    "tests": "node --check qd-studio.js; node reverse-os-android/tests/qd-studio-ui.cjs; node reverse-os-android/tests/qdu-triad-contract.cjs; CI combinada.",
+    "runtime": "Sin cambio al backend XI, a lógica de inteligencia ni a datos personales; el éxito UI no equivale a prueba funcional de BBY Q->w4U->QdU",
+    "publication": "Rama/PR apilada, sin merge ni deploy; registrar estado y siguiente paso"
+  },
+  "diagnostic_baseline": {
+    "reverse_main": "01829217cfb0a3a704d37f0c0f66527a23ec149d",
+    "bbyq_main": "337e161af2b333b70c9bc938741e7c08097093e0",
+    "qdu_candidate": "b37eaa47d8cba8f0173863fb9c185c787953eb8d",
+    "existing_qdu_workflow": "https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/40903779746",
+    "observed_direct_path": "UI qd-studio.js -> nativeRequest('qd') -> WorkbenchPrograms.qd -> QdEngine.handle -> QdOrders.order, sin mediación de w4U en esa ruta",
+    "observed_w4u_limit": "planificación acotada a dos pasos y acciones de escritorio, no planificación arbitraria de proyectos",
+    "open_prs": {
+      "reverse": 32,
+      "bbyq": 11
+    }
+  },
+  "invariants": [
+    "BBY Q es el único agente de inteligencia principal y autoridad sobre su memoria de trabajo",
+    "w4U es coordinación subordinada al mismo agente, no otra inteligencia principal",
+    "QdU es la especialidad programadora del mismo agente, no IA propia ni suplantación de w4U",
+    "XI/Ether ejecuta decisiones y reglas; REVERSE-PC/ReverseCoding son host y UI",
+    "w4U gobierna acciones con efectos persistentes; programas de prueba aislados siguen sin privilegios externos",
+    "No cambiar ni borrar checkpoint E025/E034, RVPC2, W4u, sesiones ni ABI de identificadores legados",
+    "Ninguna PR aprobada aisladamente equivale a una distribución principal integrada"
+  ],
+  "scope_exclusions": [
+    "sin fusión de ramas",
+    "sin nueva IA/modelo/runtime",
+    "sin modificación de BBY-Q/docs/autonomy",
+    "sin reentrenamiento",
+    "sin prometer capacidades Work no probadas",
+    "sin cambiar frecuencia de automatizaciones"
+  ]
+}
