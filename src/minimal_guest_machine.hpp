@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include "minimal_guest_pci_state.hpp"
 
 namespace reverse_pc::guest {
 struct MachineFault {
@@ -32,6 +33,7 @@ struct MachineState {
   unsigned uart_cr=0x301,uart_ibrd=0,uart_fbrd=0,uart_lcr=0,uart_imsc=0,uart_ifls=0;
   std::uint64_t mdscr=0;
   std::string receive;
+  GuestPciState pci;
 
   MachineState() { priority.fill(0xa0);targets.fill(1); }
   bool timer_pending(bool physical) const {
@@ -42,7 +44,8 @@ struct MachineState {
     return (physical?cntp_ctl:cntv_ctl)|(timer_pending(physical)?4u:0u);
   }
   std::uint32_t level_irqs(unsigned word) const {
-    if(word==1)return !receive.empty()&&(uart_imsc&16)?2u:0u; // SPI 33
+    if(word==1)return (!receive.empty()&&(uart_imsc&16)?2u:0u)|
+      (pci.irq(0)?1u<<16:0u)|(pci.irq(1)?1u<<17:0u); // SPI 33,48,49
     return (timer_pending(true)&&!(cntp_ctl&2)?1u<<30:0u)|
            (timer_pending(false)&&!(cntv_ctl&2)?1u<<27:0u);
   }
@@ -66,7 +69,7 @@ struct MachineState {
     // Preserve byte-for-byte legacy v2 snapshots unless IFLS has a new value.
     // A live 16-byte exclusive monitor uses v4. Historical states retain
     // their exact v2/v3 encoding; no RAM or runtime state is duplicated.
-    const unsigned version=exclusive_size==16?4:uart_ifls?3:2;
+    const unsigned version=pci.enabled?5:exclusive_size==16?4:uart_ifls?3:2;
     put(version);put(enabled);put(waiting);put(event);put(el);put(sp_select);put(daif);put(image_kind);
     for(auto value:{sp0,sp1,sctlr,tcr,ttbr0,ttbr1,mair,vbar,elr,spsr,esr,far,par,cpacr,contextidr,
                    tpidr0,tpidrro,tpidr1,cntkctl,ticks,exceptions,cntp_cval,cntv_cval,exclusive_address})put(value);
@@ -78,7 +81,8 @@ struct MachineState {
     for(auto value:irq_config)put(value);
     bytes.insert(bytes.end(),priority.begin(),priority.end());bytes.insert(bytes.end(),targets.begin(),targets.end());
     put(mdscr);if(version>=3)put(uart_ifls);
-    put(receive.size());bytes.insert(bytes.end(),receive.begin(),receive.end());return bytes;
+    put(receive.size());bytes.insert(bytes.end(),receive.begin(),receive.end());
+    if(version>=5){const auto p=pci.save();put(p.size());bytes.insert(bytes.end(),p.begin(),p.end());}return bytes;
   }
   static MachineState restore(const std::vector<std::uint8_t>& bytes) {
     std::size_t at=0;
@@ -87,7 +91,7 @@ struct MachineState {
       std::uint64_t value=0;for(unsigned i=0;i<8;++i)value|=std::uint64_t(bytes[at++])<<(8*i);return value;
     };
     auto small=[&](std::uint64_t maximum){auto value=take();if(value>maximum)throw std::runtime_error("Invalid machine state field");return unsigned(value);};
-    const auto version=take();if(version!=1&&version!=2&&version!=3&&version!=4)throw std::runtime_error("Unsupported machine state version");
+    const auto version=take();if(version<1||version>5)throw std::runtime_error("Unsupported machine state version");
     MachineState m;m.enabled=small(1);m.waiting=small(1);m.event=small(1);m.el=small(1);m.sp_select=small(1);
     m.daif=small(0x3c0);m.image_kind=small(2);
     if(!m.enabled||(m.daif&~0x3c0u)||(!m.el&&m.sp_select)||!m.image_kind)throw std::runtime_error("Invalid machine execution state");
@@ -108,8 +112,10 @@ struct MachineState {
     if(version>=3){m.uart_ifls=small(63);
       if((m.uart_ifls&7)>4||((m.uart_ifls>>3)&7)>4)throw std::runtime_error("Invalid PL011 FIFO threshold state");}
     const auto count=take();
-    if(count>4096||count!=bytes.size()-at)throw std::runtime_error("Invalid serial input state");
-    m.receive.assign(bytes.begin()+at,bytes.end());
+    if(count>4096||count>bytes.size()-at)throw std::runtime_error("Invalid serial input state");
+    m.receive.assign(bytes.begin()+at,bytes.begin()+at+std::size_t(count));at+=std::size_t(count);
+    if(version>=5){const auto n=take();if(n>196608||n!=bytes.size()-at)throw std::runtime_error("Invalid PCI section");m.pci=GuestPciState::restore(std::vector<std::uint8_t>(bytes.begin()+at,bytes.end()));at=bytes.size();}
+    if(at!=bytes.size())throw std::runtime_error("Trailing machine state");
     if(m.vbar&2047)throw std::runtime_error("Unaligned exception vectors in machine state");
     return m;
   }
@@ -174,7 +180,7 @@ inline const std::string& guest_android_cuttlefish_normal_no_scx_bootargs() {
 }
 inline std::vector<std::uint8_t> guest_device_tree(std::uint64_t ram,
     std::uint64_t initrd_address=0,std::uint64_t initrd_size=0,
-    const std::string& bootargs={}) {
+    const std::string& bootargs={},bool pci=false) {
   GuestDeviceTree tree;tree.begin("");tree.string("compatible","reverse,minimal-arm64-v1");tree.string("model","REVERSE own ARM64 machine");
   tree.cells("#address-cells",{2});tree.cells("#size-cells",{2});tree.cells("interrupt-parent",{1});
   tree.begin("chosen");tree.string("bootargs",bootargs.empty()?guest_default_linux_bootargs():bootargs);tree.string("stdout-path","/pl011@9000000");
@@ -182,11 +188,18 @@ inline std::vector<std::uint8_t> guest_device_tree(std::uint64_t ram,
   tree.begin("memory@40000000");tree.string("device_type","memory");tree.reg(MachineState::ram_base,ram);tree.end();
   tree.begin("cpus");tree.cells("#address-cells",{1});tree.cells("#size-cells",{0});tree.begin("cpu@0");tree.string("device_type","cpu");tree.string("compatible","arm,armv8");tree.cells("reg",{0});tree.end();tree.end();
   tree.begin("intc@8000000");tree.string("compatible","arm,cortex-a15-gic");tree.cells("#interrupt-cells",{3});tree.property("interrupt-controller",{});tree.cells("phandle",{1});
+  if(pci)tree.cells("#address-cells",{0}); // PCI interrupt-map has no parent address cells.
   GuestDeviceTree::Data ranges;GuestDeviceTree::be64(ranges,MachineState::gic_dist);GuestDeviceTree::be64(ranges,0x10000);GuestDeviceTree::be64(ranges,MachineState::gic_cpu);GuestDeviceTree::be64(ranges,0x10000);tree.property("reg",ranges);tree.end();
   tree.begin("timer");tree.string("compatible","arm,armv8-timer");tree.cells("interrupts",{1,13,0x104,1,14,0x104,1,11,0x104,1,10,0x104});tree.property("always-on",{});tree.end();
   tree.begin("apb-pclk");tree.string("compatible","fixed-clock");tree.cells("#clock-cells",{0});tree.cells("clock-frequency",{24000000});tree.cells("phandle",{2});tree.end();
   tree.begin("pl011@9000000");GuestDeviceTree::Data compatible;GuestDeviceTree::text(compatible,"arm,pl011");GuestDeviceTree::text(compatible,"arm,primecell");tree.property("compatible",compatible);
   tree.reg(MachineState::uart_base,0x1000);tree.cells("interrupts",{0,1,4});tree.cells("clocks",{2,2});GuestDeviceTree::Data names;GuestDeviceTree::text(names,"uartclk");GuestDeviceTree::text(names,"apb_pclk");tree.property("clock-names",names);tree.end();
+  if(pci){
+    tree.begin("pcie@30000000");tree.string("compatible","pci-host-ecam-generic");tree.string("device_type","pci");
+    tree.cells("#address-cells",{3});tree.cells("#size-cells",{2});tree.cells("#interrupt-cells",{1});tree.reg(GuestPciState::ecam,GuestPciState::ecam_size);tree.cells("bus-range",{0,15});
+    tree.cells("ranges",{0x02000000,0,0x10000000,0,0x10000000,0,0x10000000});tree.property("dma-coherent",{});
+    tree.cells("interrupt-map-mask",{0xf800,0,0,7});tree.cells("interrupt-map",{0x800,0,0,1,1,0,16,4,0x1000,0,0,1,1,0,17,4});tree.end();
+  }
   tree.begin("psci");tree.string("compatible","arm,psci-0.2");tree.string("method","hvc");tree.end();tree.end();return tree.finish();
 }
 } // namespace reverse_pc::guest

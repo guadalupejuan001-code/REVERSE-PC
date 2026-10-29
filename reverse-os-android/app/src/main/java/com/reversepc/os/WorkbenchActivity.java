@@ -45,7 +45,7 @@ import java.util.concurrent.TimeUnit;
 /** Local packaged desktop. Only owned assets can access the native bridge. */
 public final class WorkbenchActivity extends Activity {
     static final String ORIGIN="https://reverse.local/";
-    private static final int PICK=7101,EXPORT=7102,IMPORT_RXE=7103,IMPORT_GUEST_ELF=7104,IMPORT_LINUX_IMAGE=7105,IMPORT_SYSTEM_ELF=7106,IMPORT_GUEST_CHECKPOINT=7107;
+    private static final int PICK=7101,EXPORT=7102,IMPORT_RXE=7103,IMPORT_GUEST_ELF=7104,IMPORT_LINUX_IMAGE=7105,IMPORT_SYSTEM_ELF=7106,IMPORT_GUEST_CHECKPOINT=7107,IMPORT_GUEST_DISK=7108;
     private final Handler ui=new Handler(Looper.getMainLooper());
     private volatile boolean closed;
     private volatile boolean activityActive;
@@ -220,6 +220,8 @@ public final class WorkbenchActivity extends Activity {
                     else if("guestDemo".equals(operation))result=guest().create(null);
                     else if("guestSystem".equals(operation))result=guest().createSystem(null,0);
                     else if("guestFloat".equals(operation))result=guest().createSystem(null,3);
+                    else if("guestGraphics".equals(operation))result=guest().createSystem(null,4);
+                    else if("guestDisplay".equals(operation))result=guest().display();
                     else if("guestRun".equals(operation))result=guest().run(new JSONObject(payload).getInt("steps"));
                     else if("guestRunContinuous".equals(operation)){
                         String token=payload==null||payload.isEmpty()?"single-"+submittedEpoch:new JSONObject(payload).getString("continuation");
@@ -267,6 +269,9 @@ public final class WorkbenchActivity extends Activity {
         }
         @JavascriptInterface public void importGuestCheckpoint(){
             ui.post(()->{if(!closed)try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),IMPORT_GUEST_CHECKPOINT);}catch(Exception error){cancelGuestImport();message("No se pudo abrir el selector de checkpoints.");}});
+        }
+        @JavascriptInterface public void importGuestDisk(){
+            ui.post(()->{if(!closed)try{startActivityForResult(new Intent(Intent.ACTION_OPEN_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType("*/*"),IMPORT_GUEST_DISK);}catch(Exception error){cancelGuestImport();message("No se pudo abrir el selector de discos.");}});
         }
         @JavascriptInterface public void exportGuest(){
             ui.post(()->{
@@ -350,12 +355,13 @@ public final class WorkbenchActivity extends Activity {
     private void cancelGuestImport(){if(!closed&&web!=null)web.evaluateJavascript("window.ReverseGuest&&window.ReverseGuest.cancelImport()",null);}
     @Override protected void onActivityResult(int request,int result,Intent data){
         super.onActivityResult(request,result,data);
-        boolean guestImport=request==IMPORT_GUEST_ELF||request==IMPORT_LINUX_IMAGE||request==IMPORT_SYSTEM_ELF||request==IMPORT_GUEST_CHECKPOINT;
+        boolean guestImport=request==IMPORT_GUEST_ELF||request==IMPORT_LINUX_IMAGE||request==IMPORT_SYSTEM_ELF||request==IMPORT_GUEST_CHECKPOINT||request==IMPORT_GUEST_DISK;
         if(guestImport&&(result!=RESULT_OK||data==null||data.getData()==null))cancelGuestImport();
-        if((request==IMPORT_GUEST_ELF||request==IMPORT_LINUX_IMAGE||request==IMPORT_SYSTEM_ELF||request==IMPORT_GUEST_CHECKPOINT)&&result==RESULT_OK&&data!=null&&data.getData()!=null){Uri uri=data.getData();RuntimeExecutor.INSTANCE.execute(()->{
+        if(guestImport&&result==RESULT_OK&&data!=null&&data.getData()!=null){Uri uri=data.getData();RuntimeExecutor.INSTANCE.execute(()->{
             String response;
             try(InputStream input=getContentResolver().openInputStream(uri)){
-                if(request==IMPORT_GUEST_CHECKPOINT)response=guest().importCheckpoint(input).toString();
+                if(request==IMPORT_GUEST_DISK)response=guest().importDisk(input).toString();
+                else if(request==IMPORT_GUEST_CHECKPOINT)response=guest().importCheckpoint(input).toString();
                 else if(request==IMPORT_LINUX_IMAGE)response=guest().importLinuxImage(input).toString();
                 else{byte[] image=GuestStore.readElf(input);response=(request==IMPORT_GUEST_ELF?guest().create(image):guest().createSystem(image,1)).toString();}
             }
@@ -378,3 +384,4 @@ public final class WorkbenchActivity extends Activity {
     // Used only by the in-repository Android instrumentation tests.
     public WebView testingWebView(){return web;}
 }
+
