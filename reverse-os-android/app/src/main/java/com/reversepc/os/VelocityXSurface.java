@@ -33,6 +33,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     private volatile int gas,brake,steer;
     private volatile boolean handbrake,resetRequested;
     private volatile int cameraMode,paintId,quality;
+    private volatile int surfaceWidth=16,surfaceHeight=9;
     private volatile String error="";
     VelocityXSurface(Context context,VelocityPhysics physics,Hud hud){
         super(context);this.physics=physics;this.hud=hud;
@@ -60,7 +61,9 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
         }
     }
     @Override public void surfaceCreated(SurfaceHolder holder){startLoop();}
-    @Override public void surfaceChanged(SurfaceHolder holder,int format,int w,int h){}
+    @Override public void surfaceChanged(SurfaceHolder holder,int format,int w,int h){
+        surfaceWidth=Math.max(1,w);surfaceHeight=Math.max(1,h);
+    }
     @Override public void surfaceDestroyed(SurfaceHolder holder){stopLoop();}
 
     @Override public void run(){
@@ -82,10 +85,12 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 }
                 if(accumulator>=VelocityPhysics.TICK_MS)accumulator=0;
                 int selected=Math.max(0,Math.min(2,quality));
-                if(selected!=currentQuality){
+                int targetWidth=selected==0?320:selected==1?400:480;
+                double ratio=Math.min(2.7,Math.max(1.2,(double)surfaceWidth/surfaceHeight));
+                int targetHeight=Math.max(72,Math.min(360,(int)Math.round(targetWidth/ratio)));
+                if(selected!=currentQuality||targetHeight!=height){
                     currentQuality=selected;
-                    width=selected==0?320:selected==1?400:480;
-                    height=width*9/16;
+                    width=targetWidth;height=targetHeight;
                     pixels=new int[width*height];
                     if(image!=null)image.recycle();
                     image=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
