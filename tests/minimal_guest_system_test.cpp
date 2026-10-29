@@ -458,6 +458,60 @@ void android_mmfr3_real_opcode() {
   check(restored.snapshot()==one.snapshot(),
         "ID_AA64MMFR3 replay through RVG changed guest state");
 }
+void android_isar3_real_opcode() {
+  // Actual Cuttlefish build 16644040 stop: 65,788,352 instructions,
+  // PC 0xffffffc0804007a8, MRS X8, S3_0_C0_C6_3 (0xd5380668).
+  auto image=system_demo_elf();image.resize(256);
+  const std::uint32_t code[]{0xd28000e8u,0xd5380668u,0xd503201fu};
+  for(auto instruction:code)put(image,instruction,4);
+  for(unsigned i=0;i<8;++i){
+    image[96+i]=std::uint8_t(std::uint64_t(sizeof(code))>>(8*i));
+    image[104+i]=image[96+i];
+  }
+  MinimalGuest guest(128*1024*1024);guest.load_elf(image,true);guest.run(1);
+  check(guest.registers().x[8]==7,"ISAR3 witness sentinel missing");
+  const auto before=guest.snapshot();const auto registers=guest.registers();
+  const auto core=guest.runtime().core_snapshot();
+  const auto memory=guest.runtime().memory_persistent_snapshot();
+  auto direct=guest;direct.run(1);
+  check(direct.registers().x[8]==0&&direct.registers().pc==registers.pc+4&&
+        direct.registers().instructions==registers.instructions+1&&
+        direct.machine().el==1&&direct.machine().exceptions==0,
+        "Actual Android ISAR3 read did not report absent features");
+  auto expected=registers.x;expected[8]=0;
+  check(direct.registers().x==expected&&direct.registers().sp==registers.sp&&
+        direct.registers().nzcv==registers.nzcv,
+        "ISAR3 changed unrelated architectural registers");
+  check(direct.runtime().core_snapshot()==core&&
+        direct.runtime().memory_persistent_snapshot()==memory,
+        "Read-only ISAR3 altered the single XI/Ether authority");
+  auto restored=MinimalGuest::from_snapshot(before);restored.run(1);
+  check(restored.snapshot()==direct.snapshot(),"ISAR3 RVG resume changed the transition");
+  check(guest.snapshot()==before,"ISAR3 modified its source checkpoint");
+
+  // This identification register remains read-only. A rejected write must
+  // roll back the whole transaction instead of silently changing a feature.
+  const auto reject_opcode=[&](std::uint32_t opcode,const char* message){
+    auto invalid=image;for(unsigned i=0;i<4;++i)invalid[260+i]=std::uint8_t(opcode>>(i*8));
+    MinimalGuest reject(128*1024*1024);reject.load_elf(invalid,true);reject.run(1);
+    const auto state=reject.snapshot();fails([&]{reject.run(1);},message);
+    check(reject.snapshot()==state,"Rejected ISAR3/unknown access was not atomic");
+  };
+  reject_opcode(0xd5180668u,"Read-only ISAR3 accepted a system register write");
+  reject_opcode(0xd53806e8u,"Unimplemented adjacent ID register became readable");
+
+  // An EL0 MRS must still take the existing architectural undefined trap.
+  auto user=initial();for(unsigned i=0;i<150&&user.machine().el;++i)user.run(1);
+  check(user.machine().el==0,"ISAR3 privilege witness did not reach EL0");
+  const auto pc=user.registers().pc;
+  user.write(user.physical_address(pc,false,true),0xd5380668u,4);
+  const auto count=user.machine().exceptions;const auto x8=user.registers().x[8];
+  user.run(1);
+  check(user.machine().el==1&&user.machine().exceptions==count+1&&
+        user.machine().elr==pc&&user.machine().esr==(UINT64_C(1)<<25)&&
+        user.registers().x[8]==x8,
+        "EL0 gained privileged ISAR3 access instead of taking the undefined trap");
+}
 void identification(){
   auto image=system_demo_elf();image.resize(260);const std::uint32_t instruction=0xd53800c0; // MRS X0,REVIDR_EL1
   for(unsigned i=0;i<4;++i)image[256+i]=std::uint8_t(instruction>>(8*i));
@@ -516,6 +570,6 @@ void interrupt_priority_initialization(){
   check(guest.snapshot()==before,"Rejected APR write changed CPU/device state");
 }
 }
-int main(){try{boot_and_restore();translation();shared_quantum_authority();exclusives();lazy_ram_range_error_parity();image_boot_protocol();android_bootargs_snapshot_profile();large_linux_gki_loader_budget();cross_page_access();unprivileged_memory_access();eret_ssbs_saved_status();speculative_data_barrier();android_mmfr3_real_opcode();identification();uart_fifo_configuration();interrupt_priority_initialization();
+int main(){try{boot_and_restore();translation();shared_quantum_authority();exclusives();lazy_ram_range_error_parity();image_boot_protocol();android_bootargs_snapshot_profile();large_linux_gki_loader_budget();cross_page_access();unprivileged_memory_access();eret_ssbs_saved_status();speculative_data_barrier();android_mmfr3_real_opcode();android_isar3_real_opcode();identification();uart_fifo_configuration();interrupt_priority_initialization();
   std::cout<<"{\"checks\":"<<checks<<",\"system\":\"own-EL1-MMU-IRQ-EL0-SVC\",\"existing_quantum_qubits\":4096,\"android_boot\":\"not_implemented\"}\n";return 0;
 }catch(const std::exception& error){std::cerr<<error.what()<<'\n';return 1;}}
