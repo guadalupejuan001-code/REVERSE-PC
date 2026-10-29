@@ -48,6 +48,9 @@ replacements['quantum_runtime.hpp'].append((
     InverseMemory::ReadResult read(const std::string& address) const {
       return memory_.read(address, core_);
     }
+    InverseMemory::ReadResult read(std::uint64_t address) const {
+      return memory_.read_numeric(address, core_);
+    }
     void store(const std::string& address, std::uint8_t value) {
       memory_.store(address, value, core_);
     }

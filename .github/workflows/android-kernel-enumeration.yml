@@ -5,6 +5,10 @@ on:
       - 'src/minimal_guest*'
       - 'tests/minimal_guest_system_test.cpp'
       - 'tools/guest_linux_probe.cpp'
+      - 'src/integration/adaptive_override_map.hpp'
+      - 'scripts/prepare-ether-compat.py'
+      - 'scripts/ether_integration.py'
+      - 'tests/adaptive_inverse_memory_test.cpp'
       - '.github/workflows/android-kernel-enumeration.yml'
   workflow_dispatch:
 permissions:
@@ -62,6 +66,14 @@ jobs:
             -DREVERSE_PC_TRANSLATION_REFERENCE=1 \
             -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
             tools/guest_linux_probe.cpp build/softfloat/libreverse_softfloat.a -o build/probe-reference
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
+            -DREVERSE_PC_NUMERIC_READ_REFERENCE=1 \
+            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
+            tools/guest_linux_probe.cpp build/softfloat/libreverse_softfloat.a -o build/probe-numeric-reference
+          g++ -std=c++17 -O1 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
+            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
+            tests/adaptive_inverse_memory_test.cpp build/softfloat/libreverse_softfloat.a -o build/native-memory
+          build/native-memory > evidence/native-memory.json
           g++ -std=c++17 -O1 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
             -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
             tests/minimal_guest_system_test.cpp build/softfloat/libreverse_softfloat.a -o build/native-system
@@ -91,27 +103,28 @@ jobs:
           cmp build/resumed.rvg build/direct.rvg
           jq -e '.guest.instructions==69226117 and .guest.exceptions==0 and
             .stop_reason=="instruction_budget"' evidence/direct.json
-      - name: Compare translation hints against uncached ARM64 execution
+      - name: Compare address hints and numeric reads against their independent references
         run: |
           set -euo pipefail
           python3 - <<'PYCODE'
           import hashlib,json,pathlib,subprocess
-          records=[]
-          for i,kind in enumerate(['reference','new','new','reference']):
-            path=pathlib.Path(f'build/translation-{i}.rvg')
-            result=subprocess.run([f'build/probe-{kind}','build/before-pair.rvg',
-              '1000000',str(path),'--chunk=10000'],check=True,capture_output=True,text=True)
-            data=json.loads(result.stdout)
-            records.append({'kind':kind,'host_elapsed_ns':data['host_elapsed_ns'],
-              'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),
-              'instructions':data['guest']['instructions'],'stop_reason':data['stop_reason']})
-          assert len({row['sha256'] for row in records})==1
-          assert all(row['instructions']==70126117 and row['stop_reason']=='instruction_budget'
-            for row in records)
-          reference=sum(row['host_elapsed_ns'] for row in records if row['kind']=='reference')/2
-          optimized=sum(row['host_elapsed_ns'] for row in records if row['kind']=='new')/2
-          pathlib.Path('evidence/translation-abba.json').write_text(json.dumps({
-            'samples':records,'byte_identical':True,'speedup':reference/optimized},indent=2)+'\n')
+          for oracle,baseline in [('translation','reference'),('numeric-read','numeric-reference')]:
+            records=[]
+            for i,kind in enumerate([baseline,'new','new',baseline]):
+              path=pathlib.Path(f'build/{oracle}-{i}.rvg')
+              result=subprocess.run([f'build/probe-{kind}','build/before-pair.rvg',
+                '1000000',str(path),'--chunk=10000'],check=True,capture_output=True,text=True)
+              data=json.loads(result.stdout)
+              records.append({'kind':kind,'host_elapsed_ns':data['host_elapsed_ns'],
+                'sha256':hashlib.sha256(path.read_bytes()).hexdigest(),
+                'instructions':data['guest']['instructions'],'stop_reason':data['stop_reason']})
+            assert len({row['sha256'] for row in records})==1
+            assert all(row['instructions']==70126117 and row['stop_reason']=='instruction_budget'
+              for row in records)
+            reference=sum(row['host_elapsed_ns'] for row in records if row['kind']==baseline)/2
+            optimized=sum(row['host_elapsed_ns'] for row in records if row['kind']=='new')/2
+            pathlib.Path(f'evidence/{oracle}-abba.json').write_text(json.dumps({
+              'samples':records,'byte_identical':True,'speedup':reference/optimized},indent=2)+'\n')
           PYCODE
       - name: Continue the unmodified Android kernel to real allocator initialization
         run: |

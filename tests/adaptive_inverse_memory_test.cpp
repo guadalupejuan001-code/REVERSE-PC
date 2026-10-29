@@ -13,8 +13,58 @@ template<class F>void fails(F&& operation,const char* message){
   try{operation();}catch(const std::exception&){rejected=true;}
   check(rejected,message);
 }
+void numeric_read_semantics(){
+  QuantumRuntime::MemoryLimits limits;limits.max_overrides=0;
+  QuantumRuntime runtime(QuantumRuntime::Background::Zero,QuantumRuntime::CoreLimits{},limits);
+  runtime.transact_bytes([](auto& bytes){
+    bytes.store("0",17);bytes.store("4095",19);bytes.store("4096",23);
+    bytes.store("18446744073709551615",29);
+    bytes.store("18446744073709551616",31);
+    for(std::uint64_t address:{UINT64_C(0),UINT64_C(1),UINT64_C(4095),UINT64_C(4096),UINT64_MAX}){
+      const auto text=bytes.read(std::to_string(address)),numeric=bytes.read(address);
+      check(text.deterministic==numeric.deterministic&&text.value==numeric.value&&text.handle==numeric.handle,
+            "Numeric transaction read differs from the original canonical address");
+    }
+  });
+  const auto saved=runtime.memory_persistent_snapshot(),core=runtime.core_snapshot();
+  for(std::uint64_t address:{UINT64_C(0),UINT64_C(1),UINT64_C(4095),UINT64_C(4096),UINT64_MAX}){
+    const auto a=runtime.memory().read(std::to_string(address),runtime.core());
+    const auto b=runtime.memory().read_numeric(address,runtime.core());
+    check(a.deterministic==b.deterministic&&a.value==b.value&&a.handle==b.handle,
+          "Numeric memory read differs at a page or uint64 boundary");
+  }
+  check(runtime.memory().read("18446744073709551616",runtime.core()).value==31,
+        "Numeric lookup altered an arbitrary-precision address");
+  check(runtime.memory_persistent_snapshot()==saved&&runtime.core_snapshot()==core,
+        "Numeric reads changed the original core or memory authority");
+  const auto background=mundo_x::InverseMemory::from_snapshot("MXIM1 165\nO 3 0\n",limits);
+  check(background.read_numeric(3,runtime.core()).value==0&&
+        background.read_numeric(4,runtime.core()).value==165,
+        "Numeric read confused a zero override and a nonzero global rule");
+  runtime.execute("mem_bind 42 900\nh 900\n");
+  const auto quantum_core=runtime.core_snapshot(),quantum_memory=runtime.memory_persistent_snapshot();
+  const auto qtext=runtime.memory().read("42",runtime.core());
+  const auto qnumeric=runtime.memory().read_numeric(42,runtime.core());
+  check(!qtext.deterministic&&!qnumeric.deterministic&&qtext.handle==qnumeric.handle,
+        "Numeric read invented a classical byte for an unresolved quantum binding");
+  check(runtime.memory().read_numeric(4096,runtime.core()).value==23,
+        "An unrelated quantum binding changed a classical numeric read");
+  check(runtime.core_snapshot()==quantum_core&&runtime.memory_persistent_snapshot()==quantum_memory,
+        "Numeric read collapsed or changed an original quantum binding");
+  runtime.execute("h 900\nx 901\n");
+  check(runtime.memory().read_numeric(42,runtime.core()).deterministic&&
+        runtime.memory().read_numeric(42,runtime.core()).value==2,
+        "Numeric read lost a deterministic original quantum byte");
+  limits.max_address_digits=1;
+  QuantumRuntime narrow(QuantumRuntime::Background::Zero,QuantumRuntime::CoreLimits{},limits);
+  check(narrow.memory().read_numeric(9,narrow.core()).value==0,
+        "Numeric read rejected a permitted small canonical address");
+  fails([&]{narrow.memory().read_numeric(10,narrow.core());},
+        "Numeric read bypassed the original logical-address digit budget");
+}
 }
 int main(){try{
+  numeric_read_semantics();
   using Runtime=QuantumRuntime;
   // The old bounded MXIM1 representation is stable even though its private
   // index now uses sparse/dense pages; no historical byte or revision changes.

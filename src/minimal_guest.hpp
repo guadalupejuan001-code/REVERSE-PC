@@ -202,8 +202,12 @@ class MinimalGuest {
 
   std::uint8_t read8(std::uint64_t address) const {
     range(address,1);
+#ifdef REVERSE_PC_NUMERIC_READ_REFERENCE
     const auto key=std::to_string(address);
     const auto delta=byte_transaction_?byte_transaction_->read(key):runtime_.memory().read(key,runtime_.core());
+#else
+    const auto delta=byte_transaction_?byte_transaction_->read(address):runtime_.memory().read_numeric(address,runtime_.core());
+#endif
     require(delta.deterministic, "Guest read reached an unresolved quantum byte; explicit observation required");
     return backing(address)^delta.value;
   }

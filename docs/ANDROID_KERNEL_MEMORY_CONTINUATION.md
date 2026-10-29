@@ -73,6 +73,28 @@ neither checkpoint layout nor guest behavior. It is an observer, not a
 claim that the entered program is Android /init. Program identity must be
 verified separately against the real initrd ELF.
 
+## Numeric spelling of the same memory reads
+
+A uint64 byte address can now query the same AdaptiveOverrideMap index
+without formatting and reparsing a decimal string for each read. This is
+an additional read API on the same InverseMemory/ByteAccess authority, not
+a new memory or a materialized cache. The pinned checkout is unchanged;
+the hash-checked local compatibility generator supplies the overload.
+
+The original canonical-string path remains authoritative whenever the
+address-digit budget is below 20 or any quantum binding exists. This
+preserves digit-budget rejection, deterministic quantum bytes, unresolved
+handles and arbitrary-precision addresses. Tests also distinguish a zero
+override from a nonzero global background. Reads preserve exact core,
+memory, revisions and serialization. REVERSE_PC_NUMERIC_READ_REFERENCE
+selects the original string path for comparisons.
+
+Native tests and two local ABBA comparisons produce byte-identical RVGs,
+including the actual BTF/timer-heavy Android interval at 560 million
+instructions. The dedicated CI records separate ABBA oracles for numeric
+reads and translation hints; throughput measurements apply only to those
+specific workloads.
+
 ## Genuine debug-slot initialization
 
 The unchanged kernel reaches MSR DBGBCR0_EL1,X2 (0xd51000a2) at instruction
@@ -104,12 +126,16 @@ Read-only initrd analysis found 42,513,920 vendor CPIO bytes and 5,680,128
 generic CPIO bytes (48,194,048 total). The original guest still has 128 MiB
 logical RAM; an analysis of its size is not proof that Android services fit.
 
-Local continuation has passed 211 million original instructions. Real UART
+Local continuation has passed 641 million original instructions. Real UART
 also shows RCU, ARM timer, SELinux/landlock/eBPF, NETLINK routing, audit,
 thermal governors, ASID allocator, and registration of the PL011 serial
 console. Timer IRQ exceptions after this point are expected architectural
 activity, not interpreter failures. First-stage /init has not yet been
-observed at this checkpoint.
+observed at this checkpoint. The real kernel warns that its tracer-init
+worker is blocked on trace_event_sem. Independent read-only task/stack
+inspection, using the immutable kernel's own BTF layout, shows PID 1
+advancing through btf_check_all_metas during inet_init. That is a diagnostic
+observation of the current slow stage, not proof that the warning is resolved.
 
 The dedicated workflow additionally compares cached and uncached execution
 in ABBA order with byte-identical RVGs, replays the exact debug-slot failure
@@ -119,3 +145,10 @@ Continue from the latest genuine checkpoint rather than repeating SCS.
 Next gates are actual first-stage /init execution, required storage and
 partition devices, Android services and display. None is claimed complete
 by the CPU-identification or allocator milestones alone.
+
+The Android integration CI exercises its existing smaller system witnesses.
+The current Java/JNI guest UI still has a 32 MiB checkpoint transport and
+16 MiB import path; the real GKI continuation here uses the native Linux
+probe. Product import/streaming and UI progress remain integration work.
+Passing the Android application tests does not prove this 80 MiB RVG boots
+inside the phone application.

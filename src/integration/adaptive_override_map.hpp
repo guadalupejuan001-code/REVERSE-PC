@@ -103,6 +103,11 @@ class AdaptiveOverrideMap {
   const std::uint8_t* get(const std::string& address) const {
     std::uint64_t numeric=0;
     if(!numeric_address(address,numeric))return state_->large_addresses.get(address);
+    return get(numeric);
+  }
+  // A numeric spelling of the same canonical address in the same index.
+  // It does not retain a projection or add another byte authority.
+  const std::uint8_t* get(std::uint64_t numeric) const {
     const auto it=state_->pages.find(numeric>>12);
     return it==state_->pages.end()?nullptr:it->second->get(std::size_t(numeric&4095));
   }
