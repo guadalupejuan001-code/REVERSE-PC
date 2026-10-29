@@ -1,7 +1,7 @@
 #!reverse-pc-machine-v1
 # REexplorer native XI/Ether streaming text-view core. NOT full HTML/CSS/JS browser.
 # Self-contained state on InverseMemory region 8755e15, completely separate from BBY Q.
-# +0 command 1=chunk,2=status,3=reset; +1 payload length <=224; +128 payload;
+# +0 command 1=chunk,2=status,3=reset; +1 low length, +2 high length <=2048; +128 payload;
 # +4096 parser mode (0 text,1 tag,2 script,3 style,4 script close,5 style close)
 # +4097..4099 total bytes; +4100..4102 visible; +4103..4105 tag count;
 # +4106..4108 suppressed; +4109 tag prefix length; +4110 budget exceeded;
@@ -16,7 +16,10 @@ je rx_restore_chunk
 div r0 0
 label rx_restore_chunk
 load8 r9 8755000000000000001
-cmp r9 224
+load8 r15 8755000000000000002
+mul r15 256
+add r9 r15
+cmp r9 2048
 jgt rx_reject_oversize
 cmp r9 0
 jlt rx_reject_oversize
