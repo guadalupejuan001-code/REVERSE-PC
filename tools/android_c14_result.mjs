@@ -31,7 +31,7 @@ export async function audit(source,root){
  const digest=sha(state);assert.equal(digest,pointer.checkpoint_sha256);assert.equal(digest,r.checkpoint_sha256);
  const a=auditGkiRvg(state,kernel,digest);assert.equal(a.bootargs,input.report.provenance.bootargs);assert.equal(a.logical_ram_bytes,134217728);
  assert.equal(a.external_disk_sha256,PIN.diskSha);assert.equal(a.external_disk_bytes,PIN.diskBytes);assert.equal(a.rvi_version,'RVI3');
- assert.equal(a.instructions,g.instructions);assert.equal(a.native_pc,g.pc);assert.equal(r.initial_instructions,910037398);assert.equal(r.advanced_instructions,g.instructions-910037398);
+ assert.equal(a.instructions,g.instructions);assert.equal(a.native_pc,g.pc);assert.equal(a.native_halted,g.halted?1:0);assert.equal(g.system_mode,true);assert.equal(g.logical_ram_bytes,a.logical_ram_bytes);assert.equal(g.block_image_bytes,PIN.diskBytes);assert.equal(g.pci_bus,true);assert.equal(r.initial_instructions,910037398);assert.equal(r.advanced_instructions,g.instructions-910037398);
  assert.equal(v.experiment,'c14-c13-minmax-continuation');assert.equal(v.input_checkpoint_sha256,INPUT_SHA);assert.equal(v.input_report_sha256,REPORT_SHA);
  assert.equal(v.fault_instruction_replayed_on_copy,true);assert.equal(v.original_state_modified,false);assert.equal(v.ram_profile_changed,false);
  assert.equal(r.first_user_instruction_verified,false);assert.equal(r.prior_user_instruction_verified,false);assert.equal(r.verified_entry_checkpoint_sha256,'');
@@ -39,10 +39,11 @@ export async function audit(source,root){
  const kn=Number(state.readBigUInt64LE(head+8)),dt=Number(state.readBigUInt64LE(head+16)),rd=Number(state.readBigUInt64LE(head+24));
  assert.equal(sha(state.subarray(head+48+kn+dt,head+48+kn+dt+rd)),input.report.provenance.ramdisk_sha256);
  const machine=head+field(39)+field(40)+field(41),clock=machine+field(42)-64;
+ assert.equal(state.readBigUInt64LE(machine),7n);assert.equal(state.readBigUInt64LE(machine+8),1n);assert.equal(Number(state.readBigUInt64LE(machine+16)),g.waiting?1:0);assert.equal(Number(state.readBigUInt64LE(machine+32)),g.exception_level);
  assert.equal(state.readBigUInt64LE(clock),2n);assert.equal(sha(state.subarray(clock+8,clock+40)),input.report.provenance.timing_seed_sha256);
  assert.equal(v.timing_seed_sha256,input.report.provenance.timing_seed_sha256);
  for(const [offset,key] of [[40,'counter_samples'],[48,'counter_instructions_per_tick'],[56,'counter_subtick']])assert.equal(Number(state.readBigUInt64LE(clock+offset)),g[key]);
- assert.equal(g.counter_instructions_per_tick,64);assert.equal(g.counter_subtick,g.instructions%64);
+ assert.equal(g.counter_instructions_per_tick,64);assert.ok(Number.isInteger(g.counter_subtick)&&g.counter_subtick>=0&&g.counter_subtick<64); // Persisted phase may reset on WFI.
  const outcome=analyzeGuestConsole(r.console);const clean=['host_wall_budget','instruction_budget'].includes(r.stop_reason)&&!r.error&&!outcome.guest_terminal_failure&&!outcome.guest_reboot_requested&&!g.halted&&!g.waiting&&r.advanced_instructions>0;
  const result={schema:'reverse-c14-result-v1',checkpoint_sha256:digest,input_checkpoint_sha256:INPUT_SHA,instructions:g.instructions,advanced_instructions:r.advanced_instructions,pc:g.pc,stop_reason:r.stop_reason,error:r.error,source_fault_instruction_replayed:true,execution_progress_accepted:clean,...outcome,c13_mounted_targets:input.mounted_targets,c13_system_root_switched:true,android_framework_verified:false,android_display_verified:false,native_android_games_verified:false};
  copy(join(dir,'checkpoint.rvg'),join(root,'current.rvg'));copy(join(dir,'report.json'),join(root,'current.json'));write(join(root,'console-new.txt'),r.console);write(join(root,'result.json'),JSON.stringify(result,null,2)+'\n');return result;

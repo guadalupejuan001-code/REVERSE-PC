@@ -1,7 +1,7 @@
 name: Android C14 exact minmax continuation
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, reopened]
     paths:
       - '.github/workflows/android-c14-minmax.yml'
       - 'patches/android-c14-minmax.patch'
@@ -46,7 +46,7 @@ jobs:
           f06a3c23fc96b6f8f5b2c061408f042c619dacef7eb64fcd71d3639c14b3193b  input-c13/tested-source.tar.gz
           324d44dbacbb9b8a67de7d1a4e2903f7a8476572134c82f28dd40181dcff2965  patches/android-c14-minmax.patch
           f57660b1b1a78c2cba57669d6567e39a137ce53876c1aba1643499a35eb2dcfc  tools/guest_c14_resume.cpp
-          b34d8e9f558a5a83c5b493290d81313eb510822dfaf3f680a5c8ad1ad3d4f6dd  tools/android_c14_result.mjs
+          057a5aa324b765f0cfaa843984ab7336c811f3df6d9f0ba5770c7a24eda0a0e4  tools/android_c14_result.mjs
           e4b6f84b30c8e2e165a2df896fd6cef308a577ff3ad718c09a1e5013fc77a436  tests/minimal_guest_minmax_across_test.cpp
           SHA
           git apply --check patches/android-c14-minmax.patch
@@ -61,7 +61,7 @@ jobs:
         run: |
           set -euo pipefail
           FLAGS='-std=c++17 -O1 -pthread -fsanitize=undefined -fno-sanitize-recover=all -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc'
-          for suite in minimal_guest_minmax_across minimal_guest_addp_scalar minimal_guest_xtn guest_boot_cycle; do
+          for suite in minimal_guest_minmax_across minimal_guest_addp_scalar minimal_guest_xtn guest_boot_cycle guest_c13_wfi_phase; do
             g++ $FLAGS "tests/${suite}_test.cpp" build/softfloat/libreverse_softfloat.a -o "build/c14-$suite"
             "build/c14-$suite" | tee "evidence/c14/$suite.json"
           done

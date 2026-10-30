@@ -1,7 +1,9 @@
 name: Android C13 verified AVB fresh boot
+# A fresh boot is explicit: open/reopen the experimental PR to repeat it.
+# Documentation and audit commits must not silently launch duplicate boots.
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, reopened]
     paths:
       - '.github/workflows/android-c13-avb-boot.yml'
       - 'tools/android_c13_avb.mjs'
@@ -41,7 +43,7 @@ jobs:
           9804db279793c2b1a017b1681dba339122662b2da1bc863eab4bd1c78a78663f  tools/guest_c13_boot.cpp
           00445a4472235e13d73892e7c8ea6d2d65e61f236ddfb61374cc66f415e2091c  tests/android_c13_avb.test.mjs
           2e14664bcf3f813e30550b846bd5557b9b57e2267d1a4e7a0a5d1001df1b0e42  tests/guest_c13_boot_setup_test.cpp
-          aaba198fb1e1cc59b2a4c22d815b71bfc8a9c721d5c678a32c27b152070447b5  tools/android_c13_result.mjs
+          cc79011e80f21e211a98d1462d9cecfaed91960827b11fff74ce106b3baf7281  tools/android_c13_result.mjs
           SHA
           git rev-parse HEAD > evidence/c13/source-commit.txt
           sha256sum tools/*c13* tests/*c13* src/minimal_guest* > evidence/c13/source-sha256.txt
