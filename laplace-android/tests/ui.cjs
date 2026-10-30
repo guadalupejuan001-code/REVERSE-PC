@@ -16,6 +16,7 @@ const server=createServer((req,res)=>{try{const path=req.url==='/'?'/index.html'
  const stockChart={chart:{result:[{meta:{currency:'USD',exchangeName:'NMS',exchangeTimezoneName:'America/New_York'},timestamp:stockBars.map(b=>b[0]),indicators:{quote:[{low:stockBars.map(b=>b[1]),high:stockBars.map(b=>b[2]),open:stockBars.map(b=>b[3]),close:stockBars.map(b=>b[4]),volume:stockBars.map(b=>b[5])}]}}],error:null}};
  await context.exposeFunction('auditIO',async(operation,raw)=>{
   const p=JSON.parse(raw);calls.push({operation,p});if(operation==='read')return {ok:true,text:saved};if(operation==='save'){saved=raw;return {ok:true};}
+  if(operation==='native_x001')return {ok:true,result:{schema:'laplace-xn01-native-xi-v1',asset:p.asset,backend:'XI/Ether · NativeRuntime',mask:11,probability_up_bps:5430,probability_up:.543,direction:'subida',support:17,prior_bps:5010,prior:.501,training_rows:176,confidence_bps:5430,confidence:.543,elapsed_ns:123456,core:{active_qubits:0,memory_overrides:42},isolated:true}};
   if(operation!=='public')return {ok:false,error:'Operación desconocida'};if(fail&&p.source==='candles')return {ok:false,error:'Fallo de fuente inducido'};
   await new Promise(ok=>setTimeout(ok,15));let value;
   if(p.source==='candles')value=bars.filter(b=>b[0]>=p.params.start&&b[0]<=p.params.end);
@@ -43,8 +44,8 @@ const server=createServer((req,res)=>{try{const path=req.url==='/'?'/index.html'
   await page.selectOption('#activo','SPY');assert.equal(await page.inputValue('#horizonte'),'5');checks++;
   assert.equal(await page.locator('#candidato').innerText(),'—');checks++;
   await page.getByRole('button',{name:'Consultar ahora',exact:true}).click();await page.waitForFunction(()=>!document.getElementById('actualizar').disabled,{},{timeout:30000});
-  const spy=JSON.parse(saved);assert.equal(spy.market.asset,'SPY');checks++;assert.equal(spy.stock_result.schema,'laplace-x001-live-v1');checks++;
-  assert.match(await page.locator('#candidato').innerText(),/SUBIDA|BAJADA/);checks++;assert.equal(await page.locator('#estadoBits .bit').count(),4);checks++;
+  const spy=JSON.parse(saved);assert.equal(spy.market.asset,'SPY');checks++;assert.equal(spy.stock_result.schema,'laplace-xn01-native-xi-v1');checks++;assert.equal(spy.stock_result.backend,'XI/Ether · NativeRuntime');checks++;
+  assert.match(await page.locator('#candidato').innerText(),/SUBIDA|BAJADA/);checks++;assert.match(await page.locator('#interpretacion').innerText(),/XI\/Ether/);checks++;assert.equal(await page.locator('#estadoBits .bit').count(),4);checks++;
   assert.equal(await page.locator('[data-horizonte]').count(),0);checks++;
   await page.getByRole('button',{name:'Datos',exact:true}).click();const factorState=await page.evaluate(()=>({hidden:document.querySelector('#datos').hidden,asset:document.querySelector('#activo').value,status:document.querySelector('#datosEstado').textContent,children:document.querySelector('#factores').childElementCount,text:document.querySelector('#factores').textContent,candidate:document.querySelector('#candidato').textContent}));console.log('FACTOR_STATE='+JSON.stringify(factorState));assert.equal(factorState.hidden,false);assert.match(factorState.text,/Ensayo B001/);checks++;
   await page.getByRole('button',{name:'Registro',exact:true}).click();assert.equal(await page.locator('#registro').getAttribute('hidden'),null);assert.match(await page.locator('#registroEstado').textContent(),/Último ensayo reservado/);checks++;
