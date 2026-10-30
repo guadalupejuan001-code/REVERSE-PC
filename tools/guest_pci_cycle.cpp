@@ -62,14 +62,15 @@ int main(int argc,char** argv){try{
   require(prior_report_path.empty()||(!limits.stop_after_first_user_instruction&&!seed_clock),"A proven continuation cannot repeat init or reseed its clock");
   require(!std::filesystem::exists(argv[3]),"Cycle output must be a new directory");
   const auto input=guest_read_file(argv[1],MinimalGuest::max_adaptive_snapshot);validate_input(input,argv[5]);
-  if(!prior_report_path.empty())android_c06_check_artifacts(input,guest_read_file(prior_report_path,65536));
+  AndroidResumeSource resume_source=AndroidResumeSource::c06;
+  if(!prior_report_path.empty())resume_source=android_check_resume_artifacts(input,guest_read_file(prior_report_path,65536));
   const auto disk=GuestBlockImage::open(argv[2]);require(disk->sha256()==disk_sha&&disk->size()==UINT64_C(8738832384),"Wrong external disk");
   auto guest=MinimalGuest::from_snapshot(input,disk);
   require(guest.machine().enabled&&guest.machine().image_kind==2&&guest.machine().pci.enabled,"Expected original PCI Linux machine");
   require(!prior_report_path.empty()||guest.machine().el||guest.registers().pc==0x2a4000,"Use the proven entry checkpoint to verify the first Android instruction");
   const auto initial=guest.snapshot();require(initial==input,"Restoring the checkpoint changed its bytes");
   BootCycleEntryProof prior_entry;
-  if(!prior_report_path.empty())prior_entry=android_c06_entry_proof(guest);
+  if(!prior_report_path.empty())prior_entry=android_resume_entry_proof(guest,resume_source);
   std::string seed_origin=guest.machine().counter_latency.enabled?"checkpoint":"disabled";
   if(seed_clock&&!guest.machine().counter_latency.enabled){
     std::array<std::uint8_t,32> seed{};std::size_t at=0;
