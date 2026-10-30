@@ -8,22 +8,22 @@
     "U002/369"
   ],
   "files": {
-    "reverse-os-android/app/src/main/assets/laplace/app.mjs": "PENDING",
+    "reverse-os-android/app/src/main/assets/laplace/app.mjs": "c8c0444382cfef57fd9b85a17bcca398e68592d9067d5b019e097b6c428e451c",
     "reverse-os-android/app/src/main/assets/laplace/grafica.js": "19f58fe7564fe6d377409babf3e3ca86e0f2a644aa1d2273948743641c3684c1",
-    "reverse-os-android/app/src/main/assets/laplace/index.html": "PENDING",
+    "reverse-os-android/app/src/main/assets/laplace/index.html": "4cd48ad47685b4503fd6333d351a97c70e594d34e2962a7f765a64389f96f366",
     "reverse-os-android/app/src/main/assets/laplace/integridad.mjs": "3912bb8fec306b793ec50a3d7bcbc5368ae98ec49e06566a43bc07073a1b53fb",
     "reverse-os-android/app/src/main/assets/laplace/modelo.mjs": "8566056be52b69abca73d36b5f933d1d3a9f6fa83f56cd21c31bb6862b9915db",
-    "reverse-os-android/app/src/main/assets/laplace/styles.css": "PENDING",
+    "reverse-os-android/app/src/main/assets/laplace/styles.css": "969ff77a64056ebb23cff9f9d6d9e91e8c8a3791d39756428cf90c9b53f674f5",
     "reverse-os-android/app/src/main/assets/laplace/x001.mjs": "e641af80f9f09f706ae932ea3e8a31dce112a1521f7494d89e9a8f4ab2ed940c",
-    "reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceActivity.java": "PENDING",
+    "reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceActivity.java": "3468092973fbf44ee5b79379d715c344e0d0eae59d0452c27a6958fb4bc9a777",
     "laplace-android/upstream-lock.json": "abb08ad8c1d9eb89ee3f61dd74fd7ec5280d7dd3f2e86d41be2c2d231d6db879",
     "laplace-android/upstream/universo/integridad.mjs": "4ed158bc6c192cba2f4ee673dc7c99f63d7d2b73889d1b04dee5c791a47fc577",
     "laplace-android/upstream/seguimiento/modelo.mjs": "1a72ecc3437baeb2db0afb9b8a36618c4568badfab0baf318d005bfa99fabe3a",
     "laplace-android/upstream/panel/publico/grafica.js": "23efd2044b439b61673c11cd72127430d73520c4b640cf245641dde3f9d786b6",
     "reverse-os-android/app/src/main/assets/laplace/x001-native.xi": "eeee0cd986b1d61c742c49a9006b3979273afabb70d7f1e5f2d290fbf421187a",
     "reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceXiCompiler.java": "4880c0bfbed1a21d267652756c3fcd1f6ff4399cafbe625b83b28b37c52676a2",
-    "reverse-os-android/app/src/main/assets/laplace/u002-native.xi": "PENDING",
-    "reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceGlobalCompiler.java": "PENDING"
+    "reverse-os-android/app/src/main/assets/laplace/u002-native.xi": "31a12f7e954f5f9786322fb687b7e539d9c4afa755e7ba72e9bf8fb1c24937b7",
+    "reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceGlobalCompiler.java": "ba75ceea2aaa4543280acb31db15e399370805f601e4381c5721622d00199bb3"
   },
   "horizons_minutes": {
     "bitcoin": [
