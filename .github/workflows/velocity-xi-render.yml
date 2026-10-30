@@ -26,6 +26,9 @@ on:
     branches: [main, feature/xi-direct-frame-binary-20261030]
     paths: ['reverse-os-android/**', 'src/integration/xi_machine_extension.inc', 'src/integration/xi_mesh_raster.inc', 'experiments/xi-render/**', '.github/workflows/velocity-xi-render.yml']
 permissions: {contents: read}
+concurrency:
+  group: velocity-regraphics-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
 jobs:
   xi-render:
     runs-on: ubuntu-latest

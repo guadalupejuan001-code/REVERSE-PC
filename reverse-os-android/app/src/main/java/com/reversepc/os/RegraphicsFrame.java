@@ -10,6 +10,7 @@ import java.util.Arrays;
 final class RegraphicsFrame {
     static final int LOGICAL_WIDTH=1280,LOGICAL_HEIGHT=720;
     static final int MAX_SPANS_PER_ROW=48;
+    static final int MAX_FRAME_BYTES=24+14*360*641;
     final int width,height,stride,commands,revision;
     private final byte[] bytes;
     private final int[] palette;
@@ -33,8 +34,7 @@ final class RegraphicsFrame {
         require(colors!=null&&colors.length>0&&colors.length<=256,"invalid palette size");
         int[] palette=colors.clone();
         for(int color:palette)require(color>=0&&color<=0xffffff,"invalid RGB material");
-        final int maxCommands=(LOGICAL_HEIGHT/stride)*MAX_SPANS_PER_ROW;
-        require(source!=null&&source.length>=24&&source.length<=24+14*maxCommands,
+        require(source!=null&&source.length>=24&&source.length<=MAX_FRAME_BYTES,
             "invalid frame length");
         require((source.length-24)%14==0,"unaligned spans");
         // Retain a private copy: callers cannot modify a validated observation.
@@ -50,7 +50,10 @@ final class RegraphicsFrame {
         if(revision==1)require(width==LOGICAL_WIDTH&&height==LOGICAL_HEIGHT,"logical dimensions mismatch");
         else require(width==(stride==4?320:stride==2?480:640)&&
             height==(stride==4?180:stride==2?270:360),"3D frame dimensions mismatch");
-        require((frame.length-24)/14<=(height/rowStep)*MAX_SPANS_PER_ROW,"frame span budget exceeded");
+        // Visibility runs can alternate at every pixel. Revision 2 therefore
+        // needs one full background plus at most width foreground runs.
+        final int maxRowSpans=revision==1?MAX_SPANS_PER_ROW:width+1;
+        require((frame.length-24)/14<=(height/rowStep)*maxRowSpans,"frame span budget exceeded");
         final int end=frame.length-8;
         require(frame[end]==3&&frame[end+1]==0&&u16(frame,end+2)==0&&
             u32(frame,end+4)==revision,"invalid frame end");
@@ -70,7 +73,7 @@ final class RegraphicsFrame {
                     "row must begin with full background");
                 expectedRow+=rowStep;lastRow=y;lastDepth=101;lastForeground=-1;rowCount=0;
             }
-            require(++rowCount<=MAX_SPANS_PER_ROW,"row span budget exceeded");
+            require(++rowCount<=maxRowSpans,"row span budget exceeded");
             if(revision==1)require(depth<lastDepth,"span depths must decrease");
             else if(rowCount>1){
                 require(depth==1&&x0>lastForeground,"3D runs overlap or are unordered");

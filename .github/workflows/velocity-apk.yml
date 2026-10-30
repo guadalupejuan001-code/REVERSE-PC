@@ -11,6 +11,7 @@ on:
       - 'reverse-os-android/app/src/main/java/com/reversepc/os/RegraphicsFrame.java'
       - 'reverse-os-android/app/src/main/cpp/**'
       - 'src/integration/xi_machine_extension.inc'
+      - 'src/integration/xi_mesh_raster.inc'
       - 'src/rxe.hpp'
       - 'reverse-os-android/tests/velocity-apk-smoke.cjs'
       - 'reverse-os-android/tests/velocity-apk-package.cjs'

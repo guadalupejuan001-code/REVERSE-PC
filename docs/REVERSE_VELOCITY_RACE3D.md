@@ -30,7 +30,10 @@ XI define vértices, transformaciones de cámara y materiales. Las primitivas
 genéricas `meshvertex`, `meshread`, `meshface`, `meshtri` y `meshtri3` aportan
 un búfer temporal de vértices, proyección, clipping cercano y rasterización con
 z-buffer recíproco. `meshend` resuelve la visibilidad y emite XFS1 revisión 2.
-El presentador Java valida todas las filas antes de tocar la imagen.
+El presentador Java valida todas las filas antes de tocar la imagen. La salida
+admite hasta una región por píxel horizontal: una escena con bordes de coches,
+árboles y pista puede superar las 47 regiones del primer límite provisional.
+La regresión de 640 píxeles alternados verifica el caso máximo válido.
 
 `localget/localset` acceden a 4.096 enteros temporales por ejecución. Los
 proyectados, contadores y parámetros de imagen no se escriben en InverseMemory

@@ -45,7 +45,7 @@ std::vector<std::uint8_t> decode(const std::string& bytes,unsigned width,unsigne
       check(y==expected_row++&&x0==0&&x1==width-1&&depth==100,"XFS1 background row");
       last_row=y;last_x=0;runs=0;
     }else {
-      check(depth==1&&runs<47&&(runs==0||x0>last_x),"XFS1 final visible runs");
+      check(depth==1&&runs<width&&(runs==0||x0>last_x),"XFS1 final visible runs");
       ++runs;last_x=x1;
     }
     std::fill(pixels.begin()+y*width+x0,pixels.begin()+y*width+x1+1,std::uint8_t(material));
@@ -167,12 +167,18 @@ int main() {
   for(unsigned i=0;i<100;++i)try{work.triangle({0,0,1},{640,0,1},{0,360,1},2);}
     catch(const std::length_error&){exhausted=true;break;}
   check(exhausted&&work.pixel_tests()<=Mesh::max_pixel_tests,"pixel-work budget");
-  Mesh fragmented;fragmented.begin(100,1,2,0);
-  for(int x=0;x<100;x+=2) {
-    fragmented.triangle({x,0,1},{x+1,0,1},{x,1,1},2);
-    fragmented.triangle({x+1,0,1},{x+1,1,1},{x,1,1},2);
+  Mesh fragmented;fragmented.begin(640,1,2,0);
+  for(int x=0;x<640;++x) {
+    const int material=2+x%2;
+    fragmented.triangle({x,0,1},{x+1,0,1},{x,1,1},material);
+    fragmented.triangle({x+1,0,1},{x+1,1,1},{x,1,1},material);
   }
-  rejects([&]{fragmented.finish();},"foreground-run output budget");
+  for(unsigned x=0;x<640;++x)
+    check(fragmented.materials()[x]==2+x%2,"one-pixel material visibility changed");
+  const auto fragmented_packet=fragmented.finish();
+  check((fragmented_packet.size()-24)/14==641,"maximum valid row lost final runs");
+  check(decode(fragmented_packet,640,1)==fragmented.materials(),
+        "alternating maximum-width row failed exact XFS1 roundtrip");
   std::cout<<"XI_MESH_RASTER_PASS checks="<<checks<<"\n";
  }catch(const std::exception& e){std::cerr<<e.what()<<"\n";return 1;}
 }

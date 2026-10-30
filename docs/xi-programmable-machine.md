@@ -102,7 +102,9 @@ en cada `meshbegin`; leer una entrada no inicializada falla.
 El viewport mesh se limita a 640×360, 4096 triángulos y ocho millones de pruebas
 de píxel por observación. Los vértices de cámara quedan en ±1.000.000 y los
 materiales en 0..255. La salida resuelta contiene fondo por fila y regiones
-visibles disjuntas, con un máximo de 47 regiones de primer plano por fila.
+visibles disjuntas. Cada región contiene al menos un píxel: el máximo natural
+es una región por píxel horizontal, más el fondo de la fila. Así, incluso una
+fila de 640 materiales alternados se puede transmitir sin rechazar la imagen.
 El presentador de Velocity reconoce esa semántica en la revisión 2 y mantiene
 las reglas anteriores de profundidad para imágenes de revisión 1.
 

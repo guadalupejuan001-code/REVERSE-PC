@@ -6,7 +6,9 @@ class MachineMeshRaster {
   static constexpr std::size_t max_triangles = 4096;
   static constexpr std::size_t max_vertices = 4096;
   static constexpr std::uint64_t max_pixel_tests = 8000000;
-  static constexpr unsigned max_foreground_runs = 47;
+  // A valid visibility row may alternate material at every pixel. This natural
+  // bound encodes every raster image; it must not reject a detailed scene.
+  static constexpr unsigned max_foreground_runs = max_width;
   struct Vertex { std::int64_t x, y, z; };
 
   void begin(std::int64_t width, std::int64_t height,

@@ -67,6 +67,18 @@ public final class RegraphicsFrameTest {
         out.write(3);out.write(0);put16(out,0);put32(out,2);
         return out.toByteArray();
     }
+    static byte[] alternatingPixels(boolean allRows,boolean extraFirstRowRun){
+        ByteArrayOutputStream out=new ByteArrayOutputStream();
+        out.write('X');out.write('F');out.write('S');out.write('1');out.write(1);out.write(0);
+        put16(out,640);put16(out,360);put32(out,2);put16(out,0);
+        for(int y=0;y<360;y++){
+            spanRev(out,y,0,639,0,100,2);
+            if(allRows||y==0)for(int x=0;x<640;x++)spanRev(out,y,x,x,1+(x&1),1,2);
+            if(y==0&&extraFirstRowRun)spanRev(out,y,639,639,1,1,2);
+        }
+        out.write(3);out.write(0);put16(out,0);put32(out,2);
+        return out.toByteArray();
+    }
     public static void main(String[] args){
         byte[] valid=sample(4);
         RegraphicsFrame frame=RegraphicsFrame.decode(valid,4,COLORS);
@@ -178,6 +190,24 @@ public final class RegraphicsFrameTest {
             reject(()->RegraphicsFrame.decode(wrongRows,stride,COLORS));
             byte[] wrongSize=wire.clone();patch16(wrongSize,6,w+1);
             reject(()->RegraphicsFrame.decode(wrongSize,stride,COLORS));
+        }
+        // A valid 3D row can alternate materials at all 640 pixels. This
+        // reaches the natural width+background cap and exact total byte cap.
+        byte[] everyPixel=alternatingPixels(true,false);
+        check(everyPixel.length==24+14*360*641);
+        RegraphicsFrame alternating=RegraphicsFrame.decode(everyPixel,1,COLORS);
+        check(alternating.commands==360*641);
+        int[] exact=new int[640*360];alternating.present(exact,640,360);
+        for(int y=0;y<360;y++)for(int x=0;x<640;x++)
+            check(exact[y*640+x]==(0xff000000|COLORS[1+(x&1)]));
+        byte[] aboveTotalBudget=Arrays.copyOf(everyPixel,everyPixel.length+14);
+        reject(()->RegraphicsFrame.decode(aboveTotalBudget,1,COLORS));
+        byte[] aboveRowBudget=alternatingPixels(false,true);
+        try{
+            RegraphicsFrame.decode(aboveRowBudget,1,COLORS);
+            throw new AssertionError("accepted width+2 row span count");
+        }catch(IllegalArgumentException expected){
+            check(expected.getMessage().contains("row span budget exceeded"));
         }
         int[] untouched={12,34,56};
         reject(()->frame.present(untouched,2,2));

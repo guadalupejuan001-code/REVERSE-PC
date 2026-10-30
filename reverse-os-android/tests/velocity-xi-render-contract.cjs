@@ -8,7 +8,7 @@ const crypto=require('node:crypto'),{performance}=require('node:perf_hooks');
 const cli=path.resolve(process.argv[2]||'build/velocity/reverse_pc');
 const output=path.resolve(process.argv[3]||'build/velocity/regraphics');
 const assets=path.resolve('reverse-os-android/app/src/main/assets/velocity');
-const HEADER='#!reverse-pc-machine-v1\n',MAX_SPANS=48;
+const HEADER='#!reverse-pc-machine-v1\n',MAX_FRAME_BYTES=24+14*360*641;
 const sizes=new Map([[4,[320,180]],[2,[480,270]],[1,[640,360]]]);
 const palette=fs.readFileSync(path.join(assets,'palette.txt'),'utf8').trim().split(/\r?\n/).map(s=>{
  assert.match(s,/^[0-9a-f]{6}$/,'authored palette entry');return parseInt(s,16);
@@ -44,12 +44,17 @@ function inject(source,inputs){
  assert(source.startsWith(HEADER),'XI source header');return HEADER+inputs+source.slice(HEADER.length);
 }
 function decode(b,stride){
+ assert(sizes.has(stride),'supported quality');
  const [width,height]=sizes.get(stride);
- assert(Buffer.isBuffer(b)&&b.length>=24&&b.length<=24+14*height*MAX_SPANS,'frame byte budget');
+ const maxSpans=width+1;
+ assert(Buffer.isBuffer(b)&&b.length>=24&&b.length<=MAX_FRAME_BYTES&&
+  b.length<=24+14*height*maxSpans,'frame byte budget');
  assert.equal(b.toString('ascii',0,4),'XFS1');assert.equal(b[4],1);
  assert.equal(b[5],0);assert.equal(b.readUInt16LE(6),width);assert.equal(b.readUInt16LE(8),height);
  assert.equal(b.readUInt32LE(10),2,'3D revision');assert.equal(b.readUInt16LE(14),0);
  assert.equal((b.length-24)%14,0,'aligned commands');
+ const commands=(b.length-24)/14;
+ assert(Number.isSafeInteger(commands)&&commands<=height*maxSpans,'finite command budget');
  const end=b.length-8;
  assert.equal(b[end],3);assert.equal(b[end+1],0);assert.equal(b.readUInt16LE(end+2),0);
  assert.equal(b.readUInt32LE(end+4),2,'end revision');
@@ -66,7 +71,7 @@ function decode(b,stride){
    assert.equal(x0,0);assert.equal(x1,width-1);assert.equal(depth,100,'full background row');
    lastY=y;rowCount=0;lastForeground=-1;
   }
-  assert(++rowCount<=MAX_SPANS,'row command budget');
+  assert(++rowCount<=maxSpans,'row command budget');
   if(rowCount>1){assert.equal(depth,1,'final visibility marker');assert(x0>lastForeground,'foreground runs overlap');lastForeground=x1;}
   spans.push({y,x0,x1,material,depth});
  }
