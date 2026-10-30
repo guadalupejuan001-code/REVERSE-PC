@@ -1,0 +1,63 @@
+name: X Render XI — binary Frame Stream v1 / authenticity & HD
+on:
+  push:
+    branches: [feature/xrender-xi-frame-stream-v1-20261029]
+    paths:
+      - 'src/integration/xi_frame_stream.inc'
+      - 'src/integration/xi_machine_extension.inc'
+      - 'experiments/xi-render/super-frame-stream.xi'
+      - 'experiments/xi-render/xi-frame-codec.cjs'
+      - 'experiments/xi-render/frame-stream-verify.cjs'
+      - '.github/workflows/xi-frame-stream.yml'
+  pull_request:
+    branches: [experiment/xrender-xi-hypothesis-20261029]
+permissions: {contents: read}
+jobs:
+  frame-stream:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: 1f925786522aba91f72707ad1638a8edcdd31a8f
+          path: deps/mundo-x
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Build existing XI/Ether runtime with additive Frame Stream ISA
+        run: |
+          set -euo pipefail
+          mkdir -p build/ether-compat build/xi-render/evidence
+          python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
+            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
+            src/reverse_pc.cpp -o build/xi-render/reverse_pc
+          node --check experiments/xi-render/xi-frame-codec.cjs
+          node --check experiments/xi-render/frame-stream-verify.cjs
+      - name: Run XFS1 exactness, HD/FullHD, binary transport and rollback
+        run: |
+          set -euo pipefail
+          node experiments/xi-render/frame-stream-verify.cjs \
+            build/xi-render/reverse_pc build/xi-render/evidence \
+            | tee build/xi-render/frame-stream.log
+          grep -q XI_FRAME_STREAM_V1_ALL_OK build/xi-render/frame-stream.log
+          test -s build/xi-render/evidence/frame-stream-results.json
+      - name: Verify XI legacy machine has unchanged semantics
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
+            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
+            tests/xi_machine_test.cpp -o build/xi-render/xi-machine-test
+          build/xi-render/xi-machine-test
+          python3 tests/xi_machine_cli.py build/xi-render/reverse_pc
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: XI-Frame-Stream-v1-evidence
+          path: |
+            build/xi-render/evidence/
+            build/xi-render/frame-stream.log
+          retention-days: 14
