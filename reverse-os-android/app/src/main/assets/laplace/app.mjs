@@ -1,14 +1,14 @@
 import {emitirPronosticos,verificarPronostico,validarVelas} from './modelo.mjs';
 import {huellaContenido} from './integridad.mjs';
-import {parseStockChart,liveX001,BOLSA_LAB} from './x001.mjs';
+import {parseStockChart,BOLSA_LAB} from './x001.mjs';
 
 const UPSTREAM_M001='06ebce4bddf25d615cefd85ed24081f37504a492';
 const UPSTREAM_BOLSA='08cafb094a5c0f81253509eff412214dd526b808';
 const ASSETS=Object.freeze({
   'BTC-USD':{label:'Bitcoin',short:'BTC',kind:'crypto',currency:'USD',model:'M001'},
-  SPY:{label:'S&P 500 ETF',short:'SPY',kind:'stock',currency:'USD',model:'X001'},
-  AAPL:{label:'Apple',short:'AAPL',kind:'stock',currency:'USD',model:'X001'},
-  NVDA:{label:'NVIDIA',short:'NVDA',kind:'stock',currency:'USD',model:'X001'}
+  SPY:{label:'S&P 500 ETF',short:'SPY',kind:'stock',currency:'USD',model:'XN01'},
+  AAPL:{label:'Apple',short:'AAPL',kind:'stock',currency:'USD',model:'XN01'},
+  NVDA:{label:'NVIDIA',short:'NVDA',kind:'stock',currency:'USD',model:'XN01'}
 });
 const BTC_HORIZONS=new Set([15,30,60,240,1440,10080]);
 const $=x=>document.getElementById(x),need=(c,m)=>{if(!c)throw Error(m)};
@@ -84,7 +84,7 @@ async function verifySnapshot(s){
     need(body.upstream===UPSTREAM_M001&&Array.isArray(body.predictions)&&body.predictions.length===6,'Pronósticos BTC incompletos');
     for(const p of body.predictions){await verificarPronostico(p);need(p.precio_inicial===Number(body.quote.value),'Precio BTC incoherente');}
   }else{
-    need(body.upstream===UPSTREAM_BOLSA&&body.stock_result?.schema==='laplace-x001-live-v1','Resultado X001 ausente');
+    need(body.upstream===UPSTREAM_BOLSA&&body.stock_result?.schema==='laplace-xn01-native-xi-v1','Resultado XN01 nativo ausente');
     need(body.market.asset===body.stock_meta?.symbol,'Símbolo bursátil incoherente');
   }
   return s;
@@ -104,10 +104,12 @@ async function updateStock(){
   const id=assetId(),r=await pub('stock',{symbol:id,range:'1mo'}),parsed=parseStockChart(r.value,id,r.received_at);
   const lastBar=parsed.bars.at(-1),observedAt=new Date((lastBar[0]+300)*1000).toISOString();
   const quote={asset:id,value:String(lastBar[4]),observed_at:observedAt,known_at:new Date(Date.parse(r.received_at)).toISOString()};
-  const result=liveX001(parsed.bars,{cutoff:quote.observed_at});
+  status('r5','consultando');status('r15','consultando');status('impulse','consultando');status('volume','consultando');
+  const native=await host('native_x001',{asset:id,bars:parsed.bars.slice(-240)});
+  const result=native.result;need(result?.schema==='laplace-xn01-native-xi-v1'&&result.asset===id,'XN01 nativo no devolvió un resultado compatible');
   for(const key of ['r5','r15','impulse','volume'])status(key,'recibida');
   return {schema:'laplace-reverse-v2',upstream:UPSTREAM_BOLSA,at:new Date().toISOString(),
-    market:{asset:id,kind:'stock',model:'X001'},quote,bars:parsed.bars,stock_result:result,
+    market:{asset:id,kind:'stock',model:'XN01-XI'},quote,bars:parsed.bars,stock_result:result,
     stock_meta:{symbol:id,currency:parsed.currency,exchange:parsed.exchange,timezone:parsed.timezone},extras:[]};
 }
 async function update(){
@@ -152,15 +154,16 @@ function renderBTC(s){
 }
 function renderStock(s){
   const x=s.stock_result,up=x.direction==='subida';
-  $('resultadoEtiqueta').textContent='DIRECCIÓN X001 · PRÓXIMOS 5 MIN';$('modeloChip').textContent='X001';
+  $('resultadoEtiqueta').textContent='DIRECCIÓN XI/ETHER · PRÓXIMOS 5 MIN';$('modeloChip').textContent='XN01';
   $('candidato').textContent=up?'SUBIDA':'BAJADA';$('candidato').className=up?'positivo':'negativo';
   $('cambio').textContent='Confianza interna '+percent(x.confidence)+' · P(subida) '+percent(x.probability_up);
   $('objetivo').textContent=date(new Date(Date.parse(s.quote.observed_at)+300000).toISOString());
-  $('soporteCorto').textContent=x.support+' estados iguales';$('validacionCorta').textContent=x.walk_forward.count?percent(x.walk_forward.accuracy)+' · '+x.walk_forward.count+' casos':'Sin ventana';
-  $('soporte').textContent='Estado compacto '+x.mask+' · '+s.bars.length+' velas cerradas · prior de subida '+percent(x.prior)+'.';
-  $('interpretacion').textContent='X001 clasifica la dirección del siguiente intervalo cerrado de 5 minutos. No inventa un precio objetivo para la bolsa.';
+  $('soporteCorto').textContent=x.support+' estados iguales';const lab=BOLSA_LAB[s.market.asset];$('validacionCorta').textContent=lab?percent(lab.accuracy)+' · ensayo B001':'Sin ensayo';
+  $('soporte').textContent='Estado XI '+x.mask+' · '+x.training_rows+' filas nativas · soporte '+x.support+' · prior '+percent(x.prior)+'.';
+  $('interpretacion').textContent='XN01 calcula la dirección dentro de XI/Ether usando InverseMemory. JavaScript solo representa la salida y no decide SUBIDA/BAJADA.';
   const root=$('estadoBits');root.hidden=false;root.replaceChildren();
-  for(const b of x.bits){const el=document.createElement('div');el.className='bit';el.dataset.on=b.on;const dot=document.createElement('i'),txt=document.createElement('span'),sm=document.createElement('small');txt.textContent=b.name;sm.textContent=b.detail;txt.append(sm);el.append(dot,txt);root.append(el);}
+  const defs=[['5 min',1,'close actual ≥ anterior'],['15 min',2,'close actual ≥ hace 15 min'],['Impulso',4,'movimiento 5m > media absoluta 30m'],['Volumen',8,'volumen > media 30m']];
+  for(const [name,bit,detail] of defs){const el=document.createElement('div');el.className='bit';el.dataset.on=Boolean(x.mask&bit);const dot=document.createElement('i'),txt=document.createElement('span'),sm=document.createElement('small');txt.textContent=name;sm.textContent=(x.mask&bit?'Activo · ':'Inactivo · ')+detail;txt.append(sm);el.append(dot,txt);root.append(el);}
 }
 function drawChart(){
   const s=current(),graph=$('grafico');graph.replaceChildren();if(!s)return;
