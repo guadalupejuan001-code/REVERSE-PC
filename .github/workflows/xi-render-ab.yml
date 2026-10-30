@@ -1,7 +1,7 @@
 name: X Render XI A/B hypothesis — actual XI interpreter
 on:
   push:
-    branches: [experiment/xrender-xi-hypothesis-20261029, feature/xi-frame-stream-v1-20261030]
+    branches: [experiment/xrender-xi-hypothesis-20261029, feature/xi-frame-stream-v1-20261030, perf/xi-frame-stream-composition-20261030]
     paths:
       - 'experiments/xi-render/**'
       - '.github/workflows/xi-render-ab.yml'
@@ -97,6 +97,12 @@ jobs:
             build/xi-render/reverse_pc build/xi-render/xrender-oracle \
             build/xi-render/evidence | tee build/xi-render/frame-stream.log
           test -s build/xi-render/evidence/frame-stream-results.json
+      - name: Profile depth-correct XI span compositor versus reference
+        run: |
+          set -euo pipefail
+          node experiments/xi-render/frame-stream-profile.cjs \
+            build/xi-render/evidence | tee build/xi-render/frame-stream-profile.log
+          test -s build/xi-render/evidence/frame-stream-profile.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -106,6 +112,7 @@ jobs:
             build/xi-render/benchmark.log
             build/xi-render/span-benchmark.log
             build/xi-render/frame-stream.log
+            build/xi-render/frame-stream-profile.log
             build/xi-render/super-benchmark.log
             build/xi-render/super-triangle.log
             build/xi-render/super-project.log
