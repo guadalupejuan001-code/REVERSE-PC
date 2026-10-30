@@ -52,3 +52,8 @@ footer{text-align:center;font-size:11px;padding:20px 8px 4px}.positivo{color:var
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 main,.vista,.hero-grid,.dos,.tarjetas,.selector-principal,.metricas,.titulo,.navegacion{min-width:0;max-width:100%}
 article p,article small,article h2,article strong{overflow-wrap:anywhere}
+
+.metricas-mundo{grid-template-columns:repeat(4,minmax(0,1fr))}
+.filas-globales{display:grid;gap:0;margin:10px 0 14px}.filas-globales div{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:12px;padding:10px 0;border-bottom:1px solid var(--borde)}.filas-globales dt{color:var(--muted);font-size:12px}.filas-globales dd{margin:0;text-align:right;font-size:12px;overflow-wrap:anywhere}
+#mundoGrupos article strong{display:block;margin-top:6px;font-size:20px}
+@media(max-width:760px){.metricas-mundo{grid-template-columns:repeat(2,minmax(0,1fr))}.filas-globales div{grid-template-columns:1fr}.filas-globales dd{text-align:left}.navegacion button{font-size:11px}}
