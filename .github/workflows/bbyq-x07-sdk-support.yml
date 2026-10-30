@@ -1,0 +1,30 @@
+name: BBY Q X07 Android compiler support
+on:
+  pull_request:
+    paths: ['.github/workflows/bbyq-x07-sdk-support.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compiler-support:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - name: Prepare the Android 35 build compiler
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'build-tools;35.0.0' 'platforms;android-35' > /tmp/x07-sdk.log
+          mkdir sdk-support
+          cp "$ANDROID_HOME/platforms/android-35/android.jar" sdk-support/
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/d8.jar" sdk-support/
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" sdk-support/
+          cp "$ANDROID_HOME/build-tools/35.0.0/aapt2" sdk-support/
+          cp "$ANDROID_HOME/build-tools/35.0.0/zipalign" sdk-support/
+          sha256sum sdk-support/* > sdk-support/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BBYQ-X07-Android35-compiler-support
+          path: sdk-support
+          retention-days: 3
+          if-no-files-found: error
