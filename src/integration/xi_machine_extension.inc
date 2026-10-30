@@ -193,14 +193,17 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
           throw std::length_error("machine output exceeds 16 MiB");
         result.output += output;
       };
-      if (op == "xframe") {
+      if (op == "xframe" || op == "xstream") {
         require_count(words, 4);
         if (frame_open || frame_done || in_batch || !result.output.empty())
           throw std::invalid_argument("XFS1 frame must start once in an empty output");
-        const auto w=frame_field(words[1],1,8192,"width");
-        const auto h=frame_field(words[2],1,8192,"height");
+        // Full materialization is bounded; streamed logical resolution need
+        // not allocate width*height. Both use the same serialized XI spans.
+        const auto bound=op=="xstream"?65535:8192;
+        const auto w=frame_field(words[1],1,bound,"width");
+        const auto h=frame_field(words[2],1,bound,"height");
         const auto rev=frame_field(words[3],0,0xffffffffLL,"revision");
-        if (std::uint64_t(w)*h>16777216ULL)
+        if (op=="xframe" && std::uint64_t(w)*h>16777216ULL)
           throw std::length_error("XFS1 logical pixel budget exceeded");
         frame_open=true;frame_revision=rev;
         frame_width=static_cast<std::uint16_t>(w);
