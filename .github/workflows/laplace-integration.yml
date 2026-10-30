@@ -58,6 +58,7 @@ jobs:
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc src/reverse_pc.cpp -o build/reverse_pc
           node laplace-android/tests/xn01-native.mjs build/reverse_pc evidencia-laplace/xn01 | tee evidencia-laplace/xn01.txt
           node laplace-android/tests/u002-native.mjs build/reverse_pc evidencia-laplace/u002 | tee evidencia-laplace/u002.txt
+          node laplace-android/tests/u002-live.mjs build/reverse_pc evidencia-laplace/u002-live | tee evidencia-laplace/u002-live.txt
       - name: Compilar el adaptador Android sin sustituir el runtime
         run: |
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' > evidencia-laplace/sdk.txt
