@@ -1,6 +1,8 @@
 // REVERSE-PC machine profile: interpreted by the original XI candidate owner.
 // Included inside mundo_x::infinite_program_detail, after execute_line().
 // The explicit shebang opt-in keeps legacy XI semantics byte-identical.
+#include "integration/xi_frame_stream.inc"
+// Frame descriptors are compiled by the XI program, not a separate renderer.
 inline constexpr const char machine_header[] = "#!reverse-pc-machine-v1";
 inline constexpr std::size_t machine_max_steps = 1000000;
 inline constexpr std::size_t machine_register_count = 16;
@@ -153,6 +155,7 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
 
   std::array<std::int64_t, machine_register_count> registers{};
   ProgramResult result;
+  XIFrameStream frame_stream;
   bool first_command = true, in_batch = false, comparison_valid = false;
   int comparison = 0;
   std::size_t pc = 0, steps = 0, address_bytes = 0;
@@ -246,6 +249,27 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
         if (value < 0 || value > 255)
           throw std::out_of_range("store8 value must be in 0..255");
         memory->store(address, static_cast<std::uint8_t>(value), core);
+      } else if (op == "frame_begin") {
+        require_count(words, 5);
+        frame_stream.begin(
+          machine_value(words[1],registers),machine_value(words[2],registers),
+          machine_value(words[3],registers),machine_value(words[4],registers));
+      } else if (op == "frame_span") {
+        require_count(words, 6);
+        frame_stream.span(
+          machine_value(words[1],registers),machine_value(words[2],registers),
+          machine_value(words[3],registers),machine_value(words[4],registers),
+          machine_value(words[5],registers),max_response_bytes-result.output.size());
+      } else if (op == "frame_tile") {
+        require_count(words, 7);
+        frame_stream.tile(
+          machine_value(words[1],registers),machine_value(words[2],registers),
+          machine_value(words[3],registers),machine_value(words[4],registers),
+          machine_value(words[5],registers),machine_value(words[6],registers),
+          max_response_bytes-result.output.size());
+      } else if (op == "frame_end") {
+        require_count(words, 1);
+        output_line(frame_stream.finish(max_response_bytes-result.output.size()));
       } else if (op == "print") {
         require_count(words, 2);
         const auto index = machine_register(words[1]);
@@ -272,5 +296,7 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
     }
   }
   if (in_batch) throw std::invalid_argument("unterminated batch: expected end");
+  if (frame_stream.started&&!frame_stream.ended)
+    throw std::invalid_argument("unterminated frame stream: expected frame_end");
   return result;
 }
