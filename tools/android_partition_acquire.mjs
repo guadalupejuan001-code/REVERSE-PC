@@ -14,20 +14,21 @@ import {bootParts} from './aosp_boot_preflight.mjs';
 import {buildAndroidPartitionDisk,REQUIRED} from './android_partition_disk.mjs';
 const need=(v,m)=>{if(!v)throw Error('Official Android partitions: '+m);};
 const sha=b=>createHash('sha256').update(b).digest('hex');
-export async function acquireAndroidPartitions(directory){
+export async function acquireAndroidPartitions(directory,{userdataOnly=false}={}){
  const dir=resolve(directory);await mkdir(dirname(dir),{recursive:true});await mkdir(dir); // Never reuse a partial previous attempt.
  return withOfficialArchive(async({url,index,readRange})=>{
   need(index.total===1101174958,'unexpected same-build archive extent');
   await writeFile(join(dir,'archive-members.json'),JSON.stringify(index.entries.map(e=>({name:e.name,compressed:e.compressed,bytes:e.uncompressed})),null,2)+'\n');
   const partitions=[],extracted=[];
-  for(const label of REQUIRED){
+  for(const label of userdataOnly?['userdata']:REQUIRED){
    const name=label.replace(/_a$/,'')+'.img',entry=index.entries.find(e=>e.name===name),destination=join(dir,name);
-   if(!entry&&label==='metadata'){
-    const f=await open(destination,'wx');await f.truncate(64*1024*1024);await f.close();
-    const p=spawnSync('mkfs.ext4',['-q','-F','-b','4096','-L','metadata','-U','a5cd1280-831d-58b0-9205-cbd222e809d2','-E','lazy_itable_init=0,lazy_journal_init=0,hash_seed=a5cd1280-831d-58b0-9205-cbd222e809d2',destination],{env:{...process.env,E2FSPROGS_FAKE_TIME:'1793232000'},encoding:'utf8'});
+   if(!entry&&['metadata','userdata'].includes(label)){
+    const data=label==='userdata',size=data?2*1024**3:64*1024*1024,uuid=data?'e0f714d3-c7ba-5759-9170-3463fcda05ae':'a5cd1280-831d-58b0-9205-cbd222e809d2';
+    const f=await open(destination,'wx');await f.truncate(size);await f.close();
+    const p=spawnSync('mkfs.ext4',['-q','-F','-b','4096','-L',label,'-U',uuid,...(data?['-O','encrypt,quota,project']:[]),'-E','lazy_itable_init=0,lazy_journal_init=0,hash_seed='+uuid,destination],{env:{...process.env,E2FSPROGS_FAKE_TIME:'1793232000'},encoding:'utf8'});
     need(p.status===0,'could not format the new writable metadata partition');
     const h=createHash('sha256');for await(const b of createReadStream(destination))h.update(b);const digest=h.digest('hex');
-    partitions.push({name:label,path:name,sha256:digest});extracted.push({name,generated:'new ext4 metadata; no Android system data invented',bytes:64*1024*1024,sha256:digest});continue;
+    partitions.push({name:label,path:name,sha256:digest});extracted.push({name,generated:'new empty ext4 '+label+'; no Android system data invented',bytes:size,sha256:digest});continue;
    }
    need(entry,'required official image is missing: '+name);need(entry.compressed>0&&entry.compressed<=index.total&&entry.uncompressed>0&&entry.uncompressed<=8*1024**3,'member exceeds streaming input limit');
    const h=readRange(entry.localHeaderOffset,entry.localHeaderOffset+29,64).bytes;need(h.readUInt32LE(0)===0x04034b50&&h.readUInt16LE(8)===entry.method,'local ZIP header mismatch');
@@ -44,6 +45,7 @@ export async function acquireAndroidPartitions(directory){
    need(size===entry.uncompressed&&crc===entry.crc32,'official image CRC32/extent mismatch: '+name);const digest=hash.digest('hex');
    partitions.push({name:label,path:name,sha256:digest});extracted.push({name,bytes:size,sha256:digest,zip_crc32:crc});await unlink(compressed);await unlink(headers);
   }
+  if(userdataOnly){const report={status:'userdata_input_prepared_requires_new_media',build_id:'16644040',archive_bytes:index.total,extracted,partitions,android_boot_verified:false};await writeFile(join(dir,'userdata-acquisition.json'),JSON.stringify(report,null,2)+'\n');return report;}
   const boot=bootParts(readFileSync(join(dir,'boot.img')));need(sha(boot.kernel.data)==='f722bdd809bfd3485917a564b053b8a6d4938408734091f420c3297a8e3b20c8','boot kernel differs from the pinned running GKI');
   const manifest={purpose:'android',build_id:'16644040',target:'aosp_cf_arm64_only_phone-userdebug',partitions};await writeFile(join(dir,'partitions.json'),JSON.stringify(manifest,null,2)+'\n');
   const disk=await buildAndroidPartitionDisk(manifest,join(dir,'android-slot-a.raw'),dir);
@@ -51,4 +53,4 @@ export async function acquireAndroidPartitions(directory){
   await writeFile(join(dir,'acquisition.json'),JSON.stringify(report,null,2)+'\n');return report;
  });
 }
-if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){try{need(process.argv.length===3,'usage: NEW-DIRECTORY');console.log(JSON.stringify(await acquireAndroidPartitions(process.argv[2]),null,2));}catch(e){console.error(e.message);process.exitCode=1;}}
+if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){try{need(process.argv.length===3||(process.argv.length===4&&process.argv[2]==='--userdata-only'),'usage: [--userdata-only] NEW-DIRECTORY');console.log(JSON.stringify(await acquireAndroidPartitions(process.argv.at(-1),{userdataOnly:process.argv[2]==='--userdata-only'}),null,2));}catch(e){console.error(e.message);process.exitCode=1;}}
