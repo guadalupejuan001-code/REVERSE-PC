@@ -315,7 +315,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
         for(int i=0;i<100;i++){if(laplaceJs(laplace,"typeof window.LaplaceHost==='object'").equals("true")){ready=true;break;}Thread.sleep(200);}
         require(ready,"Packaged modules did not load");
         require(laplaceJs(laplace,"document.documentElement.lang").equals("es"),"Language");
-        require(laplaceJs(laplace,"document.querySelectorAll('#horizonte option').length").equals("6"),"Horizons");
+        require(laplaceJs(laplace,"document.querySelectorAll('#horizonte option').length").equals("7"),"Horizons");
         require(laplaceJs(laplace,"isSecureContext&&!!crypto.subtle&&typeof window.LaplaceNative.request==='function'").equals("true"),"Secure WebCrypto/native bridge");
         require(laplaceJs(laplace,"document.querySelectorAll('.nodo').length").equals("7"),"3D query nodes");
         laplaceJs(laplace,"document.querySelector('[data-tab=flujo]').click();true");
@@ -324,6 +324,23 @@ public final class WorkbenchTestRunner extends Instrumentation {
         laplaceJs(laplace,"window.laplaceProbe=null;import(new URL('./modelo.mjs',document.baseURI).href).then(async m=>{const end=Math.floor(Date.now()/300000)*300,rows=Array.from({length:500},(_,i)=>[end-(500-i)*300,1000-i-1,1000-i+1,1000-i,1000-i,10]),t=new Date().toISOString();const p=await m.emitirPronosticos(rows,{asset:'BTC-USD',value:'500',observed_at:t,known_at:t},{emitidoEn:t,horizontes:[15,30,60,240,1440,10080],revision:'android-fixture'});window.laplaceProbe=p.length===6&&p[0].precio_predicho<500&&p[5].precio_predicho===null;}).catch(e=>window.laplaceProbe=String(e));true");
         String probe="null";for(int i=0;i<80;i++){probe=laplaceJs(laplace,"window.laplaceProbe");if(!probe.equals("null"))break;Thread.sleep(200);}
         require(probe.equals("true"),"M001 did not run in Android WebView: "+probe);
+        // XN01 must execute in the packaged XI/Ether NativeRuntime, not in JavaScript.
+        JSONArray xnBars=new JSONArray();long xnStart=1760000000L-(1760000000L%300);double xnPrice=500.0;
+        for(int i=0;i<120;i++){
+            double open=xnPrice;xnPrice*=i%17<10?1.0012:0.9988;
+            xnBars.put(new JSONArray().put(xnStart+i*300L).put(Math.min(open,xnPrice)*0.9998)
+                .put(Math.max(open,xnPrice)*1.0002).put(open).put(xnPrice).put(1000+(i%9)*120));
+        }
+        String xnTemplate;try(java.io.InputStream in=getTargetContext().getAssets().open("laplace/x001-native.xi")){
+            xnTemplate=new String(WorkbenchProgramsRead(in),StandardCharsets.UTF_8);
+        }
+        String xnProgram=LaplaceXiCompiler.compile(xnBars,xnTemplate);
+        ResultPacket xnPacket=ResultPacket.parse(NativeRuntime.execute(NativeRuntime.initialize(),xnProgram));
+        JSONObject xnResult=LaplaceXiCompiler.parse(xnPacket.output,"SPY",1L,new JSONObject(NativeRuntime.inspect(xnPacket.state)));
+        require(xnResult.getString("schema").equals("laplace-xn01-native-xi-v1"),"XN01 schema");
+        require(xnResult.getString("backend").contains("XI/Ether"),"XN01 backend");
+        require(xnResult.getInt("mask")>=0&&xnResult.getInt("mask")<16,"XN01 mask");
+        require(xnResult.getDouble("probability_up")>=0&&xnResult.getDouble("probability_up")<=1,"XN01 probability");
         final boolean[] safeContent={false};
         runOnMainSync(()->{
             WebView view=laplace.testingWebView();android.view.View parent=(android.view.View)view.getParent();
@@ -367,7 +384,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
             require(activity!=null,"Entry did not reach Workbench: "+requested);
             waitJs("document.querySelector('[data-task-app]')&&typeof nativeRequest==='function'");
             if(requested.equals("laplace")){
-                laplaceWorkflow();result.putString("stream","WORKBENCH_TESTS_OK mode=laplace packaged=M001 WebCrypto=verified core=unchanged\n");
+                laplaceWorkflow();result.putString("stream","WORKBENCH_TESTS_OK mode=laplace packaged=M001+XN01 native=XI/Ether WebCrypto=verified core=unchanged\n");
                 result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
             }
             JSONObject snapshot=op("inspect","","testSnapshot");
