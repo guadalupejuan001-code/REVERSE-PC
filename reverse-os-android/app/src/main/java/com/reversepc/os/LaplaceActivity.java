@@ -32,7 +32,7 @@ import java.util.concurrent.*;
 
 /** Packaged Laplace presentation.
  * M001 price math remains packaged in JS; XN01 direction executes in an isolated
- * NativeRuntime XI/Ether state. No account, order, node server or shared SessionStore mutation. */
+ * NativeRuntime XI/Ether state. No account, order, node server or shared desktop-checkpoint mutation. */
 public final class LaplaceActivity extends Activity {
     private static final String HOST="laplace.reverse.local";
     private static final int LIMIT=2*1024*1024,EXPORT=9410;

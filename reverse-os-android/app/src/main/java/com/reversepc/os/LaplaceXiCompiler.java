@@ -30,7 +30,7 @@ public final class LaplaceXiCompiler {
         return true;
     }
 
-    public static String compile(JSONArray input,String template){
+    public static String compile(JSONArray input,String template)throws org.json.JSONException{
         need(input!=null&&template!=null&&template.startsWith("#!reverse-pc-machine-v1\n"),
             "Plantilla XI incompatible");
         need(template.contains("# __INPUT_BYTES__"),"Plantilla XI sin punto de entrada");
