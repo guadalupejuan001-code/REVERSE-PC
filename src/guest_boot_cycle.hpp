@@ -161,10 +161,12 @@ inline std::string boot_cycle_json(const MinimalGuest& guest,const BootCycleRepo
 
 // Two complete immutable generations plus one atomic pointer. A crash during
 // the next save cannot select an unfinished snapshot or mix state and report.
+// Pruning is best effort after publication; failed removals are retried later.
 // This Linux host utility is not part of Android's UI or its guest state.
 class BootCycleJournal {
  public:
-  explicit BootCycleJournal(std::filesystem::path root):root_(std::move(root)){
+  using CleanupAction=std::function<void(const std::filesystem::path&,std::error_code&)>;
+  explicit BootCycleJournal(std::filesystem::path root,CleanupAction cleanup={}):root_(std::move(root)),cleanup_(std::move(cleanup)){
     require(std::filesystem::create_directory(root_),"Cycle journal output must be a new directory");
     sync_directory(root_.parent_path().empty()?std::filesystem::path("."):root_.parent_path());
   }
@@ -181,9 +183,17 @@ class BootCycleJournal {
     const auto pointer_file=root_/(".latest-"+std::to_string(number));
     write(pointer_file,pointer.data(),pointer.size());
     std::filesystem::rename(pointer_file,root_/"latest.json");sync_directory(root_);sequence_=number;
-    if(number>2)std::filesystem::remove_all(root_/("generation-"+std::to_string(number-2)));
+    if(number>2)cleanup_pending_.push_back(root_/("generation-"+std::to_string(number-2)));
+    cleanup_error_.clear();
+    for(auto at=cleanup_pending_.begin();at!=cleanup_pending_.end();){
+      std::error_code error;
+      if(cleanup_)cleanup_(*at,error);else std::filesystem::remove_all(*at,error);
+      if(error){cleanup_error_=error;++at;}else at=cleanup_pending_.erase(at);
+    }
   }
   unsigned sequence()const{return sequence_;}
+  std::size_t pending_cleanup()const{return cleanup_pending_.size();}
+  const std::error_code& cleanup_error()const{return cleanup_error_;}
  private:
   static void sync_directory(const std::filesystem::path& path){
     const int fd=::open(path.c_str(),O_RDONLY|O_DIRECTORY);require(fd>=0,"Cannot open checkpoint directory");
@@ -197,5 +207,6 @@ class BootCycleJournal {
     const int synced=::fsync(fd),closed=::close(fd);require(synced==0&&closed==0,"Cannot persist checkpoint component");
   }
   std::filesystem::path root_;unsigned sequence_=0;
+  CleanupAction cleanup_;std::vector<std::filesystem::path> cleanup_pending_;std::error_code cleanup_error_;
 };
 } // namespace reverse_pc::guest
