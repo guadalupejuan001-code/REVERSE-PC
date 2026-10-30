@@ -116,6 +116,7 @@ public final class LaplaceActivity extends Activity {
             case "euro":return root+"BTC-EUR/ticker";
             case "noaa":return "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json";
             case "registro":return "https://raw.githubusercontent.com/guadalupejuan001-code/LaPlaceDIG/laplace-registro/seguimiento/resumen.json";
+            case "global_u002":return "https://raw.githubusercontent.com/guadalupejuan001-code/LaPlaceDIG/laplace-registro/universo/global-latest.json";
             case "stock":{
                 String symbol=stockSymbol(p),range=p.optString("range","1mo");
                 if(!range.equals("5d")&&!range.equals("1mo")&&!range.equals("3mo"))throw new IllegalArgumentException("Rango bursátil inválido");
@@ -187,6 +188,20 @@ public final class LaplaceActivity extends Activity {
         result.put("isolated",true);
         return new JSONObject().put("ok",true).put("result",result);
     }
+    private JSONObject nativeU002(JSONObject capture)throws Exception{
+        LaplaceGlobalCompiler.Compiled compiled=LaplaceGlobalCompiler.compile(
+            capture,assetText("laplace/u002-native.xi"));
+        long started=SystemClock.elapsedRealtimeNanos();
+        ResultPacket packet=ResultPacket.parse(
+            NativeRuntime.execute(NativeRuntime.initialize(),compiled.program));
+        long elapsed=SystemClock.elapsedRealtimeNanos()-started;
+        JSONObject core=new JSONObject(NativeRuntime.inspect(packet.state));
+        JSONObject result=LaplaceGlobalCompiler.parse(packet.output,compiled,elapsed,core);
+        result.put("program_sha256",sha(compiled.program));
+        result.put("output_sha256",sha(packet.output));
+        return new JSONObject().put("ok",true).put("result",result);
+    }
+
     private static String sha(String text)throws Exception{
         byte[] b=MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8));
         StringBuilder h=new StringBuilder();for(byte x:b)h.append(String.format("%02x",x&255));return h.toString();
@@ -229,6 +244,9 @@ public final class LaplaceActivity extends Activity {
                     else if("native_x001".equals(operation)){
                         if(payload.length()>LIMIT)throw new IOException("Entrada XN01 excesiva");
                         result=nativeX001(new JSONObject(payload));
+                    }else if("native_u002".equals(operation)){
+                        if(payload.length()>LIMIT)throw new IOException("Entrada U002 excesiva");
+                        result=nativeU002(new JSONObject(payload));
                     }else if("public".equals(operation)){
                         if(payload.length()>1024)throw new IOException("Consulta excesiva");
                         JSONObject q=new JSONObject(payload);result=readPublic(q.getString("source"),q.optJSONObject("params")==null?new JSONObject():q.getJSONObject("params"));

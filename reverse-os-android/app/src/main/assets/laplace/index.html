@@ -51,6 +51,7 @@
     <button data-tab="datos"><span>Datos</span></button>
     <button data-tab="flujo"><span>Flujo</span></button>
     <button data-tab="registro"><span>Registro</span></button>
+    <button data-tab="mundo"><span>Mundo</span></button>
   </nav>
 
   <section id="resumen" class="vista">
@@ -141,6 +142,42 @@
         </select>
       </label></div>
       <div class="tabla"><table><thead><tr id="cabeceraTabla"><th>Objetivo</th><th>Horizonte</th><th>Calculado</th><th>Resultado</th></tr></thead><tbody id="filas"></tbody></table></div>
+    </article>
+  </section>
+
+  <section id="mundo" class="vista" hidden>
+    <article>
+      <div class="titulo">
+        <div>
+          <h3>Estado mundial U002</h3>
+          <p class="subtexto">369 señales selladas → XI → Inverse Ether Memory. Una sola descarga evita consultar 52 fuentes desde el teléfono.</p>
+        </div>
+        <button id="sincronizarMundo" class="primario">Sincronizar 369</button>
+      </div>
+      <p id="mundoEstado">Todavía no hay una captura mundial verificada en este dispositivo.</p>
+    </article>
+
+    <div class="metricas metricas-mundo">
+      <article><small>SEÑALES</small><strong id="mundoSenales">—</strong></article>
+      <article><small>DOMINIOS</small><strong id="mundoDominios">—</strong></article>
+      <article><small>FUENTES</small><strong id="mundoFuentes">—</strong></article>
+      <article><small>XI / ETHER</small><strong id="mundoEther">—</strong></article>
+    </div>
+
+    <div id="mundoGrupos" class="tarjetas"></div>
+
+    <article>
+      <h3>Prueba nativa</h3>
+      <dl class="filas-globales">
+        <div><dt>Registros U002</dt><dd id="mundoRegistros">—</dd></div>
+        <div><dt>Bytes materializados</dt><dd id="mundoBytes">—</dd></div>
+        <div><dt>Excepciones Inverse Ether Memory</dt><dd id="mundoOverrides">—</dd></div>
+        <div><dt>Qubits implícitos</dt><dd id="mundoQubits">—</dd></div>
+        <div><dt>Round-trip exacto</dt><dd id="mundoRoundtrip">—</dd></div>
+        <div><dt>Snapshot</dt><dd id="mundoHash">—</dd></div>
+      </dl>
+      <p class="subtexto">U002 queda disponible como estado mundial. Todavía no modifica M001/XN01: primero debe acumular historia y demostrar mejora fuera de muestra.</p>
+      <button id="exportarMundo" disabled>Exportar estado mundial</button>
     </article>
   </section>
 

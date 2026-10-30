@@ -4,6 +4,7 @@ import {parseStockChart,BOLSA_LAB} from './x001.mjs';
 
 const UPSTREAM_M001='06ebce4bddf25d615cefd85ed24081f37504a492';
 const UPSTREAM_BOLSA='08cafb094a5c0f81253509eff412214dd526b808';
+const UPSTREAM_U002='533c69bddd2c76d7f3619b97152a7a7e609aa613';
 const ASSETS=Object.freeze({
   'BTC-USD':{label:'Bitcoin',short:'BTC',kind:'crypto',currency:'USD',model:'M001+XN01'},
   SPY:{label:'S&P 500 ETF',short:'SPY',kind:'stock',currency:'USD',model:'XN01'},
@@ -15,7 +16,7 @@ const $=x=>document.getElementById(x),need=(c,m)=>{if(!c)throw Error(m)};
 const money=(n,c='USD')=>Number.isFinite(n)?new Intl.NumberFormat('es-MX',{style:'currency',currency:c,maximumFractionDigits:2}).format(n):'—';
 const date=t=>Number.isFinite(Date.parse(t))?new Intl.DateTimeFormat('es-MX',{dateStyle:'short',timeStyle:'medium'}).format(new Date(t)):'—';
 const percent=n=>Number.isFinite(n)?(100*n).toFixed(1)+' %':'—';
-let serial=0,busy=false,last=null,remote=null;const readings=new Map();
+let serial=0,busy=false,last=null,remote=null,globalState=null,globalBusy=false;const readings=new Map();
 const pending=new Map(),statuses={};
 
 window.LaplaceHost={complete(id,result){
@@ -89,6 +90,65 @@ async function verifySnapshot(s){
     need(body.market.asset===body.stock_meta?.symbol,'Símbolo bursátil incoherente');
   }
   return s;
+}
+async function verifyGlobalCapture(c){
+  const {capture_sha256,...body}=c??{};
+  need(body.schema==='laplace-universo-global-u002-v1','Captura mundial U002 incompatible');
+  need(typeof capture_sha256==='string'&&/^[a-f0-9]{64}$/.test(capture_sha256),'Sello U002 ausente');
+  need(capture_sha256===await huellaContenido(body),'La captura mundial fue modificada');
+  const cov=body.coverage,state=body.universal_state;
+  need(cov?.known_signals===369&&cov.failed_sources===0&&cov.observed_sources===52,'U002 no contiene las 369 señales completas');
+  need(state?.known_states===369&&Array.isArray(state.states)&&state.states.length===369,'Snapshot U002 incompleto');
+  need(body.prediction_inputs_enabled===false&&body.automatic_trading===false,'U002 no debe activar predicción/trading automáticamente');
+  need(Number.isFinite(Date.parse(body.at))&&Date.parse(body.at)<=Date.now()+60000,'Fecha U002 inválida');
+  return c;
+}
+function verifyGlobalProof(p,capture){
+  need(p?.schema==='laplace-u002-native-xi-v1'&&p.backend==='XI/Ether · NativeRuntime','Prueba U002 nativa incompatible');
+  need(p.records===369&&p.exact_roundtrip===true&&p.active_qubits===0,'U002 no completó el round-trip nativo');
+  need(p.snapshot_sha256===capture.universal_state.snapshot_sha256,'U002 nativo no corresponde al snapshot recibido');
+  need(p.capture_sha256===capture.capture_sha256&&p.prediction_generated===false,'Metadatos U002 nativos incoherentes');
+  return p;
+}
+async function syncGlobal(){
+  if(globalBusy)return;globalBusy=true;$('sincronizarMundo').disabled=true;$('sincronizarMundo').textContent='Sincronizando…';alert();
+  try{
+    const response=await host('public',{source:'global_u002',params:{}});
+    const capture=await verifyGlobalCapture(JSON.parse(response.text));
+    const native=await host('native_u002',capture),proof=verifyGlobalProof(native.result,capture);
+    globalState={capture,proof,received_at:response.received_at,upstream:UPSTREAM_U002};
+    try{localStorage.setItem('laplace-u002-global-v1',JSON.stringify(globalState));}catch{}
+    renderGlobal();
+  }catch(e){alert('U002: '+e.message+' Se conserva la última captura mundial válida.');}
+  finally{globalBusy=false;$('sincronizarMundo').disabled=false;$('sincronizarMundo').textContent='Sincronizar 369';}
+}
+function renderGlobal(){
+  const groups=$('mundoGrupos');groups.replaceChildren();
+  if(!globalState){
+    $('mundoEstado').textContent='Todavía no hay una captura mundial verificada en este dispositivo.';
+    for(const id of ['mundoSenales','mundoDominios','mundoFuentes','mundoEther','mundoRegistros','mundoBytes','mundoOverrides','mundoQubits','mundoRoundtrip','mundoHash'])$(id).textContent='—';
+    $('exportarMundo').disabled=true;return;
+  }
+  const {capture,proof,received_at}=globalState,cov=capture.coverage;
+  const age=Math.max(0,Date.now()-Date.parse(capture.at)),minutes=Math.floor(age/60000);
+  $('mundoEstado').textContent='Captura: '+date(capture.at)+' · recibida: '+date(received_at)+' · '+(minutes<60?minutes+' min de antigüedad':Math.floor(minutes/60)+' h de antigüedad')+'.';
+  $('mundoSenales').textContent=cov.known_signals+' / 369';
+  $('mundoDominios').textContent=String(cov.domains);
+  $('mundoFuentes').textContent=cov.observed_sources+' / 52';
+  $('mundoEther').textContent=proof.exact_roundtrip?'Exacto':'Revisar';
+  const labels={markets:'Mercados globales',crypto:'Cripto',macro:'Macroeconomía',weather:'Clima mundial',physical:'Señales físicas'};
+  for(const g of cov.groups??[]){
+    const el=document.createElement('article'),h=document.createElement('h3'),strong=document.createElement('strong'),p=document.createElement('p');
+    h.textContent=labels[g.group]??g.group;strong.textContent=g.signals+' señales';p.textContent=g.sources_ok+' fuentes observadas · '+g.sources_failed+' fallidas';
+    el.append(h,strong,p);groups.append(el);
+  }
+  $('mundoRegistros').textContent=String(proof.records);
+  $('mundoBytes').textContent=proof.materialized_bytes.toLocaleString('es-MX');
+  $('mundoOverrides').textContent=proof.inverse_memory_overrides.toLocaleString('es-MX');
+  $('mundoQubits').textContent=String(proof.active_qubits);
+  $('mundoRoundtrip').textContent=proof.exact_roundtrip?'Sí · byte por byte':'No';
+  $('mundoHash').textContent=proof.snapshot_sha256;
+  $('exportarMundo').disabled=false;
 }
 async function updateBTC(){
   const extrasTask=Promise.all(selected().map(async source=>{try{return {source,status:'observed',...(await pub(source))};}catch{return {source,status:'unavailable'};}}));
@@ -265,14 +325,19 @@ function buildNodes(){
 }
 function resetNodes(){buildNodes();for(const key of Object.keys(statuses)){const required=isBTC()?selected().includes(key)||['ticker','candles'].includes(key):true;status(key,required?'espera':'omitida');}}
 function effects(){$('escena').classList.toggle('con-efectos',$('animacion').checked&&!document.hidden&&!matchMedia('(prefers-reduced-motion: reduce)').matches);}
-function navigate(id){for(const b of document.querySelectorAll('[data-tab]'))b.toggleAttribute('aria-current',b.dataset.tab===id);for(const s of document.querySelectorAll('.vista'))s.hidden=s.id!==id;if(id==='resumen')drawChart();else if(id==='datos')renderFactors();else if(id==='registro')renderRegister();else if(id==='flujo')buildNodes();}
+function navigate(id){for(const b of document.querySelectorAll('[data-tab]'))b.toggleAttribute('aria-current',b.dataset.tab===id);for(const s of document.querySelectorAll('.vista'))s.hidden=s.id!==id;if(id==='resumen')drawChart();else if(id==='datos')renderFactors();else if(id==='registro')renderRegister();else if(id==='flujo')buildNodes();else if(id==='mundo')renderGlobal();}
 for(const btn of document.querySelectorAll('[data-tab]'))btn.onclick=()=>navigate(btn.dataset.tab);
 $('animacion').onchange=effects;document.addEventListener('visibilitychange',()=>{effects();statusText();});effects();
 $('giro').oninput=()=>{$('nodos').style.setProperty('--giro',$('giro').value+'deg');};
-$('actualizar').onclick=update;$('horizonte').onchange=render;$('historia').onchange=drawChart;$('leerRegistro').onclick=readRemote;$('filtro').onchange=renderRegister;
-$('exportar').onclick=()=>{const s=current();if(s)window.LaplaceNative?.export(JSON.stringify(s));};$('volver').onclick=()=>window.LaplaceNative?.close();
+$('actualizar').onclick=update;$('horizonte').onchange=render;$('historia').onchange=drawChart;$('leerRegistro').onclick=readRemote;$('filtro').onchange=renderRegister;$('sincronizarMundo').onclick=syncGlobal;
+$('exportar').onclick=()=>{const s=current();if(s)window.LaplaceNative?.export(JSON.stringify(s));};$('exportarMundo').onclick=()=>{if(globalState)window.LaplaceNative?.export(JSON.stringify(globalState));};$('volver').onclick=()=>window.LaplaceNative?.close();
 $('activo').onchange=()=>{adaptMode();render();try{localStorage.setItem('laplace-activo-v2',assetId());}catch{}};
 for(const c of document.querySelectorAll('[data-source]'))c.onchange=()=>{renderFactors();try{localStorage.setItem('laplace-fuentes-v1',JSON.stringify(selected()));}catch{}};
 try{const a=localStorage.getItem('laplace-activo-v2');if(ASSETS[a])$('activo').value=a;const prefs=JSON.parse(localStorage.getItem('laplace-fuentes-v1'));if(Array.isArray(prefs))for(const c of document.querySelectorAll('[data-source]'))c.checked=prefs.includes(c.dataset.source);}catch{}
 adaptMode();setInterval(statusText,1000);window.addEventListener('resize',()=>{drawChart();buildNodes();});
+try{
+  const raw=localStorage.getItem('laplace-u002-global-v1');
+  if(raw){const savedGlobal=JSON.parse(raw),capture=await verifyGlobalCapture(savedGlobal.capture);verifyGlobalProof(savedGlobal.proof,capture);globalState={...savedGlobal,capture};}
+}catch{try{localStorage.removeItem('laplace-u002-global-v1');}catch{}}
+renderGlobal();
 try{const r=await host('read');if(r.text){remember(await verifySnapshot(JSON.parse(r.text)));render();}}catch(e){alert(e.message);}
