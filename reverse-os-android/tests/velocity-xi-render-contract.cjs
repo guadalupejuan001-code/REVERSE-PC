@@ -90,9 +90,9 @@ try{
   assert(profile>0&&profile<4000000&&yaw>=0&&yaw<4096);
   let script=header;
   for(let i=0;i<4;i++)
-    script+='store8 '+(104+i)+' '+((profile >>> (8*i))&255)+'\\n';
-  script+='store8 108 '+(yaw&255)+'\\n';
-  script+='store8 109 '+((yaw>>>8)&255)+'\\n';
+    script+='store8 '+(104+i)+' '+((profile >>> (8*i))&255)+'\n';
+  script+='store8 108 '+(yaw&255)+'\n';
+  script+='store8 109 '+((yaw>>>8)&255)+'\n';
   const file=path.join(temp,'position-'+zCm+'-'+yaw+'.xi');
   const dest=path.join(temp,'position-'+zCm+'-'+yaw+'.rvp');
   fs.writeFileSync(file,script);
