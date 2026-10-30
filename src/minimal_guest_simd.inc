@@ -146,6 +146,19 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
       value.lane(n,lane_bits,result);
     }commit(value);return true;
   }
+  if(shift_immediate&&immediate_shift==0x0f00a400u){ // SSHLL/USHLL{2}, including SXTL/UXTL aliases.
+    const unsigned encoded=(i>>16)&127;if(encoded>=64)return false; // immh[3] is reserved.
+    unsigned source_bits=8;while(source_bits*2<=encoded)source_bits*=2;
+    const unsigned shift=encoded-source_bits,lanes=64/source_bits,part=q?lanes:0;
+    fp_access();const auto source=floating_.v[rn];Vector128 value;
+    for(unsigned n=0;n<lanes;n++){
+      auto x=source.lane(part+n,source_bits);
+      if(!u&&(x&(UINT64_C(1)<<(source_bits-1))))x|=~low_mask(source_bits);
+      value.lane(n,2*source_bits,x<<shift); // Unsigned host shift, defined also for negative guest lanes.
+    }
+    // Q selects the SOURCE half, never the destination width. Copy before write handles Rd==Rn.
+    floating_.v[rd]=value;return true;
+  }
   if((i&0x9f20fc00u)==0x0e204400u){ // SSHL/USHL: the signed low byte determines each lane's shift.
     if(size==3&&!q)return false;fp_access();const auto source=floating_.v[rn],shifts=floating_.v[rm];Vector128 value;
     for(unsigned n=0;n<width/element;n++){

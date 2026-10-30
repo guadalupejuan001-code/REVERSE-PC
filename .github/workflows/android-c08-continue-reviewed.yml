@@ -1,11 +1,15 @@
-name: Android C08 reviewed C07 checkpoint continuation
+name: Android C09 exact UXTL repair and C08 continuation
 on:
   workflow_dispatch:
   push:
     branches: ['fix/android-c08-reviewed-resume-20261030']
     paths:
       - '.github/workflows/android-c08-continue-reviewed.yml'
-      - 'experiments/android-c08-reviewed-c07.json'
+      - 'experiments/android-c09-reviewed-c08.json'
+      - 'src/minimal_guest_simd.inc'
+      - 'tests/minimal_guest_widen_shift_test.cpp'
+      - 'tools/android_c09_result.mjs'
+      - 'tests/android_c09_result.test.mjs'
       - 'src/guest_boot_resume_proof.hpp'
       - 'src/guest_android_init_proof.hpp'
       - 'src/guest_boot_cycle.hpp'
@@ -22,7 +26,7 @@ concurrency:
   group: android-c08-reviewed-${{ github.ref }}
   cancel-in-progress: false
 jobs:
-  c08-reviewed-continuation:
+  c09-exact-continuation:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -41,24 +45,22 @@ jobs:
           node-version: '24'
       - uses: actions/download-artifact@v4
         with:
-          name: reverse-c07-proven-post-init
-          run-id: 40975381521
+          name: reverse-c08-reviewed-c07-continuation
+          run-id: 40992715830
           github-token: '${{ github.token }}'
-          path: input-c07
-      - name: Validate the original C07 before allowing any guest execution
-        env:
-          C07_REPORT: input-c07/current.json
-          C07_STATE: input-c07/current.rvg
+          path: input-c08
+      - name: Verify the exact failed C08 before repairing its next instruction
         run: |
           set -euo pipefail
-          mkdir -p evidence/c08 build
-          cp experiments/android-c08-reviewed-c07.json evidence/c08/source-pin.json
-          cp input-c07/current.json evidence/c08/source-c07-report.json
-          git rev-parse HEAD > evidence/c08/runner-commit.txt
-          node tools/android_verified_c07_source.mjs "$C07_STATE" "$C07_REPORT" > evidence/c08/source-audit.json
-          node --test tests/android_verified_c07_source.test.mjs tests/android_c08_result.test.mjs > evidence/c08/evidence-regressions.tap
-          g++ -std=c++17 -O1 -Wall -Wextra -Werror -Wno-missing-field-initializers -fsanitize=undefined -fno-sanitize-recover=all -Isrc tests/guest_boot_resume_proof_test.cpp -o build/c08-proof-test
-          build/c08-proof-test > evidence/c08/resume-proof-tests.json
+          mkdir -p evidence/c09 build
+          cp experiments/android-c09-reviewed-c08.json evidence/c09/source-pin.json
+          cp input-c08/current.json evidence/c09/source-c08-report.json
+          cp input-c08/source-c07-report.json evidence/c09/source-c07-report.json
+          git rev-parse HEAD > evidence/c09/runner-commit.txt
+          node tools/android_c09_result.mjs verify-source input-c08 > evidence/c09/source-audit.json
+          C08_DIR=input-c08 node --test tests/android_c09_result.test.mjs > evidence/c09/evidence-regressions.tap
+          g++ -std=c++17 -O1 -fsanitize=undefined -fno-sanitize-recover=all -Isrc tests/guest_boot_resume_proof_test.cpp -o build/c09-proof-test
+          build/c09-proof-test > evidence/c09/resume-proof-tests.json
       - uses: actions/download-artifact@v4
         with:
           name: reverse-android-c03-genuine-partition-disk
@@ -68,44 +70,44 @@ jobs:
       - name: Build existing native engine and repeat its integration suites
         run: |
           set -euo pipefail
-          cmake -S . -B build/cmake-c08 -DETHER_SOURCE_DIR="$PWD/deps/mundo-x" -DCMAKE_BUILD_TYPE=Release > evidence/c08/cmake-configure.txt
+          cmake -S . -B build/cmake-c09 -DETHER_SOURCE_DIR="$PWD/deps/mundo-x" -DCMAKE_BUILD_TYPE=Release > evidence/c09/cmake-configure.txt
           python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
           python3 scripts/build-softfloat.py
-          for suite in guest_boot_cycle minimal_guest_el0_cache minimal_guest_fp minimal_guest_crc; do
-            g++ -std=c++17 -O1 -pthread -fsanitize=undefined -fno-sanitize-recover=all -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc "tests/${suite}_test.cpp" build/softfloat/libreverse_softfloat.a -o "build/c08-$suite"
-            "build/c08-$suite" > "evidence/c08/$suite-tests.json"
+          for suite in guest_boot_cycle minimal_guest_el0_cache minimal_guest_fp minimal_guest_crc minimal_guest_widen_shift; do
+            g++ -std=c++17 -O1 -pthread -fsanitize=undefined -fno-sanitize-recover=all -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc "tests/${suite}_test.cpp" build/softfloat/libreverse_softfloat.a -o "build/c09-$suite"
+            "build/c09-$suite" > "evidence/c09/$suite-tests.json"
           done
-          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tools/guest_pci_cycle.cpp build/softfloat/libreverse_softfloat.a -o build/c08-cycle
-          mkdir -p evidence/c08/host-tools
-          cp build/c08-cycle evidence/c08/host-tools/
-          git archive --format=tar.gz HEAD > evidence/c08/host-tools/runner-source.tar.gz
-          git -C deps/mundo-x archive --format=tar.gz HEAD > evidence/c08/host-tools/ether-source.tar.gz
-          sha256sum build/c08-cycle > evidence/c08/host-tools/runner-sha256.txt
-      - name: Resume C07 in the original native CPU without restarting C06
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tools/guest_pci_cycle.cpp build/softfloat/libreverse_softfloat.a -o build/c09-cycle
+          mkdir -p evidence/c09/host-tools
+          cp build/c09-cycle evidence/c09/host-tools/
+          git archive --format=tar.gz HEAD > evidence/c09/host-tools/runner-source.tar.gz
+          git -C deps/mundo-x archive --format=tar.gz HEAD > evidence/c09/host-tools/ether-source.tar.gz
+          sha256sum build/c09-cycle > evidence/c09/host-tools/runner-sha256.txt
+      - name: Resume the exact rejected C08 instruction in the repaired native CPU
         run: |
           set -euo pipefail
           DISK=$(find disk-input -name android-slot-a.raw -print -quit)
           test -n "$DISK"
-          SHA=$(node -p 'require("./experiments/android-c08-reviewed-c07.json").checkpoint_sha256')
-          WALL=$(node -p 'require("./experiments/android-c08-reviewed-c07.json").wall_ms')
-          STEPS=$(node -p 'require("./experiments/android-c08-reviewed-c07.json").instructions_budget')
-          CHUNK=$(node -p 'require("./experiments/android-c08-reviewed-c07.json").chunk')
-          timeout --signal=TERM --kill-after=30s 360s build/c08-cycle input-c07/current.rvg "$DISK" evidence/c08/journal "$WALL" "$SHA" --chunk="$CHUNK" --instructions="$STEPS" --continue-verified-init=input-c07/current.json > evidence/c08/result.json 2> >(tee evidence/c08/progress.log >&2)
+          SHA=$(node -p 'require("./experiments/android-c09-reviewed-c08.json").checkpoint_sha256')
+          WALL=$(node -p 'require("./experiments/android-c09-reviewed-c08.json").wall_ms')
+          STEPS=$(node -p 'require("./experiments/android-c09-reviewed-c08.json").instructions_budget')
+          CHUNK=$(node -p 'require("./experiments/android-c09-reviewed-c08.json").chunk')
+          timeout --signal=TERM --kill-after=30s 240s build/c09-cycle input-c08/current.rvg "$DISK" evidence/c09/journal "$WALL" "$SHA" --chunk="$CHUNK" --instructions="$STEPS" --continue-verified-init=input-c08/current.json > evidence/c09/result.json 2> >(tee evidence/c09/progress.log >&2)
       - name: Preserve the committed state and classify the actual outcome
         if: always()
         run: |
           set -euo pipefail
-          mkdir -p evidence/c08
-          if test -f evidence/c08/journal/latest.json; then
-            node tools/android_c08_result.mjs evidence/c08 input-c07/current.json > evidence/c08/result-classification.json
+          mkdir -p evidence/c09
+          if test -f evidence/c09/journal/latest.json; then
+            node tools/android_c09_result.mjs preserve evidence/c09 > evidence/c09/result-classification.json
           else
-            printf '%s\n' '{"status":"no_native_checkpoint_committed","android_display_verified":false}' > evidence/c08/milestone.json
+            printf '%s\n' '{"status":"no_native_checkpoint_committed","android_display_verified":false}' > evidence/c09/milestone.json
             exit 1
           fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: reverse-c08-reviewed-c07-continuation
-          path: evidence/c08/
+          name: reverse-c09-uxtl-exact-continuation
+          path: evidence/c09/
           if-no-files-found: error
           retention-days: 14

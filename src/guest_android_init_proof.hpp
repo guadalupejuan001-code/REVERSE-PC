@@ -29,17 +29,37 @@ inline BootCycleEntryProof android_c06_entry_proof(const MinimalGuest& guest){
 // No success flag, user-supplied hash, or arbitrary later checkpoint is accepted.
 inline constexpr const char* android_c07_checkpoint_sha256="845fb40da060147a23449ecfd4e7a3d8b11def8d66696093c6e6728798b82694";
 inline constexpr const char* android_c07_report_sha256="5d426d1fec117b8ef955bbbccb0e944586f36c6fe8594d9c684575dd0067e574";
-enum class AndroidResumeSource { c06, c07 };
+// C08 stopped BEFORE the unsupported UXTL, preserving its exact successful prefix.
+// Reviewed run 40992715830 / artifact 12949654097; never pretend it was a clean boot.
+inline constexpr const char* android_c08_checkpoint_sha256="547b7245def6e27a60201744a5837e8bbb0a4c2e9bf6eab4b2ecefa61dde9397";
+inline constexpr const char* android_c08_report_sha256="0a729b9806ce84c68e4775553d6eac25b7e63934c47d2263c470694dbb8c766a";
+enum class AndroidResumeSource { c06, c07, c08 };
 inline AndroidResumeSource android_check_resume_artifacts(const Bytes& state,const Bytes& report){
   const auto state_sha=GuestSha256::hash(state),report_sha=GuestSha256::hash(report);
   if(state_sha==android_c06_checkpoint_sha256&&report_sha==android_c06_report_sha256)
     return AndroidResumeSource::c06;
+  if(state_sha==android_c08_checkpoint_sha256&&report_sha==android_c08_report_sha256)
+    return AndroidResumeSource::c08;
   require(state_sha==android_c07_checkpoint_sha256&&report_sha==android_c07_report_sha256,
           "Unreviewed Android continuation state/report pair");
   return AndroidResumeSource::c07;
 }
 inline BootCycleEntryProof android_resume_entry_proof(const MinimalGuest& guest,AndroidResumeSource source){
   if(source==AndroidResumeSource::c06)return android_c06_entry_proof(guest);
+  if(source==AndroidResumeSource::c08){
+    require(guest.machine().enabled&&!guest.machine().el&&!guest.registers().halted&&!guest.machine().waiting,
+            "Not the active C08 EL0 instruction boundary");
+    require(guest.registers().instructions==UINT64_C(6450570741)&&guest.registers().pc==0x4cc358,
+            "C08 instruction count or PC differs");
+    const auto& clock=guest.machine().counter_latency;
+    require(clock.enabled&&clock.instructions_per_tick==64&&clock.subtick==21&&clock.reads==6434724,
+            "C08 original counter boundary differs");
+    require(GuestSha256::hash(Bytes(clock.seed.begin(),clock.seed.end()))==android_c06_counter_seed_sha256,
+            "C08 original counter stream differs");
+    require(guest.read(guest.physical_address(guest.registers().pc,false,true),4)==0x2f10a442,
+            "C08 rejected instruction differs");
+    return {android_c08_checkpoint_sha256,UINT64_C(6450570741),0x4cc358,0,android_c06_checkpoint_sha256};
+  }
   require(source==AndroidResumeSource::c07,"Unknown reviewed Android continuation source");
   require(guest.machine().enabled&&guest.machine().el==1&&!guest.registers().halted&&!guest.machine().waiting,
           "Not the active C07 EL1 continuation boundary");
