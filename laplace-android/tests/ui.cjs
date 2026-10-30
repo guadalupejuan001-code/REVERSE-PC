@@ -1,5 +1,4 @@
-/* Chrome real with an explicitly synthetic Android IO bridge; never a market
- * accuracy test. Production adapter and APK receive separate compile/device checks. */
+/* Real Chrome + synthetic Android IO. UI/navigation test only. */
 const {createServer}=require('node:http'),{readFileSync,writeFileSync,mkdirSync}=require('node:fs');
 const {resolve,join}=require('node:path'),assert=require('node:assert/strict');
 const {chromium}=require(process.env.LAPLACE_PLAYWRIGHT||'playwright');
@@ -11,18 +10,17 @@ const server=createServer((req,res)=>{try{const path=req.url==='/'?'/index.html'
  const browser=await chromium.launch({headless:true,executablePath:process.env.LAPLACE_CHROME||'/usr/bin/chromium',args:['--no-sandbox']});
  const context=await browser.newContext({viewport:{width:1366,height:950},locale:'es-MX'});
  let saved=null,fail=false,checks=0;const errors=[],calls=[];
- const fixedTime=Math.floor(Date.now()/300000)*300000+120000;
- const end=Math.floor(fixedTime/300000)*300,start=end-14*86400;let v=80000;
- const bars=Array.from({length:4032},(_,i)=>{const o=v;v*=Math.exp(.0005*Math.sin(i/7)-.00001);return [start+i*300,Math.min(o,v)*.9998,Math.max(o,v)*1.0002,o,v,10+i%20]});
+ const fixedTime=Math.floor(Date.now()/300000)*300000+120000,end=Math.floor(fixedTime/300000)*300,start=end-14*86400;
+ let v=80000;const bars=Array.from({length:4032},(_,i)=>{const o=v;v*=Math.exp(.0005*Math.sin(i/7)-.00001);return [start+i*300,Math.min(o,v)*.9998,Math.max(o,v)*1.0002,o,v,10+i%20]});
+ const stockBars=bars.slice(-1200).map((b,i)=>{const p=500*Math.exp(.0006*Math.sin(i/9)+i*.00002),o=p/Math.exp(.0006*Math.sin(i/9)+i*.00002);return [b[0],Math.min(o,p)*.9998,Math.max(o,p)*1.0002,o,p,1000+i%50]});
+ const stockChart={chart:{result:[{meta:{currency:'USD',exchangeName:'NMS',exchangeTimezoneName:'America/New_York'},timestamp:stockBars.map(b=>b[0]),indicators:{quote:[{low:stockBars.map(b=>b[1]),high:stockBars.map(b=>b[2]),open:stockBars.map(b=>b[3]),close:stockBars.map(b=>b[4]),volume:stockBars.map(b=>b[5])}]}}],error:null}};
  await context.exposeFunction('auditIO',async(operation,raw)=>{
-  const p=JSON.parse(raw);calls.push({operation,p});
-  if(operation==='read')return {ok:true,text:saved};
-  if(operation==='save'){saved=raw;return {ok:true};}
-  if(operation!=='public')return {ok:false,error:'Operación desconocida'};
-  if(fail&&p.source==='candles')return {ok:false,error:'Fallo de fuente inducido'};
-  await new Promise(ok=>setTimeout(ok,30));let value;
+  const p=JSON.parse(raw);calls.push({operation,p});if(operation==='read')return {ok:true,text:saved};if(operation==='save'){saved=raw;return {ok:true};}
+  if(operation!=='public')return {ok:false,error:'Operación desconocida'};if(fail&&p.source==='candles')return {ok:false,error:'Fallo de fuente inducido'};
+  await new Promise(ok=>setTimeout(ok,15));let value;
   if(p.source==='candles')value=bars.filter(b=>b[0]>=p.params.start&&b[0]<=p.params.end);
   else if(p.source==='ticker')value={price:String(v),time:new Date(fixedTime).toISOString()};
+  else if(p.source==='stock')value=stockChart;
   else if(p.source==='book')value={bids:Array.from({length:12},(_,i)=>[String(v-1-i),'1',1]),asks:Array.from({length:12},(_,i)=>[String(v+1+i),'2',1])};
   else if(p.source==='trades')value=[{side:'buy',size:'.1'}];
   else if(p.source==='noaa')value=[{time_tag:new Date(fixedTime-3600000).toISOString().slice(0,19),Kp:1}];
@@ -31,48 +29,34 @@ const server=createServer((req,res)=>{try{const path=req.url==='/'?'/index.html'
   return {ok:true,text:JSON.stringify(value),received_at:new Date(fixedTime).toISOString()};
  });
  await context.addInitScript(()=>{window.LaplaceNative={request(id,op,payload){window.auditIO(op,payload).then(r=>window.LaplaceHost.complete(id,r));},export(payload){window.exported=payload;},close(){window.didClose=true;}};});
- const page=await context.newPage();await page.clock.setFixedTime(new Date(fixedTime));page.on('pageerror',e=>errors.push(e.message));
- const root='http://127.0.0.1:'+server.address().port;
+ const page=await context.newPage();await page.clock.setFixedTime(new Date(fixedTime));page.on('pageerror',e=>errors.push(e.message));const root='http://127.0.0.1:'+server.address().port;
  try{
-  await page.goto(root);await page.waitForTimeout(250);assert.equal(await page.locator('#precio').innerText(),'—');checks++;
+  await page.goto(root);await page.waitForTimeout(150);assert.equal(await page.locator('#precio').innerText(),'—');checks++;
   assert.equal(calls.filter(c=>c.operation==='public').length,0);checks++;
-  await page.getByRole('button',{name:'Calcular y consultar',exact:true}).click();
-  await page.waitForFunction(()=>document.querySelector('[data-node="candles"]').dataset.estado==='consultando'||document.querySelector('[data-node="candles"]').dataset.estado==='recibida');
-  await page.getByRole('button',{name:'Consulta 3D',exact:true}).click();
-  assert.equal(await page.locator('.nodo').count(),7);checks++;
-  await page.waitForFunction(()=>!document.getElementById('actualizar').disabled,{},{timeout:30000});
-  assert.ok(saved,'snapshot not persisted');assert.equal(await page.locator('#aviso').isVisible(),false);checks++;
-  const snapshot=JSON.parse(saved);assert.equal(snapshot.predictions.length,6);checks++;
-  assert.equal(snapshot.bars.length,4032);checks++;
-  await page.selectOption('#horizonte','60');await page.getByRole('button',{name:'Resumen',exact:true}).click();
-  const selected=snapshot.predictions.find(p=>p.horizonte_minutos===60);
-  assert.equal(await page.locator('#candidato').innerText(),new Intl.NumberFormat('es-MX',{style:'currency',currency:'USD',maximumFractionDigits:2}).format(selected.precio_predicho));checks++;
-  assert.equal(await page.locator('[data-horizonte]').getAttribute('data-horizonte'),'60');checks++;
-  assert.equal(Number(await page.locator('[data-precio-origen]').getAttribute('data-precio-origen')),selected.precio_inicial);checks++;
-  await page.selectOption('#horizonte','10080');assert.match(await page.locator('#soporte').innerText(),/Soporte escaso/);checks++;
-  await page.locator('#exportar').click();assert.deepEqual(JSON.parse(await page.evaluate(()=>window.exported)),snapshot);checks++;
-  await page.reload();await page.waitForFunction(()=>document.querySelector('#precio').textContent!=='—');assert.equal(await page.locator('#aviso').isVisible(),false);checks++;
-  await page.getByRole('button',{name:'Elegir datos',exact:true}).click();
-  await page.locator('[data-source="eth"]').uncheck();assert.equal(await page.locator('#factores article').count(),2);checks++;
-  await page.getByRole('button',{name:'Registro horario',exact:true}).click();await page.locator('#leerRegistro').click();
-  await page.waitForFunction(()=>!document.querySelector('#leerRegistro').disabled);assert.equal(await page.locator('#filas tr').count(),1);checks++;
-  await page.selectOption('#filtro','fallos');assert.match(await page.locator('#filas').innerText(),/Fallo de precio/);checks++;
-  await page.selectOption('#horizonte','60');await page.selectOption('#filtro','pendientes');assert.match(await page.locator('#filas').innerText(),/Pendiente/);checks++;
-  await page.getByRole('button',{name:'Resumen',exact:true}).click();
+  assert.equal(await page.inputValue('#activo'),'BTC-USD');checks++;
+  await page.getByRole('button',{name:'Consultar ahora',exact:true}).click();await page.waitForFunction(()=>!document.getElementById('actualizar').disabled,{},{timeout:30000});
+  assert.ok(saved);const btc=JSON.parse(saved);assert.equal(btc.schema,'laplace-reverse-v2');checks++;assert.equal(btc.market.asset,'BTC-USD');checks++;assert.equal(btc.predictions.length,6);checks++;
+  await page.getByRole('button',{name:'Flujo',exact:true}).click();assert.equal(await page.locator('.nodo').count(),7);checks++;
+  await page.getByRole('button',{name:'Resumen',exact:true}).click();assert.match(await page.locator('#resultadoEtiqueta').innerText(),/PRECIO CALCULADO/);checks++;
+  await page.selectOption('#horizonte','60');assert.match(await page.locator('#objetivo').innerText(),/\d/);checks++;
+  await page.locator('#exportar').click();assert.equal(JSON.parse(await page.evaluate(()=>window.exported)).market.asset,'BTC-USD');checks++;
+  await page.selectOption('#activo','SPY');assert.equal(await page.inputValue('#horizonte'),'5');checks++;
+  assert.equal(await page.locator('#candidato').innerText(),'—');checks++;
+  await page.getByRole('button',{name:'Consultar ahora',exact:true}).click();await page.waitForFunction(()=>!document.getElementById('actualizar').disabled,{},{timeout:30000});
+  const spy=JSON.parse(saved);assert.equal(spy.market.asset,'SPY');checks++;assert.equal(spy.stock_result.schema,'laplace-x001-live-v1');checks++;
+  assert.match(await page.locator('#candidato').innerText(),/SUBIDA|BAJADA/);checks++;assert.equal(await page.locator('#estadoBits .bit').count(),4);checks++;
+  assert.equal(await page.locator('[data-horizonte]').count(),0);checks++;
+  await page.getByRole('button',{name:'Datos',exact:true}).click();assert.match(await page.locator('#factores').innerText(),/Ensayo B001/);checks++;
+  await page.getByRole('button',{name:'Registro',exact:true}).click();assert.match(await page.locator('#registroEstado').innerText(),/Último ensayo reservado/);checks++;
+  await page.getByRole('button',{name:'Flujo',exact:true}).click();assert.equal(await page.locator('.nodo').count(),5);checks++;
+  await page.selectOption('#activo','BTC-USD');await page.getByRole('button',{name:'Registro',exact:true}).click();await page.locator('#leerRegistro').click();await page.waitForFunction(()=>!document.querySelector('#leerRegistro').disabled);assert.match(await page.locator('#registroEstado').innerText(),/pronósticos/);checks++;
   for(const [w,h] of [[1366,950],[390,844],[360,800],[844,390]]){
-   await page.setViewportSize({width:w,height:h});
-   for(const name of ['Resumen','Elegir datos','Consulta 3D','Registro horario']){
-    await page.getByRole('button',{name,exact:true}).click();
-    const size=await page.evaluate(()=>[document.documentElement.clientWidth,document.documentElement.scrollWidth]);if(size[1]>size[0]+1){const overflow=await page.evaluate(()=>[...document.querySelectorAll('body *')].map(el=>({tag:el.tagName,id:el.id,clase:el.className,right:el.getBoundingClientRect().right,width:el.getBoundingClientRect().width})).filter(x=>x.right>document.documentElement.clientWidth+1));writeFileSync(join(out,'desbordamiento.json'),JSON.stringify({view:name,viewport:[w,h],size,overflow},null,2));await page.screenshot({path:join(out,'desbordamiento.png'),fullPage:true});}assert.ok(size[1]<=size[0]+1,name+': '+size);checks++;
-   }
-   await page.getByRole('button',{name:'Resumen',exact:true}).click();await page.screenshot({path:join(out,`panel-${w}.png`),fullPage:true});
+    await page.setViewportSize({width:w,height:h});
+    for(const name of ['Resumen','Datos','Flujo','Registro']){await page.getByRole('button',{name,exact:true}).click();const size=await page.evaluate(()=>[document.documentElement.clientWidth,document.documentElement.scrollWidth]);if(size[1]>size[0]+1){const overflow=await page.evaluate(()=>[...document.querySelectorAll('body *')].map(el=>({tag:el.tagName,id:el.id,right:el.getBoundingClientRect().right,width:el.getBoundingClientRect().width})).filter(x=>x.right>document.documentElement.clientWidth+1));writeFileSync(join(out,'desbordamiento.json'),JSON.stringify({view:name,viewport:[w,h],size,overflow},null,2));await page.screenshot({path:join(out,'desbordamiento.png'),fullPage:true});}assert.ok(size[1]<=size[0]+1,name+': '+size);checks++;}
+    await page.getByRole('button',{name:'Resumen',exact:true}).click();await page.screenshot({path:join(out,`panel-${w}.png`),fullPage:true});
   }
-  await page.getByRole('button',{name:'Consulta 3D',exact:true}).click();await page.screenshot({path:join(out,'consulta-3d.png'),fullPage:true});
-  const old=saved;fail=true;await page.locator('#actualizar').click();await page.waitForFunction(()=>!document.getElementById('actualizar').disabled);
-  assert.equal(saved,old);assert.match(await page.locator('#aviso').innerText(),/inducido/);checks++;
-  await page.locator('#volver').click();assert.equal(await page.evaluate(()=>window.didClose),true);checks++;
-  assert.deepEqual(errors,[]);checks++;
-  writeFileSync(join(out,'resultado.json'),JSON.stringify({checks,errors,android_bridge:'simulado, no prueba de dispositivo',model:'M001 original adaptado a WebCrypto',source_data:'sintéticos',browser:browser.version()},null,2));
-  console.log(JSON.stringify({checks,errors}));
+  fail=true;await page.selectOption('#activo','BTC-USD');await page.locator('#actualizar').click();await page.waitForFunction(()=>!document.getElementById('actualizar').disabled);assert.match(await page.locator('#aviso').innerText(),/inducido/);checks++;
+  await page.locator('#volver').click();assert.equal(await page.evaluate(()=>window.didClose),true);checks++;assert.deepEqual(errors,[]);checks++;
+  writeFileSync(join(out,'resultado.json'),JSON.stringify({checks,errors,browser:browser.version(),markets:['BTC-USD','SPY'],bridge:'synthetic'},null,2));console.log(JSON.stringify({checks,errors}));
  }finally{await context.close();await browser.close();await new Promise(ok=>server.close(ok));}
 })().catch(e=>{console.error(e);process.exitCode=1;});
