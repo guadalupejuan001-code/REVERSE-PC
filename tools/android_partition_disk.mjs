@@ -14,6 +14,31 @@ const sha=b=>createHash('sha256').update(b).digest('hex');
 const align=(n,a)=>Math.ceil(n/a)*a;
 const MAX=2**40,CHUNK=1024*1024,ZERO=Buffer.alloc(CHUNK);
 async function hashFile(path){const h=createHash('sha256');for await(const b of createReadStream(path))h.update(b);return h.digest('hex');}
+// Host transport: preserve zero holes when the filesystem cannot reflink.
+// Content and logical length remain exact; never overwrite an existing candidate.
+export async function copySparseImage(sourcePath,targetPath){
+ need(resolve(sourcePath)!==resolve(targetPath),'sparse copy paths overlap');
+ const source=await open(sourcePath,'r');let out,owned=false;
+ try{
+  const before=await source.stat();need(before.isFile()&&before.size>0&&before.size<=MAX,'invalid sparse copy source');
+  out=await open(targetPath,'wx');owned=true;await out.truncate(before.size);
+  const buffer=Buffer.alloc(CHUNK);
+  for(let at=0;at<before.size;){
+   const n=Math.min(CHUNK,before.size-at);let got=0;
+   while(got<n){const r=await source.read(buffer,got,n-got,at+got);need(r.bytesRead>0,'source changed during sparse copy');got+=r.bytesRead;}
+   const chunk=buffer.subarray(0,n);
+   if(!chunk.equals(ZERO.subarray(0,n))){let wrote=0;while(wrote<n){const r=await out.write(chunk,wrote,n-wrote,at+wrote);need(r.bytesWritten>0,'short sparse disk copy');wrote+=r.bytesWritten;}}
+   at+=n;
+  }
+  const after=await source.stat();need(after.size===before.size&&after.mtimeMs===before.mtimeMs&&after.ino===before.ino,'source changed during sparse copy');
+  await out.sync();await out.close();out=null;
+ }catch(e){if(out)await out.close();if(owned)await unlink(targetPath).catch(()=>{});throw e;}
+ finally{await source.close();}
+}
+async function cloneOrCopySparse(source,target){
+ try{await copyFile(source,target,fsConstants.COPYFILE_FICLONE_FORCE|fsConstants.COPYFILE_EXCL);}
+ catch(error){if(!['ENOTSUP','EOPNOTSUPP','ENOSYS','EXDEV','EINVAL'].includes(error.code))throw error;await copySparseImage(source,target);}
+}
 async function exact(file,at,n){const b=Buffer.alloc(n);const r=await file.read(b,0,n,at);need(r.bytesRead===n,'truncated source image');return b;}
 async function inspect(path){
  const f=await open(path,'r');try{
@@ -111,7 +136,7 @@ export async function extendAndroidUserdataDisk(original,userdata,target,{expect
  for(let i=0;i<2;i++){const p=additions[i],at=free[i]*128;Buffer.from('af3dc60f838472478e793d69d8477de4','hex').copy(entries,at);guid(identity+'\n'+p.name).copy(entries,at+16);entries.writeBigUInt64LE(BigInt(p.first),at+32);entries.writeBigUInt64LE(BigInt(p.last),at+40);Buffer.from(p.name,'utf16le').copy(entries,at+56);}
  const temporary=resolve(target)+'.partial-'+randomBytes(8).toString('hex');let out;
  try{
-  await copyFile(original,temporary,fsConstants.COPYFILE_FICLONE|fsConstants.COPYFILE_EXCL);out=await open(temporary,'r+');await out.truncate(sectors*512);
+  await cloneOrCopySparse(original,temporary);out=await open(temporary,'r+');await out.truncate(sectors*512);
   await out.write(Buffer.alloc(33*512),0,33*512,sourceSize-33*512);
   const mbr=Buffer.alloc(512);mbr[450]=0xee;mbr.writeUInt32LE(1,454);mbr.writeUInt32LE(Math.min(sectors-1,0xffffffff),458);mbr[510]=0x55;mbr[511]=0xaa;await out.write(mbr,0,512,0);
   const diskGuid=guid(identity);await out.write(header(1,sectors-1,2,sectors-1,diskGuid,entries),0,512,512);await out.write(entries,0,entries.length,1024);

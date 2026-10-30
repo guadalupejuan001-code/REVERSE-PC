@@ -129,14 +129,20 @@ export function observeAndroidKernel(bytes,expectedCheckpointSha){
  const layout=Object.fromEntries(['tasks','pid','comm','__state','stack'].map(n=>[n,task[n].offset]));
  const contextOffset=task.thread.offset+thread.cpu_context.offset;
  const init=symbol('init_task'),head=init+BigInt(layout.tasks),tasks=[];let node=head;
+ // EL0 uses SP_EL0 as the user stack. Linux entry.S retrieves the task
+ // from the per-CPU __entry_task instead; validate it against the task list.
+ const inKernel=m(4)===1n;let currentTask=null,currentTaskError=null;const currentLookup={};
+ const currentTaskSource=inKernel?'sp_el0':'__entry_task+TPIDR_EL1';
+ try{currentLookup.entry_task_symbol=hex(symbol('__entry_task'));currentLookup.tpidr_el1=hex(m(25));currentLookup.per_cpu_offset=hex(read(symbol('__per_cpu_offset')));currentTask=inKernel?m(8):read((symbol('__entry_task')+m(25))&MASK);currentLookup.candidate=hex(currentTask);}
+ catch(error){currentTaskError=error.message;}
  const ptregs=members(type('pt_regs'));
  const seen=new Set();
  do{
   check(!seen.has(node.toString())&&tasks.length<512,'task-list cycle or limit');seen.add(node.toString());
   const pointer=node-BigInt(layout.tasks),pid=Number(read(pointer+BigInt(layout.pid),4));
-  const current=pointer===m(8);
-  const fp=current?u(37):read(pointer+BigInt(contextOffset+context.fp.offset)),sp=current?u(3):read(pointer+BigInt(contextOffset+context.sp.offset)),pc=current?u(2):read(pointer+BigInt(contextOffset+context.pc.offset));
-  const item={pid,name:text(pointer+BigInt(layout.comm),16),task:hex(pointer),state:Number(read(pointer+BigInt(layout.__state),4)),running_on_cpu:current,context_pc:hex(pc),context_sp:hex(sp),stack:[]};
+  const current=pointer===currentTask,liveKernel=current&&inKernel;
+  const fp=liveKernel?u(37):read(pointer+BigInt(contextOffset+context.fp.offset)),sp=liveKernel?u(3):read(pointer+BigInt(contextOffset+context.sp.offset)),pc=liveKernel?u(2):read(pointer+BigInt(contextOffset+context.pc.offset));
+  const item={pid,name:text(pointer+BigInt(layout.comm),16),task:hex(pointer),state:Number(read(pointer+BigInt(layout.__state),4)),running_on_cpu:current,context_pc:hex(pc),context_sp:hex(sp),context_kind:liveKernel?'live_kernel_registers':'saved_kernel_context',saved_context_may_be_stale:current&&!inKernel,live_user_pc:current&&!inKernel?hex(u(2)):null,stack:[]};
   for(const name of ['on_rq','on_cpu'])if(task[name])item[name]=Number(read(pointer+BigInt(task[name].offset),4));
   item.accounting={};
   for(const name of ['nvcsw','nivcsw','utime','stime'])if(task[name])item.accounting[name]=read(pointer+BigInt(task[name].offset)).toString();
@@ -164,6 +170,20 @@ export function observeAndroidKernel(bytes,expectedCheckpointSha){
   tasks.push(item);const next=read(node);
   check(read(next+8n)===node,'task-list back link mismatch');node=next;
  }while(node!==head);
+ let currentTaskVerification=currentTask!==null&&tasks.some(t=>t.task===hex(currentTask))?'process_list':null;
+ // init_task.tasks enumerates process leaders. A running pthread must also
+ // be validated in its leader's signal.thread_head, never guessed from PID.
+ if(currentTask!==null&&!currentTaskVerification){
+  try{
+   const leader=read(currentTask+BigInt(task.group_leader.offset)),leaderItem=tasks.find(t=>t.task===hex(leader));check(leaderItem,'current thread has no verified process leader');
+   const signalPointer=read(leader+BigInt(task.signal.offset));check(signalPointer===read(currentTask+BigInt(task.signal.offset)),'current thread signal differs from leader');
+   check(Number(read(currentTask+BigInt(task.tgid.offset),4))===leaderItem.pid,'current thread group ID differs');
+   const signal=members(type('signal_struct')),head=signalPointer+BigInt(signal.thread_head.offset),seenThreads=new Set();let link=read(head),found=false;
+   while(link!==head){check(!seenThreads.has(link.toString())&&seenThreads.size<1024,'thread-list cycle or limit');seenThreads.add(link.toString());const next=read(link);check(read(next+8n)===link&&read(read(link+8n))===link,'thread-list back link mismatch');if(link-BigInt(task.thread_node.offset)===currentTask)found=true;link=next;}
+   check(found,'current pointer absent from verified thread list');currentTaskVerification='process_thread_list';
+  }catch(error){currentTaskError=error.message;currentTask=null;}
+ }
+ const currentDetails=currentTask===null?null:{pid:Number(read(currentTask+BigInt(layout.pid),4)),name:text(currentTask+BigInt(layout.comm),16),task:hex(currentTask),verification:currentTaskVerification,live_exception_level:Number(m(4)),live_pc:hex(u(2))};
  const rwsem=members(type('rw_semaphore')),sem=symbol('trace_event_sem');
  const countValue=read(sem+BigInt(rwsem.count.offset)),owner=read(sem+BigInt(rwsem.owner.offset)),ownerTask=tasks.find(t=>t.task===hex(owner&~7n));
  // The known initramfs globals are selected by index to avoid ambiguous
@@ -171,10 +191,11 @@ export function observeAndroidKernel(bytes,expectedCheckpointSha){
  const globals={};
  for(const [name,index]of [['name_buf',93094],['state',93095],['this_header',93096],['message',93097],
   ['byte_count',93099],['remains',93103],['name_len',93106],['body_len',93107],['next_header',93108],['wfile',93119],['wfile_pos',93120]]){
-  const s=symbols[index];check(s.name===name,'initramfs symbol profile mismatch');const value=read(s.address);globals[name]={address:hex(s.address),value:hex(value)};
-  if((name==='message'||name==='name_buf')&&value){try{globals[name].text=text(value,256);}catch(e){globals[name].text_error=e.message;}}
+  const s=symbols[index];check(s.name===name,'initramfs symbol profile mismatch');globals[name]={address:hex(s.address)};
+  try{const value=read(s.address);globals[name].value=hex(value);if((name==='message'||name==='name_buf')&&value){try{globals[name].text=text(value,256);}catch(e){globals[name].text_error=e.message;}}}
+  catch(error){globals[name].read_error=error.message;}
  }
- const filePointer=BigInt(globals.wfile.value),rootfsFile={pointer:hex(filePointer)};
+ const filePointer=globals.wfile.value===undefined?null:BigInt(globals.wfile.value),rootfsFile={pointer:filePointer===null?null:hex(filePointer)};
  if(filePointer&&globals.state.value==='0x5')try{
   const f=members(type('file')),ino=members(type('inode')),path=members(type('path')),
    dent=members(type('dentry')),qstr=members(type('qstr'));
@@ -196,7 +217,7 @@ export function observeAndroidKernel(bytes,expectedCheckpointSha){
   Object.assign(capacity,{managed_pages:Number(total),reserved_pages:Number(reserve),global_free_pages:Number(available),managed_bytes:Number(total*4096n),global_free_bytes:Number(available*4096n),vmstat_per_cpu_batches_may_lag:true,android_framework_capacity_proven:false});
  }catch(e){capacity.read_error=e.message;}
  check(createHash('sha256').update(bytes).digest('hex')===originalSha,'observation mutated input');
- return {status:'read_only_kernel_observation',checkpoint_sha256:originalSha,kernel_sha256:KERNEL,instructions:provenance.instructions,pc:hex(u(2)),pc_symbol:nearest(u(2)),next_opcode:hex(read(u(2),4)),physical_pc:hex(translate(u(2))),ticks:m(27).toString(),exceptions:m(28).toString(),current_task:hex(m(8)),current_pid:tasks.find(t=>t.running_on_cpu)?.pid??null,capacity,task_layout:layout,task_count:tasks.length,tasks,trace_event_sem:{address:hex(sem),count:hex(countValue),owner:hex(owner),owner_pid:ownerTask?.pid??null},initramfs:globals,rootfs_file:rootfsFile,android_init_observed:false,android_boot:false,input_unchanged:true};
+ return {status:'read_only_kernel_observation',checkpoint_sha256:originalSha,kernel_sha256:KERNEL,instructions:provenance.instructions,pc:hex(u(2)),pc_symbol:nearest(u(2)),next_opcode:hex(read(u(2),4)),physical_pc:hex(translate(u(2))),ticks:m(27).toString(),exceptions:m(28).toString(),current_task:currentTask===null?null:hex(currentTask),current_task_source:currentTaskSource,current_task_lookup:currentLookup,current_task_read_error:currentTaskError,current_pid:currentDetails?.pid??null,current_task_details:currentDetails,capacity,task_layout:layout,task_count:tasks.length,process_leader_count:tasks.length,all_threads_enumerated:false,tasks,trace_event_sem:{address:hex(sem),count:hex(countValue),owner:hex(owner),owner_pid:ownerTask?.pid??null},initramfs:globals,rootfs_file:rootfsFile,android_init_observed:false,android_boot:false,input_unchanged:true};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  try{check(process.argv[2],'usage: node android_kernel_observer.mjs checkpoint.rvg [expected_sha256]');console.log(JSON.stringify(observeAndroidKernel(readFileSync(process.argv[2]),process.argv[3]),null,2));}catch(e){console.error(e.message);process.exitCode=1;}
