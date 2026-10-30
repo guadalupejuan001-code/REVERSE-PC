@@ -66,3 +66,15 @@ test('10: contrato de compilación comprueba todos los recursos obligatorios',()
  const result=JSON.parse(execFileSync(process.execPath,[new URL('../verify.mjs',import.meta.url).pathname],{encoding:'utf8'}));
  assert.equal(result.valid,true);assert.equal(result.node_server_required_on_phone,false);
 });
+
+test('11: U002 global queda fijado a 369 señales y a XI/Ether nativo',()=>{
+ const root=new URL('../../',import.meta.url),read=p=>readFileSync(new URL(p,root),'utf8');
+ const host=read('reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceActivity.java');
+ const compiler=read('reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceGlobalCompiler.java');
+ const xi=read('reverse-os-android/app/src/main/assets/laplace/u002-native.xi');
+ const app=read('reverse-os-android/app/src/main/assets/laplace/app.mjs');
+ assert.match(host,/global_u002/);assert.match(host,/native_u002/);assert.match(host,/LaplaceGlobalCompiler\.compile/);
+ assert.match(compiler,/SIGNALS=369/);assert.match(compiler,/laplace-u002-native-xi-v1/);
+ assert.match(xi,/LAPLACE U002/);assert.match(xi,/__GLOBAL_BYTES__/);assert.match(xi,/mem_stats/);
+ assert.match(app,/known_signals===369/);assert.match(app,/host\('native_u002'/);assert.match(app,/Sincronizar 369/);
+});
