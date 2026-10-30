@@ -2,6 +2,7 @@
 // Host controls only. All CPU, RAM, block and display transitions still belong
 // to the existing MinimalGuest / original XI/Ether transactions.
 #include "minimal_guest.hpp"
+#include "guest_boot_resume_proof.hpp"
 #include <chrono>
 #include <functional>
 #include <filesystem>
@@ -24,13 +25,6 @@ struct BootCycleReport {
   bool first_user_instruction_verified=false;
   bool prior_user_instruction_verified=false;
   std::string verified_entry_checkpoint_sha256;
-};
-// A caller supplies an independently accepted entry proof. Bind it to every
-// byte of this restored CPU/device/XI state before any save or transition.
-// This is host evidence; it never becomes a guest flag or a new RAM owner.
-struct BootCycleEntryProof {
-  std::string checkpoint_sha256;
-  std::uint64_t instructions=0,pc=0;
 };
 using CycleSave=std::function<void(const MinimalGuest&,const BootCycleReport&)>;
 using UserEntry=std::function<bool(MinimalGuest&)>;
@@ -90,12 +84,10 @@ inline BootCycleReport run_boot_cycle(MinimalGuest& guest,const BootCycleLimits&
   BootCycleReport report;report.initial_instructions=guest.registers().instructions;
   if(prior_entry){
     require(!limit.stop_after_first_user_instruction,"Cannot repeat the entry milestone during a proven continuation");
-    require(prior_entry->checkpoint_sha256.size()==64&&prior_entry->checkpoint_sha256.find_first_not_of("0123456789abcdef")==std::string::npos,"Invalid proven entry hash");
-    require(guest.machine().enabled&&!guest.machine().el&&!guest.registers().halted&&!guest.machine().waiting,"Proven entry must be an active EL0 state");
-    require(guest.registers().instructions==prior_entry->instructions&&guest.registers().pc==prior_entry->pc,"Proven entry count or PC differs");
-    require(GuestSha256::hash(guest.snapshot())==prior_entry->checkpoint_sha256,"Proven entry does not match the complete native state");
+    report.verified_entry_checkpoint_sha256=boot_cycle_bound_entry_root(*prior_entry,
+        GuestSha256::hash(guest.snapshot()),guest.registers().instructions,guest.registers().pc,
+        guest.machine().enabled,guest.machine().el,guest.registers().halted,guest.machine().waiting);
     report.prior_user_instruction_verified=true;
-    report.verified_entry_checkpoint_sha256=prior_entry->checkpoint_sha256;
   }
   require(report.initial_instructions<=UINT64_MAX-limit.instructions,"Instruction counter would overflow");
   const auto start=std::chrono::steady_clock::now();auto saved_at=start;

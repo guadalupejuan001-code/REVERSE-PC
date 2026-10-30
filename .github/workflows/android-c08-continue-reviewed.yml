@@ -1,0 +1,111 @@
+name: Android C08 reviewed C07 checkpoint continuation
+on:
+  workflow_dispatch:
+  push:
+    branches: ['fix/android-c08-reviewed-resume-20261030']
+    paths:
+      - '.github/workflows/android-c08-continue-reviewed.yml'
+      - 'experiments/android-c08-reviewed-c07.json'
+      - 'src/guest_boot_resume_proof.hpp'
+      - 'src/guest_android_init_proof.hpp'
+      - 'src/guest_boot_cycle.hpp'
+      - 'tools/guest_pci_cycle.cpp'
+      - 'tools/android_verified_c07_source.mjs'
+      - 'tools/android_c08_result.mjs'
+      - 'tests/guest_boot_resume_proof_test.cpp'
+      - 'tests/android_verified_c07_source.test.mjs'
+      - 'tests/android_c08_result.test.mjs'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: android-c08-reviewed-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  c08-reviewed-continuation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: e2778d962af22f6f1a0794058dd4685fc2573966
+          path: deps/mundo-x
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          name: reverse-c07-proven-post-init
+          run-id: 40975381521
+          github-token: '${{ github.token }}'
+          path: input-c07
+      - name: Validate the original C07 before allowing any guest execution
+        env:
+          C07_REPORT: input-c07/current.json
+          C07_STATE: input-c07/current.rvg
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/c08 build
+          cp experiments/android-c08-reviewed-c07.json evidence/c08/source-pin.json
+          cp input-c07/current.json evidence/c08/source-c07-report.json
+          git rev-parse HEAD > evidence/c08/runner-commit.txt
+          node tools/android_verified_c07_source.mjs "$C07_STATE" "$C07_REPORT" > evidence/c08/source-audit.json
+          node --test tests/android_verified_c07_source.test.mjs tests/android_c08_result.test.mjs > evidence/c08/evidence-regressions.tap
+          g++ -std=c++17 -O1 -Wall -Wextra -Werror -Wno-missing-field-initializers -fsanitize=undefined -fno-sanitize-recover=all -Isrc tests/guest_boot_resume_proof_test.cpp -o build/c08-proof-test
+          build/c08-proof-test > evidence/c08/resume-proof-tests.json
+      - uses: actions/download-artifact@v4
+        with:
+          name: reverse-android-c03-genuine-partition-disk
+          run-id: 40910284394
+          github-token: '${{ github.token }}'
+          path: disk-input
+      - name: Build existing native engine and repeat its integration suites
+        run: |
+          set -euo pipefail
+          cmake -S . -B build/cmake-c08 -DETHER_SOURCE_DIR="$PWD/deps/mundo-x" -DCMAKE_BUILD_TYPE=Release > evidence/c08/cmake-configure.txt
+          python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+          python3 scripts/build-softfloat.py
+          for suite in guest_boot_cycle minimal_guest_el0_cache minimal_guest_fp minimal_guest_crc; do
+            g++ -std=c++17 -O1 -pthread -fsanitize=undefined -fno-sanitize-recover=all -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc "tests/${suite}_test.cpp" build/softfloat/libreverse_softfloat.a -o "build/c08-$suite"
+            "build/c08-$suite" > "evidence/c08/$suite-tests.json"
+          done
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tools/guest_pci_cycle.cpp build/softfloat/libreverse_softfloat.a -o build/c08-cycle
+          mkdir -p evidence/c08/host-tools
+          cp build/c08-cycle evidence/c08/host-tools/
+          git archive --format=tar.gz HEAD > evidence/c08/host-tools/runner-source.tar.gz
+          git -C deps/mundo-x archive --format=tar.gz HEAD > evidence/c08/host-tools/ether-source.tar.gz
+          sha256sum build/c08-cycle > evidence/c08/host-tools/runner-sha256.txt
+      - name: Resume C07 in the original native CPU without restarting C06
+        run: |
+          set -euo pipefail
+          DISK=$(find disk-input -name android-slot-a.raw -print -quit)
+          test -n "$DISK"
+          SHA=$(node -p 'require("./experiments/android-c08-reviewed-c07.json").checkpoint_sha256')
+          WALL=$(node -p 'require("./experiments/android-c08-reviewed-c07.json").wall_ms')
+          STEPS=$(node -p 'require("./experiments/android-c08-reviewed-c07.json").instructions_budget')
+          CHUNK=$(node -p 'require("./experiments/android-c08-reviewed-c07.json").chunk')
+          timeout --signal=TERM --kill-after=30s 360s build/c08-cycle input-c07/current.rvg "$DISK" evidence/c08/journal "$WALL" "$SHA" --chunk="$CHUNK" --instructions="$STEPS" --continue-verified-init=input-c07/current.json > evidence/c08/result.json 2> >(tee evidence/c08/progress.log >&2)
+      - name: Preserve the committed state and classify the actual outcome
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/c08
+          if test -f evidence/c08/journal/latest.json; then
+            node tools/android_c08_result.mjs evidence/c08 input-c07/current.json > evidence/c08/result-classification.json
+          else
+            printf '%s\n' '{"status":"no_native_checkpoint_committed","android_display_verified":false}' > evidence/c08/milestone.json
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reverse-c08-reviewed-c07-continuation
+          path: evidence/c08/
+          if-no-files-found: error
+          retention-days: 14
