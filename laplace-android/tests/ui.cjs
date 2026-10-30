@@ -11,7 +11,8 @@ const server=createServer((req,res)=>{try{const path=req.url==='/'?'/index.html'
  const browser=await chromium.launch({headless:true,executablePath:process.env.LAPLACE_CHROME||'/usr/bin/chromium',args:['--no-sandbox']});
  const context=await browser.newContext({viewport:{width:1366,height:950},locale:'es-MX'});
  let saved=null,fail=false,checks=0;const errors=[],calls=[];
- const end=Math.floor(Date.now()/300000)*300,start=end-14*86400;let v=80000;
+ const fixedTime=Math.floor(Date.now()/300000)*300000+120000;
+ const end=Math.floor(fixedTime/300000)*300,start=end-14*86400;let v=80000;
  const bars=Array.from({length:4032},(_,i)=>{const o=v;v*=Math.exp(.0005*Math.sin(i/7)-.00001);return [start+i*300,Math.min(o,v)*.9998,Math.max(o,v)*1.0002,o,v,10+i%20]});
  await context.exposeFunction('auditIO',async(operation,raw)=>{
   const p=JSON.parse(raw);calls.push({operation,p});
@@ -21,16 +22,16 @@ const server=createServer((req,res)=>{try{const path=req.url==='/'?'/index.html'
   if(fail&&p.source==='candles')return {ok:false,error:'Fallo de fuente inducido'};
   await new Promise(ok=>setTimeout(ok,30));let value;
   if(p.source==='candles')value=bars.filter(b=>b[0]>=p.params.start&&b[0]<=p.params.end);
-  else if(p.source==='ticker')value={price:String(v),time:new Date().toISOString()};
+  else if(p.source==='ticker')value={price:String(v),time:new Date(fixedTime).toISOString()};
   else if(p.source==='book')value={bids:Array.from({length:12},(_,i)=>[String(v-1-i),'1',1]),asks:Array.from({length:12},(_,i)=>[String(v+1+i),'2',1])};
   else if(p.source==='trades')value=[{side:'buy',size:'.1'}];
-  else if(p.source==='noaa')value=[{time_tag:new Date(Date.now()-3600000).toISOString().slice(0,19),Kp:1}];
-  else if(p.source==='registro')value={schema:'laplace-resumen-m001',actualizado_en:new Date().toISOString(),pronosticos:2,evaluados:1,por_horizonte:[],ultimos:[{horizonte_minutos:15,objetivo_en:new Date().toISOString(),precio_predicho:80000,resultado:{acierto_precio:false,error_absoluto_usd:100}},{horizonte_minutos:60,objetivo_en:new Date().toISOString(),precio_predicho:79000,estado:'pendiente',resultado:null}]};
-  else value={price:'2500',time:new Date().toISOString()};
-  return {ok:true,text:JSON.stringify(value),received_at:new Date().toISOString()};
+  else if(p.source==='noaa')value=[{time_tag:new Date(fixedTime-3600000).toISOString().slice(0,19),Kp:1}];
+  else if(p.source==='registro')value={schema:'laplace-resumen-m001',actualizado_en:new Date(fixedTime).toISOString(),pronosticos:2,evaluados:1,por_horizonte:[],ultimos:[{horizonte_minutos:15,objetivo_en:new Date(fixedTime).toISOString(),precio_predicho:80000,resultado:{acierto_precio:false,error_absoluto_usd:100}},{horizonte_minutos:60,objetivo_en:new Date(fixedTime).toISOString(),precio_predicho:79000,estado:'pendiente',resultado:null}]};
+  else value={price:'2500',time:new Date(fixedTime).toISOString()};
+  return {ok:true,text:JSON.stringify(value),received_at:new Date(fixedTime).toISOString()};
  });
  await context.addInitScript(()=>{window.LaplaceNative={request(id,op,payload){window.auditIO(op,payload).then(r=>window.LaplaceHost.complete(id,r));},export(payload){window.exported=payload;},close(){window.didClose=true;}};});
- const page=await context.newPage();page.on('pageerror',e=>errors.push(e.message));
+ const page=await context.newPage();await page.clock.setFixedTime(new Date(fixedTime));page.on('pageerror',e=>errors.push(e.message));
  const root='http://127.0.0.1:'+server.address().port;
  try{
   await page.goto(root);await page.waitForTimeout(250);assert.equal(await page.locator('#precio').innerText(),'—');checks++;
@@ -62,7 +63,7 @@ const server=createServer((req,res)=>{try{const path=req.url==='/'?'/index.html'
    await page.setViewportSize({width:w,height:h});
    for(const name of ['Resumen','Elegir datos','Consulta 3D','Registro horario']){
     await page.getByRole('button',{name,exact:true}).click();
-    const size=await page.evaluate(()=>[document.documentElement.clientWidth,document.documentElement.scrollWidth]);assert.ok(size[1]<=size[0]+1,name+': '+size);checks++;
+    const size=await page.evaluate(()=>[document.documentElement.clientWidth,document.documentElement.scrollWidth]);if(size[1]>size[0]+1){const overflow=await page.evaluate(()=>[...document.querySelectorAll('body *')].map(el=>({tag:el.tagName,id:el.id,clase:el.className,right:el.getBoundingClientRect().right,width:el.getBoundingClientRect().width})).filter(x=>x.right>document.documentElement.clientWidth+1));writeFileSync(join(out,'desbordamiento.json'),JSON.stringify({view:name,viewport:[w,h],size,overflow},null,2));await page.screenshot({path:join(out,'desbordamiento.png'),fullPage:true});}assert.ok(size[1]<=size[0]+1,name+': '+size);checks++;
    }
    await page.getByRole('button',{name:'Resumen',exact:true}).click();await page.screenshot({path:join(out,`panel-${w}.png`),fullPage:true});
   }
