@@ -1,0 +1,22 @@
+{
+  "changed_instructions": 3,
+  "changes": [
+    {
+      "line": 102448,
+      "before": "store8 9100000000000000000 1",
+      "after": "store8 9110000000000508191 1"
+    },
+    {
+      "line": 109720,
+      "before": "load8 r3 9100000000000000000",
+      "after": "load8 r3 9110000000000508191"
+    },
+    {
+      "line": 110238,
+      "before": "store8 9100000000000000000 0",
+      "after": "store8 9110000000000508191 0"
+    }
+  ],
+  "training_module_identical": true,
+  "trained_model_identical": true
+}

@@ -1,0 +1,18 @@
+{
+  "status": "not_run",
+  "comparators": ["ChatGPT", "Claude"],
+  "reason": "No comparator interface was invoked in this session; model identifiers, subscriptions and execution conditions were not observed.",
+  "protocol_sha256": "d841c801bf3db9c8ae09f1fa11996ced587775d56101ff591745869b0b005549",
+  "conditions_required": [
+    "Freeze common prompts, references and held-out split before running comparators",
+    "Record exact model/version, interface, date, system prompt and decoding settings",
+    "Use the same attachments, context and tool permissions or report the difference",
+    "Separate recall of taught facts from new reasoning and new teaching",
+    "Score instruction following, math, writing and translation independently",
+    "Blind-review answer quality; retain errors and unsupported cases",
+    "Measure first-response and total latency, cost, and resources only in comparable environments"
+  ],
+  "audio": {"status": "unsupported_in_this_interface", "observed_audio_inputs": 0},
+  "image": {"status": "unsupported_in_this_interface", "observed_image_inputs": 0},
+  "claims_not_made": ["Parity with ChatGPT or Claude", "Audio comprehension", "Image comprehension", "Autonomous comprehension of a complete PDF", "Financial operations"]
+}

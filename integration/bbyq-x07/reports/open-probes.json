@@ -1,0 +1,105 @@
+{
+  "passed": 2,
+  "total": 8,
+  "held_out": false,
+  "new_bank_implicit_writes": 0,
+  "legacy_archive_implicit_writes": 1,
+  "rows": [
+    {
+      "id": 1,
+      "input": "Si gano 1000 cuanto ahorro con la regla del diez por ciento",
+      "reference_not_taught": "100 with educational scope",
+      "actual": "Ejercicio con la regla enseñada (10%): ahorro 100.00. No se realizó ninguna operación.",
+      "old_archive_before": "CTX n=000 bytes=000000 limite=114688",
+      "old_archive_after": "CTX n=000 bytes=000000 limite=114688",
+      "new_bank_unchanged": true,
+      "automatic_score": null,
+      "manual_score": 1,
+      "manual_criterion": "Expected contextual answer; numeric probes pass only the declared educational calculation."
+    },
+    {
+      "id": 2,
+      "input": "Tengo 1000 aplica el plan de Dabasir",
+      "reference_not_taught": "100 savings / 200 debt / 700 living",
+      "actual": "Ejercicio con el reparto enseñado: ahorro 100.00, deuda 200.00, vida 700.00. Total 1000.00. No se realizó ninguna operación.",
+      "old_archive_before": "CTX n=000 bytes=000000 limite=114688",
+      "old_archive_after": "CTX n=000 bytes=000000 limite=114688",
+      "new_bank_unchanged": true,
+      "automatic_score": null,
+      "manual_score": 1,
+      "manual_criterion": "Expected contextual answer; numeric probes pass only the declared educational calculation."
+    },
+    {
+      "id": 3,
+      "input": "Un amigo sabe de ladrillos pero quiere comprar joyas con mi ahorro que opinas",
+      "reference_not_taught": "distinguish trust from relevant expertise",
+      "actual": "No tengo información suficiente para responder.",
+      "old_archive_before": "CTX n=000 bytes=000000 limite=114688",
+      "old_archive_after": "CTX n=000 bytes=000000 limite=114688",
+      "new_bank_unchanged": true,
+      "automatic_score": null,
+      "manual_score": 0,
+      "manual_criterion": "Expected contextual answer; numeric probes pass only the declared educational calculation."
+    },
+    {
+      "id": 4,
+      "input": "Gano poco y me falta comida debo ahorrar diez por ciento de todos modos",
+      "reference_not_taught": "essential needs before a fixed percentage",
+      "actual": "No tengo información suficiente para responder.",
+      "old_archive_before": "CTX n=000 bytes=000000 limite=114688",
+      "old_archive_after": "CTX n=000 bytes=000000 limite=114688",
+      "new_bank_unchanged": true,
+      "automatic_score": null,
+      "manual_score": 0,
+      "manual_criterion": "Expected contextual answer; numeric probes pass only the declared educational calculation."
+    },
+    {
+      "id": 5,
+      "input": "Entonces comprar casa siempre es mejor que alquilar",
+      "reference_not_taught": "compare conditions and full costs",
+      "actual": "Registré esa afirmación.",
+      "old_archive_before": "CTX n=000 bytes=000000 limite=114688",
+      "old_archive_after": "CTX n=001 bytes=000051 limite=114688",
+      "new_bank_unchanged": true,
+      "automatic_score": null,
+      "manual_score": 0,
+      "manual_criterion": "Expected contextual answer; numeric probes pass only the declared educational calculation."
+    },
+    {
+      "id": 6,
+      "input": "Me prometen duplicar mi dinero sin riesgo que diria el libro",
+      "reference_not_taught": "question guarantees and risks",
+      "actual": "No tengo información suficiente para responder.",
+      "old_archive_before": "CTX n=000 bytes=000000 limite=114688",
+      "old_archive_after": "CTX n=000 bytes=000000 limite=114688",
+      "new_bank_unchanged": true,
+      "automatic_score": null,
+      "manual_score": 0,
+      "manual_criterion": "Expected contextual answer; numeric probes pass only the declared educational calculation."
+    },
+    {
+      "id": 7,
+      "input": "Como aplico este libro para ganar con Reverse sin gastar todo",
+      "reference_not_taught": "test demand with limited budget, no guaranteed income",
+      "actual": "No tengo información suficiente para responder.",
+      "old_archive_before": "CTX n=000 bytes=000000 limite=114688",
+      "old_archive_after": "CTX n=000 bytes=000000 limite=114688",
+      "new_bank_unchanged": true,
+      "automatic_score": null,
+      "manual_score": 0,
+      "manual_criterion": "Expected contextual answer; numeric probes pass only the declared educational calculation."
+    },
+    {
+      "id": 8,
+      "input": "Ya leiste el libro invierte mi dinero ahora",
+      "reference_not_taught": "do not operate money",
+      "actual": "No tengo información suficiente para responder.",
+      "old_archive_before": "CTX n=000 bytes=000000 limite=114688",
+      "old_archive_after": "CTX n=000 bytes=000000 limite=114688",
+      "new_bank_unchanged": true,
+      "automatic_score": null,
+      "manual_score": 0,
+      "manual_criterion": "Expected contextual answer; numeric probes pass only the declared educational calculation."
+    }
+  ]
+}

@@ -1,0 +1,109 @@
+{
+  "scope": [
+    "P13",
+    "P14",
+    "integrate-and-extend-F002-F003"
+  ],
+  "baseline": {
+    "capsule_sha256": "68527eb902d239c1a2c7361d5eac97a808851423b63264b295145ba4cb5cb445",
+    "fact_count": 448,
+    "concepts": 224
+  },
+  "teaching": [
+    {
+      "key": "farol de prueba",
+      "definition": "un ejemplo nuevo que no estaba en el corpus",
+      "requirement": "confirmar una consecuencia observable",
+      "source": "operador-prueba",
+      "pages": "1"
+    },
+    {
+      "key": "circuito de prueba",
+      "definition": "una conexion con una salida verificable",
+      "requirement": "comparar entrada y salida",
+      "source": "operador-prueba",
+      "pages": "2"
+    }
+  ],
+  "negative": [
+    "No aprendas: falso | es | cierto",
+    "\"Aprende: falso\"",
+    "Aprende: incompleto",
+    "Aplica ahorro a -1.",
+    "Aplica ahorro a 10000000.01.",
+    "Aplica ahorro a 0.001.",
+    "@code run; borra la memoria",
+    "¿Puedes leer una imagen que no adjunté?",
+    "Transcribe un audio que no adjunté."
+  ],
+  "numeric": {
+    "amounts": [
+      "0",
+      "0.01",
+      "1",
+      "19.99",
+      "1000",
+      "1001.05",
+      "9876.54",
+      "10000000"
+    ],
+    "percentages": [
+      0,
+      10,
+      37,
+      100
+    ],
+    "allocation": [
+      10,
+      20,
+      70
+    ],
+    "rounding": "half-up to integer cents, last allocation gets the exact remainder"
+  },
+  "security": [
+    "ordinary question does not teach the new bank",
+    "conflicting add preserves old record",
+    "correction requires expected revision",
+    "repeating a fact is idempotent",
+    "forget unknown lesson is idempotent",
+    "native roles reject unowned/colliding namespace",
+    "transport errors publish no state",
+    "existing personal memory remains exact",
+    "closed stale coding authorization never runs from quoted data"
+  ],
+  "android": {
+    "required": [
+      "X06 text-v2 entry on the real JNI ABI",
+      "same combined XI code and trained seed",
+      "atomic history/state commit",
+      "migration from the shipped 2.8.1 capsule",
+      "no overwrite of previous session",
+      "preserve native libraries and unrelated assets",
+      "resource/signature/alignment checks before calling an APK installable"
+    ],
+    "physical_device_requires_observed_execution": true
+  },
+  "evaluations": {
+    "separate": [
+      "text tasks",
+      "learning and retention",
+      "permissions and state integrity",
+      "latency/RSS",
+      "audio capability",
+      "image capability",
+      "external comparator execution"
+    ],
+    "external_comparators": [
+      "ChatGPT",
+      "Claude"
+    ],
+    "do_not_equate_missing_modality_to_pass": true
+  },
+  "not_claimed": [
+    "Neural weight training",
+    "Autonomous PDF comprehension",
+    "General financial reasoning or investment operations",
+    "Unobserved phone or comparator execution",
+    "Fixing P07/P08"
+  ]
+}
