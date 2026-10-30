@@ -1,7 +1,7 @@
 name: X Render XI A/B hypothesis — actual XI interpreter
 on:
   push:
-    branches: [experiment/xrender-xi-hypothesis-20261029]
+    branches: [experiment/xrender-xi-hypothesis-20261029, feature/xi-frame-stream-v1-20261030]
     paths:
       - 'experiments/xi-render/**'
       - '.github/workflows/xi-render-ab.yml'
