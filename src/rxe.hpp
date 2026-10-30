@@ -30,7 +30,9 @@ inline const std::vector<Spec>& specs(){static const std::vector<Spec> s={
  {"cx",2,2},{"cz",2,2},{"t",1,1},{"tdg",1,1},{"h_all",0,0},{"cz_neighbors",0,0},
  {"qstats",0,0},{"stats",0,0},{"seed",1,1},{"expect",0,4096},{"probz",1,1},{"measure",1,1},
  {"postselect",2,2},{"compact",0,0},{"mem_reset",1,1},{"mem_store",2,2},{"mem_bind",2,2},
- {"mem_unbind",1,1},{"mem_read",1,1},{"mem_materialize",2,2},{"mem_stats",0,0},{"assert",2,4096}};return s;}
+ {"mem_unbind",1,1},{"mem_read",1,1},{"mem_materialize",2,2},{"mem_stats",0,0},{"assert",2,4096},
+  // Append-only: previous RXE instruction numbers remain unchanged.
+  {"frame_begin",4,4},{"frame_span",5,5},{"frame_tile",6,6},{"frame_end",0,0}};return s;}
 inline void require(bool ok,const char* error){if(!ok)throw std::invalid_argument(error);}
 inline bool utf8(const std::string& s){
  for(std::size_t i=0;i<s.size();){unsigned char c=s[i++];if(c<128){if(c<32||c==127)return false;continue;}
@@ -84,6 +86,8 @@ inline void validate(const Image& image){
   else if(id==11)require(ins.args[0].kind==Kind::Register,"Salida RXE no válida");
   else if(id==13){require(ins.args[0].kind==Kind::Constant,"Etiqueta RXE no válida");auto label=xi::machine_label(image.constants[std::size_t(ins.args[0].value)]);require(labels.emplace(label,pc).second,"Etiqueta RXE duplicada");}
   else if(id>=14&&id<=20)require(ins.args[0].kind==Kind::Target,"Salto RXE no válido");
+  else if(id>=specs().size()-4)
+    for(const auto& a:ins.args)require(value(a.kind),"Operando Frame Stream RXE debe ser entero o registro");
   else for(const auto& a:ins.args)require(a.kind==Kind::Constant||a.kind==Kind::Dynamic||a.kind==Kind::PauliDynamic,"Operando XI RXE no válido");
  }
 }
@@ -140,7 +144,8 @@ inline Bytes compile(const std::string& source,const std::string& title){
   else if(id==13){auto label=xi::machine_label(words[1]);require(labels.emplace(label,std::uint32_t(image.code.size())).second,"Etiqueta XI duplicada");ins.args.push_back(constant(label));}
   else for(std::size_t a=1;a<words.size();a++){
    if((id>=1&&id<=7&&a==1)||(id==9&&a==1)||id==11)ins.args.push_back({Kind::Register,xi::machine_register(words[a])});
-   else if((id>=1&&id<=7&&a==2)||id==8||(id==10&&a==2))ins.args.push_back(integer(words[a]));
+   else if((id>=1&&id<=7&&a==2)||id==8||(id==10&&a==2)||id>=specs().size()-4)
+     ins.args.push_back(integer(words[a]));
    else ins.args.push_back(generic(words[a]));
   }
   image.code.push_back(std::move(ins));

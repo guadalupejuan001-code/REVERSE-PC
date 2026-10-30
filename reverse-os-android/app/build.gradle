@@ -37,3 +37,15 @@ android {
  compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
  buildTypes { release { minifyEnabled false } }
 }
+
+// Compile-time asset from its single canonical XI source; no duplicate copy.
+def frameXiAssets = layout.buildDirectory.dir('generated/xi-frame-assets')
+tasks.register('prepareXiFrameAssets', Copy) {
+    from(project.file('../../experiments/xi-render/super-frame-stream.xi'))
+    into(frameXiAssets.map { it.dir('xi-render') })
+}
+android.sourceSets.main.assets.srcDir(frameXiAssets)
+tasks.configureEach { task ->
+    if(task.name.startsWith('merge') && task.name.endsWith('Assets'))
+        task.dependsOn(tasks.named('prepareXiFrameAssets'))
+}
