@@ -1,0 +1,107 @@
+diff --git a/laplace-android/integration-lock.json b/laplace-android/integration-lock.json
+--- a/laplace-android/integration-lock.json
++++ b/laplace-android/integration-lock.json
+@@ -9,7 +9,7 @@
+     "reverse-os-android/app/src/main/assets/laplace/integridad.mjs": "3912bb8fec306b793ec50a3d7bcbc5368ae98ec49e06566a43bc07073a1b53fb",
+     "reverse-os-android/app/src/main/assets/laplace/modelo.mjs": "8566056be52b69abca73d36b5f933d1d3a9f6fa83f56cd21c31bb6862b9915db",
+     "reverse-os-android/app/src/main/assets/laplace/styles.css": "1ce904b24d3b1855386decc19c4edc8d954c9c1c594f282bfc6655cb7ad861cd",
+-    "reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceActivity.java": "1f47a46bc04b6289509a279486980fa3cdfb7e4914f3da2603eab4cb8d2401c5",
++    "reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceActivity.java": "d7e3d3396d5f5081d155b57e1b16282bae0808aff5bee6288fff15f0c2010ef7",
+     "laplace-android/upstream-lock.json": "abb08ad8c1d9eb89ee3f61dd74fd7ec5280d7dd3f2e86d41be2c2d231d6db879",
+     "laplace-android/upstream/universo/integridad.mjs": "4ed158bc6c192cba2f4ee673dc7c99f63d7d2b73889d1b04dee5c791a47fc577",
+     "laplace-android/upstream/seguimiento/modelo.mjs": "1a72ecc3437baeb2db0afb9b8a36618c4568badfab0baf318d005bfa99fabe3a",
+diff --git a/reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceActivity.java b/reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceActivity.java
+--- a/reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceActivity.java
++++ b/reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceActivity.java
+@@ -4,6 +4,11 @@
+ import android.content.Intent;
+ import android.net.Uri;
+ import android.os.Bundle;
++import android.os.Build;
++import android.graphics.Insets;
++import android.view.View;
++import android.view.WindowInsets;
++import android.widget.FrameLayout;
+ import android.os.Handler;
+ import android.os.Looper;
+ import android.util.AtomicFile;
+@@ -40,7 +45,33 @@
+     @Override public void onCreate(Bundle state){
+         super.onCreate(state);
+         saved=new AtomicFile(new File(getFilesDir(),"laplace-m001-captura.json"));
+-        web=new WebView(this);web.setBackgroundColor(0xff0b1016);setContentView(web);
++        web=new WebView(this);web.setBackgroundColor(0xff0b1016);
++        // Target SDK 35 is edge-to-edge. Reserve the actual system/cutout/IME
++        // insets in the native parent rather than drawing buttons beneath bars.
++        if(Build.VERSION.SDK_INT>=30)getWindow().setDecorFitsSystemWindows(false);
++        else getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE|
++            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN|View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
++        FrameLayout root=new FrameLayout(this);root.setBackgroundColor(0xff0b1016);
++        root.addView(web,new FrameLayout.LayoutParams(-1,-1));
++        root.setOnApplyWindowInsetsListener((view,insets)->{
++            if(Build.VERSION.SDK_INT>=30){
++                Insets safe=insets.getInsets(WindowInsets.Type.systemBars()|
++                    WindowInsets.Type.displayCutout()|WindowInsets.Type.ime());
++                root.setPadding(safe.left,safe.top,safe.right,safe.bottom);
++                return WindowInsets.CONSUMED;
++            }
++            int left=insets.getSystemWindowInsetLeft(),top=insets.getSystemWindowInsetTop(),
++                right=insets.getSystemWindowInsetRight(),bottom=insets.getSystemWindowInsetBottom();
++            if(insets.getDisplayCutout()!=null){
++                left=Math.max(left,insets.getDisplayCutout().getSafeInsetLeft());
++                top=Math.max(top,insets.getDisplayCutout().getSafeInsetTop());
++                right=Math.max(right,insets.getDisplayCutout().getSafeInsetRight());
++                bottom=Math.max(bottom,insets.getDisplayCutout().getSafeInsetBottom());
++            }
++            root.setPadding(left,top,right,bottom);
++            return insets.consumeSystemWindowInsets();
++        });
++        setContentView(root);root.requestApplyInsets();
+         WebSettings s=web.getSettings();s.setJavaScriptEnabled(true);s.setDomStorageEnabled(true);
+         s.setAllowFileAccess(false);s.setAllowContentAccess(false);
+         s.setAllowFileAccessFromFileURLs(false);s.setAllowUniversalAccessFromFileURLs(false);
+diff --git a/reverse-os-android/app/src/androidTest/java/com/reversepc/os/WorkbenchTestRunner.java b/reverse-os-android/app/src/androidTest/java/com/reversepc/os/WorkbenchTestRunner.java
+--- a/reverse-os-android/app/src/androidTest/java/com/reversepc/os/WorkbenchTestRunner.java
++++ b/reverse-os-android/app/src/androidTest/java/com/reversepc/os/WorkbenchTestRunner.java
+@@ -321,9 +321,29 @@
+         laplaceJs(laplace,"document.querySelector('[data-tab=flujo]').click();true");
+         require(laplaceJs(laplace,"!document.querySelector('#flujo').hidden").equals("true"),"3D tab");
+         // Numerical probe only: fixture never becomes a saved live quote.
+-        laplaceJs(laplace,"window.laplaceProbe=null;import('./modelo.mjs').then(async m=>{const end=Math.floor(Date.now()/300000)*300,rows=Array.from({length:500},(_,i)=>[end-(500-i)*300,1000-i-1,1000-i+1,1000-i,1000-i,10]),t=new Date().toISOString();const p=await m.emitirPronosticos(rows,{asset:'BTC-USD',value:'500',observed_at:t,known_at:t},{emitidoEn:t,horizontes:[15,30,60,240,1440,10080],revision:'android-fixture'});window.laplaceProbe=p.length===6&&p[0].precio_predicho<500&&p[5].precio_predicho===null;}).catch(e=>window.laplaceProbe=String(e));true");
++        laplaceJs(laplace,"window.laplaceProbe=null;import(new URL('./modelo.mjs',document.baseURI).href).then(async m=>{const end=Math.floor(Date.now()/300000)*300,rows=Array.from({length:500},(_,i)=>[end-(500-i)*300,1000-i-1,1000-i+1,1000-i,1000-i,10]),t=new Date().toISOString();const p=await m.emitirPronosticos(rows,{asset:'BTC-USD',value:'500',observed_at:t,known_at:t},{emitidoEn:t,horizontes:[15,30,60,240,1440,10080],revision:'android-fixture'});window.laplaceProbe=p.length===6&&p[0].precio_predicho<500&&p[5].precio_predicho===null;}).catch(e=>window.laplaceProbe=String(e));true");
+         String probe="null";for(int i=0;i<80;i++){probe=laplaceJs(laplace,"window.laplaceProbe");if(!probe.equals("null"))break;Thread.sleep(200);}
+         require(probe.equals("true"),"M001 did not run in Android WebView: "+probe);
++        final boolean[] safeContent={false};
++        runOnMainSync(()->{
++            WebView view=laplace.testingWebView();android.view.View parent=(android.view.View)view.getParent();
++            android.view.WindowInsets insets=parent.getRootWindowInsets();
++            if(insets!=null&&android.os.Build.VERSION.SDK_INT>=30){
++                android.graphics.Insets safe=insets.getInsets(android.view.WindowInsets.Type.systemBars()|
++                    android.view.WindowInsets.Type.displayCutout());
++                safeContent[0]=parent.getPaddingLeft()>=safe.left&&parent.getPaddingTop()>=safe.top&&
++                    parent.getPaddingRight()>=safe.right&&parent.getPaddingBottom()>=safe.bottom&&
++                    view.getWidth()>0&&view.getHeight()>0&&
++                    view.getWidth()<=parent.getWidth()-safe.left-safe.right&&
++                    view.getHeight()<=parent.getHeight()-safe.top-safe.bottom;
++            }else safeContent[0]=insets!=null;
++        });
++        require(safeContent[0],"Laplace controls overlap system bars/cutout");
++        Bitmap laplaceFrame=getUiAutomation().takeScreenshot();
++        require(laplaceFrame!=null,"Laplace screenshot unavailable");
++        try(FileOutputStream output=new FileOutputStream(dataFile("laplace-auditoria.png"))){
++            require(laplaceFrame.compress(Bitmap.CompressFormat.PNG,100,output),"Laplace screenshot failed");
++        }finally{laplaceFrame.recycle();}
+         require(!LaplaceActivity.trusted(android.net.Uri.parse("https://attacker.example/")),"External document accepted");
+         boolean blocked=false;try{LaplaceActivity.urlFor("file:///private",new JSONObject());}catch(Exception expected){blocked=true;}
+         require(blocked,"Arbitrary source accepted");
+diff --git a/.github/workflows/workbench-android.yml b/.github/workflows/workbench-android.yml
+--- a/.github/workflows/workbench-android.yml
++++ b/.github/workflows/workbench-android.yml
+@@ -135,6 +135,7 @@
+           adb shell am force-stop com.reversepc.control.workbench
+           timeout 120s adb shell am instrument -w -e mode laplace com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee evidence/android-laplace.txt
+           grep 'WORKBENCH_TESTS_OK mode=laplace' evidence/android-laplace.txt
++          adb exec-out run-as com.reversepc.control.workbench cat files/laplace-auditoria.png > evidence/android-laplace.png
+       - uses: actions/upload-artifact@v4
+         if: always()
+         with:
