@@ -28,7 +28,7 @@ jobs:
           run-id: 40910284394
           github-token: ${{ github.token }}
           path: disk-input
-      - name: Read original GPT and AVB headers, preserve exact images
+      - name: Inspect all six original AVB chain images without modifying disk
         shell: bash
         run: |
           set -euo pipefail
@@ -37,27 +37,44 @@ jobs:
           test -n "$DISK"
           export DISK
           node --input-type=module <<'NODE'
-          import {open,writeFile,mkdir} from 'node:fs/promises';
+          import {open,writeFile} from 'node:fs/promises';
           import {createReadStream} from 'node:fs';
           import {createHash} from 'node:crypto';
           import {crc32} from 'node:zlib';
-          const need=(v,m)=>{if(!v)throw Error(m)}, sha=b=>createHash('sha256').update(b).digest('hex');
-          const file=await open(process.env.DISK,'r'), stat=await file.stat();
+          const need=(v,m)=>{if(!v)throw Error(m)},sha=b=>createHash('sha256').update(b).digest('hex');
+          const file=await open(process.env.DISK,'r'),stat=await file.stat();
           need(stat.size===8738832384,'Wrong original disk extent');
           const hash=createHash('sha256');for await(const b of createReadStream(process.env.DISK))hash.update(b);
           const diskHash=hash.digest('hex');need(diskHash==='28303ac7b2832cbde4e1c56551bf81816b55bc946cc75a444f2605316ed97e1c','Wrong original disk digest');
+          const number=x=>{const n=Number(x);need(Number.isSafeInteger(n)&&n>=0,'Unsafe extent');return n;};
           async function read(at,n){need(Number.isSafeInteger(at)&&Number.isSafeInteger(n)&&at>=0&&n>=0&&at+n<=stat.size,'Read out of bounds');const b=Buffer.alloc(n);need((await file.read(b,0,n,at)).bytesRead===n,'Short read');return b;}
           const h=await read(512,512);need(h.toString('ascii',0,8)==='EFI PART','Missing GPT');const hn=h.readUInt32LE(12),hc=h.readUInt32LE(16);need(hn>=92&&hn<=512,'GPT header extent');h.writeUInt32LE(0,16);need(crc32(h.subarray(0,hn))===hc,'GPT header CRC');
-          const entries=Number(h.readBigUInt64LE(72))*512,count=h.readUInt32LE(80),stride=h.readUInt32LE(84);need(count<=128&&stride===128,'Unexpected GPT entries');
+          const entries=number(h.readBigUInt64LE(72))*512,count=h.readUInt32LE(80),stride=h.readUInt32LE(84);need(count<=128&&stride===128,'Unexpected GPT entries');
           const table=await read(entries,count*stride);need(crc32(table)===h.readUInt32LE(88),'GPT array CRC');
-          const partitions=[],images=[];
-          for(let i=0;i<count;i++){const e=table.subarray(i*stride,(i+1)*stride);if(e.subarray(0,16).every(x=>x===0))continue;const name=e.subarray(56,128).toString('utf16le').split('\0')[0],first=Number(e.readBigUInt64LE(32)),last=Number(e.readBigUInt64LE(40));need(/^[a-z][a-z0-9_]{0,35}$/.test(name)&&last>=first,'Bad partition');const p={name,first_lba:first,last_lba:last,bytes:(last-first+1)*512};partitions.push(p);
-            if(!name.startsWith('vbmeta'))continue;
-            need(p.bytes<=1024*1024,'Unexpected vbmeta partition extent');const b=await read(first*512,p.bytes);need(b.toString('ascii',0,4)==='AVB0','Missing AVB header');const auth=Number(b.readBigUInt64BE(12)),aux=Number(b.readBigUInt64BE(20)),size=256+auth+aux;need(size<=b.length&&size>=256,'AVB extent');const path='evidence/c13-inspect/'+name+'.img';await writeFile(path,b);images.push({name,partition_bytes:b.length,vbmeta_bytes:size,algorithm_type:b.readUInt32BE(28),flags:b.readUInt32BE(120),rollback_index:b.readBigUInt64BE(112).toString(),rollback_index_location:b.readUInt32BE(124),partition_sha256:sha(b),vbmeta_sha256:sha(b.subarray(0,size)),release_string:b.subarray(128,176).toString().split('\0')[0]});
+          const partitions=[],images=[],names=new Set();
+          for(let i=0;i<count;i++){
+            const e=table.subarray(i*stride,(i+1)*stride);if(e.subarray(0,16).every(x=>x===0))continue;
+            const name=e.subarray(56,128).toString('utf16le').split('\0')[0],first=number(e.readBigUInt64LE(32)),last=number(e.readBigUInt64LE(40));
+            need(/^[a-z][a-z0-9_]{0,35}$/.test(name)&&last>=first&&!names.has(name),'Bad or duplicate partition');names.add(name);
+            const p={name,first_lba:first,last_lba:last,bytes:(last-first+1)*512};partitions.push(p);
+            if(!name.startsWith('vbmeta')&&name!=='boot_a'&&name!=='init_boot_a')continue;
+            let offset=0,footer=null;
+            if(!name.startsWith('vbmeta')){
+              const f=await read(first*512+p.bytes-64,64);need(f.toString('ascii',0,4)==='AVBf'&&f.readUInt32BE(4)===1,'Missing supported AVB footer');
+              offset=number(f.readBigUInt64BE(20));const length=number(f.readBigUInt64BE(28)),original=number(f.readBigUInt64BE(12));
+              need(original<=offset&&offset+length<=p.bytes-64&&length>=256&&length<=1048576,'Invalid embedded vbmeta extent');
+              footer={original_image_bytes:original,vbmeta_offset:offset,vbmeta_bytes:length};await writeFile('evidence/c13-inspect/'+name+'.footer',f);
+            }
+            const header=await read(first*512+offset,256);need(header.toString('ascii',0,4)==='AVB0','Missing AVB header');
+            const auth=number(header.readBigUInt64BE(12)),aux=number(header.readBigUInt64BE(20)),size=256+auth+aux;
+            need(size>=256&&size<=1048576&&offset+size<=p.bytes&&(!footer||footer.vbmeta_bytes===size),'AVB extent');
+            const b=await read(first*512+offset,size);await writeFile('evidence/c13-inspect/'+name+'.vbmeta',b);
+            images.push({name,partition_bytes:p.bytes,vbmeta_offset:offset,vbmeta_bytes:size,footer,algorithm_type:b.readUInt32BE(28),flags:b.readUInt32BE(120),rollback_index:b.readBigUInt64BE(112).toString(),rollback_index_location:b.readUInt32BE(124),vbmeta_sha256:sha(b),release_string:b.subarray(128,176).toString().split('\0')[0]});
           }
-          await file.close();const result={schema:'reverse-c13-original-vbmeta-inspection-v1',disk_sha256:diskHash,disk_bytes:stat.size,partitions,images,guest_execution_performed:false,android_display_verified:false};await writeFile('evidence/c13-inspect/inspection.json',JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify(result,null,2));
+          need(images.length===6,'Incomplete AVB chain inventory');await file.close();
+          const result={schema:'reverse-c13-original-vbmeta-inspection-v2',disk_sha256:diskHash,disk_bytes:stat.size,partitions,images,guest_execution_performed:false,android_display_verified:false};
+          await writeFile('evidence/c13-inspect/inspection.json',JSON.stringify(result,null,2)+'\n');console.log(JSON.stringify(result,null,2));
           NODE
-          find disk-input -name '*.json' -size -2M -exec cp --backup=numbered {} evidence/c13-inspect/ \;
           git rev-parse HEAD > evidence/c13-inspect/source-commit.txt
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
