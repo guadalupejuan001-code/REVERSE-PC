@@ -61,6 +61,13 @@ jobs:
           grep -q '^#!reverse-pc-machine-v1' build/xi-render/executable/super-render-disassembled.xi
           test -s build/xi-render/executable/SUPER-RENDER-XI.rxe
           sha256sum build/xi-render/executable/SUPER-RENDER-XI.rxe | tee build/xi-render/executable/super-render-sha256.txt
+      - name: Compile 3D perspective XI executable
+        run: |
+          set -euo pipefail
+          build/xi-render/reverse_pc compile experiments/xi-render/super-project.xi build/xi-render/executable/SUPER-PROJECT-XI.rxe "SUPER PROJECT XI"
+          build/xi-render/reverse_pc disassemble build/xi-render/executable/SUPER-PROJECT-XI.rxe build/xi-render/executable/super-project-disassembled.xi
+          grep -q '^#!reverse-pc-machine-v1' build/xi-render/executable/super-project-disassembled.xi
+          test -s build/xi-render/executable/SUPER-PROJECT-XI.rxe
       - name: Compile standalone XI triangle geometry executable
         run: |
           set -euo pipefail
@@ -78,6 +85,11 @@ jobs:
           set -euo pipefail
           node experiments/xi-render/super-triangle-verify.cjs build/xi-render/reverse_pc build/xi-render/evidence | tee build/xi-render/super-triangle.log
           test -s build/xi-render/evidence/super-triangle-results.json
+      - name: SUPER RENDER XI actual 3D perspective and shared Ether triangle flow
+        run: |
+          set -euo pipefail
+          node experiments/xi-render/super-project-verify.cjs build/xi-render/reverse_pc build/xi-render/evidence | tee build/xi-render/super-project.log
+          test -s build/xi-render/evidence/super-project-results.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -88,5 +100,6 @@ jobs:
             build/xi-render/span-benchmark.log
             build/xi-render/super-benchmark.log
             build/xi-render/super-triangle.log
+            build/xi-render/super-project.log
             build/xi-render/executable/
           retention-days: 14

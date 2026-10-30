@@ -43,6 +43,8 @@ jobs:
             build/xi-render/executable/SUPER-RENDER-XI.rxe "SUPER RENDER XI"
           build/xi-render/reverse_pc compile experiments/xi-render/super-triangle.xi \
             build/xi-render/executable/SUPER-TRIANGLE-XI.rxe "SUPER TRIANGLE XI"
+          build/xi-render/reverse_pc compile experiments/xi-render/super-project.xi \
+            build/xi-render/executable/SUPER-PROJECT-XI.rxe "SUPER PROJECT XI"
           build/xi-render/reverse_pc disassemble \
             build/xi-render/executable/SUPER-RENDER-XI.rxe \
             build/xi-render/executable/scene-check.xi
@@ -51,6 +53,9 @@ jobs:
             build/xi-render/executable/triangle-check.xi
           grep -q '^#!reverse-pc-machine-v1' build/xi-render/executable/scene-check.xi
           grep -q '^#!reverse-pc-machine-v1' build/xi-render/executable/triangle-check.xi
+          build/xi-render/reverse_pc disassemble build/xi-render/executable/SUPER-PROJECT-XI.rxe \
+            build/xi-render/executable/project-check.xi
+          grep -q '^#!reverse-pc-machine-v1' build/xi-render/executable/project-check.xi
           sha256sum build/xi-render/executable/*.rxe \
             > build/xi-render/executable/SHA256SUMS.txt
           test -s build/xi-render/executable/SUPER-RENDER-XI.rxe
@@ -62,10 +67,14 @@ jobs:
             build/xi-render/evidence | tee build/xi-render/super-scene.log
           node experiments/xi-render/super-triangle-verify.cjs build/xi-render/reverse_pc \
             build/xi-render/evidence | tee build/xi-render/super-triangle.log
+          node experiments/xi-render/super-project-verify.cjs build/xi-render/reverse_pc \
+            build/xi-render/evidence | tee build/xi-render/super-project.log
           test -s build/xi-render/evidence/super-results.json
           test -s build/xi-render/evidence/super-triangle-results.json
+          test -s build/xi-render/evidence/super-project-results.json
           grep -q SUPER_RENDER_XI_ALL_OK build/xi-render/super-scene.log
           grep -q SUPER_TRIANGLE_XI_ALL_OK build/xi-render/super-triangle.log
+          grep -q SUPER_PROJECT_XI_ALL_OK build/xi-render/super-project.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -75,4 +84,5 @@ jobs:
             build/xi-render/evidence/
             build/xi-render/super-scene.log
             build/xi-render/super-triangle.log
+            build/xi-render/super-project.log
           retention-days: 14
