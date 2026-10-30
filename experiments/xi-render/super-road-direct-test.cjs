@@ -61,6 +61,11 @@ function displayColors(id,shade){
  return [Math.min(255,base[0]+gain),Math.min(255,base[1]+gain),
          Math.min(255,base[2]+gain)];
 }
+// XI already chose the material and shade; this is only its presentation palette.
+const materialPalette=Array.from({length:96},(_,code)=>{
+ const color=displayColors(code>>4,code&15);
+ return Buffer.from(color);
+});
 function referenceImage(rows,w,h){
  const image=Buffer.alloc(w*h*3);
  const colors=rows.map(row=>{
@@ -83,17 +88,20 @@ function referenceImage(rows,w,h){
  }
  return image;
 }
+function oldHostRGB(frame){
+ const decoded=decode(frame),pixels=decoded.pixels;
+ const rgb=Buffer.alloc(pixels.length*3);
+ for(let i=0;i<pixels.length;i++){
+  const c=displayColors(pixels[i]>>4,pixels[i]&15),at=i*3;
+  rgb[at]=c[0];rgb[at+1]=c[1];rgb[at+2]=c[2];
+ }
+ return rgb;
+}
 function directImage(w,h,curve,phase,initial){
  const start=performance.now();
  const r=call(program(binary,w,h,0,h,curve,phase),initial,true);
- const decoded=decode(r.output);
- const pixels=decoded.pixels,rgb=Buffer.alloc(w*h*3);
- for(let i=0;i<pixels.length;i++){
-  const type=pixels[i]>>4,shade=pixels[i]&15;
-  const c=displayColors(type,shade),at=i*3;
-  rgb[at]=c[0];rgb[at+1]=c[1];rgb[at+2]=c[2];
- }
- return {rgb,frame:r.output,commands:decoded.commands,
+ const decoded=decode(r.output,{palette:materialPalette});
+ return {rgb:decoded.pixels,frame:r.output,commands:decoded.commands,
   ms:performance.now()-start,xiMs:r.ms,bytes:r.output.length};
 }
 const results={suite:'SUPER RENDER XI complete road frame with direct XFS1',
@@ -113,10 +121,27 @@ try{
   const baseline=referenceImage(old.rows,w,h);
   const fast=directImage(w,h,curve,phase,initial);
   assert(fast.rgb.equals(baseline),'XI road visual mismatch at '+w+'x'+h);
+  // Microbenchmark the same XFS1 bytes: old per-pixel palette loop vs
+  // depth-ordered contiguous RGB spans. Both include XFS1 validation and SHA.
+  const rgbOld=oldHostRGB(fast.frame);
+  const rgbNew=decode(fast.frame,{palette:materialPalette}).pixels;
+  assert(rgbOld.equals(rgbNew)&&rgbNew.equals(baseline),'RGB palette parity');
+  const oldHostTimes=[],newHostTimes=[];
+  for(let i=0;i<6;i++){
+   for(const kind of i%2?['new','old']:['old','new']){
+    const tick=performance.now();
+    const result=kind==='old'?oldHostRGB(fast.frame):
+      decode(fast.frame,{palette:materialPalette}).pixels;
+    assert(result.equals(baseline),'RGB compositor nondeterministic');
+    (kind==='old'?oldHostTimes:newHostTimes).push(performance.now()-tick);
+   }
+  }
   const row={width:w,height:h,pixels:w*h,oldTransactions:old.transactions,
     directTransactions:1,oldJsonBytes:old.jsonBytes,
     directBinaryBytes:fast.bytes,spanCommands:fast.commands,
-    sha256:hash(baseline),legacyMs:[],directMs:[]};
+    sha256:hash(baseline),legacyMs:[],directMs:[],
+    oldHostRGBMs:Number(med(oldHostTimes).toFixed(4)),
+    optimizedHostRGBMs:Number(med(newHostTimes).toFixed(4))};
   for(let i=0;i<3;i++){
    const ordered=i===1?['direct','legacy']:['legacy','direct'];
    for(const way of ordered){
@@ -136,12 +161,14 @@ try{
   row.legacyMedianMs=Number(med(row.legacyMs).toFixed(3));
   row.directMedianMs=Number(med(row.directMs).toFixed(3));
   row.speedup=Number((row.legacyMedianMs/row.directMedianMs).toFixed(2));
+  row.rgbCompositorSpeedup=Number((row.oldHostRGBMs/row.optimizedHostRGBMs).toFixed(2));
   row.byteReduction=Number((row.oldJsonBytes/row.directBinaryBytes).toFixed(2));
   results.scenarios.push(row);
   console.log('SUPER_ROAD_XFS1_EXACT_OK',w,h,'old_chunks',old.transactions,
     'binary_chunks=1','json_bytes',old.jsonBytes,'xfs1_bytes',fast.bytes,
     'legacy_ms',row.legacyMedianMs,'direct_ms',row.directMedianMs,
-    'speedup',row.speedup,'rgb_sha256',row.sha256);
+    'speedup',row.speedup,'rgb_compositor_gain',row.rgbCompositorSpeedup,
+    'rgb_sha256',row.sha256);
  }
  results.passed=true;
  fs.writeFileSync(path.join(output,'super-road-direct-results.json'),JSON.stringify(results,null,2)+'\n');
