@@ -69,7 +69,15 @@ function nodes(xml){
   return [...xml.matchAll(/<node\b[^>]*>/g)].map(m=>{
     const item={};for(const a of m[0].matchAll(/([\w:-]+)="([^"]*)"/g))item[a[1]]=unescapeXml(a[2]);
     return item;
-  }).filter(x=>x.package===pkg);
+  });
+}
+function fullscreenHintControl(items){
+  const system=items.filter(x=>x.package==='com.android.systemui');
+  const text=system.map(x=>(x.text||'')+' '+(x['content-desc']||'')).join('\n');
+  if(!/Viewing full screen|Full screen mode|pantalla completa/i.test(text))return null;
+  // This is Android's immersive-mode education, not a permission prompt.
+  return system.find(x=>/^(Got it|Entendido)[.!]?$/i.test((x.text||'').trim())&&
+    (x.clickable==='true'||x.class==='android.widget.Button'))||null;
 }
 function hierarchy(){
   let why='';
@@ -78,9 +86,21 @@ function hierarchy(){
       {timeout:12000,allowFailure:true});
     if(!p.error&&p.status===0&&!/ERROR|Exception|could not/i.test(String(p.stdout)+String(p.stderr))){
       const xml=adbText(['exec-out','cat','/sdcard/velocity-smoke.xml'],{timeout:5000});
-      if(xml.includes('<hierarchy')&&nodes(xml).length){
-        checkNoFailure(nodes(xml).map(x=>x.text||'').join('\n'));
-        lastXml=xml;fs.writeFileSync(path.join(out,'latest-ui.xml'),xml);return nodes(xml);
+      if(xml.includes('<hierarchy')){
+        // Preserve system overlays too, including failures before app nodes exist.
+        lastXml=xml;fs.writeFileSync(path.join(out,'latest-ui.xml'),xml);
+        const all=nodes(xml),hint=fullscreenHintControl(all);
+        if(hint&&!report.fullscreenHintDismissed){
+          fs.writeFileSync(path.join(out,'fullscreen-education-ui.xml'),xml);
+          tapNode(hint);report.fullscreenHintDismissed=true;
+          check(true,'dismissed known SystemUI fullscreen education');
+          sleep(300);continue;
+        }
+        const app=all.filter(x=>x.package===pkg);
+        if(app.length){
+          checkNoFailure(app.map(x=>x.text||'').join('\n'));
+          return app;
+        }
       }
     }
     why=String(p.error||p.stdout||p.stderr).slice(-1200);sleep(250);
@@ -150,7 +170,9 @@ try{
     '-c','android.intent.category.LAUNCHER','-f','0x10200000','-n',component]);
   rememberPid();
   resumedMarker=waitFrame(before);check(!!resumedMarker,'new actual Canvas frame after Activity resume');
-  check(Number((/speed=(\d+)/.exec(resumedMarker)||[])[1])>0,'Activity resume retains moving game state');
+  report.resumedTicks=Number((/ticks=(\d+)/.exec(resumedMarker)||[])[1]);
+  check(Number.isInteger(report.resumedTicks)&&report.resumedTicks>0,
+    'Activity resume retains started race state');
   ui=waitText(/REgraphics/);check(ui.length>0,'game remains usable after resume');
   checkNoFailure(logs());check(true,'no fatal Java/native or renderer error');
   screenshot('final-screen');

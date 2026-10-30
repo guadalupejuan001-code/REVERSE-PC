@@ -37,6 +37,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with: {gradle-version: '8.9'}
       - uses: actions/cache@v4
+        id: velocity-signing
         with:
           path: ${{ env.REVERSE_SIGNING_KEYSTORE }}
           key: reverse-velocity-development-signing-v1
@@ -66,6 +67,11 @@ jobs:
             }
           cp reverse-os-android/app/build/outputs/apk/velocity/debug/app-velocity-debug.apk \
             dist/REVERSE-VELOCITY-0.1.0-Prueba.apk
+      - uses: actions/cache/save@v4
+        if: steps.velocity-signing.outputs.cache-hit != 'true'
+        with:
+          path: ${{ env.REVERSE_SIGNING_KEYSTORE }}
+          key: reverse-velocity-development-signing-v1
       - name: Verify APK identity, signature, alignment and exact shader assets
         run: |
           set -euo pipefail
