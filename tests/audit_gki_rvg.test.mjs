@@ -89,3 +89,10 @@ test('read-only RVI2 rejects forged profile length and control bytes with valid 
   setFnv(changed);
   assert.throws(()=>auditGkiRvg(changed,sha(kernel),sha(changed)),/not printable/);
 });
+
+test('halt flag and exit status retain their distinct serialized positions',()=>{
+ for(const [halted,exit] of [[1n,37n],[0n,9n]]){
+  const {bytes,kernel}=fixture();bytes.writeBigUInt64LE(halted,8+6*8);bytes.writeBigUInt64LE(exit,8+7*8);setFnv(bytes);
+  const result=auditGkiRvg(bytes,sha(kernel),sha(bytes));assert.equal(result.native_halted,Number(halted));assert.equal(result.native_exit_code,Number(exit));
+ }
+});

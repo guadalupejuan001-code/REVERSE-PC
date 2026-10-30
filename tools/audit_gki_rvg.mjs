@@ -82,7 +82,7 @@ export function auditGkiRvg(bytes,expectedKernelSha,expectedRvgSha) {
     instructions:read(4),kernel_bytes:kernelBytes,
     dtb_bytes:treeBytes,initrd_bytes:initrdBytes,
     immutable_image_bytes:imageBytes,immutable_image_sha256:sha256(image),
-    logical_ram_bytes:read(0),native_halted:read(7),native_exit_code:read(6),
+    logical_ram_bytes:read(0),native_halted:read(6),native_exit_code:read(7),
     native_pc:'0x'+bytes.readBigUInt64LE(24).toString(16),
     native_sp:'0x'+bytes.readBigUInt64LE(32).toString(16),
     classical_override_limit:bytes.readBigUInt64LE(16).toString(),
