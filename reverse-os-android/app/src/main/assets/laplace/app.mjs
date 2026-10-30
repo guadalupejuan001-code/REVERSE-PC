@@ -15,7 +15,7 @@ const $=x=>document.getElementById(x),need=(c,m)=>{if(!c)throw Error(m)};
 const money=(n,c='USD')=>Number.isFinite(n)?new Intl.NumberFormat('es-MX',{style:'currency',currency:c,maximumFractionDigits:2}).format(n):'—';
 const date=t=>Number.isFinite(Date.parse(t))?new Intl.DateTimeFormat('es-MX',{dateStyle:'short',timeStyle:'medium'}).format(new Date(t)):'—';
 const percent=n=>Number.isFinite(n)?(100*n).toFixed(1)+' %':'—';
-let serial=0,busy=false,last=null,remote=null;
+let serial=0,busy=false,last=null,remote=null;const readings=new Map();
 const pending=new Map(),statuses={};
 
 window.LaplaceHost={complete(id,result){
@@ -34,7 +34,7 @@ function host(operation,payload={}){
 function asset(){return ASSETS[$('activo').value]??ASSETS['BTC-USD'];}
 function assetId(){return $('activo').value;}
 function isBTC(){return asset().kind==='crypto';}
-function current(){return last?.market?.asset===assetId()?last:null;}
+function remember(s){if(s?.market?.asset){last=s;readings.set(s.market.asset,s);}return s;}\nfunction current(){return readings.get(assetId())??(last?.market?.asset===assetId()?last:null);}
 function alert(text=''){
   if(/429|too many|demasiadas solicitudes/i.test(text))text='La fuente limitó temporalmente las consultas. Laplace redujo el ritmo; vuelve a intentarlo más tarde si persiste.';
   $('aviso').textContent=text;$('aviso').hidden=!text;
@@ -115,7 +115,7 @@ async function update(){
   try{
     const body=isBTC()?await updateBTC():await updateStock();
     const fresh={...body,sha256:await huellaContenido(body)};
-    last=await verifySnapshot(fresh);$('activo').value=last.market.asset;await host('save',JSON.stringify(fresh));render();
+    remember(await verifySnapshot(fresh));$('activo').value=last.market.asset;await host('save',JSON.stringify(fresh));render();
     $('guardado').textContent='Consulta guardada y sellada localmente.';
   }catch(e){alert(e.message+' No se reemplazó la última lectura válida.');}
   finally{busy=false;$('actualizar').disabled=false;$('actualizar').textContent='Consultar ahora';for(const k in statuses)if(statuses[k].state==='consultando')status(k,'error');statusText();}
@@ -264,4 +264,4 @@ $('activo').onchange=()=>{adaptMode();render();try{localStorage.setItem('laplace
 for(const c of document.querySelectorAll('[data-source]'))c.onchange=()=>{renderFactors();try{localStorage.setItem('laplace-fuentes-v1',JSON.stringify(selected()));}catch{}};
 try{const a=localStorage.getItem('laplace-activo-v2');if(ASSETS[a])$('activo').value=a;const prefs=JSON.parse(localStorage.getItem('laplace-fuentes-v1'));if(Array.isArray(prefs))for(const c of document.querySelectorAll('[data-source]'))c.checked=prefs.includes(c.dataset.source);}catch{}
 adaptMode();setInterval(statusText,1000);window.addEventListener('resize',()=>{drawChart();buildNodes();});
-try{const r=await host('read');if(r.text){last=await verifySnapshot(JSON.parse(r.text));render();}}catch(e){alert(e.message);}
+try{const r=await host('read');if(r.text){remember(await verifySnapshot(JSON.parse(r.text)));render();}}catch(e){alert(e.message);}
