@@ -1,0 +1,35 @@
+name: Laplace - integración comprobable
+on:
+  push:
+    branches: [integrate/laplace-m001-next-apk-20261030]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fuentes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Preparar fuentes exactas
+        run: |
+          mkdir -p evidencia-laplace
+          git archive --format=zip --output=evidencia-laplace/reverse.zip HEAD
+          git rev-parse HEAD > evidencia-laplace/reverse-ref.txt
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/LaPlaceDIG
+          ref: 06ebce4bddf25d615cefd85ed24081f37504a492
+          path: _laplace
+          persist-credentials: false
+      - name: Archivar Laplace original para adaptar sin reinventar el modelo
+        run: |
+          git -C _laplace archive --format=zip --output="$GITHUB_WORKSPACE/evidencia-laplace/laplace.zip" HEAD
+          git -C _laplace rev-parse HEAD > evidencia-laplace/laplace-ref.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: laplace-integration-sources
+          path: evidencia-laplace/**
+          retention-days: 7
