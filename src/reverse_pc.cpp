@@ -292,6 +292,67 @@ void run(const fs::path& program,const fs::path& state_path,
   std::cout<<output;
   std::cerr<<"REVERSE_PC_RUN_PASS saved="<<destination.string()<<"\n";
 }
+// Persistent XFS1 host transport. The sole scene algorithm remains XI.
+// 'U' + 18 bytes: configure the existing XI mailbox addresses 200..217.
+// 'F': execute the loaded XI program and send u32-length + XFS1 bytes.
+// 'Q': close. The source RVPC2 on disk is never rewritten.
+// No C++ geometry, shader, material, or visibility rules live here.
+void serve_frames(const fs::path& program,const fs::path& state_path){
+  auto runtime=load_state(state_path);
+  const auto bytes=read_file(program);
+  check(!reverse_pc::rxe_app::has_magic({bytes.begin(),bytes.end()}),
+        "Frame Stream does not execute RXE2 conversational applications");
+  const auto name=program.extension().string();
+  const bool executable=(name==".rxe")||reverse_pc::rxe::has_magic(bytes);
+  const auto source=executable?reverse_pc::rxe::disassemble(
+    reverse_pc::rxe::decode({bytes.begin(),bytes.end()})):bytes;
+  check(source.find("#!reverse-pc-machine-v1\n")==0,
+        "Frame Stream requires original XI Machine v1");
+
+  auto response=[&](const std::string& data){
+    check(data.size()<=16*1024*1024,"Frame Stream response budget");
+    const auto size=static_cast<std::uint32_t>(data.size());
+    for(unsigned n=0;n<4;n++)
+      std::cout.put(static_cast<char>((size>>(n*8))&255u));
+    std::cout.write(data.data(),static_cast<std::streamsize>(data.size()));
+    std::cout.flush();
+    check(bool(std::cout),"Frame Stream receiver closed");
+  };
+  while(true){
+    const auto code=std::cin.get();
+    if(code==EOF)break;
+    if(code=='Q')break;
+    if(code=='U'){
+      std::array<char,18> data{};
+      std::cin.read(data.data(),static_cast<std::streamsize>(data.size()));
+      check(static_cast<std::size_t>(std::cin.gcount())==data.size(),
+            "Frame Stream truncated mailbox update");
+      std::string config="#!reverse-pc-machine-v1\n";
+      for(unsigned i=0;i<data.size();++i){
+        config+="store8 "+std::to_string(200+i)+" "+
+          std::to_string(static_cast<unsigned char>(data[i]))+"\n";
+      }
+      const auto result=runtime.execute(config);
+      check(result.empty(),"Frame Stream unexpected control output");
+      response({});
+      continue;
+    }
+    if(code!='F')throw std::invalid_argument("Frame Stream unknown request");
+    const auto beforeCore=runtime.core_snapshot();
+    const auto beforeMemory=runtime.memory_persistent_snapshot();
+    const auto frame=runtime.execute(source);
+    check(frame.size()>=24&&frame.compare(0,4,"XFS1")==0&&
+          static_cast<unsigned char>(frame[4])==1&&
+          static_cast<unsigned char>(frame[frame.size()-8])==3,
+          "Frame Stream XI program did not publish XFS1");
+    check(beforeCore==runtime.core_snapshot()&&
+          beforeMemory==runtime.memory_persistent_snapshot(),
+          "Frame Stream draw attempted to mutate Ether state");
+    // Complete validated transaction before emitting any visible bytes.
+    response(frame);
+  }
+}
+
 void write_program(const fs::path& path,const std::string& data){
   if(!path.parent_path().empty())fs::create_directories(path.parent_path());
   const fs::path temporary=path.string()+".pending";std::ofstream out(temporary,std::ios::binary|std::ios::trunc);
@@ -302,6 +363,7 @@ void help(){
            <<"reverse_pc init STATE_OUTPUT.rvp\n"
            <<"reverse_pc demo [directory]\n"
            <<"reverse_pc run PROGRAM.xi|APP.rxe STATE_INPUT.rvp STATE_OUTPUT.rvp\n"
+           <<"reverse_pc frame-serve PROGRAM.xi|APP.rxe STATE_INPUT.rvp\n"
            <<"reverse_pc compile PROGRAM.xi APP.rxe [TITLE]\n"
            <<"reverse_pc inspect-rxe APP.rxe\n"
            <<"reverse_pc disassemble APP.rxe OUTPUT.xi\n"
@@ -321,6 +383,8 @@ int main(int argc,char** argv) {
       experiment(argc==3?fs::path(argv[2]):fs::path("reverse-pc-results"));
     else if(cmd=="run"&&argc==5)
       run(argv[2],argv[3],argv[4]);
+    else if(cmd=="frame-serve"&&argc==4)
+      serve_frames(argv[2],argv[3]);
     else if(cmd=="compile"&&(argc==4||argc==5)){
       check(!fs::exists(argv[3])||!fs::equivalent(argv[2],argv[3]),"source and executable must be different files");
       const auto image=reverse_pc::rxe::compile(read_file(argv[2]),argc==5?argv[4]:fs::path(argv[2]).stem().string());
