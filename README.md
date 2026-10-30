@@ -207,8 +207,9 @@ baja velocidad conserva su fracción entre ticks. El escenario se calcula por
 scanlines en perspectiva y el brillo es estilizado.
 
 Pasaron 52 escenas, 45 combinaciones con JNI y el contrato de conducción. El
-workflow también compila las clases Java contra Android 35. La compilación de
-APK y la prueba de pantalla en teléfono necesitan validación independiente.
+workflow también compila las clases Java contra Android 35. La APK de prueba
+standalone pasó instalación y controles en un emulador Android 35; la prueba
+en teléfono físico sigue pendiente. Véase [APK de prueba](docs/REVERSE_VELOCITY_APK.md).
 
 Diseño, comandos, límites y evidencia en
 [Shader costero XI](docs/REVERSE_VELOCITY_SHADER_V2.md).

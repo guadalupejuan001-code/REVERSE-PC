@@ -30,3 +30,18 @@ gradle -p reverse-os-android --no-daemon :app:assembleVelocityDebug
 
 Salida: `reverse-os-android/app/build/outputs/apk/velocity/debug/app-velocity-debug.apk`.
 El artefacto del workflow se llama `REVERSE-VELOCITY-0.1.0-Prueba.apk`.
+
+## Primera APK verificada
+
+La compilación del commit `8d43d2e1d7c33756f0df5e4f8e12529bdd5165d1`
+pasó [el workflow de APK](https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/41078636019).
+El smoke completó 20 comprobaciones: primer fotograma, aceleración a 63 km/h,
+pausa, cámara, pintura y reapertura mediante el lanzador conservando la carrera
+(757 ticks observados tras volver). La actividad standalone usa un único task
+para impedir que una nueva entrada del lanzador reinicialice la partida.
+
+La APK mide 3.761.831 bytes. SHA-256:
+`df6dedceae3b52315bca8b0a4a5d9c16cfd4488acbd5192ce47a638ff014ee37`.
+Los resultados exactos están en `docs/evidence/velocity-apk-0.1.0-package.json`
+y `docs/evidence/velocity-apk-0.1.0-smoke.json`. El dispositivo físico del usuario
+no se ha probado desde este entorno.

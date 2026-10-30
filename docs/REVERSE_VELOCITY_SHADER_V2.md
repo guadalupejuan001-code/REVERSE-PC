@@ -104,8 +104,8 @@ Resultados completos:
 
 El workflow `velocity-xi-render.yml` reproduce los contratos, JNI y la compilación
 de las clases Java de producción contra Android 35. Compilar clases no valida
-instalación, ciclo de vida ni visualización en un dispositivo. La APK y las
-pruebas en el teléfono siguen pendientes.
+instalación, ciclo de vida ni visualización en un dispositivo. La APK standalone pasó instalación y controles en Android 35 emulado; las
+pruebas en teléfono físico siguen pendientes. Véase [APK de prueba](REVERSE_VELOCITY_APK.md).
 
 Para repetir los contratos con el intérprete preparado:
 
