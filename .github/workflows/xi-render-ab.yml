@@ -1,9 +1,11 @@
 name: X Render XI A/B hypothesis — actual XI interpreter
 on:
   push:
-    branches: [experiment/xrender-xi-hypothesis-20261029, feature/xi-frame-stream-v1-20261030, perf/xi-frame-stream-composition-20261030]
+    branches: [experiment/xrender-xi-hypothesis-20261029, feature/xi-frame-stream-v1-20261030, perf/xi-frame-stream-composition-20261030, feature/xi-frame-stream-direct-binary-20261030]
     paths:
       - 'experiments/xi-render/**'
+      - 'src/integration/xi_machine_extension.inc'
+      - 'tests/xi_machine_test.cpp'
       - '.github/workflows/xi-render-ab.yml'
   pull_request:
     branches: [feature/reverse-velocity-native-20261029]
@@ -38,6 +40,14 @@ jobs:
           g++ -std=c++17 -O2 -Wall -Wextra -Werror \
             -Ideps/mundo-x/native/include \
             experiments/xi-render/native-reference.cpp -o build/xi-render/xrender-oracle
+      - name: Validate original XI Machine and binary XFS1 atomicity
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -pthread \
+            -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
+            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
+            tests/xi_machine_test.cpp -o build/xi-render/xi-machine-test
+          build/xi-render/xi-machine-test | tee build/xi-render/xi-machine.log
       - name: Execute real XI, compare every pixel with X Render, measure both
         run: |
           set -euo pipefail
@@ -103,6 +113,13 @@ jobs:
           node experiments/xi-render/frame-stream-profile.cjs \
             build/xi-render/evidence | tee build/xi-render/frame-stream-profile.log
           test -s build/xi-render/evidence/frame-stream-profile.json
+      - name: Compare XI direct binary XFS1 to historical JSON transport
+        run: |
+          set -euo pipefail
+          node experiments/xi-render/frame-stream-direct-test.cjs \
+            build/xi-render/reverse_pc build/xi-render/xrender-oracle \
+            build/xi-render/evidence | tee build/xi-render/xi-direct.log
+          test -s build/xi-render/evidence/xi-direct-results.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -113,6 +130,8 @@ jobs:
             build/xi-render/span-benchmark.log
             build/xi-render/frame-stream.log
             build/xi-render/frame-stream-profile.log
+            build/xi-render/xi-direct.log
+            build/xi-render/xi-machine.log
             build/xi-render/super-benchmark.log
             build/xi-render/super-triangle.log
             build/xi-render/super-project.log
