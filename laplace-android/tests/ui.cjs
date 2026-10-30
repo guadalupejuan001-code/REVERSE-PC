@@ -36,7 +36,7 @@ const server=createServer((req,res)=>{try{const path=req.url==='/'?'/index.html'
   assert.equal(calls.filter(c=>c.operation==='public').length,0);checks++;
   assert.equal(await page.inputValue('#activo'),'BTC-USD');checks++;
   await page.getByRole('button',{name:'Consultar ahora',exact:true}).click();await page.waitForFunction(()=>!document.getElementById('actualizar').disabled,{},{timeout:30000});
-  assert.ok(saved);const btc=JSON.parse(saved);assert.equal(btc.schema,'laplace-reverse-v2');checks++;assert.equal(btc.market.asset,'BTC-USD');checks++;assert.equal(btc.predictions.length,6);checks++;
+  assert.ok(saved);const btc=JSON.parse(saved);assert.equal(btc.schema,'laplace-reverse-v2');checks++;assert.equal(btc.market.asset,'BTC-USD');checks++;assert.equal(btc.predictions.length,6);checks++;assert.equal(btc.native_direction.schema,'laplace-xn01-native-xi-v1');checks++;
   await page.getByRole('button',{name:'Flujo',exact:true}).click();assert.equal(await page.locator('.nodo').count(),7);checks++;
   await page.getByRole('button',{name:'Resumen',exact:true}).click();assert.match(await page.locator('#resultadoEtiqueta').innerText(),/PRECIO CALCULADO/);checks++;
   await page.selectOption('#horizonte','60');assert.match(await page.locator('#objetivo').innerText(),/\d/);checks++;
