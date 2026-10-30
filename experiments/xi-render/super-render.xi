@@ -93,12 +93,17 @@ print r11
 print r11
 print r13
 print r14
-print r11
-print r11
-print r11
-print r11
-print r11
-print r11
+print r13
+set r15 -1
+print r15
+print r15
+print r14
+set r9 -1
+print r9
+print r9
+mov r15 r7
+mul r15 12
+div r15 r6
 print r15
 print r10
 jmp next_row
