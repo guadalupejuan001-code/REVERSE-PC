@@ -1,6 +1,23 @@
 --- a/src/minimal_guest_simd.inc
 +++ b/src/minimal_guest_simd.inc
-@@ -240,6 +240,20 @@
+@@ -207,6 +207,16 @@
+     for(unsigned n=0;n<width/element;n++)value.lane(n,element,source.lane(n,element)==0?UINT64_MAX:0);
+     commit(value);return true;
+   }
++  if((i&0x9f3ffc00u)==0x0e20a800u){ // SADDLV/UADDLV: widen and add all lanes into one scalar.
++    if(size==3||(size==2&&!q))return false;
++    fp_access();const auto source=floating_.v[rn];std::uint64_t sum=0;
++    for(unsigned n=0;n<width/element;n++){
++      auto x=source.lane(n,element);
++      if(!u&&(x&(UINT64_C(1)<<(element-1))))x|=~low_mask(element);
++      sum+=x;
++    }
++    fp_set(rd,sum,2*element);return true;
++  }
+   const auto minmax_across=i&0x9f3ffc00u;
+   if(minmax_across==0x0e30a800u||minmax_across==0x0e31a800u){ // S/UMAXV and S/UMINV across lanes.
+     if(size==3||(size==2&&!q))return false; // Neither 64-bit lanes nor the 2S arrangement is allocated.
+@@ -240,6 +250,20 @@
        switch(size){case 0:return x^y;case 1:return (old&x)|(~old&y);case 2:return (old&~y)|(x&y);default:return (old&y)|(x&~y);}
      };value.low=logic(a.low,b.low,d.low);value.high=logic(a.high,b.high,d.high);commit(value);return true;
    }
