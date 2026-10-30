@@ -1,20 +1,21 @@
 #!/usr/bin/env node
 // Read-only diagnostic for the byte-pinned Android GKI below. Never restores,
 // executes, mutates or substitutes the XI/Ether authority.
-import {readFileSync} from 'node:fs';
+import {readFileSync,statSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {auditGkiRvg} from './audit_gki_rvg.mjs';
+import {rvgMemoryLines} from './rvg_memory_lines.mjs';
 const KERNEL='f722bdd809bfd3485917a564b053b8a6d4938408734091f420c3297a8e3b20c8';
 const VBASE=0xffffffc080000000n, RAM=0x40000000n;
 const MASK=0xffffffffffffffffn, PA=0x0000fffffffff000n;
 const check=(ok,msg)=>{if(!ok)throw Error('Android observer: '+msg);};
 const hex=n=>'0x'+n.toString(16);
 const extras={1:4,2:0,3:12,4:12,5:12,6:8,7:0,8:0,9:0,10:0,11:0,12:0,13:8,14:4,15:12,16:0,17:4,18:0,19:12};
-export function observeAndroidKernel(bytes,expectedCheckpointSha){
+export function observeAndroidKernel(bytes,expectedCheckpointSha,options){
  const originalSha=createHash('sha256').update(bytes).digest('hex');
- const provenance=auditGkiRvg(bytes,KERNEL,expectedCheckpointSha);
+ const provenance=auditGkiRvg(bytes,KERNEL,expectedCheckpointSha,options);
  check(['RVI2','RVI3'].includes(provenance.rvi_version)&&provenance.bootargs.split(' ').includes('nokaslr'),'observer profile requires the pinned nonrelocated Android boot');
  const u=i=>bytes.readBigUInt64LE(8+i*8), fields=provenance.rvg_version==='RVG3'?44:43;
  const imageAt=8+fields*8, imageBytes=Number(u(39)),coreBytes=Number(u(40)),memoryBytes=Number(u(41));
@@ -29,9 +30,10 @@ export function observeAndroidKernel(bytes,expectedCheckpointSha){
  const sctlr=m(10),tcr=m(11),ttbr0=m(12),ttbr1=m(13);
  check(((tcr>>14n)&3n)===0n&&((tcr>>30n)&3n)===2n,'observer supports only the native 4-KiB translation granules');
  const pageMap=new Map();
- const lines=bytes.subarray(imageAt+imageBytes+coreBytes,machineAt).toString('ascii').trimEnd().split('\n');
- check(/^MXIM2 \d+$/.test(lines[0])&&lines[1]==='MXIM3 0','requires original adaptive zero-background snapshot');
- for(const line of lines.slice(2)){
+ const lines=rvgMemoryLines(bytes.subarray(imageAt+imageBytes+coreBytes,machineAt));
+ check(/^MXIM2 \d+$/.test(lines.next().value)&&lines.next().value==='MXIM3 0','requires original adaptive zero-background snapshot');
+ for(const line of lines){
+  if(!line)continue;
   const [kind,address,bitmap,values]=line.split(' ');
   check(kind==='P','unsupported large-address or quantum-bound record');
   const page=Number(address),mask=Buffer.from(bitmap,'hex'),data=Buffer.from(values,'hex');
@@ -220,5 +222,5 @@ export function observeAndroidKernel(bytes,expectedCheckpointSha){
  return {status:'read_only_kernel_observation',checkpoint_sha256:originalSha,kernel_sha256:KERNEL,instructions:provenance.instructions,pc:hex(u(2)),pc_symbol:nearest(u(2)),next_opcode:hex(read(u(2),4)),physical_pc:hex(translate(u(2))),ticks:m(27).toString(),exceptions:m(28).toString(),current_task:currentTask===null?null:hex(currentTask),current_task_source:currentTaskSource,current_task_lookup:currentLookup,current_task_read_error:currentTaskError,current_pid:currentDetails?.pid??null,current_task_details:currentDetails,capacity,task_layout:layout,task_count:tasks.length,process_leader_count:tasks.length,all_threads_enumerated:false,tasks,trace_event_sem:{address:hex(sem),count:hex(countValue),owner:hex(owner),owner_pid:ownerTask?.pid??null},initramfs:globals,rootfs_file:rootfsFile,android_init_observed:false,android_boot:false,input_unchanged:true};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
- try{check(process.argv[2],'usage: node android_kernel_observer.mjs checkpoint.rvg [expected_sha256]');console.log(JSON.stringify(observeAndroidKernel(readFileSync(process.argv[2]),process.argv[3]),null,2));}catch(e){console.error(e.message);process.exitCode=1;}
+ try{check(process.argv[2],'usage: node android_kernel_observer.mjs checkpoint.rvg [expected_sha256]');const maxSnapshotBytes=process.argv[4]===undefined?256*1024*1024:Number(process.argv[4]);check(Number.isSafeInteger(maxSnapshotBytes)&&maxSnapshotBytes>=360&&maxSnapshotBytes<=1024*1024*1024,'invalid host transport bound');check(statSync(process.argv[2]).size<=maxSnapshotBytes,'oversized checkpoint');console.log(JSON.stringify(observeAndroidKernel(readFileSync(process.argv[2]),process.argv[3],{maxSnapshotBytes}),null,2));}catch(e){console.error(e.message);process.exitCode=1;}
 }
