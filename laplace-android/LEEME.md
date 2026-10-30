@@ -4,7 +4,7 @@
 
 LAPLACE queda dentro de la APK de REVERSE con dos rutas explícitas:
 
-- **BTC/USD · M001:** mantiene el candidato multihorizonte existente (15m, 30m, 1h, 4h, 24h y 7d).
+- **BTC/USD · M001 + XN01:** M001 mantiene el candidato multihorizonte (15m, 30m, 1h, 4h, 24h y 7d) y XN01 calcula en paralelo la dirección inmediata de 5 minutos dentro de XI/Ether.
 - **Bolsa · XN01:** SPY, AAPL y NVDA calculan la dirección del siguiente intervalo cerrado de 5 minutos en la **XI Machine de REVERSE sobre NativeRuntime/InverseMemory**.
 
 La ruta bursátil es:
@@ -27,7 +27,7 @@ interfaz Laplace
 
 JavaScript **no calcula SUBIDA/BAJADA**. `x001.mjs` normaliza la respuesta bursátil y conserva evidencia histórica del experimento anterior; la decisión viva procede del programa `x001-native.xi`.
 
-XN01 usa cuatro propiedades enteras calculadas dentro de XI:
+XN01 se ejecuta tanto para BTC como para bolsa y usa cuatro propiedades enteras calculadas dentro de XI:
 
 1. cierre de 5 minutos no menor al anterior;
 2. cierre actual no menor al de 15 minutos antes;
