@@ -12,6 +12,12 @@ on:
       - 'tests/android_c15_result.test.mjs'
       - 'tests/minimal_guest_addlv_test.cpp'
       - 'tests/addlv_encoding_test.mjs'
+      - 'tests/minimal_guest_compare_zero_test.cpp'
+      - 'tests/compare_zero_encoding_test.mjs'
+      - 'tests/minimal_guest_mla_test.cpp'
+      - 'tests/mla_encoding_test.mjs'
+      - 'tests/minimal_guest_replicate_load_test.cpp'
+      - 'tests/replicate_load_encoding_test.mjs'
 permissions:
   contents: read
   actions: read
@@ -22,7 +28,7 @@ jobs:
   continue-original-state:
     if: github.event.pull_request.head.ref == 'fix/android-c15-multiply-long-20261030' && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -52,7 +58,7 @@ jobs:
           echo '8f1a5f8615dea3b9e3986332d693a20b5d42c2bf54b177f2771a09e780e8b702  src/minimal_guest_simd.inc' | sha256sum --check
           git apply --check patches/android-c15-multiply-long.patch
           git apply patches/android-c15-multiply-long.patch
-          echo '4f21a77372116a551cc77ef7776768cd416b003061b6d29a6e1b8050e341c835  src/minimal_guest_simd.inc' | sha256sum --check
+          echo 'a55b187eb943306a6807689e03fe1e9902acdb864bd6e8b80b1666bfd4187ad8  src/minimal_guest_simd.inc' | sha256sum --check
           tar -xzf input-c14/tested-source.tar.gz build/ether-compat build/softfloat/libreverse_softfloat.a deps/mundo-x/native/include
           node tools/android_c15_result.mjs preflight input-c14 > evidence/c15/input-preflight.json
           git rev-parse HEAD > evidence/c15/source-commit.txt
@@ -61,13 +67,14 @@ jobs:
         run: |
           set -euo pipefail
           FLAGS='-std=c++17 -O1 -pthread -fsanitize=undefined -fno-sanitize-recover=all -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc'
-          for suite in minimal_guest_multiply_long minimal_guest_addlv minimal_guest_minmax_across minimal_guest_addp_scalar minimal_guest_xtn; do
+          for suite in minimal_guest_multiply_long minimal_guest_addlv minimal_guest_compare_zero minimal_guest_mla minimal_guest_replicate_load minimal_guest_minmax_across minimal_guest_addp_scalar minimal_guest_xtn; do
             g++ $FLAGS "tests/${suite}_test.cpp" build/softfloat/libreverse_softfloat.a -o "build/c15-$suite"
             "build/c15-$suite" > "evidence/c15/$suite.json"
           done
           node --test tests/android_c15_result.test.mjs tests/android_guest_outcome.test.mjs tests/android_partition_readiness.test.mjs > evidence/c15/control-tests.tap
-          node tests/multiply_long_encoding_test.mjs > evidence/c15/llvm-encoding.json
-          node tests/addlv_encoding_test.mjs > evidence/c15/addlv-llvm-encoding.json
+          for family in multiply_long addlv compare_zero mla replicate_load; do
+            node "tests/${family}_encoding_test.mjs" > "evidence/c15/${family}_encoding.json"
+          done
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tools/guest_c15_resume.cpp build/softfloat/libreverse_softfloat.a -o build/c15-native
           tar -czf evidence/c15/tested-source.tar.gz src tools tests scripts third_party patches build/ether-compat build/softfloat/libreverse_softfloat.a deps/mundo-x/native/include
           sha256sum build/c15-native evidence/c15/tested-source.tar.gz > evidence/c15/build-sha256.txt
@@ -85,7 +92,7 @@ jobs:
           test -n "$DISK"
           node --input-type=module <<'NODE'
           import {superviseNativeCycle} from './tools/android_supervised_cycle.mjs';
-          const r=await superviseNativeCycle({command:'build/c15-native',args:['input-c14/current.rvg','input-c14/current.json',process.env.DISK,'evidence/c15/journal','480000','2000000000'],outputDirectory:'evidence/c15',initialInstructions:910037410,startupMs:180000,noProgressMs:90000,wallMs:720000,graceMs:30000,onStatus:s=>process.stderr.write('REVERSE_C15_SUPERVISOR '+JSON.stringify(s)+'\n')});
+          const r=await superviseNativeCycle({command:'build/c15-native',args:['input-c14/current.rvg','input-c14/current.json',process.env.DISK,'evidence/c15/journal','480000','2000000000'],outputDirectory:'evidence/c15',initialInstructions:910037410,startupMs:300000,noProgressMs:90000,wallMs:960000,graceMs:30000,onStatus:s=>process.stderr.write('REVERSE_C15_SUPERVISOR '+JSON.stringify(s)+'\n')});
           console.log(JSON.stringify(r));if(r.status!=='process_completed')process.exitCode=2;
           NODE
       - name: Bind and classify the actual output

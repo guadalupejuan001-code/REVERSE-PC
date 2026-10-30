@@ -16,10 +16,13 @@ int main(int argc,char** argv){try{
   BootCycleLimits limits;limits.wall_ms=number(argv[5],600000);limits.instructions=number(argv[6],2000000000);
   limits.chunk=50000;limits.checkpoint_ms=15000;limits.checkpoint_instructions=25000000;
   require(!std::filesystem::exists(argv[4]),"Output journal already exists");
+  std::cerr<<"REVERSE_C15_HOST_PHASE {\"phase\":\"verify_original_checkpoint\"}\n";
   const auto input=guest_read_file(argv[1],MinimalGuest::max_adaptive_snapshot);
   require(GuestSha256::hash(input)==state_sha,"Wrong C14 checkpoint");
   require(GuestSha256::hash(guest_read_file(argv[2],131072))==report_sha,"Wrong C14 report");
+  std::cerr<<"REVERSE_C15_HOST_PHASE {\"phase\":\"verify_full_original_disk\",\"bytes\":8738832384}\n";
   const auto disk=GuestBlockImage::open(argv[3]);require(disk->size()==UINT64_C(8738832384)&&disk->sha256()==disk_sha,"Wrong original disk");
+  std::cerr<<"REVERSE_C15_HOST_PHASE {\"phase\":\"restore_original_machine\"}\n";
   auto guest=MinimalGuest::from_snapshot(input,disk);require(guest.snapshot()==input,"Restore modified C14 state");
   require(guest.registers().instructions==910037410&&guest.registers().pc==UINT64_C(0x7f855d33d0),"Wrong C14 boundary");
   require(guest.machine().enabled&&guest.machine().image_kind==2&&guest.machine().pci.enabled&&guest.machine().el==0&&!guest.registers().halted&&!guest.machine().waiting,"Wrong C14 machine state");

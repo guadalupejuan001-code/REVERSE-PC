@@ -1,4 +1,4 @@
-// Exact C15 SADDLV stop. Generated instruction tests, not Android boot evidence.
+// Widening signed and unsigned reductions. Generated instruction tests, not Android boot evidence.
 #include "minimal_guest.hpp"
 #include <iostream>
 using namespace reverse_pc::guest;
@@ -32,7 +32,7 @@ std::uint64_t oracle(const Vector128& v,unsigned size,bool q,bool u,bool){
   const auto mask=bits==32?UINT64_MAX:(UINT64_C(1)<<(2*bits))-1;
   return std::uint64_t(sum)&mask;
 }
-std::uint32_t op(unsigned size,bool q,bool u,bool,unsigned rn,unsigned rd){return 0x0e20a800u|(q?0x40000000u:0)|(u?0x20000000u:0)|(size<<22)|(rn<<5)|rd;}
+std::uint32_t op(unsigned size,bool q,bool u,bool,unsigned rn,unsigned rd){return 0x0e303800u|(q?0x40000000u:0)|(u?0x20000000u:0)|(size<<22)|(rn<<5)|rd;}
 void execute(MinimalGuest g,unsigned size,bool q,bool u,bool minimum,unsigned rn,unsigned rd,bool restore=false){
   g.write(g.registers().pc,op(size,q,u,minimum,rn,rd),4);
   const auto f=g.floating();const auto c=g.registers();const auto mem=g.runtime().memory_snapshot(),core=g.runtime().core_snapshot();
@@ -47,7 +47,7 @@ void execute(MinimalGuest g,unsigned size,bool q,bool u,bool minimum,unsigned rn
 }
 void suite(){
  const auto g=prepared(UINT64_C(0xfedcba9876543210),UINT64_C(0x0123456789abcdef),true);
- execute(g,0,false,false,false,3,3,true); // Genuine C15 fault: SADDLV H3,V3.8B.
+ execute(g,0,false,false,false,3,3,true); // SADDLV H3,V3.8B witness, separate from the genuine CMLT stop.
  for(bool u:{false,true})for(bool minimum:{false})for(unsigned size=0;size<3;size++)for(bool q:{false,true}){
   if(size==2&&!q)continue;
   for(unsigned rn=0;rn<32;rn++)for(unsigned rd=0;rd<32;rd++)execute(g,size,q,u,minimum,rn,rd,rn==rd);
@@ -66,4 +66,4 @@ void suite(){
  }
 }
 }
-int main(){try{suite();std::cout<<"{\"checks\":"<<checks<<",\"cases\":"<<cases<<",\"valid_forms\":10,\"reserved_encodings\":6144,\"exact_c15_opcode\":\"0x0e20a863\",\"android_boot\":false}\n";}catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
+int main(){try{suite();std::cout<<"{\"checks\":"<<checks<<",\"cases\":"<<cases<<",\"valid_forms\":10,\"reserved_encodings\":6144,\"saddlv_witness_opcode\":\"0x0e303863\",\"android_boot\":false}\n";}catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
