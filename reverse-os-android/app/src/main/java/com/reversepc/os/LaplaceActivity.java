@@ -25,6 +25,7 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
+import android.os.SystemClock;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.concurrent.*;
@@ -166,6 +167,25 @@ public final class LaplaceActivity extends Activity {
         }
         throw last==null?new IOException("Fuente no disponible"):last;
     }
+    private String assetText(String path)throws Exception{
+        ByteArrayOutputStream out=new ByteArrayOutputStream();
+        try(InputStream in=getAssets().open(path)){byte[] buf=new byte[8192];int n;while((n=in.read(buf))!=-1)out.write(buf,0,n);}
+        return out.toString("UTF-8");
+    }
+    private JSONObject nativeX001(JSONObject request)throws Exception{
+        String asset=request.getString("asset").trim().toUpperCase(java.util.Locale.ROOT);
+        if(!asset.matches("[A-Z][A-Z0-9.^=-]{0,14}"))throw new IllegalArgumentException("Activo inválido");
+        String program=LaplaceXiCompiler.compile(request.getJSONArray("bars"),assetText("laplace/x001-native.xi"));
+        long started=SystemClock.elapsedRealtimeNanos();
+        ResultPacket packet=ResultPacket.parse(NativeRuntime.execute(NativeRuntime.initialize(),program));
+        long elapsed=SystemClock.elapsedRealtimeNanos()-started;
+        JSONObject core=new JSONObject(NativeRuntime.inspect(packet.state));
+        JSONObject result=LaplaceXiCompiler.parse(packet.output,asset,elapsed,core);
+        result.put("program_sha256",sha(program));
+        result.put("output_sha256",sha(packet.output));
+        result.put("isolated",true);
+        return new JSONObject().put("ok",true).put("result",result);
+    }
     private static String sha(String text)throws Exception{
         byte[] b=MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8));
         StringBuilder h=new StringBuilder();for(byte x:b)h.append(String.format("%02x",x&255));return h.toString();
@@ -205,7 +225,10 @@ public final class LaplaceActivity extends Activity {
                     JSONObject result;
                     if("read".equals(operation))result=readSaved();
                     else if("save".equals(operation))result=save(payload);
-                    else if("public".equals(operation)){
+                    else if("native_x001".equals(operation)){
+                        if(payload.length()>LIMIT)throw new IOException("Entrada XN01 excesiva");
+                        result=nativeX001(new JSONObject(payload));
+                    }else if("public".equals(operation)){
                         if(payload.length()>1024)throw new IOException("Consulta excesiva");
                         JSONObject q=new JSONObject(payload);result=readPublic(q.getString("source"),q.optJSONObject("params")==null?new JSONObject():q.getJSONObject("params"));
                     }else throw new IOException("Operación no permitida");
