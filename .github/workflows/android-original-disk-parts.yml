@@ -1,7 +1,7 @@
 name: Export pinned Android disk in bounded parts
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, reopened]
     paths: ['.github/workflows/android-original-disk-parts.yml']
 permissions:
   contents: read
