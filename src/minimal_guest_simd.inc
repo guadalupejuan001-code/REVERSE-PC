@@ -268,6 +268,21 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
       switch(size){case 0:return x^y;case 1:return (old&x)|(~old&y);case 2:return (old&~y)|(x&y);default:return (old&y)|(x&~y);}
     };value.low=logic(a.low,b.low,d.low);value.high=logic(a.high,b.high,d.high);commit(value);return true;
   }
+  if((i&0xbf20fc00u)==0x0e20e000u){ // PMULL/PMULL2: carryless polynomial multiplication, P8 or P64.
+    if(size!=0&&size!=3)return false;
+    fp_access();const auto a=floating_.v[rn],b=floating_.v[rm];Vector128 value;
+    if(size==0){
+      for(unsigned n=0;n<8;n++){
+        const auto x=a.lane(n+(q?8:0),8),y=b.lane(n+(q?8:0),8);std::uint64_t product=0;
+        for(unsigned bit=0;bit<8;bit++)if(y&(UINT64_C(1)<<bit))product^=x<<bit;
+        value.lane(n,16,product);
+      }
+    }else{
+      const auto x=q?a.high:a.low,y=q?b.high:b.low;
+      for(unsigned bit=0;bit<64;bit++)if(y&(UINT64_C(1)<<bit)){value.low^=x<<bit;if(bit)value.high^=x>>(64-bit);}
+    }
+    floating_.v[rd]=value;return true;
+  }
   const auto multiply_long=i&0x9f20fc00u;
   if(multiply_long==0x0e20c000u||multiply_long==0x0e208000u||multiply_long==0x0e20a000u){ // S/UMULL, S/UMLAL, S/UMLSL, lower or upper source half.
     if(size==3)return false;
@@ -284,11 +299,11 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
   }
   const auto same=i&0x9f20fc00;
   if(same==0x0e208400||same==0x0e209c00||same==0x0e209400||same==0x0e208c00||same==0x0e203400||same==0x0e203c00){
-    if((element==64&&!q)||(same==0x0e209c00&&(u||size==3))||(same==0x0e209400&&size==3)||(same==0x0e208c00&&!u))return false;
+    if((element==64&&!q)||(same==0x0e209c00&&(size==3||(u&&size!=0)))||(same==0x0e209400&&size==3)||(same==0x0e208c00&&!u))return false;
     fp_access();const auto a=floating_.v[rn],b=floating_.v[rm],old=floating_.v[rd];Vector128 value;
     for(unsigned lane=0;lane<width/element;++lane){const auto x=a.lane(lane,element),y=b.lane(lane,element);std::uint64_t out=0;
       if(same==0x0e208400)out=u?x-y:x+y;
-      else if(same==0x0e209c00)out=x*y;
+      else if(same==0x0e209c00){if(u){for(unsigned bit=0;bit<8;bit++)if(y&(UINT64_C(1)<<bit))out^=x<<bit;}else out=x*y;}
       else if(same==0x0e209400)out=u?old.lane(lane,element)-x*y:old.lane(lane,element)+x*y;
       else if(same==0x0e208c00)out=x==y?UINT64_MAX:0;
       else{const auto sign=UINT64_C(1)<<(element-1);const auto ordered_x=u?x:x^sign,ordered_y=u?y:y^sign;
