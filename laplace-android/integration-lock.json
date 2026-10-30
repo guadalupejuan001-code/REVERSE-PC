@@ -20,7 +20,7 @@
     "laplace-android/upstream/seguimiento/modelo.mjs": "1a72ecc3437baeb2db0afb9b8a36618c4568badfab0baf318d005bfa99fabe3a",
     "laplace-android/upstream/panel/publico/grafica.js": "23efd2044b439b61673c11cd72127430d73520c4b640cf245641dde3f9d786b6",
     "reverse-os-android/app/src/main/assets/laplace/x001-native.xi": "eeee0cd986b1d61c742c49a9006b3979273afabb70d7f1e5f2d290fbf421187a",
-    "reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceXiCompiler.java": "47c90cb016910d291ab455e073e33567c56185977e5860acadf7fa14d329314d"
+    "reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceXiCompiler.java": "4880c0bfbed1a21d267652756c3fcd1f6ff4399cafbe625b83b28b37c52676a2"
   },
   "horizons_minutes": {
     "bitcoin": [
