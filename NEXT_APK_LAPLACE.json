@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "required_component": "LAPLACE M001 + X001/B001 de esta conversación",
+  "required_component": "LAPLACE M001 + XN01 nativo XI/Ether",
   "repository": "guadalupejuan001-code/REVERSE-PC",
   "upstream": "guadalupejuan001-code/LaPlaceDIG",
   "upstream_commits": {
@@ -23,10 +23,15 @@
     "BBY Q X01",
     "XI/Ether",
     "firma de distribución existente",
-    "datos privados del usuario"
+    "datos privados del usuario",
+    "XN01 .xi nativo",
+    "selector BTC/bolsa",
+    "control HTTP 429"
   ],
   "release_requested_now": false,
   "requires_node_on_phone": false,
   "automatic_trading": false,
-  "note": "La próxima APK debe conservar selector BTC/bolsa, X001/B001, navegación móvil y control de HTTP 429; no compilar desde una rama anterior."
+  "note": "La próxima APK debe conservar M001 para BTC y XN01 ejecutado en XI/Ether para bolsa; JavaScript no decide la dirección bursátil.",
+  "upstream_commit": "08cafb094a5c0f81253509eff412214dd526b808",
+  "stock_prediction_backend": "XI/Ether · NativeRuntime"
 }
