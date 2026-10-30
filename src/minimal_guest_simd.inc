@@ -167,6 +167,14 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
       value.lane(n,element,amount<0?right_shift(x,unsigned(-amount),element,!u):unsigned(amount)>=element?0:x<<unsigned(amount));
     }commit(value);return true;
   }
+  if((i&0xbf3ffc00u)==0x0e212800u){ // XTN/XTN2: truncate each lane to half its width, without saturation.
+    if(size==3)return false; // size=11 is unallocated; reject before touching any state.
+    fp_access();const auto source=floating_.v[rn];Vector128 value;
+    for(unsigned n=0;n<64/element;n++)value.lane(n,element,source.lane(n,2*element));
+    // Capture all source lanes first, including when Rd==Rn. Q selects the
+    // destination half, not the source half; XTN2 preserves the old low 64 bits.
+    if(q)floating_.v[rd].high=value.low;else floating_.v[rd]={value.low,0};return true;
+  }
   if((i&0x9f3ffc00u)==0x0e202800u){ // SADDLP/UADDLP, widening pairwise addition.
     if(size==3)return false;fp_access();const auto source=floating_.v[rn];Vector128 value;
     for(unsigned n=0;n<width/(2*element);n++){

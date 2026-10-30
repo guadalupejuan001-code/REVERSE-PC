@@ -5,6 +5,7 @@ import {readFileSync, statSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
+import {fnv1a64} from './rvg_checksum.mjs';
 
 const sha256 = buf => createHash('sha256').update(buf).digest('hex');
 const check = (ok, what) => {if(!ok) throw Error('GKI checkpoint audit: '+what);};
@@ -66,10 +67,7 @@ export function auditGkiRvg(bytes,expectedKernelSha,expectedRvgSha) {
       'checkpoint SHA256 pin mismatch');
   // Additional independent internal FNV-1a validation. XI/Ether also
   // validates this on its own restore path; the audit never restores state.
-  const mask=0xffffffffffffffffn;
-  let checksum=14695981039346656037n;
-  for(let i=0;i<bytes.length-8;i++)
-    checksum=((checksum^BigInt(bytes[i]))*1099511628211n)&mask;
+  const checksum=fnv1a64(bytes,bytes.length-8);
   check(checksum===bytes.readBigUInt64LE(bytes.length-8),
     'RVG internal checksum mismatch');
   return {
@@ -83,7 +81,10 @@ export function auditGkiRvg(bytes,expectedKernelSha,expectedRvgSha) {
     bootargs_bytes:bootargsBytes,bootargs,
     instructions:read(4),kernel_bytes:kernelBytes,
     dtb_bytes:treeBytes,initrd_bytes:initrdBytes,
-    immutable_image_bytes:imageBytes,
+    immutable_image_bytes:imageBytes,immutable_image_sha256:sha256(image),
+    logical_ram_bytes:read(0),native_halted:read(7),native_exit_code:read(6),
+    native_pc:'0x'+bytes.readBigUInt64LE(24).toString(16),
+    native_sp:'0x'+bytes.readBigUInt64LE(32).toString(16),
     classical_override_limit:bytes.readBigUInt64LE(16).toString(),
     android_init_observed:false,adb:false,wild_rift:false
   };
