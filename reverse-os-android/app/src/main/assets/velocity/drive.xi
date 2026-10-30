@@ -1,6 +1,7 @@
 #!reverse-pc-machine-v1
 # XI is the only owner of driving state and game progress.
 # Mailbox: 128 gas,129 brake,130 steer (0/1/2),131 drift,132 reset.
+# Memory 122..123 retains sub-cm/s acceleration, biased by 1000.
 load8 r9 132
 cmp r9 1
 je initialize
@@ -66,10 +67,20 @@ set r5 0
 set r6 0
 set r7 0
 set r8 0
+store8 122 232
+store8 123 3
 jmp commit
 label advance
 cmp r7 1
 je commit
+# The race begins with the first throttle input, not while the player reads
+# the controls. After that, the authoritative clock keeps running at rest.
+cmp r6 0
+jgt race_started
+load8 r9 128
+cmp r9 1
+jne commit
+label race_started
 load8 r9 130
 sub r9 1
 load8 r10 128
@@ -93,15 +104,35 @@ add r11 300
 label no_drift_resistance
 sub r10 r11
 mul r10 20
+# Carry the signed remainder between 20ms ticks. Without it, passive drag
+# below 50cm/s² rounds to zero and a slow car would coast forever.
+load8 r14 122
+load8 r15 123
+mul r15 256
+add r14 r15
+sub r14 1000
+add r10 r14
+mov r14 r10
+mod r14 1000
+add r14 1000
+mov r15 r14
+mod r15 256
+store8 122 r15
+div r14 256
+store8 123 r14
 div r10 1000
 add r3 r10
 cmp r3 0
 jge speed_min
 set r3 0
+store8 122 232
+store8 123 3
 label speed_min
 cmp r3 7800
 jle speed_max
 set r3 7800
+store8 122 232
+store8 123 3
 label speed_max
 mov r13 r3
 cmp r13 3500

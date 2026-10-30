@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -54,7 +55,7 @@ public final class NativeRegraphicsTest {
         String world=read(assets.resolve("world.xi")),drive=read(assets.resolve("drive.xi")),
             render=read(assets.resolve("render.xi"));
         String[] entries=read(assets.resolve("palette.txt")).trim().split("\\n");
-        check(entries.length==217,"authored palette size");
+        check(entries.length==256,"authored palette size");
         int[] palette=new int[entries.length];
         for(int i=0;i<entries.length;i++)palette[i]=Integer.parseInt(entries[i],16);
 
@@ -70,7 +71,8 @@ public final class NativeRegraphicsTest {
         StringBuilder records=new StringBuilder();
         int frames=0;long nativeNanos=0,presentationNanos=0;
         for(int stride:new int[]{4,2,1}){
-            Set<String> carPaints=new HashSet<>();String noCar=null,car=null;
+            Set<String> cameraViews=new HashSet<>();
+            List<Set<String>> carPaints=Arrays.asList(new HashSet<>(),new HashSet<>(),new HashSet<>());
             for(int camera=0;camera<3;camera++)for(int paint=0;paint<5;paint++){
                 String program=render(render,stride,camera,paint);
                 long begin=System.nanoTime();
@@ -95,11 +97,8 @@ public final class NativeRegraphicsTest {
                 }
                 check(colors.size()>10,"scene lost its authored materials");
                 String hash=digest(pixelBytes(pixels));
-                if(camera==0){carPaints.add(hash);if(paint==0)car=hash;}
-                if(camera==2){
-                    if(noCar==null)noCar=hash;
-                    else check(noCar.equals(hash),"paint altered camera without visible car");
-                }
+                carPaints.get(camera).add(hash);
+                if(paint==0)cameraViews.add(hash);
                 // The same authoritative state produces the same native bytes.
                 ResultPacket repeat=ResultPacket.parseBinary(NativeRuntime.execute(state,program));
                 check(Arrays.equals(result.outputBytes,repeat.outputBytes),"native frame is nondeterministic");
@@ -111,8 +110,9 @@ public final class NativeRegraphicsTest {
                     .append(",\"commands\":").append(frame.commands)
                     .append(",\"sha256\":\"").append(hash).append("\"}");
             }
-            check(carPaints.size()==5,"visible car paints are not distinct");
-            check(car!=null&&!car.equals(noCar),"car camera did not change the image");
+            for(int camera=0;camera<3;camera++)
+                check(carPaints.get(camera).size()==5,"visible car/hood paints are not distinct in camera "+camera);
+            check(cameraViews.size()==3,"chase, close chase and cockpit views are not distinct");
         }
         check(inspection.equals(NativeRuntime.inspect(state)),"render changed retained runtime inspection");
         ResultPacket afterTick=ResultPacket.parse(NativeRuntime.execute(state,drive(drive,false)));

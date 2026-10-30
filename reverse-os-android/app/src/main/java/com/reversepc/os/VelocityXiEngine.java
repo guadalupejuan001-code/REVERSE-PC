@@ -147,7 +147,7 @@ final class VelocityXiEngine {
     }
     private static int[] parsePalette(String source){
         String[] entries=source.trim().split("\n");
-        if(entries.length!=217)throw new IllegalArgumentException("REgraphics palette size mismatch");
+        if(entries.length!=256)throw new IllegalArgumentException("REgraphics palette size mismatch");
         int[] palette=new int[entries.length];
         for(int i=0;i<entries.length;i++){
             if(!entries[i].matches("[0-9a-f]{6}"))throw new IllegalArgumentException("Invalid palette color");

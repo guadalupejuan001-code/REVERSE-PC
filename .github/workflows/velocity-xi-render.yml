@@ -6,6 +6,8 @@ on:
       - 'reverse-os-android/app/src/main/assets/velocity/**'
       - 'reverse-os-android/tests/velocity-xi-render-contract.cjs'
       - 'reverse-os-android/tests/*Regraphics*'
+      - 'reverse-os-android/tests/VelocityLoopLifecycleTest.java'
+      - 'reverse-os-android/tests/velocity-xi-contract.cjs'
       - 'reverse-os-android/tests/fixtures/**'
       - 'reverse-os-android/app/src/main/java/com/reversepc/os/Velocity*'
       - 'reverse-os-android/app/src/main/java/com/reversepc/os/RegraphicsFrame.java'
@@ -56,11 +58,14 @@ jobs:
             reverse-os-android/app/src/main/java/com/reversepc/os/ResultPacket.java \
             reverse-os-android/app/src/main/java/com/reversepc/os/RegraphicsFrame.java \
             reverse-os-android/app/src/main/java/com/reversepc/os/NativeRuntime.java \
+            reverse-os-android/app/src/main/java/com/reversepc/os/VelocityLoopLifecycle.java \
             reverse-os-android/tests/RxePacketTest.java \
             reverse-os-android/tests/RegraphicsFrameTest.java \
+            reverse-os-android/tests/VelocityLoopLifecycleTest.java \
             reverse-os-android/tests/NativeRegraphicsTest.java
           java -cp build/velocity/java com.reversepc.os.RxePacketTest
           java -cp build/velocity/java com.reversepc.os.RegraphicsFrameTest
+          java -cp build/velocity/java com.reversepc.os.VelocityLoopLifecycleTest
           g++ -std=c++17 -O2 -pthread -shared -fPIC \
             -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
             -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
@@ -74,3 +79,32 @@ jobs:
         with:
           name: velocity-regraphics-evidence
           path: build/velocity
+  android-java:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-java@v4
+        with: {distribution: 'temurin', java-version: '17'}
+      - name: Compile Activity, SurfaceView and adapters against Android 35
+        run: |
+          set -euo pipefail
+          mkdir -p build/velocity-android/classes
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' \
+            > build/velocity-android/sdk.log
+          rg --files reverse-os-android/app/src/main/java -g '*.java' \
+            > build/velocity-android/android-sources.txt
+          javac -encoding UTF-8 -source 17 -target 17 \
+            -classpath "$ANDROID_HOME/platforms/android-35/android.jar" \
+            -d build/velocity-android/classes \
+            @build/velocity-android/android-sources.txt \
+            > build/velocity-android/java-compile.log 2>&1 || {
+              tail -160 build/velocity-android/java-compile.log
+              exit 1
+            }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: velocity-android-java-evidence
+          path: build/velocity-android

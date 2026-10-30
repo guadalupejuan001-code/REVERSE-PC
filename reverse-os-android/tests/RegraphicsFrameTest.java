@@ -39,6 +39,18 @@ public final class RegraphicsFrameTest {
         System.arraycopy(bytes,100,result,58,bytes.length-100);
         return result;
     }
+    static byte[] layered(int firstRowSpans){
+        ByteArrayOutputStream out=new ByteArrayOutputStream();
+        out.write('X');out.write('F');out.write('S');out.write('1');out.write(1);out.write(0);
+        put16(out,1280);put16(out,720);put32(out,1);put16(out,0);
+        for(int y=0;y<720;y+=4){
+            span(out,y,0,1279,0,100);
+            if(y==0)for(int layer=1;layer<firstRowSpans;layer++)
+                span(out,y,layer*10,1279-layer*10,layer%3,100-layer);
+        }
+        out.write(3);out.write(0);put16(out,0);put32(out,1);
+        return out.toByteArray();
+    }
     public static void main(String[] args){
         byte[] valid=sample(4);
         RegraphicsFrame frame=RegraphicsFrame.decode(valid,4,COLORS);
@@ -102,8 +114,12 @@ public final class RegraphicsFrameTest {
         reject(()->RegraphicsFrame.decode(depth,4,COLORS));
         byte[] sentinel=valid.clone();patch16(sentinel,30+8,65535);
         reject(()->RegraphicsFrame.decode(sentinel,4,COLORS));
-        byte[] tooNear=valid.clone();patch16(tooNear,30+8,86);
-        reject(()->RegraphicsFrame.decode(tooNear,4,COLORS));
+        byte[] zeroDepth=valid.clone();patch16(zeroDepth,30+8,0);
+        reject(()->RegraphicsFrame.decode(zeroDepth,4,COLORS));
+        byte[] minDepth=valid.clone();patch16(minDepth,44+8,1);
+        RegraphicsFrame minimum=RegraphicsFrame.decode(minDepth,4,COLORS);
+        int[] minimumImage=new int[full.length];minimum.present(minimumImage,1280,720);
+        check(Arrays.equals(minimumImage,full));
         byte[] noLast=Arrays.copyOf(valid,valid.length-42);
         System.arraycopy(valid,valid.length-8,noLast,noLast.length-8,8);
         reject(()->RegraphicsFrame.decode(noLast,4,COLORS));
@@ -112,6 +128,18 @@ public final class RegraphicsFrameTest {
             int[] rendered=new int[full.length];other.present(rendered,1280,720);
             check(Arrays.equals(rendered,full));
         }
+        // The racing shader can emit more than sixteen clipped overlapping
+        // regions. The nearest material must win only within its XI interval.
+        RegraphicsFrame dense=RegraphicsFrame.decode(layered(48),4,COLORS);
+        int[] clipped=new int[1280*720];dense.present(clipped,1280,720);
+        check(dense.commands==48+179);
+        check(clipped[9]==(0xff000000|COLORS[0]));
+        check(clipped[15]==(0xff000000|COLORS[1]));
+        check(clipped[25]==(0xff000000|COLORS[2]));
+        check(clipped[640]==(0xff000000|COLORS[2]));
+        check(clipped[3*1280+640]==clipped[640]);
+        check(clipped[4*1280+640]==(0xff000000|COLORS[0]));
+        reject(()->RegraphicsFrame.decode(layered(49),4,COLORS));
         int[] untouched={12,34,56};
         reject(()->frame.present(untouched,2,2));
         check(Arrays.equals(untouched,new int[]{12,34,56}));

@@ -8,6 +8,7 @@ import android.graphics.Rect;
 import android.os.SystemClock;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * REgraphics is the scene renderer. This class merely schedules fixed ticks,
@@ -16,7 +17,7 @@ import android.view.SurfaceView;
 final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callback,Runnable {
     interface Hud {
         void update(int speedKmh,int checkpoints,int total,long seconds,
-                    boolean offRoad,int slideMmps,boolean finished,int fps,
+                    boolean offRoad,int slideMmps,boolean finished,boolean ready,boolean paused,int fps,
                     int renderWidth,int renderHeight,String backend,String error);
     }
     private final VelocityXiEngine game;
@@ -24,15 +25,16 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     private final Paint paint=new Paint(Paint.FILTER_BITMAP_FLAG);
     private final Rect sourceRect=new Rect();
     private final Rect targetRect=new Rect();
-    private volatile boolean running;
-    private Thread worker;
+    private final VelocityLoopLifecycle lifecycle;
     private volatile int gas,brake,steer=1;
-    private volatile boolean handbrake,resetRequested;
+    private volatile boolean handbrake,resetRequested,paused;
+    private final AtomicBoolean timingReset=new AtomicBoolean();
     private volatile int cameraMode,paintId,quality;
     private volatile int surfaceWidth=16,surfaceHeight=9;
     private volatile String error="";
     VelocityXSurface(Context context,VelocityXiEngine game,Hud hud){
         super(context);this.game=game;this.hud=hud;
+        lifecycle=new VelocityLoopLifecycle(this);
         getHolder().addCallback(this);
         setKeepScreenOn(true);
     }
@@ -41,27 +43,35 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
             throw new IllegalArgumentException("Control fuera del protocolo XI");
         this.gas=gas;this.brake=brake;this.steer=steer;this.handbrake=handbrake;
     }
-    void reset(){resetRequested=true;}
+    void reset(){resetRequested=true;paused=false;timingReset.set(true);}
+    boolean togglePause(){
+        paused=!paused;
+        timingReset.set(true);
+        if(paused)controls(0,0,1,false);
+        return paused;
+    }
     int cycleCamera(){cameraMode=(cameraMode+1)%3;return cameraMode;}
     int cyclePaint(){paintId=(paintId+1)%5;return paintId;}
     int cycleQuality(){quality=(quality+1)%3;return quality;}
-    synchronized void startLoop(){
-        if(worker!=null||!getHolder().getSurface().isValid())return;
-        running=true;worker=new Thread(this,"REVERSE-VELOCITY-XRENDER");
-        worker.start();
+    void resumeLoop(){error="";lifecycle.resume();}
+    void pauseLoop(){
+        lifecycle.pause();
+        lifecycle.awaitStopped(2500);
     }
-    void stopLoop(){
-        Thread thread;
-        synchronized(this){running=false;thread=worker;}
-        if(thread!=null&&thread!=Thread.currentThread()){
-            try{thread.join(2500);}catch(InterruptedException ex){Thread.currentThread().interrupt();}
-        }
+    void closeLoop(){
+        lifecycle.close();
+        lifecycle.awaitStopped(2500);
     }
-    @Override public void surfaceCreated(SurfaceHolder holder){startLoop();}
+    @Override public void surfaceCreated(SurfaceHolder holder){
+        lifecycle.setSurfaceReady(holder.getSurface().isValid());
+    }
     @Override public void surfaceChanged(SurfaceHolder holder,int format,int w,int h){
         surfaceWidth=Math.max(1,w);surfaceHeight=Math.max(1,h);
     }
-    @Override public void surfaceDestroyed(SurfaceHolder holder){stopLoop();}
+    @Override public void surfaceDestroyed(SurfaceHolder holder){
+        lifecycle.setSurfaceReady(false);
+        lifecycle.awaitStopped(2500);
+    }
 
     @Override public void run(){
         long previous=SystemClock.elapsedRealtimeNanos(),lastHud=0,lastFps=previous;
@@ -70,16 +80,20 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
         int[] pixels=null;
         Bitmap image=null;
         try{
-            while(running){
+            while(lifecycle.shouldRun()){
                 final long begin=SystemClock.elapsedRealtimeNanos();
                 final long delta=Math.min(100L,Math.max(0L,(begin-previous)/1_000_000L));
-                previous=begin;accumulator+=(int)delta;
+                previous=begin;
+                // Pause freezes the scheduler, not a second copy of game rules.
+                // Discard paused wall time so resuming cannot advance the race.
+                if(timingReset.getAndSet(false)||paused)accumulator=0;
+                else accumulator+=(int)delta;
                 if(resetRequested){
                     game.step(0,0,1,0,true);
                     resetRequested=false;accumulator=0;
                 }
                 int ticks=0;
-                while(accumulator>=20&&ticks++<5){
+                while(lifecycle.shouldRun()&&!paused&&accumulator>=20&&ticks++<5){
                     game.step(gas,brake,steer,handbrake?1:0,false);
                     accumulator-=20;
                 }
@@ -101,6 +115,9 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 // Android validates and materializes the bounded binary transport.
                 int stride=selected==0?4:selected==1?2:1;
                 game.renderFrame(stride,cameraMode,paintId).present(pixels,width,height);
+                // Native rendering may outlive a pause/surface-destroy callback.
+                // Complete that observation without publishing to the old surface.
+                if(!lifecycle.shouldRun())break;
                 image.setPixels(pixels,0,width,0,0,width,height);
                 Canvas canvas=null;
                 try{
@@ -122,25 +139,26 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     lastHud=begin;
                     hud.update(frame.speedKmh(),frame.checkpoint,
                          6,frame.seconds(),frame.offRoad,frame.slideCmps*10,
-                         frame.finished,fps,width,height,"REgraphics",error);
+                         frame.finished,frame.ticks==0,paused,fps,width,height,"REgraphics",error);
                 }
                 final long cost=SystemClock.elapsedRealtimeNanos()-begin;
-                final long remaining=16_666_667L-cost; // up to 60 FPS; actual FPS remains measured
+                // A paused scene needs fewer presentations and remains responsive.
+                final long remaining=(paused?100_000_000L:16_666_667L)-cost;
                 if(remaining>1_000_000L)Thread.sleep(remaining/1_000_000L);
             }
         }catch(Throwable thrown){
-            error="XI / REgraphics: "+thrown.getClass().getSimpleName()+" — "+thrown.getMessage();
-            final VelocityXiEngine.Snapshot last=game.current();
-            hud.update(last==null?0:last.speedKmh(),last==null?0:last.checkpoint,6,
-                last==null?0:last.seconds(),last!=null&&last.offRoad,
-                last==null?0:last.slideCmps*10,last!=null&&last.finished,0,width,height,
-                "REgraphics",error);
+            if(lifecycle.shouldRun()){
+                lifecycle.fail();
+                error="XI / REgraphics: "+thrown.getClass().getSimpleName()+" — "+thrown.getMessage();
+                final VelocityXiEngine.Snapshot last=game.current();
+                hud.update(last==null?0:last.speedKmh(),last==null?0:last.checkpoint,6,
+                    last==null?0:last.seconds(),last!=null&&last.offRoad,
+                    last==null?0:last.slideCmps*10,last!=null&&last.finished,
+                    last!=null&&last.ticks==0,paused,0,width,height,
+                    "REgraphics",error);
+            }
         }finally{
             if(image!=null&&!image.isRecycled())image.recycle();
-            synchronized(this){
-                running=false;
-                if(Thread.currentThread()==worker)worker=null;
-            }
         }
     }
 }

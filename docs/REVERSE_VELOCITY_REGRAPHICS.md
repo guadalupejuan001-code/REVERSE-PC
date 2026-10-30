@@ -1,4 +1,7 @@
-# Reverse Velocity con REgraphics
+# Reverse Velocity con REgraphics — integración V1
+
+Este documento conserva la prueba de integración V1. El desarrollo actual del
+juego y su shader se describe en [Shader costero XI](REVERSE_VELOCITY_SHADER_V2.md).
 
 Reverse Velocity ejecuta su escena XI por la salida binaria directa XFS1 de
 REgraphics. Cada región llega al presentador sin convertirse en texto UTF-8,

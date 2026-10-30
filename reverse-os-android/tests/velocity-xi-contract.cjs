@@ -32,6 +32,7 @@ const digest=data=>require('crypto').createHash('sha256').update(data).digest('h
 try{
  const fresh=path.join(temp,'initial.rvp');
  call('init',fresh);
+ const freshHash=digest(fs.readFileSync(fresh));
  const worldRxe=path.join(temp,'world.rxe');
  const driveRxe=path.join(temp,'drive.rxe');
  call('compile',worldSrc,worldRxe,'VELOCITY WORLD XI');
@@ -63,12 +64,18 @@ try{
  let s=tick(0,0,1,0,1);
  assert.equal(s[0],83,'XI spawn x');assert.equal(s[1],110000,'XI spawn z');
  assert.deepEqual(s.slice(2,9),[0,0,0,0,0,0,0],'XI reset state');
- const initialHash=digest(fs.readFileSync(state));
+ const ready=s.slice();
+ for(let i=0;i<12;i++)s=tick(0,1,2,1,0);
+ assert.deepEqual(s,ready,'waiting before throttle must not consume race time or move the car');
  for(let i=0;i<38;i++)s=tick(1,0,1,0,0);
  assert(s[3]>0&&s[1]<110000&&s[6]===38,'XI throttle and negative-z progress');
  const speed=s[3];
  for(let i=0;i<8;i++)s=tick(0,1,1,0,0);
  assert(s[3]<speed,'XI brake slows down');
+ const brakingSpeed=s[3],racingTicks=s[6];
+ for(let i=0;i<8;i++)s=tick(0,0,1,0,0);
+ assert(s[3]<brakingSpeed&&s[6]===racingTicks+8,
+   'coasting slows down while the started race clock keeps running');
  // Demonstrate repeatability from identical isolated RVPC2 snapshots.
  const original=fs.readFileSync(state);
  const command=inputScript(canonical,1,0,2,1,0);
@@ -86,15 +93,50 @@ try{
  const failed=cp.spawnSync(bin,['run',bad,state,a],{encoding:'utf8',timeout:20000});
  assert(failed.status!==0,'invalid XI step must fail');
  assert.equal(digest(fs.readFileSync(a)),before,'atomic rollback');
+ // Seed bounded approach states using XI byte stores, then execute the real
+ // driving rules. Gates must be crossed in order, inside their width and in
+ // the racing direction; the final gate freezes the authoritative result.
+ let gateCases=0;
+ function approach(x,z,yaw,checkpoint){
+   const bytes=[];
+   function put(address,value,size){
+     for(let i=0;i<size;i++)bytes.push('store8 '+(address+i)+' '+((value>>>(8*i))&255));
+   }
+   put(100,x+2000000,4);put(104,z+2000000,4);
+   put(108,yaw,2);put(110,3000,2);put(112,32768,2);
+   put(114,checkpoint,1);put(115,500,4);put(119,0,1);put(120,0,1);
+   const setup=path.join(temp,'gate-setup-'+gateCases+'.xi');
+   const next=path.join(temp,'gate-ready-'+gateCases+'.rvp');gateCases++;
+   fs.writeFileSync(setup,'#!reverse-pc-machine-v1\n'+bytes.join('\n')+'\nhalt\n');
+   call('run',setup,state,next);state=next;
+ }
+ const gates=[[90000,-750],[60000,0],[30000,750],[0,-2500],[-30000,750],[-60000,0]];
+ for(let gate=0;gate<gates.length;gate++){
+   const [z,x]=gates[gate];approach(x,z+30,0,gate);
+   s=tick(1,0,1,0,0);
+   assert.equal(s[5],gate+1,'XI gate '+gate+' must advance exactly once');
+   assert.equal(s[7],gate===5?1:0,'only the final gate may finish the race');
+ }
+ const finished=s.slice();
+ for(let i=0;i<3;i++)s=tick(1,0,2,1,0);
+ assert.deepEqual(s,finished,'finished race state and time must freeze under further controls');
+ approach(-750,90000-30,2048,0);s=tick(1,0,1,0,0);
+ assert.equal(s[5],0,'wrong-way crossing must not award a checkpoint');
+ approach(-750+1700,90000+30,0,0);s=tick(1,0,1,0,0);
+ assert.equal(s[5],0,'crossing outside the gate width must not award a checkpoint');
+ approach(0,60000+30,0,0);s=tick(1,0,1,0,0);
+ assert.equal(s[5],0,'skipping the next required gate must not award a checkpoint');
  s=tick(0,0,1,0,1);
  assert.equal(s[6],0,'XI reset clears progress');
- assert.equal(digest(fs.readFileSync(fresh)),digest(fs.readFileSync(fresh)),'independent initial state');
+ assert.equal(digest(fs.readFileSync(fresh)),freshHash,'independent initial state');
  console.log(JSON.stringify({result:'REVERSE_VELOCITY_XI_OK',
   gameLanguage:'XI Machine v1',physics:'XI source / original QuantumRuntime',
   worldPoints:world.length/2,frameTests:count,
   initialRVPC2Bytes:fs.statSync(fresh).size,
   gameRVPC2Bytes:fs.statSync(state).size,
   deterministic:true,steering:true,braking:true,rollback:true,
+  readyClockFrozen:true,coastingClockRuns:true,gateCases,
+  orderedCheckpoints:true,wrongWayRejected:true,missedGateRejected:true,finishFrozen:true,
   track:track}));
 }catch(e){console.error(e.stack||e);process.exitCode=1}
 finally{fs.rmSync(temp,{recursive:true,force:true})}

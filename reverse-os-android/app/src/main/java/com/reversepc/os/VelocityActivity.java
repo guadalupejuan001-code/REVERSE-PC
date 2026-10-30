@@ -24,6 +24,7 @@ import java.util.Locale;
 public final class VelocityActivity extends Activity {
     private VelocityXSurface surface;
     private TextView speed,route;
+    private Button pauseButton;
     private boolean gas,brake,left,right,drift;
     private boolean keyGas,keyBrake,keyLeft,keyRight,keyDrift;
 
@@ -76,6 +77,17 @@ public final class VelocityActivity extends Activity {
         surface.controls(gas||keyGas?1:0,brake||keyBrake?1:0,
                          l==r?1:l?0:2,drift||keyDrift);
     }
+    private void releaseControls(){
+        gas=brake=left=right=drift=false;
+        keyGas=keyBrake=keyLeft=keyRight=keyDrift=false;
+        controls();
+    }
+    private void togglePause(){
+        if(surface==null)return;
+        releaseControls();
+        boolean paused=surface.togglePause();
+        if(pauseButton!=null)pauseButton.setText(paused?"Continuar":"Pausa");
+    }
     @Override public void onCreate(Bundle state){
         super.onCreate(state);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -94,11 +106,12 @@ public final class VelocityActivity extends Activity {
         root.setBackgroundColor(0xff17252c);
 
         surface=new VelocityXSurface(this,game,(kmh,checkpoints,total,seconds,
-                 offRoad,slide,finished,fps,rw,rh,backend,error)->runOnUiThread(()->{
+                 offRoad,slide,finished,ready,paused,fps,rw,rh,backend,error)->runOnUiThread(()->{
             if(speed!=null)speed.setText(kmh+" km/h");
             if(route!=null)route.setText(error.isEmpty()?
-                (finished?"META COMPLETADA":"CARRERA")+
-                "  •  "+checkpoints+"/"+total+" controles  •  "+
+                (finished?"META COMPLETADA":paused?"EN PAUSA":
+                 ready?"ACELERA PARA SALIR":"CARRERA")+
+                "  •  "+checkpoints+"/"+total+" checkpoints  •  "+
                 (seconds/60)+":"+String.format(Locale.ROOT,"%02d",seconds%60)+
                 (offRoad?"  •  FUERA DE CARRETERA":"")+
                 (Math.abs(slide)>2200?"  •  DERRAPE":"")+
@@ -108,13 +121,17 @@ public final class VelocityActivity extends Activity {
 
         TextView brand=text("REVERSE / VELOCITY  ·  REgraphics",13);
         add(root,brand,-2,-2,Gravity.TOP|Gravity.LEFT,20,13,0,0);
-        speed=text("0 km/h",24);
+        speed=text("0 km/h",30);
         add(root,speed,-2,-2,Gravity.TOP|Gravity.RIGHT,0,48,22,0);
         route=text("Preparando pista XI y REgraphics...",12);
-        add(root,route,-2,-2,Gravity.TOP|Gravity.LEFT,20,46,0,0);
+        route.setMaxLines(2);
+        add(root,route,-1,52,Gravity.TOP|Gravity.LEFT,20,42,154,0);
 
         Button camera=button("Cámara");
-        camera.setOnClickListener(v->{int m=surface.cycleCamera();camera.setText("Vista "+(m+1));});
+        camera.setOnClickListener(v->{
+            int m=surface.cycleCamera();
+            camera.setText(m==0?"Trasera":m==1?"Cercana":"Capó");
+        });
         add(root,camera,92,40,Gravity.TOP|Gravity.RIGHT,0,110,16,0);
         Button colors=button("Color");
         colors.setOnClickListener(v->{int p=surface.cyclePaint();colors.setText("Color "+(p+1));});
@@ -123,8 +140,15 @@ public final class VelocityActivity extends Activity {
         quality.setOnClickListener(v->{int q=surface.cycleQuality();quality.setText("Calidad "+(q+1));});
         add(root,quality,92,40,Gravity.TOP|Gravity.RIGHT,0,110,218,0);
         Button restart=button("Reiniciar");
-        restart.setOnClickListener(v->surface.reset());
+        restart.setOnClickListener(v->{
+            releaseControls();surface.reset();
+            if(pauseButton!=null)pauseButton.setText("Pausa");
+        });
         add(root,restart,94,40,Gravity.TOP|Gravity.RIGHT,0,110,319,0);
+
+        pauseButton=button("Pausa");
+        pauseButton.setOnClickListener(v->togglePause());
+        add(root,pauseButton,90,40,Gravity.TOP|Gravity.RIGHT,0,110,419,0);
 
         Button exit=button("Salir");
         exit.setOnClickListener(v->finish());
@@ -141,12 +165,19 @@ public final class VelocityActivity extends Activity {
         add(root,bBrake,104,77,Gravity.BOTTOM|Gravity.RIGHT,0,0,152,18);
         add(root,bDrift,104,56,Gravity.BOTTOM|Gravity.RIGHT,0,0,269,18);
 
-        TextView help=text("WASD / flechas · ESPACIO derrape · R reiniciar",11);
+        TextView help=text("WASD / flechas · ESPACIO derrape · P pausa · R reiniciar",11);
         add(root,help,-2,-2,Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL,0,0,0,4);
         setContentView(root);
     }
     @Override public boolean onKeyDown(int keyCode,KeyEvent event){
-        if(keyCode==KeyEvent.KEYCODE_R){if(surface!=null)surface.reset();return true;}
+        if(keyCode==KeyEvent.KEYCODE_P){
+            if(event.getRepeatCount()==0)togglePause();return true;
+        }
+        if(keyCode==KeyEvent.KEYCODE_R){
+            if(surface!=null){releaseControls();surface.reset();}
+            if(pauseButton!=null)pauseButton.setText("Pausa");
+            return true;
+        }
         if(keyCode==KeyEvent.KEYCODE_W||keyCode==KeyEvent.KEYCODE_DPAD_UP)keyGas=true;
         else if(keyCode==KeyEvent.KEYCODE_S||keyCode==KeyEvent.KEYCODE_DPAD_DOWN)keyBrake=true;
         else if(keyCode==KeyEvent.KEYCODE_A||keyCode==KeyEvent.KEYCODE_DPAD_LEFT)keyLeft=true;
@@ -167,18 +198,20 @@ public final class VelocityActivity extends Activity {
     @Override protected void onResume(){
         super.onResume();
         WorkbenchActivity.immersive(this);
-        if(surface!=null)surface.startLoop();
+        if(surface!=null)surface.resumeLoop();
     }
     @Override protected void onPause(){
         if(surface!=null){
-            gas=brake=left=right=drift=false;
-            keyGas=keyBrake=keyLeft=keyRight=keyDrift=false;
-            controls();surface.stopLoop();
+            releaseControls();surface.pauseLoop();
         }
         super.onPause();
     }
+    @Override public void onWindowFocusChanged(boolean hasFocus){
+        super.onWindowFocusChanged(hasFocus);
+        if(!hasFocus)releaseControls();
+    }
     @Override protected void onDestroy(){
-        if(surface!=null)surface.stopLoop();
+        if(surface!=null)surface.closeLoop();
         super.onDestroy();
     }
 }

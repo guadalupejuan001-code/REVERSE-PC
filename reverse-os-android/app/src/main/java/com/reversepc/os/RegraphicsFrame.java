@@ -9,7 +9,7 @@ import java.util.Arrays;
  */
 final class RegraphicsFrame {
     static final int LOGICAL_WIDTH=1280,LOGICAL_HEIGHT=720;
-    static final int MAX_SPANS_PER_ROW=16;
+    static final int MAX_SPANS_PER_ROW=48;
     final int width=LOGICAL_WIDTH,height=LOGICAL_HEIGHT;
     final int stride,commands;
     private final byte[] bytes;
@@ -57,7 +57,7 @@ final class RegraphicsFrame {
             require(u32(frame,at+10)==1,"span revision mismatch");
             require(y<LOGICAL_HEIGHT&&y%stride==0&&x0<=x1&&x1<LOGICAL_WIDTH,
                 "span coordinates out of bounds");
-            require(depth>=87&&depth<=100,"span depth out of bounds");
+            require(depth>=1&&depth<=100,"span depth out of bounds");
             if(y!=lastRow){
                 require(y==expectedRow,"missing or unordered row");
                 require(x0==0&&x1==LOGICAL_WIDTH-1&&depth==100,
