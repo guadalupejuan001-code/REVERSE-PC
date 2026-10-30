@@ -1,5 +1,5 @@
 {
-  "schema": 2,
+  "schema": 3,
   "upstream_m001": "06ebce4bddf25d615cefd85ed24081f37504a492",
   "upstream_bolsa": "08cafb094a5c0f81253509eff412214dd526b808",
   "models": [
@@ -7,18 +7,20 @@
     "X001/B001"
   ],
   "files": {
-    "reverse-os-android/app/src/main/assets/laplace/app.mjs": "a035a90e6424106c34786fed861a02be59e6440734618886cc71448bc1b2d2ff",
+    "reverse-os-android/app/src/main/assets/laplace/app.mjs": "40af5b7c2449539266a09439b03f4725a1c1e1bb1d9c6d25782ce3f244070002",
     "reverse-os-android/app/src/main/assets/laplace/grafica.js": "23efd2044b439b61673c11cd72127430d73520c4b640cf245641dde3f9d786b6",
     "reverse-os-android/app/src/main/assets/laplace/index.html": "8f31d06f58a04aafa3ca5d1f6a6319485937a642c6b36db41072f85188f03a74",
     "reverse-os-android/app/src/main/assets/laplace/integridad.mjs": "3912bb8fec306b793ec50a3d7bcbc5368ae98ec49e06566a43bc07073a1b53fb",
     "reverse-os-android/app/src/main/assets/laplace/modelo.mjs": "8566056be52b69abca73d36b5f933d1d3a9f6fa83f56cd21c31bb6862b9915db",
     "reverse-os-android/app/src/main/assets/laplace/styles.css": "af6546d490db57fe0181f2aa35470a03b3c71749e79688cfef9188fc97282bb4",
-    "reverse-os-android/app/src/main/assets/laplace/x001.mjs": "e2096d77deb51c29000a026912a4c3ebb9a01acdb3a7bc720fa8d2961503dabb",
-    "reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceActivity.java": "34795f0c51a23a12c067e5a4d4798fa5d5267f603957bf825e92d6bb66746404",
+    "reverse-os-android/app/src/main/assets/laplace/x001.mjs": "e641af80f9f09f706ae932ea3e8a31dce112a1521f7494d89e9a8f4ab2ed940c",
+    "reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceActivity.java": "037fd27bf06c2500efec70d13c0b148dbad93cb081e8bcf3d43cf269bb7efbdc",
     "laplace-android/upstream-lock.json": "abb08ad8c1d9eb89ee3f61dd74fd7ec5280d7dd3f2e86d41be2c2d231d6db879",
     "laplace-android/upstream/universo/integridad.mjs": "4ed158bc6c192cba2f4ee673dc7c99f63d7d2b73889d1b04dee5c791a47fc577",
     "laplace-android/upstream/seguimiento/modelo.mjs": "1a72ecc3437baeb2db0afb9b8a36618c4568badfab0baf318d005bfa99fabe3a",
-    "laplace-android/upstream/panel/publico/grafica.js": "23efd2044b439b61673c11cd72127430d73520c4b640cf245641dde3f9d786b6"
+    "laplace-android/upstream/panel/publico/grafica.js": "23efd2044b439b61673c11cd72127430d73520c4b640cf245641dde3f9d786b6",
+    "reverse-os-android/app/src/main/assets/laplace/x001-native.xi": "eeee0cd986b1d61c742c49a9006b3979273afabb70d7f1e5f2d290fbf421187a",
+    "reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceXiCompiler.java": "47c90cb016910d291ab455e073e33567c56185977e5860acadf7fa14d329314d"
   },
   "horizons_minutes": {
     "bitcoin": [
@@ -52,6 +54,8 @@
     "AAPL",
     "NVDA"
   ],
-  "stock_model": "X001-live-classical",
-  "bolsa_upstream": "08cafb094a5c0f81253509eff412214dd526b808"
+  "stock_model": "XN01-native-XI",
+  "bolsa_upstream": "08cafb094a5c0f81253509eff412214dd526b808",
+  "model": "M001 + XN01/XI-Ether",
+  "native_XI_used_for_stock_prediction": true
 }
