@@ -30,7 +30,7 @@ integrity+=`export async function huellaContenido(value){
  const digest=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(serializarCanonico(value)));
  return [...new Uint8Array(digest)].map(x=>x.toString(16).padStart(2,'0')).join('');
 }\n`;
-const generated={'modelo.mjs':s,'integridad.mjs':integrity,'grafica.js':read('panel/publico/grafica.js')};
+const generated={'modelo.mjs':s,'integridad.mjs':integrity};
 mkdirSync(target,{recursive:true});
 for(const [p,body] of Object.entries(generated)){
  if(process.argv.includes('--check')){if(readFileSync(target+'/'+p,'utf8')!==body)throw Error('Regenerar '+p);}

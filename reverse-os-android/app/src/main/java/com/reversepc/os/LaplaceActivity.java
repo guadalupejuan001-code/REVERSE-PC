@@ -25,6 +25,7 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
+import android.os.SystemClock;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.concurrent.*;
@@ -99,6 +100,11 @@ public final class LaplaceActivity extends Activity {
         }catch(Exception e){return denied();}
     }
     private static WebResourceResponse denied(){return new WebResourceResponse("text/plain","UTF-8",403,"Forbidden",new HashMap<>(),new ByteArrayInputStream(new byte[0]));}
+    private static String stockSymbol(JSONObject p)throws Exception{
+        String symbol=p.getString("symbol").trim().toUpperCase(java.util.Locale.ROOT);
+        if(!symbol.matches("[A-Z][A-Z0-9.^=-]{0,14}"))throw new IllegalArgumentException("Símbolo bursátil inválido");
+        return symbol;
+    }
     static String urlFor(String source,JSONObject p)throws Exception{
         String root="https://api.exchange.coinbase.com/products/";
         switch(source){
@@ -109,6 +115,13 @@ public final class LaplaceActivity extends Activity {
             case "euro":return root+"BTC-EUR/ticker";
             case "noaa":return "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json";
             case "registro":return "https://raw.githubusercontent.com/guadalupejuan001-code/LaPlaceDIG/laplace-registro/seguimiento/resumen.json";
+            case "stock":{
+                String symbol=stockSymbol(p),range=p.optString("range","1mo");
+                if(!range.equals("5d")&&!range.equals("1mo")&&!range.equals("3mo"))throw new IllegalArgumentException("Rango bursátil inválido");
+                return "https://query1.finance.yahoo.com/v8/finance/chart/"+java.net.URLEncoder.encode(symbol,"UTF-8")
+                    +"?interval=5m&range="+java.net.URLEncoder.encode(range,"UTF-8")
+                    +"&includePrePost=false&events=div%2Csplits";
+            }
             case "candles":{
                 int step=p.getInt("step");long start=p.getLong("start"),end=p.getLong("end");
                 long now=System.currentTimeMillis()/1000;
@@ -120,21 +133,58 @@ public final class LaplaceActivity extends Activity {
         }
     }
     private JSONObject readPublic(String source,JSONObject p)throws Exception{
-        HttpsURLConnection c=(HttpsURLConnection)new java.net.URL(urlFor(source,p)).openConnection();
-        c.setConnectTimeout(9000);c.setReadTimeout(9000);c.setInstanceFollowRedirects(false);
-        c.setUseCaches(false);c.setRequestProperty("Accept","application/json");
-        c.setRequestProperty("User-Agent","REVERSE-Laplace-M001/1.0");
-        try{
-            int status=c.getResponseCode();if(status!=200)throw new IOException("Fuente no disponible (HTTP "+status+")");
-            if(c.getContentLengthLong()>LIMIT)throw new IOException("Respuesta fuera de presupuesto");
-            ByteArrayOutputStream out=new ByteArrayOutputStream();
-            try(InputStream in=c.getInputStream()){
-                byte[] buf=new byte[8192];int n;
-                while((n=in.read(buf))!=-1){if(out.size()+n>LIMIT)throw new IOException("Respuesta excesiva");out.write(buf,0,n);}
-            }
-            return new JSONObject().put("ok",true).put("text",out.toString("UTF-8"))
-                .put("received_at",Instant.now().toString()).put("source",source);
-        }finally{c.disconnect();}
+        final String target=urlFor(source,p);
+        IOException last=null;
+        for(int attempt=0;attempt<3;attempt++){
+            HttpsURLConnection c=(HttpsURLConnection)new java.net.URL(target).openConnection();
+            c.setConnectTimeout(9000);c.setReadTimeout(9000);c.setInstanceFollowRedirects(false);
+            c.setUseCaches(false);c.setRequestProperty("Accept","application/json");
+            c.setRequestProperty("User-Agent","REVERSE-Laplace/2.0");
+            try{
+                int status=c.getResponseCode();
+                if(status==429){
+                    String retry=c.getHeaderField("Retry-After");long delay=900L*(attempt+1);
+                    try{if(retry!=null)delay=Math.max(delay,Math.min(8000L,Long.parseLong(retry.trim())*1000L));}catch(Exception ignored){}
+                    last=new IOException("Demasiadas solicitudes (HTTP 429)");
+                    if(attempt<2){try{Thread.sleep(delay);}catch(InterruptedException e){Thread.currentThread().interrupt();throw new IOException("Consulta interrumpida",e);}continue;}
+                    throw last;
+                }
+                if((status==502||status==503)&&attempt<2){
+                    last=new IOException("Fuente temporalmente no disponible (HTTP "+status+")");
+                    try{Thread.sleep(700L*(attempt+1));}catch(InterruptedException e){Thread.currentThread().interrupt();throw new IOException("Consulta interrumpida",e);}
+                    continue;
+                }
+                if(status!=200)throw new IOException("Fuente no disponible (HTTP "+status+")");
+                if(c.getContentLengthLong()>LIMIT)throw new IOException("Respuesta fuera de presupuesto");
+                ByteArrayOutputStream out=new ByteArrayOutputStream();
+                try(InputStream in=c.getInputStream()){
+                    byte[] buf=new byte[8192];int n;
+                    while((n=in.read(buf))!=-1){if(out.size()+n>LIMIT)throw new IOException("Respuesta excesiva");out.write(buf,0,n);}
+                }
+                return new JSONObject().put("ok",true).put("text",out.toString("UTF-8"))
+                    .put("received_at",Instant.now().toString()).put("source",source);
+            }finally{c.disconnect();}
+        }
+        throw last==null?new IOException("Fuente no disponible"):last;
+    }
+    private String assetText(String path)throws Exception{
+        ByteArrayOutputStream out=new ByteArrayOutputStream();
+        try(InputStream in=getAssets().open(path)){byte[] buf=new byte[8192];int n;while((n=in.read(buf))!=-1)out.write(buf,0,n);}
+        return out.toString("UTF-8");
+    }
+    private JSONObject nativeX001(JSONObject request)throws Exception{
+        String asset=request.getString("asset").trim().toUpperCase(java.util.Locale.ROOT);
+        if(!asset.matches("[A-Z][A-Z0-9.^=-]{0,14}"))throw new IllegalArgumentException("Activo inválido");
+        String program=LaplaceXiCompiler.compile(request.getJSONArray("bars"),assetText("laplace/x001-native.xi"));
+        long started=SystemClock.elapsedRealtimeNanos();
+        ResultPacket packet=ResultPacket.parse(NativeRuntime.execute(NativeRuntime.initialize(),program));
+        long elapsed=SystemClock.elapsedRealtimeNanos()-started;
+        JSONObject core=new JSONObject(NativeRuntime.inspect(packet.state));
+        JSONObject result=LaplaceXiCompiler.parse(packet.output,asset,elapsed,core);
+        result.put("program_sha256",sha(program));
+        result.put("output_sha256",sha(packet.output));
+        result.put("isolated",true);
+        return new JSONObject().put("ok",true).put("result",result);
     }
     private static String sha(String text)throws Exception{
         byte[] b=MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8));
@@ -149,7 +199,7 @@ public final class LaplaceActivity extends Activity {
     }
     private synchronized JSONObject save(String text)throws Exception{
         if(text.getBytes(StandardCharsets.UTF_8).length>LIMIT)throw new IOException("Captura fuera de presupuesto");
-        JSONObject p=new JSONObject(text);if(!"laplace-reverse-m001-v1".equals(p.getString("schema")))throw new IOException("Captura incompatible");
+        JSONObject p=new JSONObject(text);String schema=p.optString("schema");if(!"laplace-reverse-m001-v1".equals(schema)&&!"laplace-reverse-v2".equals(schema))throw new IOException("Captura incompatible");
         long at=Instant.parse(p.getString("at")).toEpochMilli();
         if(at>System.currentTimeMillis()+5000)throw new IOException("Captura futura");
         JSONObject previous=readSaved();
@@ -175,7 +225,10 @@ public final class LaplaceActivity extends Activity {
                     JSONObject result;
                     if("read".equals(operation))result=readSaved();
                     else if("save".equals(operation))result=save(payload);
-                    else if("public".equals(operation)){
+                    else if("native_x001".equals(operation)){
+                        if(payload.length()>LIMIT)throw new IOException("Entrada XN01 excesiva");
+                        result=nativeX001(new JSONObject(payload));
+                    }else if("public".equals(operation)){
                         if(payload.length()>1024)throw new IOException("Consulta excesiva");
                         JSONObject q=new JSONObject(payload);result=readPublic(q.getString("source"),q.optJSONObject("params")==null?new JSONObject():q.getJSONObject("params"));
                     }else throw new IOException("Operación no permitida");
@@ -189,7 +242,7 @@ public final class LaplaceActivity extends Activity {
             ui.post(()->{if(closed)return;try{
                 exportBytes=payload.getBytes(StandardCharsets.UTF_8);
                 startActivityForResult(new Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE)
-                    .setType("application/json").putExtra(Intent.EXTRA_TITLE,"LAPLACE-consulta-M001.json"),EXPORT);
+                    .setType("application/json").putExtra(Intent.EXTRA_TITLE,"LAPLACE-consulta.json"),EXPORT);
             }catch(Exception e){Toast.makeText(LaplaceActivity.this,"No se pudo abrir la exportación",Toast.LENGTH_SHORT).show();}});
         }
     }

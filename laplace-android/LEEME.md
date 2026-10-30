@@ -1,72 +1,59 @@
-# LAPLACE incluido en la próxima APK de REVERSE
+# LAPLACE en REVERSE — M001 + XN01
 
-La referencia de esta conversación es **LaPlaceDIG 06ebce4bddf25d615cefd85ed24081f37504a492**:
-modelo M001, no la recalibración R015 descartada ni el filtro I015 de persistencia.
+## Arquitectura empaquetada
 
-## Integración real
+LAPLACE queda dentro de la APK de REVERSE con dos rutas explícitas:
 
-- El lanzador del escritorio ofrece **Laplace**. Abre una actividad propia incluida
-  en la misma APK; Volver regresa a REVERSE. No cambia el fondo ni iconos existentes.
-- Recursos empaquetados en `app/src/main/assets/laplace`, sin una página alojada
-  ni un servidor Node obligatorio en el teléfono.
-- Android suministra transporte HTTPS acotado, archivo privado atómico y exportación.
-  No recibe URLs arbitrarias, credenciales ni operaciones bursátiles. Sólo se cargan
-  documentos del origen local de la aplicación; los recursos remotos no ejecutan JS.
-- La matemática de M001 sigue en JavaScript, como en LaPlaceDIG. El adaptador cambia
-  únicamente la lectura de la huella de código y SHA-256 síncrono por WebCrypto
-  asíncrono. Las pruebas comparan salidas completas, no sólo precios aproximados.
-- No se modifica XI/Ether, el ejecutor nativo ni la memoria de BBY Q.
+- **BTC/USD · M001 + XN01:** M001 mantiene el candidato multihorizonte (15m, 30m, 1h, 4h, 24h y 7d) y XN01 calcula en paralelo la dirección inmediata de 5 minutos dentro de XI/Ether.
+- **Bolsa · XN01:** SPY, AAPL y NVDA calculan la dirección del siguiente intervalo cerrado de 5 minutos en la **XI Machine de REVERSE sobre NativeRuntime/InverseMemory**.
 
-## Controles incluidos
+La ruta bursátil es:
 
-Selector de 15/30/60/240/1440/10080 minutos, historia visible independiente,
-selección de fuentes de contexto, gráfico temporal con precio de origen exacto,
-exportación de la última lectura y vista del registro horario remoto con filtros.
-Se publica el candidato aunque no haya demostrado ventaja; falta de patrones produce
-«Sin cálculo», nunca una cifra inventada. Siete días suele tener soporte muy escaso.
+```
+serie pública OHLCV
+      ↓
+LaplaceActivity / LaplaceXiCompiler
+(validación, continuidad, serialización a bytes)
+      ↓
+x001-native.xi
+(estado 4 bits + aprendizaje de conteos + probabilidad + dirección)
+      ↓
+NativeRuntime.initialize + NativeRuntime.execute
+      ↓
+InverseMemory / salida JSONL de registros
+      ↓
+interfaz Laplace
+```
 
-La representación 3D utiliza perspectiva CSS del anfitrión WebView. Sus estados
-cambian al iniciar/recibir/fallar consultas. Es una visualización del flujo de IO,
-no un modelo causal del universo, ni un nuevo renderizador XI ni un indicador de
-precisión. Los efectos se pueden desactivar y respetan reducción de movimiento.
+JavaScript **no calcula SUBIDA/BAJADA**. `x001.mjs` normaliza la respuesta bursátil y conserva evidencia histórica del experimento anterior; la decisión viva procede del programa `x001-native.xi`.
 
-Las fuentes opcionales son contexto. Activar NOAA, ETH, órdenes u operaciones no
-finge aumentar su influencia sobre el precio. El cálculo usa la cotización y las
-velas que necesita el M001 existente. No se han añadido otros activos predictivos.
+XN01 se ejecuta tanto para BTC como para bolsa y usa cuatro propiedades enteras calculadas dentro de XI:
 
-## Dos registros que no deben confundirse
+1. cierre de 5 minutos no menor al anterior;
+2. cierre actual no menor al de 15 minutos antes;
+3. movimiento absoluto de 5 minutos mayor que la media absoluta de 30 minutos;
+4. volumen actual mayor que la media de 30 minutos.
 
-La última consulta manual se guarda en el archivo privado `laplace-m001-captura.json`.
-Incluye entradas, candidatos y sello; no altera las memorias de otras aplicaciones.
-No es un diario inmutable ni un servicio en segundo plano: conserva la última lectura.
+Los precios se transportan a XI en centavos enteros y el volumen como entero uint32. Las pausas de mercado se marcan como límites de continuidad y no se aprenden como transiciones de cinco minutos.
 
-La sección «Registro horario» lee `LaPlaceDIG/laplace-registro/seguimiento/resumen.json`.
-Es el diario automático existente, con sus propios candidatos y evaluaciones.
-Las consultas del teléfono NO se agregan silenciosamente al diario de GitHub.
-Se indica la hora de actualización y no se mezclan las dos procedencias.
+## Aislamiento
 
-## Requisito de compilación
+XN01 ejecuta un estado nativo aislado creado con `NativeRuntime.initialize()`. No modifica el checkpoint `session.rvp` del escritorio REVERSE. La memoria usada durante el cálculo sigue siendo la InverseMemory real del runtime.
 
-`verifyLaplaceIntegration` es obligatorio para las variantes **control/workbench**,
-antes de combinar sus recursos y compilar Java. La compilación falla si faltan o se
-sustituyen recursos, cambia la referencia fijada o falta el enlace del escritorio.
-Se conserva el requisito previo BBY Q X01. No se cambia firma ni versionCode;
-se ajustarán como parte de la próxima entrega que el propietario solicite.
+## Interfaz
 
-Usar una revisión de REVERSE que contenga esta integración. Una rama antigua no
-adquiere archivos nuevos por sí sola: hay que incorporar este commit antes de generar
-una APK basada en ella. No se fusionan en este cambio ramas de Android invitado,
-renderizadores experimentales, ni proyectos ajenos.
+La interfaz incluye selector BTC/SPY/AAPL/NVDA, navegación inferior en móvil, Resumen/Datos/Flujo/Registro, gráficos temporales y manejo acotado de HTTP 429/502/503. Una acción bursátil muestra dirección, confianza interna, soporte, prior, máscara y estado de los cuatro bits; no inventa un precio futuro.
 
-Comprobar:
+## Pruebas obligatorias
 
-    node laplace-android/prepare.mjs --check
-    node laplace-android/verify.mjs
-    node --test laplace-android/tests/modelo.test.mjs
+La integración no debe fusionarse ni compilarse como próxima APK si fallan:
 
-Los assets están ya preparados: no es necesario descargar LaPlaceDIG al compilar.
-`prepare.mjs` permite regenerar la adaptación con las fuentes verificadas incluidas.
-El workflow de Workbench prueba la entrada real desde REVERSE en Android 15
-(`mode=laplace`) y confirma que la memoria nativa no cambia. El workflow específico
-prueba la paridad, compila el adaptador Java y usa Chromium con un puente simulado
-para los controles. Los casos artificiales no son datos de mercado ni resultados de inversión.
+- contrato SHA-256 de recursos;
+- paridad M001;
+- adaptador bursátil sin predictor JavaScript;
+- ejecución de `x001-native.xi` en el `reverse_pc` real y coincidencia con referencia independiente;
+- compilación Java/Android del puente;
+- navegación Chrome en escritorio, vertical y horizontal;
+- prueba Android 15 que ejecuta XN01 mediante JNI y verifica que el checkpoint principal queda intacto.
+
+El contrato está en `laplace-android/integration-lock.json` y `NEXT_APK_LAPLACE.json`.

@@ -1,14 +1,38 @@
 {
-  "schema": 1,
-  "required_component": "LAPLACE M001 de esta conversación",
+  "schema": 2,
+  "required_component": "LAPLACE M001 + XN01 nativo XI/Ether",
   "repository": "guadalupejuan001-code/REVERSE-PC",
   "upstream": "guadalupejuan001-code/LaPlaceDIG",
-  "upstream_commit": "06ebce4bddf25d615cefd85ed24081f37504a492",
+  "upstream_commits": {
+    "m001": "06ebce4bddf25d615cefd85ed24081f37504a492",
+    "bolsa": "08cafb094a5c0f81253509eff412214dd526b808"
+  },
   "contract": "laplace-android/integration-lock.json",
   "gradle_check": ":app:verifyLaplaceIntegration",
-  "flavors": ["control", "workbench"],
-  "preserve": ["BBY Q X01", "XI/Ether", "firma de distribución existente", "datos privados del usuario"],
+  "flavors": [
+    "control",
+    "workbench"
+  ],
+  "markets": [
+    "BTC-USD",
+    "SPY",
+    "AAPL",
+    "NVDA"
+  ],
+  "preserve": [
+    "BBY Q X01",
+    "XI/Ether",
+    "firma de distribución existente",
+    "datos privados del usuario",
+    "XN01 .xi nativo",
+    "selector BTC/bolsa",
+    "control HTTP 429"
+  ],
   "release_requested_now": false,
   "requires_node_on_phone": false,
-  "note": "La próxima APK debe compilarse de una revisión que contenga esta integración, no de un ZIP o rama anterior sin estos cambios."
+  "automatic_trading": false,
+  "note": "La próxima APK debe conservar M001 para precio BTC y XN01 ejecutado en XI/Ether para dirección de BTC/SPY/AAPL/NVDA; JavaScript no decide la dirección.",
+  "upstream_commit": "08cafb094a5c0f81253509eff412214dd526b808",
+  "stock_prediction_backend": "XI/Ether · NativeRuntime",
+  "native_XI_for_all_markets": true
 }
