@@ -55,3 +55,23 @@ android {
  compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
  buildTypes { release { minifyEnabled false } }
 }
+
+// Required by the owner for future primary APKs. Assets are committed and
+// reproducible; there is no implicit localhost server or build-time download.
+tasks.register('verifyLaplaceIntegration') {
+ doLast {
+  def repo = rootProject.projectDir.parentFile
+  def lockFile = new File(repo,'laplace-android/integration-lock.json')
+  if (!lockFile.isFile()) throw new GradleException('Falta la integración LAPLACE de esta conversación')
+  def lock = new groovy.json.JsonSlurper().parse(lockFile)
+  if (lock.schema != 1 || lock.upstream != '06ebce4bddf25d615cefd85ed24081f37504a492' || lock.files.size() < 8) throw new GradleException('Contrato LAPLACE incompatible')
+  lock.files.each { name, expected ->
+   def asset = new File(repo,name)
+   if (!asset.canonicalPath.startsWith(repo.canonicalPath+File.separator) || !asset.isFile() || java.security.MessageDigest.getInstance('SHA-256').digest(asset.bytes).encodeHex().toString() != expected) throw new GradleException('LAPLACE ausente o sustituido: '+name)
+  }
+  if (!file('src/main/AndroidManifest.xml').text.contains('android:name=".LaplaceActivity"') || !file('src/main/java/com/reversepc/os/WorkbenchActivity.java').text.contains('void openLaplace()') || !file('src/main/assets/workbench/desktop.js').text.contains("if(app==='laplace')")) throw new GradleException('LAPLACE no está enlazado al escritorio')
+ }
+}
+tasks.configureEach { task ->
+ if (task.name ==~ /merge(Control|Workbench).*Assets/ || task.name ==~ /compile(Control|Workbench).*JavaWithJavac/) task.dependsOn('verifyLaplaceIntegration')
+}

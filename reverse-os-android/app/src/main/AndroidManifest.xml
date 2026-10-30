@@ -26,6 +26,7 @@
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
     </activity>
+    <activity android:name=".LaplaceActivity" android:exported="false" android:launchMode="singleTask" android:screenOrientation="fullUser" android:configChanges="orientation|screenSize|keyboardHidden"/>
     <activity android:name=".WorkbenchActivity" android:exported="false" android:launchMode="singleTask" android:screenOrientation="sensorLandscape" android:configChanges="orientation|screenSize|keyboardHidden" android:windowSoftInputMode="adjustResize"/>
     <activity android:name=".DesktopActivity"
         android:exported="false"

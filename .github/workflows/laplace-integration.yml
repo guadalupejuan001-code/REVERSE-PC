@@ -1,35 +1,46 @@
 name: Laplace - integración comprobable
 on:
+  pull_request:
+    branches: [main]
+    paths: ['laplace-android/**', 'reverse-os-android/**', '.github/workflows/laplace-integration.yml']
   push:
-    branches: [integrate/laplace-m001-next-apk-20261030]
+    branches: [main, integrate/laplace-m001-next-apk-20261030]
+    paths: ['laplace-android/**', 'reverse-os-android/**', '.github/workflows/laplace-integration.yml']
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
-  fuentes:
+  contrato-y-vista:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-      - name: Preparar fuentes exactas
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '17'}
+      - name: Verificar procedencia, paridad y requisitos de la siguiente APK
         run: |
           mkdir -p evidencia-laplace
-          git archive --format=zip --output=evidencia-laplace/reverse.zip HEAD
-          git rev-parse HEAD > evidencia-laplace/reverse-ref.txt
-      - uses: actions/checkout@v4
-        with:
-          repository: guadalupejuan001-code/LaPlaceDIG
-          ref: 06ebce4bddf25d615cefd85ed24081f37504a492
-          path: _laplace
-          persist-credentials: false
-      - name: Archivar Laplace original para adaptar sin reinventar el modelo
+          node laplace-android/prepare.mjs --check
+          node laplace-android/verify.mjs | tee evidencia-laplace/integracion.json
+          set -o pipefail
+          node --test laplace-android/tests/modelo.test.mjs | tee evidencia-laplace/pruebas-modelo.txt
+          git rev-parse HEAD > evidencia-laplace/commit.txt
+      - name: Compilar el adaptador Android sin sustituir el runtime
         run: |
-          git -C _laplace archive --format=zip --output="$GITHUB_WORKSPACE/evidencia-laplace/laplace.zip" HEAD
-          git -C _laplace rev-parse HEAD > evidencia-laplace/laplace-ref.txt
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' > evidencia-laplace/sdk.txt
+          javac -source 17 -target 17 -cp "$ANDROID_HOME/platforms/android-35/android.jar" -d evidencia-laplace/clases reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceActivity.java
+      - name: Probar controles y representación de consultas en Chrome
+        run: |
+          npm install --prefix "$RUNNER_TEMP/laplace-ui" --no-audit --no-fund playwright@1.56.1
+          export LAPLACE_PLAYWRIGHT="$RUNNER_TEMP/laplace-ui/node_modules/playwright"
+          export LAPLACE_CHROME="$(command -v google-chrome)"
+          node laplace-android/tests/ui.cjs evidencia-laplace/navegador
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: laplace-integration-sources
+          name: laplace-integracion-verificada
           path: evidencia-laplace/**
-          retention-days: 7
+          retention-days: 14
