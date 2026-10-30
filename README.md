@@ -245,3 +245,11 @@ El workflow de validación incluye la escena X Render real y una prueba de arran
 con captura de pantalla. No declarar APK jugable hasta tener resultado de esa CI.
 
 **Ciclo siguiente:** X Render incorpora triángulos analíticos en su observador original (Mundo X PR #76). REVERSE VELOCITY usa segmentos de carretera, líneas y carrocería con esos triángulos, conserva elipsoides para ruedas/objetos y no añade otro rasterizador. La compilación Android de esta revisión debe validarse antes de distribuir una APK.
+
+## SUPER RENDER XI — núcleo de geometría propia
+
+Nuevos programas independientes en [apps/super-render-xi](apps/super-render-xi/README.md):
+proyección 3D en XI, triángulos arbitrarios y regiones de carretera por
+filas. Compilan a RXE con el ejecutor original y se validan de 720p a 16K
+**lógicos** mediante cargas incrementales. No se declara que la interfaz
+Android esté dibujando esas imágenes ni que sean gráficos AAA.
