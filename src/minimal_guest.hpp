@@ -857,9 +857,17 @@ inline void MinimalGuest::step(RunResult& result) {
       if(success)cpu_write(address,reg(rd),size,result);set(status,success?0:1,32);machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;
     }
   }
+  else if ((instruction&0xffc00000u)==0xf9800000u || // PRFM unsigned immediate
+           (instruction&0xffe04c00u)==0xf8a04800u || // PRFM register, valid extend options
+           (instruction&0xff000000u)==0xd8000000u || // PRFM literal
+           (instruction&0xffe00c00u)==0xf8800000u) { // PRFUM unscaled immediate
+    // Architecturally optional cache hints. This machine has no guest cache;
+    // do not issue a data access, translation, exception, or base writeback.
+    // Reserved register-extend and pre/post-index forms remain unsupported.
+  }
   else if ((instruction&0x3b000000)==0x39000000 && !(instruction&0x04000000)) { // LDR/STR unsigned offset
     const unsigned size=1u<<(instruction>>30), opcode=(instruction>>22)&3;
-    if ((opcode>=2&&size==8)||(opcode==3&&size==4)) { if(opcode==2&&size==8){/* PRFM is a hint. */}else unsupported(); }
+    if ((opcode>=2&&size==8)||(opcode==3&&size==4)) unsupported();
     else {
     const auto address=reg(rn,64,true)+std::uint64_t((instruction>>10)&4095)*size;
     if (opcode){auto value=cpu_read(address,size,result);if(opcode>=2 && (value&(UINT64_C(1)<<(size*8-1))))value|=~low_mask(size*8);set(rd,value,opcode==2||size==8?64:32);}
