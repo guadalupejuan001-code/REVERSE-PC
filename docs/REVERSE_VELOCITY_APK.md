@@ -57,3 +57,34 @@ La APK mide 3.761.831 bytes. SHA-256:
 Los resultados exactos están en `docs/evidence/velocity-apk-0.1.0-package.json`
 y `docs/evidence/velocity-apk-0.1.0-smoke.json`. El dispositivo físico del usuario
 no se ha probado desde este entorno.
+
+## APK 0.2 verificada
+
+La fuente `8ec9dd2e92d5f0438996b347f7e5ffa3b546bdf9` pasó el
+[workflow Android completo](https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/41091100443)
+y la [validación de XI/JNI/Java](https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/41091111031).
+El smoke completó 28 comprobaciones, incluida una grabación de 9,986 segundos,
+giro real, pausa, cámaras/pintura y reapertura conservando la carrera.
+La observación final mostró posición (-392,36071) cm, yaw 3591 y 115 km/h.
+
+APK: 3.800.703 bytes; SHA-256
+`79f91f702b7d64e9f37b34895700d9ffdd1aa7da1674f5232821707ed2f2853f`.
+
+Vídeo original de la APK: 1.214.320 bytes; SHA-256
+`e1a68aa154681aa7fe86caf8026548bfa58f326de4bd2503eb0c9bf778746938`.
+
+Durante siete muestras de carrera y grabación en el emulador Android 35 x86_64,
+la escena de 320×180 tuvo 26–30 FPS publicados y aproximadamente 50 pasos
+físicos por segundo. El arranque frío a 480×270 fue más lento y activó la
+reducción automática de calidad. Estas cifras no son una medida del Galaxy A16.
+
+La segunda prueba encontró una fila válida con 48 regiones de primer plano
+que rebasaba el límite provisional de 47. La versión final transmite hasta
+una región por píxel, y la misma instantánea ya renderiza completa. También
+pasó una carrera completa con 14 observaciones periódicas y estado final idéntico
+al recorrido sin render. Evidencia local persistida en
+`docs/evidence/velocity-race3d-coupled.json`.
+
+El resultado exacto del paquete y del smoke está en los archivos
+`docs/evidence/velocity-apk-0.2.0-package.json` y
+`docs/evidence/velocity-apk-0.2.0-smoke.json`.

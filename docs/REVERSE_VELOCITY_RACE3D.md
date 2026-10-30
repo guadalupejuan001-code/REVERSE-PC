@@ -85,3 +85,10 @@ prueba emulada acredita todavía el rendimiento de un Samsung físico.
 El autor de malla es `scripts/author-velocity-scene.cjs`; genera `render.xi` y
 `palette.txt` de forma determinista. Es una herramienta de autoría, no el motor
 ni la física que ejecuta el APK.
+
+La misma instantánea que rebasaba el límite provisional de 47 regiones ahora
+emite 48 regiones válidas. La prueba adicional recorrió tres vueltas con
+catorce observaciones privadas en ruta y un resultado físico final idéntico
+byte por byte al recorrido sin imágenes. Véanse
+`docs/evidence/velocity-race3d-coupled.json` y
+`docs/evidence/velocity-race3d-fragmentation-reproduction.json`.

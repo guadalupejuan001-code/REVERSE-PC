@@ -1,0 +1,478 @@
+{
+  "passed": true,
+  "package": "com.reversepc.velocity",
+  "androidDeviceExecution": true,
+  "physicalPhoneVerified": false,
+  "renderer": "XI / REgraphics",
+  "checks": [
+    "connected Android device",
+    "standalone game package installed",
+    "standalone Velocity launcher starts",
+    "real Canvas frame posted",
+    "valid screenshot initial-screen",
+    "dismissed known SystemUI fullscreen education",
+    "minimal race lap and position HUD",
+    "accelerator physical control",
+    "physical accelerator advances XI speed",
+    "pause freezes game scheduler and shows HUD",
+    "race timer remains fixed while paused",
+    "continue advances authoritative XI race ticks",
+    "live race timer advanced before second physical pause",
+    "physical camera changes to close chase",
+    "physical paint selection changes",
+    "valid screenshot changed-camera-paint",
+    "initial posted frame exposes observed XI position and heading",
+    "actual Android driving video finalized",
+    "physical steering phase paused for observation",
+    "valid screenshot steered-race",
+    "new actual Canvas frame after Activity resume",
+    "Activity resume retains started race state",
+    "physical steering changes authoritative XI heading",
+    "physical accelerator moves authoritative XI world position",
+    "game remains usable after resume",
+    "no fatal Java/native or renderer error",
+    "actual posted-frame FPS measurements recorded",
+    "valid screenshot final-screen"
+  ],
+  "warnings": [],
+  "apiLevel": "35",
+  "abi": "x86_64",
+  "emulator": true,
+  "fullscreenHintDismissed": true,
+  "observedSpeedKmh": 56,
+  "continuedFrame": {
+    "frames": 11,
+    "elapsedNanos": 1034433655,
+    "fps": 11,
+    "width": 320,
+    "height": 180,
+    "ticks": 84,
+    "physicsHz": 0,
+    "paused": false
+  },
+  "video": {
+    "file": "velocity-race3d-driving.mp4",
+    "requestedSeconds": 10,
+    "seconds": 9.9863,
+    "bytes": 1214320,
+    "sha256": "e1a68aa154681aa7fe86caf8026548bfa58f326de4bd2503eb0c9bf778746938",
+    "source": "adb screenrecord of real APK"
+  },
+  "resumedTicks": 523,
+  "drivingState": {
+    "before": {
+      "speed": 0,
+      "ticks": 0,
+      "xCm": 0,
+      "zCm": 0,
+      "yaw4096": 0,
+      "camera": 0,
+      "paint": 0
+    },
+    "after": {
+      "speed": 115,
+      "ticks": 523,
+      "xCm": -392,
+      "zCm": 36071,
+      "yaw4096": 3591,
+      "camera": 1,
+      "paint": 1
+    },
+    "physicalSteering": true
+  },
+  "frameStats": [
+    {
+      "frames": 1,
+      "elapsedNanos": 1111408534,
+      "fps": 1,
+      "width": 480,
+      "height": 270,
+      "ticks": 0,
+      "physicsHz": 10,
+      "paused": false
+    },
+    {
+      "frames": 4,
+      "elapsedNanos": 1211853560,
+      "fps": 3,
+      "width": 480,
+      "height": 270,
+      "ticks": 0,
+      "physicsHz": 32,
+      "paused": false
+    },
+    {
+      "frames": 8,
+      "elapsedNanos": 1009860775,
+      "fps": 8,
+      "width": 320,
+      "height": 180,
+      "ticks": 0,
+      "physicsHz": 0,
+      "paused": false
+    },
+    {
+      "frames": 11,
+      "elapsedNanos": 1043827916,
+      "fps": 11,
+      "width": 320,
+      "height": 180,
+      "ticks": 0,
+      "physicsHz": 50,
+      "paused": false
+    },
+    {
+      "frames": 24,
+      "elapsedNanos": 1024055721,
+      "fps": 23,
+      "width": 320,
+      "height": 180,
+      "ticks": 0,
+      "physicsHz": 50,
+      "paused": false
+    },
+    {
+      "frames": 27,
+      "elapsedNanos": 1005784772,
+      "fps": 27,
+      "width": 320,
+      "height": 180,
+      "ticks": 0,
+      "physicsHz": 48,
+      "paused": false
+    },
+    {
+      "frames": 24,
+      "elapsedNanos": 1016179874,
+      "fps": 24,
+      "width": 320,
+      "height": 180,
+      "ticks": 0,
+      "physicsHz": 50,
+      "paused": false
+    },
+    {
+      "frames": 31,
+      "elapsedNanos": 1022625317,
+      "fps": 30,
+      "width": 320,
+      "height": 180,
+      "ticks": 0,
+      "physicsHz": 52,
+      "paused": false
+    },
+    {
+      "frames": 31,
+      "elapsedNanos": 1027690734,
+      "fps": 30,
+      "width": 320,
+      "height": 180,
+      "ticks": 0,
+      "physicsHz": 50,
+      "paused": false
+    },
+    {
+      "frames": 30,
+      "elapsedNanos": 1024949576,
+      "fps": 29,
+      "width": 320,
+      "height": 180,
+      "ticks": 17,
+      "physicsHz": 50,
+      "paused": false
+    },
+    {
+      "frames": 31,
+      "elapsedNanos": 1017950372,
+      "fps": 30,
+      "width": 320,
+      "height": 180,
+      "ticks": 69,
+      "physicsHz": 50,
+      "paused": false
+    },
+    {
+      "frames": 10,
+      "elapsedNanos": 1051826974,
+      "fps": 10,
+      "width": 320,
+      "height": 180,
+      "ticks": 81,
+      "physicsHz": 0,
+      "paused": true
+    },
+    {
+      "frames": 11,
+      "elapsedNanos": 1096531636,
+      "fps": 10,
+      "width": 320,
+      "height": 180,
+      "ticks": 81,
+      "physicsHz": 0,
+      "paused": true
+    },
+    {
+      "frames": 11,
+      "elapsedNanos": 1096155769,
+      "fps": 10,
+      "width": 320,
+      "height": 180,
+      "ticks": 81,
+      "physicsHz": 0,
+      "paused": true
+    },
+    {
+      "frames": 11,
+      "elapsedNanos": 1097992203,
+      "fps": 10,
+      "width": 320,
+      "height": 180,
+      "ticks": 81,
+      "physicsHz": 0,
+      "paused": true
+    },
+    {
+      "frames": 11,
+      "elapsedNanos": 1098653895,
+      "fps": 10,
+      "width": 320,
+      "height": 180,
+      "ticks": 81,
+      "physicsHz": 0,
+      "paused": true
+    },
+    {
+      "frames": 11,
+      "elapsedNanos": 1094305460,
+      "fps": 10,
+      "width": 320,
+      "height": 180,
+      "ticks": 81,
+      "physicsHz": 0,
+      "paused": true
+    },
+    {
+      "frames": 11,
+      "elapsedNanos": 1034433655,
+      "fps": 11,
+      "width": 320,
+      "height": 180,
+      "ticks": 84,
+      "physicsHz": 0,
+      "paused": false
+    },
+    {
+      "frames": 16,
+      "elapsedNanos": 1058723619,
+      "fps": 15,
+      "width": 320,
+      "height": 180,
+      "ticks": 98,
+      "physicsHz": 0,
+      "paused": true
+    },
+    {
+      "frames": 11,
+      "elapsedNanos": 1096134794,
+      "fps": 10,
+      "width": 320,
+      "height": 180,
+      "ticks": 98,
+      "physicsHz": 0,
+      "paused": true
+    },
+    {
+      "frames": 11,
+      "elapsedNanos": 1097164112,
+      "fps": 10,
+      "width": 320,
+      "height": 180,
+      "ticks": 98,
+      "physicsHz": 0,
+      "paused": true
+    },
+    {
+      "frames": 11,
+      "elapsedNanos": 1098548410,
+      "fps": 10,
+      "width": 320,
+      "height": 180,
+      "ticks": 98,
+      "physicsHz": 0,
+      "paused": true
+    },
+    {
+      "frames": 11,
+      "elapsedNanos": 1094509369,
+      "fps": 10,
+      "width": 320,
+      "height": 180,
+      "ticks": 98,
+      "physicsHz": 0,
+      "paused": true
+    },
+    {
+      "frames": 10,
+      "elapsedNanos": 1005465117,
+      "fps": 10,
+      "width": 320,
+      "height": 180,
+      "ticks": 98,
+      "physicsHz": 0,
+      "paused": true
+    },
+    {
+      "frames": 20,
+      "elapsedNanos": 1003052265,
+      "fps": 20,
+      "width": 320,
+      "height": 180,
+      "ticks": 140,
+      "physicsHz": 0,
+      "paused": false
+    },
+    {
+      "frames": 27,
+      "elapsedNanos": 1007203443,
+      "fps": 27,
+      "width": 320,
+      "height": 180,
+      "ticks": 190,
+      "physicsHz": 50,
+      "paused": false
+    },
+    {
+      "frames": 27,
+      "elapsedNanos": 1019297477,
+      "fps": 26,
+      "width": 320,
+      "height": 180,
+      "ticks": 240,
+      "physicsHz": 50,
+      "paused": false
+    },
+    {
+      "frames": 28,
+      "elapsedNanos": 1002835715,
+      "fps": 28,
+      "width": 320,
+      "height": 180,
+      "ticks": 292,
+      "physicsHz": 50,
+      "paused": false
+    },
+    {
+      "frames": 27,
+      "elapsedNanos": 1015713655,
+      "fps": 27,
+      "width": 320,
+      "height": 180,
+      "ticks": 342,
+      "physicsHz": 50,
+      "paused": false
+    },
+    {
+      "frames": 29,
+      "elapsedNanos": 1004527548,
+      "fps": 29,
+      "width": 320,
+      "height": 180,
+      "ticks": 393,
+      "physicsHz": 51,
+      "paused": false
+    },
+    {
+      "frames": 29,
+      "elapsedNanos": 1028542846,
+      "fps": 28,
+      "width": 320,
+      "height": 180,
+      "ticks": 444,
+      "physicsHz": 50,
+      "paused": false
+    },
+    {
+      "frames": 30,
+      "elapsedNanos": 1015950621,
+      "fps": 30,
+      "width": 320,
+      "height": 180,
+      "ticks": 495,
+      "physicsHz": 50,
+      "paused": false
+    },
+    {
+      "frames": 21,
+      "elapsedNanos": 1032535365,
+      "fps": 20,
+      "width": 320,
+      "height": 180,
+      "ticks": 523,
+      "physicsHz": 0,
+      "paused": true
+    },
+    {
+      "frames": 11,
+      "elapsedNanos": 1096402849,
+      "fps": 10,
+      "width": 320,
+      "height": 180,
+      "ticks": 523,
+      "physicsHz": 0,
+      "paused": true
+    },
+    {
+      "frames": 10,
+      "elapsedNanos": 1009149279,
+      "fps": 10,
+      "width": 320,
+      "height": 180,
+      "ticks": 523,
+      "physicsHz": 0,
+      "paused": true
+    },
+    {
+      "frames": 11,
+      "elapsedNanos": 1085484746,
+      "fps": 10,
+      "width": 320,
+      "height": 180,
+      "ticks": 523,
+      "physicsHz": 0,
+      "paused": true
+    },
+    {
+      "frames": 11,
+      "elapsedNanos": 1021871451,
+      "fps": 11,
+      "width": 320,
+      "height": 180,
+      "ticks": 523,
+      "physicsHz": 0,
+      "paused": true
+    },
+    {
+      "frames": 11,
+      "elapsedNanos": 1097337880,
+      "fps": 10,
+      "width": 320,
+      "height": 180,
+      "ticks": 523,
+      "physicsHz": 0,
+      "paused": true
+    }
+  ],
+  "activeFps": {
+    "samples": 20,
+    "min": 1,
+    "max": 30,
+    "source": "FRAME_STATS posted Canvas frames / elapsed nanoseconds; emulator workload with recording"
+  },
+  "initialFrame": "I/ReverseVelocity( 2023): FRAME_READY 480x270 speed=0 ticks=0 xCm=0 zCm=0 yaw4096=0 camera=0 paint=0",
+  "resumedFrame": "I/ReverseVelocity( 2023): FRAME_READY 320x180 speed=115 ticks=523 xCm=-392 zCm=36071 yaw4096=3591 camera=1 paint=1",
+  "elapsedMs": 43891,
+  "checkCount": 28,
+  "appPids": [
+    2023
+  ]
+}
