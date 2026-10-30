@@ -13,8 +13,9 @@ const safe = (n, label) => {
   check(n<=BigInt(Number.MAX_SAFE_INTEGER),label+' exceeds exact numeric range');
   return Number(n);
 };
-export function auditGkiRvg(bytes,expectedKernelSha,expectedRvgSha) {
-  check(Buffer.isBuffer(bytes) && bytes.length<256*1024*1024 &&
+export function auditGkiRvg(bytes,expectedKernelSha,expectedRvgSha,{maxSnapshotBytes=256*1024*1024}={}) {
+  check(Number.isSafeInteger(maxSnapshotBytes)&&maxSnapshotBytes>=360&&maxSnapshotBytes<=1024*1024*1024,'invalid explicit transport audit bound');
+  check(Buffer.isBuffer(bytes) && bytes.length<=maxSnapshotBytes &&
     bytes.length>=8+43*8+8,'snapshot size invalid');
   const version=bytes.toString('ascii',0,4);
   check((version==='RVG2'||version==='RVG3') &&
