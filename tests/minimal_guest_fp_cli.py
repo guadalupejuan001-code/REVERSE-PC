@@ -8,10 +8,26 @@ import sys
 import tempfile
 
 binary,elf=map(lambda p:Path(p).resolve(),sys.argv[1:3])
+
+
+def run_guest(arguments, checkpoint):
+    """Keep native diagnostics and the exact input state when a checked run fails."""
+    result=subprocess.run([str(binary),*map(str,arguments)],capture_output=True,text=True,timeout=30)
+    if result.returncode:
+        evidence={'command':[str(binary),*map(str,arguments)],'returncode':result.returncode,
+                  'stdout':result.stdout,'stderr':result.stderr,
+                  'input_checkpoint_sha256':hashlib.sha256(checkpoint.read_bytes()).hexdigest()}
+        elf.with_suffix('.failure.json').write_text(json.dumps(evidence,indent=2)+'\n')
+        elf.with_suffix('.failure-input.rvg').write_bytes(checkpoint.read_bytes())
+        print(json.dumps(evidence,indent=2),file=sys.stderr)
+        result.check_returncode()
+    return result
+
+
 with tempfile.TemporaryDirectory() as directory:
     initial=Path(directory)/'initial.rvg';final=Path(directory)/'final.rvg'
-    subprocess.run([str(binary),'init',str(elf),str(initial)],check=True,capture_output=True)
-    result=subprocess.run([str(binary),'run',str(initial),str(final),'100000'],check=True,capture_output=True,text=True)
+    subprocess.run([str(binary),'init',str(elf),str(initial)],check=True,capture_output=True,timeout=30)
+    result=run_guest(['run',initial,final,'100000'],initial)
     actual=json.loads(result.stdout)
     raw=actual['stdout'].encode('latin1')
     reference=subprocess.run(['qemu-aarch64',str(elf)],capture_output=True,check=True,timeout=15)
@@ -25,7 +41,7 @@ with tempfile.TemporaryDirectory() as directory:
     current=initial;output=bytearray()
     for block in range(200):
         target=Path(directory)/('sliced-%d.rvg'%(block%2))
-        run=json.loads(subprocess.run([str(binary),'run',str(current),str(target),'137'],check=True,capture_output=True,text=True).stdout)
+        run=json.loads(run_guest(['run',current,target,'137'],current).stdout)
         output.extend(run['stdout'].encode('latin1'));current=target
         if run['guest']['halted']:break
     assert run['guest']['halted'] and bytes(output)==raw and current.read_bytes()==final.read_bytes(),'Checkpoint changed FP flags, vectors, memory or instruction order'
