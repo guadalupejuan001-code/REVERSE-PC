@@ -69,7 +69,8 @@ load8 r11 107
 mul r11 16777216
 add r15 r11
 sub r15 2000000
-# Interrogate XI world samples from memory, not C++ route()/slope().
+# Interpolate the XI world samples, every 1 cm of vehicle progress.
+# The same XI source generated the 241 x-coordinates; no C++ road formula.
 mov r11 r15
 add r11 85000
 div r11 1000
@@ -81,6 +82,21 @@ cmp r11 240
 jle near_clamped
 set r11 240
 label near_clamped
+# r8=remaining centimeter fraction in the 10-meter cell, [0,1000].
+mov r8 r15
+add r8 85000
+mov r4 r11
+mul r4 1000
+sub r8 r4
+cmp r8 0
+jge near_fraction_positive
+set r8 0
+label near_fraction_positive
+cmp r8 1000
+jle near_fraction_bounded
+set r8 1000
+label near_fraction_bounded
+# r10=near sample center xCm, reconstructed from InverseMemory bytes.
 mov r9 r11
 mul r9 2
 add r9 512
@@ -90,14 +106,32 @@ load8 r4 $r9
 mul r4 256
 add r10 r4
 sub r10 8192
+# x(z)=x_i+(x_(i+1)-x_i)*fraction/1000: all operations XI integers.
+cmp r11 240
+jge near_interpolated
+mov r4 r11
+mul r4 2
+add r4 514
+load8 r6 $r4
+add r4 1
+load8 r7 $r4
+mul r7 256
+add r6 r7
+sub r6 8192
+sub r6 r10
+mul r6 r8
+div r6 1000
+add r10 r6
+label near_interpolated
 sub r13 r10
 div r13 4
-# Read an XI sample 100 m ahead for the projected bend.
+# Read and interpolate a second XI road sample 100m ahead.
 sub r11 10
 cmp r11 0
 jge far_nonnegative
 set r11 0
 label far_nonnegative
+mov r6 r11
 mul r11 2
 add r11 512
 load8 r9 $r11
@@ -106,9 +140,36 @@ load8 r4 $r11
 mul r4 256
 add r9 r4
 sub r9 8192
+cmp r6 240
+jge far_interpolated
+mov r4 r6
+mul r4 2
+add r4 514
+load8 r7 $r4
+add r4 1
+load8 r11 $r4
+mul r11 256
+add r7 r11
+sub r7 8192
+sub r7 r9
+mul r7 r8
+div r7 1000
+add r9 r7
+label far_interpolated
 sub r9 r10
 div r9 12
 mov r15 r9
+# Use the XI driving state yaw to align horizon and road heading.
+load8 r11 108
+load8 r4 109
+mul r4 256
+add r11 r4
+cmp r11 2048
+jle renderer_yaw_ready
+sub r11 4096
+label renderer_yaw_ready
+div r11 24
+add r15 r11
 set r0 0
 label scanline
 cmp r0 720

@@ -209,7 +209,10 @@ El ejecutor XI genérico de REVERSE sigue implementado en el anfitrión
 Android/C++, por lo que **el sistema entero no está escrito en XI**.
 
 La escena actual es deliberadamente 2.5D (pista, cielo, horizonte, carrocería
-estilizada). Esto no sustituye el renderizador 3D de esferas/elipsoides/
+estilizada).
+La proyección de la carretera utiliza interpolación lineal de muestras XI
+a escala de centímetros y orientación XI del vehículo para reducir saltos
+visuales; se verifica en la CI nativa con movimientos de 5 y 10 metros. Esto no sustituye el renderizador 3D de esferas/elipsoides/
 triángulos de Mundo X en otros proyectos. No se implementaron GPU, PBR,
 reflejos, mallas importadas ni realismo visual comparable a Forza Horizon.
 

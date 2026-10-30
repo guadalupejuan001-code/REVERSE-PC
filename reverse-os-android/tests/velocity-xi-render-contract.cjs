@@ -82,12 +82,50 @@ try{
     hostRunMs:+ms.toFixed(2),sky:frame.sky,grass:frame.grass,asphalt:frame.asphalt,
     glass:frame.glass});
  }
+ // Exact continuity: both source endpoints came from world.xi.
+ // The render must evolve *inside* a 10-metre segment instead of snapping
+ // every time the car crosses the next XI sample.
+ function move(zCm,yaw){
+  const profile=zCm+2000000;
+  assert(profile>0&&profile<4000000&&yaw>=0&&yaw<4096);
+  let script=header;
+  for(let i=0;i<4;i++)
+    script+='store8 '+(104+i)+' '+((profile >>> (8*i))&255)+'\\n';
+  script+='store8 108 '+(yaw&255)+'\\n';
+  script+='store8 109 '+((yaw>>>8)&255)+'\\n';
+  const file=path.join(temp,'position-'+zCm+'-'+yaw+'.xi');
+  const dest=path.join(temp,'position-'+zCm+'-'+yaw+'.rvp');
+  fs.writeFileSync(file,script);
+  run('run',file,state,dest);
+  return dest;
+ }
+ const curveScript=path.join(temp,'continuity-render.xi');
+ fs.writeFileSync(curveScript,shader(4,2,0));
+ function roadCenter(source,suffix){
+  const packed=values(run('run',curveScript,source,path.join(temp,'continuity-'+suffix+'.rvp')));
+  const y=600;
+  const spans=packed.filter(v=>Number(v.value>>46n)===y).map(v=>({
+    x0:Number((v.value>>35n)&2047n),x1:Number((v.value>>24n)&2047n)
+  }));
+  const asphalt=spans.find(s=>s.x1-s.x0>200&&s.x1-s.x0<1250);
+  assert(asphalt,'missing XI asphalt projection on row 600');
+  return (asphalt.x0+asphalt.x1)/2;
+ }
+ const center0=roadCenter(move(110000,0),'start');
+ const center5=roadCenter(move(110500,0),'half');
+ const center10=roadCenter(move(111000,0),'next');
+ assert.notEqual(center0,center5,'XI road snaps instead of interpolating inside one sample');
+ assert(Math.abs(center5-center0)<=Math.abs(center10-center0)+2,
+   'XI road half-cell interpolation introduced visual overshoot');
+ const centerTurn=roadCenter(move(110500,1024),'steer');
+ assert.notEqual(centerTurn,center5,'XI viewer heading must affect road perspective');
  const second=path.join(temp,'without-world.xi');
  fs.writeFileSync(second,shader(4,0,0));
  const missing=values(run('run',second,initial,path.join(temp,'missing.rvp')));
  assert.equal(missing.length,0,'XI renderer must reject a state without world.xi geometry');
  console.log(JSON.stringify({result:'REVERSE_VELOCITY_XI_RENDER_PASS',language:'XI Machine v1',
   output:'packed spans 1280x720',worldSource:'shared XI InverseMemory',
-  measured,noNewNativeGameRenderer:true}));
+  measured,roadContinuity:{start:center0,half:center5,next:center10,steered:centerTurn},
+  noNewNativeGameRenderer:true}));
 }catch(error){console.error(error.stack||error);process.exitCode=1;}
 finally{fs.rmSync(temp,{recursive:true,force:true})}
