@@ -49,15 +49,10 @@ jobs:
           set -euo pipefail
           mkdir -p evidence/c15 build
           git merge-base --is-ancestor 8767b050e226e777cd6e558b9e97ef3e94e58a1d HEAD
-          git diff --exit-code 8767b050e226e777cd6e558b9e97ef3e94e58a1d HEAD -- src third_party
+          git diff --exit-code 8767b050e226e777cd6e558b9e97ef3e94e58a1d HEAD -- src third_party ':!src/minimal_guest_simd.inc'
           sha256sum --check tools/android_c15_source.sha256
           echo '33a8436f87b1426f6fb8af0e979627694957d0ce01e6c8972b8f79580ff2d28b  input-c14/current.rvg' | sha256sum --check
           echo 'cba168210b8b8dfd31e2a887ea80607345e21f6d87b33121bc94b3199a02310f  input-c14/current.json' | sha256sum --check
-          git apply --check patches/android-c14-minmax.patch
-          git apply patches/android-c14-minmax.patch
-          echo '8f1a5f8615dea3b9e3986332d693a20b5d42c2bf54b177f2771a09e780e8b702  src/minimal_guest_simd.inc' | sha256sum --check
-          git apply --check patches/android-c15-multiply-long.patch
-          git apply patches/android-c15-multiply-long.patch
           echo 'a55b187eb943306a6807689e03fe1e9902acdb864bd6e8b80b1666bfd4187ad8  src/minimal_guest_simd.inc' | sha256sum --check
           tar -xzf input-c14/tested-source.tar.gz build/ether-compat build/softfloat/libreverse_softfloat.a deps/mundo-x/native/include
           node tools/android_c15_result.mjs preflight input-c14 > evidence/c15/input-preflight.json
