@@ -31,7 +31,8 @@
   "release_requested_now": false,
   "requires_node_on_phone": false,
   "automatic_trading": false,
-  "note": "La próxima APK debe conservar M001 para BTC y XN01 ejecutado en XI/Ether para bolsa; JavaScript no decide la dirección bursátil.",
+  "note": "La próxima APK debe conservar M001 para precio BTC y XN01 ejecutado en XI/Ether para dirección de BTC/SPY/AAPL/NVDA; JavaScript no decide la dirección.",
   "upstream_commit": "08cafb094a5c0f81253509eff412214dd526b808",
-  "stock_prediction_backend": "XI/Ether · NativeRuntime"
+  "stock_prediction_backend": "XI/Ether · NativeRuntime",
+  "native_XI_for_all_markets": true
 }
