@@ -100,6 +100,45 @@ int main() {
     // A new opt-in profile cannot silently extend native XI.
     rejects_unchanged(quantum_memory, "set r0 5\n", "unknown command");
 
+    // XI Frame Stream uses the existing interpreter and returns raw binary
+    // without serializing a single JSON register.
+    Runtime frame_runtime;
+    const auto xfs=frame_runtime.execute(std::string(banner) +
+      "set r0 16\nframe_begin r0 8 123\n"
+      "frame_span 2 3 12 2 200\n"
+      "frame_span 2 5 9 3 100\n"
+      "frame_end\nhalt\n");
+    need(xfs.size()==16+2*14+8,"XFS1 binary length incorrect");
+    need(xfs.compare(0,4,"XFS1")==0,"XI frame is not XFS1");
+    const auto byte_at=[&](std::size_t i){
+      return static_cast<unsigned>(static_cast<unsigned char>(xfs.at(i)));};
+    need(byte_at(4)==1&&byte_at(5)==0&&byte_at(6)==16&&byte_at(7)==0&&
+         byte_at(8)==8&&byte_at(9)==0&&byte_at(10)==123&&
+         byte_at(14)==0&&byte_at(15)==0,
+         "XFS1 binary header differs from canonical wire format");
+    need(byte_at(16)==2&&byte_at(17)==2&&byte_at(18)==2&&byte_at(20)==3&&
+         byte_at(22)==12&&byte_at(24)==200,"first span differs from XFS1");
+    need(byte_at(30)==2&&byte_at(31)==3&&byte_at(34)==5&&
+         byte_at(36)==9&&byte_at(38)==100,"front span differs from XFS1");
+    need(byte_at(44)==3&&byte_at(45)==0&&byte_at(48)==123,
+         "XFS1 end marker/revision invalid");
+    rejects_unchanged(frame_runtime,std::string(banner)+
+      "store8 5 99\nframe_begin 16 8 1\n"
+      "frame_span 8 0 5 2 100\nframe_end\n",
+      "XFS1 invalid span");
+    rejects_unchanged(frame_runtime,std::string(banner)+
+      "frame_begin 16 8 1\nframe_span 0 0 15 2 100\nhalt\n",
+      "XFS1 missing frame_end");
+    rejects_unchanged(frame_runtime,std::string(banner)+
+      "print r0\nframe_begin 16 8 1\nframe_end\n",
+      "text output exists");
+    rejects_unchanged(frame_runtime,std::string(banner)+
+      "frame_begin 16 8 1\nprint r0\nframe_end\n",
+      "cannot mix with text");
+    // The legacy non-XI-machine profile must continue to reject new opcodes.
+    rejects_unchanged(frame_runtime,
+      "frame_begin 16 8 1\nframe_end\n","unknown command");
+
     // The compiler's step guard must reject a permanently cycling program.
     mundo_x::InfiniteCore local_core;
     mundo_x::InverseMemory local_memory;
@@ -122,7 +161,7 @@ int main() {
     std::cout << "{\"suite\":\"xi_programmable_machine\","
               << "\"gcd\":21,\"dynamic_qubits\":128,\"long_memory\":42,"
               << "\"rollback\":true,\"bounded_loops\":true,"
-              << "\"legacy_xi_preserved\":true}\n";
+              << "\"legacy_xi_preserved\":true,\"xfs1_binary\":true}\n";
     return 0;
   } catch(const std::exception& error) {
     std::cerr << "xi_machine_test: " << error.what() << '\n';
