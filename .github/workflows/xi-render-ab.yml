@@ -1,0 +1,105 @@
+name: X Render XI A/B hypothesis — actual XI interpreter
+on:
+  push:
+    branches: [experiment/xrender-xi-hypothesis-20261029]
+    paths:
+      - 'experiments/xi-render/**'
+      - '.github/workflows/xi-render-ab.yml'
+  pull_request:
+    branches: [feature/reverse-velocity-native-20261029]
+    paths:
+      - 'experiments/xi-render/**'
+      - '.github/workflows/xi-render-ab.yml'
+permissions: {contents: read}
+jobs:
+  measured-ab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: 1f925786522aba91f72707ad1638a8edcdd31a8f
+          path: deps/mundo-x
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Compile existing production XI executor and existing native X Render observer
+        run: |
+          set -euo pipefail
+          mkdir -p build/xi-render build/ether-compat
+          python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
+            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
+            src/reverse_pc.cpp -o build/xi-render/reverse_pc
+          # This host test adapter ONLY invokes the original, unmodified native engine.
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror \
+            -Ideps/mundo-x/native/include \
+            experiments/xi-render/native-reference.cpp -o build/xi-render/xrender-oracle
+      - name: Execute real XI, compare every pixel with X Render, measure both
+        run: |
+          set -euo pipefail
+          node experiments/xi-render/verify-and-benchmark.cjs \
+            build/xi-render/reverse_pc build/xi-render/xrender-oracle \
+            build/xi-render/evidence | tee build/xi-render/benchmark.log
+          test -s build/xi-render/evidence/results.json
+      - name: Render XI compact spans at HD and verify against native engine
+        run: |
+          set -euo pipefail
+          node experiments/xi-render/span-verify-and-benchmark.cjs \
+            build/xi-render/reverse_pc build/xi-render/xrender-oracle \
+            build/xi-render/evidence | tee build/xi-render/span-benchmark.log
+          test -s build/xi-render/evidence/span-results.json
+      - name: Compile original XI executable
+        run: |
+          set -euo pipefail
+          mkdir -p build/xi-render/executable
+          build/xi-render/reverse_pc compile             experiments/xi-render/super-render.xi             build/xi-render/executable/SUPER-RENDER-XI.rxe             "SUPER RENDER XI"
+          build/xi-render/reverse_pc disassemble             build/xi-render/executable/SUPER-RENDER-XI.rxe             build/xi-render/executable/super-render-disassembled.xi
+          grep -q '^#!reverse-pc-machine-v1' build/xi-render/executable/super-render-disassembled.xi
+          test -s build/xi-render/executable/SUPER-RENDER-XI.rxe
+          sha256sum build/xi-render/executable/SUPER-RENDER-XI.rxe | tee build/xi-render/executable/super-render-sha256.txt
+      - name: Compile 3D perspective XI executable
+        run: |
+          set -euo pipefail
+          build/xi-render/reverse_pc compile experiments/xi-render/super-project.xi build/xi-render/executable/SUPER-PROJECT-XI.rxe "SUPER PROJECT XI"
+          build/xi-render/reverse_pc disassemble build/xi-render/executable/SUPER-PROJECT-XI.rxe build/xi-render/executable/super-project-disassembled.xi
+          grep -q '^#!reverse-pc-machine-v1' build/xi-render/executable/super-project-disassembled.xi
+          test -s build/xi-render/executable/SUPER-PROJECT-XI.rxe
+      - name: Compile standalone XI triangle geometry executable
+        run: |
+          set -euo pipefail
+          build/xi-render/reverse_pc compile experiments/xi-render/super-triangle.xi build/xi-render/executable/SUPER-TRIANGLE-XI.rxe "SUPER TRIANGLE XI"
+          build/xi-render/reverse_pc disassemble build/xi-render/executable/SUPER-TRIANGLE-XI.rxe build/xi-render/executable/super-triangle-disassembled.xi
+          grep -q '^#!reverse-pc-machine-v1' build/xi-render/executable/super-triangle-disassembled.xi
+          test -s build/xi-render/executable/SUPER-TRIANGLE-XI.rxe
+      - name: SUPER RENDER XI scalable viewport test, deterministic scanlines, 8K and 16K
+        run: |
+          set -euo pipefail
+          node experiments/xi-render/super-verify.cjs             build/xi-render/reverse_pc             build/xi-render/evidence | tee build/xi-render/super-benchmark.log
+          test -s build/xi-render/evidence/super-results.json
+      - name: SUPER RENDER XI independent triangle geometry and streamed mesh pieces
+        run: |
+          set -euo pipefail
+          node experiments/xi-render/super-triangle-verify.cjs build/xi-render/reverse_pc build/xi-render/evidence | tee build/xi-render/super-triangle.log
+          test -s build/xi-render/evidence/super-triangle-results.json
+      - name: SUPER RENDER XI actual 3D perspective and shared Ether triangle flow
+        run: |
+          set -euo pipefail
+          node experiments/xi-render/super-project-verify.cjs build/xi-render/reverse_pc build/xi-render/evidence | tee build/xi-render/super-project.log
+          test -s build/xi-render/evidence/super-project-results.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xi-render-ab-evidence
+          path: |
+            build/xi-render/evidence/
+            build/xi-render/benchmark.log
+            build/xi-render/span-benchmark.log
+            build/xi-render/super-benchmark.log
+            build/xi-render/super-triangle.log
+            build/xi-render/super-project.log
+            build/xi-render/executable/
+          retention-days: 14
