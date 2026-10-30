@@ -332,7 +332,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
                 .put(Math.max(open,xnPrice)*1.0002).put(open).put(xnPrice).put(1000+(i%9)*120));
         }
         String xnTemplate;try(java.io.InputStream in=getTargetContext().getAssets().open("laplace/x001-native.xi")){
-            xnTemplate=new String(WorkbenchProgramsRead(in),StandardCharsets.UTF_8);
+            xnTemplate=new String(WorkbenchPrograms.read(in),StandardCharsets.UTF_8);
         }
         String xnProgram=LaplaceXiCompiler.compile(xnBars,xnTemplate);
         ResultPacket xnPacket=ResultPacket.parse(NativeRuntime.execute(NativeRuntime.initialize(),xnProgram));
