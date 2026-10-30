@@ -1,0 +1,135 @@
+name: Android C08-R2 real continuation from C07
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/android-c08-r2-execute.yml'
+      - 'experiments/c08-r2-reviewed.patch.gz.b64.part*'
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: android-c08-r2-execute-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+jobs:
+  real-c07-continuation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Apply the exact reviewed C08-R2 patch on the pinned C07 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/c08 build
+          BASE=7c21e6aae7f0528805444910c207e9aef6463573
+          git merge-base --is-ancestor "$BASE" HEAD
+          git diff --exit-code "$BASE" HEAD -- src tools tests experiments/android-c08-reviewed-c07.json .github/workflows/android-c08-continue-reviewed.yml
+          cat experiments/c08-r2-reviewed.patch.gz.b64.part01 experiments/c08-r2-reviewed.patch.gz.b64.part02 experiments/c08-r2-reviewed.patch.gz.b64.part03 | base64 --decode > build/c08-r2.patch.gz
+          echo '18978d0533e2fc53a3e66e3b27802ceaf08436bd14c88cdff6665ee8e59fd2a9  build/c08-r2.patch.gz' | sha256sum --check
+          gzip --decompress --stdout build/c08-r2.patch.gz > build/c08-r2.patch
+          echo '26077d045fce4cdcd4c0fbbbd6a24fe05ec868d9d18a945f637e0c507de7b4a4  build/c08-r2.patch' | sha256sum --check
+          git apply --check build/c08-r2.patch
+          git apply --index build/c08-r2.patch
+          git rev-parse HEAD > evidence/c08/runner-commit.txt
+          printf '%s\n' "$BASE" > evidence/c08/source-base-commit.txt
+          cp build/c08-r2.patch evidence/c08/executed-source.patch
+          cp experiments/android-c08-reviewed-c07.json evidence/c08/source-pin.json
+          git diff --cached --stat > evidence/c08/applied-patch-stat.txt
+          git diff --cached --name-only -z | xargs -0 sha256sum > evidence/c08/patched-file-sha256.txt
+          printf '%s\n' '{"mode":"pinned_C07_plus_reviewed_patch","main_modified":false,"new_android_instructions_verified":false}' > evidence/c08/execution-provenance.json
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: e2778d962af22f6f1a0794058dd4685fc2573966
+          path: deps/mundo-x
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          name: reverse-c07-proven-post-init
+          run-id: 40975381521
+          github-token: '${{ github.token }}'
+          path: input-c07
+      - name: Validate the original C07 and run all reviewed host-proof tests
+        env:
+          C07_REPORT: input-c07/current.json
+          C07_STATE: input-c07/current.rvg
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp input-c07/current.json evidence/c08/source-c07-report.json
+          node tools/android_verified_c07_source.mjs "$C07_STATE" "$C07_REPORT" > evidence/c08/source-audit.json
+          node --test --test-concurrency=1 tests/android_verified_c07_source.test.mjs tests/android_c08_result.test.mjs tests/android_c08_integrity.test.mjs tests/rvg_checksum.test.mjs tests/android_supervised_cycle.test.mjs > evidence/c08/evidence-regressions.tap
+          g++ -std=c++17 -O1 -Wall -Wextra -Werror -Wno-missing-field-initializers -fsanitize=undefined -fno-sanitize-recover=all -Isrc tests/guest_boot_resume_proof_test.cpp -o build/c08-proof-test
+          build/c08-proof-test > evidence/c08/resume-proof-tests.json
+      - name: Compile the complete native engine and run its integration suites
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -S . -B build/cmake-c08 -DETHER_SOURCE_DIR="$PWD/deps/mundo-x" -DCMAKE_BUILD_TYPE=Release > evidence/c08/cmake-configure.txt 2>&1
+          python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+          python3 scripts/build-softfloat.py
+          for suite in guest_boot_cycle minimal_guest_el0_cache minimal_guest_fp minimal_guest_crc; do
+            g++ -std=c++17 -O1 -pthread -fsanitize=undefined -fno-sanitize-recover=all -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc "tests/${suite}_test.cpp" build/softfloat/libreverse_softfloat.a -o "build/c08-$suite"
+            "build/c08-$suite" > "evidence/c08/$suite-tests.json"
+          done
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tools/guest_pci_cycle.cpp build/softfloat/libreverse_softfloat.a -o build/c08-cycle
+          sha256sum build/c08-cycle > evidence/c08/native-executable-sha256.txt
+          git -C deps/mundo-x rev-parse HEAD > evidence/c08/ether-dependency-commit.txt
+          tar -czf build/c08-r2-native-source.tar.gz src tools scripts tests experiments CMakeLists.txt build/ether-compat deps/mundo-x/native/include
+      - uses: actions/upload-artifact@v4
+        with:
+          name: reverse-c08-r2-native-runner
+          path: |
+            build/c08-cycle
+            build/c08-r2-native-source.tar.gz
+            evidence/c08/native-executable-sha256.txt
+            evidence/c08/runner-commit.txt
+            evidence/c08/source-base-commit.txt
+            evidence/c08/patched-file-sha256.txt
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/download-artifact@v4
+        with:
+          name: reverse-android-c03-genuine-partition-disk
+          run-id: 40910284394
+          github-token: '${{ github.token }}'
+          path: disk-input
+      - name: Execute the actual C08-R2 continuation on the unchanged Android disk
+        shell: bash
+        run: |
+          set -euo pipefail
+          DISK=$(find disk-input -name android-slot-a.raw -print -quit)
+          test -n "$DISK"
+          test "$(stat -c '%s' "$DISK")" = 8738832384
+          SHA=$(node -p 'require("./experiments/android-c08-reviewed-c07.json").checkpoint_sha256')
+          WALL=$(node -p 'require("./experiments/android-c08-reviewed-c07.json").wall_ms')
+          STEPS=$(node -p 'require("./experiments/android-c08-reviewed-c07.json").instructions_budget')
+          CHUNK=$(node -p 'require("./experiments/android-c08-reviewed-c07.json").chunk')
+          node tools/android_supervised_cycle.mjs evidence/c08 -- build/c08-cycle input-c07/current.rvg "$DISK" evidence/c08/journal "$WALL" "$SHA" --chunk="$CHUNK" --instructions="$STEPS" --continue-verified-init=input-c07/current.json > evidence/c08/supervision-result.json
+      - name: Preserve committed state and classify the real outcome
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence/c08
+          if test -f evidence/c08/journal/latest.json; then
+            node tools/android_c08_result.mjs evidence/c08 input-c07/current.json > evidence/c08/result-classification.json
+          else
+            printf '%s\n' '{"status":"no_native_checkpoint_committed","android_display_verified":false,"native_android_games_verified":false}' > evidence/c08/milestone.json
+            exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reverse-c08-r2-execution-evidence
+          path: evidence/c08/
+          if-no-files-found: error
+          retention-days: 14
