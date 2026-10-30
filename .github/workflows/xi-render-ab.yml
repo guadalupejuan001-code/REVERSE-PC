@@ -1,7 +1,7 @@
 name: X Render XI A/B hypothesis — actual XI interpreter
 on:
   push:
-    branches: [experiment/xrender-xi-hypothesis-20261029]
+    branches: [experiment/xrender-xi-hypothesis-20261029, feature/xi-frame-stream-v1-20261030]
     paths:
       - 'experiments/xi-render/**'
       - '.github/workflows/xi-render-ab.yml'
@@ -90,6 +90,13 @@ jobs:
           set -euo pipefail
           node experiments/xi-render/super-project-verify.cjs build/xi-render/reverse_pc build/xi-render/evidence | tee build/xi-render/super-project.log
           test -s build/xi-render/evidence/super-project-results.json
+      - name: Validate XFS1 frame stream and HD output
+        run: |
+          set -euo pipefail
+          node experiments/xi-render/frame-stream-test.cjs \
+            build/xi-render/reverse_pc build/xi-render/xrender-oracle \
+            build/xi-render/evidence | tee build/xi-render/frame-stream.log
+          test -s build/xi-render/evidence/frame-stream-results.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -98,6 +105,7 @@ jobs:
             build/xi-render/evidence/
             build/xi-render/benchmark.log
             build/xi-render/span-benchmark.log
+            build/xi-render/frame-stream.log
             build/xi-render/super-benchmark.log
             build/xi-render/super-triangle.log
             build/xi-render/super-project.log
