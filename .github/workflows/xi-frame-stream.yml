@@ -5,6 +5,7 @@ on:
     paths:
       - 'src/integration/xi_frame_stream.inc'
       - 'src/integration/xi_machine_extension.inc'
+      - 'src/rxe.hpp'
       - 'experiments/xi-render/super-frame-stream.xi'
       - 'experiments/xi-render/xi-frame-codec.cjs'
       - 'experiments/xi-render/frame-stream-verify.cjs'
@@ -53,6 +54,10 @@ jobs:
             tests/xi_machine_test.cpp -o build/xi-render/xi-machine-test
           build/xi-render/xi-machine-test
           python3 tests/xi_machine_cli.py build/xi-render/reverse_pc
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
+            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
+            tests/rxe_test.cpp -o build/xi-render/rxe-test
+          build/xi-render/rxe-test
       - uses: actions/upload-artifact@v4
         if: always()
         with:
