@@ -85,7 +85,8 @@ function decode(b,{maxPixels=LIMITS.maxPixels,maxBytes=LIMITS.maxBytes}={}){
   const material=b[p+1],y=b.readUInt16LE(p+2),x0=b.readUInt16LE(p+4),
     x1=b.readUInt16LE(p+6),z=b.readUInt16LE(p+8),revision=b.readUInt32LE(p+10);
   valid((material===2||material===3)&&y<h&&x0<=x1&&x1<w&&z>0&&revision===rev,'invalid span');
-  rows[y].push({material,x0,x1,z,offset:p});
+  // 65535 is the untouched depth sentinel in XFS1 v1: it is never visible.
+  if(z!==65535)rows[y].push({material,x0,x1,z,offset:p});
  }
  const pixels=Buffer.alloc(w*h);
  for(let y=0;y<h;y++){
