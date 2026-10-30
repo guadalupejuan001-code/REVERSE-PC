@@ -11,6 +11,12 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
     const unsigned lane_bits=8u<<size,index=immediate>>(size+1);
     fp_access();const auto value=floating_.v[rn].lane(index,lane_bits);fp_set(rd,value,lane_bits);return true;
   }
+  if((i&0xfffffc00u)==0x5ef1b800u){ // ADDP Dd,Vn.2D: integer pairwise scalar reduction.
+    fp_access();const auto source=floating_.v[rn];
+    // Unsigned addition wraps modulo 2^64; copy both lanes before aliasing Rd.
+    // Scalar writes clear the upper 64 bits and leave NZCV/FPCR/FPSR unchanged.
+    fp_set(rd,source.low+source.high,64);return true;
+  }
   // LD1/ST1 sequential registers and LD2/3/4-ST2/3/4 interleaved structures.
   // Traverse memory in architectural element order; Q selects 64/128-bit vectors.
   if((i&0xbf200000u)==0x0c000000u){
