@@ -54,6 +54,7 @@ jobs:
           git rev-parse HEAD > evidencia-laplace/commit.txt
       - name: Ejecutar XN01 en el reverse_pc real
         run: |
+          set -o pipefail
           python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc src/reverse_pc.cpp -o build/reverse_pc
           node laplace-android/tests/xn01-native.mjs build/reverse_pc evidencia-laplace/xn01 | tee evidencia-laplace/xn01.txt
