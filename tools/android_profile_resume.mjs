@@ -8,6 +8,12 @@ import {acceptsProgress} from './android_c15_result.mjs';import {superviseNative
 const capacity=1024*1024*1024,hashPattern=/^[0-9a-f]{64}$/;
 const bounded=(path,limit)=>{assert.ok(statSync(path).size<=limit,'Oversized evidence');return read(path);};
 const json=path=>JSON.parse(bounded(path,8*1024*1024));
+export function continuationWatchdogMs(wallMs=900000,cycles=3){
+ assert.ok(Number.isSafeInteger(wallMs)&&wallMs>0&&wallMs<=900000);assert.ok(Number.isInteger(cycles)&&cycles>=1&&cycles<=4);
+ // Native wall budgets already include their periodic checkpoint time.
+ // Reserve startup and final publication once, rather than once per cycle.
+ const total=600000+cycles*wallMs+120000;assert.ok(total<=3600000,'Continuation budgets exceed the one-hour supervisor bound');return total;
+}
 export function validateContract(c){
  assert.equal(c.schema,'reverse-profile-resume-contract-v1');
  for(const key of ['checkpoint_sha256','report_sha256','result_sha256','process_sha256'])assert.match(c[key],hashPattern,key);
@@ -46,11 +52,11 @@ export function audit(contract,source,root,cycles){
 }
 export async function run(contract,source,command,disk,root,{wallMs=900000,instructions=2000000000,cycles=3,onStatus}={}){
  assert.ok(Number.isSafeInteger(wallMs)&&wallMs>0&&wallMs<=900000);assert.ok(Number.isSafeInteger(instructions)&&instructions>0&&instructions<=2000000000);assert.ok(Number.isInteger(cycles)&&cycles>=1&&cycles<=4);
- assert.ok(!existsSync(root),'Output already exists');const c=validateContract(contract),input=preflight(c,source);
+ const watchdogMs=continuationWatchdogMs(wallMs,cycles);assert.ok(!existsSync(root),'Output already exists');const c=validateContract(contract),input=preflight(c,source);
  const pin=spawnSync(command,['--pins'],{encoding:'utf8',timeout:30000,maxBuffer:65536});assert.ifError(pin.error);assert.equal(pin.status,0,pin.stderr);const pins=JSON.parse(pin.stdout),verified=verifyNativePins(pins);
  mkdirSync(root);write(join(root,'native-pins.json'),JSON.stringify(pins,null,2)+'\n');write(join(root,'native-pins-verification.json'),JSON.stringify(verified)+'\n');write(join(root,'input-contract.json'),JSON.stringify(c,null,2)+'\n');
  const r=input.report.guest;
- const outcome=await superviseNativeCycle({command,args:[join(source,'current.rvg'),join(source,'current.json'),disk,join(root,'journal'),String(wallMs),String(instructions),String(cycles),c.checkpoint_sha256,c.report_sha256,String(r.instructions),r.pc,String(r.counter_subtick)],outputDirectory:root,initialInstructions:r.instructions,startupMs:600000,noProgressMs:90000,wallMs:600000+cycles*(wallMs+120000),graceMs:30000,onStatus});
+ const outcome=await superviseNativeCycle({command,args:[join(source,'current.rvg'),join(source,'current.json'),disk,join(root,'journal'),String(wallMs),String(instructions),String(cycles),c.checkpoint_sha256,c.report_sha256,String(r.instructions),r.pc,String(r.counter_subtick)],outputDirectory:root,initialInstructions:r.instructions,startupMs:600000,noProgressMs:90000,wallMs:watchdogMs,graceMs:30000,onStatus});
  const result=existsSync(join(root,'journal/latest.json'))?audit(c,source,root,cycles):null;
  return {process:outcome,result};
 }
