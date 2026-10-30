@@ -59,6 +59,13 @@ jobs:
             build/xi-direct/reverse_pc build/xi-direct/evidence \
             | tee build/xi-direct/super-road-benchmark.log
           test -s build/xi-direct/evidence/super-road-direct-results.json
+      - name: Validate persistent XI frame-server and changing road controls
+        run: |
+          set -euo pipefail
+          node experiments/xi-render/frame-serve-test.cjs \
+            build/xi-direct/reverse_pc build/xi-direct/evidence \
+            | tee build/xi-direct/frame-serve-benchmark.log
+          test -s build/xi-direct/evidence/frame-serve-results.json
       - name: Verify historical programmable XI behavior
         run: |
           set -euo pipefail
@@ -74,4 +81,5 @@ jobs:
             build/xi-direct/evidence/
             build/xi-direct/benchmark.log
             build/xi-direct/super-road-benchmark.log
+            build/xi-direct/frame-serve-benchmark.log
           retention-days: 14
