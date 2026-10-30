@@ -31,6 +31,30 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
     for(unsigned n=0;n<count;n++)floating_.v[(rd+n)&31]=values[n];
     if(post)set(rn,base+increment,64,true);return true;
   }
+  if((i&0xbf000000u)==0x0d000000u){ // LD1/2/3/4 and ST1/2/3/4, one lane per register.
+    const unsigned opcode=(i>>13)&7,scale=opcode>>1,s=(i>>12)&1,size=(i>>10)&3;
+    const bool post=i&0x00800000u,load=i&0x00400000u;
+    const unsigned q=(i>>30)&1,count=1+((i>>21)&1)+2*(opcode&1);
+    if(scale==3||(!post&&rm))return false; // Replicates are handled separately above.
+    unsigned lane_bits=8,lane=(q<<3)|(s<<2)|size;
+    if(scale==1){if(size&1)return false;lane_bits=16;lane=(q<<2)|(s<<1)|(size>>1);}
+    if(scale==2){
+      if((size&2)||((size&1)&&s))return false;
+      lane_bits=size&1?64:32;lane=size&1?q:(q<<1)|s;
+    }
+    fp_access();const unsigned bytes=lane_bits/8;const auto base=reg(rn,64,true);
+    const auto increment=post?(rm==31?std::uint64_t(count*bytes):reg(rm)):0;
+    std::array<Vector128,4> values{};
+    for(unsigned n=0;n<count;n++)check_access(base+std::uint64_t(n)*bytes,bytes,!load);
+    for(unsigned n=0;n<count;n++)values[n]=floating_.v[(rd+n)&31];
+    for(unsigned n=0;n<count;n++){
+      const auto address=base+std::uint64_t(n)*bytes;
+      if(load)values[n].lane(lane,lane_bits,cpu_read(address,bytes,result));
+      else cpu_write(address,values[n].lane(lane,lane_bits),bytes,result);
+    }
+    if(load)for(unsigned n=0;n<count;n++)floating_.v[(rd+n)&31]=values[n];
+    if(post)set(rn,base+increment,64,true);return true;
+  }
   // LD1/ST1 sequential registers and LD2/3/4-ST2/3/4 interleaved structures.
   // Traverse memory in architectural element order; Q selects 64/128-bit vectors.
   if((i&0xbf200000u)==0x0c000000u){
