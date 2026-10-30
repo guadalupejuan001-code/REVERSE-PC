@@ -44,7 +44,6 @@ jobs:
           node experiments/xi-render/verify-and-benchmark.cjs \
             build/xi-render/reverse_pc build/xi-render/xrender-oracle \
             build/xi-render/evidence | tee build/xi-render/benchmark.log
-            build/xi-render/span-benchmark.log
           test -s build/xi-render/evidence/results.json
       - name: Render XI compact spans at HD and verify against native engine
         run: |
@@ -60,4 +59,5 @@ jobs:
           path: |
             build/xi-render/evidence/
             build/xi-render/benchmark.log
+            build/xi-render/span-benchmark.log
           retention-days: 14
