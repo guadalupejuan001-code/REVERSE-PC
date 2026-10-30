@@ -288,7 +288,7 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
         const auto material = machine_value(words[4], registers);
         const auto depth = machine_value(words[5], registers);
         if (y < 0 || y >= frame_height || x0 < 0 || x1 < x0 ||
-            x1 >= frame_width || (material != 2 && material != 3) ||
+            x1 >= frame_width || material < 0 || material > 255 ||
             depth < 1 || depth > 65535)
           throw std::out_of_range("invalid XFS1 span");
         if (frame.size() > max_response_bytes - 14 - 8)

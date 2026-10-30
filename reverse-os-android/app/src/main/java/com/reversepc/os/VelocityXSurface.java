@@ -10,20 +10,15 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
 /**
- * X Render is the only scene renderer. This class merely schedules fixed ticks,
- * copies its packed ARGB output and presents it with Android Canvas.
+ * REgraphics is the scene renderer. This class merely schedules fixed ticks,
+ * materializes its binary XFS1 regions and presents it with Android Canvas.
  */
 final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callback,Runnable {
     interface Hud {
         void update(int speedKmh,int checkpoints,int total,long seconds,
                     boolean offRoad,int slideMmps,boolean finished,int fps,
-                    int renderWidth,int renderHeight,String error);
+                    int renderWidth,int renderHeight,String backend,String error);
     }
-    static { System.loadLibrary("reverse_os"); }
-    private static native void renderNative(int[] argb,int width,int height,
-                     long xMm,long zMm,int yaw16,int checkpoint,int camera,int paint,
-                     float[] xiTrack);
-
     private final VelocityXiEngine game;
     private final Hud hud;
     private final Paint paint=new Paint(Paint.FILTER_BITMAP_FLAG);
@@ -50,7 +45,6 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     int cycleCamera(){cameraMode=(cameraMode+1)%3;return cameraMode;}
     int cyclePaint(){paintId=(paintId+1)%5;return paintId;}
     int cycleQuality(){quality=(quality+1)%3;return quality;}
-
     synchronized void startLoop(){
         if(worker!=null||!getHolder().getSurface().isValid())return;
         running=true;worker=new Thread(this,"REVERSE-VELOCITY-XRENDER");
@@ -103,9 +97,10 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     image=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
                     sourceRect.set(0,0,width,height);
                 }
-                renderNative(pixels,width,height,frame.xCm*10L,frame.zCm*10L,
-                             frame.yaw4096*16,frame.checkpoint,cameraMode,paintId,
-                             game.track());
+                // XI Machine v1 exclusively computes every geometry/color span.
+                // Android validates and materializes the bounded binary transport.
+                int stride=selected==0?4:selected==1?2:1;
+                game.renderFrame(stride,cameraMode,paintId).present(pixels,width,height);
                 image.setPixels(pixels,0,width,0,0,width,height);
                 Canvas canvas=null;
                 try{
@@ -127,18 +122,19 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     lastHud=begin;
                     hud.update(frame.speedKmh(),frame.checkpoint,
                          6,frame.seconds(),frame.offRoad,frame.slideCmps*10,
-                         frame.finished,fps,width,height,error);
+                         frame.finished,fps,width,height,"REgraphics",error);
                 }
                 final long cost=SystemClock.elapsedRealtimeNanos()-begin;
                 final long remaining=16_666_667L-cost; // up to 60 FPS; actual FPS remains measured
                 if(remaining>1_000_000L)Thread.sleep(remaining/1_000_000L);
             }
         }catch(Throwable thrown){
-            error="XI / X Render: "+thrown.getClass().getSimpleName()+" — "+thrown.getMessage();
+            error="XI / REgraphics: "+thrown.getClass().getSimpleName()+" — "+thrown.getMessage();
             final VelocityXiEngine.Snapshot last=game.current();
             hud.update(last==null?0:last.speedKmh(),last==null?0:last.checkpoint,6,
                 last==null?0:last.seconds(),last!=null&&last.offRoad,
-                last==null?0:last.slideCmps*10,last!=null&&last.finished,0,width,height,error);
+                last==null?0:last.slideCmps*10,last!=null&&last.finished,0,width,height,
+                "REgraphics",error);
         }finally{
             if(image!=null&&!image.isRecycled())image.recycle();
             synchronized(this){

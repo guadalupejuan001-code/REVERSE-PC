@@ -48,7 +48,31 @@ try{
  assert.notEqual(bad.status,0);
  assert.equal(bad.stdout.length,0,'invalid stream leaked bytes');
  assert(!fs.existsSync(path.join(tmp,'bad.rvp')),'failed transaction saved state');
- fs.writeFileSync(path.join(out,'xi-direct-results.json'),JSON.stringify({passed:true,cases,invalidRejected:true},null,2)+'\n');
+ // Material is the generic XFS1 u8 ID. The triangle decoder's private
+ // two-color palette must not restrict the VM's transport vocabulary.
+ const materialCases=[];
+ for(const material of [0,255,-1,256]){
+  const script=path.join(tmp,'material-'+material+'.xi');
+  const destination=path.join(tmp,'material-'+material+'.rvp');
+  fs.writeFileSync(script,'#!reverse-pc-machine-v1\nframebegin 64 32 1\n'+
+   'framespan 0 0 63 '+material+' 100\nframeend\nhalt\n');
+  const observed=run(['run',script,initial,destination],true);
+  if(material>=0&&material<=255){
+   assert.equal(observed.status,0,observed.stderr);
+   assert.equal(observed.stdout.length,38,'one-span XFS1 frame length');
+   assert.equal(observed.stdout.toString('ascii',0,4),'XFS1');
+   assert.equal(observed.stdout[16],2);assert.equal(observed.stdout[17],material);
+   assert.equal(observed.stdout.readUInt16LE(20),0);
+   assert.equal(observed.stdout.readUInt16LE(22),63);
+   assert.equal(observed.stdout[30],3);assert(fs.existsSync(destination));
+  }else{
+   assert.notEqual(observed.status,0,'out-of-range material accepted');
+   assert.equal(observed.stdout.length,0,'invalid material leaked a partial frame');
+   assert(!fs.existsSync(destination),'invalid material published state');
+  }
+  materialCases.push({material,accepted:material>=0&&material<=255});
+ }
+ fs.writeFileSync(path.join(out,'xi-direct-results.json'),JSON.stringify({passed:true,cases,invalidRejected:true,materialCases},null,2)+'\n');
  console.log('XI_DIRECT_BINARY_ALL_OK cases='+cases.length);
 }catch(e){console.error(e.stack);process.exitCode=1;}
 finally{fs.rmSync(tmp,{recursive:true,force:true});}

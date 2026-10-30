@@ -37,22 +37,29 @@ final class VelocityXiEngine {
         long seconds(){return ticks/50;}
     }
 
-    private byte[] privateState,compiledXi;
+    private byte[] privateState;
+    private final String driveXi;
+    private final String xiRenderer;
+    private static final String XI_HEADER="#!reverse-pc-machine-v1\n";
     private final float[] worldPoints; // read-only XI generated geometry samples
+    private final int[] palette;
     private Snapshot snapshot;
 
     VelocityXiEngine(Context context)throws Exception{
-        String drive=asset(context,"velocity/drive.xi");
+        driveXi=asset(context,"velocity/drive.xi");
         String world=asset(context,"velocity/world.xi");
-        if(!drive.startsWith("#!reverse-pc-machine-v1\n")||
+        xiRenderer=asset(context,"velocity/render.xi");
+        palette=parsePalette(asset(context,"velocity/palette.txt"));
+        if(!xiRenderer.startsWith(XI_HEADER))
+            throw new IllegalStateException("XI renderer source header missing");
+        if(!driveXi.startsWith("#!reverse-pc-machine-v1\n")||
            !world.startsWith("#!reverse-pc-machine-v1\n"))
             throw new IllegalStateException("XI game code header missing");
-        compiledXi=NativeRuntime.compileRxe(
-            drive.getBytes(StandardCharsets.UTF_8),
-            "REVERSE VELOCITY XI".getBytes(StandardCharsets.UTF_8));
         ResultPacket generated=ResultPacket.parse(NativeRuntime.execute(NativeRuntime.initialize(),world));
         worldPoints=parseRoute(generated.output);
-        privateState=NativeRuntime.initialize(); // isolated from REVERSE Desktop/BBY Q
+        // Preserve world.xi's 241 packed route points in *this* isolated RVPC2.
+        // Reinitializing here would discard the renderer's only geometry source.
+        privateState=generated.state; // isolated from REVERSE Desktop/BBY Q
         step(0,0,1,0,true);
         if(snapshot.ticks!=0)throw new IllegalStateException("XI game reset consumed a tick");
     }
@@ -108,14 +115,46 @@ final class VelocityXiEngine {
     synchronized Snapshot step(int gas,int brake,int steer,int drift,boolean reset)throws Exception{
         if(gas<0||gas>1||brake<0||brake>1||steer<0||steer>2||
            drift<0||drift>1)throw new IllegalArgumentException("XI physical control out of range");
-        ResultPacket result=ResultPacket.parse(NativeRuntime.velocityTick(
-            privateState,compiledXi,gas,brake,steer,drift,reset?1:0));
+        // Execute the XI source through the *existing* generic runtime.
+        // There is no game-specific JNI/C++ renderer, physics or instruction API.
+        String program=XI_HEADER+
+            "store8 128 "+gas+"\nstore8 129 "+brake+
+            "\nstore8 130 "+steer+"\nstore8 131 "+drift+
+            "\nstore8 132 "+(reset?1:0)+"\n"+
+            driveXi.substring(XI_HEADER.length());
+        ResultPacket result=ResultPacket.parse(NativeRuntime.execute(privateState,program));
         // Validate the observation BEFORE publishing the candidate snapshot.
         Snapshot observed=parseState(result.output);
         privateState=result.state;
         snapshot=observed;
         return observed;
     }
+    /**
+     * Execute the actual XI renderer on a private snapshot. No Java geometry,
+     * projection, shading or collision equations are implemented here.
+     * Host validates and unpacks the bounded surface observations only.
+     */
+    synchronized RegraphicsFrame renderFrame(int stride,int camera,int paint)throws Exception{
+        if(stride!=1&&stride!=2&&stride!=4)throw new IllegalArgumentException("XI frame stride must be 1,2 or 4");
+        if(camera<0||camera>2||paint<0||paint>4)throw new IllegalArgumentException("XI visual input out of range");
+        final String source=XI_HEADER+"store8 200 "+stride+
+            "\nstore8 201 "+camera+"\nstore8 202 "+paint+"\n"+
+            xiRenderer.substring(XI_HEADER.length());
+        // No UTF-8 conversion or JSON records on the frame path.
+        // Returned RVPC2 is discarded: frames observe the private game state.
+        ResultPacket packet=ResultPacket.parseBinary(NativeRuntime.execute(privateState,source));
+        return RegraphicsFrame.decode(packet.outputBytes,stride,palette);
+    }
+    private static int[] parsePalette(String source){
+        String[] entries=source.trim().split("\n");
+        if(entries.length!=217)throw new IllegalArgumentException("REgraphics palette size mismatch");
+        int[] palette=new int[entries.length];
+        for(int i=0;i<entries.length;i++){
+            if(!entries[i].matches("[0-9a-f]{6}"))throw new IllegalArgumentException("Invalid palette color");
+            palette[i]=Integer.parseInt(entries[i],16);
+        }
+        return palette;
+    }
     synchronized Snapshot current(){return snapshot;}
-    float[] track(){return worldPoints;} // Adapter must never mutate this array.
+    float[] track(){return worldPoints;} // Existing engine comparison adapter only.
 }

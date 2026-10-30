@@ -1,0 +1,122 @@
+package com.reversepc.os;
+
+import java.io.ByteArrayOutputStream;
+import java.util.Arrays;
+
+/** Wire-contract regressions for the Android-free bounded XFS1 presenter. */
+public final class RegraphicsFrameTest {
+    static int checks;
+    static final int[] COLORS={0x123456,0xabcdef,0x335577};
+    static void check(boolean ok){if(!ok)throw new AssertionError("frame "+checks);checks++;}
+    static void reject(Runnable action){
+        try{action.run();throw new AssertionError("accepted invalid frame "+checks);}
+        catch(IllegalArgumentException expected){checks++;}
+    }
+    static void put16(ByteArrayOutputStream out,int n){out.write(n);out.write(n>>>8);}
+    static void put32(ByteArrayOutputStream out,int n){put16(out,n);put16(out,n>>>16);}
+    static void patch16(byte[] bytes,int at,int n){bytes[at]=(byte)n;bytes[at+1]=(byte)(n>>>8);}
+    static void patch32(byte[] bytes,int at,int n){patch16(bytes,at,n);patch16(bytes,at+2,n>>>16);}
+    static void span(ByteArrayOutputStream out,int y,int x0,int x1,int material,int depth){
+        out.write(2);out.write(material);put16(out,y);put16(out,x0);put16(out,x1);
+        put16(out,depth);put32(out,1);
+    }
+    static byte[] sample(int stride){
+        ByteArrayOutputStream out=new ByteArrayOutputStream();
+        out.write('X');out.write('F');out.write('S');out.write('1');out.write(1);out.write(0);
+        put16(out,1280);put16(out,720);put32(out,1);put16(out,0);
+        for(int y=0;y<720;y+=stride){
+            span(out,y,0,1279,0,100);
+            span(out,y,10,19,1,99);
+            span(out,y,1279,1279,2,98);
+        }
+        out.write(3);out.write(0);put16(out,0);put32(out,1);
+        return out.toByteArray();
+    }
+    static byte[] removeRow(byte[] bytes){
+        // Three spans in row 4 occupy [58,100); remove exactly that row.
+        byte[] result=new byte[bytes.length-42];
+        System.arraycopy(bytes,0,result,0,58);
+        System.arraycopy(bytes,100,result,58,bytes.length-100);
+        return result;
+    }
+    public static void main(String[] args){
+        byte[] valid=sample(4);
+        RegraphicsFrame frame=RegraphicsFrame.decode(valid,4,COLORS);
+        check(frame.width==1280&&frame.height==720&&frame.stride==4&&frame.commands==540);
+        int[] full=new int[1280*720];Arrays.fill(full,0x77999999);
+        frame.present(full,1280,720);
+        for(int y=0;y<720;y++){
+            check(full[y*1280+9]==(0xff000000|COLORS[0]));
+            check(full[y*1280+10]==(0xff000000|COLORS[1]));
+            check(full[y*1280+19]==(0xff000000|COLORS[1]));
+            check(full[y*1280+20]==(0xff000000|COLORS[0]));
+            check(full[y*1280+1279]==(0xff000000|COLORS[2]));
+        }
+        int[] small=new int[320*180];frame.present(small,320,180);
+        check(small[1]==(0xff000000|COLORS[0]));
+        check(small[2]==(0xff000000|COLORS[1])&&small[4]==(0xff000000|COLORS[1]));
+        check(small[5]==(0xff000000|COLORS[0])&&small[319]==(0xff000000|COLORS[2]));
+        int[] palette=COLORS.clone();byte[] mutable=valid.clone();
+        RegraphicsFrame independent=RegraphicsFrame.decode(mutable,4,palette);
+        Arrays.fill(mutable,(byte)0);Arrays.fill(palette,0);
+        int[] again=new int[full.length];independent.present(again,1280,720);
+        check(Arrays.equals(full,again));
+        reject(()->RegraphicsFrame.decode(null,4,COLORS));
+        reject(()->RegraphicsFrame.decode(valid,3,COLORS));
+        reject(()->RegraphicsFrame.decode(valid,4,null));
+        reject(()->RegraphicsFrame.decode(valid,4,new int[0]));
+        reject(()->RegraphicsFrame.decode(valid,4,new int[257]));
+        reject(()->RegraphicsFrame.decode(valid,4,new int[]{-1}));
+        reject(()->RegraphicsFrame.decode(valid,4,new int[]{0x1000000}));
+        reject(()->RegraphicsFrame.decode(Arrays.copyOf(valid,valid.length-1),4,COLORS));
+        reject(()->RegraphicsFrame.decode(Arrays.copyOf(valid,24),4,COLORS));
+        for(int at:new int[]{0,4,5,14,valid.length-8,valid.length-7,valid.length-6}){
+            byte[] bad=valid.clone();bad[at]^=1;
+            reject(()->RegraphicsFrame.decode(bad,4,COLORS));
+        }
+        for(int at:new int[]{10,26,valid.length-4}){
+            byte[] bad=valid.clone();patch32(bad,at,2);
+            reject(()->RegraphicsFrame.decode(bad,4,COLORS));
+        }
+        byte[] width=valid.clone();patch16(width,6,1279);
+        reject(()->RegraphicsFrame.decode(width,4,COLORS));
+        byte[] height=valid.clone();patch16(height,8,719);
+        reject(()->RegraphicsFrame.decode(height,4,COLORS));
+        byte[] material=valid.clone();material[17]=3;
+        reject(()->RegraphicsFrame.decode(material,4,COLORS));
+        byte[] opcode=valid.clone();opcode[16]=3;
+        reject(()->RegraphicsFrame.decode(opcode,4,COLORS));
+        byte[] missing=removeRow(valid);
+        reject(()->RegraphicsFrame.decode(missing,4,COLORS));
+        byte[] order=valid.clone();patch16(order,58+2,8);
+        reject(()->RegraphicsFrame.decode(order,4,COLORS));
+        byte[] misaligned=valid.clone();patch16(misaligned,58+2,2);
+        reject(()->RegraphicsFrame.decode(misaligned,4,COLORS));
+        byte[] beyond=valid.clone();patch16(beyond,16+6,1280);
+        reject(()->RegraphicsFrame.decode(beyond,4,COLORS));
+        byte[] empty=valid.clone();patch16(empty,30+4,20);
+        reject(()->RegraphicsFrame.decode(empty,4,COLORS));
+        byte[] background=valid.clone();patch16(background,16+6,1278);
+        reject(()->RegraphicsFrame.decode(background,4,COLORS));
+        byte[] depth=valid.clone();patch16(depth,30+8,100);
+        reject(()->RegraphicsFrame.decode(depth,4,COLORS));
+        byte[] sentinel=valid.clone();patch16(sentinel,30+8,65535);
+        reject(()->RegraphicsFrame.decode(sentinel,4,COLORS));
+        byte[] tooNear=valid.clone();patch16(tooNear,30+8,86);
+        reject(()->RegraphicsFrame.decode(tooNear,4,COLORS));
+        byte[] noLast=Arrays.copyOf(valid,valid.length-42);
+        System.arraycopy(valid,valid.length-8,noLast,noLast.length-8,8);
+        reject(()->RegraphicsFrame.decode(noLast,4,COLORS));
+        for(int stride:new int[]{1,2}){
+            RegraphicsFrame other=RegraphicsFrame.decode(sample(stride),stride,COLORS);
+            int[] rendered=new int[full.length];other.present(rendered,1280,720);
+            check(Arrays.equals(rendered,full));
+        }
+        int[] untouched={12,34,56};
+        reject(()->frame.present(untouched,2,2));
+        check(Arrays.equals(untouched,new int[]{12,34,56}));
+        reject(()->frame.present(null,320,180));
+        reject(()->frame.present(untouched,Integer.MAX_VALUE,2));
+        System.out.println("REGRAPHICS_FRAME_PASS checks="+checks);
+    }
+}
