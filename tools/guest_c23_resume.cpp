@@ -9,9 +9,12 @@ static void stop(int){stopping=1;}
 static const std::string state_sha="2f5fb515e0bfdaeddd6359ca697bb7d76b95b5ea9b013f0feb92ebef5bc7bb33";
 static const std::string report_sha="1819ceff169f873d3b185d1f2e5d6c60903419551e135383f8f6d673387ff923";
 static const std::string disk_sha="0e829fad2cd1cfef8ea707044270d97559127c6cd48bdf268e7eb5cf1b573ce6";
-static const std::string seed_sha="b99624c9f07e34fc23d620537d5c6bb846fcd4a9766af549f485c7aa0a908556";
+static const std::string seed_sha="b99624c9f07e34fc22d620537d5c6bb846fcd4a9766af549f485c7aa0a908556";
 static std::uint64_t number(const char* text,std::uint64_t maximum){const std::string s(text);require(!s.empty()&&s.find_first_not_of("0123456789")==std::string::npos,"Expected decimal budget");const auto n=std::stoull(s);require(n&&n<=maximum,"Budget out of range");return n;}
 int main(int argc,char** argv){try{
+  if(argc==2&&std::string(argv[1])=="--pins"){
+    std::cout<<"{\"schema\":\"reverse-c23-native-pins-v1\",\"state_sha256\":"<<quote(state_sha)<<",\"report_sha256\":"<<quote(report_sha)<<",\"disk_sha256\":"<<quote(disk_sha)<<",\"counter_seed_sha256\":"<<quote(seed_sha)<<",\"host_snapshot_transport_bytes\":"<<MinimalGuest::max_explicit_adaptive_snapshot<<"}\n";return 0;
+  }
   require(argc==7,"Expected C22.rvg C22.json original-disk.raw new-journal wall-ms instructions");
   BootCycleLimits limits;limits.wall_ms=number(argv[5],900000);limits.instructions=number(argv[6],2000000000);
   limits.chunk=50000;limits.checkpoint_ms=60000;limits.checkpoint_instructions=100000000;

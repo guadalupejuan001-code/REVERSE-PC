@@ -104,6 +104,8 @@ jobs:
           g++ -std=c++17 -O1 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tests/minimal_guest_test.cpp build/softfloat/libreverse_softfloat.a -o build/c23-base-test
           build/c23-base-test > evidence/c23-boot/base-regression.json
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc -Itools tools/guest_c23_resume.cpp build/softfloat/libreverse_softfloat.a -o build/c23-native
+          build/c23-native --pins > evidence/c23-boot/native-pins.json
+          node tools/android_c23_result.mjs native-pins evidence/c23-boot/native-pins.json > evidence/c23-boot/native-pins-verification.json
           tar -czf evidence/c23-boot/tested-source.tar.gz src tools tests scripts third_party patches build/ether-compat build/softfloat/libreverse_softfloat.a deps/mundo-x/native/include
           git rev-parse HEAD > evidence/c23-boot/source-commit.txt
           sha256sum build/c23-native evidence/c23-boot/tested-source.tar.gz > evidence/c23-boot/build-sha256.txt

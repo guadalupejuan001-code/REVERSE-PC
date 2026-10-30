@@ -23,6 +23,11 @@ políticas fuera de rango, y confirma que un fallo al serializar no modifica la
 CPU. La política no se hereda al restaurar un RVG sin selección explícita.
 El auditor independiente mantiene también un límite explícito y finito.
 
+Antes de abrir el disco, el binario informa sus huellas compiladas y el auditor
+independiente comprueba que coincidan con las del estado, informe, disco y
+semilla originales. Esto detecta una divergencia entre verificadores antes de
+restaurar o ejecutar el invitado.
+
 La salida publica un checkpoint canónico. Si la auditoría no puede publicarlo,
 se preserva por separado el último prefijo atómico para diagnosticarlo; no se
 presenta automáticamente como un estado sano. Se omiten copias redundantes del
