@@ -30,7 +30,7 @@ jobs:
           node laplace-android/verify.mjs
           node --test laplace-android/tests/modelo.test.mjs
           git rm -r .github/laplace-transfer .github/workflows/laplace-import-once.yml
-      - name: Crear objetos Git para revisión, sin mover ninguna rama
+      - name: Preparar blobs verificados, sin modificar árboles ni ramas
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -39,24 +39,20 @@ jobs:
           import {writeFileSync} from 'node:fs';
           const repo=process.env.GITHUB_REPOSITORY,parent=process.env.GITHUB_SHA;
           if(repo!=='guadalupejuan001-code/REVERSE-PC'||process.env.GITHUB_REF!=='refs/heads/integrate/laplace-m001-next-apk-20261030')throw Error('Rama incorrecta');
-          const git=(...args)=>execFileSync('git',args,{encoding:'utf8'});
+          const git=(...args)=>execFileSync('git',args,{encoding:'utf8',stdio:['pipe','pipe','pipe']});
           const names=git('diff','--cached','--name-only','-z').split('\0').filter(Boolean);
           if(names.length!==29)throw Error('Número inesperado de archivos: '+names.length);
-          const tree=names.map(path=>{
+          const tree=[];
+          for(const path of names){
             if(!/^(laplace-android\/|reverse-os-android\/|NEXT_APK_LAPLACE\.json$|\.github\/workflows\/(laplace-integration|workbench-android|laplace-import-once)\.yml$|\.github\/laplace-transfer\/part-[123]\.b64$)/.test(path))throw Error('Ruta no autorizada '+path);
-            try{return {path,mode:'100644',type:'blob',content:git('show',':'+path)}}
-            catch{return {path,mode:'100644',type:'blob',sha:null}}
-          });
-          async function api(path,body){
-            const r=await fetch('https://api.github.com/repos/'+repo+'/'+path,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+process.env.GH_TOKEN,Accept:'application/vnd.github+json','Content-Type':'application/json'},...(body?{body:JSON.stringify(body)}:{})});
-            const data=await r.json();if(!r.ok)throw Error(r.status+' '+JSON.stringify(data));return data;
+            let content;try{content=git('show',':'+path)}catch{tree.push({path,mode:'100644',type:'blob',sha:null});continue}
+            const r=await fetch('https://api.github.com/repos/'+repo+'/git/blobs',{method:'POST',headers:{Authorization:'Bearer '+process.env.GH_TOKEN,Accept:'application/vnd.github+json','Content-Type':'application/json'},body:JSON.stringify({content,encoding:'utf-8'})});
+            const blob=await r.json();if(!r.ok)throw Error(r.status+' '+JSON.stringify(blob));
+            const expected=git('rev-parse',':'+path).trim();if(blob.sha!==expected)throw Error('Blob distinto del probado: '+path);
+            tree.push({path,mode:'100644',type:'blob',sha:blob.sha});
           }
-          const original=await api('git/commits/'+parent);
-          const t=await api('git/trees',{base_tree:original.tree.sha,tree});
-          const c=await api('git/commits',{message:'Integrate Laplace M001 in the next REVERSE APK: native IO, original model parity, Spanish controls and query visualization',tree:t.sha,parents:[parent]});
-          const report={parent,tree:t.sha,commit:c.sha,files:names,branch_moved:false,patch_sha256:'8277620511781818173ab376a579873ee6326f378f5a1e321c88823ab5d7c48c'};
-          writeFileSync('integration-materialized.json',JSON.stringify(report,null,2));
-          console.log(JSON.stringify(report));
+          const report={parent,base_tree:git('rev-parse','HEAD^{tree}').trim(),tree,branch_moved:false,patch_sha256:'8277620511781818173ab376a579873ee6326f378f5a1e321c88823ab5d7c48c'};
+          writeFileSync('integration-materialized.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report));
           JS
       - uses: actions/upload-artifact@v4
         if: always()
