@@ -60,7 +60,12 @@ function encode({width,height,revision,commands}){
  b[offset]=3;b.writeUInt32LE(revision,offset+4);
  return b;
 }
-function decode(b,{maxPixels=LIMITS.maxPixels,maxBytes=LIMITS.maxBytes}={}){
+function decode(b,{maxPixels=LIMITS.maxPixels,maxBytes=LIMITS.maxBytes,
+  maxOutputBytes=64*1024*1024,palette=null}={}){
+ if(palette!==null){
+  valid(Array.isArray(palette)&&palette.length===96,'palette size');
+  for(const c of palette)valid(Buffer.isBuffer(c)&&c.length===3,'palette entry');
+ }
  valid(Buffer.isBuffer(b)&&b.length>=24&&b.length<=maxBytes,'frame length');
  valid(b.toString('ascii',0,4)==='XFS1'&&b[4]===1,'magic/version');
  valid(b[5]===0&&b.readUInt16LE(14)===0,'reserved');
@@ -88,14 +93,23 @@ function decode(b,{maxPixels=LIMITS.maxPixels,maxBytes=LIMITS.maxBytes}={}){
   // 65535 is the untouched depth sentinel in XFS1 v1: it is never visible.
   if(z!==65535)rows[y].push({material,x0,x1,z,offset:p});
  }
- const pixels=Buffer.alloc(w*h);
+ // Optional palette materialization paints complete RGB spans directly:
+ // one visibility pass and no intermediate material-ID framebuffer.
+ const channels=palette===null?1:3;
+ valid(w*h*channels<=maxOutputBytes,'output byte budget');
+ const pixels=Buffer.alloc(w*h*channels);
+ if(palette!==null)pixels.fill(palette[0]);
  for(let y=0;y<h;y++){
   const row=rows[y];
   row.sort((a,b)=>(b.z-a.z)||(b.offset-a.offset));
   const rowBase=y*w;
-  for(const c of row)pixels.fill(c.material,rowBase+c.x0,rowBase+c.x1+1);
+  for(const c of row){
+   if(palette===null)pixels.fill(c.material,rowBase+c.x0,rowBase+c.x1+1);
+   else pixels.fill(palette[c.material],
+      (rowBase+c.x0)*3,(rowBase+c.x1+1)*3);
+  }
  }
- return {width:w,height:h,revision:rev,pixels,commands:count,
+ return {width:w,height:h,revision:rev,pixels,channels,commands:count,
   sha256:crypto.createHash('sha256').update(pixels).digest('hex')};
 }
 module.exports={fromXI,encode,decode,LIMITS};
