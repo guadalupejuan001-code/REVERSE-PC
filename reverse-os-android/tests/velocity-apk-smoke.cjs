@@ -72,9 +72,10 @@ function nodes(xml){
   });
 }
 function fullscreenHintControl(items){
-  const system=items.filter(x=>x.package==='com.android.systemui');
+  const system=items.filter(x=>x.package==='com.android.systemui'||x.package==='android');
   const text=system.map(x=>(x.text||'')+' '+(x['content-desc']||'')).join('\n');
   if(!/Viewing full screen|Full screen mode|pantalla completa/i.test(text))return null;
+  if(!system.some(x=>/immersive_cling_title$/.test(x['resource-id']||'')))return null;
   // This is Android's immersive-mode education, not a permission prompt.
   return system.find(x=>/^(Got it|Entendido)[.!]?$/i.test((x.text||'').trim())&&
     (x.clickable==='true'||x.class==='android.widget.Button'))||null;
