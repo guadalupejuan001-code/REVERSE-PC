@@ -80,6 +80,7 @@ class MinimalGuest {
   // Larger host-side checkpoint transport only for explicit adaptive guests;
   // this is still finite and must never be mistaken for infinite physical RAM.
   static constexpr std::size_t max_adaptive_snapshot=256*1024*1024;
+  static constexpr std::size_t max_explicit_adaptive_snapshot=1024ull*1024*1024;
   static constexpr std::size_t max_output=65536;
 
   explicit MinimalGuest(std::uint64_t ram=UINT64_C(1)<<30, std::size_t overrides=65536)
@@ -90,6 +91,12 @@ class MinimalGuest {
   const Registers& registers() const noexcept { return registers_; }
   const mundo_x::QuantumRuntime& runtime() const noexcept { return runtime_; }
   std::uint64_t logical_ram() const noexcept { return ram_; }
+  // Nonpersistent host transport policy: no CPU, RAM, clock or RVG bytes change.
+  std::size_t host_snapshot_transport_capacity() const noexcept { return adaptive_snapshot_capacity_; }
+  void set_host_snapshot_transport_capacity(std::size_t bytes) {
+    require(bytes>=4096 && bytes<=max_explicit_adaptive_snapshot,"Invalid explicit host snapshot transport capacity");
+    adaptive_snapshot_capacity_=bytes;
+  }
   std::size_t image_bytes() const noexcept { return image_ ? image_->size() : 0; }
   const std::vector<Segment>& segments() const noexcept { return segments_; }
   const MachineState& machine() const noexcept { return machine_; }
@@ -323,16 +330,18 @@ class MinimalGuest {
     result.insert(result.end(),core.begin(),core.end()); result.insert(result.end(),memory.begin(),memory.end());
     result.insert(result.end(),system.begin(),system.end());
     result.insert(result.end(),fp.begin(),fp.end());
-    require(result.size()+8<=(override_limit_?max_snapshot:max_adaptive_snapshot),
+    require(result.size()+8<=(override_limit_?max_snapshot:adaptive_snapshot_capacity_),
             "Guest snapshot exceeds configured host transport capacity");
     put(result,digest(result,result.size())); return result;
   }
-  static MinimalGuest from_snapshot(const Bytes& bytes,std::shared_ptr<const GuestBlockImage> disk={}) {
+  static MinimalGuest from_snapshot(const Bytes& bytes,std::shared_ptr<const GuestBlockImage> disk={},
+                                    std::size_t adaptive_capacity=max_adaptive_snapshot) {
+    require(adaptive_capacity>=4096 && adaptive_capacity<=max_explicit_adaptive_snapshot,"Invalid explicit host snapshot transport capacity");
     const unsigned version=bytes.size()>=4?unsigned(bytes[3]):0;
     require(version=='1'||version=='2'||version=='3',"Unsupported guest checkpoint version");
     const Bytes magic{'R','V','G',std::uint8_t(version),13,10,26,10};
     const auto max_input_bytes=bytes.size()>=24 && get(bytes,16,8)==0 ?
-        max_adaptive_snapshot:max_snapshot;
+        adaptive_capacity:max_snapshot;
     require(bytes.size()>=8+8*(8+31+3)+8 && bytes.size()<=max_input_bytes &&
             std::equal(magic.begin(),magic.end(),bytes.begin()), "Invalid guest snapshot header/size");
     require(get(bytes,bytes.size()-8,8)==digest(bytes,bytes.size()-8), "Guest snapshot checksum mismatch");
@@ -401,7 +410,7 @@ class MinimalGuest {
     require(cpu.pc%4==0 && (system || (cpu.pc<=ram && (cpu.halted || cpu.pc<ram))), "Invalid guest PC in snapshot");
     if(system){candidate.machine_=std::move(machine);candidate.validate_system_configuration();}
     if(fp_size)candidate.floating_=FloatingState::restore(Bytes(bytes.end()-8-std::size_t(fp_size),bytes.end()-8));
-    candidate.registers_=cpu; return candidate;
+    candidate.registers_=cpu;candidate.adaptive_snapshot_capacity_=adaptive_capacity; return candidate;
   }
   std::string statistics() const {
     const auto memory=runtime_.memory().stats();
@@ -436,6 +445,7 @@ class MinimalGuest {
  private:
   std::uint64_t ram_;
   std::size_t override_limit_;
+  std::size_t adaptive_snapshot_capacity_=max_adaptive_snapshot; // Host-only, deliberately absent from RVG.
   mundo_x::QuantumRuntime runtime_;
   std::shared_ptr<const Bytes> image_;
   std::vector<Segment> segments_;

@@ -64,7 +64,7 @@ test('reject invalid magic and excessive snapshot',()=>{
   const {bytes,kernel}=fixture();bytes[0]=0;
   assert.throws(()=>auditGkiRvg(bytes,sha(kernel),sha(bytes)),
     /RVG2\/RVG3/);
-  assert.throws(()=>auditGkiRvg(Buffer.alloc(256*1024*1024)),
+  assert.throws(()=>auditGkiRvg(Buffer.alloc(256*1024*1024+1)),
     /snapshot size invalid/);
 });
 
@@ -95,4 +95,11 @@ test('halt flag and exit status retain their distinct serialized positions',()=>
   const {bytes,kernel}=fixture();bytes.writeBigUInt64LE(halted,8+6*8);bytes.writeBigUInt64LE(exit,8+7*8);setFnv(bytes);
   const result=auditGkiRvg(bytes,sha(kernel),sha(bytes));assert.equal(result.native_halted,Number(halted));assert.equal(result.native_exit_code,Number(exit));
  }
+});
+
+test('explicit audit bounds are finite, reject oversized data, and preserve exact-bound inputs',()=>{
+ const {bytes,kernel}=fixture();const digest=sha(bytes);
+ assert.equal(auditGkiRvg(bytes,sha(kernel),digest,{maxSnapshotBytes:bytes.length}).checkpoint_sha256,digest);
+ assert.throws(()=>auditGkiRvg(bytes,sha(kernel),digest,{maxSnapshotBytes:bytes.length-1}),/snapshot size invalid/);
+ for(const maxSnapshotBytes of [0,1.5,1024*1024*1024+1,Infinity])assert.throws(()=>auditGkiRvg(bytes,undefined,undefined,{maxSnapshotBytes}),/invalid explicit transport audit bound/);
 });
