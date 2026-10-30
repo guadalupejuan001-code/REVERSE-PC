@@ -51,6 +51,14 @@ Las pruebas independientes del lector cubren actualizaciones incompletas,
 offsets corruptos, ciclos, orden de búsqueda Bionic, deltas XOR, integridad del
 snapshot y direcciones externas de 64 bits. No son una simulación del arranque.
 
+El inspector del kernel también admite puntos posteriores a la liberación de
+datos de init: informa los símbolos que ya no están mapeados sin descartar el
+resto de la evidencia. En EL0 resuelve el hilo actual mediante `__entry_task`
+y el offset por CPU, y valida su pertenencia a la lista de hilos del proceso.
+Distingue los registros vivos del contexto de kernel guardado y no presenta
+la lista de líderes como un inventario completo de todos los hilos.
+En el punto C21 identifica al hilo `ueventd` PID 92 sin modificar el estado.
+
 ## Preparación del disco
 
 La copia del disco conserva huecos vacíos cuando el sistema de archivos no
