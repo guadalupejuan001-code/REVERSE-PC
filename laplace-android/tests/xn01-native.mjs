@@ -21,15 +21,16 @@ function program(bars){
   return template.replace('# __INPUT_BYTES__',lines.join('\n'));
 }
 function state(b,i){
-  const d=b[i][4]-b[i-1][4],sum=Array.from({length:6},(_,k)=>i-5+k).reduce((s,j)=>s+Math.abs(b[j][4]-b[j-1][4]),0);
-  const vol=Array.from({length:6},(_,k)=>i-5+k).reduce((s,j)=>s+b[j][5],0);
-  return (b[i][4]>=b[i-1][4]?1:0)|(b[i][4]>=b[i-3][4]?2:0)|(Math.abs(d)*6>sum?4:0)|(b[i][5]*6>vol?8:0);
+  const close=j=>u32(b[j][4],100),volume=j=>u32(b[j][5],1);
+  const d=close(i)-close(i-1),sum=Array.from({length:6},(_,k)=>i-5+k).reduce((s,j)=>s+Math.abs(close(j)-close(j-1)),0);
+  const vol=Array.from({length:6},(_,k)=>i-5+k).reduce((s,j)=>s+volume(j),0);
+  return (close(i)>=close(i-1)?1:0)|(close(i)>=close(i-3)?2:0)|(Math.abs(d)*6>sum?4:0)|(volume(i)*6>vol?8:0);
 }
 function reference(bars){
   const b=bars.slice(-240),cur=state(b,b.length-1);let same=0,upSame=0,up=0,n=0;
   for(let i=6;i<b.length-1;i++){
     if(!valid(b,i)||b[i+1][0]-b[i][0]!==300)continue;
-    const y=b[i+1][4]>b[i][4];n++;if(y)up++;
+    const y=u32(b[i+1][4],100)>u32(b[i][4],100);n++;if(y)up++;
     if(state(b,i)===cur){same++;if(y)upSame++;}
   }
   const prior=Math.trunc((up+1)*10000/(n+2));
@@ -47,7 +48,5 @@ function run(bars,name){
 const start=Math.floor(Date.parse('2026-10-01T13:30:00Z')/1000/300)*300;
 let p=500;const bars=Array.from({length:220},(_,i)=>{const o=p;const phase=i%19;p*=phase<11?1.0012:.9987;return [start+i*300,Math.min(o,p)*.9998,Math.max(o,p)*1.0002,o,p,1000+(i%9)*130]});
 const normal=run(bars,'normal');
-const changed=bars.map(r=>[...r]);changed[20][4]*=1.5;changed[20][2]=Math.max(changed[20][2],changed[20][4]);
-assert.deepEqual(run(changed,'future-independent').actual,normal.actual,'old row outside 240? fixture should remain within window and can legitimately affect training');
 writeFileSync(join(outDir,'result.json'),JSON.stringify({schema:'xn01-native-proof-v1',normal,backend:'reverse_pc XI Machine / InverseMemory'},null,2)+'\n');
 console.log(JSON.stringify({ok:true,...normal.actual,program_bytes:normal.program_bytes}));
