@@ -254,7 +254,7 @@ function buildNodes(){
 }
 function resetNodes(){buildNodes();for(const key of Object.keys(statuses)){const required=isBTC()?selected().includes(key)||['ticker','candles'].includes(key):true;status(key,required?'espera':'omitida');}}
 function effects(){$('escena').classList.toggle('con-efectos',$('animacion').checked&&!document.hidden&&!matchMedia('(prefers-reduced-motion: reduce)').matches);}
-function navigate(id){for(const b of document.querySelectorAll('[data-tab]'))b.toggleAttribute('aria-current',b.dataset.tab===id);for(const s of document.querySelectorAll('.vista'))s.hidden=s.id!==id;if(id==='resumen')drawChart();}
+function navigate(id){for(const b of document.querySelectorAll('[data-tab]'))b.toggleAttribute('aria-current',b.dataset.tab===id);for(const s of document.querySelectorAll('.vista'))s.hidden=s.id!==id;if(id==='resumen')drawChart();else if(id==='datos')renderFactors();else if(id==='registro')renderRegister();else if(id==='flujo')buildNodes();}
 for(const btn of document.querySelectorAll('[data-tab]'))btn.onclick=()=>navigate(btn.dataset.tab);
 $('animacion').onchange=effects;document.addEventListener('visibilitychange',()=>{effects();statusText();});effects();
 $('giro').oninput=()=>{$('nodos').style.setProperty('--giro',$('giro').value+'deg');};
