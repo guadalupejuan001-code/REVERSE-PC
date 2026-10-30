@@ -7,7 +7,7 @@
     "X001/B001"
   ],
   "files": {
-    "reverse-os-android/app/src/main/assets/laplace/app.mjs": "ed5e315feffd8383ece2f1852950075e8bbca1e30d76a5d6939446726b5d30e9",
+    "reverse-os-android/app/src/main/assets/laplace/app.mjs": "1d55f82bbfde056d40fcf8630a86da3383fdc50103bc00f29007a22f7358704f",
     "reverse-os-android/app/src/main/assets/laplace/grafica.js": "19f58fe7564fe6d377409babf3e3ca86e0f2a644aa1d2273948743641c3684c1",
     "reverse-os-android/app/src/main/assets/laplace/index.html": "b6511a54033d4e2d8a8722e441749392726d748ebfcb6ad4afece5f9978a1e75",
     "reverse-os-android/app/src/main/assets/laplace/integridad.mjs": "3912bb8fec306b793ec50a3d7bcbc5368ae98ec49e06566a43bc07073a1b53fb",
@@ -57,5 +57,6 @@
   "stock_model": "XN01-native-XI",
   "bolsa_upstream": "08cafb094a5c0f81253509eff412214dd526b808",
   "model": "M001 + XN01/XI-Ether",
-  "native_XI_used_for_stock_prediction": true
+  "native_XI_used_for_stock_prediction": true,
+  "native_XI_used_for_all_markets": true
 }
