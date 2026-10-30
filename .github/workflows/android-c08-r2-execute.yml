@@ -4,7 +4,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/android-c08-r2-execute.yml'
-      - 'experiments/c08-r2-reviewed.patch.gz.b64'
+      - 'experiments/c08-r2-reviewed.patch.gz.b64.part*'
 permissions:
   contents: read
   actions: read
@@ -29,7 +29,7 @@ jobs:
           BASE=7c21e6aae7f0528805444910c207e9aef6463573
           git merge-base --is-ancestor "$BASE" HEAD
           git diff --exit-code "$BASE" HEAD -- src tools tests experiments/android-c08-reviewed-c07.json .github/workflows/android-c08-continue-reviewed.yml
-          base64 --decode experiments/c08-r2-reviewed.patch.gz.b64 > build/c08-r2.patch.gz
+          cat experiments/c08-r2-reviewed.patch.gz.b64.part01 experiments/c08-r2-reviewed.patch.gz.b64.part02 experiments/c08-r2-reviewed.patch.gz.b64.part03 | base64 --decode > build/c08-r2.patch.gz
           echo '18978d0533e2fc53a3e66e3b27802ceaf08436bd14c88cdff6665ee8e59fd2a9  build/c08-r2.patch.gz' | sha256sum --check
           gzip --decompress --stdout build/c08-r2.patch.gz > build/c08-r2.patch
           echo '26077d045fce4cdcd4c0fbbbd6a24fe05ec868d9d18a945f637e0c507de7b4a4  build/c08-r2.patch' | sha256sum --check
