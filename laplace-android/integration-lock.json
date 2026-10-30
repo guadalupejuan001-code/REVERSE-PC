@@ -7,14 +7,14 @@
     "X001/B001"
   ],
   "files": {
-    "reverse-os-android/app/src/main/assets/laplace/app.mjs": "78397953827c5440d536da9e53fb59d215ade7b019897a6e113f75b592754e9f",
-    "reverse-os-android/app/src/main/assets/laplace/grafica.js": "19f58fe7564fe6d377409babf3e3ca86e0f2a644aa1d2273948743641c3684c1",
+    "reverse-os-android/app/src/main/assets/laplace/app.mjs": "a37e55e622c13259dc82055d667c197851f20b41aaf0c76d710d9deadfceb67e",
+    "reverse-os-android/app/src/main/assets/laplace/grafica.js": "23efd2044b439b61673c11cd72127430d73520c4b640cf245641dde3f9d786b6",
     "reverse-os-android/app/src/main/assets/laplace/index.html": "8f31d06f58a04aafa3ca5d1f6a6319485937a642c6b36db41072f85188f03a74",
     "reverse-os-android/app/src/main/assets/laplace/integridad.mjs": "3912bb8fec306b793ec50a3d7bcbc5368ae98ec49e06566a43bc07073a1b53fb",
     "reverse-os-android/app/src/main/assets/laplace/modelo.mjs": "8566056be52b69abca73d36b5f933d1d3a9f6fa83f56cd21c31bb6862b9915db",
     "reverse-os-android/app/src/main/assets/laplace/styles.css": "af6546d490db57fe0181f2aa35470a03b3c71749e79688cfef9188fc97282bb4",
     "reverse-os-android/app/src/main/assets/laplace/x001.mjs": "e2096d77deb51c29000a026912a4c3ebb9a01acdb3a7bc720fa8d2961503dabb",
-    "reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceActivity.java": "c7c95a84fd7332c2206d7a26e6c383d8dac411a0bc4cc1808dde5b62c86e83fe",
+    "reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceActivity.java": "34795f0c51a23a12c067e5a4d4798fa5d5267f603957bf825e92d6bb66746404",
     "laplace-android/upstream-lock.json": "abb08ad8c1d9eb89ee3f61dd74fd7ec5280d7dd3f2e86d41be2c2d231d6db879",
     "laplace-android/upstream/universo/integridad.mjs": "4ed158bc6c192cba2f4ee673dc7c99f63d7d2b73889d1b04dee5c791a47fc577",
     "laplace-android/upstream/seguimiento/modelo.mjs": "1a72ecc3437baeb2db0afb9b8a36618c4568badfab0baf318d005bfa99fabe3a",
