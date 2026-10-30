@@ -1,0 +1,55 @@
+name: X Render XI A/B hypothesis — actual XI interpreter
+on:
+  push:
+    branches: [experiment/xrender-xi-hypothesis-20261029]
+    paths:
+      - 'experiments/xi-render/**'
+      - '.github/workflows/xi-render-ab.yml'
+  pull_request:
+    branches: [feature/reverse-velocity-native-20261029]
+    paths:
+      - 'experiments/xi-render/**'
+      - '.github/workflows/xi-render-ab.yml'
+permissions: {contents: read}
+jobs:
+  measured-ab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: 1f925786522aba91f72707ad1638a8edcdd31a8f
+          path: deps/mundo-x
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Compile existing production XI executor and existing native X Render observer
+        run: |
+          set -euo pipefail
+          mkdir -p build/xi-render build/ether-compat
+          python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
+            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
+            src/reverse_pc.cpp -o build/xi-render/reverse_pc
+          # This host test adapter ONLY invokes the original, unmodified native engine.
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror \
+            -Ideps/mundo-x/native/include \
+            experiments/xi-render/native-reference.cpp -o build/xi-render/xrender-oracle
+      - name: Execute real XI, compare every pixel with X Render, measure both
+        run: |
+          set -euo pipefail
+          node experiments/xi-render/verify-and-benchmark.cjs \
+            build/xi-render/reverse_pc build/xi-render/xrender-oracle \
+            build/xi-render/evidence | tee build/xi-render/benchmark.log
+          test -s build/xi-render/evidence/results.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xi-render-ab-evidence
+          path: |
+            build/xi-render/evidence/
+            build/xi-render/benchmark.log
+          retention-days: 14
