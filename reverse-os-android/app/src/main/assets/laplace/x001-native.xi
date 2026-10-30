@@ -12,6 +12,7 @@
 #   2: close(i)>=close(i-3)
 #   4: abs(delta5)*6 > suma(abs(delta5)) de los ultimos 30m
 #   8: volumen(i)*6 > suma(volumen) de los ultimos 30m
+# __INPUT_BYTES__
 # Resultado:
 #   r0 mask, r8 P(subida) bps, r9 direccion, r3 soporte,
 #   r7 prior bps, r6 filas de entrenamiento, r10 confianza bps.
