@@ -1,0 +1,36 @@
+name: Independent ARM64 validation tools
+on:
+  pull_request:
+    types: [opened, reopened]
+    paths: ['.github/workflows/android-isa-oracle.yml']
+permissions:
+  contents: read
+jobs:
+  package-oracle:
+    if: github.event.pull_request.head.ref == 'tools/android-isa-oracle-20261030'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - name: Install assembler and disassembler
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends binutils-aarch64-linux-gnu
+          mkdir -p oracle/bin oracle/lib evidence
+          cp /usr/bin/aarch64-linux-gnu-as /usr/bin/aarch64-linux-gnu-objdump oracle/bin/
+          ldd oracle/bin/* > evidence/shared-libraries.txt
+          for lib in $(ldd oracle/bin/* | awk '/=> \//{print $3}' | sort -u); do
+            case "$lib" in *libc.so*|*libm.so*|*libdl.so*|*libpthread.so*|*librt.so*|*ld-linux*) continue ;; esac
+            cp -L "$lib" oracle/lib/
+          done
+          printf '.text\n.inst 0x2e65c022\n.inst 0x0e20a863\n.inst 0x4ddfc923\n' > evidence/original-stops.s
+          aarch64-linux-gnu-as evidence/original-stops.s -o evidence/original-stops.o
+          aarch64-linux-gnu-objdump -d evidence/original-stops.o > evidence/original-stops.disassembly
+          aarch64-linux-gnu-as --version > evidence/assembler-version.txt
+          tar -czf evidence/aarch64-oracle.tar.gz oracle
+          sha256sum evidence/aarch64-oracle.tar.gz > evidence/SHA256SUMS
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: reverse-arm64-independent-tools
+          path: evidence/
+          retention-days: 7
