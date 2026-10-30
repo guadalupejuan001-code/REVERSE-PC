@@ -283,6 +283,24 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
     }
     floating_.v[rd]=value;return true;
   }
+  if((i&0x9f20cc00u)==0x0e200000u){ // S/UADDL, S/UADDW, S/USUBL, S/USUBW, including the upper-half forms.
+    if(size==3)return false; // No 64-to-128-bit element form is allocated.
+    const unsigned operation=(i>>12)&3,lanes=64/element,first=q?lanes:0;
+    const bool wide=operation&1,subtract=operation&2;
+    fp_access();const auto a=floating_.v[rn],b=floating_.v[rm];Vector128 value;
+    for(unsigned n=0;n<lanes;n++){
+      auto x=a.lane(wide?n:first+n,wide?2*element:element),y=b.lane(first+n,element);
+      if(!u){
+        const auto sign=UINT64_C(1)<<(element-1);
+        if(!wide&&(x&sign))x|=~low_mask(element);
+        if(y&sign)y|=~low_mask(element);
+      }
+      // Unsigned arithmetic expresses modular lane results without signed overflow.
+      value.lane(n,2*element,subtract?x-y:x+y);
+    }
+    // Q chooses only narrow source halves. The destination and a wide Rn are 128 bits.
+    floating_.v[rd]=value;return true;
+  }
   const auto multiply_long=i&0x9f20fc00u;
   if(multiply_long==0x0e20c000u||multiply_long==0x0e208000u||multiply_long==0x0e20a000u){ // S/UMULL, S/UMLAL, S/UMLSL, lower or upper source half.
     if(size==3)return false;
