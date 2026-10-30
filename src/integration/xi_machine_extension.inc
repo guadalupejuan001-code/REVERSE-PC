@@ -154,6 +154,28 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
   std::array<std::int64_t, machine_register_count> registers{};
   ProgramResult result;
   bool first_command = true, in_batch = false, comparison_valid = false;
+  // Frame Stream is only a binary transport primitive; XI owns the geometry.
+  bool frame_open = false, frame_done = false;
+  std::uint32_t frame_revision = 0;
+  std::uint16_t frame_width = 0, frame_height = 0;
+  std::size_t frame_commands = 0;
+  auto frame_byte = [&](std::uint64_t value) {
+    if (result.output.size() >= max_response_bytes)
+      throw std::length_error("XI binary frame response budget exceeded");
+    result.output.push_back(static_cast<char>(value & 255u));
+  };
+  auto frame_u16 = [&](std::uint64_t value) {
+    frame_byte(value); frame_byte(value >> 8);
+  };
+  auto frame_u32 = [&](std::uint64_t value) {
+    frame_u16(value); frame_u16(value >> 16);
+  };
+  auto frame_field = [&](const std::string& token,
+                         std::int64_t low,std::int64_t high,const char* name) {
+    const auto n=machine_value(token,registers);
+    if(n<low||n>high)throw std::out_of_range(std::string("XI frame ")+name);
+    return static_cast<std::uint32_t>(n);
+  };
   int comparison = 0;
   std::size_t pc = 0, steps = 0, address_bytes = 0;
   std::vector<InfiniteCore::Gate> batch;
@@ -165,11 +187,56 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
       const auto& words = inst.words;
       const auto op = lower_ascii(words.front());
       auto output_line = [&](const std::string& output) {
+        if (frame_open || frame_done)
+          throw std::invalid_argument("binary XFS1 cannot mix with text records");
         if (output.size() > max_response_bytes - result.output.size())
           throw std::length_error("machine output exceeds 16 MiB");
         result.output += output;
       };
-      if (op == "background") {
+      if (op == "xframe" || op == "xstream") {
+        require_count(words, 4);
+        if (frame_open || frame_done || in_batch || !result.output.empty())
+          throw std::invalid_argument("XFS1 frame must start once in an empty output");
+        // Full materialization is bounded; streamed logical resolution need
+        // not allocate width*height. Both use the same serialized XI spans.
+        const auto bound=op=="xstream"?65535:8192;
+        const auto w=frame_field(words[1],1,bound,"width");
+        const auto h=frame_field(words[2],1,bound,"height");
+        const auto rev=frame_field(words[3],0,0xffffffffLL,"revision");
+        if (op=="xframe" && std::uint64_t(w)*h>16777216ULL)
+          throw std::length_error("XFS1 logical pixel budget exceeded");
+        frame_open=true;frame_revision=rev;
+        frame_width=static_cast<std::uint16_t>(w);
+        frame_height=static_cast<std::uint16_t>(h);
+        frame_commands=0;
+        result.output.reserve(std::min<std::size_t>(max_response_bytes,
+          24u+28u*static_cast<std::size_t>(h)));
+        for (char c:std::string("XFS1"))frame_byte(static_cast<unsigned char>(c));
+        frame_byte(1);frame_byte(0);
+        frame_u16(w);frame_u16(h);frame_u32(rev);frame_u16(0);
+      } else if (op == "xspan") {
+        require_count(words, 6);
+        if (!frame_open || frame_done || in_batch)
+          throw std::invalid_argument("XFS1 span without an open frame");
+        const auto y=frame_field(words[1],0,frame_height-1,"row");
+        const auto x0=frame_field(words[2],0,frame_width-1,"left");
+        const auto x1=frame_field(words[3],x0,frame_width-1,"right");
+        const auto material=frame_field(words[4],0,255,"material");
+        const auto depth=frame_field(words[5],1,65535,"depth");
+        if (++frame_commands > 1000000u)
+          throw std::length_error("XFS1 command budget exceeded");
+        if (result.output.size()>max_response_bytes-14u-8u)
+          throw std::length_error("XFS1 binary transport budget exceeded");
+        frame_byte(2);frame_byte(material);
+        frame_u16(y);frame_u16(x0);frame_u16(x1);
+        frame_u16(depth);frame_u32(frame_revision);
+      } else if (op == "xend") {
+        require_count(words, 1);
+        if (!frame_open || frame_done || in_batch)
+          throw std::invalid_argument("XFS1 frame end without an open frame");
+        frame_byte(3);frame_byte(0);frame_u16(0);frame_u32(frame_revision);
+        frame_open=false;frame_done=true;
+      } else if (op == "background") {
         require_count(words, 2);
         if (!first_command || in_batch)
           throw std::invalid_argument("background must be the first command");
@@ -272,5 +339,6 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
     }
   }
   if (in_batch) throw std::invalid_argument("unterminated batch: expected end");
+  if (frame_open)throw std::invalid_argument("unterminated XFS1 frame: expected xend");
   return result;
 }

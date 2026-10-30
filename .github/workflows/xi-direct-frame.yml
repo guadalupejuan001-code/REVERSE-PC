@@ -1,0 +1,85 @@
+name: Direct XI Frame Stream binary transport
+on:
+  push:
+    branches: [feature/xi-direct-frame-stream-20261030]
+    paths:
+      - 'src/integration/xi_machine_extension.inc'
+      - 'src/rxe.hpp'
+      - 'src/reverse_pc.cpp'
+      - 'experiments/xi-render/**'
+      - 'tests/xi_direct_xfs1_native.cpp'
+      - '.github/workflows/xi-direct-frame.yml'
+  pull_request:
+    branches: [perf/xi-frame-stream-composition-20261030]
+permissions: {contents: read}
+jobs:
+  direct-xfs1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: 1f925786522aba91f72707ad1638a8edcdd31a8f
+          path: deps/mundo-x
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Build original Ether runtime plus scoped binary XI transport
+        run: |
+          set -euo pipefail
+          mkdir -p build/xi-direct/evidence build/ether-compat
+          python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
+            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
+            src/reverse_pc.cpp -o build/xi-direct/reverse_pc
+          g++ -std=c++17 -O2 -pthread -Ibuild/ether-compat \
+            -Ideps/mundo-x/native/include -Isrc \
+            tests/xi_direct_xfs1_native.cpp -o build/xi-direct/native-contract
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Ideps/mundo-x/native/include \
+            experiments/xi-render/native-reference.cpp -o build/xi-direct/xrender-oracle
+      - name: Check native binary ABI and transactional rollback
+        run: |
+          set -euo pipefail
+          build/xi-direct/native-contract
+          node --check experiments/xi-render/direct-frame-test.cjs
+      - name: Measure JSON versus direct XI binary and verify all pixels
+        run: |
+          set -euo pipefail
+          node experiments/xi-render/direct-frame-test.cjs \
+            build/xi-direct/reverse_pc build/xi-direct/xrender-oracle \
+            build/xi-direct/evidence | tee build/xi-direct/benchmark.log
+          test -s build/xi-direct/evidence/direct-frame-results.json
+      - name: One binary XI transaction for complete curved road and fog scene
+        run: |
+          set -euo pipefail
+          node experiments/xi-render/super-road-direct-test.cjs \
+            build/xi-direct/reverse_pc build/xi-direct/evidence \
+            | tee build/xi-direct/super-road-benchmark.log
+          test -s build/xi-direct/evidence/super-road-direct-results.json
+      - name: Validate persistent XI frame-server and changing road controls
+        run: |
+          set -euo pipefail
+          node experiments/xi-render/frame-serve-test.cjs \
+            build/xi-direct/reverse_pc build/xi-direct/evidence \
+            | tee build/xi-direct/frame-serve-benchmark.log
+          test -s build/xi-direct/evidence/frame-serve-results.json
+      - name: Verify historical programmable XI behavior
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -pthread -Ibuild/ether-compat \
+            -Ideps/mundo-x/native/include -Isrc \
+            tests/xi_machine_test.cpp -o build/xi-direct/legacy-qi
+          build/xi-direct/legacy-qi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: xi-direct-xfs1-results
+          path: |
+            build/xi-direct/evidence/
+            build/xi-direct/benchmark.log
+            build/xi-direct/super-road-benchmark.log
+            build/xi-direct/frame-serve-benchmark.log
+          retention-days: 14

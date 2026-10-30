@@ -21,7 +21,7 @@ int main(int argc,char** argv) {
     const bool binary=argc==4&&std::string(argv[3])=="binary";
     if(argc==4&&!binary)throw std::invalid_argument("unknown mode");
     const int w=std::stoi(argv[1]),h=std::stoi(argv[2]);
-    if(w<24||w>1920||h<12||h>1080||w%8||h%24)
+    if(w<24||w>4096||h<12||h>2160||w%8||h%24||std::uint64_t(w)*h>16777216ULL)
       throw std::invalid_argument("invalid benchmark dimensions");
     Render e(w,h,16);
     e.camera({0.,0.,6.},{0.,0.,0.},90.);
