@@ -3,6 +3,7 @@ import {readFileSync as read,writeFileSync as write,copyFileSync as copy,statSyn
 import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import assert from 'node:assert/strict';
+import {analyzeGuestConsole} from './android_guest_outcome.mjs';
 import {bindC08Snapshot} from './android_c08_result.mjs';
 import {C07_PIN,hash} from './android_verified_c07_source.mjs';
 export const PIN=Object.freeze({state:'f93a5f85f892916c61772cd33d3361c6c961acb43fc43e7df1a92b38889c65f4',report:'af7c8c022f790307f2ccc4d5a6b9ca7672f7602364719218a12fa1e27b5dbd61',parent10:'3f7e28bb92a652ac6a791566cdb2c120ddc83dbd2469c9b6126df6758d57188d',parent09:'2f50ba79ef1bcfd0838a3bbd344b92d749576671cd6f76e357159c91c73a6d0c',parent08:'3dc63288cb53ad4485e4b2511af2fb22a13825fc81d0aace3efe25e71becbd38',parent07:'5d426d1fec117b8ef955bbbccb0e944586f36c6fe8594d9c684575dd0067e574',entry:'ec12937b7c33a3aff439f3c388bbd32b1f538e08667d0f83e61736489666bdbf',instructions:6484672081,pc:'0x4cb8e4',subtick:49,opcode:'0x5ef1b800'});
@@ -47,9 +48,9 @@ export function verifyResult(source,state,r,pointer,budget){
   assert.ok(typeof r.console==='string'&&Buffer.byteLength(r.console)<=4*1024*1024);
   assert.equal(typeof r.error,'string');assert.equal(typeof r.stop_reason,'string');
   const previous=source.parents['parent-c07.json'].console+source.parents['parent-c08.json'].console+source.parents['parent-c09.json'].console+source.parents['parent-c10.json'].console+source.report.console;
-  const combined=previous+r.console,panic=/Kernel panic - not syncing|Attempted to kill init!/.test(combined);
-  const clean=['instruction_budget','host_wall_budget'].includes(r.stop_reason)&&r.advanced_instructions>0&&!r.error&&!panic&&!g.halted&&!g.waiting;
-  return {source_c11_verified:true,r2_integrity_verified:true,checkpoint_sha256:r.checkpoint_sha256,instructions:g.instructions,advanced_instructions:r.advanced_instructions,pc:g.pc,stop_reason:r.stop_reason,error:r.error,execution_progress_accepted:clean,guest_kernel_panic:panic,new_uart_bytes:Buffer.byteLength(r.console),android_framework_verified:false,android_display_verified:false,native_android_games_verified:false,combined};
+  const combined=previous+r.console,outcome=analyzeGuestConsole(combined),panic=outcome.guest_kernel_panic;
+  const clean=['instruction_budget','host_wall_budget'].includes(r.stop_reason)&&r.advanced_instructions>0&&!r.error&&!outcome.guest_boot_failure&&!outcome.guest_reboot_requested&&!g.halted&&!g.waiting;
+  return {source_c11_verified:true,r2_integrity_verified:true,checkpoint_sha256:r.checkpoint_sha256,instructions:g.instructions,advanced_instructions:r.advanced_instructions,pc:g.pc,stop_reason:r.stop_reason,error:r.error,execution_progress_accepted:clean,guest_kernel_panic:panic,guest_boot_failure:outcome.guest_boot_failure,guest_terminal_failure:outcome.guest_terminal_failure,guest_reboot_requested:outcome.guest_reboot_requested,guest_failure_signals:outcome.guest_failure_signals,new_uart_bytes:Buffer.byteLength(r.console),android_framework_verified:false,android_display_verified:false,native_android_games_verified:false,combined};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
   try{
