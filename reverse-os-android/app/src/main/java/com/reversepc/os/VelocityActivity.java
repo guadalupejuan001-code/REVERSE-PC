@@ -43,6 +43,9 @@ public final class VelocityActivity extends Activity {
         t.setShadowLayer(dp(2),0,dp(1),0xcc000000);
         t.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));return t;
     }
+    private static void changedText(TextView view,String value){
+        if(!value.contentEquals(view.getText()))view.setText(value);
+    }
     private void add(FrameLayout root,View view,int w,int h,int gravity,int l,int t,int r,int b){
         FrameLayout.LayoutParams p=new FrameLayout.LayoutParams(w<0?w:dp(w),h<0?h:dp(h),gravity);
         p.setMargins(dp(l),dp(t),dp(r),dp(b));root.addView(view,p);
@@ -89,16 +92,19 @@ public final class VelocityActivity extends Activity {
     }
     private void raceHud(VelocityXiEngine.Snapshot s,boolean paused,String error){
         if(s==null)return;
-        speed.setText(s.speedKmh()+" km/h");
-        lap.setText("VUELTA "+s.displayedLap()+" / 3");
-        position.setText("POSICIÓN "+s.position+" / 4");
+        changedText(speed,s.speedKmh()+" km/h");
+        changedText(lap,"VUELTA "+s.displayedLap()+" / 3");
+        changedText(position,"POSICIÓN "+s.position+" / 4");
         long hundredths=s.ticks*2;
-        timer.setText(String.format(Locale.ROOT,"%02d:%02d.%02d",hundredths/6000,(hundredths/100)%60,hundredths%100));
+        changedText(timer,String.format(Locale.ROOT,"%02d:%02d.%02d",hundredths/6000,(hundredths/100)%60,hundredths%100));
         String center=error;
         if(center.isEmpty())center=paused?"EN PAUSA":s.finished?"META · "+s.position+".º":
             s.countdown==150?"ACELERA PARA SALIR":s.countdown>0?""+((s.countdown+49)/50):"";
-        status.setText(center);status.setTextSize(s.countdown>0&&s.countdown<150&&!paused?64:18);
-        warning.setText(s.wallContact?"CONTACTO":s.offRoad?"FUERA DE PISTA":"");
+        changedText(status,center);
+        int statusSp=s.countdown>0&&s.countdown<150&&!paused?64:18;
+        if(Math.abs(status.getTextSize()-statusSp*getResources().getDisplayMetrics().scaledDensity)>.5f)
+            status.setTextSize(statusSp);
+        changedText(warning,s.wallContact?"CONTACTO":s.offRoad?"FUERA DE PISTA":"");
         map.setCar(s.xCm/100f,s.zCm/100f);
     }
     @Override public void onCreate(Bundle saved){
@@ -152,7 +158,7 @@ public final class VelocityActivity extends Activity {
             for(int i=0;i<points.length;i+=2){minX=Math.min(minX,points[i]);maxX=Math.max(maxX,points[i]);minZ=Math.min(minZ,points[i+1]);maxZ=Math.max(maxZ,points[i+1]);}
             setContentDescription("Mapa del circuito");
         }
-        void setCar(float x,float z){carX=x;carZ=z;invalidate();}
+        void setCar(float x,float z){if(x==carX&&z==carZ)return;carX=x;carZ=z;invalidate();}
         @Override protected void onDraw(Canvas canvas){
             super.onDraw(canvas);float pad=dp(7),scale=Math.min((getWidth()-2*pad)/Math.max(1,maxX-minX),(getHeight()-2*pad)/Math.max(1,maxZ-minZ));
             float ox=(getWidth()-(maxX-minX)*scale)/2,oz=(getHeight()-(maxZ-minZ)*scale)/2;

@@ -24,6 +24,13 @@ assert.equal(digest(drive),inputs.driveSha256,'drive source changed during the t
 assert.equal(digest(world),inputs.worldSha256,'world source changed during the test');
 Object.assign(report,inputs,{upstreamPin:pin,harnessSha256:digest(harness),
  hostBuildFlags:process.env.VELOCITY_HOST_BUILD_FLAGS||'not recorded by caller'});
+const finalObservation=path.join(evidence,'final-observation.json');
+if(fs.existsSync(finalObservation)){
+ report.finalObservation=JSON.parse(fs.readFileSync(finalObservation,'utf8'));
+ assert.equal(report.finalObservation.length,16,'final physical observation ABI');
+ report.raceClockTicks=report.finalObservation[6];
+ report.controlTicksAfterCountdown=report.raceInputTicks;
+}
 fs.writeFileSync(file,JSON.stringify(report,null,2)+'\n');
 console.log('REVERSE_VELOCITY_XI_V3_PASS laps='+report.completedLaps+' sectors='+report.sectors+
  ' residentMsPerTick='+report.residentMsPerTick+' serializedMsPerTick='+report.serializedMsPerTick);

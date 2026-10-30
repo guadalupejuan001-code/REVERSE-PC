@@ -23,6 +23,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     private final VelocityLoopLifecycle lifecycle,physicsLifecycle;
     private final AtomicBoolean resetRequested=new AtomicBoolean();
     private volatile int input=4,cameraMode,paintId,quality=1;
+    private volatile int physicsHz;
     private volatile boolean paused;
     private volatile String error="";
 
@@ -38,11 +39,11 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
         input=gas|(brake<<1)|(steer<<2)|(handbrake?16:0);
     }
     void reset(){resetRequested.set(true);paused=false;}
-    boolean togglePause(){paused=!paused;if(paused)controls(0,0,1,false);return paused;}
+    boolean togglePause(){paused=!paused;if(paused){physicsHz=0;controls(0,0,1,false);}return paused;}
     int cycleCamera(){cameraMode=(cameraMode+1)%3;return cameraMode;}
     int cyclePaint(){paintId=(paintId+1)%5;return paintId;}
     int cycleQuality(){quality=(quality+1)%3;return quality;}
-    void resumeLoop(){error="";physicsLifecycle.resume();lifecycle.resume();}
+    void resumeLoop(){error="";physicsHz=0;physicsLifecycle.resume();lifecycle.resume();}
     void pauseLoop(){
         physicsLifecycle.pause();lifecycle.pause();
         physicsLifecycle.awaitStopped(250);lifecycle.awaitStopped(250);
@@ -61,6 +62,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
         physicsLifecycle.awaitStopped(250);lifecycle.awaitStopped(250);
     }
     private void failed(Throwable thrown){
+        physicsHz=0;
         error="No se pudo continuar la carrera: "+thrown.getMessage();
         physicsLifecycle.fail();lifecycle.fail();
         hud.update(game.current(),paused,0,0,0,error);
@@ -76,7 +78,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     measuredFrom=next;measuredSteps=0;
                 }
                 if(paused){
-                    measuredFrom=SystemClock.elapsedRealtimeNanos();measuredSteps=0;
+                    physicsHz=0;measuredFrom=SystemClock.elapsedRealtimeNanos();measuredSteps=0;
                     next=measuredFrom+20_000_000L;Thread.sleep(10);continue;
                 }
                 long now=SystemClock.elapsedRealtimeNanos(),wait=next-now;
@@ -89,8 +91,9 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 now=SystemClock.elapsedRealtimeNanos();
                 if(now-next>100_000_000L)next=now;
                 if(now-measuredFrom>=1_000_000_000L){
+                    physicsHz=(int)Math.round(measuredSteps*1_000_000_000.0/(now-measuredFrom));
                     Log.i("ReverseVelocity","PHYSICS_STATS steps="+measuredSteps+
-                        " elapsedNanos="+(now-measuredFrom));
+                        " elapsedNanos="+(now-measuredFrom)+" physicsHz="+physicsHz);
                     measuredFrom=now;measuredSteps=0;
                 }
             }
@@ -147,7 +150,8 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     long elapsed=now-lastFps;
                     fps=(int)Math.round(frames*1_000_000_000.0/elapsed);
                     Log.i("ReverseVelocity","FRAME_STATS frames="+frames+" elapsedNanos="+elapsed+
-                        " fps="+fps+" width="+width+" height="+height+" ticks="+state.ticks+" paused="+paused);
+                        " fps="+fps+" width="+width+" height="+height+" ticks="+state.ticks+
+                        " physicsHz="+physicsHz+" paused="+paused);
                     frames=0;lastFps=now;
                 }
                 if(now-lastHud>=100_000_000L){

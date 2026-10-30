@@ -74,3 +74,36 @@ La segunda ejecución empieza con registros limpios, carga el byte persistente 2
 ## Siguiente etapa
 
 Evaluar una ISA compacta en formato binario, memoria de registros persistente opcional, operaciones clásicas sobre palabras (64 bits) dentro de Ether, acceso a archivos/dispositivos con capacidades explícitas y una comparación de rendimiento con intérpretes clásicos equivalentes. Diseñar el hardware únicamente después de encontrar operaciones cuyo ahorro frente a CPU convencional justifique FPGA o acelerador.
+
+## Extensión de observaciones 3D (Velocity 0.2)
+
+La ejecución de fuente admite además estas primitivas genéricas. El compilador
+RXE todavía no las codifica. No contienen reglas de conducción ni de carreras.
+
+| Instrucción | Efecto |
+| --- | --- |
+| `load16 rD address`, `load32 rD address` | Lee u16/u32 little-endian determinista de InverseMemory. |
+| `store16 address value`, `store32 address value` | Escribe u16/u32 little-endian en la misma transacción. |
+| `localget rD index`, `localset index value` | Lee/escribe una de 4096 celdas i64 efímeras; empiezan en cero y no se serializan. |
+| `meshbegin width height revision background` | Abre una observación con z-buffer y materiales temporales. |
+| `meshvertex id x y z` | Define un vértice temporal. |
+| `meshread rX rY rZ id` | Lee las tres coordenadas a destinos distintos. |
+| `meshtri x0 y0 z0 x1 y1 z1 x2 y2 z2 material` | Rasteriza un triángulo ya proyectado, con profundidad positiva. |
+| `meshtri3 x0 y0 z0 x1 y1 z1 x2 y2 z2 material focal centerX centerY near` | Recorta en espacio de cámara y proyecta/rasteriza. |
+| `meshface id0 id1 id2 material focal centerX centerY near` | Equivalente indexado de `meshtri3`. |
+| `meshend` | Publica la visibilidad como regiones XFS1; ninguna salida parcial se conserva en un error. |
+
+Los accesos bulk aceptan direcciones decimales literales o `$rN`; se valida que
+el último byte quepa en UINT64 antes de escribir. Los accesos byte anteriores
+conservan su espacio lógico arbitrario. Los índices locales y de vértice
+aceptan literal o registro, en 0..4095. Un vértice se inicializa expresamente
+en cada `meshbegin`; leer una entrada no inicializada falla.
+
+El viewport mesh se limita a 640×360, 4096 triángulos y ocho millones de pruebas
+de píxel por observación. Los vértices de cámara quedan en ±1.000.000 y los
+materiales en 0..255. La salida resuelta contiene fondo por fila y regiones
+visibles disjuntas, con un máximo de 47 regiones de primer plano por fila.
+El presentador de Velocity reconoce esa semántica en la revisión 2 y mantiene
+las reglas anteriores de profundidad para imágenes de revisión 1.
+
+Las pruebas están en `tests/xi_machine_test.cpp` y `tests/xi_mesh_raster.cpp`.

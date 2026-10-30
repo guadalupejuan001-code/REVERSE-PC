@@ -29,5 +29,25 @@
   "worldSha256": "cfebe725e1efc0354dbfa484d20db805d7f9d9a7808b30130ad43b65b75d64f1",
   "upstreamPin": "1f925786522aba91f72707ad1638a8edcdd31a8f",
   "harnessSha256": "37374b98402c30aa3db6884381b5b1193380f7933a2a9c575ed01a8ac60161dc",
-  "hostBuildFlags": "-O1 local host"
+  "hostBuildFlags": "-O1 local host",
+  "raceClockTicks": 7152,
+  "controlTicksAfterCountdown": 7151,
+  "finalObservation": [
+    -63,
+    36,
+    4039,
+    4141,
+    0,
+    12,
+    7152,
+    1,
+    0,
+    4,
+    3,
+    36,
+    0,
+    0,
+    0,
+    480000
+  ]
 }

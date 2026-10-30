@@ -106,6 +106,16 @@ function waitFrame(previousCount=0){
   }
   throw Error('No new Canvas FRAME_READY marker after actual unlockCanvasAndPost');
 }
+function waitAdvancingFrame(minimumTicks){
+  for(let i=0;i<28;i++){
+    const text=logs();checkNoFailure(text);
+    const records=text.split(/\r?\n/).filter(s=>/ReverseVelocity.*FRAME_STATS\b/.test(s)).map(fields);
+    const record=records.find(s=>s.paused===false&&Number.isFinite(s.ticks)&&s.ticks>minimumTicks);
+    if(record)return record;
+    sleep(250);
+  }
+  throw Error('Actual posted-frame stats did not show advancing XI race ticks after continue');
+}
 function checkNoFailure(text){
   // Android services may log unrelated failures; attribute a crash to this app.
   const appProcess=/Process:\s*com\.reversepc\.velocity\b/.test(text);
@@ -115,7 +125,8 @@ function checkNoFailure(text){
     return appProcess||line.includes(pkg)||(pid&&appPids.has(Number(pid[1])));
   });
   assert(!appFatal,'fatal Android/native game error');
-  assert(!/XI \/ REgraphics:|No se pudo iniciar el programa propio/.test(text),'renderer/startup error');
+  assert(!/XI \/ REgraphics:|No se pudo (?:iniciar el programa propio|preparar la carrera|continuar la carrera)|ReverseVelocity.*Race worker failed/.test(text),
+    'renderer/startup error');
 }
 function unescapeXml(s){
   return s.replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&lt;/g,'<')
@@ -222,8 +233,21 @@ try{
   const pauseTime=timer(ui);
   sleep(1100);ui=waitText(/EN PAUSA/);
   check(pauseTime&&pauseTime===timer(ui),'race timer remains fixed while paused');
+  const ticksFromTimer=value=>{
+    const match=/^(\d{2}):(\d{2})\.(\d{2})$/.exec(value||'');
+    assert(match,'race HUD timer format is invalid');
+    return (Number(match[1])*6000+Number(match[2])*100+Number(match[3]))/2;
+  };
   stage='continue';tapNode(findText(ui,'Continuar'));
-  ui=waitText(/^Pausa$/);check(!ui.some(x=>/EN PAUSA/.test(x.text||'')),'continue resumes race');
+  // A running hundredths timer deliberately prevents accessibility-idle dumps.
+  // Observe actual posted-frame/tick telemetry while moving, then physically
+  // pause before reading a stable hierarchy again.
+  const advanced=waitAdvancingFrame(ticksFromTimer(pauseTime));
+  check(advanced.ticks>ticksFromTimer(pauseTime),'continue advances authoritative XI race ticks');
+  report.continuedFrame=advanced;
+  adbText(['shell','input','keyevent','KEYCODE_P']);
+  ui=waitText(/EN PAUSA/);
+  check(ticksFromTimer(timer(ui))>ticksFromTimer(pauseTime),'live race timer advanced before second physical pause');
   stage='camera and paint';tapNode(findText(ui,'Cámara'));
   ui=waitText(/^Cercana$/);check(!!findText(ui,'Cercana'),'physical camera changes to close chase');
   tapNode(findText(ui,'Color'));ui=waitText(/^Color 2$/);
@@ -234,6 +258,7 @@ try{
   check(Number.isFinite(startState.xCm)&&Number.isFinite(startState.zCm)&&Number.isFinite(startState.yaw4096),
     'initial posted frame exposes observed XI position and heading');
   startVideo();
+  adbText(['shell','input','keyevent','KEYCODE_P']);
   tapNode(findText(ui,'ACELERAR'),4500);
   tapNode(findText(ui,'ACELERAR'),3000);
   tapNode(findText(ui,'◀'),800);

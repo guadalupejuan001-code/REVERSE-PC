@@ -134,6 +134,9 @@ int main(int argc,char** argv){try{
  try{resident.execute(header+"store8 100 255\nnot_an_instruction\n");}catch(const std::exception&){rejected=true;}
  check(rejected&&reverse_pc::rvpc2::save(resident)==retained,"live XI atomic rollback");
  bool frozen=false;if(s[7]){const auto finished=s;for(int i=0;i<10;i++)s=state(runtime.execute(command({1,0,2,1})));frozen=s==finished;check(frozen,"finish freezes authoritative race observations");check(s[5]==12&&s[10]==3&&s[15]==480000,"three complete physical laps finish exactly");}
+ {std::ofstream observation(out/"final-observation.json");observation<<'[';
+  for(std::size_t i=0;i<s.size();i++){if(i)observation<<',';observation<<s[i];}
+  observation<<"]\n";}
  std::ostringstream report;report<<"{\"passed\":"<<(s[7]?"true":"false")<<",\"checks\":"<<checks<<",\"worldPoints\":81,\"gameRegisters\":16,\"countdownTicks\":"<<countdown<<",\"raceInputTicks\":"<<ticks<<",\"raceVirtualSeconds\":"<<lastTicks/50.<<",\"raceWallMs\":"<<raceMs<<",\"raceExecuteMs\":"<<executeMs<<",\"maxSpeedCmps\":"<<maxSpeed<<",\"offRoadTicks\":"<<offRoad<<",\"wallTicks\":"<<walls<<",\"finished\":"<<(s[7]?"true":"false")<<",\"completedLaps\":"<<s[10]<<",\"sectors\":"<<s[5]<<",\"finishFrozen\":"<<(frozen?"true":"false")<<",\"persistenceSampleTicks\":"<<sample<<",\"residentMsPerTick\":"<<(sample?liveMs/sample:0)<<",\"serializedMsPerTick\":"<<(sample?persistMs/sample:0)<<",\"exactSerializedState\":true,\"seedBytes\":"<<seed.size()<<",\"finalBytes\":"<<final.size()<<",\"pilotGain\":"<<gain<<",\"pilotLookaheadSegments\":"<<lookahead<<",\"curveTargetCmps\":"<<curveSpeed<<",\"androidDeviceMeasured\":false}\n";
  std::ofstream(out/"gameplay-results.json")<<report.str();std::cout<<report.str();return s[7]?0:2;
 }catch(const std::exception& e){std::cerr<<"VELOCITY_GAMEPLAY_FAIL "<<e.what()<<"\n";return 1;}}
