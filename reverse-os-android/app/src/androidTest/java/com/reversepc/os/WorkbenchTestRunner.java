@@ -298,6 +298,58 @@ public final class WorkbenchTestRunner extends Instrumentation {
         require(waitJs("window.shellSaved").equals("true"),"Profile not committed");
         retainedProof(true);fullDisplay();visualCheck("native-"+requested);
     }
+    private String laplaceJs(LaplaceActivity laplace,String script)throws Exception{
+        CountDownLatch done=new CountDownLatch(1);AtomicReference<String> value=new AtomicReference<>();
+        runOnMainSync(()->laplace.testingWebView().evaluateJavascript(script,r->{value.set(r);done.countDown();}));
+        require(done.await(15,TimeUnit.SECONDS),"Laplace JS callback timed out");
+        Object result=new JSONArray("["+value.get()+"]").get(0);return result==JSONObject.NULL?"null":String.valueOf(result);
+    }
+    private void laplaceWorkflow()throws Exception{
+        File core=dataFile("session.rvp");String before=core.exists()?hash("session.rvp"):null;
+        ActivityMonitor monitor=addMonitor(LaplaceActivity.class.getName(),null,false);
+        require(js("typeof window.ReverseNative.openLaplace==='function'&&SHELL_APPS.includes('laplace')").equals("true"),"Laplace absent from launcher");
+        js("createWindow('laplace');true");
+        LaplaceActivity laplace=(LaplaceActivity)waitForMonitorWithTimeout(monitor,15000);removeMonitor(monitor);
+        require(laplace!=null,"Laplace did not open from REVERSE");
+        boolean ready=false;
+        for(int i=0;i<100;i++){if(laplaceJs(laplace,"typeof window.LaplaceHost==='object'").equals("true")){ready=true;break;}Thread.sleep(200);}
+        require(ready,"Packaged modules did not load");
+        require(laplaceJs(laplace,"document.documentElement.lang").equals("es"),"Language");
+        require(laplaceJs(laplace,"document.querySelectorAll('#horizonte option').length").equals("6"),"Horizons");
+        require(laplaceJs(laplace,"isSecureContext&&!!crypto.subtle&&typeof window.LaplaceNative.request==='function'").equals("true"),"Secure WebCrypto/native bridge");
+        require(laplaceJs(laplace,"document.querySelectorAll('.nodo').length").equals("7"),"3D query nodes");
+        laplaceJs(laplace,"document.querySelector('[data-tab=flujo]').click();true");
+        require(laplaceJs(laplace,"!document.querySelector('#flujo').hidden").equals("true"),"3D tab");
+        // Numerical probe only: fixture never becomes a saved live quote.
+        laplaceJs(laplace,"window.laplaceProbe=null;import(new URL('./modelo.mjs',document.baseURI).href).then(async m=>{const end=Math.floor(Date.now()/300000)*300,rows=Array.from({length:500},(_,i)=>[end-(500-i)*300,1000-i-1,1000-i+1,1000-i,1000-i,10]),t=new Date().toISOString();const p=await m.emitirPronosticos(rows,{asset:'BTC-USD',value:'500',observed_at:t,known_at:t},{emitidoEn:t,horizontes:[15,30,60,240,1440,10080],revision:'android-fixture'});window.laplaceProbe=p.length===6&&p[0].precio_predicho<500&&p[5].precio_predicho===null;}).catch(e=>window.laplaceProbe=String(e));true");
+        String probe="null";for(int i=0;i<80;i++){probe=laplaceJs(laplace,"window.laplaceProbe");if(!probe.equals("null"))break;Thread.sleep(200);}
+        require(probe.equals("true"),"M001 did not run in Android WebView: "+probe);
+        final boolean[] safeContent={false};
+        runOnMainSync(()->{
+            WebView view=laplace.testingWebView();android.view.View parent=(android.view.View)view.getParent();
+            android.view.WindowInsets insets=parent.getRootWindowInsets();
+            if(insets!=null&&android.os.Build.VERSION.SDK_INT>=30){
+                android.graphics.Insets safe=insets.getInsets(android.view.WindowInsets.Type.systemBars()|
+                    android.view.WindowInsets.Type.displayCutout());
+                safeContent[0]=parent.getPaddingLeft()>=safe.left&&parent.getPaddingTop()>=safe.top&&
+                    parent.getPaddingRight()>=safe.right&&parent.getPaddingBottom()>=safe.bottom&&
+                    view.getWidth()>0&&view.getHeight()>0&&
+                    view.getWidth()<=parent.getWidth()-safe.left-safe.right&&
+                    view.getHeight()<=parent.getHeight()-safe.top-safe.bottom;
+            }else safeContent[0]=insets!=null;
+        });
+        require(safeContent[0],"Laplace controls overlap system bars/cutout");
+        Bitmap laplaceFrame=getUiAutomation().takeScreenshot();
+        require(laplaceFrame!=null,"Laplace screenshot unavailable");
+        try(FileOutputStream output=new FileOutputStream(dataFile("laplace-auditoria.png"))){
+            require(laplaceFrame.compress(Bitmap.CompressFormat.PNG,100,output),"Laplace screenshot failed");
+        }finally{laplaceFrame.recycle();}
+        require(!LaplaceActivity.trusted(android.net.Uri.parse("https://attacker.example/")),"External document accepted");
+        boolean blocked=false;try{LaplaceActivity.urlFor("file:///private",new JSONObject());}catch(Exception expected){blocked=true;}
+        require(blocked,"Arbitrary source accepted");
+        runOnMainSync(laplace::finish);Thread.sleep(300);
+        require(before==null?!core.exists():before.equals(hash("session.rvp")),"Laplace modified native core memory");
+    }
     @Override public void onStart(){
         Bundle result=new Bundle();
         try{
@@ -314,6 +366,10 @@ public final class WorkbenchTestRunner extends Instrumentation {
             activity=(WorkbenchActivity)waitForMonitorWithTimeout(desktopMonitor,15000);removeMonitor(desktopMonitor);
             require(activity!=null,"Entry did not reach Workbench: "+requested);
             waitJs("document.querySelector('[data-task-app]')&&typeof nativeRequest==='function'");
+            if(requested.equals("laplace")){
+                laplaceWorkflow();result.putString("stream","WORKBENCH_TESTS_OK mode=laplace packaged=M001 WebCrypto=verified core=unchanged\n");
+                result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
+            }
             JSONObject snapshot=op("inspect","","testSnapshot");
             require(snapshot.getBoolean("ok"),snapshot.toString());
             require(snapshot.getJSONObject("android").getLong("ram_total_bytes")>0,"No native RAM reading");

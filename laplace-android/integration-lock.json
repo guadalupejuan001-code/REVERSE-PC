@@ -1,0 +1,33 @@
+{
+  "schema": 1,
+  "upstream": "06ebce4bddf25d615cefd85ed24081f37504a492",
+  "model": "M001",
+  "files": {
+    "reverse-os-android/app/src/main/assets/laplace/app.mjs": "82e1f599c8340ef6e24d820b3b16d7eb428f64de3994873e395281461b6d9db6",
+    "reverse-os-android/app/src/main/assets/laplace/grafica.js": "23efd2044b439b61673c11cd72127430d73520c4b640cf245641dde3f9d786b6",
+    "reverse-os-android/app/src/main/assets/laplace/index.html": "ded0bd72ae019a81e407a140fd7936d83ea0e434f413544244c5f27a557ef104",
+    "reverse-os-android/app/src/main/assets/laplace/integridad.mjs": "3912bb8fec306b793ec50a3d7bcbc5368ae98ec49e06566a43bc07073a1b53fb",
+    "reverse-os-android/app/src/main/assets/laplace/modelo.mjs": "8566056be52b69abca73d36b5f933d1d3a9f6fa83f56cd21c31bb6862b9915db",
+    "reverse-os-android/app/src/main/assets/laplace/styles.css": "1ce904b24d3b1855386decc19c4edc8d954c9c1c594f282bfc6655cb7ad861cd",
+    "reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceActivity.java": "d7e3d3396d5f5081d155b57e1b16282bae0808aff5bee6288fff15f0c2010ef7",
+    "laplace-android/upstream-lock.json": "abb08ad8c1d9eb89ee3f61dd74fd7ec5280d7dd3f2e86d41be2c2d231d6db879",
+    "laplace-android/upstream/universo/integridad.mjs": "4ed158bc6c192cba2f4ee673dc7c99f63d7d2b73889d1b04dee5c791a47fc577",
+    "laplace-android/upstream/seguimiento/modelo.mjs": "1a72ecc3437baeb2db0afb9b8a36618c4568badfab0baf318d005bfa99fabe3a",
+    "laplace-android/upstream/panel/publico/grafica.js": "23efd2044b439b61673c11cd72127430d73520c4b640cf245641dde3f9d786b6"
+  },
+  "horizons_minutes": [
+    15,
+    30,
+    60,
+    240,
+    1440,
+    10080
+  ],
+  "required_flavors": [
+    "control",
+    "workbench"
+  ],
+  "node_server_required_on_phone": false,
+  "automatic_trading": false,
+  "native_XI_modified": false
+}

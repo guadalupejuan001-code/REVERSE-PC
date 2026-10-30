@@ -197,6 +197,7 @@ public final class WorkbenchActivity extends Activity {
         return result;
     }
     public final class Bridge {
+        @JavascriptInterface public void openLaplace(){ui.post(()->{if(!closed)startActivity(new Intent(WorkbenchActivity.this,LaplaceActivity.class));});}
         @JavascriptInterface public void hideKeyboard(){ui.post(WorkbenchActivity.this::hideKeyboard);}
         @JavascriptInterface public void request(String id,String operation,String payload){
             if(closed||id==null||!id.matches("[A-Za-z0-9_-]{1,60}"))return;

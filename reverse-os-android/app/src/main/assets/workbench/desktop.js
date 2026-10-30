@@ -42,7 +42,8 @@ const PRESETS = [
 ];
 const APPS = {files:{name:'Archivos',icon:'files',w:750,h:475},notes:{name:'Notas',icon:'note',w:365,h:355},calculator:{name:'Calculadora',icon:'calculator',w:300,h:440},settings:{name:'Ajustes',icon:'sliders',w:430,h:610},help:{name:'Ayuda',icon:'help',w:450,h:490},image:{name:'Imagen',icon:'image',w:550,h:430}};
 Object.assign(APPS,{xi:{name:'XI',icon:'terminal',w:680,h:550},programs:{name:'Programas',icon:'desktop',w:640,h:470},bbyq:{name:'BBY Q',icon:'bby',w:620,h:500},xmarket:{name:'X MARKET',icon:'market',w:980,h:655},rxe:{name:'Aplicación .rxe',icon:'desktop',w:620,h:500},control:{name:'Sistema',icon:'settings',w:790,h:650},wallpaper:{name:'Editor de fondo',icon:'image',w:390,h:635}});
-const SHELL_APPS = ['programs','files','bbyq','xi','control'];
+Object.assign(APPS,{laplace:{name:'Laplace',icon:'market',w:980,h:655}});
+const SHELL_APPS = ['programs','files','bbyq','xi','control','laplace'];
 const PINNED = ['files','programs','bbyq','xi'];
 const now = () => Date.now();
 const uid = () => 'f' + (globalThis.crypto?.randomUUID?.() || Math.random().toString(36).slice(2) + now()).replace(/-/g,'');
@@ -101,6 +102,7 @@ function getWindow(id){return state.windows.find(w=>w.id===id);}
 function windowTitle(w){if(w.app==='rxe')return w.rxeTitle||'Aplicación .rxe';if(w.app==='notes'||w.app==='image')return fileById(w.file)?.name||APPS[w.app].name;return APPS[w.app].name;}
 function focusWindow(id){const w=getWindow(id);if(!w)return;activeId=id;w.z=++zCounter;w.min=false;for(const el of $$('.window'))el.classList.toggle('focused',el.dataset.id===id);const el=$('#'+id);if(el)geometry(w,el);renderDock();queueSave();}
 function createWindow(app,opts={}){
+  if(app==='laplace'){if(window.ReverseNative?.openLaplace)window.ReverseNative.openLaplace();else toast('Laplace requiere el adaptador de la APK REVERSE.','help');return;}
   if(app==='nativeDesktop')app='programs';
   if(app==='control'&&!opts.tab)opts={...opts,tab:'system'};
   if(app==='bbyq'){app='rxe';opts={...opts,rxePath:'Aplicaciones/BBY-Q.rxe',rxeTitle:'BBY Q'};}

@@ -132,6 +132,10 @@ jobs:
           adb shell am force-stop com.reversepc.control.workbench
           timeout 180s adb shell am instrument -w -e mode restore com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee evidence/android-restore.txt
           grep 'WORKBENCH_TESTS_OK mode=restore' evidence/android-restore.txt
+          adb shell am force-stop com.reversepc.control.workbench
+          timeout 120s adb shell am instrument -w -e mode laplace com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee evidence/android-laplace.txt
+          grep 'WORKBENCH_TESTS_OK mode=laplace' evidence/android-laplace.txt
+          adb exec-out run-as com.reversepc.control.workbench cat files/laplace-auditoria.png > evidence/android-laplace.png
       - uses: actions/upload-artifact@v4
         if: always()
         with:
