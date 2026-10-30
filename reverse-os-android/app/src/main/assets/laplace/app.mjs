@@ -158,7 +158,7 @@ function renderStock(s){
   $('candidato').textContent=up?'SUBIDA':'BAJADA';$('candidato').className=up?'positivo':'negativo';
   $('cambio').textContent='Confianza interna '+percent(x.confidence)+' · P(subida) '+percent(x.probability_up);
   $('objetivo').textContent=date(new Date(Date.parse(s.quote.observed_at)+300000).toISOString());
-  $('soporteCorto').textContent=x.support+' estados iguales';const lab=BOLSA_LAB[s.market.asset];$('validacionCorta').textContent=lab?percent(lab.accuracy)+' · ensayo B001':'Sin ensayo';
+  $('soporteCorto').textContent=x.support+' estados iguales';$('validacionCorta').textContent='XN01 · pendiente de reserva fresca';
   $('soporte').textContent='Estado XI '+x.mask+' · '+x.training_rows+' filas nativas · soporte '+x.support+' · prior '+percent(x.prior)+'.';
   $('interpretacion').textContent='XN01 calcula la dirección dentro de XI/Ether usando InverseMemory. JavaScript solo representa la salida y no decide SUBIDA/BAJADA.';
   const root=$('estadoBits');root.hidden=false;root.replaceChildren();
@@ -193,7 +193,7 @@ function drawObservedStock(s,graph){
   for(let i=0;i<4;i++){const value=max-(max-min)*i/3,yy=y(value);draw('line',{x1:left,x2:right,y1:yy,y2:yy,stroke:'#314153'});draw('text',{x:left-8,y:yy+4,'text-anchor':'end',fill:'#a3b3c0','font-size':'11'},value.toFixed(2));}
   draw('path',{d:rows.map((v,i)=>(i?'L':'M')+x(v.t).toFixed(2)+' '+y(v.p).toFixed(2)).join(' '),fill:'none',stroke:'#dcecf3','stroke-width':2,'data-series':'observed-stock'});
   draw('circle',{cx:x(rows.at(-1).t),cy:y(rows.at(-1).p),r:4,fill:'#8bdcb9'});
-  $('detalleGrafico').textContent='Observado hasta '+date(s.quote.observed_at)+' · X001 predice dirección, no un precio futuro.';
+  $('detalleGrafico').textContent='Observado hasta '+date(s.quote.observed_at)+' · XN01 predice dirección, no un precio futuro.';
 }
 function renderFactors(){
   const root=$('factores');root.replaceChildren(),s=current();
@@ -202,7 +202,7 @@ function renderFactors(){
   if(!isBTC()){
     const cards=[
       ['Fuente bursátil',(s.stock_meta.exchange||'Mercado')+' · '+s.stock_meta.timezone+' · '+s.bars.length+' velas cerradas.'],
-      ['Estado X001','Máscara '+s.stock_result.mask+' · '+s.stock_result.support+' antecedentes del mismo estado.'],
+      ['Estado XI/Ether','Máscara '+s.stock_result.mask+' · '+s.stock_result.support+' antecedentes del mismo estado.'],
       ['Ensayo B001',labText(s.market.asset)]
     ];
     for(const [t,d] of cards)root.append(card(t,d));return;
@@ -244,7 +244,7 @@ function renderRegister(){
 }
 function adaptMode(){
   const a=asset(),btc=a.kind==='crypto';$('modoCabecera').textContent='Mercado · '+a.short+' '+a.model;$('mercadoChip').textContent=a.short;$('modeloChip').textContent=a.model;
-  $('precioEtiqueta').textContent='PRECIO OBSERVADO · '+a.short;$('graficoTitulo').textContent=btc?'Historia observada y estimación':'Historia observada · '+a.short;$('graficoSubtitulo').textContent=btc?'Precio y punto calculado con eje temporal real.':'X001 no dibuja un precio futuro que no calculó.';
+  $('precioEtiqueta').textContent='PRECIO OBSERVADO · '+a.short;$('graficoTitulo').textContent=btc?'Historia observada y estimación':'Historia observada · '+a.short;$('graficoSubtitulo').textContent=btc?'Precio y punto calculado con eje temporal real.':'XN01 no dibuja un precio futuro que no calculó.';
   for(const el of document.querySelectorAll('[data-btc-only]'))el.hidden=!btc;for(const el of document.querySelectorAll('[data-stock-only]'))el.hidden=btc;
   for(const opt of $('horizonte').options)opt.disabled=btc?!BTC_HORIZONS.has(Number(opt.value)):opt.value!=='5';
   if(btc&&!BTC_HORIZONS.has(Number($('horizonte').value)))$('horizonte').value='15';if(!btc)$('horizonte').value='5';
