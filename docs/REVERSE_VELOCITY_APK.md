@@ -29,7 +29,23 @@ gradle -p reverse-os-android --no-daemon :app:assembleVelocityDebug
 ```
 
 Salida: `reverse-os-android/app/build/outputs/apk/velocity/debug/app-velocity-debug.apk`.
-El artefacto del workflow se llama `REVERSE-VELOCITY-0.2.0-Carrera.apk`.
+El artefacto actual del workflow se llama `REVERSE-VELOCITY-0.3.0-Autos.apk`.
+
+## Coches 0.3
+
+La versión `0.3.0-cars` tiene versionCode 3 y conserva el mismo paquete y
+certificado de desarrollo. Sustituye las carrocerías de cajas por mallas curvas
+con pasos de rueda, cristales inclinados, llantas y sombreado interpolado.
+`Nitidez` permite fijar `Alta` a 640×360 o regresar a `Auto`, adaptativo.
+La física y el circuito conservan las fuentes de la versión 0.2.
+
+El smoke exige un fotograma nuevo a 640×360 con `fixedDetail=true`, pausa sin
+avance del cronómetro y retorno a la resolución adaptativa con
+`fixedDetail=false`. Después comprueba conducción y graba vídeo en `Auto`.
+La comprobación del selector acredita la resolución usada, sin presuponer una
+tasa de imágenes en el dispositivo físico.
+
+[Modelo, materiales, pruebas y límites de los coches](REVERSE_VELOCITY_CARS_V03.md).
 
 ## Carrera 3D 0.2
 
@@ -88,3 +104,37 @@ al recorrido sin render. Evidencia local persistida en
 El resultado exacto del paquete y del smoke está en los archivos
 `docs/evidence/velocity-apk-0.2.0-package.json` y
 `docs/evidence/velocity-apk-0.2.0-smoke.json`.
+
+
+## APK 0.3 verificada
+
+La fuente `236513fc0870e5e07a5ff0eb2f1d2609e29328ce` pasó el
+[workflow de APK](https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/41101228105)
+y la [validación XI/JNI/Java](https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/41101234581).
+El smoke de Android 35 x86_64 completó 35 comprobaciones: instalación,
+fotogramas reales, aceleración, dirección, pausa, cámaras, pintura, ambos
+perfiles de nitidez, regreso desde HOME y grabación de vídeo.
+La velocidad observada pasó por 57 km/h y terminó a 120 km/h, con posición
+(-357,36638) cm y yaw 3592 tras operar los controles.
+
+APK: 3.862.959 bytes; SHA-256
+`beee163435aea85db6d5c55c1a9e16a0071ef1e14e5ca784c389c00e095e4bff`.
+Conserva el certificado SHA-256
+`061c28614fffecdc9a53a5661c4acf8c4d1173b631095aaaee8a98070abdf0d7`;
+las dos bibliotecas ABI y el ZIP pasaron la alineación de 16 KiB.
+
+Vídeo original de la APK: 1.401.352 bytes y 10,1681 segundos; SHA-256
+`63bbf2ba030aca046c8ffccf8cfa446e814774abc8c5fdbe73dc9a8228ab3e70`.
+Es una grabación real mediante `adb screenrecord`, no un render promocional.
+
+Tras volver de Alta a Auto, ocho muestras durante conducción y grabación
+publicaron 28–30 FPS a 480×270, con física a 50 Hz. En esa ventana hubo
+241 fotogramas en 8,152751745 segundos (29,56 FPS ponderados). El arranque
+frío fue más lento y redujo temporalmente a 320×180; las muestras de pausa
+rondan 10 FPS por el ritmo de reposo y se excluyen de la ventana de conducción.
+Alta se comprobó con un fotograma nuevo a 640×360 y `fixedDetail=true`,
+sin avance del cronómetro. No se midió su conducción sostenida ni el
+rendimiento del Galaxy A16 físico.
+
+Resultados exactos: `docs/evidence/velocity-apk-0.3.0-package.json` y
+`docs/evidence/velocity-apk-0.3.0-smoke.json`.

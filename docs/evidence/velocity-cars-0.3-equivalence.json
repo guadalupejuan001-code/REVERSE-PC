@@ -1,0 +1,18 @@
+{
+  "passed": true,
+  "beforeRendererSha256": "361f933cca025af7e42b407f9b719254883099dd3d0d0e2841e14137c810b6dc",
+  "afterRendererSha256": "1853d9ea71aeb91e3554acb1cfbc55e2e5e3626757bf4dc515337b448f6ea484",
+  "scenePixelCasesExact": 49,
+  "coupledXfs1FramesExact": 15,
+  "finalPhysicsStateExact": true,
+  "finalPhysicsStateSha256": "239a3439c1d0c110518fe2ec512f798263921d3eb78764bd7e0bb55b3a5821ef",
+  "sourceBytesBefore": 251954,
+  "sourceBytesAfter": 232224,
+  "raceInputTicks": 7151,
+  "completedLaps": 3,
+  "sectors": 12,
+  "zeroOffRoad": true,
+  "zeroWalls": true,
+  "sourceOnlyOptimization": true,
+  "androidDeviceMeasured": false
+}

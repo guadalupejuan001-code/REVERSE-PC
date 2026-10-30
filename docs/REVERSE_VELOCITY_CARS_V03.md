@@ -81,3 +81,31 @@ interpolación con perspectiva y clipping, casos planos anteriores, rollback,
 caché por hilo y conservación del estado físico. Las vistas de inspección son
 renders reales del mismo modelo y motor; no son imágenes generadas por IA.
 Los resultados de Android y la APK se registran en `REVERSE_VELOCITY_APK.md`.
+
+## Validación final en host
+
+| Comprobación | Resultado y evidencia |
+| --- | --- |
+| Escenas | [49 casos deterministas](evidence/velocity-cars-0.3-scene.json): 45 modos y cuatro poses, con el estado intacto. |
+| JNI de producción | [45 casos aprobados](evidence/velocity-cars-0.3-jni.json), incluido aislamiento durante conducción concurrente. |
+| Carrera XI | [Tres vueltas y 12 sectores en 7.151 ticks](evidence/velocity-cars-0.3-gameplay.json), sin salidas de pista ni contactos con muros; final congelado y persistencia exacta. |
+| Última optimización del shader | [49 imágenes idénticas y 15 frames XFS1 idénticos byte por byte](evidence/velocity-cars-0.3-equivalence.json), conservando el estado físico final. |
+| Perfil nativo | [Nueve comparaciones con la misma biblioteca O2 y estado inicial](evidence/velocity-cars-0.3-profile.json), con cuatro calentamientos y nueve muestras por versión; los tiempos fueron mixtos. |
+
+Son resultados de host y JVM, no mediciones de rendimiento Android. No demuestran
+una mejora general de FPS ni sustituyen la validación del APK en dispositivo.
+
+La fuente `236513fc0870e5e07a5ff0eb2f1d2609e29328ce` también pasó la
+[validación CI de XI, rasterizador, Java y JNI](https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/41101234581).
+El rasterizador completó 4.196 comprobaciones UBSan y los 45 modos JNI
+conservaron el aislamiento de estado durante conducción concurrente.
+
+## Android y vista real del juego
+
+La APK de la misma fuente pasó 35 comprobaciones en Android 35 x86_64.
+El [informe de paquete, controles y vídeo](evidence/velocity-cars-0.3-android-qa.json)
+registra 28–30 FPS en Auto a 480×270 durante ocho muestras de conducción
+y grabación, con física a 50 Hz. Alta se verificó pausada a 640×360; no es
+una medición de conducción sostenida en ese perfil ni del teléfono físico.
+
+![Captura real de la APK, cámara cercana y nitidez Alta](evidence/velocity-cars-0.3-android-alta.png)
