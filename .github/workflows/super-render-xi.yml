@@ -1,0 +1,78 @@
+name: SUPER RENDER XI — authentic RXE, scalable geometry
+on:
+  push:
+    branches: [experiment/xrender-xi-hypothesis-20261029]
+    paths:
+      - 'experiments/xi-render/super-*'
+      - 'experiments/xi-render/SUPER_RENDER_XI.md'
+      - '.github/workflows/super-render-xi.yml'
+  pull_request:
+    branches: [feature/reverse-velocity-native-20261029]
+    paths:
+      - 'experiments/xi-render/super-*'
+      - 'experiments/xi-render/SUPER_RENDER_XI.md'
+      - '.github/workflows/super-render-xi.yml'
+permissions: {contents: read}
+jobs:
+  authentic-xi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: 1f925786522aba91f72707ad1638a8edcdd31a8f
+          path: deps/mundo-x
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Build existing REVERSE XI execution environment
+        run: |
+          set -euo pipefail
+          mkdir -p build/xi-render/executable build/xi-render/evidence build/ether-compat
+          python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
+            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
+            src/reverse_pc.cpp -o build/xi-render/reverse_pc
+      - name: Compile XI-authored scene and geometric primitives into RXE
+        run: |
+          set -euo pipefail
+          build/xi-render/reverse_pc compile experiments/xi-render/super-render.xi \
+            build/xi-render/executable/SUPER-RENDER-XI.rxe "SUPER RENDER XI"
+          build/xi-render/reverse_pc compile experiments/xi-render/super-triangle.xi \
+            build/xi-render/executable/SUPER-TRIANGLE-XI.rxe "SUPER TRIANGLE XI"
+          build/xi-render/reverse_pc disassemble \
+            build/xi-render/executable/SUPER-RENDER-XI.rxe \
+            build/xi-render/executable/scene-check.xi
+          build/xi-render/reverse_pc disassemble \
+            build/xi-render/executable/SUPER-TRIANGLE-XI.rxe \
+            build/xi-render/executable/triangle-check.xi
+          grep -q '^#!reverse-pc-machine-v1' build/xi-render/executable/scene-check.xi
+          grep -q '^#!reverse-pc-machine-v1' build/xi-render/executable/triangle-check.xi
+          sha256sum build/xi-render/executable/*.rxe \
+            > build/xi-render/executable/SHA256SUMS.txt
+          test -s build/xi-render/executable/SUPER-RENDER-XI.rxe
+          test -s build/xi-render/executable/SUPER-TRIANGLE-XI.rxe
+      - name: Verify independent exact geometry and 16K logical streaming
+        run: |
+          set -euo pipefail
+          node experiments/xi-render/super-verify.cjs build/xi-render/reverse_pc \
+            build/xi-render/evidence | tee build/xi-render/super-scene.log
+          node experiments/xi-render/super-triangle-verify.cjs build/xi-render/reverse_pc \
+            build/xi-render/evidence | tee build/xi-render/super-triangle.log
+          test -s build/xi-render/evidence/super-results.json
+          test -s build/xi-render/evidence/super-triangle-results.json
+          grep -q SUPER_RENDER_XI_ALL_OK build/xi-render/super-scene.log
+          grep -q SUPER_TRIANGLE_XI_ALL_OK build/xi-render/super-triangle.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: SUPER-RENDER-XI-native-executables-and-evidence
+          path: |
+            build/xi-render/executable/
+            build/xi-render/evidence/
+            build/xi-render/super-scene.log
+            build/xi-render/super-triangle.log
+          retention-days: 14
