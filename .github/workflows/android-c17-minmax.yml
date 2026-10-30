@@ -41,7 +41,7 @@ jobs:
           set -euo pipefail
           mkdir -p evidence/c17 build
           git merge-base --is-ancestor 2be615062bbe5f02a9428acdcae95e7f9484bdef HEAD
-          git diff --exit-code 8767b050e226e777cd6e558b9e97ef3e94e58a1d HEAD -- src third_party ':!src/minimal_guest_simd.inc'
+          git diff --exit-code 2be615062bbe5f02a9428acdcae95e7f9484bdef HEAD -- src third_party ':!src/minimal_guest_simd.inc'
           sha256sum --check tools/android_c17_source.sha256
           echo 'd2ef1f650948453e902122a7bcf6ddda577effb469c5c101a0eaec5f25394df5  input-c16/current.rvg' | sha256sum --check
           echo 'c11ef7f66b4e2138e8b6d450116ebc838d9f19514e9c1f8173fb17207e5a3f7f  input-c16/current.json' | sha256sum --check
