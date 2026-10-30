@@ -131,17 +131,18 @@ try{
   assert(colors.size>10,'3D scene lacks authored materials');
   assert(pixels.every(p=>(p>>>24)===255),'unpresented image pixel');
   const count=(lo,hi)=>materials.filter(m=>inRange(m,lo,hi)).length;
+  const paintMaterials=count(64+24*paint,87+24*paint);
   if(label==='reset'){
-   assert(count(0,63)>=2,'sky planes absent');
-   assert(count(64,95)>0,'terrain absent');
-   assert(count(96,127)>0,'world-space road absent');
-   assert(visible.has(206),'road markings absent');
-   const paintMaterials=count(128+6*paint,133+6*paint);
+   assert(visible.has(0)&&visible.has(1),'sky and horizon absent');
+   assert(visible.has(2),'terrain absent');
+   assert(visible.has(6),'world-space road absent');
+   assert(visible.has(7),'road markings absent');
    assert(paintMaterials>=(camera===2?1:2),'selected car/hood paint absent');
   }
   const pixelHash=sha(Buffer.from(pixels.buffer));
   measured.push({label,stride,camera,paint,width:frame.width,height:frame.height,commands:frame.spans.length,
-   bytes:first.bytes.length,hostRunMs:rounded(first.ms),uniqueColors:colors.size,visibleMaterials:materials,pixelSha256:pixelHash});
+   bytes:first.bytes.length,hostRunMs:rounded(first.ms),uniqueColors:colors.size,
+   selectedPaintShades:paintMaterials,glassShades:count(184,207),visibleMaterials:materials,pixelSha256:pixelHash});
   if(label==='reset')hashes.set(stride+':'+camera+':'+paint,pixelHash);
   if(label==='reset'&&stride===1&&paint===0)writeImage('camera-'+camera,frame,pixels,first.bytes);
   if(label==='reset'&&camera===0&&paint===0){

@@ -11,6 +11,23 @@ struct MachineInstruction {
   std::size_t line = 0;
 };
 
+// One immutable, exact-source parse per worker thread. No register, local,
+// mesh, quantum state or InverseMemory object is retained by this cache.
+inline constexpr std::size_t machine_parse_cache_max_source_bytes=512U*1024U;
+struct MachineParsedProgram {
+  std::string source;
+  std::vector<MachineInstruction> code;
+  std::map<std::string,std::size_t> labels;
+};
+struct MachineParseCacheState {
+  std::shared_ptr<const MachineParsedProgram> program;
+  std::uint64_t hits=0,misses=0;
+};
+inline MachineParseCacheState& machine_parse_cache_state() {
+  static thread_local MachineParseCacheState cache;
+  return cache;
+}
+
 inline unsigned machine_register(const std::string& name) {
   if (name.size() < 2 || (name.front() != 'r' && name.front() != 'R'))
     throw std::invalid_argument("expected register r0..r15");
@@ -120,37 +137,52 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
   if (program.size() > max_program_bytes)
     throw std::length_error("program exceeds 16 MiB transport budget");
   if (!max_steps) throw std::invalid_argument("machine step budget must be positive");
-  std::vector<MachineInstruction> code;
-  std::map<std::string, std::size_t> labels;
-  std::size_t cursor = 0, source_line = 0;
-  while (cursor < program.size()) {
-    ++source_line;
-    const auto newline = program.find('\n', cursor);
-    const auto end = newline == std::string::npos ? program.size() : newline;
-    if (end - cursor > max_line_bytes)
-      throw std::length_error("line " + std::to_string(source_line) + ": over 1 MiB");
-    auto words = tokens(program.substr(cursor, end - cursor));
-    cursor = newline == std::string::npos ? program.size() : newline + 1;
-    if (words.empty()) continue;
-    if (code.size() >= max_commands)
-      throw std::length_error("program exceeds 131072 commands");
-    const auto cmd = lower_ascii(words.front());
-    if (cmd == "label") {
-      require_count(words, 2);
-      const auto name = machine_label(words[1]);
-      if (!labels.emplace(name, code.size()).second)
-        throw std::invalid_argument("line " + std::to_string(source_line) + ": duplicate label " + name);
+  auto& parse_cache=machine_parse_cache_state();
+  const bool cacheable=program.size()<=machine_parse_cache_max_source_bytes;
+  std::shared_ptr<const MachineParsedProgram> parsed;
+  if(cacheable&&parse_cache.program&&parse_cache.program->source==program) {
+    ++parse_cache.hits;parsed=parse_cache.program;
+  }else{
+    ++parse_cache.misses;
+    auto candidate=std::make_shared<MachineParsedProgram>();
+    auto& code=candidate->code;
+    auto& labels=candidate->labels;
+    std::size_t cursor = 0, source_line = 0;
+    while (cursor < program.size()) {
+      ++source_line;
+      const auto newline = program.find('\n', cursor);
+      const auto end = newline == std::string::npos ? program.size() : newline;
+      if (end - cursor > max_line_bytes)
+        throw std::length_error("line " + std::to_string(source_line) + ": over 1 MiB");
+      auto words = tokens(program.substr(cursor, end - cursor));
+      cursor = newline == std::string::npos ? program.size() : newline + 1;
+      if (words.empty()) continue;
+      if (code.size() >= max_commands)
+        throw std::length_error("program exceeds 131072 commands");
+      const auto cmd = lower_ascii(words.front());
+      if (cmd == "label") {
+        require_count(words, 2);
+        const auto name = machine_label(words[1]);
+        if (!labels.emplace(name, code.size()).second)
+          throw std::invalid_argument("line " + std::to_string(source_line) + ": duplicate label " + name);
+      }
+      code.push_back({std::move(words), source_line});
     }
-    code.push_back({std::move(words), source_line});
-  }
-  for (const auto& inst : code) {
-    const auto op = lower_ascii(inst.words.front());
-    if (machine_is_jump(op)) {
-      require_count(inst.words, 2);
-      if (!labels.count(machine_label(inst.words[1])))
-        throw std::invalid_argument("line " + std::to_string(inst.line) + ": unknown jump label");
+    for (const auto& inst : code) {
+      const auto op = lower_ascii(inst.words.front());
+      if (machine_is_jump(op)) {
+        require_count(inst.words, 2);
+        if (!labels.count(machine_label(inst.words[1])))
+          throw std::invalid_argument("line " + std::to_string(inst.line) + ": unknown jump label");
+      }
     }
+    // Only fully parsed and jump-validated candidates can replace the entry.
+    // Large programs execute normally without retaining another source copy.
+    if(cacheable) { candidate->source=program;parse_cache.program=candidate; }
+    parsed=std::move(candidate);
   }
+  const auto& code=parsed->code;
+  const auto& labels=parsed->labels;
 
   std::array<std::int64_t, machine_register_count> registers{};
   // Zeroed CPU scratch belongs to this execution only. It never becomes an
@@ -322,6 +354,16 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
         if (!mesh_active) throw std::invalid_argument("meshvertex without meshbegin");
         mesh.vertex(machine_value(words[1],registers),
                     {machine_value(words[2],registers),machine_value(words[3],registers),machine_value(words[4],registers)});
+      } else if (op == "meshshade") {
+        require_count(words, 3);
+        if (!mesh_active) throw std::invalid_argument("meshshade without meshbegin");
+        mesh.shade(machine_value(words[1],registers),machine_value(words[2],registers));
+      } else if (op == "meshfacegradient") {
+        require_count(words, 10);
+        if (!mesh_active) throw std::invalid_argument("meshfacegradient without meshbegin");
+        mesh.gradient_face(machine_value(words[1],registers),machine_value(words[2],registers),machine_value(words[3],registers),
+                           machine_value(words[4],registers),machine_value(words[5],registers),machine_value(words[6],registers),
+                           machine_value(words[7],registers),machine_value(words[8],registers),machine_value(words[9],registers));
       } else if (op == "meshread") {
         require_count(words, 5);
         if (!mesh_active) throw std::invalid_argument("meshread without meshbegin");

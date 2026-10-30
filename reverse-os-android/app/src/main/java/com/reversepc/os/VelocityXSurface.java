@@ -22,7 +22,10 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     private final Rect sourceRect=new Rect(),targetRect=new Rect();
     private final VelocityLoopLifecycle lifecycle,physicsLifecycle;
     private final AtomicBoolean resetRequested=new AtomicBoolean();
-    private volatile int input=4,cameraMode,paintId,quality=1;
+    private volatile int input=4,cameraMode,paintId;
+    private final Object detailLock=new Object();
+    private int quality=1;
+    private boolean fixedDetail;
     private volatile int physicsHz;
     private volatile boolean paused;
     private volatile String error="";
@@ -42,7 +45,11 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     boolean togglePause(){paused=!paused;if(paused){physicsHz=0;controls(0,0,1,false);}return paused;}
     int cycleCamera(){cameraMode=(cameraMode+1)%3;return cameraMode;}
     int cyclePaint(){paintId=(paintId+1)%5;return paintId;}
-    int cycleQuality(){quality=(quality+1)%3;return quality;}
+    boolean toggleSharpness(){
+        synchronized(detailLock){
+            fixedDetail=!fixedDetail;quality=fixedDetail?2:1;return fixedDetail;
+        }
+    }
     void resumeLoop(){error="";physicsHz=0;physicsLifecycle.resume();lifecycle.resume();}
     void pauseLoop(){
         physicsLifecycle.pause();lifecycle.pause();
@@ -110,7 +117,8 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
         try{
             while(lifecycle.shouldRun()){
                 long begin=SystemClock.elapsedRealtimeNanos();
-                int selected=Math.max(0,Math.min(2,quality));
+                final int selected;final boolean selectedFixed;
+                synchronized(detailLock){selected=fixedDetail?2:Math.max(0,Math.min(2,quality));selectedFixed=fixedDetail;}
                 int stride=selected==0?4:selected==1?2:1;
                 int selectedCamera=cameraMode,selectedPaint=paintId;
                 VelocityXiEngine.Observation observation=game.observeFrame(stride,selectedCamera,selectedPaint);
@@ -151,16 +159,18 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     fps=(int)Math.round(frames*1_000_000_000.0/elapsed);
                     Log.i("ReverseVelocity","FRAME_STATS frames="+frames+" elapsedNanos="+elapsed+
                         " fps="+fps+" width="+width+" height="+height+" ticks="+state.ticks+
-                        " physicsHz="+physicsHz+" paused="+paused);
+                        " physicsHz="+physicsHz+" fixedDetail="+selectedFixed+" paused="+paused);
                     frames=0;lastFps=now;
                 }
                 if(now-lastHud>=100_000_000L){
                     lastHud=now;hud.update(state,paused,fps,width,height,error);
                 }
                 long cost=now-begin;
-                if(cost>45_000_000L&&selected>0){
-                    if(++slowFrames>=5){quality=selected-1;slowFrames=0;}
-                }else slowFrames=0;
+                synchronized(detailLock){
+                    if(!fixedDetail&&!selectedFixed&&quality==selected&&cost>45_000_000L&&selected>0){
+                        if(++slowFrames>=5){quality=selected-1;slowFrames=0;}
+                    }else slowFrames=0;
+                }
                 long remaining=(paused?100_000_000L:33_333_333L)-cost;
                 if(remaining>1_000_000L)Thread.sleep(remaining/1_000_000L);
             }

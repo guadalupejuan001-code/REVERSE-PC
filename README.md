@@ -196,6 +196,13 @@ El runtime, el formato RVPC2 y la dependencia fijada de Mundo X se conservan.
 
 ## REVERSE VELOCITY — juego de carreras con REgraphics
 
+La versión 0.3 rehace los coches con carrocería curva, normales por esquina y
+sombreado interpolado. Añade cristales tintados, reflejos aproximados, ruedas
+de dieciséis segmentos y tres niveles de malla. `Nitidez` permite seleccionar
+640×360 o volver al perfil adaptativo.
+
+[Modelo, materiales y ejecución de los coches 0.3](docs/REVERSE_VELOCITY_CARS_V03.md).
+
 La versión 0.2 sustituye la carretera deformada en pantalla por un circuito cerrado
 con posiciones de mundo compartidas entre física, cámara y malla. `drive.xi`
 ejecuta inercia, dirección progresiva, agarre lateral, frenado, barreras,

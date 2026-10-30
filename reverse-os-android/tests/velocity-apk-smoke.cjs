@@ -116,6 +116,18 @@ function waitAdvancingFrame(minimumTicks){
   }
   throw Error('Actual posted-frame stats did not show advancing XI race ticks after continue');
 }
+function frameRecords(text){
+  return text.split(/\r?\n/).filter(s=>/ReverseVelocity.*FRAME_STATS\b/.test(s)).map(fields);
+}
+function waitProfileFrame(previousCount,predicate,label){
+  for(let i=0;i<28;i++){
+    const text=logs();checkNoFailure(text);
+    const record=frameRecords(text).slice(previousCount).find(predicate);
+    if(record)return record;
+    sleep(250);
+  }
+  throw Error('No new actual posted frame for '+label);
+}
 function checkNoFailure(text){
   // Android services may log unrelated failures; attribute a crash to this app.
   const appProcess=/Process:\s*com\.reversepc\.velocity\b/.test(text);
@@ -253,6 +265,23 @@ try{
   tapNode(findText(ui,'Color'));ui=waitText(/^Color 2$/);
   check(!!findText(ui,'Color 2'),'physical paint selection changes');
   screenshot('changed-camera-paint');
+  stage='high detail profile';
+  const detailPauseTime=timer(ui),beforeHigh=frameRecords(logs()).length;
+  tapNode(findText(ui,'Nitidez'));
+  report.highDetailFrame=waitProfileFrame(beforeHigh,s=>s.width===640&&s.height===360&&
+    s.fixedDetail===true&&s.paused===true&&s.frames>0,'fixed high detail 640x360');
+  check(true,'Nitidez produces a new actual fixed 640x360 frame');
+  ui=waitText(/^Alta$/);check(!!findText(ui,'Alta'),'high detail physical control shows Alta');
+  check(timer(ui)===detailPauseTime,'high detail leaves paused race timer unchanged');
+  screenshot('high-detail-car');
+  stage='automatic detail profile';
+  const beforeAuto=frameRecords(logs()).length;
+  tapNode(findText(ui,'Alta'));
+  report.autoDetailFrame=waitProfileFrame(beforeAuto,s=>s.fixedDetail===false&&s.paused===true&&s.frames>0&&
+    ((s.width===480&&s.height===270)||(s.width===320&&s.height===180)),'automatic detail profile');
+  check(true,'Auto restores an actual automatic-resolution frame');
+  ui=waitText(/^Auto$/);check(!!findText(ui,'Auto'),'automatic detail physical control shows Auto');
+  check(timer(ui)===detailPauseTime,'automatic detail leaves paused race timer unchanged');
   stage='physical steering and driving video';
   const startState=fields(initialMarker);
   check(Number.isFinite(startState.xCm)&&Number.isFinite(startState.zCm)&&Number.isFinite(startState.yaw4096),

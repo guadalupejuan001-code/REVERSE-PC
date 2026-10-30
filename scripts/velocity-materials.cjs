@@ -1,0 +1,28 @@
+'use strict';
+// Fixed 8-bit material transport, with dedicated smooth lighting ramps.
+const WORLD_MAP=new Map([[8,0],[38,1],[72,2],[189,3],[78,4],[208,5],[108,6],[206,7],[204,8],[202,9],[203,10],[205,11],[194,12],[195,13],[196,14],[197,15],[198,16],[199,17],[200,18],[201,19]]);
+function worldMaterial(old){if(!WORLD_MAP.has(old))throw Error('Unknown world material '+old);return WORLD_MAP.get(old);}
+const RAMPS=Object.freeze({paint:{base:64,count:24},glass:{base:184,count:24},tire:{base:208,count:4},rim:{base:212,count:12}});
+const FLAT=Object.freeze({lampRed:224,lampWhite:225,grille:226,shadow:227,shadowSoft:28,shadowMid:29,shadowContact:30});
+function mix(a,b,t){return a.map((n,i)=>Math.round(n+(b[i]-n)*t));}
+const rgb=h=>[0,2,4].map(i=>parseInt(h.slice(i,i+2),16));
+const hex=c=>c.map(n=>Math.max(0,Math.min(255,n)).toString(16).padStart(2,'0')).join('');
+function buildPalette(){
+ const p=Array(256).fill('485259');
+ const world=['4c98c5','b7d3e2','667356','8d9f9d','858c82','ce4843','4b535a','e4e6df','a5adae','65503b','736046','806c50','203d2c','294b32','34583a','3c6240','446b45','4d744a','567d50','608457'];
+ world.forEach((v,i)=>p[i]=v);
+ for(let i=0;i<8;i++){p[24+i]=hex(mix(rgb('4b535a'),rgb('151e25'),i/7));p[32+i]=hex(mix(rgb('667356'),rgb('19271e'),i/7));}
+ const paints=['b50920','135c9c','aab5be','164c3b','d6a32b'];
+ paints.forEach((paint,k)=>{const c=rgb(paint);for(let n=0;n<24;n++){
+  const t=n/23;let v;
+  if(t<.76)v=mix(c.map(x=>Math.round(x*.15)),c,Math.pow(t/.76,.82));
+  else v=mix(c,[226,239,247],Math.pow((t-.76)/.24,1.9)*.88);
+  p[64+k*24+n]=hex(v);
+ }});
+ for(let n=0;n<24;n++){let v;if(n<=8)v=mix(rgb('08121c'),rgb('182936'),n/8);else if(n<=12)v=mix(rgb('315164'),rgb('94b2bd'),(n-9)/3);else v=mix(rgb('6d98af'),rgb('274d6a'),(n-13)/10);p[184+n]=hex(v);}
+ ['10151a','1a2026','262d33','38414a'].forEach((v,i)=>p[208+i]=v);
+ for(let n=0;n<12;n++)p[212+n]=hex(mix(rgb('273039'),rgb('f0f6f7'),Math.pow(n/11,.85)));
+ p[224]='ff263b';p[225]='edfaff';p[226]='111a22';p[227]='151e25';
+ return p;
+}
+module.exports={worldMaterial,RAMPS,FLAT,buildPalette};

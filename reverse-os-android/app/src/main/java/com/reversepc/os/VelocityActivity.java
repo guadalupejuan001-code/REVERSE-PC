@@ -132,10 +132,14 @@ public final class VelocityActivity extends Activity {
         LinearLayout menu=new LinearLayout(this);menu.setOrientation(LinearLayout.HORIZONTAL);
         Button camera=button("Cámara");camera.setOnClickListener(v->{int m=surface.cycleCamera();camera.setText(m==0?"Cámara":m==1?"Cercana":"Capó");});
         Button colors=button("Color");colors.setOnClickListener(v->colors.setText("Color "+(surface.cyclePaint()+1)));
+        Button sharpness=button("Nitidez");sharpness.setOnClickListener(v->{
+            boolean high=surface.toggleSharpness();sharpness.setText(high?"Alta":"Auto");
+            sharpness.setContentDescription(high?"Nitidez alta":"Nitidez automática");
+        });
         pauseButton=button("Pausa");pauseButton.setOnClickListener(v->togglePause());
         Button restart=button("Reiniciar");restart.setOnClickListener(v->{releaseControls();surface.reset();pauseButton.setText("Pausa");});
         Button exit=button("Salir");exit.setOnClickListener(v->finish());
-        for(Button b:new Button[]{camera,colors,pauseButton,restart,exit}){
+        for(Button b:new Button[]{camera,colors,sharpness,pauseButton,restart,exit}){
             LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(74),dp(32));p.setMargins(dp(2),0,dp(2),0);menu.addView(b,p);
         }
         add(root,menu,-2,32,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,48,0,0);

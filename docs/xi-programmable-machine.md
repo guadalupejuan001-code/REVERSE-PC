@@ -109,3 +109,18 @@ El presentador de Velocity reconoce esa semántica en la revisión 2 y mantiene
 las reglas anteriores de profundidad para imágenes de revisión 1.
 
 Las pruebas están en `tests/xi_machine_test.cpp` y `tests/xi_mesh_raster.cpp`.
+
+### Intensidad interpolada y caché de programas
+
+`meshshade id intensidad` establece un atributo 0..255 en un vértice ya definido.
+`meshfacegradient id0 id1 id2 base cantidad focal centroX centroY near` recorta
+e interpola la intensidad con perspectiva; el resultado selecciona uno de
+`cantidad` materiales contiguos desde `base`. El rango completo debe caber
+en 0..255. La escritura de un vértice o un nuevo `meshbegin` reinicia su atributo.
+Las caras planas existentes mantienen su camino de rasterización anterior.
+
+El intérprete conserva una sola entrada inmutable de código/etiquetas por hilo
+para fuentes de hasta 512 KiB. La clave es la fuente completa, no solo un hash.
+Los errores de sintaxis, líneas y límites se conservan; el código más grande
+continúa sin caché. Los registros, locales, memoria y propietario cuántico
+pertenecen a cada ejecución. Esta optimización no guarda resultados ni estado.

@@ -5,6 +5,11 @@
 #include <limits>
 #include <stdexcept>
 #include <string>
+#include <atomic>
+#include <thread>
+#include <array>
+#include <exception>
+#include <memory>
 
 namespace {
 using Runtime = mundo_x::QuantumRuntime;
@@ -128,6 +133,93 @@ int main() {
          "local scratch survived into a later execute call");
     need(before_locals_core==runtime.core_snapshot()&&before_locals_memory==runtime.memory_persistent_snapshot(),
          "CPU local scratch mutated persisted core or InverseMemory");
+    const auto gradient=runtime.execute(std::string(banner)+
+      "meshbegin 2 2 2 0\nmeshvertex 0 -1 1 10\nmeshvertex 1 1 1 10\n"
+      "meshvertex 2 -1 -1 10\nmeshvertex 3 1 -1 10\n"
+      "meshshade 0 0\nmeshshade 1 255\nmeshshade 2 0\nmeshshade 3 255\n"
+      "meshfacegradient 0 1 2 64 24 10 1 1 1\n"
+      "meshfacegradient 1 3 2 64 24 10 1 1 1\nmeshend\nhalt\n");
+    need(gradient.size()==108&&gradient.substr(0,4)=="XFS1"&&
+         static_cast<std::uint8_t>(gradient[31])==70&&static_cast<std::uint8_t>(gradient[45])==81,
+         "XI gradient source did not emit the expected rounded palette samples");
+    need(before_locals_core==runtime.core_snapshot()&&before_locals_memory==runtime.memory_persistent_snapshot(),
+         "mesh shade attributes mutated persisted core or InverseMemory");
+
+    // The parse cache shares immutable syntax only. Exact source edits must
+    // miss, errors must keep their original lines and execution state resets.
+    namespace machine=mundo_x::infinite_program_detail;
+    auto& parse_cache=machine::machine_parse_cache_state();
+    const std::string cache_program=std::string(banner)+"set r0 17\nlocalset 0 r0\nlocalget r1 0\nprint r1\n";
+    const auto misses_before=parse_cache.misses,hits_before=parse_cache.hits;
+    const auto cached_first=runtime.execute(cache_program);
+    const auto cached_entry=parse_cache.program;
+    need(parse_cache.misses==misses_before+1&&cached_entry&&cached_entry->source==cache_program,
+         "first exact-source program did not populate one parse entry");
+    const auto cached_second=runtime.execute(cache_program);
+    need(cached_first==cached_second&&parse_cache.hits==hits_before+1&&parse_cache.program==cached_entry,
+         "exact-source parse hit changed output or reparsed syntax");
+    std::string changed_source=cache_program;
+    changed_source.replace(changed_source.find("17"),2,"18");
+    const auto changed_output=runtime.execute(changed_source);
+    need(changed_source.size()==cache_program.size()&&changed_output!=cached_first&&
+         parse_cache.program!=cached_entry&&parse_cache.program->source==changed_source,
+         "same-length source edit incorrectly hit the old parse entry");
+    auto failure_text=[&](const std::string& source) {
+      const auto core=runtime.core_snapshot(),memory=runtime.memory_persistent_snapshot();
+      std::string error;
+      try{(void)runtime.execute(source);}catch(const std::exception& failure){error=failure.what();}
+      need(!error.empty(),"cache error regression unexpectedly executed successfully");
+      need(core==runtime.core_snapshot()&&memory==runtime.memory_persistent_snapshot(),
+           "cached failed program changed committed core or memory");
+      return error;
+    };
+    const auto valid_entry=parse_cache.program;
+    const std::string bad_jump=std::string(banner)+"store8 3000 42\njmp missing\n";
+    const auto jump_error=failure_text(bad_jump);
+    need(jump_error==failure_text(bad_jump)&&jump_error.find("line 3:")!=std::string::npos&&
+         parse_cache.program==valid_entry,"invalid jump cached partial syntax or changed error line");
+    const std::string bad_type=std::string(banner)+"store8 3000 7\nset r0 not_an_integer\n";
+    const auto type_error=failure_text(bad_type);
+    const auto type_hits=parse_cache.hits;
+    need(type_error==failure_text(bad_type)&&type_error.find("line 3:")!=std::string::npos&&
+         parse_cache.hits==type_hits+1,"cached runtime type error changed line or rollback");
+    const auto bounded_entry=parse_cache.program;
+    const auto large_hits=parse_cache.hits,large_misses=parse_cache.misses;
+    const std::string oversized=std::string(banner)+"#"+
+      std::string(machine::machine_parse_cache_max_source_bytes,'x')+"\nset r0 17\nprint r0\n";
+    const auto large_first=runtime.execute(oversized),large_second=runtime.execute(oversized);
+    need(large_first==large_second&&parse_cache.hits==large_hits&&parse_cache.misses==large_misses+2&&
+         parse_cache.program==bounded_entry&&
+         parse_cache.program->source.size()<=machine::machine_parse_cache_max_source_bytes,
+         "oversized program retained a parse entry or changed execution");
+
+    std::atomic<unsigned> ready{0};
+    std::array<std::exception_ptr,2> failures{};
+    std::array<std::shared_ptr<const machine::MachineParsedProgram>,2> entries{};
+    std::array<unsigned,2> final_values{};
+    const std::string shared_source=std::string(banner)+
+      "load32 r0 3000\nadd r0 1\nstore32 3000 r0\nprint r0\n";
+    auto worker=[&](unsigned index) {
+      try{
+        Runtime isolated;
+        const unsigned initial=index?100:1;
+        isolated.execute(std::string(banner)+"store32 3000 "+std::to_string(initial)+"\n");
+        ready.fetch_add(1);
+        while(ready.load()<2)std::this_thread::yield();
+        const auto before_hits=machine::machine_parse_cache_state().hits;
+        for(unsigned i=0;i<32;++i)(void)isolated.execute(shared_source);
+        need(machine::machine_parse_cache_state().hits==before_hits+31,
+             "worker did not reuse its own immutable program");
+        final_values[index]=isolated.memory().read("3000",isolated.core()).value;
+        entries[index]=machine::machine_parse_cache_state().program;
+      }catch(...){failures[index]=std::current_exception();ready.store(2);}
+    };
+    std::thread first_thread(worker,0),second_thread(worker,1);
+    first_thread.join();second_thread.join();
+    for(const auto& failure:failures)if(failure)std::rethrow_exception(failure);
+    need(final_values[0]==33&&final_values[1]==132&&entries[0]&&entries[1]&&entries[0]!=entries[1]&&
+         entries[0]->source==shared_source&&entries[1]->source==shared_source,
+         "thread-local parse entries mixed independent worker states");
 
     const std::string failure_header = std::string(banner) +
       "set r0 99\nstore8 5 r0\nx 200\n";
@@ -156,6 +248,14 @@ int main() {
     rejects_unchanged(runtime, failure_header + "localset -1 0\n", "0..4095");
     rejects_unchanged(runtime, failure_header + "localget r0 4096\n", "0..4095");
     rejects_unchanged(runtime, failure_header + "localset 4096 0\n", "0..4095");
+    const std::string gradient_failure=failure_header+
+      "meshbegin 2 2 2 0\nmeshvertex 0 -1 1 10\nmeshvertex 1 1 1 10\nmeshvertex 2 -1 -1 10\n";
+    rejects_unchanged(runtime,gradient_failure+"meshshade 0 -1\n","0..255");
+    rejects_unchanged(runtime,gradient_failure+"meshshade 0 256\n","0..255");
+    rejects_unchanged(runtime,gradient_failure+"meshshade 3 1\n","unset");
+    rejects_unchanged(runtime,gradient_failure+"meshfacegradient 0 1 2 250 24 10 1 1 1\n","palette ramp");
+    rejects_unchanged(runtime,gradient_failure+"meshfacegradient 0 1 2 64 0 10 1 1 1\n","palette ramp");
+    rejects_unchanged(runtime,gradient_failure+"meshfacegradient 0 1 3 64 24 10 1 1 1\n","unset");
     rejects_unchanged(runtime, failure_header + "set r16 1\n", "out of range");
     rejects_unchanged(runtime, failure_header + "jlt nowhere\n", "unknown jump label");
     rejects_unchanged(runtime, failure_header + "label present\njlt present\n", "without cmp");
@@ -199,6 +299,8 @@ int main() {
               << "\"bulk_memory_little_endian\":true,"
               << "\"indexed_mesh_source\":true,"
               << "\"ephemeral_local_scratch\":true,"
+              << "\"perspective_palette_gradient\":true,"
+              << "\"bounded_thread_local_parse_cache\":true,"
               << "\"legacy_xi_preserved\":true}\n";
     return 0;
   } catch(const std::exception& error) {

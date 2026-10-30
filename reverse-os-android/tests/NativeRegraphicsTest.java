@@ -101,6 +101,18 @@ public final class NativeRegraphicsTest {
                     colors.add(pixel);
                 }
                 check(colors.size()>10,"scene lost its authored materials");
+                boolean[] visibleMaterials=new boolean[256];
+                for(int at=16;at<result.outputBytes.length-8;at+=14)
+                    visibleMaterials[result.outputBytes[at+1]&255]=true;
+                int paintMaterials=0,glassMaterials=0;
+                for(int material=64+paint*24;material<=87+paint*24;material++)
+                    if(visibleMaterials[material])paintMaterials++;
+                for(int material=184;material<=207;material++)
+                    if(visibleMaterials[material])glassMaterials++;
+                if(stride!=4){
+                    check(paintMaterials>=(camera==2?1:2),"selected24-shade car/hood paint absent");
+                    if(camera!=2)check(glassMaterials>0,"view-reflected glass shades absent");
+                }
                 String hash=digest(pixelBytes(pixels));
                 carPaints.get(camera).add(hash);
                 if(paint==0)cameraViews.add(hash);
@@ -116,6 +128,8 @@ public final class NativeRegraphicsTest {
                     .append(camera).append(",\"paint\":").append(paint)
                     .append(",\"bytes\":").append(result.outputBytes.length)
                     .append(",\"commands\":").append(frame.commands)
+                    .append(",\"visiblePaintMaterials\":").append(paintMaterials)
+                    .append(",\"visibleGlassMaterials\":").append(glassMaterials)
                     .append(",\"nativeMs\":").append(executionNanos/1_000_000.0)
                     .append(",\"warmNativeMs\":").append(repeatNanos/1_000_000.0)
                     .append(",\"presentationMs\":").append(presentNanos/1_000_000.0)

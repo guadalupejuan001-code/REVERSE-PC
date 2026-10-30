@@ -179,6 +179,118 @@ int main() {
   check((fragmented_packet.size()-24)/14==641,"maximum valid row lost final runs");
   check(decode(fragmented_packet,640,1)==fragmented.materials(),
         "alternating maximum-width row failed exact XFS1 roundtrip");
+
+  auto gradient_quad=[](Mesh& out,int base,int count,int z=10) {
+    out.vertex(0,{-5,5,z});out.vertex(1,{5,5,z});
+    out.vertex(2,{-5,-5,z});out.vertex(3,{5,-5,z});
+    out.shade(0,0);out.shade(1,255);out.shade(2,0);out.shade(3,255);
+    out.gradient_face(0,1,2,base,count,16,8,8,1);
+    out.gradient_face(1,3,2,base,count,16,8,8,1);
+  };
+  Mesh gradient;gradient.begin(16,16,2,0);gradient_quad(gradient,64,24);
+  for(unsigned y=0;y<16;++y)for(unsigned x=0;x<16;++x)
+    check(gradient.materials()[y*16+x]==64+((2*x+1)*23+16)/32,
+          "gradient shared edge, interpolation or palette rounding changed");
+  check(decode(gradient.finish(),16,16)==gradient.materials(),"gradient XFS1 final runs changed pixels");
+
+  Mesh constant_gradient;constant_gradient.begin(16,16,2,0);gradient_quad(constant_gradient,93,1);
+  for(auto material:constant_gradient.materials())check(material==93,"single-entry gradient ramp changed material");
+  Mesh brightest;brightest.begin(16,16,2,0);
+  brightest.vertex(0,{-5,5,10});brightest.vertex(1,{5,5,10});brightest.vertex(2,{-5,-5,10});
+  brightest.shade(0,255);brightest.shade(1,255);brightest.shade(2,255);
+  brightest.gradient_face(0,1,2,0,256,16,8,8,1);
+  check(brightest.materials()[0]==255,"full palette ramp did not reach material255");
+  brightest.vertex(0,{-5,5,10});brightest.vertex(1,{5,5,10});brightest.vertex(2,{-5,-5,10});
+  Mesh defaults;defaults.begin(16,16,2,0);
+  defaults.vertex(0,{-5,5,10});defaults.vertex(1,{5,5,10});defaults.vertex(2,{-5,-5,10});
+  defaults.gradient_face(0,1,2,64,24,16,8,8,1);
+  check(defaults.materials()[0]==64,"new mesh vertex intensity was not zero");
+  // Replacing vertices resets a previously assigned attribute, while a flat
+  // face remains completely independent of shade attributes.
+  brightest.gradient_face(0,1,2,0,256,16,8,8,1);
+  Mesh reset_shade;reset_shade.begin(16,16,2,0);
+  reset_shade.vertex(0,{-5,5,10});reset_shade.shade(0,255);reset_shade.vertex(0,{-5,5,10});
+  reset_shade.vertex(1,{5,5,10});reset_shade.vertex(2,{-5,-5,10});
+  reset_shade.gradient_face(0,1,2,64,24,16,8,8,1);
+  check(reset_shade.materials()==defaults.materials(),"meshvertex retained stale intensity");
+
+  Mesh perspective_gradient;perspective_gradient.begin(16,16,2,0);
+  perspective_gradient.vertex(0,{-5,5,10});
+  perspective_gradient.vertex(1,{500,500,1000});
+  perspective_gradient.vertex(2,{-500,-500,1000});
+  perspective_gradient.shade(0,0);perspective_gradient.shade(1,255);perspective_gradient.shade(2,255);
+  perspective_gradient.gradient_face(0,1,2,64,24,16,8,8,1);
+  check(perspective_gradient.materials()[1*16+1]==64,"intensity used affine screen-space interpolation");
+  for(unsigned y=0;y<15;++y)for(unsigned x=0;x<15-y;++x) {
+    const long double w0=(15.0L-x-y)/16.0L,w1=(x+.5L)/16.0L,w2=(y+.5L)/16.0L;
+    const long double intensity=255*(w1/1000+w2/1000)/(w0/10+w1/1000+w2/1000);
+    const int expected=64+static_cast<int>(intensity*23/255+.5L);
+    const int actual=perspective_gradient.materials()[y*16+x];
+    check(actual>=expected-1&&actual<=expected+1,"perspective intensity differs from independent I/z oracle");
+  }
+
+  auto gradient_occlusion=[&](bool near_first,bool equal_depth) {
+    Mesh out;out.begin(16,16,2,0);
+    const int far_z=equal_depth?10:1000;
+    if(near_first)gradient_quad(out,64,24);
+    square(out,16,far_z,70);
+    if(!near_first)gradient_quad(out,64,24);
+    return out;
+  };
+  check(gradient_occlusion(false,false).materials()==gradient_occlusion(true,false).materials(),
+        "gradient visibility depends on near/far submission order");
+  check(gradient_occlusion(false,true).materials()==gradient_occlusion(true,true).materials(),
+        "gradient equal-depth tie compares base material instead of sampled material");
+
+  Mesh near_gradient;near_gradient.begin(16,16,2,0);
+  near_gradient.vertex(0,{-5,5,0});near_gradient.vertex(1,{5,5,10});near_gradient.vertex(2,{-5,-5,10});
+  near_gradient.shade(0,0);near_gradient.shade(1,255);near_gradient.shade(2,0);
+  near_gradient.gradient_face(0,1,2,64,24,16,8,8,2);
+  Mesh near_gradient_expected;near_gradient_expected.begin(16,16,2,0);
+  near_gradient_expected.vertex(0,{-5,3,2});near_gradient_expected.vertex(1,{-3,5,2});
+  near_gradient_expected.vertex(2,{5,5,10});near_gradient_expected.vertex(3,{-5,-5,10});
+  near_gradient_expected.shade(0,0);near_gradient_expected.shade(1,51);
+  near_gradient_expected.shade(2,255);near_gradient_expected.shade(3,0);
+  near_gradient_expected.gradient_face(0,1,2,64,24,16,8,8,2);
+  near_gradient_expected.gradient_face(0,2,3,64,24,16,8,8,2);
+  check(near_gradient.materials()==near_gradient_expected.materials(),"near clipping failed independent interpolated-attribute polygon");
+  Mesh reversed_gradient;reversed_gradient.begin(16,16,2,0);
+  reversed_gradient.vertex(0,{-5,5,0});reversed_gradient.vertex(1,{5,5,10});reversed_gradient.vertex(2,{-5,-5,10});
+  reversed_gradient.shade(0,0);reversed_gradient.shade(1,255);reversed_gradient.shade(2,0);
+  reversed_gradient.gradient_face(2,1,0,64,24,16,8,8,2);
+  check(reversed_gradient.materials()==near_gradient.materials(),"gradient clipping or winding changed shade association");
+  Mesh huge_gradient;huge_gradient.begin(16,16,2,0);
+  huge_gradient.vertex(0,{-1000000,1000000,1});huge_gradient.vertex(1,{1000000,1000000,1});
+  huge_gradient.vertex(2,{0,-1000000,1});
+  huge_gradient.shade(0,0);huge_gradient.shade(1,255);huge_gradient.shade(2,128);
+  huge_gradient.gradient_face(0,1,2,0,256,2048,8,8,1);
+  for(auto material:huge_gradient.materials())check(material>=127&&material<=128,"bounded huge gradient overflowed");
+
+  rejects([&]{defaults.shade(3,12);},"shade accepted unset vertex");
+  rejects([&]{defaults.shade(4096,12);},"shade accepted excessive vertex id");
+  rejects([&]{defaults.shade(0,-1);},"negative shade accepted");
+  rejects([&]{defaults.shade(0,256);},"excess shade accepted");
+  rejects([&]{defaults.gradient_face(0,1,2,64,0,16,8,8,1);},"zero palette ramp accepted");
+  rejects([&]{defaults.gradient_face(0,1,2,0,257,16,8,8,1);},"oversize palette ramp accepted");
+  rejects([&]{defaults.gradient_face(0,1,2,243,24,16,8,8,1);},"overflowing palette ramp accepted");
+  rejects([&]{defaults.gradient_face(0,1,2,-1,24,16,8,8,1);},"negative palette base accepted");
+  rejects([&]{defaults.gradient_face(0,1,3,64,24,16,8,8,1);},"gradient accepted unset face vertex");
+  defaults.begin(16,16,2,0);
+  rejects([&]{defaults.shade(0,12);},"meshbegin retained shade-ready vertices");
+
+  // Golden recorded before adding the gradient path. Flat raster coverage,
+  // clipping, deterministic depth ties and XFS1 bytes must remain unchanged.
+  Mesh flat_golden;flat_golden.begin(64,36,2,3);std::uint32_t random=42;
+  auto next_random=[&](){random=random*1664525U+1013904223U;return random;};
+  for(unsigned i=0;i<100;++i) {
+    auto vertex=[&](){return V{std::int64_t(next_random()%401)-200,
+      std::int64_t(next_random()%301)-150,std::int64_t(next_random()%401)-50};};
+    const auto a=vertex(),b=vertex(),c=vertex();
+    flat_golden.triangle3(a,b,c,next_random()%256,60,32,18,5);
+  }
+  std::uint64_t flat_hash=UINT64_C(14695981039346656037);
+  for(unsigned char byte:flat_golden.finish()){flat_hash^=byte;flat_hash*=UINT64_C(1099511628211);}
+  check(flat_hash==UINT64_C(17159164121277665824),"legacy flat XFS1 bytes changed after gradient addition");
   std::cout<<"XI_MESH_RASTER_PASS checks="<<checks<<"\n";
  }catch(const std::exception& e){std::cerr<<e.what()<<"\n";return 1;}
 }

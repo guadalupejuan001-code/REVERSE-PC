@@ -48,6 +48,9 @@ final class VelocityXiEngine {
     private byte[] privateState;
     private final String driveXi;
     private final String xiRenderer;
+    private final Object renderSourceLock=new Object();
+    private String renderProgramCache,driveProgramCache;
+    private int renderProgramKey=-1,driveProgramKey=-1;
     private static final String XI_HEADER="#!reverse-pc-machine-v1\n";
     private final float[] worldPoints; // read-only XI generated geometry samples
     private final int[] palette;
@@ -130,12 +133,16 @@ final class VelocityXiEngine {
            drift<0||drift>1)throw new IllegalArgumentException("XI physical control out of range");
         // Execute the XI source through the *existing* generic runtime.
         // There is no game-specific JNI/C++ renderer, physics or instruction API.
-        String program=XI_HEADER+
-            "store8 128 "+gas+"\nstore8 129 "+brake+
-            "\nstore8 130 "+steer+"\nstore8 131 "+drift+
-            "\nstore8 132 "+(reset?1:0)+"\n"+
-            driveXi.substring(XI_HEADER.length());
-        ResultPacket result=ResultPacket.parse(NativeRuntime.execute(privateState,program));
+        final int programKey=gas|(brake<<1)|(steer<<2)|(drift<<4)|(reset?32:0);
+        if(programKey!=driveProgramKey){
+            driveProgramCache=XI_HEADER+
+                "store8 128 "+gas+"\nstore8 129 "+brake+
+                "\nstore8 130 "+steer+"\nstore8 131 "+drift+
+                "\nstore8 132 "+(reset?1:0)+"\n"+
+                driveXi.substring(XI_HEADER.length());
+            driveProgramKey=programKey;
+        }
+        ResultPacket result=ResultPacket.parse(NativeRuntime.execute(privateState,driveProgramCache));
         // Validate the observation BEFORE publishing the candidate snapshot.
         Snapshot observed=parseState(result.output);
         privateState=result.state;
@@ -153,9 +160,19 @@ final class VelocityXiEngine {
     Observation observeFrame(int stride,int camera,int paint)throws Exception{
         if(stride!=1&&stride!=2&&stride!=4)throw new IllegalArgumentException("XI frame stride must be 1,2 or 4");
         if(camera<0||camera>2||paint<0||paint>4)throw new IllegalArgumentException("XI visual input out of range");
-        final String source=XI_HEADER+"store8 200 "+stride+
-            "\nstore8 201 "+camera+"\nstore8 202 "+paint+"\n"+
-            xiRenderer.substring(XI_HEADER.length());
+        final String source;
+        final int programKey=(stride*3+camera)*5+paint;
+        // Cache one authored program, independently of the physics monitor.
+        // Observations and state remain fresh on every execution.
+        synchronized(renderSourceLock){
+            if(programKey!=renderProgramKey){
+                renderProgramCache=XI_HEADER+"store8 200 "+stride+
+                    "\nstore8 201 "+camera+"\nstore8 202 "+paint+"\n"+
+                    xiRenderer.substring(XI_HEADER.length());
+                renderProgramKey=programKey;
+            }
+            source=renderProgramCache;
+        }
         // No UTF-8 conversion or JSON records on the frame path.
         // Returned RVPC2 is discarded: frames observe the private game state.
         final byte[] observation;

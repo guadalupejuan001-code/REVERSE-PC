@@ -26,6 +26,7 @@ class MachineMeshRaster {
     inverse_depth_.assign(materials_.size(), 0);
     vertices_.assign(max_vertices,Vertex{0,0,0});
     vertex_ready_.assign(max_vertices,0);
+    vertex_shades_.assign(max_vertices,0);
   }
 
   // XI computes/authors/transforms each distinct camera vertex once. Indexed
@@ -38,6 +39,29 @@ class MachineMeshRaster {
       throw std::out_of_range("camera-space mesh vertex exceeds bounds");
     vertices_[static_cast<std::size_t>(id)]=value;
     vertex_ready_[static_cast<std::size_t>(id)]=1;
+    vertex_shades_[static_cast<std::size_t>(id)]=0;
+  }
+
+  // Lighting remains an XI calculation. This is a generic scalar attribute,
+  // retained at Q8 precision through near clipping and perspective sampling.
+  void shade(std::int64_t id,std::int64_t intensity) {
+    (void)read(id);
+    if(intensity<0 || intensity>255)
+      throw std::out_of_range("mesh intensity must be in 0..255");
+    vertex_shades_[static_cast<std::size_t>(id)]=static_cast<std::uint16_t>(intensity*256);
+  }
+
+  void gradient_face(std::int64_t a,std::int64_t b,std::int64_t c,std::int64_t base,
+                     std::int64_t ramp_count,std::int64_t focal,std::int64_t center_x,
+                     std::int64_t center_y,std::int64_t near_plane) {
+    const auto va=read(a),vb=read(b),vc=read(c);
+    validate_material(base);
+    if(ramp_count<1 || ramp_count>256 || base+ramp_count>256)
+      throw std::out_of_range("mesh palette ramp must fit material range 0..255");
+    if(ramp_count==1) { triangle3(va,vb,vc,base,focal,center_x,center_y,near_plane);return; }
+    triangle3_impl<true>(va,vb,vc,base,focal,center_x,center_y,near_plane,
+      {{vertex_shades_[static_cast<std::size_t>(a)],vertex_shades_[static_cast<std::size_t>(b)],
+        vertex_shades_[static_cast<std::size_t>(c)]}},static_cast<unsigned>(ramp_count));
   }
 
   void face(std::int64_t a,std::int64_t b,std::int64_t c,std::int64_t material,
@@ -68,7 +92,7 @@ class MachineMeshRaster {
           v.z < 1 || v.z > 1000000)
         throw std::out_of_range("mesh vertex exceeds screen/positive-depth bounds");
     count_triangle();
-    raster(a,b,c,material);
+    raster<false>(a,b,c,material);
   }
 
   // XI supplies the camera transform. This primitive clips the near plane and
@@ -76,6 +100,15 @@ class MachineMeshRaster {
   void triangle3(Vertex a, Vertex b, Vertex c, std::int64_t material,
                  std::int64_t focal,std::int64_t center_x,std::int64_t center_y,
                  std::int64_t near_plane) {
+    triangle3_impl<false>(a,b,c,material,focal,center_x,center_y,near_plane,{},1);
+  }
+
+ private:
+  template<bool Gradient>
+  void triangle3_impl(Vertex a,Vertex b,Vertex c,std::int64_t material,
+                      std::int64_t focal,std::int64_t center_x,std::int64_t center_y,
+                      std::int64_t near_plane,std::array<std::uint16_t,3> intensities,
+                      unsigned ramp_count) {
     validate_material(material);
     if(focal<1 || focal>2048 || center_x < -32768 || center_x>32768 ||
        center_y < -32768 || center_y>32768 || near_plane<1 || near_plane>10000)
@@ -86,30 +119,54 @@ class MachineMeshRaster {
         throw std::out_of_range("camera-space mesh vertex exceeds bounds");
     count_triangle();
     std::array<Vertex,4> clipped{};
+    std::array<std::uint16_t,4> clipped_intensities{};
     unsigned count=0;
     const std::array<Vertex,3> input{{a,b,c}};
     Vertex previous=c;
-    for(const Vertex current:input) {
+    std::uint16_t previous_intensity=0;
+    if constexpr(Gradient)previous_intensity=intensities[2];
+    for(unsigned vertex_index=0;vertex_index<3;++vertex_index) {
+      const Vertex current=input[vertex_index];
       const bool inside=current.z>=near_plane,was_inside=previous.z>=near_plane;
       if(inside!=was_inside) {
         const auto da=previous.z-near_plane,db=current.z-near_plane;
         const auto denominator=da-db;
         // Symmetric weighted form gives the same integer intersection when
         // adjacent triangles traverse their shared edge in opposite directions.
-        clipped[count++]={
+        clipped[count]={
           static_cast<std::int64_t>((__int128(current.x)*da-__int128(previous.x)*db)/denominator),
           static_cast<std::int64_t>((__int128(current.y)*da-__int128(previous.y)*db)/denominator),
           near_plane};
+        if constexpr(Gradient) {
+          auto numerator=__int128(intensities[vertex_index])*da-__int128(previous_intensity)*db;
+          auto positive_denominator=denominator;
+          if(positive_denominator<0) { positive_denominator=-positive_denominator;numerator=-numerator; }
+          // Round to the nearest 1/256 intensity; the symmetric weighted form
+          // agrees when adjacent faces traverse the same edge oppositely.
+          clipped_intensities[count]=static_cast<std::uint16_t>(
+            (numerator+positive_denominator/2)/positive_denominator);
+        }
+        ++count;
       }
-      if(inside)clipped[count++]=current;
+      if(inside) {
+        clipped[count]=current;
+        if constexpr(Gradient)clipped_intensities[count]=intensities[vertex_index];
+        ++count;
+      }
       previous=current;
+      if constexpr(Gradient)previous_intensity=intensities[vertex_index];
     }
     if(count<3)return;
     for(unsigned i=0;i<count;++i) {
       clipped[i].x=center_x+clipped[i].x*focal/clipped[i].z;
       clipped[i].y=center_y-clipped[i].y*focal/clipped[i].z;
     }
-    for(unsigned i=1;i+1<count;++i)raster(clipped[0],clipped[i],clipped[i+1],material);
+    for(unsigned i=1;i+1<count;++i) {
+      if constexpr(Gradient)
+        raster<true>(clipped[0],clipped[i],clipped[i+1],material,
+          {{clipped_intensities[0],clipped_intensities[i],clipped_intensities[i+1]}},ramp_count);
+      else raster<false>(clipped[0],clipped[i],clipped[i+1],material);
+    }
   }
 
  private:
@@ -127,13 +184,18 @@ class MachineMeshRaster {
       throw std::length_error("XI mesh triangle budget exceeded");
     ++triangles_;
   }
-  void raster(Vertex a,Vertex b,Vertex c,std::int64_t material) {
+  template<bool Gradient>
+  void raster(Vertex a,Vertex b,Vertex c,std::int64_t material,
+              std::array<std::uint16_t,3> intensities={},unsigned ramp_count=1) {
     // Pixel centers are half-integers. Doubled screen coordinates make the
     // top-left fill convention exact and avoid floating-point edge cracks.
     a.x *= 2; a.y *= 2; b.x *= 2; b.y *= 2; c.x *= 2; c.y *= 2;
     auto area = edge(a, b, c.x, c.y);
     if (!area) return;
-    if (area < 0) { std::swap(b, c); area = -area; }
+    if (area < 0) {
+      std::swap(b,c);area=-area;
+      if constexpr(Gradient)std::swap(intensities[1],intensities[2]);
+    }
     const auto left = std::max<std::int64_t>(0, std::min({a.x, b.x, c.x}) / 2);
     const auto right = std::min<std::int64_t>(width_ - 1, std::max({a.x, b.x, c.x}) / 2);
     const auto top = std::max<std::int64_t>(0, std::min({a.y, b.y, c.y}) / 2);
@@ -147,6 +209,10 @@ class MachineMeshRaster {
     const auto za = reciprocal_scale / static_cast<std::uint64_t>(a.z);
     const auto zb = reciprocal_scale / static_cast<std::uint64_t>(b.z);
     const auto zc = reciprocal_scale / static_cast<std::uint64_t>(c.z);
+    std::uint64_t ia=0,ib=0,ic=0;
+    if constexpr(Gradient) {
+      ia=za*intensities[0];ib=zb*intensities[1];ic=zc*intensities[2];
+    }
     const bool t0 = top_left(b,c), t1 = top_left(c,a), t2 = top_left(a,b);
     const auto px = 2*left+1, py = 2*top+1;
     auto row0 = edge(b,c,px,py), row1 = edge(c,a,px,py), row2 = edge(a,b,px,py);
@@ -163,10 +229,23 @@ class MachineMeshRaster {
           const __int128 numerator=__int128(w0)*za+__int128(w1)*zb+__int128(w2)*zc;
           const auto depth=static_cast<std::uint64_t>(numerator/area);
           // Equal depth is deterministic under triangle submission reordering.
-          if (depth>inverse_depth_[at] ||
-              (depth==inverse_depth_[at] && material<materials_[at])) {
-            inverse_depth_[at]=depth;
-            materials_[at]=static_cast<std::uint8_t>(material);
+          if constexpr(Gradient) {
+            // Do the extra division only for fragments that can win depth.
+            if(depth>=inverse_depth_[at]) {
+              const __int128 weighted_intensity=__int128(w0)*ia+__int128(w1)*ib+__int128(w2)*ic;
+              const auto intensity=static_cast<std::uint64_t>((weighted_intensity+numerator/2)/numerator);
+              const auto color=static_cast<std::uint8_t>(material+
+                (intensity*(ramp_count-1)+32640)/65280);
+              if(depth>inverse_depth_[at] || color<materials_[at]) {
+                inverse_depth_[at]=depth;materials_[at]=color;
+              }
+            }
+          }else{
+            if (depth>inverse_depth_[at] ||
+                (depth==inverse_depth_[at] && material<materials_[at])) {
+              inverse_depth_[at]=depth;
+              materials_[at]=static_cast<std::uint8_t>(material);
+            }
           }
         }
         w0+=dx0;w1+=dx1;w2+=dx2;
@@ -232,4 +311,5 @@ class MachineMeshRaster {
   std::vector<std::uint64_t> inverse_depth_;
   std::vector<Vertex> vertices_;
   std::vector<std::uint8_t> vertex_ready_;
+  std::vector<std::uint16_t> vertex_shades_;
 };
