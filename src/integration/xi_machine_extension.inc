@@ -157,6 +157,20 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
   int comparison = 0;
   std::size_t pc = 0, steps = 0, address_bytes = 0;
   std::vector<InfiniteCore::Gate> batch;
+  // XFS1 direct binary output: only the transport is implemented here.
+  // All scene visibility/geometry remains under the caller's XI instructions.
+  bool frame_opened = false, frame_closed = false;
+  std::int64_t frame_width = 0, frame_height = 0, frame_revision = 0;
+  std::size_t frame_commands = 0;
+  auto frame_byte = [&](std::uint64_t value) {
+    result.output.push_back(static_cast<char>(value & 255U));
+  };
+  auto frame_u16 = [&](std::uint64_t value) {
+    frame_byte(value); frame_byte(value >> 8);
+  };
+  auto frame_u32 = [&](std::uint64_t value) {
+    frame_u16(value); frame_u16(value >> 16);
+  };
   while (pc < code.size()) {
     const auto& inst = code[pc];
     try {
@@ -165,10 +179,14 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
       const auto& words = inst.words;
       const auto op = lower_ascii(words.front());
       auto output_line = [&](const std::string& output) {
+        if (frame_opened)
+          throw std::invalid_argument("XFS1 binary frame cannot mix with text output");
         if (output.size() > max_response_bytes - result.output.size())
           throw std::length_error("machine output exceeds 16 MiB");
         result.output += output;
       };
+      if (frame_closed && op != "halt")
+        throw std::invalid_argument("XFS1 frame must end with halt");
       if (op == "background") {
         require_count(words, 2);
         if (!first_command || in_batch)
@@ -246,6 +264,62 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
         if (value < 0 || value > 255)
           throw std::out_of_range("store8 value must be in 0..255");
         memory->store(address, static_cast<std::uint8_t>(value), core);
+      } else if (op == "frame_begin") {
+        require_count(words, 4);
+        if (frame_opened || !result.output.empty())
+          throw std::invalid_argument("XFS1 frame already open or text output exists");
+        const auto width = machine_value(words[1], registers);
+        const auto height = machine_value(words[2], registers);
+        const auto revision = machine_value(words[3], registers);
+        if (width < 1 || width > 8192 || height < 1 || height > 8192 ||
+            width * height > 16777216)
+          throw std::out_of_range("XFS1 invalid dimensions or pixel budget");
+        if (revision < 0 || revision > UINT32_MAX)
+          throw std::out_of_range("XFS1 invalid revision");
+        if (max_response_bytes < 24)
+          throw std::length_error("XFS1 transport capacity too small");
+        frame_width = width; frame_height = height; frame_revision = revision;
+        frame_opened = true;
+        const auto reserve_bytes = static_cast<std::size_t>(height) * 28U + 24U;
+        result.output.reserve(std::min(reserve_bytes, max_response_bytes));
+        result.output.append("XFS1", 4);
+        frame_byte(1); frame_byte(0);
+        frame_u16(static_cast<std::uint64_t>(width));
+        frame_u16(static_cast<std::uint64_t>(height));
+        frame_u32(static_cast<std::uint64_t>(revision));
+        frame_u16(0);
+      } else if (op == "frame_span") {
+        require_count(words, 6);
+        if (!frame_opened || frame_closed)
+          throw std::invalid_argument("XFS1 span requires open frame");
+        const auto y = machine_value(words[1], registers);
+        const auto x0 = machine_value(words[2], registers);
+        const auto x1 = machine_value(words[3], registers);
+        const auto material = machine_value(words[4], registers);
+        const auto depth = machine_value(words[5], registers);
+        if (y < 0 || y >= frame_height || x0 < 0 || x0 > x1 ||
+            x1 >= frame_width || (material != 2 && material != 3) ||
+            depth < 1 || depth > 65535)
+          throw std::out_of_range("XFS1 invalid span/material/depth");
+        if (frame_commands >= 1000000 ||
+            result.output.size() > max_response_bytes - 14U - 8U)
+          throw std::length_error("XFS1 span/output budget exceeded");
+        frame_byte(2); frame_byte(static_cast<std::uint64_t>(material));
+        frame_u16(static_cast<std::uint64_t>(y));
+        frame_u16(static_cast<std::uint64_t>(x0));
+        frame_u16(static_cast<std::uint64_t>(x1));
+        frame_u16(static_cast<std::uint64_t>(depth));
+        frame_u32(static_cast<std::uint64_t>(frame_revision));
+        ++frame_commands;
+      } else if (op == "frame_end") {
+        require_count(words, 1);
+        if (!frame_opened || frame_closed)
+          throw std::invalid_argument("XFS1 frame_end requires open frame");
+        if (result.output.size() > max_response_bytes - 8U)
+          throw std::length_error("XFS1 end exceeds output budget");
+        frame_byte(3); frame_byte(0); frame_u16(0);
+        frame_u32(static_cast<std::uint64_t>(frame_revision));
+        frame_closed = true;
       } else if (op == "print") {
         require_count(words, 2);
         const auto index = machine_register(words[1]);
@@ -272,5 +346,7 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
     }
   }
   if (in_batch) throw std::invalid_argument("unterminated batch: expected end");
+  if (frame_opened && !frame_closed)
+    throw std::invalid_argument("XFS1 missing frame_end");
   return result;
 }
