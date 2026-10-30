@@ -157,6 +157,7 @@ try{
   'frame_span 10 13 18 4294967040 1000\n'+
   'frame_end\nhalt\n');
  const packet=decodeFrameStream(run(['run',simple,initial,simpleDest]).stdout);
+ fs.writeFileSync(path.join(out,'frame-stream-packet.xfs1'),packet.packet);
  assert.equal(packet.recordCount,4);
  const pixels=materializeFrameStreams([packet],{maxPixels:2048});
  assert.equal(pixels.rgba[0]>>>0,4278255360);

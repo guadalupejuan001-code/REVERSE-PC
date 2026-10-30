@@ -6,6 +6,8 @@ on:
       - 'src/integration/xi_frame_stream.inc'
       - 'src/integration/xi_machine_extension.inc'
       - 'src/rxe.hpp'
+      - 'reverse-os-android/app/src/main/java/com/reversepc/os/XiFrameStreamCodec.java'
+      - 'reverse-os-android/tests/XiFrameStreamCodecTest.java'
       - 'experiments/xi-render/super-frame-stream.xi'
       - 'experiments/xi-render/xi-frame-codec.cjs'
       - 'experiments/xi-render/frame-stream-verify.cjs'
@@ -46,6 +48,15 @@ jobs:
             | tee build/xi-render/frame-stream.log
           grep -q XI_FRAME_STREAM_V1_ALL_OK build/xi-render/frame-stream.log
           test -s build/xi-render/evidence/frame-stream-results.json
+      - name: Verify original XFS1 packets in Java display materializer
+        run: |
+          set -euo pipefail
+          mkdir -p build/xi-render/java
+          javac -d build/xi-render/java \
+            reverse-os-android/app/src/main/java/com/reversepc/os/XiFrameStreamCodec.java \
+            reverse-os-android/tests/XiFrameStreamCodecTest.java
+          java -cp build/xi-render/java com.reversepc.os.XiFrameStreamCodecTest \
+            build/xi-render/evidence/frame-stream-packet.xfs1
       - name: Verify XI legacy machine has unchanged semantics
         run: |
           set -euo pipefail
