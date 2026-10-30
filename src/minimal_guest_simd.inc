@@ -341,14 +341,14 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
   }
   const auto same=i&0x9f20fc00;
   if(same==0x0e208400||same==0x0e209c00||same==0x0e209400||same==0x0e208c00||same==0x0e203400||same==0x0e203c00||same==0x0e206400||same==0x0e206c00){
-    if((element==64&&!q)||(same==0x0e209c00&&(size==3||(u&&size!=0)))||(same==0x0e209400&&size==3)||((same==0x0e206400||same==0x0e206c00)&&size==3)||(same==0x0e208c00&&!u))return false;
+    if((element==64&&!q)||(same==0x0e209c00&&(size==3||(u&&size!=0)))||(same==0x0e209400&&size==3)||((same==0x0e206400||same==0x0e206c00)&&size==3))return false;
     fp_access();const auto a=floating_.v[rn],b=floating_.v[rm],old=floating_.v[rd];Vector128 value;
     for(unsigned lane=0;lane<width/element;++lane){const auto x=a.lane(lane,element),y=b.lane(lane,element);std::uint64_t out=0;
       if(same==0x0e208400)out=u?x-y:x+y;
       else if(same==0x0e209c00){if(u){for(unsigned bit=0;bit<8;bit++)if(y&(UINT64_C(1)<<bit))out^=x<<bit;}else out=x*y;}
       else if(same==0x0e209400)out=u?old.lane(lane,element)-x*y:old.lane(lane,element)+x*y;
       else if(same==0x0e206400||same==0x0e206c00){const auto sign=UINT64_C(1)<<(element-1),xx=u?x:x^sign,yy=u?y:y^sign;out=same==0x0e206400?(xx>yy?x:y):(xx<yy?x:y);}
-      else if(same==0x0e208c00)out=x==y?UINT64_MAX:0;
+      else if(same==0x0e208c00)out=(u?x==y:bool(x&y))?UINT64_MAX:0; // CMEQ or CMTST, per integer lane.
       else{const auto sign=UINT64_C(1)<<(element-1);const auto ordered_x=u?x:x^sign,ordered_y=u?y:y^sign;
         out=(same==0x0e203400?ordered_x>ordered_y:ordered_x>=ordered_y)?UINT64_MAX:0;}
       value.lane(lane,element,out);
