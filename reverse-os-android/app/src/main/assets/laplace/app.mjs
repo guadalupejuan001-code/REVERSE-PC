@@ -196,7 +196,7 @@ function drawObservedStock(s,graph){
   $('detalleGrafico').textContent='Observado hasta '+date(s.quote.observed_at)+' · XN01 predice dirección, no un precio futuro.';
 }
 function renderFactors(){
-  const root=$('factores');root.replaceChildren(),s=current();
+  const root=$('factores');root.replaceChildren();const s=current();
   if(!s){$('datosEstado').textContent='Sin lectura';return;}
   $('datosEstado').textContent=s.market.asset+' · '+date(s.at);
   if(!isBTC()){
