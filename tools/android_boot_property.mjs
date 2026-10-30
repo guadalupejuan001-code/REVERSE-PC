@@ -10,22 +10,27 @@ import {auditGkiRvg} from './audit_gki_rvg.mjs';
 import {rvgMemoryLines} from './rvg_memory_lines.mjs';
 const NAME='sys.boot_completed',MAGIC=0x504f5250,VERSION=0xfc6ed0ab;
 export function inspectBootPropertyPage(page){
- assert.ok(Buffer.isBuffer(page)&&page.length===4096);
+ assert.ok(Buffer.isBuffer(page)&&page.length===4096);return inspectBootPropertyArea(page);
+}
+export function inspectBootPropertyArea(page,{diagnostics=false}={}){
+ assert.ok(Buffer.isBuffer(page)&&page.length>=4096&&page.length<=1048576&&page.length%4096===0);
  if(page.readUInt32LE(8)!==MAGIC||page.readUInt32LE(12)!==VERSION)return null;
  const used=page.readUInt32LE(0);
  if(used<112||used>1048576-128||used%4||!page.subarray(16,128).every(b=>b===0))return null;
  const seen=new Set();let incomplete=false;
  const extent=(off,n)=>{
   if(!Number.isInteger(off)||off<0||off%4||off+n>used)throw Error('Invalid property offset');
-  if(128+off+n>4096){incomplete=true;throw Error('Property extends beyond first page');}
+  if(128+off+n>page.length){incomplete=true;throw Error('Property extends beyond mapped area');}
   return 128+off;
  };
  const node=off=>{
   if(seen.has(off))throw Error('Cyclic property trie');seen.add(off);
   const at=extent(off,20),len=page.readUInt32LE(at);
-  if(len>255)throw Error('Invalid property token length');
-  extent(off,20+len+1);if(page[at+20+len]!==0)throw Error('Unterminated property token');
-  const name=page.toString('ascii',at+20,at+20+len);
+  if(len>255||(!len&&off!==0))throw Error('Invalid property token length');
+  // The empty root's name overlays Bionic's dirty-value backup at data+20.
+  // Existing-property updates may leave text there; only nonempty tokens have a terminator.
+  extent(off,20+len+1);if(len&&page[at+20+len]!==0)throw Error('Unterminated property token');
+  const name=page.toString('latin1',at+20,at+20+len);
   if(len&&!/^[a-zA-Z0-9_-]+$/.test(name))throw Error('Invalid property token');
   return {name,prop:page.readUInt32LE(at+4),left:page.readUInt32LE(at+8),right:page.readUInt32LE(at+12),children:page.readUInt32LE(at+16)};
  };
@@ -42,11 +47,11 @@ export function inspectBootPropertyPage(page){
   const at=extent(cur.prop,96+NAME.length+1),serial=page.readUInt32LE(at),length=serial>>>24;
   if(serial&1)return {status:'property_update_in_progress'};
   if(serial&0x10000||length>=92||page[at+4+length]!==0||page[at+96+NAME.length]!==0)return {status:'invalid_property'};
-  if(page.toString('ascii',at+96,at+96+NAME.length)!==NAME)return {status:'invalid_property_name'};
-  const value=page.toString('ascii',at+4,at+4+length);
+  if(page.toString('latin1',at+96,at+96+NAME.length)!==NAME)return {status:'invalid_property_name'};
+  const value=page.toString('latin1',at+4,at+4+length);
   if(!/^[\x20-\x7e]*$/.test(value))return {status:'invalid_property'};
   return {status:'property_observed',name:NAME,value,serial,boot_completed_property_in_ram:value==='1'};
- }catch{return {status:incomplete?'needs_virtual_page_mapping':'invalid_property_area'};}
+ }catch(e){return {status:incomplete?'needs_virtual_page_mapping':'invalid_property_area',...(diagnostics?{diagnostic_error:e.message}:{})};}
 }
 export function scanGuestBootProperty(state,expectedSha,options){
  assert.match(expectedSha,/^[0-9a-f]{64}$/);

@@ -9,6 +9,11 @@ on:
       - 'tools/android_pin_checkpoint.mjs'
       - 'tests/android_profile_resume.test.mjs'
       - 'tests/android_pin_checkpoint.test.mjs'
+      - 'tools/android_live_property.mjs'
+      - 'tools/android_kernel_observer.mjs'
+      - 'tools/android_boot_property.mjs'
+      - 'tests/android_live_property.test.mjs'
+      - 'tests/android_boot_property.test.mjs'
 permissions:
   contents: read
   actions: read
@@ -31,7 +36,7 @@ jobs:
           set -euo pipefail
           mkdir -p evidence/profile-media evidence/profile-boot build
           git diff --exit-code 1d4201daec21578be4d4cc7b325b5e4bbea0eee0 HEAD -- src third_party scripts patches
-          node --test tests/android_profile_resume.test.mjs tests/android_pin_checkpoint.test.mjs tests/rvg_memory_lines.test.mjs tests/android_boot_property.test.mjs tests/audit_gki_rvg.test.mjs > evidence/profile-media/host-tests.tap
+          node --test tests/android_profile_resume.test.mjs tests/android_pin_checkpoint.test.mjs tests/rvg_memory_lines.test.mjs tests/android_boot_property.test.mjs tests/audit_gki_rvg.test.mjs tests/android_live_property.test.mjs > evidence/profile-media/host-tests.tap
           node --check tools/android_profile_resume.mjs
           git rev-parse HEAD > evidence/profile-media/source-commit.txt
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
@@ -87,6 +92,11 @@ jobs:
           writeFileSync('input-contract.json',JSON.stringify({schema:'reverse-profile-resume-contract-v1',source_commit:'56e0ff254e2f144917a32da7c7dcfb34f40a0cd9',checkpoint_sha256:'2f5fb515e0bfdaeddd6359ca697bb7d76b95b5ea9b013f0feb92ebef5bc7bb33',report_sha256:'1819ceff169f873d3b185d1f2e5d6c60903419551e135383f8f6d673387ff923',result_sha256:'0621282d52037cc3950f9c73015c835b01d1905486bd07f92d21e8a73d911e4a',process_sha256:'5ea69d43d0c7600f16c07ab919882a1c9814589085a842b5a04faac3d3be4689'},null,2)+'\n');
           NODE
           node tools/android_profile_resume.mjs preflight input-contract.json input-profile > evidence/profile-media/input-preflight.json
+          node tools/android_kernel_observer.mjs input-profile/current.rvg 2f5fb515e0bfdaeddd6359ca697bb7d76b95b5ea9b013f0feb92ebef5bc7bb33 1073741824 --live-properties > evidence/profile-media/source-live-properties.json
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';const r=JSON.parse(readFileSync('evidence/profile-media/source-live-properties.json'));
+          assert.equal(r.input_unchanged,true);assert.ok(r.live_boot_property.vma_count>0);assert.ok(r.live_boot_property.property_mappings>0);assert.equal(r.live_boot_property.read_error,undefined);assert.equal(r.live_boot_property.boot_completed_property_live,false);assert.equal(r.live_boot_property.android_framework_verified,false);
+          NODE
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc -Itools tools/guest_profile_resume.cpp build/softfloat/libreverse_softfloat.a -o build/profile-native
           tar -czf evidence/profile-media/tested-source.tar.gz src tools tests scripts third_party patches build/ether-compat build/softfloat/libreverse_softfloat.a deps/mundo-x/native/include
           sha256sum build/profile-native evidence/profile-media/tested-source.tar.gz > evidence/profile-media/build-sha256.txt
