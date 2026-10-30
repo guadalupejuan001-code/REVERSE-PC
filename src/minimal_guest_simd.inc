@@ -127,8 +127,11 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
     if(!amount)return x;
     return (x>>amount)|(negative?(low_mask(lane_bits)^low_mask(lane_bits-amount)):UINT64_C(0));
   };
+  // immh=0000 selects modified immediates, not a reserved shift. Let the
+  // MOVI/MVNI/ORR/BIC decoder below handle those shared opcode patterns.
+  const bool shift_immediate=(i&0x00780000u)!=0;
   const auto immediate_shift=i&0x9f80fc00u;
-  if(immediate_shift==0x0f000400u||immediate_shift==0x0f005400u||(immediate_shift==0x0f004400u&&u)){ // S/USHR, SHL, SLI or SRI.
+  if(shift_immediate&&(immediate_shift==0x0f000400u||immediate_shift==0x0f005400u||(immediate_shift==0x0f004400u&&u))){ // S/USHR, SHL, SLI or SRI.
     const unsigned encoded=(i>>16)&127;if(encoded<8)return false;
     unsigned lane_bits=8;while(lane_bits*2<=encoded)lane_bits*=2;
     if(lane_bits==64&&!q)return false;
@@ -159,7 +162,7 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
       value.lane(n,element*2,x+y);
     }commit(value);return true;
   }
-  if((i&0xbf80f400u)==0x0f008400u){ // SHRN/RSHRN and upper-half variants.
+  if(shift_immediate&&(i&0xbf80f400u)==0x0f008400u){ // SHRN/RSHRN and upper-half variants.
     const unsigned encoded=(i>>16)&127;if(encoded<8||encoded>=64)return false;
     unsigned narrow=8;while(narrow*2<=encoded)narrow*=2;
     const unsigned shift=2*narrow-encoded;const bool rounded=i&0x800;
