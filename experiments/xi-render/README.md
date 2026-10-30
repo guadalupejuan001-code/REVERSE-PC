@@ -80,3 +80,35 @@ No ampliar estas conclusiones a mallas generales, texturas, sombras,
 geometría arbitraria o escenas sin continuidad por filas. La aceptación
 de X Render XI completo necesita memoria/buffers nativos, tratamiento
 de materiales y mediciones dentro del teléfono.
+
+
+## SUPER RENDER XI — especificación de evolución (sin límites arbitrarios)
+
+La representación canónica es una escena compacta, no un bitmap persistente.
+El ejecutor XI será la autoridad de geometría, materiales, transformaciones,
+visibilidad, niveles de detalle y comandos de regiones. El anfitrión solo
+materializa un framebuffer o lo entrega a la pantalla, sin recrear las
+reglas del motor. La siguiente ABI de salida debe soportar:
+
+- \`frame_begin width height format revision\`
+- \`span y x0 x1 material depth\`
+- \`tile x y width height descriptor\`
+- \`frame_end revision checksum\`
+
+Estos son **contratos propuestos**, no instrucciones que ya entienda XI v1.
+Se implementarán en una versión nueva y optativa del ejecutor, con pruebas
+de compatibilidad de programas antiguos. Los presupuestos serán configurables
+por trabajo y recurso, con cancelación, límites de memoria y rollback.
+"No hay límite fijo de mundo" significa espacio lógico generado bajo demanda;
+no significa RAM, CPU o almacenamiento físicamente infinitos.
+
+Orden de implementación:
+1. ABI de framebuffer por bloques, validación de rangos y cancelación.
+2. Compilación XI de descriptores geométricos en vez de una instrucción por píxel.
+3. Materiales XI con profundidad, sombreado y oclusión de múltiples objetos.
+4. Streaming de regiones, LOD y caché temporal acotada.
+5. Prueba de estrés HD/Full HD con escenas crecientes y medición en Android.
+
+Regla de aceptación: igualdad visual, ausencia de corrupción de estado,
+rendimiento medido y compatibilidad con REVERSE-PC. No eliminar la ruta
+funcional actual hasta completar esas verificaciones.
