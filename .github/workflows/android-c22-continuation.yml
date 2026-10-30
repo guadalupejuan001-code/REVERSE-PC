@@ -9,6 +9,9 @@ on:
       - 'tools/android_guest_outcome.mjs'
       - 'tests/android_guest_outcome.test.mjs'
       - 'tests/android_c21_profile.test.mjs'
+      - 'tests/android_sparse_copy.test.mjs'
+      - 'tests/android_boot_property.test.mjs'
+      - 'tools/android_boot_property.mjs'
       - 'tools/guest_c22_resume.cpp'
       - 'tools/android_c22_result.mjs'
       - 'tests/android_userdata_disk.test.mjs'
@@ -36,7 +39,7 @@ jobs:
           set -euo pipefail
           mkdir -p evidence/c22-media evidence/c22-boot build
           git diff --exit-code eef974a85f14a5b1feb1d891b0550d15697561cc HEAD -- src third_party
-          node --test tests/android_partition_disk.test.mjs tests/android_partition_readiness.test.mjs tests/android_userdata_disk.test.mjs tests/audit_gki_rvg.test.mjs tests/android_c21_profile.test.mjs tests/android_guest_outcome.test.mjs tests/android_c15_result.test.mjs > evidence/c22-media/host-tests.tap
+          node --test tests/android_partition_disk.test.mjs tests/android_partition_readiness.test.mjs tests/android_userdata_disk.test.mjs tests/audit_gki_rvg.test.mjs tests/android_c21_profile.test.mjs tests/android_guest_outcome.test.mjs tests/android_c15_result.test.mjs tests/android_sparse_copy.test.mjs tests/android_boot_property.test.mjs > evidence/c22-media/host-tests.tap
           node --check tools/android_c22_result.mjs
           git rev-parse HEAD > evidence/c22-media/source-commit.txt
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093

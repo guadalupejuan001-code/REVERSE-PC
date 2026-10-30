@@ -51,6 +51,15 @@ Las pruebas independientes del lector cubren actualizaciones incompletas,
 offsets corruptos, ciclos, orden de búsqueda Bionic, deltas XOR, integridad del
 snapshot y direcciones externas de 64 bits. No son una simulación del arranque.
 
+## Preparación del disco
+
+La copia del disco conserva huecos vacíos cuando el sistema de archivos no
+permite reflink. Evita convertir innecesariamente el disco disperso en una
+copia física de 8,7 GB. La reconstrucción real con esta ruta produce el mismo
+SHA-256 `0e829fad2cd1cfef8ea707044270d97559127c6cd48bdf268e7eb5cf1b573ce6`
+y comprueba todas las particiones originales. La longitud lógica del disco y
+los bytes que ve Android son idénticos.
+
 ## Referencias del perfil y formato
 
 - [Cuttlefish bootconfig oficial, revisión fijada](https://github.com/google/android-cuttlefish/blob/c857a805bd20fe32a791eb3552ed0c43d48b6452/base/cvd/cuttlefish/host/commands/assemble_cvd/bootconfig_args.cpp).
