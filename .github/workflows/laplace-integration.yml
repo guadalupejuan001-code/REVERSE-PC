@@ -16,6 +16,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: {persist-credentials: false}
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: e2778d962af22f6f1a0794058dd4685fc2573966
+          path: deps/mundo-x
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
       - uses: actions/setup-java@v4
@@ -28,7 +34,9 @@ jobs:
             reverse-os-android/app/src/main/assets/laplace/index.html \
             reverse-os-android/app/src/main/assets/laplace/styles.css \
             reverse-os-android/app/src/main/assets/laplace/x001.mjs \
-            reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceActivity.java
+            reverse-os-android/app/src/main/assets/laplace/x001-native.xi \
+            reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceActivity.java \
+            reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceXiCompiler.java
       - name: Verificar procedencia, paridad y requisitos de la siguiente APK
         run: |
           mkdir -p evidencia-laplace
@@ -39,10 +47,19 @@ jobs:
           node --check reverse-os-android/app/src/main/assets/laplace/x001.mjs
           node --test laplace-android/tests/modelo.test.mjs laplace-android/tests/x001.test.mjs | tee evidencia-laplace/pruebas-modelo.txt
           git rev-parse HEAD > evidencia-laplace/commit.txt
+      - name: Ejecutar XN01 en el reverse_pc real
+        run: |
+          python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc src/reverse_pc.cpp -o build/reverse_pc
+          node laplace-android/tests/xn01-native.mjs build/reverse_pc evidencia-laplace/xn01 | tee evidencia-laplace/xn01.txt
       - name: Compilar el adaptador Android sin sustituir el runtime
         run: |
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' > evidencia-laplace/sdk.txt
-          javac -source 17 -target 17 -cp "$ANDROID_HOME/platforms/android-35/android.jar" -d evidencia-laplace/clases reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceActivity.java
+          javac -source 17 -target 17 -cp "$ANDROID_HOME/platforms/android-35/android.jar" -d evidencia-laplace/clases \
+            reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceActivity.java \
+            reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceXiCompiler.java \
+            reverse-os-android/app/src/main/java/com/reversepc/os/NativeRuntime.java \
+            reverse-os-android/app/src/main/java/com/reversepc/os/ResultPacket.java
       - name: Probar controles y representación de consultas en Chrome
         run: |
           npm install --prefix "$RUNNER_TEMP/laplace-ui" --no-audit --no-fund playwright@1.56.1
