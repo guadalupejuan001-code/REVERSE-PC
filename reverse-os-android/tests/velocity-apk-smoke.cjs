@@ -145,12 +145,15 @@ try{
   check(!!findText(ui,'ACELERAR'),'accelerator physical control');
   stage='physical acceleration';
   tapNode(findText(ui,'ACELERAR'),1800);
-  sleep(500);
+  // Accessibility dumps can take several seconds. Freeze the real speed with
+  // the game's physical pause key before observing it, rather than letting
+  // legitimate coasting/off-road drag erase the short acceleration pulse.
+  adbText(['shell','input','keyevent','KEYCODE_P']);
   ui=waitText(/^[1-9]\d* km\/h$/);
   const speedText=ui.find(x=>/^[1-9]\d* km\/h$/.test(x.text||'')).text;
   report.observedSpeedKmh=parseInt(speedText,10);
   check(report.observedSpeedKmh>0,'physical accelerator advances XI speed');
-  stage='pause';tapNode(findText(ui,'Pausa'));
+  stage='pause';
   ui=waitText(/EN PAUSA/);check(true,'pause freezes game scheduler and shows HUD');
   const pauseHud=ui.find(x=>/EN PAUSA/.test(x.text||'')).text;
   sleep(1100);ui=waitText(/EN PAUSA/);
