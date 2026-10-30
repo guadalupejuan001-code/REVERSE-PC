@@ -47,19 +47,21 @@ function calc(w,h,y,curveByte,phase){
   left,right,left,left+line,right-line,right,center-mid,center+mid,
   Math.trunc(t*12/h),((y+phase)%48)<22?1:0];
 }
-const protocol=['r7','r9','r11','r11','r13','r14','r13','r15','r15','r14','r9','r9','r15','r10'];
+const skyProtocol=['r7','r9','r11','r11','r13','r14','r13','r15','r15','r14','r9','r9','r15','r10'];
+const landProtocol=['r7','r9','r9','r9','r13','r14','r13','r15','r15','r14','r9','r9','r15','r10'];
 function parse(text,start,count,w,h,curve,phase){
  const lines=text.trim().split('\n');
  assert.equal(lines.length,14*count,'14 XI scalar descriptors per row, no missing or duplicate rows');
  const rows=[];
  for(let n=0;n<count;n++){
-  const got=[];
+  const got=[],registers=[];
   for(let j=0;j<14;j++){
    const row=JSON.parse(lines[n*14+j]);
-   assert.equal(row.type,'register');assert.equal(row.register,protocol[j],'XI register provenance');
+   assert.equal(row.type,'register');
    assert(Number.isSafeInteger(row.value),'XI 64-bit field beyond JS exact conversion');
-   got.push(row.value);
+   got.push(row.value);registers.push(row.register);
   }
+  assert.deepEqual(registers,got[1]===0?skyProtocol:landProtocol,'XI register provenance');
   const expected=calc(w,h,start+n,curve,phase);
   assert.deepEqual(got,expected,'XI projected span differs at row '+(start+n));
   rows.push(got);
