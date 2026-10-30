@@ -46,8 +46,8 @@ const server=createServer((req,res)=>{try{const path=req.url==='/'?'/index.html'
   const spy=JSON.parse(saved);assert.equal(spy.market.asset,'SPY');checks++;assert.equal(spy.stock_result.schema,'laplace-x001-live-v1');checks++;
   assert.match(await page.locator('#candidato').innerText(),/SUBIDA|BAJADA/);checks++;assert.equal(await page.locator('#estadoBits .bit').count(),4);checks++;
   assert.equal(await page.locator('[data-horizonte]').count(),0);checks++;
-  await page.getByRole('button',{name:'Datos',exact:true}).click();assert.match(await page.locator('#factores').innerText(),/Ensayo B001/);checks++;
-  await page.getByRole('button',{name:'Registro',exact:true}).click();assert.match(await page.locator('#registroEstado').innerText(),/Último ensayo reservado/);checks++;
+  await page.getByRole('button',{name:'Datos',exact:true}).click();assert.equal(await page.locator('#datos').getAttribute('hidden'),null);assert.match(await page.locator('#factores').textContent(),/Ensayo B001/);checks++;
+  await page.getByRole('button',{name:'Registro',exact:true}).click();assert.equal(await page.locator('#registro').getAttribute('hidden'),null);assert.match(await page.locator('#registroEstado').textContent(),/Último ensayo reservado/);checks++;
   await page.getByRole('button',{name:'Flujo',exact:true}).click();assert.equal(await page.locator('.nodo').count(),5);checks++;
   await page.selectOption('#activo','BTC-USD');await page.getByRole('button',{name:'Registro',exact:true}).click();await page.locator('#leerRegistro').click();await page.waitForFunction(()=>!document.querySelector('#leerRegistro').disabled);assert.match(await page.locator('#registroEstado').innerText(),/pronósticos/);checks++;
   for(const [w,h] of [[1366,950],[390,844],[360,800],[844,390]]){
