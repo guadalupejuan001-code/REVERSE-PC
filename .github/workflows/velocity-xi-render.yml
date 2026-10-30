@@ -93,7 +93,7 @@ jobs:
           mkdir -p build/velocity-android/classes
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' \
             > build/velocity-android/sdk.log
-          rg --files reverse-os-android/app/src/main/java -g '*.java' \
+          find reverse-os-android/app/src/main/java -name '*.java' -print | sort \
             > build/velocity-android/android-sources.txt
           javac -encoding UTF-8 -source 17 -target 17 \
             -classpath "$ANDROID_HOME/platforms/android-35/android.jar" \
