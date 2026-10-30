@@ -34,7 +34,8 @@ function host(operation,payload={}){
 function asset(){return ASSETS[$('activo').value]??ASSETS['BTC-USD'];}
 function assetId(){return $('activo').value;}
 function isBTC(){return asset().kind==='crypto';}
-function remember(s){if(s?.market?.asset){last=s;readings.set(s.market.asset,s);}return s;}\nfunction current(){return readings.get(assetId())??(last?.market?.asset===assetId()?last:null);}
+function remember(s){if(s?.market?.asset){last=s;readings.set(s.market.asset,s);}return s;}
+function current(){return readings.get(assetId())??(last?.market?.asset===assetId()?last:null);}
 function alert(text=''){
   if(/429|too many|demasiadas solicitudes/i.test(text))text='La fuente limitó temporalmente las consultas. Laplace redujo el ritmo; vuelve a intentarlo más tarde si persiste.';
   $('aviso').textContent=text;$('aviso').hidden=!text;
