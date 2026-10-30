@@ -36,3 +36,9 @@ for(const message of ['', 'init: starting service foo', 'init: __mount(...)=0: S
    assert.equal(r.guest_reboot_requested,false);assert.equal(r.android_boot_verified,false);
  });
 test('rejects non-text evidence',()=>{for(const value of [null,undefined,1,{},[]])assert.throws(()=>analyzeGuestConsole(value));});
+
+test('APEX variant conflict is a boot failure and a mandatory-service abort is terminal',()=>{
+ const conflict=analyzeGuestConsole("[ 39.7][ T92] apexd-bootstrap: Found two APEX packages for module 'com.android.hardware.gatekeeper': first.apex and second.apex.");assert.equal(conflict.guest_boot_failure,true);assert.ok(conflict.guest_failure_signals.includes('bootstrap_apex_ambiguity'));
+ const fatal=analyzeGuestConsole("[ 39.8][ T1] init: Service apexd-bootstrap has 'reboot_on_failure' option and failed, shutting down system.");assert.equal(fatal.guest_terminal_failure,true);assert.equal(fatal.guest_boot_failure,true);assert.equal(fatal.android_boot_verified,false);
+ for(const text of ['app: init: Service apexd-bootstrap has failure diagnostics','apexd-bootstrap: Found pre-installed APEX /vendor/apex/valid.apex'])assert.equal(analyzeGuestConsole(text).guest_boot_failure,false);
+});
