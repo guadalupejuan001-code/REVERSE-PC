@@ -5,7 +5,7 @@ import {parseStockChart,BOLSA_LAB} from './x001.mjs';
 const UPSTREAM_M001='06ebce4bddf25d615cefd85ed24081f37504a492';
 const UPSTREAM_BOLSA='08cafb094a5c0f81253509eff412214dd526b808';
 const ASSETS=Object.freeze({
-  'BTC-USD':{label:'Bitcoin',short:'BTC',kind:'crypto',currency:'USD',model:'M001'},
+  'BTC-USD':{label:'Bitcoin',short:'BTC',kind:'crypto',currency:'USD',model:'M001+XN01'},
   SPY:{label:'S&P 500 ETF',short:'SPY',kind:'stock',currency:'USD',model:'XN01'},
   AAPL:{label:'Apple',short:'AAPL',kind:'stock',currency:'USD',model:'XN01'},
   NVDA:{label:'NVIDIA',short:'NVDA',kind:'stock',currency:'USD',model:'XN01'}
