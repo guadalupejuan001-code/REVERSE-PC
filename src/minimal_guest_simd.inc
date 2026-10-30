@@ -146,6 +146,19 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
       value.lane(n,lane_bits,result);
     }commit(value);return true;
   }
+  if(shift_immediate&&immediate_shift==0x0f00a400u){ // SSHLL/USHLL and upper-half variants (SXTL/UXTL at shift zero).
+    const unsigned encoded=(i>>16)&127;if(encoded>=64)return false; // immh[3] is reserved.
+    unsigned narrow=8;while(narrow*2<=encoded)narrow*=2;
+    const unsigned amount=encoded-narrow,lanes=64/narrow,first=q?lanes:0;
+    fp_access();const auto source=floating_.v[rn];Vector128 value;
+    for(unsigned n=0;n<lanes;n++){
+      auto x=source.lane(first+n,narrow);
+      if(!u&&(x&(UINT64_C(1)<<(narrow-1))))x|=~low_mask(narrow);
+      value.lane(n,2*narrow,x<<amount); // Unsigned arithmetic also handles negative signed inputs without UB.
+    }
+    // Q selects the source half; the widened destination is always 128 bits.
+    floating_.v[rd]=value;return true;
+  }
   if((i&0x9f20fc00u)==0x0e204400u){ // SSHL/USHL: the signed low byte determines each lane's shift.
     if(size==3&&!q)return false;fp_access();const auto source=floating_.v[rn],shifts=floating_.v[rm];Vector128 value;
     for(unsigned n=0;n<width/element;n++){
