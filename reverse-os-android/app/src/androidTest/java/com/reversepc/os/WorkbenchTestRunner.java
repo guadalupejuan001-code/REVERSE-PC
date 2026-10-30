@@ -312,10 +312,59 @@ public final class WorkbenchTestRunner extends Instrumentation {
         }
         return "";
     }
+    private static String frameStreamHud(android.view.View current){
+        if(current instanceof android.widget.TextView){
+            String text=((android.widget.TextView)current).getText().toString();
+            if(text.contains("XI XFS1")||text.startsWith("Frame Stream:"))return text;
+        }
+        if(current instanceof android.view.ViewGroup){
+            android.view.ViewGroup group=(android.view.ViewGroup)current;
+            for(int i=0;i<group.getChildCount();i++){
+                String nested=frameStreamHud(group.getChildAt(i));
+                if(!nested.isEmpty())return nested;
+            }
+        }
+        return "";
+    }
     @Override public void onStart(){
         Bundle result=new Bundle();
         try{
             String requested=arguments==null?"full":arguments.getString("mode","full");
+            if(requested.equals("xfs1")){
+                ActivityMonitor shellMonitor=addMonitor(WorkbenchActivity.class.getName(),null,false);
+                ActivityMonitor frameMonitor=addMonitor(XiFrameStreamActivity.class.getName(),null,false);
+                runOnMainSync(()->getTargetContext().startActivity(
+                    new Intent(getTargetContext(),WorkbenchActivity.class)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)));
+                activity=(WorkbenchActivity)waitForMonitorWithTimeout(shellMonitor,15000);
+                require(activity!=null,"XFS1 test did not open Workbench");
+                waitJs("typeof createWindow==='function'&&!!APPS.superrender");
+                js("createWindow('superrender');true");
+                Activity demo=waitForMonitorWithTimeout(frameMonitor,15000);
+                require(demo instanceof XiFrameStreamActivity,"XFS1 viewer did not open");
+                String status="";
+                for(int i=0;i<70;i++){
+                    Thread.sleep(500);
+                    java.util.concurrent.atomic.AtomicReference<String> value=
+                        new java.util.concurrent.atomic.AtomicReference<>("");
+                    runOnMainSync(()->value.set(frameStreamHud(demo.getWindow().getDecorView())));
+                    status=value.get();
+                    if(status.startsWith("Frame Stream:"))throw new AssertionError(status);
+                    if(status.contains("XI XFS1")&&status.contains("regiones"))break;
+                }
+                require(status.contains("XI XFS1")&&status.contains("regiones"),
+                    "XI did not produce a presented ARGB frame: "+status);
+                File folder=new File(getTargetContext().getExternalFilesDir(null),"visual-evidence");
+                folder.mkdirs();
+                Bitmap screenshot=getUiAutomation().takeScreenshot();
+                try(FileOutputStream output=new FileOutputStream(
+                    new File(folder,"xi-frame-stream-screen.png"))){
+                    screenshot.compress(Bitmap.CompressFormat.PNG,100,output);
+                }finally{screenshot.recycle();}
+                runOnMainSync(demo::finish);
+                result.putString("stream","WORKBENCH_TESTS_OK mode=xfs1 scene=XI encoder=XFS1 presenter=Android\\n");
+                result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
+            }
             if(requested.equals("velocity")){
                 ActivityMonitor workbenchMonitor=addMonitor(WorkbenchActivity.class.getName(),null,false);
                 ActivityMonitor gameMonitor=addMonitor(VelocityActivity.class.getName(),null,false);
