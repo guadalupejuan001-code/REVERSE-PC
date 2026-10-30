@@ -55,3 +55,28 @@ dos \`xi-*.ppm\` exportados directamente de las observaciones XI.
 **Criterio para aceptar la hipótesis:** XI debe igualar píxeles y superar al
 nativo en la misma máquina, con métricas repetibles. Para aceptar HD móvil,
 además se requieren una ABI de salida por bloques y pruebas con hardware real.
+
+## Segunda hipótesis: descriptor XI por filas, no píxeles XI
+
+\`span-frame.xi\` ejecuta una variante geométrica más compacta: por fila
+calcula 2 intervalos con los triángulos superpuestos y publica cuatro
+enteros desde XI; la regla de oclusión (delante/sobre el fondo) es explícita.
+El decodificador en el test JavaScript expande esos tramos a píxeles. **El
+decodificador es un adaptador de presentación**; por tanto, no puede
+afirmarse que los 921.600 píxeles de una imagen HD estén calculados en XI.
+
+\`span-verify-and-benchmark.cjs\` ejecuta XI real y los confronta bit por bit
+contra la salida binaria del X Render nativo y contra el oráculo geométrico,
+sin aproximaciones. Mide 96×48, 1280×720 y 1920×1080.
+
+En esta variante se mide el **tiempo de proceso XI más decodificación
+en el anfitrión**, frente al proceso nativo y su generación completa de
+píxeles. Son algoritmos y costos internos diferentes (spans frente a
+intersecciones de rayos). Es válido como comparación de arquitecturas de
+presentación, no para afirmar que el lenguaje XI ejecuta más rápido una
+misma instrucción ni que Android podrá dibujar a 60 FPS.
+
+No ampliar estas conclusiones a mallas generales, texturas, sombras,
+geometría arbitraria o escenas sin continuidad por filas. La aceptación
+de X Render XI completo necesita memoria/buffers nativos, tratamiento
+de materiales y mediciones dentro del teléfono.

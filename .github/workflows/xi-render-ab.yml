@@ -44,7 +44,15 @@ jobs:
           node experiments/xi-render/verify-and-benchmark.cjs \
             build/xi-render/reverse_pc build/xi-render/xrender-oracle \
             build/xi-render/evidence | tee build/xi-render/benchmark.log
+            build/xi-render/span-benchmark.log
           test -s build/xi-render/evidence/results.json
+      - name: Render XI compact spans at HD and verify against native engine
+        run: |
+          set -euo pipefail
+          node experiments/xi-render/span-verify-and-benchmark.cjs \
+            build/xi-render/reverse_pc build/xi-render/xrender-oracle \
+            build/xi-render/evidence | tee build/xi-render/span-benchmark.log
+          test -s build/xi-render/evidence/span-results.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
