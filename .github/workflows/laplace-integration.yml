@@ -4,7 +4,7 @@ on:
     branches: [main]
     paths: ['laplace-android/**', 'reverse-os-android/**', '.github/workflows/laplace-integration.yml']
   push:
-    branches: [main, integrate/laplace-m001-next-apk-20261030]
+    branches: [main, integrate/laplace-m001-next-apk-20261030, integrate/laplace-bolsa-final-20261030]
     paths: ['laplace-android/**', 'reverse-os-android/**', '.github/workflows/laplace-integration.yml']
   workflow_dispatch:
 permissions:
