@@ -6,6 +6,7 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.os.SystemClock;
+import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -79,6 +80,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
         int width=0,height=0;
         int[] pixels=null;
         Bitmap image=null;
+        boolean firstFramePosted=false;
         try{
             while(lifecycle.shouldRun()){
                 final long begin=SystemClock.elapsedRealtimeNanos();
@@ -129,6 +131,12 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     }
                 }finally{
                     if(canvas!=null)getHolder().unlockCanvasAndPost(canvas);
+                }
+                if(canvas!=null&&!firstFramePosted){
+                    firstFramePosted=true;
+                    Log.i("ReverseVelocity","FRAME_READY "+width+"x"+height+
+                        " speed="+frame.speedKmh()+" ticks="+frame.ticks+
+                        " camera="+cameraMode+" paint="+paintId);
                 }
                 frames++;
                 if(begin-lastFps>=1_000_000_000L){
