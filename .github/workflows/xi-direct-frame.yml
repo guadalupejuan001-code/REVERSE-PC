@@ -52,6 +52,13 @@ jobs:
             build/xi-direct/reverse_pc build/xi-direct/xrender-oracle \
             build/xi-direct/evidence | tee build/xi-direct/benchmark.log
           test -s build/xi-direct/evidence/direct-frame-results.json
+      - name: One binary XI transaction for complete curved road and fog scene
+        run: |
+          set -euo pipefail
+          node experiments/xi-render/super-road-direct-test.cjs \
+            build/xi-direct/reverse_pc build/xi-direct/evidence \
+            | tee build/xi-direct/super-road-benchmark.log
+          test -s build/xi-direct/evidence/super-road-direct-results.json
       - name: Verify historical programmable XI behavior
         run: |
           set -euo pipefail
@@ -66,4 +73,5 @@ jobs:
           path: |
             build/xi-direct/evidence/
             build/xi-direct/benchmark.log
+            build/xi-direct/super-road-benchmark.log
           retention-days: 14
