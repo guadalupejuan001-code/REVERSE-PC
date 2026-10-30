@@ -26,7 +26,7 @@ jobs:
           node laplace-android/prepare.mjs --check
           node laplace-android/verify.mjs | tee evidencia-laplace/integracion.json
           set -o pipefail
-          node --test laplace-android/tests/modelo.test.mjs | tee evidencia-laplace/pruebas-modelo.txt
+          node --check reverse-os-android/app/src/main/assets/laplace/app.mjs\n          node --check reverse-os-android/app/src/main/assets/laplace/x001.mjs\n          node --test laplace-android/tests/modelo.test.mjs laplace-android/tests/x001.test.mjs | tee evidencia-laplace/pruebas-modelo.txt
           git rev-parse HEAD > evidencia-laplace/commit.txt
       - name: Compilar el adaptador Android sin sustituir el runtime
         run: |
