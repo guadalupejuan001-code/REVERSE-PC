@@ -64,7 +64,11 @@ tasks.register('verifyLaplaceIntegration') {
   def lockFile = new File(repo,'laplace-android/integration-lock.json')
   if (!lockFile.isFile()) throw new GradleException('Falta la integración LAPLACE de esta conversación')
   def lock = new groovy.json.JsonSlurper().parse(lockFile)
-  if (lock.schema != 1 || lock.upstream != '06ebce4bddf25d615cefd85ed24081f37504a492' || lock.files.size() < 8) throw new GradleException('Contrato LAPLACE incompatible')
+  if (lock.schema != 3 || lock.upstream != '06ebce4bddf25d615cefd85ed24081f37504a492' ||
+      lock.stock_model != 'XN01-native-XI' || lock.native_XI_used_for_stock_prediction != true ||
+      lock.native_XI_used_for_all_markets != true || lock.files.size() < 12 ||
+      !(lock.market_assets instanceof List) || !['BTC-USD','SPY','AAPL','NVDA'].every { lock.market_assets.contains(it) })
+    throw new GradleException('Contrato LAPLACE M001+XN01 incompatible')
   lock.files.each { name, expected ->
    def asset = new File(repo,name)
    if (!asset.canonicalPath.startsWith(repo.canonicalPath+File.separator) || !asset.isFile() || java.security.MessageDigest.getInstance('SHA-256').digest(asset.bytes).encodeHex().toString() != expected) throw new GradleException('LAPLACE ausente o sustituido: '+name)
