@@ -20,13 +20,24 @@ jobs:
         with: {node-version: '22'}
       - uses: actions/setup-java@v4
         with: {distribution: temurin, java-version: '17'}
+      - name: Huellas de recursos Laplace
+        run: |
+          sha256sum \
+            reverse-os-android/app/src/main/assets/laplace/app.mjs \
+            reverse-os-android/app/src/main/assets/laplace/grafica.js \
+            reverse-os-android/app/src/main/assets/laplace/index.html \
+            reverse-os-android/app/src/main/assets/laplace/styles.css \
+            reverse-os-android/app/src/main/assets/laplace/x001.mjs \
+            reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceActivity.java
       - name: Verificar procedencia, paridad y requisitos de la siguiente APK
         run: |
           mkdir -p evidencia-laplace
           node laplace-android/prepare.mjs --check
           node laplace-android/verify.mjs | tee evidencia-laplace/integracion.json
           set -o pipefail
-          node --check reverse-os-android/app/src/main/assets/laplace/app.mjs\n          node --check reverse-os-android/app/src/main/assets/laplace/x001.mjs\n          node --test laplace-android/tests/modelo.test.mjs laplace-android/tests/x001.test.mjs | tee evidencia-laplace/pruebas-modelo.txt
+          node --check reverse-os-android/app/src/main/assets/laplace/app.mjs
+          node --check reverse-os-android/app/src/main/assets/laplace/x001.mjs
+          node --test laplace-android/tests/modelo.test.mjs laplace-android/tests/x001.test.mjs | tee evidencia-laplace/pruebas-modelo.txt
           git rev-parse HEAD > evidencia-laplace/commit.txt
       - name: Compilar el adaptador Android sin sustituir el runtime
         run: |
