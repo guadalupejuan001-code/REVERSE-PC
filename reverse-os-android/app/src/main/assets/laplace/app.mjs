@@ -115,7 +115,7 @@ async function update(){
   try{
     const body=isBTC()?await updateBTC():await updateStock();
     const fresh={...body,sha256:await huellaContenido(body)};
-    last=await verifySnapshot(fresh);await host('save',JSON.stringify(fresh));render();
+    last=await verifySnapshot(fresh);$('activo').value=last.market.asset;await host('save',JSON.stringify(fresh));render();
     $('guardado').textContent='Consulta guardada y sellada localmente.';
   }catch(e){alert(e.message+' No se reemplazó la última lectura válida.');}
   finally{busy=false;$('actualizar').disabled=false;$('actualizar').textContent='Consultar ahora';for(const k in statuses)if(statuses[k].state==='consultando')status(k,'error');statusText();}
