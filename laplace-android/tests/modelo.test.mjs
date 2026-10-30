@@ -57,7 +57,9 @@ test('9: entrada del escritorio, manifiesto Android y aislamiento del runtime',(
  assert.match(read('reverse-os-android/app/src/main/assets/workbench/desktop.js'),/if\(app==='laplace'\)/);
  assert.match(read('reverse-os-android/app/src/main/java/com/reversepc/os/WorkbenchActivity.java'),/openLaplace/);
  const host=read('reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceActivity.java');
- assert.doesNotMatch(host,/NativeRuntime\.|SessionStore|setAllowUniversalAccessFromFileURLs\(true\)/);
+ assert.doesNotMatch(host,/SessionStore|setAllowUniversalAccessFromFileURLs\(true\)/);
+ assert.match(host,/NativeRuntime\.initialize\(\)/);assert.match(host,/NativeRuntime\.execute\(/);
+ assert.doesNotMatch(host,/loadState\(|writeState\(|session\.rvp/);
  assert.match(host,/setInstanceFollowRedirects\(false\)/);assert.match(host,/setBlockNetworkLoads\(true\)/);
 });
 test('10: contrato de compilación comprueba todos los recursos obligatorios',()=>{
