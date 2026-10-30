@@ -1,14 +1,32 @@
 {
-  "schema": 1,
-  "required_component": "LAPLACE M001 de esta conversación",
+  "schema": 2,
+  "required_component": "LAPLACE M001 + X001/B001 de esta conversación",
   "repository": "guadalupejuan001-code/REVERSE-PC",
   "upstream": "guadalupejuan001-code/LaPlaceDIG",
-  "upstream_commit": "06ebce4bddf25d615cefd85ed24081f37504a492",
+  "upstream_commits": {
+    "m001": "06ebce4bddf25d615cefd85ed24081f37504a492",
+    "bolsa": "08cafb094a5c0f81253509eff412214dd526b808"
+  },
   "contract": "laplace-android/integration-lock.json",
   "gradle_check": ":app:verifyLaplaceIntegration",
-  "flavors": ["control", "workbench"],
-  "preserve": ["BBY Q X01", "XI/Ether", "firma de distribución existente", "datos privados del usuario"],
+  "flavors": [
+    "control",
+    "workbench"
+  ],
+  "markets": [
+    "BTC-USD",
+    "SPY",
+    "AAPL",
+    "NVDA"
+  ],
+  "preserve": [
+    "BBY Q X01",
+    "XI/Ether",
+    "firma de distribución existente",
+    "datos privados del usuario"
+  ],
   "release_requested_now": false,
   "requires_node_on_phone": false,
-  "note": "La próxima APK debe compilarse de una revisión que contenga esta integración, no de un ZIP o rama anterior sin estos cambios."
+  "automatic_trading": false,
+  "note": "La próxima APK debe conservar selector BTC/bolsa, X001/B001, navegación móvil y control de HTTP 429; no compilar desde una rama anterior."
 }
