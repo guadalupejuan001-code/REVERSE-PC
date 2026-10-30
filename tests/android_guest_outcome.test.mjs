@@ -8,10 +8,13 @@ const signatures = [
  ['init: InitFatalReboot: signal 6', 'init_fatal_reboot'],
  ['init: Failed to mount required partitions early ...', 'required_mount_failure'],
  ['init: Failed to mount /system: No such file or directory', 'system_mount_failure'],
+ ["init: Command 'mount_all --late' action=late-fs (/vendor/etc/init/init.cutf_cvm.rc:73) took 14366ms and failed: queue_fs_event() failed: Invalid code: -1", 'late_mount_failure'],
+ ["init: Command 'mkdir /data/property 0700 root root encryption=Require' action=post-fs-data (/system/etc/init/hw/init.rc:721) took 22ms and failed: mkdir() failed on /data/property: Read-only file system", 'data_read_only'],
  ['init: [libfs_avb] Invalid hash size: ', 'avb_invalid_size'],
  ['init: [libfs_avb] Failed to verify vbmeta digest', 'avb_digest_failure'],
  ["init: [libfs_avb] vbmeta digest error isn't allowed", 'avb_digest_failure'],
  ['Reboot failed -- System halted', 'reboot_failed_halt'],
+ ['Reboot failed -- System halt', 'reboot_failed_halt'],
 ];
 for(const [message,signal] of signatures) {
  test('recognizes fatal/boot error '+signal+': '+message, () => {
@@ -36,6 +39,10 @@ for(const message of ['', 'init: starting service foo', 'init: __mount(...)=0: S
    assert.equal(r.guest_reboot_requested,false);assert.equal(r.android_boot_verified,false);
  });
 test('rejects non-text evidence',()=>{for(const value of [null,undefined,1,{},[]])assert.throws(()=>analyzeGuestConsole(value));});
+
+test('a successful late mount, optional service exit and quoted diagnostic do not prove a boot failure',()=>{
+ for(const text of ["init: Command 'mount_all --late' action=late-fs (init.rc:73) took 10ms and succeeded", "init: Service 'recovery-refresh' (pid 395) exited with status 254", "log: init: Command 'mount_all --late' action=late-fs failed: queue_fs_event() failed:"]){assert.equal(analyzeGuestConsole(text).guest_boot_failure,false);}
+});
 
 test('APEX variant conflict is a boot failure and a mandatory-service abort is terminal',()=>{
  const conflict=analyzeGuestConsole("[ 39.7][ T92] apexd-bootstrap: Found two APEX packages for module 'com.android.hardware.gatekeeper': first.apex and second.apex.");assert.equal(conflict.guest_boot_failure,true);assert.ok(conflict.guest_failure_signals.includes('bootstrap_apex_ambiguity'));
