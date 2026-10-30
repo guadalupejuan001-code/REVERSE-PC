@@ -163,8 +163,10 @@ function renderStock(s){
 }
 function drawChart(){
   const s=current(),graph=$('grafico');graph.replaceChildren();if(!s)return;
-  const p=isBTC()?prediction(s):null,width=Math.max(300,graph.getBoundingClientRect().width||800),objective=isBTC()?p?.objetivo_en:new Date(Date.parse(s.quote.observed_at)+300000).toISOString();
-  const inst={observed_at:s.quote.observed_at,target_at:objective,observed_price_usd:Number(s.quote.value),projected_price_usd:p?.precio_predicho??null};
+  if(!isBTC()){drawObservedStock(s,graph);return;}
+  const p=prediction(s);if(!p)return;
+  const width=Math.max(300,graph.getBoundingClientRect().width||800);
+  const inst={observed_at:s.quote.observed_at,target_at:p.objetivo_en,observed_price_usd:Number(s.quote.value),projected_price_usd:p.precio_predicho};
   const serie=s.bars.slice(-Number($('historia').value)).map(b=>({fecha:new Date((b[0]+300)*1000).toISOString(),precio:b[4]}));
   const g=window.LaplaceGrafica.calcular(serie,inst,{ancho:width});graph.setAttribute('viewBox','0 0 '+width+' 285');
   const draw=(tag,attrs,text)=>{const e=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,String(v));if(text!==undefined)e.textContent=text;graph.append(e);return e;};
@@ -172,8 +174,22 @@ function drawChart(){
   for(const r of g.rejilla){draw('line',{x1:g.izquierda,x2:g.derecha,y1:r.y,y2:r.y,stroke:'#314153'});draw('text',{x:g.izquierda-8,y:r.y+4,'text-anchor':'end',fill:'#a3b3c0','font-size':'11'},Math.round(r.valor).toLocaleString('es-MX'));}
   draw('path',{d:g.puntos.map((v,i)=>(i?'L':'M')+v.x+' '+v.y).join(' '),fill:'none',stroke:'#dcecf3','stroke-width':2});
   draw('circle',{cx:g.ancla.x,cy:g.ancla.y,r:4,fill:'#dcecf3'});
-  if(g.fin){draw('path',{d:'M '+g.ancla.x+' '+g.ancla.y+' L '+g.fin.x+' '+g.fin.y,fill:'none',stroke:'#e6bc7f','stroke-width':2,'stroke-dasharray':'6 5','data-horizonte':p.horizonte_minutos});draw('circle',{cx:g.fin.x,cy:g.fin.y,r:4,fill:'#e6bc7f'});}
-  $('detalleGrafico').textContent=isBTC()?'Observado hasta '+date(s.quote.observed_at)+' · estimación a '+date(p.objetivo_en)+'.':'Observado hasta '+date(s.quote.observed_at)+' · X001 predice dirección, no un precio futuro.';
+  draw('path',{d:'M '+g.ancla.x+' '+g.ancla.y+' L '+g.fin.x+' '+g.fin.y,fill:'none',stroke:'#e6bc7f','stroke-width':2,'stroke-dasharray':'6 5','data-horizonte':p.horizonte_minutos});
+  draw('circle',{cx:g.fin.x,cy:g.fin.y,r:4,fill:'#e6bc7f'});
+  $('detalleGrafico').textContent='Observado hasta '+date(s.quote.observed_at)+' · estimación a '+date(p.objetivo_en)+'.';
+}
+function drawObservedStock(s,graph){
+  const width=Math.max(300,graph.getBoundingClientRect().width||800),height=285,left=width<550?64:78,right=width-18,top=28,bottom=height-42;
+  const rows=s.bars.slice(-Number($('historia').value)).map(b=>({t:(b[0]+300)*1000,p:b[4]})).filter(x=>Number.isFinite(x.p)&&x.p>0);
+  const draw=(tag,attrs,text)=>{const e=document.createElementNS('http://www.w3.org/2000/svg',tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,String(v));if(text!==undefined)e.textContent=text;graph.append(e);return e;};
+  graph.setAttribute('viewBox','0 0 '+width+' '+height);
+  if(rows.length<2){draw('text',{x:width/2,y:130,'text-anchor':'middle',fill:'#b2c5d3'},'Sin datos suficientes para graficar');return;}
+  const t0=rows[0].t,t1=rows.at(-1).t,lo=Math.min(...rows.map(x=>x.p)),hi=Math.max(...rows.map(x=>x.p)),margin=Math.max((hi-lo)*.15,rows.at(-1).p*.0003),min=lo-margin,max=hi+margin;
+  const x=t=>left+(t-t0)/Math.max(1,t1-t0)*(right-left),y=p=>bottom-(p-min)/Math.max(1e-9,max-min)*(bottom-top);
+  for(let i=0;i<4;i++){const value=max-(max-min)*i/3,yy=y(value);draw('line',{x1:left,x2:right,y1:yy,y2:yy,stroke:'#314153'});draw('text',{x:left-8,y:yy+4,'text-anchor':'end',fill:'#a3b3c0','font-size':'11'},value.toFixed(2));}
+  draw('path',{d:rows.map((v,i)=>(i?'L':'M')+x(v.t).toFixed(2)+' '+y(v.p).toFixed(2)).join(' '),fill:'none',stroke:'#dcecf3','stroke-width':2,'data-series':'observed-stock'});
+  draw('circle',{cx:x(rows.at(-1).t),cy:y(rows.at(-1).p),r:4,fill:'#8bdcb9'});
+  $('detalleGrafico').textContent='Observado hasta '+date(s.quote.observed_at)+' · X001 predice dirección, no un precio futuro.';
 }
 function renderFactors(){
   const root=$('factores');root.replaceChildren(),s=current();
