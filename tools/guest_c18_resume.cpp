@@ -6,8 +6,12 @@
 using namespace reverse_pc::guest;
 static volatile std::sig_atomic_t stopping=0;
 static void stop(int){stopping=1;}
-static const std::string state_sha="ff336b8dac31c8059259e8ae2fc9a043626f6f57a84f1061d56fed77c90e8a31";
-static const std::string report_sha="f3b13ca1e2b69fdafe223da565bfab069b53c2cff3d6d69c55f02526a5774407";
+struct Origin {const char* state;const char* report;std::uint64_t instructions,pc,subtick;};
+// Two independently verified clean C17 boundaries. No caller-selected CPU or clock edits.
+static constexpr Origin origins[]={
+ {"ff336b8dac31c8059259e8ae2fc9a043626f6f57a84f1061d56fed77c90e8a31","f3b13ca1e2b69fdafe223da565bfab069b53c2cff3d6d69c55f02526a5774407",1445008639,UINT64_C(0xffffffc0804973c8),63},
+ {"3ebccb5a9503dfc103229b1a9675490d7c07e7a7fb8fa90ed664ffb86da1bba2","7393c558c7ab7d5e60c9d6486c64f93e7acd9fe9121652fc16a75c10104eff95",1710758639,UINT64_C(0xffffffc080262a48),59}
+};
 static const std::string disk_sha="28303ac7b2832cbde4e1c56551bf81816b55bc946cc75a444f2605316ed97e1c";
 static const std::string seed_sha="78b0aeb569a7e87dc9e970bd1a46c57dfe3364c2f49f41cf688a57f0afa1b12f";
 static std::uint64_t number(const char* text,std::uint64_t maximum){const std::string s(text);require(!s.empty()&&s.find_first_not_of("0123456789")==std::string::npos,"Expected decimal budget");const auto n=std::stoull(s);require(n&&n<=maximum,"Budget out of range");return n;}
@@ -18,17 +22,19 @@ int main(int argc,char** argv){try{
   require(!std::filesystem::exists(argv[4]),"Output journal already exists");
   std::cerr<<"REVERSE_C18_HOST_PHASE {\"phase\":\"verify_original_checkpoint\"}\n";
   const auto input=guest_read_file(argv[1],MinimalGuest::max_adaptive_snapshot);
-  require(GuestSha256::hash(input)==state_sha,"Wrong C17 checkpoint");
+  const auto state_sha=GuestSha256::hash(input);const Origin* selected=nullptr;
+  for(const auto& origin:origins)if(state_sha==origin.state)selected=&origin;
+  require(selected,"Wrong C17 checkpoint");const auto& origin=*selected;const std::string report_sha=origin.report;
   require(GuestSha256::hash(guest_read_file(argv[2],131072))==report_sha,"Wrong C17 report");
   std::cerr<<"REVERSE_C18_HOST_PHASE {\"phase\":\"verify_full_original_disk\",\"bytes\":8738832384}\n";
   const auto disk=GuestBlockImage::open(argv[3]);require(disk->size()==UINT64_C(8738832384)&&disk->sha256()==disk_sha,"Wrong original disk");
   std::cerr<<"REVERSE_C18_HOST_PHASE {\"phase\":\"restore_original_machine\"}\n";
   auto guest=MinimalGuest::from_snapshot(input,disk);require(guest.snapshot()==input,"Restore modified C17 state");
-  require(guest.registers().instructions==1445008639&&guest.registers().pc==UINT64_C(0xffffffc0804973c8),"Wrong C17 boundary");
+  require(guest.registers().instructions==origin.instructions&&guest.registers().pc==origin.pc,"Wrong C17 boundary");
   require(guest.machine().enabled&&guest.machine().image_kind==2&&guest.machine().pci.enabled&&guest.machine().el==1&&!guest.registers().halted&&!guest.machine().waiting,"Wrong C17 machine state");
   require(guest.logical_ram()==134217728,"RAM profile changed");
   const auto& clock=guest.machine().counter_latency;
-  require(clock.enabled&&clock.instructions_per_tick==64&&clock.subtick==63,"Counter cadence changed");
+  require(clock.enabled&&clock.instructions_per_tick==64&&clock.subtick==origin.subtick,"Counter cadence changed");
   require(GuestSha256::hash(Bytes(clock.seed.begin(),clock.seed.end()))==seed_sha,"Counter seed changed");
   const std::string provenance="{\"experiment\":\"c18-c17-continuous-budget-boot\",\"input_checkpoint_sha256\":"+quote(state_sha)+",\"input_report_sha256\":"+quote(report_sha)+",\"snapshot_round_trip_verified\":true,\"cycle_limit\":3,\"timing_seed_origin\":\"checkpoint\",\"timing_seed_sha256\":"+quote(seed_sha)+",\"disk_sha256\":"+quote(disk_sha)+",\"ram_profile_changed\":false,\"original_state_modified\":false}";
   BootCycleJournal journal(argv[4]);std::signal(SIGTERM,stop);std::signal(SIGINT,stop);
