@@ -152,6 +152,21 @@ try{
     'rows',trial.rows,'pixels',trial.pixels,'XI process ms',trial.xiTimeMs,
     'SHA',trial.frameSha256.slice(0,16),'chunkInvariant',!!trial.chunkInvariant);
  }
+ // RXE binary must execute the same XI geometry as the editable source.
+ const compiled=path.resolve('build/xi-render/executable/SUPER-RENDER-XI.rxe');
+ assert(fs.statSync(compiled).size>0,'missing compiled XI program');
+ const config=path.join(dir,'rxe-config.xi'),configured=path.join(dir,'rxe-config.rvp');
+ const bytes=[...payload(640),...payload(360),...payload(120),...payload(23),128,7];
+ fs.writeFileSync(config,'#!reverse-pc-machine-v1\n'+
+   bytes.map((v,i)=>'store8 '+(200+i)+' '+v+'\n').join('')+'halt\n');
+ command(['run',config,initial,configured]);
+ const compiledRun=command(['run',compiled,configured,path.join(dir,'rxe-state.rvp')]);
+ const directRun=request(640,360,120,23,128,7);
+ assert.deepEqual(parse(compiledRun.output,120,23,640,360,128,7),
+                  parse(directRun.output,120,23,640,360,128,7),
+                  'compiled RXE and XI source disagree');
+ result.compiledRxe={verified:true,bytes:fs.statSync(compiled).size,
+   sha256:sha(fs.readFileSync(compiled))};
  const invalid=[
   [0,720,0,5],[1280,0,0,5],[1280,720,0,0],[1280,720,718,4]
  ];

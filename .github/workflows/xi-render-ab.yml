@@ -52,6 +52,15 @@ jobs:
             build/xi-render/reverse_pc build/xi-render/xrender-oracle \
             build/xi-render/evidence | tee build/xi-render/span-benchmark.log
           test -s build/xi-render/evidence/span-results.json
+      - name: Compile original XI executable
+        run: |
+          set -euo pipefail
+          mkdir -p build/xi-render/executable
+          build/xi-render/reverse_pc compile             experiments/xi-render/super-render.xi             build/xi-render/executable/SUPER-RENDER-XI.rxe             "SUPER RENDER XI"
+          build/xi-render/reverse_pc disassemble             build/xi-render/executable/SUPER-RENDER-XI.rxe             build/xi-render/executable/super-render-disassembled.xi
+          grep -q '^#!reverse-pc-machine-v1' build/xi-render/executable/super-render-disassembled.xi
+          test -s build/xi-render/executable/SUPER-RENDER-XI.rxe
+          sha256sum build/xi-render/executable/SUPER-RENDER-XI.rxe | tee build/xi-render/executable/super-render-sha256.txt
       - name: SUPER RENDER XI scalable viewport test, deterministic scanlines, 8K and 16K
         run: |
           set -euo pipefail
@@ -66,4 +75,5 @@ jobs:
             build/xi-render/benchmark.log
             build/xi-render/span-benchmark.log
             build/xi-render/super-benchmark.log
+            build/xi-render/executable/
           retention-days: 14
