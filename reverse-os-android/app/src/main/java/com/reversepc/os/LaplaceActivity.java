@@ -99,6 +99,11 @@ public final class LaplaceActivity extends Activity {
         }catch(Exception e){return denied();}
     }
     private static WebResourceResponse denied(){return new WebResourceResponse("text/plain","UTF-8",403,"Forbidden",new HashMap<>(),new ByteArrayInputStream(new byte[0]));}
+    private static String stockSymbol(JSONObject p)throws Exception{
+        String symbol=p.getString("symbol").trim().toUpperCase(java.util.Locale.ROOT);
+        if(!symbol.matches("[A-Z][A-Z0-9.^=-]{0,14}"))throw new IllegalArgumentException("Símbolo bursátil inválido");
+        return symbol;
+    }
     static String urlFor(String source,JSONObject p)throws Exception{
         String root="https://api.exchange.coinbase.com/products/";
         switch(source){
@@ -109,6 +114,13 @@ public final class LaplaceActivity extends Activity {
             case "euro":return root+"BTC-EUR/ticker";
             case "noaa":return "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json";
             case "registro":return "https://raw.githubusercontent.com/guadalupejuan001-code/LaPlaceDIG/laplace-registro/seguimiento/resumen.json";
+            case "stock":{
+                String symbol=stockSymbol(p),range=p.optString("range","1mo");
+                if(!range.equals("5d")&&!range.equals("1mo")&&!range.equals("3mo"))throw new IllegalArgumentException("Rango bursátil inválido");
+                return "https://query1.finance.yahoo.com/v8/finance/chart/"+java.net.URLEncoder.encode(symbol,"UTF-8")
+                    +"?interval=5m&range="+java.net.URLEncoder.encode(range,"UTF-8")
+                    +"&includePrePost=false&events=div%2Csplits";
+            }
             case "candles":{
                 int step=p.getInt("step");long start=p.getLong("start"),end=p.getLong("end");
                 long now=System.currentTimeMillis()/1000;
