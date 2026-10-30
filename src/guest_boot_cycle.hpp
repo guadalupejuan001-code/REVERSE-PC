@@ -15,12 +15,22 @@ struct BootCycleLimits {
   std::uint64_t instructions=3000000000, wall_ms=1200000, chunk=50000;
   std::uint64_t checkpoint_ms=60000, checkpoint_instructions=100000000;
   bool stop_after_first_user_instruction=false;
+  bool stop_before_user_undefined=false;
 };
 struct BootCycleReport {
   std::uint64_t initial_instructions=0, elapsed_ms=0, chunks=0;
   std::uint64_t entry_instruction_faults=0,entry_interrupts=0;
   std::string reason="running", error, console;
   bool first_user_instruction_verified=false;
+  bool prior_user_instruction_verified=false;
+  std::string verified_entry_checkpoint_sha256;
+};
+// A caller supplies an independently accepted entry proof. Bind it to every
+// byte of this restored CPU/device/XI state before any save or transition.
+// This is host evidence; it never becomes a guest flag or a new RAM owner.
+struct BootCycleEntryProof {
+  std::string checkpoint_sha256;
+  std::uint64_t instructions=0,pc=0;
 };
 using CycleSave=std::function<void(const MinimalGuest&,const BootCycleReport&)>;
 using UserEntry=std::function<bool(MinimalGuest&)>;
@@ -52,17 +62,17 @@ inline RunResult boot_cycle_entry_event(MinimalGuest& guest,const MachineFault* 
 // the exact successful prefix, including its UART, and leave the faulting
 // instruction unexecuted for diagnosis and subsequent repair.
 inline RunResult boot_cycle_prefix(MinimalGuest& guest,std::uint64_t count,
-                                   bool stop_el0,std::string& error) {
-  try {return guest.run(count,stop_el0);}
+                                   bool stop_el0,std::string& error,bool stop_undefined=false) {
+  try {return guest.run(count,stop_el0,stop_undefined);}
   catch(const std::exception& failure) {
     error=failure.what();const auto before=guest;auto good=before;
     std::uint64_t low=0,high=count;RunResult prefix;
     while(low+1<high){const auto middle=low+(high-low)/2;auto trial=before;
-      try{auto run=trial.run(middle,stop_el0);low=middle;good=std::move(trial);prefix=std::move(run);}
+      try{auto run=trial.run(middle,stop_el0,stop_undefined);low=middle;good=std::move(trial);prefix=std::move(run);}
       catch(const std::exception&){high=middle;}
     }
     auto rejected=good;bool failed=false;
-    try{rejected.run(1,stop_el0);}catch(const std::exception&){failed=true;}
+    try{rejected.run(1,stop_el0,stop_undefined);}catch(const std::exception&){failed=true;}
     require(failed,"Could not localize the rejected CPU transition");
     guest=std::move(good);return prefix;
   }
@@ -71,12 +81,22 @@ inline RunResult boot_cycle_prefix(MinimalGuest& guest,std::uint64_t count,
 inline BootCycleReport run_boot_cycle(MinimalGuest& guest,const BootCycleLimits& limit,
     const CycleSave& save={},const UserEntry& first_user={},
     const std::function<void(const MinimalGuest&,const BootCycleReport&)>& progress={},
-    const std::function<bool()>& interrupted={}) {
+    const std::function<bool()>& interrupted={},
+    const BootCycleEntryProof* prior_entry=nullptr) {
   require(limit.instructions&&limit.instructions<=UINT64_C(8000000000),"Cycle instruction budget must be 1..8000000000");
   require(limit.wall_ms&&limit.wall_ms<=1500000,"Cycle wall budget must be 1..1500000 ms");
   require(limit.chunk&&limit.chunk<=1000000&&limit.checkpoint_ms&&limit.checkpoint_instructions,"Invalid cycle transaction/save cadence");
   require(!limit.stop_after_first_user_instruction||bool(first_user),"A userspace milestone stop requires its entry verifier");
   BootCycleReport report;report.initial_instructions=guest.registers().instructions;
+  if(prior_entry){
+    require(!limit.stop_after_first_user_instruction,"Cannot repeat the entry milestone during a proven continuation");
+    require(prior_entry->checkpoint_sha256.size()==64&&prior_entry->checkpoint_sha256.find_first_not_of("0123456789abcdef")==std::string::npos,"Invalid proven entry hash");
+    require(guest.machine().enabled&&!guest.machine().el&&!guest.registers().halted&&!guest.machine().waiting,"Proven entry must be an active EL0 state");
+    require(guest.registers().instructions==prior_entry->instructions&&guest.registers().pc==prior_entry->pc,"Proven entry count or PC differs");
+    require(GuestSha256::hash(guest.snapshot())==prior_entry->checkpoint_sha256,"Proven entry does not match the complete native state");
+    report.prior_user_instruction_verified=true;
+    report.verified_entry_checkpoint_sha256=prior_entry->checkpoint_sha256;
+  }
   require(report.initial_instructions<=UINT64_MAX-limit.instructions,"Instruction counter would overflow");
   const auto start=std::chrono::steady_clock::now();auto saved_at=start;
   auto saved_steps=report.initial_instructions;
@@ -89,7 +109,7 @@ inline BootCycleReport run_boot_cycle(MinimalGuest& guest,const BootCycleLimits&
     if(interrupted&&interrupted()){report.reason="host_interrupted";break;}
     if(steps>=limit.instructions){report.reason="instruction_budget";break;}
     if(report.elapsed_ms>=limit.wall_ms){report.reason="host_wall_budget";break;}
-    if(first_user&&!report.first_user_instruction_verified&&guest.machine().enabled&&!guest.machine().el){
+    if(first_user&&!report.first_user_instruction_verified&&!report.prior_user_instruction_verified&&guest.machine().enabled&&!guest.machine().el){
       const auto count=guest.registers().instructions;
       if(!(guest.machine().daif&0x80)&&guest.machine().next_irq()!=1023){
         try{output(boot_cycle_entry_event(guest,nullptr));++report.entry_interrupts;++report.chunks;}
@@ -111,7 +131,7 @@ inline BootCycleReport run_boot_cycle(MinimalGuest& guest,const BootCycleLimits&
       }
     }else{
       std::string failure;const auto count=std::min(limit.chunk,limit.instructions-steps);
-      const auto run=boot_cycle_prefix(guest,count,bool(first_user)&&!report.first_user_instruction_verified,failure);
+      const auto run=boot_cycle_prefix(guest,count,bool(first_user)&&!report.first_user_instruction_verified&&!report.prior_user_instruction_verified,failure,limit.stop_before_user_undefined);
       output(run);++report.chunks;
       if(!failure.empty()){report.reason="architectural_stop";report.error=failure;break;}
       // WFI may be the final instruction of this transaction even though
@@ -122,6 +142,7 @@ inline BootCycleReport run_boot_cycle(MinimalGuest& guest,const BootCycleLimits&
         report.reason="no_instruction_progress";break;
       }
     }
+    if(report.console.find("Kernel panic - not syncing")!=std::string::npos){report.reason="guest_kernel_panic";report.error="Guest kernel reported a panic";break;}
     tick();if(progress)progress(guest,report);
     const auto now=std::chrono::steady_clock::now();
     if(save&&(now-saved_at>=std::chrono::milliseconds(limit.checkpoint_ms)||guest.registers().instructions-saved_steps>=limit.checkpoint_instructions)){
@@ -140,6 +161,8 @@ inline std::string boot_cycle_json(const MinimalGuest& guest,const BootCycleRepo
     <<",\"checkpoint_sha256\":"<<quote(sha)<<",\"host_elapsed_ms\":"<<report.elapsed_ms
     <<",\"completed_chunks\":"<<report.chunks
     <<",\"first_user_instruction_verified\":"<<(report.first_user_instruction_verified?"true":"false")
+    <<",\"prior_user_instruction_verified\":"<<(report.prior_user_instruction_verified?"true":"false")
+    <<",\"verified_entry_checkpoint_sha256\":"<<quote(report.verified_entry_checkpoint_sha256)
     <<",\"entry_instruction_faults\":"<<report.entry_instruction_faults<<",\"entry_interrupts\":"<<report.entry_interrupts
     <<",\"provenance\":"<<provenance<<"}";return out.str();
 }

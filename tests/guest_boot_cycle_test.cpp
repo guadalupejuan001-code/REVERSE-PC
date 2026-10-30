@@ -10,7 +10,8 @@ static MinimalGuest graphics(){MinimalGuest g(128*1024*1024,0);g.load_linux_imag
 static MinimalGuest user_entry(){
   // Real MSR/ERET transition and a NOP at EL0, derived from the existing
   // independently assembled SPSR.SSBS witness. This fixture is not Android.
-  const std::uint32_t code[]{0xd2820000u,0xd5184000u,0xd2800301u,0xf2a80101u,0xd5184021u,0xd69f03e0u,0xd503201fu};
+  const std::uint32_t code[]{0xd2820000u,0xd5184000u,0xd2800301u,0xf2a80101u,0xd5184021u,0xd69f03e0u,0xd503201fu,
+    0xd503201fu,0xd503201fu,0xd503201fu,0xd503201fu};
   auto image=system_demo_elf();image.resize(256);for(auto word:code)put(image,word,4);
   for(unsigned i=0;i<8;i++){image[96+i]=std::uint8_t(std::uint64_t(sizeof(code))>>(8*i));image[104+i]=image[96+i];}
   MinimalGuest g(128*1024*1024,0);g.load_elf(image,true);return g;
@@ -36,7 +37,7 @@ static MinimalGuest demand_entry(bool irq){
   at=256+0x1480;emit(0x14000320); // Lower-EL IRQ vector -> timer acknowledgement.
   at=256+0x2000;mov(0,0x40010000);mov(1,0x400007c5);emit(0xf9000801);emit(0xd5033f9f);emit(0xd508871f);emit(0xd5033fdf);emit(0xd69f03e0);
   at=256+0x2100;mov(21,MachineState::gic_cpu);emit(0xb9400ea0);msr(guest_sysreg(3,3,14,2,1),31);emit(0xb90012a0);emit(0xd69f03e0);
-  at=256+0x3000;emit(0xd503201f);
+  at=256+0x3000;emit(0xd503201f);emit(0xd4000001);emit(0xd503201f);emit(0x14000000);
   MinimalGuest g(128*1024*1024,0);g.load_elf(image,true);return g;
 }
 static bool verify_demand_entry(MinimalGuest& g){
@@ -135,6 +136,66 @@ int main(){try{
   auto wrong_fault=demand_entry(false);wrong_fault.run(1000,true);const auto wrong_before=wrong_fault.snapshot();
   const auto wrong_report=run_boot_cycle(wrong_fault,fault_limits,{},[](MinimalGuest& g)->bool{throw MachineFault{0x82000005,g.registers().pc+4};});
   check(wrong_report.reason=="unverified_userspace_entry"&&wrong_fault.snapshot()==wrong_before,"A different observed fault address was delivered to the native CPU");
+  // Continue an already verified native EL0 boundary. A proof is bound to
+  // the entire source; it must never re-run the first-entry callback.
+  auto continuation=entry_reference;
+  const auto proof_state=continuation.snapshot();
+  BootCycleEntryProof prior{GuestSha256::hash(proof_state),continuation.registers().instructions,continuation.registers().pc};
+  BootCycleLimits post_limits;post_limits.instructions=3;post_limits.wall_ms=30000;post_limits.chunk=2;
+  auto post_reference=continuation;post_reference.run(3);
+  unsigned entry_calls=0;
+  const auto post_report=run_boot_cycle(continuation,post_limits,{},[&](MinimalGuest&)->bool{++entry_calls;throw std::runtime_error("Entry repeated");},{},{},&prior);
+  check(post_report.reason=="instruction_budget"&&entry_calls==0,"Proven continuation repeated the original entry verifier");
+  check(post_report.prior_user_instruction_verified&&!post_report.first_user_instruction_verified&&post_report.verified_entry_checkpoint_sha256==prior.checkpoint_sha256,"Carried proof was falsely reported as newly executed");
+  check(continuation.snapshot()==post_reference.snapshot(),"Proven continuation changed the complete native state or exceeded budget");
+  auto reject_proof=[&](MinimalGuest& g,const BootCycleEntryProof& proof,const BootCycleLimits& bound){
+    const auto before=g.snapshot();unsigned saves=0;bool rejected=false;
+    try{run_boot_cycle(g,bound,[&](const MinimalGuest&,const BootCycleReport&){++saves;},[](MinimalGuest&)->bool{return true;},{},{},&proof);}catch(const std::exception&){rejected=true;}
+    check(rejected&&saves==0&&g.snapshot()==before,"Rejected continuation proof saved or mutated native state");
+  };
+  auto proof_guest=entry_reference;auto forged=prior;forged.checkpoint_sha256[0]=forged.checkpoint_sha256[0]=='0'?'1':'0';reject_proof(proof_guest,forged,post_limits);
+  forged=prior;++forged.pc;reject_proof(proof_guest,forged,post_limits);
+  forged=prior;++forged.instructions;reject_proof(proof_guest,forged,post_limits);
+  forged=prior;forged.checkpoint_sha256="not-a-hash";reject_proof(proof_guest,forged,post_limits);
+  auto changed_ram=proof_guest;changed_ram.write(0x40090000,0x42,1);reject_proof(changed_ram,prior,post_limits);
+  auto changed_clock=proof_guest;changed_clock.enable_counter_latency({});reject_proof(changed_clock,prior,post_limits);
+  auto repeat_limits=post_limits;repeat_limits.stop_after_first_user_instruction=true;reject_proof(proof_guest,prior,repeat_limits);
+  // Real unsupported userspace opcode: preserve the precise successful prefix.
+  auto post_bad=proof_guest;post_bad.write(post_bad.physical_address(post_bad.registers().pc+8),0xffffffff,4);
+  BootCycleEntryProof bad_proof{GuestSha256::hash(post_bad.snapshot()),post_bad.registers().instructions,post_bad.registers().pc};
+  auto post_bad_reference=post_bad;post_bad_reference.run(2);post_limits.instructions=20;post_limits.chunk=20;
+  const auto post_bad_report=run_boot_cycle(post_bad,post_limits,{},[](MinimalGuest&)->bool{throw std::runtime_error("entry replay");},{},{},&bad_proof);
+  check(post_bad_report.reason=="architectural_stop"&&!post_bad_report.error.empty()&&post_bad_report.prior_user_instruction_verified,"Userspace architecture failure was hidden or lost its proven origin");
+  check(post_bad.snapshot()==post_bad_reference.snapshot(),"Userspace failure committed the rejected instruction or lost its prefix");
+  auto syscall=demand_entry(false);syscall.run(1000,true);syscall.run(1);syscall.run(1000,true);syscall.run(1);
+  BootCycleEntryProof syscall_proof{GuestSha256::hash(syscall.snapshot()),syscall.registers().instructions,syscall.registers().pc};
+  auto syscall_reference=syscall;syscall_reference.run(100);const auto before_exceptions=syscall.machine().exceptions;
+  post_limits.instructions=100;post_limits.chunk=3;
+  const auto syscall_report=run_boot_cycle(syscall,post_limits,{},[](MinimalGuest&)->bool{throw std::runtime_error("entry repeated after syscall");},{},{},&syscall_proof);
+  check(syscall_report.reason=="instruction_budget"&&syscall_report.prior_user_instruction_verified&&!syscall.machine().el&&syscall.machine().exceptions==before_exceptions+1,"Proven userspace did not execute native SVC, handler and ERET");
+  check(syscall.snapshot()==syscall_reference.snapshot(),"Proven syscall continuation changed CPU, mappings, clock or XI memory");
+  auto undefined=entry_reference;const auto undef_pc=undefined.registers().pc;
+  undefined.write(undefined.physical_address(undef_pc),0xd5300000u|(guest_sysreg(3,0,0,0,0)<<5),4);
+  const auto undef_before=undefined.snapshot();auto delivered_undefined=undefined;delivered_undefined.run(1);
+  check(delivered_undefined.machine().el==1&&delivered_undefined.machine().elr==undef_pc&&delivered_undefined.machine().esr==(1u<<25),"Default native EL0 undefined exception behavior changed");
+  BootCycleEntryProof undef_proof{GuestSha256::hash(undef_before),undefined.registers().instructions,undef_pc};
+  post_limits.stop_before_user_undefined=true;
+  const auto undef_report=run_boot_cycle(undefined,post_limits,{},{},{},{},&undef_proof);
+  check(undef_report.reason=="architectural_stop"&&undef_report.error.find("EL0 undefined instruction trap")!=std::string::npos&&undefined.snapshot()==undef_before,"Diagnostic boundary committed an undefined trap or hid its exact PC");
+  post_limits.stop_before_user_undefined=false;
+  auto panic_image=system_demo_elf();panic_image.resize(256);
+  auto panic_emit=[&](std::uint32_t w){put(panic_image,w,4);};
+  for(unsigned i=0;i<4;i++)panic_emit((i?0xf2800000u:0xd2800000u)|(i<<21)|(unsigned((MachineState::uart_base>>(16*i))&65535)<<5));
+  const std::string panic_text="Kernel panic - not syncing: test\n";
+  for(unsigned char c:panic_text){panic_emit(0x52800001u|(unsigned(c)<<5));panic_emit(0x39000001u);}
+  panic_emit(0x14000000u);
+  for(unsigned i=0;i<8;i++){panic_image[96+i]=std::uint8_t(std::uint64_t(panic_image.size()-256)>>(8*i));panic_image[104+i]=panic_image[96+i];}
+  MinimalGuest panic_guest(128*1024*1024,0);panic_guest.load_elf(panic_image,true);auto panic_reference=panic_guest;
+  post_limits.instructions=1000;post_limits.chunk=13;
+  const auto panic_report=run_boot_cycle(panic_guest,post_limits);
+  panic_reference.run(panic_guest.registers().instructions);
+  check(panic_report.reason=="guest_kernel_panic"&&panic_report.console.find("Kernel panic - not syncing")!=std::string::npos&&panic_guest.registers().instructions<100,"A kernel panic was counted as sustained boot progress");
+  check(panic_guest.snapshot()==panic_reference.snapshot(),"Panic observation changed the native successful prefix");
   const auto root=std::filesystem::path("evidence/c04/cycle-journal-test-"+std::to_string(::getpid()));
   std::filesystem::create_directories(root.parent_path());BootCycleJournal journal(root);
   journal.publish(bad,failed);journal.publish(split,report);journal.publish(bounded,bounded_report);
