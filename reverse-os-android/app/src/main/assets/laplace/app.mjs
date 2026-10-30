@@ -82,6 +82,7 @@ async function verifySnapshot(s){
   need(Date.parse(body.at)>=Date.parse(body.quote?.known_at),'Fecha de captura incoherente');
   if(body.market.kind==='crypto'){
     need(body.upstream===UPSTREAM_M001&&Array.isArray(body.predictions)&&body.predictions.length===6,'Pronósticos BTC incompletos');
+    need(body.native_direction?.schema==='laplace-xn01-native-xi-v1'&&body.native_direction.asset==='BTC-USD','XN01 BTC ausente');
     for(const p of body.predictions){await verificarPronostico(p);need(p.precio_inicial===Number(body.quote.value),'Precio BTC incoherente');}
   }else{
     need(body.upstream===UPSTREAM_BOLSA&&body.stock_result?.schema==='laplace-xn01-native-xi-v1','Resultado XN01 nativo ausente');
@@ -96,9 +97,11 @@ async function updateBTC(){
   const quote={asset:'BTC-USD',value:String(q.price),observed_at:new Date(Date.parse(q.time)).toISOString(),known_at:new Date(Date.parse(response.received_at)).toISOString()};
   const bars=validarVelas(raw,{corte:quote.observed_at});need(bars.length>=60,'Historial insuficiente');
   const predictions=await emitirPronosticos(bars,quote,{emitidoEn:new Date().toISOString(),horizontes:[15,30,60,240,1440,10080],revision:'REVERSE-Android-M001-'+UPSTREAM_M001});
+  const native=await host('native_x001',{asset:'BTC-USD',bars:bars.slice(-240)});
+  const nativeDirection=native.result;need(nativeDirection?.schema==='laplace-xn01-native-xi-v1','XN01 BTC no devolvió un resultado compatible');
   const extras=await extrasTask;
   return {schema:'laplace-reverse-v2',upstream:UPSTREAM_M001,at:new Date().toISOString(),
-    market:{asset:'BTC-USD',kind:'crypto',model:'M001'},quote,bars,predictions,extras};
+    market:{asset:'BTC-USD',kind:'crypto',model:'M001+XN01-XI'},quote,bars,predictions,native_direction:nativeDirection,extras};
 }
 async function updateStock(){
   const id=assetId(),r=await pub('stock',{symbol:id,range:'1mo'}),parsed=parseStockChart(r.value,id,r.received_at);
@@ -143,14 +146,20 @@ function render(){
 function renderBTC(s){
   const p=prediction(s);if(!p)return;
   $('resultadoEtiqueta').textContent='PRECIO CALCULADO · '+$('horizonte').selectedOptions[0].textContent.toUpperCase();
-  $('candidato').textContent=money(p.precio_predicho);$('modeloChip').textContent='M001';
+  $('candidato').textContent=money(p.precio_predicho);$('modeloChip').textContent='M001 + XI';
   const change=p.precio_predicho===null?null:p.precio_predicho-p.precio_inicial;
   $('candidato').className=change>0?'positivo':change<0?'negativo':'neutral';
   $('cambio').textContent=change===null?'Sin antecedentes suficientes.':(change<0?'Bajada: ':change>0?'Subida: ':'Sin cambio: ')+money(Math.abs(change))+' · '+(100*change/p.precio_inicial).toFixed(3)+' %';
-  $('objetivo').textContent=date(p.objetivo_en);$('soporteCorto').textContent=p.analogos+' análogos';$('validacionCorta').textContent='M001 experimental';
-  $('soporte').textContent=p.analogos+' antecedentes seleccionados · '+s.bars.length+' velas cerradas. '+(p.analogos<8?'Soporte escaso.':'Candidato publicado sin sustituirlo por persistencia.');
-  $('interpretacion').textContent='M001 calcula un precio candidato usando antecedentes similares. La línea discontinua es el punto estimado, no el recorrido que seguirá el precio.';
-  $('estadoBits').hidden=true;
+  $('objetivo').textContent=date(p.objetivo_en);$('soporteCorto').textContent=p.analogos+' análogos';
+  const xn=s.native_direction;$('validacionCorta').textContent=xn?(xn.direction==='subida'?'XI ↑ ':'XI ↓ ')+percent(xn.confidence):'XI sin lectura';
+  $('soporte').textContent=p.analogos+' análogos M001 · '+s.bars.length+' velas cerradas. '+(xn?'XN01/XI: '+xn.direction+' con soporte '+xn.support+'. ':'')+(p.analogos<8?'Soporte M001 escaso.':'Candidato M001 publicado sin sustituirlo por persistencia.');
+  $('interpretacion').textContent='M001 calcula el precio candidato; XN01 calcula en XI/Ether la dirección inmediata de 5 minutos. Son salidas separadas y ninguna sustituye a la otra.';
+  renderMaskBits(xn);
+}
+function renderMaskBits(x){
+  const root=$('estadoBits');root.replaceChildren();if(!x){root.hidden=true;return;}root.hidden=false;
+  const defs=[['5 min',1,'close actual ≥ anterior'],['15 min',2,'close actual ≥ hace 15 min'],['Impulso',4,'movimiento 5m > media absoluta 30m'],['Volumen',8,'volumen > media 30m']];
+  for(const [name,bit,detail] of defs){const el=document.createElement('div');el.className='bit';el.dataset.on=Boolean(x.mask&bit);const dot=document.createElement('i'),txt=document.createElement('span'),sm=document.createElement('small');txt.textContent=name;sm.textContent=(x.mask&bit?'Activo · ':'Inactivo · ')+detail;txt.append(sm);el.append(dot,txt);root.append(el);}
 }
 function renderStock(s){
   const x=s.stock_result,up=x.direction==='subida';
@@ -161,9 +170,7 @@ function renderStock(s){
   $('soporteCorto').textContent=x.support+' estados iguales';$('validacionCorta').textContent='XN01 · pendiente de reserva fresca';
   $('soporte').textContent='Estado XI '+x.mask+' · '+x.training_rows+' filas nativas · soporte '+x.support+' · prior '+percent(x.prior)+'.';
   $('interpretacion').textContent='XN01 calcula la dirección dentro de XI/Ether usando InverseMemory. JavaScript solo representa la salida y no decide SUBIDA/BAJADA.';
-  const root=$('estadoBits');root.hidden=false;root.replaceChildren();
-  const defs=[['5 min',1,'close actual ≥ anterior'],['15 min',2,'close actual ≥ hace 15 min'],['Impulso',4,'movimiento 5m > media absoluta 30m'],['Volumen',8,'volumen > media 30m']];
-  for(const [name,bit,detail] of defs){const el=document.createElement('div');el.className='bit';el.dataset.on=Boolean(x.mask&bit);const dot=document.createElement('i'),txt=document.createElement('span'),sm=document.createElement('small');txt.textContent=name;sm.textContent=(x.mask&bit?'Activo · ':'Inactivo · ')+detail;txt.append(sm);el.append(dot,txt);root.append(el);}
+  renderMaskBits(x);
 }
 function drawChart(){
   const s=current(),graph=$('grafico');graph.replaceChildren();if(!s)return;
