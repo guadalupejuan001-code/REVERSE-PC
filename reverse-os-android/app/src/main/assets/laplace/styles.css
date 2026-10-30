@@ -57,3 +57,5 @@ article p,article small,article h2,article strong{overflow-wrap:anywhere}
 .filas-globales{display:grid;gap:0;margin:10px 0 14px}.filas-globales div{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:12px;padding:10px 0;border-bottom:1px solid var(--borde)}.filas-globales dt{color:var(--muted);font-size:12px}.filas-globales dd{margin:0;text-align:right;font-size:12px;overflow-wrap:anywhere}
 #mundoGrupos article strong{display:block;margin-top:6px;font-size:20px}
 @media(max-width:760px){.metricas-mundo{grid-template-columns:repeat(2,minmax(0,1fr))}.filas-globales div{grid-template-columns:1fr}.filas-globales dd{text-align:left}.navegacion button{font-size:11px}}
+
+.fuentes-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}.fuentes-grid article{padding:14px;border:1px solid #ffffff20;border-radius:12px}.panel{margin:18px 0;padding:20px;background:#121c28;border:1px solid #ffffff16;border-radius:16px}pre{max-width:100%;max-height:380px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere}#i001Endpoint{width:min(100%,520px)}

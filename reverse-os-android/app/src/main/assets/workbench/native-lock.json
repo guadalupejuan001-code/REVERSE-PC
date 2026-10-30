@@ -1,0 +1,25 @@
+{
+  "desktop_apk_sha256": "3c7bb96c2af45a8bc52511ece0ecc47069dcc6b2ca6c7719fae1a6a7e86b707e",
+  "velocity_apk_sha256": "beee163435aea85db6d5c55c1a9e16a0071ef1e14e5ca784c389c00e095e4bff",
+  "velocity_source": "236513fc0870e5e07a5ff0eb2f1d2609e29328ce",
+  "jni": {
+    "arm64-v8a": {
+      "primary_sha256": "dd5b124df271722fd6cd2093baf2708cbb855035fa5b4a62e5479dbf55d069fc",
+      "regraphics_original_sha256": "87c0676c217133b4ab16d8d6aade7798a04e49f82f6693d5ff091b9fa61ad676",
+      "bindings": 9,
+      "text_sha256": "0e2f11fadda5723909238763625b9e41e76a0c1af4dba405e0cc717c5eb59b29",
+      "code_unchanged": true,
+      "sha256": "430a80d6aa0f4afdecbbd44e993228fd0f592e9308f29a2aa7efe9471a74e0a7",
+      "dynamic_hashes_updated": true
+    },
+    "x86_64": {
+      "primary_sha256": "236d41227dc7f53fe733f0a2c885f2a5cae352d4b1774b2ec817159a50c0b0eb",
+      "regraphics_original_sha256": "de0ae98c8acdfb8711f65df7f01caa7e5211ec5cfebe3ae8fac71969ecdbc46d",
+      "bindings": 9,
+      "text_sha256": "d2ad54888cff99b3d282a85f29f22d3fd4a2dc79b25d9e910c4e97f74144bf3f",
+      "code_unchanged": true,
+      "sha256": "909c8910e69dfee0e1f8243dcc99d8b9dd0e321e1280fef195db8ee1297f22b4",
+      "dynamic_hashes_updated": true
+    }
+  }
+}

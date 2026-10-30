@@ -8,3 +8,8 @@
 /reverse-pc-results/
 *.pending
 __pycache__/
+
+# Verified release payloads are restored from the owner's original inputs.
+/reverse-os-android/app/src/main/assets/bbyq-x09/
+/reverse-os-android/app/src/main/assets/lexicon/*.bin
+/reverse-os-android/app/src/main/jniLibs/

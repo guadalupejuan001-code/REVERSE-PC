@@ -1,0 +1,9 @@
+{
+  "source": "guadalupejuan001-code/BBY-Q",
+  "commit": "70852c46baead5f5885d0f08c8cc12f98bd6a62c",
+  "version": "X09-All-Training-1",
+  "model_sha256": "71ba9704e279c08160a8af882a8628b77e938a30befa450e95a522315a39f995",
+  "dictionary_entries": 236256,
+  "properties_sha256": "149d914bd0ef65cfbc305498c6352e28c71bea057de7772433db9382cc21f297",
+  "host": "Original JNI, original XI roles, Android byte transport"
+}

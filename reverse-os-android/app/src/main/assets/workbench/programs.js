@@ -7,6 +7,7 @@ Object.assign(APP_DESCRIPTIONS,{programs:'Tus programas del dispositivo.',bbyq:'
 function refreshProgramViews(){
   for(const w of state.windows)if(w.app==='programs')renderWindowContent(w);
   if(!$('#launcher').hidden)renderLauncher($('#global-search').value);
+  renderShortcuts();
 }
 async function refreshPrograms(){
   if(!nativeAvailable||programCatalogLoading)return;
@@ -18,7 +19,7 @@ async function refreshPrograms(){
 function programCards(){
   if(programCatalogError)return '<p role="alert">'+esc(programCatalogError)+'</p>';
   if(!programCatalog)return '<p class="muted">'+(nativeAvailable?'Leyendo tus ejecutables…':'Abre la aplicación Android para ejecutar programas .rxe.')+'</p>';
-  return programCatalog.apps.map(app=>'<article class="program-card"><div>'+icon(app.metadata.ui==='chat'?'help':'desktop')+'<span><strong>'+esc(app.metadata.title)+'</strong><small>'+esc(app.metadata.app_version||'RXE1')+(bbyqPrograms().find(p=>p.path===app.path)?' · Programa '+(bbyqPrograms().find(p=>p.path===app.path).target-15):'')+' · '+Math.ceil(app.bytes/1024)+' KB · '+esc(app.path.split('/').pop())+'</small></span></div><div class="program-actions"><button class="primary-button" data-program-path="'+esc(app.path)+'">Abrir</button><button class="secondary-button" data-program-export="'+esc(app.path)+'" aria-label="Exportar '+esc(app.metadata.title)+'">'+icon('download')+'</button></div></article>').join('')+(programCatalog.apps.length?'':'<p>No hay ejecutables. Agrega un .rxe o créalo desde XI Studio.</p>')+(programCatalog.rejected?'<p role="status">Se omitieron '+programCatalog.rejected+' archivos que no son ejecutables válidos.</p>':'');
+  return programCatalog.apps.map(app=>'<article class="program-card"><div>'+appIcon(programIconName(app))+'<span><strong>'+esc(app.metadata.title)+'</strong><small>'+esc(app.metadata.app_version||'RXE1')+(bbyqPrograms().find(p=>p.path===app.path)?' · Programa '+(bbyqPrograms().find(p=>p.path===app.path).target-15):'')+' · '+Math.ceil(app.bytes/1024)+' KB · '+esc(app.path.split('/').pop())+'</small></span></div><div class="program-actions"><button class="primary-button" data-program-path="'+esc(app.path)+'">Abrir</button><button class="secondary-button" data-program-export="'+esc(app.path)+'" aria-label="Exportar '+esc(app.metadata.title)+'">'+icon('download')+'</button></div></article>').join('')+(programCatalog.apps.length?'':'<p>No hay ejecutables. Agrega un .rxe o créalo desde XI Studio.</p>')+(programCatalog.rejected?'<p role="status">Se omitieron '+programCatalog.rejected+' archivos que no son ejecutables válidos.</p>':'');
 }
 function programsHTML(){
   if(!programCatalog&&!programCatalogLoading&&!programCatalogError)queueMicrotask(refreshPrograms);
@@ -46,15 +47,24 @@ function programHTML(w){
   const saved=data.snapshot;
   if(!saved)return '<div class="programs-layout"><p role="status">'+esc(data.error||'Abriendo el ejecutable y su memoria…')+'</p>'+(data.error?'<button class="secondary-button" data-program-action="reload">Volver a abrir</button>':'')+'</div>';
   const meta=saved.metadata,chat=meta.ui==='chat',disabled=data.busy?' disabled':'';
-  const status=data.error|| (data.busy?'Procesando en el núcleo…':chat?'Memoria guardada · '+(data.language===1?'Español':'English')+(saved.desktop_control?' · W4u conectado':''):'Ejecutar inicia el programa. Abrir la ventana conserva la última salida.');
-  const heading='<div class="rxe-heading"><span>'+(chat?'W4u 0.1':esc(meta.title)+' · '+esc(meta.app_version||'RXE1'))+'</span><div class="program-actions"><button class="secondary-button" data-program-action="reload" aria-label="Actualizar memoria"'+disabled+'>'+icon('restore')+'</button><button class="secondary-button" data-program-action="export"'+disabled+'>Exportar .rxe</button>'+(chat?'<button class="secondary-button" data-program-action="memory"'+disabled+'>Memoria</button>':'')+'</div></div>';
+  const status=data.error|| (data.busy?'Procesando en el núcleo…':chat?'Memoria guardada · '+(data.language===1?'Español':'English')+(saved.desktop_control?' · w4U conectado':''):'Ejecutar inicia el programa. Abrir la ventana conserva la última salida.');
+  const heading='<div class="rxe-heading"><span>'+(chat?'BBY Q · XI/Ether':esc(meta.title)+' · '+esc(meta.app_version||'RXE1'))+'</span><div class="program-actions"><button class="secondary-button" data-program-action="reload" aria-label="Actualizar memoria"'+disabled+'>'+icon('restore')+'</button><button class="secondary-button" data-program-action="export"'+disabled+'>Exportar .rxe</button>'+(chat?'<button class="secondary-button" data-program-action="memory"'+disabled+'>Memoria</button>':'')+'</div></div>';
   const plan=saved.agents;
-  const progress=plan&&plan.steps?'<p class="rxe-status">W4u · Plan: '+plan.steps+' paso'+(plan.steps===1?'':'s')+' · '+(plan.status===3?'Comprobado':plan.status===4?'Detenido':plan.completed+'/'+plan.steps+' completados')+'</p>':'';
+  const progress=plan&&plan.steps?'<p class="rxe-status">w4U · Plan: '+plan.steps+' paso'+(plan.steps===1?'':'s')+' · '+(plan.status===3?'Comprobado':plan.status===4?'Detenido':plan.completed+'/'+plan.steps+' completados')+'</p>':'';
   const message='<p class="rxe-status" role="status">'+esc(status)+'</p>'+progress;
+  if(meta.ui==='graphics')return '<div class="rxe-layout">'+heading+'<p class="rxe-status" role="status">'+esc(data.error||'Juego · Pantalla completa · Música propia')+'</p><h2>'+esc(meta.title)+'</h2><p>Una experiencia horizontal a pantalla completa. Carga tu música y desliza sobre los cubos.</p><button class="primary-button" data-program-action="graphics"'+disabled+'>Jugar a pantalla completa</button></div>';
   if(!chat)return '<div class="rxe-layout">'+heading+message+'<pre class="rxe-output" aria-label="Salida RXE">'+esc(saved.output||'Pulsa Ejecutar para iniciar.')+'</pre><button class="primary-button" data-program-action="run"'+(data.busy||data.uncertain?' disabled':'')+'>Ejecutar</button></div>';
-  const history=saved.history.length?saved.history.map((item,i)=>'<div class="rxe-message '+(item.role==='user'?'from-user':'from-agent')+'"><small>'+esc(item.role==='user'?'TÚ':meta.title)+'</small><p'+(item.role==='assistant'&&i===saved.history.length-1?' aria-label="Respuesta BBY Q"':'')+'>'+esc(item.text)+'</p></div>').join(''):'<p class="muted">Memoria '+esc(meta.app_version)+' lista. Lista para conversar. W4u opera tus programas y ventanas.</p>';
+  const module=['chat','work','cody','training'].includes(w.bbyqModule)?w.bbyqModule:'chat';
+  const moduleTabs='<nav class="bbyq-modules" aria-label="Módulos de BBY Q">'+[['chat','Chat'],['work','Work · w4U'],['cody','QdU · XI'],...(saved.training?[['training','Aprender']]:[])].map(([id,label])=>'<button type="button" data-bbyq-module="'+id+'" aria-current="'+(module===id?'page':'false')+'" class="'+(module===id?'selected':'')+'">'+label+'</button>').join('')+'</nav>';
+  if(module==='cody')return '<div class="rxe-layout bbyq-shell">'+heading+moduleTabs+'<section class="bbyq-module-content" aria-label="Cody, programación de BBY Q">'+qdStudioHTML(w)+'</section></div>';
+  if(module==='training'&&saved.training)return '<div class="rxe-layout bbyq-shell">'+heading+moduleTabs+message+'<section><h2>Enseñar una lección</h2><p>La lección se guarda al enviarla. Puedes consultarla en Chat y ver su fuente y revisión.</p><form data-training-form style="display:grid;gap:10px"><label>Acción <select name="mode"><option value="add">Enseñar</option><option value="correct">Corregir</option><option value="forget">Olvidar</option></select></label><label>Concepto <input name="term" required maxlength="64"></label><label>Revisión actual (consulta en Chat: de dónde sabes CONCEPTO) <input name="revision" inputmode="numeric"></label><label>Definición <textarea name="definition" maxlength="224"></textarea></label><label>Requiere <textarea name="requirement" maxlength="224"></textarea></label><label>Fuente <input name="source" maxlength="32" value="usuario"></label><label>Páginas o referencia <input name="pages" maxlength="32" value="personal"></label><button class="primary-button" type="submit"'+(data.busy||data.uncertain?' disabled':'')+'>Enviar lección</button></form><p>Banco: 448 hechos iniciales. Enseña con tus propias palabras. Las lecciones se consultan por su concepto.</p><button class="secondary-button" data-bbyq-module="chat">Ver conversación</button></section></div>';
+  if(module==='work'){
+    const details=plan&&Number.isInteger(plan.steps)&&plan.steps>0?'Último plan: '+(plan.completed||0)+' de '+plan.steps+' pasos. '+(plan.status===3?'Comprobado':plan.status===4?'Detenido':'Pendiente de confirmación')+'.':'Sin plan verificado en la sesión.';
+    return '<div class="rxe-layout bbyq-shell">'+heading+moduleTabs+'<section class="bbyq-work"><h2>Work · w4U</h2><p>Capacidad de coordinación del mismo BBY Q. Las órdenes se escriben en Chat. Las solicitudes explícitas de programación pasan por BBY Q → w4U → QdU → w4U → BBY Q, con permiso y revisión nativos.</p><div class="bbyq-work-status"><strong>Control del escritorio</strong><span>'+(saved.desktop_control?'Acciones admitidas y verificadas por REVERSE':'No disponible para este ejecutable')+'</span></div><div class="bbyq-work-status"><strong>Plan</strong><span>'+esc(details)+'</span></div><p>La memoria solo se confirma tras observar el resultado. La conexión actual genera y comprueba programas aritméticos XI acotados. No edita proyectos generales ni accede al teléfono sin restricciones.</p><button class="primary-button" data-bbyq-module="chat">Dar instrucción en Chat</button></section></div>';
+  }
+  const history=saved.history.length?saved.history.map((item,i)=>'<div class="rxe-message '+(item.role==='user'?'from-user':'from-agent')+'"><small>'+esc(item.role==='user'?'TÚ':meta.title)+'</small><p'+(item.role==='assistant'&&i===saved.history.length-1?' aria-label="Respuesta BBY Q"':'')+'>'+(item.role==='assistant'?(window.ReverseLexicon?.format(item.text)??esc(item.text)):esc(item.text))+'</p></div>').join(''):'<p class="muted">Memoria '+esc(meta.app_version)+' lista. Lista para conversar. w4U solo dispone de las acciones autorizadas y verificables de este escritorio.</p>';
   queueMicrotask(()=>{const el=$('.rxe-history',$('#'+w.id));if(el)el.scrollTop=el.scrollHeight;});
-  return '<div class="rxe-layout">'+heading+message+'<div class="rxe-history" aria-label="Conversación BBY Q">'+history+'</div><form class="rxe-composer" data-program-form><textarea aria-label="Mensaje para BBY Q" data-program-input maxlength="255" rows="2" placeholder="Escribe un mensaje…">'+esc(w.rxeDraft||'')+'</textarea><div class="program-actions"><button type="button" class="secondary-button '+(data.language===1?'selected':'')+'" data-program-language="1"'+disabled+'>Español</button><button type="button" class="secondary-button '+(data.language===2?'selected':'')+'" data-program-language="2"'+disabled+'>English</button><button type="submit" class="primary-button"'+(data.busy||data.uncertain?' disabled':'')+'>Enviar</button></div></form></div>';
+  return '<div class="rxe-layout bbyq-shell">'+heading+moduleTabs+message+'<small>Chat: Crea y ejecuta un programa en XI que multiplique 12 por 7. · /qdu · /work · @lex perro</small><div class="rxe-history" aria-label="Conversación BBY Q">'+history+'</div><form class="rxe-composer" data-program-form><textarea aria-label="Mensaje para BBY Q" data-program-input maxlength="'+(saved.input_bytes||255)+'" rows="2" placeholder="Escribe un mensaje…">'+esc(w.rxeDraft||'')+'</textarea><div class="program-actions"><button type="button" class="secondary-button '+(data.language===1?'selected':'')+'" data-program-language="1"'+disabled+'>Español</button><button type="button" class="secondary-button '+(data.language===2?'selected':'')+'" data-program-language="2"'+disabled+'>English</button><button type="submit" class="primary-button"'+(data.busy||data.uncertain?' disabled':'')+'>Enviar</button></div></form></div>';
 }
 function renderProgramContent(w,body){
   const next=document.createElement('div');next.innerHTML=programHTML(w);
@@ -67,6 +77,7 @@ function renderProgramContent(w,body){
   for(const child of [...layout.children])if(child!==replacement)previous.insertBefore(child,composer);
   const field=composer.querySelector('[data-program-input]'),nextField=replacement.querySelector('[data-program-input]');
   if(field.value!==nextField.value)field.value=nextField.value;
+  field.maxLength=nextField.maxLength;
   composer.setAttribute('aria-busy',String(!!programSessions.get(w.id)?.busy));
   for(const button of composer.querySelectorAll('button')){
     const selector=button.dataset.programLanguage?'[data-program-language="'+button.dataset.programLanguage+'"]':'[type="submit"]';
@@ -77,15 +88,16 @@ async function transactProgram(w,operation){
   const data=programSessions.get(w.id);if(!data?.snapshot||data.busy||data.uncertain)return;
   const snapshot=data.snapshot,payload={path:w.rxePath,identity:snapshot.identity},submittedDraft=w.rxeDraft||'';
   if(operation==='askApp'){
-    payload.text=(w.rxeDraft||'').trim();payload.language=data.language;
+    payload.text=w.rxeDraft||'';payload.language=data.language;
     if(!payload.text)return;
-    if(new TextEncoder().encode(payload.text).length>255){toast('Escribe un mensaje de hasta 255 bytes.','help');return;}
+    if(new TextEncoder().encode(payload.text).length>(snapshot.input_bytes||255)){toast('El mensaje supera '+(snapshot.input_bytes||255)+' bytes.','help');return;}
     w.rxeDraft='';
   }
   data.busy=true;data.error='';renderWindowContent(w);
   try{
     if(operation==='askApp'&&snapshot.desktop_control){await refreshPrograms();payload.desktop=captureBbyqDesktop(snapshot.identity);}
     let result=await nativeRequest(operation,JSON.stringify(payload));
+    if(operation==='launchGraphics'){data.busy=false;if(getWindow(w.id))renderWindowContent(w);return;}
     if(operation==='askApp'){
       let observation=payload.desktop,steps=0;
       while(result.control){
@@ -109,7 +121,34 @@ async function transactProgram(w,operation){
 }
 window.ReversePrograms={imported(result){refreshPrograms();if(result.ok){toast('Ejecutable agregado.');openProgram(result.path);}}};
 document.addEventListener('input',event=>{if(event.target.matches('[data-program-input]')){const w=getWindow(event.target.closest('.window')?.dataset.id);if(w){w.rxeDraft=event.target.value;queueSave();}}});
-document.addEventListener('submit',event=>{if(event.target.matches('[data-program-form]')){event.preventDefault();const w=getWindow(event.target.closest('.window')?.dataset.id);if(w)transactProgram(w,'askApp');}});
+document.addEventListener('submit',event=>{
+  if(!event.target.matches('[data-program-form]'))return;
+  event.preventDefault();const w=getWindow(event.target.closest('.window')?.dataset.id);if(!w)return;
+  const command=(w.rxeDraft||'').trim().toLowerCase();
+  if(['/cody','/qdu','/work','/chat'].includes(command)){w.rxeDraft='';w.bbyqModule=command==='/qdu'?'cody':command.slice(1);renderWindowContent(w);queueSave();return;}
+  // Explicit operator shortcuts, not an invented natural-language coding agent.
+  const task=/^\/cody (probar|enseñar|resolver)(?:\s+(\d{1,2})\s+(\d{1,2}))?$/.exec(command);
+  if(task){
+    w.rxeDraft='';w.bbyqModule='cody';
+    if(task[1]==='resolver'){
+      const a=Number(task[2]),b=Number(task[3]);
+      if(task[2]===undefined||a<0||a>99||b<1||b>99){toast('Usa /cody resolver 27 8.','help');renderWindowContent(w);return;}
+      w.qdA=a;w.qdB=b;
+    }
+    renderWindowContent(w);queueSave();
+    qdSession(w);
+    qdAction(w,task[1]==='probar'?'evaluate':task[1]==='enseñar'?'teach':'solve');
+    return;
+  }
+  transactProgram(w,'askApp');
+});
+document.addEventListener('click',event=>{
+  const button=event.target.closest('[data-bbyq-module]');if(!button)return;
+  const w=getWindow(button.closest('.window')?.dataset.id);
+  if(!w||(w.rxePath!=='Aplicaciones/BBY-Q.rxe'&&!programSessions.get(w.id)?.snapshot?.training))return;
+  const module=button.dataset.bbyqModule;if(!['chat','work','cody','training'].includes(module))return;
+  w.bbyqModule=module;renderWindowContent(w);queueSave();
+});
 document.addEventListener('click',async event=>{
   const button=event.target.closest('button');if(!button)return;
   if(button.dataset.programPath){hideLauncher();openProgram(button.dataset.programPath);return;}
@@ -120,6 +159,7 @@ document.addEventListener('click',async event=>{
   if(action==='refresh')refreshPrograms();
   if(action==='import'){if(nativeAvailable)window.ReverseNative.importRxe();else toast('Requiere la aplicación Android.','help');}
   if(action==='reload'&&w)loadProgram(w);
+  if(action==='graphics'&&w)transactProgram(w,'launchGraphics');
   if(action==='run'&&w)transactProgram(w,'runApp');
   if((action==='export'||action==='memory')&&data?.snapshot)window.ReverseNative.exportRxe(w.rxePath,data.snapshot.identity,action==='memory');
   if(action==='compile'&&w){
@@ -130,3 +170,15 @@ document.addEventListener('click',async event=>{
   }
 });
 window.addEventListener('DOMContentLoaded',refreshPrograms);
+
+// Structured UI creates the explicit teaching frame; XI validates and learns it.
+document.addEventListener('submit',event=>{
+ if(!event.target.matches('[data-training-form]'))return;
+ event.preventDefault();const w=getWindow(event.target.closest('.window')?.dataset.id),data=w&&programSessions.get(w.id);if(!w||!data?.snapshot?.training||data.busy||data.uncertain)return;
+ const f=new FormData(event.target),v={};for(const k of ['mode','term','revision','definition','requirement','source','pages'])v[k]=String(f.get(k)||'').trim();
+ const caps={term:64,definition:224,requirement:224,source:32,pages:32};
+ for(const [k,n] of Object.entries(caps)){if((v.mode!=='forget'||k==='term')&&(!v[k]||/[\r\n\t\u0000-\u001f\u007f]/.test(v[k])||new TextEncoder().encode(v[k]).length>n)){toast('Revisa '+k+': una sola línea, hasta '+n+' bytes.','help');return;}}
+ if(v.mode==='correct'&&!/^[1-9][0-9]{0,9}$/.test(v.revision)){toast('Indica la revisión actual de la lección.','help');return;}
+ w.rxeDraft=v.mode==='forget'?'Olvida lección: '+v.term:(v.mode==='correct'?'Corrige lección: '+v.term+'\nRevisión: '+v.revision:'Aprende: '+v.term)+'\nDefinición: '+v.definition+'\nRequiere: '+v.requirement+'\nFuente: '+v.source+'\nPáginas: '+v.pages;
+ w.bbyqModule='chat';transactProgram(w,'askApp');
+});

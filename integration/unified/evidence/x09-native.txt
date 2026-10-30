@@ -1,0 +1,10 @@
+PASS @lex money => {"word":"money","language":"en","senses":[{"id":"13250542-n","definition_en":["wealth reckoned in terms of money; \"all his money is in real estate\""],"definit
+PASS @lex dinero => {"word":"dinero","language":"es","senses":[{"id":"13250542-n","definition_en":["wealth reckoned in terms of money; \"all his money is in real estate\""],"defini
+PASS edificio incluye libro? => Sí: edificio incluye libro (vía sala).
+PASS cuarto contiene llave? => Sí: cuarto contiene llave (vía caja).
+PASS calcula 17 + 25 => El resultado es 42.
+PASS consulta: nomasir caballo => Evidencia del currículo (coincidencias de términos):
+estafa del caballo de nomasir: una apuesta perdida ante viajeros asociados con el supuesto rival de ninive.
+PASS Escribe y ejecuta en XI un programa que sume 637 y 284. => Programa XI ejecutado y verificado por w4U. Resultado: 921.
+RETENTION_QUERY Aurora [#p003].
+X09_PRODUCTION_ANDROID_TRANSPORT_PASS cases=7 seed_preserved=true dictionary_and_campaign=true

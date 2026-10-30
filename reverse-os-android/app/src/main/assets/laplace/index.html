@@ -52,6 +52,8 @@
     <button data-tab="flujo"><span>Flujo</span></button>
     <button data-tab="registro"><span>Registro</span></button>
     <button data-tab="mundo"><span>Mundo</span></button>
+    <button data-tab="entrada"><span>Entrada</span></button>
+    <button data-tab="entrenamiento"><span>Entrenamiento</span></button>
   </nav>
 
   <section id="resumen" class="vista">
@@ -183,5 +185,16 @@
 
   <footer>REVERSE · Datos públicos · Sin cuentas ni órdenes financieras</footer>
 </main>
+
+<section id="entrada" class="vista" hidden>
+ <article class="panel"><h2>Entrada de datos</h2><p>Captura BTC/USD y comunicados oficiales en el dispositivo. El historial conserva la hora de recepción y la fuente.</p><button id="i001Capturar">Capturar BTC y Fed</button><p id="i001Estado" role="status">Listo para consultar.</p><div id="i001Capturas" class="fuentes-grid"></div></article>
+ <article class="panel"><h2>Servicio I001</h2><p>Conecta tu instalación de captura continua para consultar su disponibilidad. Kafka, TimescaleDB y los nodos blockchain se configuran en ese servicio.</p><label>Dirección HTTPS <input id="i001Endpoint" type="url" placeholder="https://tu-servidor.example/i001" autocomplete="off"></label><button id="i001Conectar">Comprobar conexión</button><p id="i001Servicio" role="status">Sin servicio configurado.</p><details><summary>Estado del servicio</summary><pre id="i001Salud"></pre></details></article>
+ <article class="panel"><h2>BlackRock y JPMorgan Chase</h2><div class="metricas"><article><small>ENTIDADES</small><strong id="pulsoEntidades">—</strong></article><article><small>RELACIONES</small><strong id="pulsoRelaciones">—</strong></article></div><p>Informes archivados; las posiciones de inversión y las filiales se mantienen diferenciadas.</p><div id="pulsoInformes" class="fuentes-grid"></div></article>
+ <article class="panel"><h2>Captura mundial verificada</h2><p>684 estados de 21 dominios, capturados el 30 de octubre. Incluye siete fallos de GDELT y cinco accesos opcionales pendientes.</p><button id="cargarArchivoMundo">Abrir y verificar los 684 estados</button><p id="integracionEstado" role="status"></p></article>
+</section>
+<section id="entrenamiento" class="vista" hidden>
+ <article class="panel"><h2>Entrenamiento X002</h2><p>5 candidatos conservados, 7.488 velas y cuatro particiones temporales. Esta evaluación archivada mantiene sus datos y fechas originales.</p><label>Horizonte <select id="x002Horizonte"><option value="15">15 minutos</option><option value="30">30 minutos</option><option value="60">1 hora</option><option value="240">4 horas</option><option value="1440">24 horas</option></select></label><div class="metricas"><article><small>CASOS / ELEGIBLES</small><strong id="x002Casos">—</strong></article><article><small>DIRECCIÓN NATIVA</small><strong id="x002Nativo">—</strong></article><article><small>CALIBRADA</small><strong id="x002Calibrado">—</strong></article><article><small>REFERENCIA</small><strong id="x002Base">—</strong></article></div><p id="x002Detalle"></p><button id="x002Modelo">Ver modelo XI conservado</button><details id="x002Programa"><summary>Programa original del candidato</summary><pre id="x002Codigo"></pre></details></article>
+</section>
+<script type="module" src="./integracion.mjs"></script>
 </body>
 </html>

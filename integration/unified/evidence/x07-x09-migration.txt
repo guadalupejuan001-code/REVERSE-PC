@@ -1,0 +1,2 @@
+X07_PERSONAL_STATE_READY
+X07_TO_X09_MIGRATION_PASS personal_memory=true book=true campaign=true original_preserved=true idempotent=true invalid_input_rejected=true

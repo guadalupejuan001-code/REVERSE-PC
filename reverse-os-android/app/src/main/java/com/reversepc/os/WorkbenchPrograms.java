@@ -14,6 +14,7 @@ import java.util.Locale;
 /** RXE catalog and transactions for the current desktop. Call on RuntimeExecutor. */
 final class WorkbenchPrograms {
     static final String BBYQ="Aplicaciones/BBY-Q.rxe";
+    static final String PRISMA_11_SHA="be811baf5404d97fae1803185b3e4679ec81fe2524a613ff81451a13d3fa3e64";
     private final Context context;
     private final WorkspaceFiles files;
     private byte[] retiredHello;
@@ -31,45 +32,47 @@ final class WorkbenchPrograms {
             prefs.edit().putBoolean("seeded",true).apply();
         }
         upgradeBbyq();
+        seedGraphics();
+    }
+    private void seedGraphics()throws Exception{
+        android.content.SharedPreferences prefs=context.getSharedPreferences("workbench-programs",0);
+        seedGraphics(context,files,prefs);
+    }
+    static void seedGraphics(Context context,WorkspaceFiles files,android.content.SharedPreferences prefs)throws Exception{
+        if(prefs.getBoolean("prisma-1.2-seeded",false))return;
+        final byte[] image;
+        try(InputStream in=context.getAssets().open("native-apps/PRISMA.rxe")){image=read(in);}catch(java.io.FileNotFoundException optional){return;}
+        JSONObject metadata=info(image);if(!"graphics".equals(metadata.optString("ui")))throw new IOException("La aplicación PRISMA no tiene perfil gráfico");
+        boolean present=false;for(WorkspaceFiles.Entry entry:files.list("Aplicaciones"))if(entry.path.equals("Aplicaciones/PRISMA.rxe"))present=true;
+        if(present){
+            // Upgrade only the exact released image. Keep custom programs intact.
+            if(PRISMA_11_SHA.equals(identity(files.read("Aplicaciones/PRISMA.rxe"))))files.write("Aplicaciones/PRISMA.rxe",image,true);
+        }else if(!prefs.getBoolean("prisma-1.1-seeded",false))files.write("Aplicaciones/PRISMA.rxe",image,false);
+        prefs.edit().putBoolean("prisma-1.1-seeded",true).putBoolean("prisma-1.2-seeded",true).apply();
+    }
+    JSONObject graphicsLaunch(JSONObject request)throws Exception{
+        byte[] image=checked(request);JSONObject metadata=info(image);
+        if(!"graphics".equals(metadata.optString("ui")))throw new IOException("El programa no es una aplicación gráfica RXE");
+        return new JSONObject().put("ok",true).put("path",path(request.getString("path"))).put("identity",identity(image));
     }
     private void upgradeBbyq()throws Exception{
-        byte[] bundled=BbyqInterface.asset(context,"native-apps/BBY-Q.rxe");
-        if(!BbyqInterface.bundledVersion(info(bundled).optString("app_version")))return;
-        if(!exists(BBYQ))return; // A deliberately removed application stays removed.
-        byte[] previous=files.read(BBYQ);
-        if(identity(previous).equals(identity(bundled)))return;
-        JSONObject manifest=new JSONObject(new String(BbyqInterface.asset(context,"bbyq-interface/manifest.json"),StandardCharsets.UTF_8));
-        String previousHash=identity(previous);
-        JSONObject personal=manifest.optJSONObject("personalization");
-        boolean personalParent=personal!=null&&previousHash.equals(personal.optString("parent_executable_sha256"));
-        boolean legacy=BbyqInterface.LEGACY_SHA.equals(previousHash);
-        boolean oldW4u=manifest.getString("legacy_w4u_sha256").equals(previousHash);
-        boolean oldSocial=manifest.getString("legacy_social_sha256").equals(previousHash);
-        boolean knownControl=manifest.getString("legacy_control_sha256").equals(previousHash);
-        JSONArray identities=manifest.optJSONArray("legacy_control_sha256s");
-        if(identities!=null)for(int i=0;i<identities.length();i++)knownControl|=identities.getString(i).equals(identity(previous));
-        if(!legacy&&!knownControl&&!oldW4u&&!oldSocial&&!personalParent)return; // Keep custom executables.
-        try{
-            new RxeAppStore(context,previous).withLockedSnapshot(previous,old->{
-                if(old.pending!=null)throw new IOException("La acción pendiente debe confirmarse antes de actualizar BBY Q");
-                byte[] candidate=old.state;
-                if(!oldSocial&&!personalParent){
-                    String migration=legacy?"upgrade-e016.rxe":oldW4u?"upgrade-w4u.rxe":"upgrade-control.rxe";
-                    candidate=ResultPacket.parse(NativeRuntime.executeRxe(candidate,BbyqInterface.asset(context,"bbyq-interface/"+migration))).state;
-                }
-                if(!personalParent){
-                    candidate=ResultPacket.parse(NativeRuntime.executeRxe(candidate,BbyqInterface.asset(context,"bbyq-interface/upgrade-chain-ui.rxe"))).state;
-                    candidate=BbyqInterface.extendChain(context,candidate);
-                }
-                candidate=BbyqInterface.extendPersonal(context,candidate);
-                new RxeAppStore(context,bundled).migrate(bundled,old,candidate);
-                if(!identity(files.read(BBYQ)).equals(previousHash))throw new IOException("El ejecutable cambió durante la actualización");
-                // Keep the old memory as a rollback copy and publish only after
-                // the candidate state and full transcript are durable.
-                files.write(BBYQ,bundled,true);
-                Log.i("ReverseWorkbench","BBYQ_CHAIN_MIGRATED messages="+old.history.length());
-            });
-        }catch(Exception conflict){Log.w("ReverseWorkbench","BBYQ_CHAIN_RETAINED_PREVIOUS",conflict);}
+        byte[] bundled=BbyqInterface.asset(context,"native-apps/BBY-Q.rxe");if(!exists(BBYQ))return;
+        byte[] previous=files.read(BBYQ);if(identity(previous).equals(identity(bundled)))return;
+        JSONObject manifest=new JSONObject(new String(BbyqInterface.asset(context,"bbyq-interface/manifest.json"),StandardCharsets.UTF_8)),complete=manifest.getJSONObject("complete");
+        if(!identity(bundled).equals(complete.getString("executable_sha256")))throw new IOException("Cápsula incompatible");String hash=identity(previous);
+        boolean current=false;JSONArray known=complete.getJSONArray("previous_executables");for(int i=0;i<known.length();i++)current|=hash.equals(known.getString(i));
+        boolean legacy=BbyqInterface.LEGACY_SHA.equals(hash),oldW4u=manifest.getString("legacy_w4u_sha256").equals(hash),oldSocial=manifest.getString("legacy_social_sha256").equals(hash),control=manifest.getString("legacy_control_sha256").equals(hash);
+        JSONArray older=manifest.optJSONArray("legacy_control_sha256s");if(older!=null)for(int i=0;i<older.length();i++)control|=hash.equals(older.getString(i));
+        if(!current&&!legacy&&!oldW4u&&!oldSocial&&!control)return;final boolean advanced=current;
+        try{new RxeAppStore(context,previous).withLockedSnapshot(previous,old->{
+            if(old.pending!=null)throw new IOException("Confirma la acción pendiente antes de actualizar");byte[] candidate=old.state;
+            if(!advanced){if(!oldSocial){String migration=legacy?"upgrade-e016.rxe":oldW4u?"upgrade-w4u.rxe":"upgrade-control.rxe";candidate=ResultPacket.parse(NativeRuntime.executeRxe(candidate,BbyqInterface.asset(context,"bbyq-interface/"+migration))).state;}
+                candidate=ResultPacket.parse(NativeRuntime.executeRxe(candidate,BbyqInterface.asset(context,"bbyq-interface/upgrade-chain-ui.rxe"))).state;candidate=BbyqInterface.extendChain(context,candidate);}
+            candidate=BbyqInterface.extendComplete(context,candidate);
+            if(BbyqModern.supports(context,bundled))candidate=BbyqModern.migrate(context,candidate);
+            new RxeAppStore(context,bundled).migrate(bundled,old,candidate);
+            if(!identity(files.read(BBYQ)).equals(hash))throw new IOException("El ejecutable cambió");files.write(BBYQ,bundled,true);
+        });}catch(Exception conflict){Log.w("ReverseWorkbench","COMPLETE_RETAINED_PREVIOUS",conflict);android.content.SharedPreferences prefs=context.getSharedPreferences("workbench-programs",0);if(!prefs.getBoolean("complete-x07-alternative",false)){String copy="Aplicaciones/BBY-Q-Completo-X07.rxe";if(!exists(copy))files.write(copy,bundled,false);prefs.edit().putBoolean("complete-x07-alternative",true).apply();}}
     }
     private boolean exists(String path)throws Exception{
         for(WorkspaceFiles.Entry entry:files.list("Aplicaciones"))if(entry.path.equals(path))return true;
@@ -115,6 +118,8 @@ final class WorkbenchPrograms {
             RxeAppStore.Saved saved=new RxeAppStore(context,image).load(image);
             result.put("history",saved.history).put("language",saved.language);
             result.put("desktop_control",BbyqInterface.trusted(context,image));
+            result.put("input_bytes",BbyqModern.supports(context,image)?BbyqTextEngine.INPUT_LIMIT:255);
+            result.put("training",BbyqModern.supports(context,image));
             if(BbyqInterface.trusted(context,image))result.put("agents",BbyqInterface.trace(saved.state));
         }else result.put("output",context.getSharedPreferences("desktop-v1",0).getString("rxe-output:"+path,""));
         return result;
@@ -137,13 +142,15 @@ final class WorkbenchPrograms {
     JSONObject ask(JSONObject request)throws Exception{
         byte[] image=checked(request);JSONObject metadata=info(image);
         if(!"chat".equals(metadata.optString("ui")))throw new IOException("Este ejecutable no ofrece una conversación");
-        String text=request.getString("text").trim();int language=request.getInt("language");
-        if(text.isEmpty()||text.getBytes(StandardCharsets.UTF_8).length>255||(language!=1&&language!=2))throw new IOException("Escribe un mensaje de hasta 255 bytes y elige un idioma");
+        String text=request.getString("text");int language=request.getInt("language");
+        int inputLimit=BbyqModern.supports(context,image)?BbyqTextEngine.INPUT_LIMIT:255;
+        if(text.isEmpty()||BbyqTextEngine.encode(text).length>inputLimit||(language!=1&&language!=2))throw new IOException("Escribe un mensaje de hasta "+inputLimit+" bytes y elige un idioma");
         RxeAppStore app=new RxeAppStore(context,image);
         JSONObject observation=BbyqInterface.trusted(context,image)?observation(request):null;
         RxeAppStore.Saved saved=app.ask(image,text,language,observation);
         Log.i("ReverseWorkbench","WORKBENCH_APP_TURN_OK "+app.identity);
         JSONObject result=new JSONObject().put("ok",true).put("path",request.getString("path")).put("identity",app.identity).put("metadata",metadata).put("history",saved.history).put("language",saved.language).put("desktop_control",BbyqInterface.trusted(context,image));
+        result.put("input_bytes",inputLimit).put("training",BbyqModern.supports(context,image));
         // Only a freshly committed ask may dispatch an action. open/catalog and
         // restoration never return this field and therefore never replay it.
         if(saved.pending!=null)result.put("control",saved.pending);
@@ -167,6 +174,11 @@ final class WorkbenchPrograms {
         context.getSharedPreferences("desktop-v1",0).edit().putString("rxe-output:"+request.getString("path"),output).apply();
         Log.i("ReverseWorkbench","WORKBENCH_RXE_RUN_OK "+request.getString("path"));
         return new JSONObject().put("ok",true).put("output",output);
+    }
+    JSONObject qd(JSONObject request)throws Exception{
+        if(!exists(BBYQ))throw new IOException("BBY Q no está instalado en Aplicaciones");
+        byte[] image=files.read(BBYQ);
+        return new QdEngine(context,image).handle(request);
     }
     JSONObject compile(JSONObject request)throws Exception{
         String source=request.getString("source");byte[] bytes=source.getBytes(StandardCharsets.UTF_8);

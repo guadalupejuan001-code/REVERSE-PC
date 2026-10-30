@@ -1,0 +1,34 @@
+{
+  "file": "REVERSE-3.1.0-Completo.apk",
+  "bytes": 113008814,
+  "sha256": "5e0675c9ecd4966a7da11580870214a374bae6d458f8c24dd910d79876813f22",
+  "version": "3.1.0-completo",
+  "versionCode": 310,
+  "package": "com.reversepc.complete.workbench",
+  "signature_matches_2_9": true,
+  "zip_native_alignment_16kb": true,
+  "primary_elf_page_alignment": 4096,
+  "resources_uncompressed": true,
+  "native_ab_is": [
+    "arm64-v8a",
+    "x86_64"
+  ],
+  "android_device_tested": false,
+  "x09_payload_files_verified": 302,
+  "x09_model_sha256": "71ba9704e279c08160a8af882a8628b77e938a30befa450e95a522315a39f995",
+  "dictionary_entries": 236256,
+  "jni_libraries_verified": 4,
+  "critical_modules_verified": [
+    "assets/laplace/global.mjs",
+    "assets/laplace/integracion.mjs",
+    "assets/laplace/x002-resumen.json",
+    "assets/laplace/mundo-archivado.json",
+    "assets/laplace/instituciones-resumen.json",
+    "assets/velocity/world.xi",
+    "assets/velocity/render.xi",
+    "assets/workbench/music.js",
+    "assets/workbench/qd-studio.js",
+    "assets/workbench/reexplorer.js",
+    "assets/workbench/programs.js"
+  ]
+}

@@ -1,5 +1,9 @@
 # REVERSE-PC
 
+La integración REVERSE 3.1.0 reúne el escritorio entregado, BBY-Q X09, Laplace U003/U004/X002 con entrada I001 y Pulso institucional, música, REexplorer, Qd, PRISMA y Velocity/REgraphics. El alcance y la reproducción están en [integration/unified/README.md](integration/unified/README.md). Los datos originales y las bibliotecas verificadas se preparan explícitamente; una compilación incompleta se rechaza.
+
+**BBY Q X08, entrega nativa:** currículo unificado de 480 conceptos/960 relaciones, libro completo y sesiones persistentes mediante dos roles XI sobre un estado. [Perfil fijado, ejecución y alcance](docs/BBYQ_X08_NATIVE.md). Esta integración no cambia la APK; P13/P14 permanecen excluidos.
+
 **REVERSE 2.5.1:** BBY Q E025 y W4u 0.1 integrados, memoria nativa ampliada y correcciones de teclado conservadas. [Fuentes, compilación y procedencia](docs/RELEASE_2_5_1.md).
 
 **REVERSE 2.4.2:** escritorio PC horizontal con teclado integrado, borrador

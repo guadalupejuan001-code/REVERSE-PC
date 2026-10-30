@@ -1,0 +1,41 @@
+{
+  "product": "Laplace",
+  "release": "U001 + I015",
+  "source_repository": "guadalupejuan001-code/LaPlaceDIG",
+  "source_commit": "67f3a124b3b17633712c61813ac238cee236618a",
+  "origin": "Video conversation on 2026-10-29; C001 -> I015 -> U001",
+  "modules": [
+    {
+      "path": "bitcoin/agente.mjs",
+      "source_sha256": "93c33887f311c3f4e3ff472b56396a0a18c4fb5ab3c46ef74f61d63a7eb34616",
+      "android_sha256": "93c33887f311c3f4e3ff472b56396a0a18c4fb5ab3c46ef74f61d63a7eb34616",
+      "adaptation": "Only node:crypto import uses synchronous Android SHA-256; algorithm body unchanged"
+    },
+    {
+      "path": "bitcoin/intradia15.mjs",
+      "source_sha256": "8f0b80824984d40a4c45137709e3228cb0eb5ff1d14ded4ebb387943b929a2bf",
+      "android_sha256": "e5cac15d4f9e682190094ace08d8a0c4b0de692454c40b8fd16bd31c07ca95b3",
+      "adaptation": "Only node:crypto import uses synchronous Android SHA-256; algorithm body unchanged"
+    },
+    {
+      "path": "universo/estados.mjs",
+      "source_sha256": "2340dbe8ebb2cf5b0ba08fbfb8959e4225437c2d0324fab3afcfc71d11e18778",
+      "android_sha256": "b1d0073719459636e68809fbc9aacce4a7bfcd65e67d187f4012cf9b0553b992",
+      "adaptation": "Only node:crypto import uses synchronous Android SHA-256; algorithm body unchanged"
+    },
+    {
+      "path": "universo/mercado.mjs",
+      "source_sha256": "bad6822b0b580d8bb0390efa50fa63654deb2ed9e84042b9ec6752ea35d36820",
+      "android_sha256": "ccfe9919cf149b26225d75915a0a082fb27c95a9816624a920aa8e847eceeb8a",
+      "adaptation": "Only node:crypto import uses synchronous Android SHA-256; algorithm body unchanged"
+    },
+    {
+      "path": "universo/geomagnetismo.mjs",
+      "source_sha256": "91e300fa4432db8cfa8b62b3c155497c0fc1c2677c116118a4ca717e3a546305",
+      "android_sha256": "91e300fa4432db8cfa8b62b3c155497c0fc1c2677c116118a4ca717e3a546305",
+      "adaptation": "Only node:crypto import uses synchronous Android SHA-256; algorithm body unchanged"
+    }
+  ],
+  "calculation": "Original JS observation/analysis adapter; not re-labelled as XI inference",
+  "native_transport": "Fixed HTTPS GET source allowlist + SHA-256 only; no trades"
+}

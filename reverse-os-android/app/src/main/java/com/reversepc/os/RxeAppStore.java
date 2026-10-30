@@ -19,7 +19,7 @@ import java.security.MessageDigest;
  * State and transcript publish together in one atomic file, before any answer.
  * File locks also protect against a still-finishing worker during recreation. */
 final class RxeAppStore {
-    static final int HISTORY_LIMIT=80,MAX_METADATA=512*1024;
+    static final int HISTORY_LIMIT=80,MAX_ANSWER=20*1024,MAX_METADATA=1024*1024;
     final String identity;
     private final Context context;
     private final File directory,record;
@@ -37,18 +37,18 @@ final class RxeAppStore {
         record=new File(directory,"session.rxas");
     }
     Saved load(byte[] executable)throws Exception{
-        if(!record.exists())return new Saved(NativeRuntime.appSeed(executable),new JSONArray(),1);
-        if(record.length()>33L*1024*1024)throw new IOException("Sesión de aplicación demasiado grande");
+        if(!record.exists())return new Saved(BbyqModern.supports(context,executable)?BbyqModern.seed(context):NativeRuntime.appSeed(executable),new JSONArray(),1);
+        if(record.length()>34L*1024*1024)throw new IOException("Sesión de aplicación demasiado grande");
         ResultPacket packet=ResultPacket.parse(Files.readAllBytes(record.toPath()));
         if(packet.state.length<29||packet.output.getBytes(StandardCharsets.UTF_8).length>MAX_METADATA)throw new IOException("Sesión incompleta o historial demasiado grande");
         JSONObject metadata=new JSONObject(packet.output);
         int version=metadata.getInt("version");
-        if((version!=1&&version!=2)||!identity.equals(metadata.getString("executable_sha256")))throw new IOException("La sesión pertenece a otro ejecutable");
+        if((version!=1&&version!=2&&version!=3)||!identity.equals(metadata.getString("executable_sha256")))throw new IOException("La sesión pertenece a otro ejecutable");
         int language=metadata.getInt("language");JSONArray history=metadata.getJSONArray("history");
         if((language!=1&&language!=2)||history.length()>HISTORY_LIMIT||history.length()%2!=0)throw new IOException("Sesión de aplicación inválida");
         for(int i=0;i<history.length();i++){
             JSONObject item=history.getJSONObject(i);String role=item.getString("role"),text=item.getString("text");
-            if(!(i%2==0?"user":"assistant").equals(role)||text.getBytes(StandardCharsets.UTF_8).length>(i%2==0?255:4096))throw new IOException("Historial de aplicación inválido");
+            if(!(i%2==0?"user":"assistant").equals(role)||text.getBytes(StandardCharsets.UTF_8).length>(version==3?(i%2==0?BbyqTextEngine.INPUT_LIMIT:BbyqTextEngine.OUTPUT_LIMIT):(i%2==0?255:MAX_ANSWER)))throw new IOException("Historial de aplicación inválido");
         }
         JSONObject pending=metadata.optJSONObject("pending_action");
         if(pending!=null&&(!pending.getString("ticket").matches("[0-9a-f-]{36}")||pending.getInt("op")<1||pending.getInt("op")>10||pending.getInt("target")<0||pending.getInt("target")>31))throw new IOException("Confirmación pendiente inválida");
@@ -56,14 +56,17 @@ final class RxeAppStore {
     }
     private void save(Saved saved)throws Exception{
         NativeRuntime.inspect(saved.state);
-        JSONObject metadata=new JSONObject();metadata.put("version",saved.pending==null?1:2);metadata.put("executable_sha256",identity);metadata.put("language",saved.language);metadata.put("history",saved.history);
+        JSONObject metadata=new JSONObject();boolean extended=BbyqModern.supportsIdentity(context,identity);for(int i=0;i<saved.history.length();i++)if(saved.history.getJSONObject(i).getString("text").getBytes(StandardCharsets.UTF_8).length>(i%2==0?255:MAX_ANSWER))extended=true;metadata.put("version",extended?3:saved.pending==null?1:2);metadata.put("executable_sha256",identity);metadata.put("language",saved.language);metadata.put("history",saved.history);
         if(saved.pending!=null)metadata.put("pending_action",saved.pending);
         String json=metadata.toString();if(json.getBytes(StandardCharsets.UTF_8).length>MAX_METADATA)throw new IOException("Historial demasiado grande");
-        byte[] data=ResultPacket.encode(json,saved.state);File pending=new File(directory,"session.pending");
-        try{
-            try(FileOutputStream out=new FileOutputStream(pending)){out.write(data);out.getFD().sync();}
-            Files.move(pending.toPath(),record.toPath(),StandardCopyOption.ATOMIC_MOVE,StandardCopyOption.REPLACE_EXISTING);
-        }finally{try{Files.deleteIfExists(pending.toPath());}catch(IOException cleanup){android.util.Log.w("RxeAppStore","No se pudo retirar el archivo temporal",cleanup);}}
+        byte[] data=ResultPacket.encode(json,saved.state);BbyqAtomicFile.write(record,data);
+    }
+
+    private static JSONArray appendTurn(JSONArray before,String text,String output,JSONObject delegation)throws Exception{
+        JSONArray history=new JSONArray(before.toString());history.put(new JSONObject().put("role","user").put("text",text));JSONObject answer=new JSONObject().put("role","assistant").put("text",output);if(delegation!=null)answer.put("delegation",delegation);history.put(answer);
+        while(history.length()>HISTORY_LIMIT){history.remove(0);history.remove(0);}
+        while(history.length()>2&&history.toString().getBytes(StandardCharsets.UTF_8).length>MAX_METADATA-4096){history.remove(0);history.remove(0);}
+        return history;
     }
     Saved ask(byte[] executable,String text,int language)throws Exception{
         return ask(executable,text,language,null);
@@ -77,14 +80,21 @@ final class RxeAppStore {
                 Saved before=load(executable);
                 boolean control=BbyqInterface.trusted(context,executable);
                 byte[] input=control?BbyqInterface.observe(before.state,observation):before.state;
-                ResultPacket response=ResultPacket.parse(NativeRuntime.appTurn(input,executable,text.getBytes(StandardCharsets.UTF_8),language));
+                boolean reference=control&&text.startsWith("@lex ")&&BbyqInterface.identity(executable).equals(new JSONObject(new String(BbyqInterface.asset(context,"bbyq-interface/manifest.json"),StandardCharsets.UTF_8)).getString("executable_sha256"));if(reference&&before.pending!=null)throw new IOException("Confirma primero la acción pendiente");
+                boolean modern=BbyqModern.supports(context,executable);
+                JSONObject delegation=control&&!reference&&!modern?QdDelegation.tryChat(context,input,text,before.pending!=null):null;
+                BbyqTextEngine.DispatchCommit checkpoint=(dispatched,progress)->{
+                    if(before.pending!=null)throw new IOException("Confirma primero la acción pendiente de W4u");
+                    save(new Saved(dispatched,appendTurn(before.history,text,progress,null),language));
+                };
+                ResultPacket response=reference?LexiconTransport.answer(context,input,text.getBytes(StandardCharsets.UTF_8),language):
+                    modern?BbyqModern.ask(context,input,text,language,checkpoint):
+                    delegation!=null?ResultPacket.parse(ResultPacket.encode(QdDelegation.chatText(delegation,language),input)):
+                    ResultPacket.parse(NativeRuntime.appTurn(input,executable,text.getBytes(StandardCharsets.UTF_8),language));
                 JSONObject pending=control?BbyqInterface.action(response.state):null;
                 if(pending!=null){if(observation==null)throw new IOException("Falta el escritorio que originó la orden");pending.put("ticket",java.util.UUID.randomUUID().toString());pending.put("view",observation.getString("view"));}
                 byte[] committed=control?BbyqInterface.consume(context,response.state):response.state;
-                JSONArray history=new JSONArray(before.history.toString());
-                JSONObject question=new JSONObject();question.put("role","user");question.put("text",text);history.put(question);
-                JSONObject answer=new JSONObject();answer.put("role","assistant");answer.put("text",response.output);history.put(answer);
-                while(history.length()>HISTORY_LIMIT){history.remove(0);history.remove(0);}
+                JSONArray history=appendTurn(before.history,text,response.output,delegation);
                 Saved after=new Saved(committed,history,language,pending);save(after);return after;
             }
         }
@@ -107,6 +117,21 @@ final class RxeAppStore {
                 if(history.length()<2)throw new IOException("No existe el turno de la acción");
                 history.getJSONObject(history.length()-1).put("text",response.output);
                 Saved after=new Saved(committed,history,before.language,pending);save(after);return after;
+            }
+        }
+    }
+    /** Execute first-party Qd XI on the original BBY Q memory, with one lock and atomic commit. */
+    ResultPacket runTrustedXi(byte[] executable,String code,boolean persist)throws Exception{
+        try(FileChannel channel=FileChannel.open(new File(directory,"writer.lock").toPath(),StandardOpenOption.CREATE,StandardOpenOption.WRITE)){
+            FileLock lock;
+            try{lock=channel.tryLock();}catch(OverlappingFileLockException busy){throw new IOException("BBY Q está ocupado");}
+            if(lock==null)throw new IOException("BBY Q está ocupado");
+            try(FileLock held=lock){
+                Saved previous=load(executable);
+                if(persist&&previous.pending!=null)throw new IOException("Confirma primero la acción pendiente de W4u");
+                ResultPacket result=ResultPacket.parse(NativeRuntime.execute(previous.state,code));
+                if(persist)save(new Saved(result.state,new JSONArray(previous.history.toString()),previous.language,previous.pending));
+                return result;
             }
         }
     }

@@ -1,3 +1,4 @@
+import {verifyGlobalCapture,verifyGlobalProof} from './global.mjs';
 import {emitirPronosticos,verificarPronostico,validarVelas} from './modelo.mjs';
 import {huellaContenido} from './integridad.mjs';
 import {parseStockChart,BOLSA_LAB} from './x001.mjs';
@@ -91,25 +92,6 @@ async function verifySnapshot(s){
   }
   return s;
 }
-async function verifyGlobalCapture(c){
-  const {capture_sha256,...body}=c??{};
-  need(body.schema==='laplace-universo-global-u002-v1','Captura mundial U002 incompatible');
-  need(typeof capture_sha256==='string'&&/^[a-f0-9]{64}$/.test(capture_sha256),'Sello U002 ausente');
-  need(capture_sha256===await huellaContenido(body),'La captura mundial fue modificada');
-  const cov=body.coverage,state=body.universal_state;
-  need(cov?.known_signals===369&&cov.failed_sources===0&&cov.observed_sources===52,'U002 no contiene las 369 señales completas');
-  need(state?.known_states===369&&Array.isArray(state.states)&&state.states.length===369,'Snapshot U002 incompleto');
-  need(body.prediction_inputs_enabled===false&&body.automatic_trading===false,'U002 no debe activar predicción/trading automáticamente');
-  need(Number.isFinite(Date.parse(body.at))&&Date.parse(body.at)<=Date.now()+60000,'Fecha U002 inválida');
-  return c;
-}
-function verifyGlobalProof(p,capture){
-  need(p?.schema==='laplace-u002-native-xi-v1'&&p.backend==='XI/Ether · NativeRuntime','Prueba U002 nativa incompatible');
-  need(p.records===369&&p.exact_roundtrip===true&&p.active_qubits===0,'U002 no completó el round-trip nativo');
-  need(p.snapshot_sha256===capture.universal_state.snapshot_sha256,'U002 nativo no corresponde al snapshot recibido');
-  need(p.capture_sha256===capture.capture_sha256&&p.prediction_generated===false,'Metadatos U002 nativos incoherentes');
-  return p;
-}
 async function syncGlobal(){
   if(globalBusy)return;globalBusy=true;$('sincronizarMundo').disabled=true;$('sincronizarMundo').textContent='Sincronizando…';alert();
   try{
@@ -120,7 +102,7 @@ async function syncGlobal(){
     try{localStorage.setItem('laplace-u002-global-v1',JSON.stringify(globalState));}catch{}
     renderGlobal();
   }catch(e){alert('U002: '+e.message+' Se conserva la última captura mundial válida.');}
-  finally{globalBusy=false;$('sincronizarMundo').disabled=false;$('sincronizarMundo').textContent='Sincronizar 369';}
+  finally{globalBusy=false;$('sincronizarMundo').disabled=false;$('sincronizarMundo').textContent='Sincronizar fuentes';}
 }
 function renderGlobal(){
   const groups=$('mundoGrupos');groups.replaceChildren();
@@ -132,9 +114,9 @@ function renderGlobal(){
   const {capture,proof,received_at}=globalState,cov=capture.coverage;
   const age=Math.max(0,Date.now()-Date.parse(capture.at)),minutes=Math.floor(age/60000);
   $('mundoEstado').textContent='Captura: '+date(capture.at)+' · recibida: '+date(received_at)+' · '+(minutes<60?minutes+' min de antigüedad':Math.floor(minutes/60)+' h de antigüedad')+'.';
-  $('mundoSenales').textContent=cov.known_signals+' / 369';
+  $('mundoSenales').textContent=cov.known_signals+' observadas';
   $('mundoDominios').textContent=String(cov.domains);
-  $('mundoFuentes').textContent=cov.observed_sources+' / 52';
+  $('mundoFuentes').textContent=cov.observed_sources+' · '+cov.failed_sources+' fallidas';
   $('mundoEther').textContent=proof.exact_roundtrip?'Exacto':'Revisar';
   const labels={markets:'Mercados globales',crypto:'Cripto',macro:'Macroeconomía',weather:'Clima mundial',physical:'Señales físicas'};
   for(const g of cov.groups??[]){
@@ -341,3 +323,6 @@ try{
 }catch{try{localStorage.removeItem('laplace-u002-global-v1');}catch{}}
 renderGlobal();
 try{const r=await host('read');if(r.text){remember(await verifySnapshot(JSON.parse(r.text)));render();}}catch(e){alert(e.message);}
+
+export {host,pub};
+export async function loadArchivedWorld(capture){await verifyGlobalCapture(capture);const native=await host('native_u002',capture);globalState={capture,proof:verifyGlobalProof(native.result,capture),received_at:new Date().toISOString(),archived:true};renderGlobal();$('mundoEstado').textContent='Captura archivada del '+date(capture.at)+'. Verificada ahora en XI/Ether; conserva la fecha original.';}

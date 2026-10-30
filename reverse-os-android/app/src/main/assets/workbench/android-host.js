@@ -6,7 +6,7 @@ let nativeProfileSequence=0,nativeProfileAcknowledged=0;
 window.ReverseAndroid={complete(id,response){const pending=nativePending.get(id);if(!pending)return;nativePending.delete(id);clearTimeout(pending.timeout);if(response.ok)pending.resolve(response);else pending.reject(Error(response.error||'El núcleo rechazó la operación.'));}};
 function nativeRequest(operation,payload=''){
   if(!nativeAvailable)return Promise.reject(Error('Este programa requiere la APK nativa.'));
-  return new Promise((resolve,reject)=>{const id='n'+(++nativeSerial);const timeout=setTimeout(()=>{nativePending.delete(id);reject(Error('La operación sigue sin resultado confirmado. Actualiza el estado antes de repetirla.'));},60000);nativePending.set(id,{resolve,reject,timeout});window.ReverseNative.request(id,operation,payload);});
+  return new Promise((resolve,reject)=>{const id='n'+(++nativeSerial);const timeout=setTimeout(()=>{nativePending.delete(id);reject(Error('La operación sigue sin resultado confirmado. Actualiza el estado antes de repetirla.'));},operation==='askApp'?600000:60000);nativePending.set(id,{resolve,reject,timeout});window.ReverseNative.request(id,operation,payload);});
 }
 function persist(){
   if(!nativeAvailable)return persistWeb();

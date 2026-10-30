@@ -1,0 +1,23 @@
+{
+  "product": "REexplorer Q Stream",
+  "format": "RXE1",
+  "runtime": "XI/Ether",
+  "binary": "REexplorer-Q-Stream.rxe",
+  "sha256": "60b5cc0c1c2ee4a79cb5410aff161a38df29c113f993b31e73e3612da085af0e",
+  "inspect": {
+    "format": "RXE",
+    "version": 1,
+    "abi": "XI-machine-v1",
+    "title": "REexplorer Q Stream XI/Ether",
+    "instructions": 394,
+    "constants": 73,
+    "bytes": 7880
+  },
+  "imported_from_bbyq": false,
+  "parser": "read-only, deterministic, transactional incremental document text",
+  "capacity_bytes": 1048576,
+  "chunk_bytes": 2048,
+  "transport": "not yet provided by XI runtime; a separate HTTPS host broker is needed",
+  "renders_html_css_javascript": false,
+  "production_browser_ready": false
+}

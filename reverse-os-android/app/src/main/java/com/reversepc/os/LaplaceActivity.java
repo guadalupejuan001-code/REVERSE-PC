@@ -92,7 +92,7 @@ public final class LaplaceActivity extends Activity {
         try{
             if(!trusted(u)||u.getQuery()!=null)return denied();
             String p=u.getPath();if(p==null||"/".equals(p))p="/index.html";
-            if(!p.matches("/[a-z0-9-]+\\.(html|css|mjs|js|json)"))return denied();
+            if(!p.matches("/[a-z0-9-]+\\.(html|css|mjs|js|json|xi)"))return denied();
             String mime=p.endsWith(".html")?"text/html":p.endsWith(".css")?"text/css":p.endsWith(".json")?"application/json":"text/javascript";
             Map<String,String> h=new HashMap<>();
             h.put("Content-Security-Policy","default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'");
@@ -109,6 +109,12 @@ public final class LaplaceActivity extends Activity {
     static String urlFor(String source,JSONObject p)throws Exception{
         String root="https://api.exchange.coinbase.com/products/";
         switch(source){
+            case "input_health":{
+                String raw=p.getString("endpoint");java.net.URI u=new java.net.URI(raw);
+                if(!"https".equalsIgnoreCase(u.getScheme())||u.getHost()==null||u.getUserInfo()!=null||u.getQuery()!=null||u.getFragment()!=null)throw new IOException("Usa una dirección HTTPS de tu servicio I001");
+                return raw.replaceAll("/+$","")+"/health";
+            }
+            case "fed":return "https://www.federalreserve.gov/feeds/press_all.xml";
             case "ticker":return root+"BTC-USD/ticker";
             case "book":return root+"BTC-USD/book?level=2";
             case "trades":return root+"BTC-USD/trades";
@@ -241,6 +247,8 @@ public final class LaplaceActivity extends Activity {
                     JSONObject result;
                     if("read".equals(operation))result=readSaved();
                     else if("save".equals(operation))result=save(payload);
+                    else if("integration_read".equals(operation)){String text=getPreferences(0).getString("integration","{}");result=new JSONObject().put("ok",true).put("text",text);}
+                    else if("integration_save".equals(operation)){JSONObject value=new JSONObject(payload);if(!getPreferences(0).edit().putString("integration",value.toString()).commit())throw new IOException("No se pudo guardar la captura");result=new JSONObject().put("ok",true); }
                     else if("native_x001".equals(operation)){
                         if(payload.length()>LIMIT)throw new IOException("Entrada XN01 excesiva");
                         result=nativeX001(new JSONObject(payload));

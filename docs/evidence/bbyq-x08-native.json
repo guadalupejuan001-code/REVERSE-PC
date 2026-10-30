@@ -1,0 +1,21 @@
+{
+  "ok": true,
+  "checks": 19,
+  "pinned_source": true,
+  "translation": true,
+  "book_page_122": true,
+  "multiline_summary": true,
+  "xi_program_executed": true,
+  "idempotent_retry": true,
+  "reused_id_rejected": true,
+  "tampering_rejected": true,
+  "android_tested": false,
+  "bbyq_commit": "000f398dacf3d53fc9e869a7ba3a2ac94ba26e99",
+  "reverse_source_base": "244eb1c638f2eb1a836e57baa26589caa577d5d1",
+  "runtime_built_from_current_reverse_sources": true,
+  "runtime_sha256": "8ee4a154b1dfd0c3f0892cdd34dcc9d894fa2781db812ba3af0d73b3bcf0d34e",
+  "runtime_bytes": 613904,
+  "validation": "local Linux x86-64; real XI backend",
+  "remote_ci_executed": false,
+  "public_push": "blocked by automatic approval review; explicit public publication authorization required"
+}

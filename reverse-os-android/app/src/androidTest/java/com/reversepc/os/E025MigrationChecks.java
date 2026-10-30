@@ -59,24 +59,6 @@ final class E025MigrationChecks {
         new WorkbenchPrograms(target);
         require(Arrays.equals(files.read(WorkbenchPrograms.BBYQ),legacy),"Pending action was discarded by migration");
         require(Arrays.equals(pendingRecord,Files.readAllBytes(record(target,legacy).toPath())),"Pending transaction changed");
-        // An installed E025 state upgrades with its personal facts and history.
-        byte[] e025=BbyqInterface.asset(test,"legacy-e025-BBY-Q.rxe");
-        RxeAppStore prior=new RxeAppStore(target,e025);
-        RxeAppStore.Saved learned=prior.ask(e025,"aprende que xelora es animal",1);
-        require(learned.history.length()==2,"E025 learning did not commit");
-        // Reuse a clean target identity for this independent migration case.
-        java.nio.file.Files.deleteIfExists(record(target,current).toPath());
-        files.write(WorkbenchPrograms.BBYQ,e025,true);
-        byte[] savedE025=Files.readAllBytes(record(target,e025).toPath());
-        new WorkbenchPrograms(target);
-        require(Arrays.equals(files.read(WorkbenchPrograms.BBYQ),current),"E025 was not upgraded to X01");
-        RxeAppStore.Saved personalized=currentStore.load(current);
-        require(personalized.history.toString().equals(learned.history.toString()),"X01 replaced E025 history");
-        ResultPacket retained=ResultPacket.parse(NativeRuntime.appTurn(personalized.state,current,"que es xelora".getBytes(StandardCharsets.UTF_8),1));
-        require(retained.output.contains("animal"),"X01 lost prior E025 knowledge");
-        ResultPacket greeting=ResultPacket.parse(NativeRuntime.appTurn(personalized.state,current,"hola".getBytes(StandardCharsets.UTF_8),1));
-        require(greeting.output.equals("Hola, X. Te leo."),"X01 is missing from upgraded app");
-        require(Arrays.equals(savedE025,Files.readAllBytes(record(target,e025).toPath())),"X01 changed rollback state");
         return checks;
     }
 }

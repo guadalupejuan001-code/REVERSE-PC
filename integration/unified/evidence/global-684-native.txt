@@ -1,0 +1,1 @@
+GLOBAL_ANDROID_XI_PASS records=684 bytes=21904 program_bytes=770982 exact_roundtrip=true qubits=0

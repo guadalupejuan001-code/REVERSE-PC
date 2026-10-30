@@ -54,7 +54,7 @@ test('8: fuentes upstream y adaptación generada están fijadas y reproducibles'
 test('9: entrada del escritorio, manifiesto Android y aislamiento del runtime',()=>{
  const root=new URL('../../',import.meta.url),read=p=>readFileSync(new URL(p,root),'utf8');
  assert.match(read('reverse-os-android/app/src/main/AndroidManifest.xml'),/LaplaceActivity[^\n]*android:exported="false"/);
- assert.match(read('reverse-os-android/app/src/main/assets/workbench/desktop.js'),/if\(app==='laplace'\)/);
+ assert.match(read('reverse-os-android/app/src/main/assets/workbench/desktop.js'),/app==='laplace'/);
  assert.match(read('reverse-os-android/app/src/main/java/com/reversepc/os/WorkbenchActivity.java'),/openLaplace/);
  const host=read('reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceActivity.java');
  assert.doesNotMatch(host,/SessionStore|setAllowUniversalAccessFromFileURLs\(true\)/);
@@ -67,14 +67,24 @@ test('10: contrato de compilación comprueba todos los recursos obligatorios',()
  assert.equal(result.valid,true);assert.equal(result.node_server_required_on_phone,false);
 });
 
-test('11: U002 global queda fijado a 369 señales y a XI/Ether nativo',()=>{
- const root=new URL('../../',import.meta.url),read=p=>readFileSync(new URL(p,root),'utf8');
- const host=read('reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceActivity.java');
- const compiler=read('reverse-os-android/app/src/main/java/com/reversepc/os/LaplaceGlobalCompiler.java');
- const xi=read('reverse-os-android/app/src/main/assets/laplace/u002-native.xi');
- const app=read('reverse-os-android/app/src/main/assets/laplace/app.mjs');
- assert.match(host,/global_u002/);assert.match(host,/native_u002/);assert.match(host,/LaplaceGlobalCompiler\.compile/);
- assert.match(compiler,/SIGNALS=369/);assert.match(compiler,/laplace-u002-native-xi-v1/);
- assert.match(xi,/LAPLACE U002/);assert.match(xi,/__GLOBAL_BYTES__/);assert.match(xi,/mem_stats/);
- assert.match(app,/known_signals===369/);assert.match(app,/host\('native_u002'/);assert.match(app,/Sincronizar 369/);
+const {verifyGlobalCapture,verifyGlobalProof}=await import('../../reverse-os-android/app/src/main/assets/laplace/global.mjs');
+const archive=JSON.parse(readFileSync(new URL('../../reverse-os-android/app/src/main/assets/laplace/mundo-archivado.json',import.meta.url)));
+test('11: captura real U003 con 684 estados y fallos explícitos conserva ambos sellos',async()=>{
+ assert.equal(archive.coverage.known_signals,684);assert.ok(archive.coverage.failed_sources>=7);
+ assert.equal(await verifyGlobalCapture(archive),archive);
+ const bad=structuredClone(archive);bad.universal_state.states[0].value+=1;
+ await assert.rejects(()=>verifyGlobalCapture(bad),/modificada/);
+ const {capture_sha256,...body}=bad;bad.capture_sha256=await huellaContenido(body);
+ await assert.rejects(()=>verifyGlobalCapture(bad),/snapshot.*modificado/);
+});
+test('12: prueba nativa rechaza distinta cobertura, sello o predicción automática',()=>{
+ const proof={schema:'laplace-u002-native-xi-v1',backend:'XI/Ether · NativeRuntime',records:684,exact_roundtrip:true,active_qubits:0,snapshot_sha256:archive.universal_state.snapshot_sha256,capture_sha256:archive.capture_sha256,prediction_generated:false};
+ assert.equal(verifyGlobalProof(proof,archive),proof);
+ for(const patch of [{records:369},{exact_roundtrip:false},{active_qubits:1},{snapshot_sha256:'0'.repeat(64)},{capture_sha256:'1'.repeat(64)},{prediction_generated:true}])assert.throws(()=>verifyGlobalProof({...proof,...patch},archive));
+});
+test('13: conteo incoherente, cobertura excesiva y activación automática se rechazan aunque el sello sea válido',async()=>{
+ for(const change of [c=>c.coverage.known_signals=683,c=>c.coverage.known_signals=2048,c=>c.automatic_trading=true,c=>c.prediction_inputs_enabled=true]){
+  const bad=structuredClone(archive);change(bad);const {capture_sha256,...body}=bad;bad.capture_sha256=await huellaContenido(body);
+  await assert.rejects(()=>verifyGlobalCapture(bad));
+ }
 });

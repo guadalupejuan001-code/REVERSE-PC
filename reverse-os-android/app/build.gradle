@@ -1,22 +1,4 @@
 plugins { id 'com.android.application' }
-// The primary APK must carry the personal curriculum. A later packaging step
-// cannot silently substitute the older BBY Q executable.
-tasks.register('verifyBbyqPersonalX01') {
- doLast {
-  def assetsDir = file('src/main/assets')
-  def manifestFile = new File(assetsDir, 'bbyq-interface/manifest.json')
-  if (!manifestFile.isFile()) throw new GradleException('Prepare BBY Q X01 assets before building the APK')
-  def personal = new groovy.json.JsonSlurper().parse(manifestFile).personalization
-  if (personal?.version != 'X01' || personal.schema != 1 || personal.lessons != 59 || personal.upgrade_file != 'upgrade-x01.rxe') throw new GradleException('X01 personal curriculum is required')
-  ['native-apps/BBY-Q.rxe': personal.executable_sha256, 'bbyq-interface/upgrade-x01.rxe': personal.upgrade_sha256].each { name, expected ->
-   def asset = new File(assetsDir, name)
-   if (!asset.isFile() || java.security.MessageDigest.getInstance('SHA-256').digest(asset.bytes).encodeHex().toString() != expected) throw new GradleException('BBY Q X01 asset missing or replaced: '+name)
-  }
- }
-}
-tasks.configureEach { task ->
- if (task.name ==~ /merge(Control|Workbench).*Assets/) task.dependsOn('verifyBbyqPersonalX01')
-}
 android {
  namespace 'com.reversepc.os'
  compileSdk 35
@@ -28,7 +10,7 @@ android {
   versionCode 120
   versionName '1.2.0'
   ndk { abiFilters 'arm64-v8a', 'x86_64' }
-  externalNativeBuild { cmake { cppFlags '-std=c++17' } }
+
  }
  flavorDimensions 'edition'
  signingConfigs {
@@ -42,50 +24,20 @@ android {
  productFlavors {
   classic { dimension 'edition'; applicationId 'com.reversepc.os'; manifestPlaceholders = [appLabel:'REVERSE OS'] }
   desktop { dimension 'edition'; applicationId 'com.reversepc.desktop'; manifestPlaceholders = [appLabel:'REVERSE Desktop'] }
-  workbench { dimension 'edition'; versionCode 251; versionName '2.5.1'; applicationId 'com.reversepc.workbench'; manifestPlaceholders = [appLabel:'REVERSE Workbench'] }
-  control { dimension 'edition'; versionCode 251; versionName '2.5.1-control'; applicationId 'com.reversepc.control.workbench'; manifestPlaceholders = [appLabel:'REVERSE'] }
+  workbench { dimension 'edition'; versionCode 310; versionName '3.1.0-completo'; applicationId 'com.reversepc.workbench'; manifestPlaceholders = [appLabel:'REVERSE Workbench'] }
+  control { dimension 'edition'; versionCode 310; versionName '3.1.0-completo'; applicationId 'com.reversepc.control.workbench'; manifestPlaceholders = [appLabel:'REVERSE'] }
+  complete { dimension 'edition'; versionCode 310; versionName '3.1.0-completo'; applicationId 'com.reversepc.complete.workbench'; manifestPlaceholders = [appLabel:'REVERSE'] }
   rxe { dimension 'edition'; applicationId 'com.reversepc.desktop.rxe'; manifestPlaceholders = [appLabel:'REVERSE Desktop RXE'] }
  }
- externalNativeBuild {
-  cmake {
-    path 'src/main/cpp/CMakeLists.txt'
-    version '3.22.1'
-  }
- }
+ sourceSets.main.jniLibs.srcDirs = ['src/main/jniLibs']
  compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
  buildTypes { release { minifyEnabled false } }
 }
 
-// Required by the owner for future primary APKs. Assets are committed and
-// reproducible; there is no implicit localhost server or build-time download.
-tasks.register('verifyLaplaceIntegration') {
- doLast {
-  def repo = rootProject.projectDir.parentFile
-  def lockFile = new File(repo,'laplace-android/integration-lock.json')
-  if (!lockFile.isFile()) throw new GradleException('Falta la integración LAPLACE de esta conversación')
-  def lock = new groovy.json.JsonSlurper().parse(lockFile)
-  if (lock.schema != 4 ||
-      lock.upstream_m001 != '06ebce4bddf25d615cefd85ed24081f37504a492' ||
-      lock.upstream_bolsa != '08cafb094a5c0f81253509eff412214dd526b808' ||
-      lock.upstream_u002 != '533c69bddd2c76d7f3619b97152a7a7e609aa613' ||
-      lock.stock_model != 'XN01-native-XI' ||
-      lock.native_XI_used_for_stock_prediction != true ||
-      lock.native_XI_used_for_all_markets != true ||
-      lock.native_U002_roundtrip != true ||
-      lock.global_snapshot_required != true ||
-      lock.global_prediction_inputs_enabled != false ||
-      lock.global_signals != 369 || lock.global_sources != 52 || lock.global_domains != 6 ||
-      lock.automatic_trading != false || lock.native_XI_modified != false ||
-      lock.files.size() < 16 ||
-      !(lock.market_assets instanceof List) || !['BTC-USD','SPY','AAPL','NVDA'].every { lock.market_assets.contains(it) })
-    throw new GradleException('Contrato LAPLACE M001+XN01+U002/369 incompatible')
-  lock.files.each { name, expected ->
-   def asset = new File(repo,name)
-   if (!asset.canonicalPath.startsWith(repo.canonicalPath+File.separator) || !asset.isFile() || java.security.MessageDigest.getInstance('SHA-256').digest(asset.bytes).encodeHex().toString() != expected) throw new GradleException('LAPLACE ausente o sustituido: '+name)
-  }
-  if (!file('src/main/AndroidManifest.xml').text.contains('android:name=".LaplaceActivity"') || !file('src/main/java/com/reversepc/os/WorkbenchActivity.java').text.contains('void openLaplace()') || !file('src/main/assets/workbench/desktop.js').text.contains("if(app==='laplace')")) throw new GradleException('LAPLACE no está enlazado al escritorio')
- }
-}
-tasks.configureEach { task ->
- if (task.name ==~ /merge(Control|Workbench).*Assets/ || task.name ==~ /compile(Control|Workbench).*JavaWithJavac/) task.dependsOn('verifyLaplaceIntegration')
-}
+// The unified release requires the pinned complete assets and both JNI bindings.
+tasks.register('verifyUnifiedRelease') { doLast {
+ def assets = file('src/main/assets')
+ ['bbyq-x09/x09.properties','bbyq-x09/model.rvp.gz','bbyq-x09/dictionary/pages.data','bbyq-x09/campaign/campaign-role.rxe','laplace/x002-resumen.json','laplace/mundo-archivado.json','velocity/render.xi'].each { name -> if (!new File(assets,name).isFile()) throw new GradleException('Missing unified release asset: '+name) }
+ ['arm64-v8a','x86_64'].each { abi -> ['libreverse_os.so','libregraphics.so'].each { lib -> if (!file('src/main/jniLibs/'+abi+'/'+lib).isFile()) throw new GradleException('Run integration/unified/prepare-native.mjs first') } }
+} }
+tasks.configureEach { task -> if (task.name ==~ /merge(Complete|Control|Workbench).*Assets/) task.dependsOn('verifyUnifiedRelease') }

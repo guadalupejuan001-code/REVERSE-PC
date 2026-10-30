@@ -1,0 +1,42 @@
+name: REVERSE BBY Q X08 native host
+on:
+  pull_request:
+    paths: ['integration/bbyq-x08/**', '.github/workflows/bbyq-x08-native.yml']
+  push:
+    branches: [main]
+    paths: ['integration/bbyq-x08/**', '.github/workflows/bbyq-x08-native.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-node@v4
+        with: {node-version: '24.22.1'}
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/BBY-Q
+          ref: 000f398dacf3d53fc9e869a7ba3a2ac94ba26e99
+          path: deps/bbyq-x08
+          persist-credentials: false
+      - name: Compile the existing REVERSE XI interpreter
+        run: |
+          set -euo pipefail
+          bash scripts/setup-ether.sh
+          mkdir -p build
+          python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc src/reverse_pc.cpp -o build/reverse_pc
+      - name: Exercise BBY Q through the pinned REVERSE entry point
+        run: node integration/bbyq-x08/test.mjs deps/bbyq-x08 build/reverse_pc build/x08-native-tests
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: REVERSE-X08-native-host-evidence
+          path: |
+            build/x08-native-tests/results.json
+            build/x08-native-tests/transcripts.json
+          retention-days: 14

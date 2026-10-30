@@ -1,0 +1,13 @@
+{
+  "format": 1,
+  "version": "X08-Training-Language-1",
+  "repository": "guadalupejuan001-code/BBY-Q",
+  "commit": "000f398dacf3d53fc9e869a7ba3a2ac94ba26e99",
+  "model_sha256": "6f205595fe2f0032f76991205101f6c9f15d04ef1d10af77d7d87e6d12b3aef9",
+  "code_sha256": "b4e23efed1d5b2538e5d80b0bbbcb17aff4ed0fd7269519dca16ba5f40b645ba",
+  "front_sha256": "d564d1ba43a13d5eb5b21399969094d11a732ed3495888daae580376bb17e476",
+  "roles": ["front.rxe", "code.rxe"],
+  "one_state_per_session": true,
+  "android_apk_updated": false,
+  "excluded": ["P13", "P14"]
+}

@@ -1,0 +1,21 @@
+✔ 1: paridad exacta del algoritmo, los seis precios, soporte, hashes e identificadores (167.829509ms)
+✔ 2: un descenso calculado se publica, no se sustituye por persistencia (53.82565ms)
+✔ 3: resultados y rechazos de manipulación coinciden con M001 (44.328454ms)
+✔ 4: no incorpora barras futuras ni cambia el pronóstico al adulterarlas (75.593107ms)
+✔ 5: rechaza precio vencido, futuros y horizontes inválidos (1.321653ms)
+✔ 6: WebCrypto y SHA-256 original producen el mismo sello canónico (1.590679ms)
+✔ 7: siete días no se inventa cuando el historial es insuficiente (3.438828ms)
+✔ 8: fuentes upstream y adaptación generada están fijadas y reproducibles (120.111282ms)
+✔ 9: entrada del escritorio, manifiesto Android y aislamiento del runtime (1.057446ms)
+✔ 10: contrato de compilación comprueba todos los recursos obligatorios (119.305061ms)
+✔ 11: captura real U003 con 684 estados y fallos explícitos conserva ambos sellos (96.164496ms)
+✔ 12: prueba nativa rechaza distinta cobertura, sello o predicción automática (1.011548ms)
+✔ 13: conteo incoherente, cobertura excesiva y activación automática se rechazan aunque el sello sea válido (159.998336ms)
+ℹ tests 13
+ℹ suites 0
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1051.817187

@@ -1,1 +1,25 @@
-{"base_reverse_commit":"e0f893d3c13a05d201e57b06ec7f761f196caef1","mundo_x_commit":"e2778d962af22f6f1a0794058dd4685fc2573966","source_commit":"Recompilar mediante el workflow para identificar esta compilación"}
+{
+  "version": "3.1.0-completo",
+  "versionCode": 310,
+  "package": "com.reversepc.complete.workbench",
+  "bbyq": "X09-All-Training-1",
+  "bbyq_commit": "70852c46baead5f5885d0f08c8cc12f98bd6a62c",
+  "laplace": "U003/U004 + X002 + I001 + Pulso P001",
+  "apps": [
+    "BBY Q",
+    "w4U",
+    "Qd/ReverseCoding",
+    "Laplace",
+    "REexplorer",
+    "REVERSE Music",
+    "PRISMA",
+    "Reverse Velocity",
+    "XI",
+    "Archivos",
+    "Notas",
+    "Calculadora",
+    "Ajustes"
+  ],
+  "guest_android": "development excluded",
+  "signature": "same as 2.9.0-X07"
+}

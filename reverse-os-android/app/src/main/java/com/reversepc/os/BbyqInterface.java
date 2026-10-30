@@ -25,7 +25,9 @@ final class BbyqInterface {
         if(bundledIdentity==null){
             byte[] bundled=asset(ctx,"native-apps/BBY-Q.rxe");
             JSONObject info=new JSONObject(new String(NativeRuntime.inspectRxe(bundled),StandardCharsets.UTF_8));
-            bundledIdentity=bundledVersion(info.optString("app_version"))&&"org.reverse.bbyq".equals(info.optString("app_id"))?identity(bundled):"";
+            JSONObject manifest=new JSONObject(new String(asset(ctx,"bbyq-interface/manifest.json"),StandardCharsets.UTF_8));
+            String expected=manifest.getString("executable_sha256");
+            bundledIdentity="org.reverse.bbyq".equals(info.optString("app_id"))&&identity(bundled).equals(expected)?expected:"";
         }
         String hash=identity(image);
         if(bundledIdentity.equals(hash))return true;
@@ -33,24 +35,15 @@ final class BbyqInterface {
         if(compatible!=null)for(int i=0;i<compatible.length();i++)if(hash.equals(compatible.getString(i)))return true;
         return false;
     }
-    static boolean bundledVersion(String version){
-        return "E025-Chain-1".equals(version)||"E025-Chain-X01-1".equals(version);
-    }
-    static byte[] extendPersonal(Context ctx,byte[] state)throws Exception{
-        JSONObject manifest=new JSONObject(new String(asset(ctx,"bbyq-interface/manifest.json"),StandardCharsets.UTF_8));
-        JSONObject personal=manifest.optJSONObject("personalization");
-        if(personal==null)return state;
-        if(!"X01".equals(personal.getString("version"))||personal.getInt("schema")!=1||!"upgrade-x01.rxe".equals(personal.getString("upgrade_file")))throw new IOException("Actualización personal desconocida");
-        byte[] upgrade=asset(ctx,"bbyq-interface/upgrade-x01.rxe");
-        if(!identity(upgrade).equals(personal.getString("upgrade_sha256")))throw new IOException("Las lecciones personales no coinciden con esta versión");
-        ResultPacket marker=ResultPacket.parse(NativeRuntime.execute(state,"#!reverse-pc-machine-v1\nload8 r0 9050000000000000000\nprint r0\nload8 r0 9050000000000000001\nprint r0\nload8 r0 9050000000000000002\nprint r0\nhalt\n"));
-        int[] values=new int[3];int n=0;
-        for(String row:marker.output.split("\\n"))if(row.startsWith("{")){
-            if(n>=3)throw new IOException("Firma personal inválida");values[n++]=new JSONObject(row).getInt("value");
-        }
-        if(n!=3)throw new IOException("Firma personal incompleta");
-        if(values[0]==88&&values[1]==1&&values[2]>=1&&values[2]<=128)return state; // Keep later explicit corrections.
-        return ResultPacket.parse(NativeRuntime.executeRxe(state,upgrade)).state;
+    static byte[] extendComplete(Context c,byte[] state)throws Exception{
+        JSONObject m=new JSONObject(new String(asset(c,"bbyq-interface/manifest.json"),StandardCharsets.UTF_8)).getJSONObject("complete");
+        if(m.getInt("format")!=1)throw new IOException("Actualización desconocida");
+        JSONArray list=m.getJSONArray("upgrades");for(int i=0;i<list.length();i++){
+            JSONObject item=list.getJSONObject(i);String file=item.getString("file");
+            if(!file.matches("complete/upgrade-[a-z0-9]+\\.rxe"))throw new IOException("Etapa inválida");byte[] code=asset(c,"bbyq-interface/"+file);
+            if(!identity(code).equals(item.getString("sha256")))throw new IOException("Etapa incompatible");
+            state=ResultPacket.parse(NativeRuntime.executeRxe(state,code)).state;
+        }return state;
     }
     // Recovered from the delivered 2.5.0 host. Work only on candidate bytes;
     // publication is handled by WorkbenchPrograms after all lessons succeed.

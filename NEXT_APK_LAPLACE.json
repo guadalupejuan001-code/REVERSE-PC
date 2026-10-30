@@ -1,47 +1,28 @@
 {
-  "schema": 3,
-  "required_component": "LAPLACE M001 + XN01 nativo XI/Ether + U002 global 369",
-  "repository": "guadalupejuan001-code/REVERSE-PC",
-  "upstream": "guadalupejuan001-code/LaPlaceDIG",
-  "upstream_commits": {
-    "m001": "06ebce4bddf25d615cefd85ed24081f37504a492",
-    "bolsa": "08cafb094a5c0f81253509eff412214dd526b808",
-    "u002": "533c69bddd2c76d7f3619b97152a7a7e609aa613"
+  "version": "REVERSE-3.1.0-completo",
+  "versionCode": 310,
+  "laplace": {
+    "upstream": "b8fb5056deddb3939ef915a4e09e44a0e9f0dad9",
+    "input": "81a81f1a11b8f983e4a3b87df90b88c9d07f4c8c",
+    "modules": [
+      "M001",
+      "XN01",
+      "U002",
+      "U003",
+      "U004",
+      "X002",
+      "I001",
+      "Pulso-P001"
+    ],
+    "archived_states": 684,
+    "archived_domains": 21,
+    "x002_live_prediction": false,
+    "automatic_trading": false
   },
-  "contract": "laplace-android/integration-lock.json",
-  "gradle_check": ":app:verifyLaplaceIntegration",
-  "flavors": [
-    "control",
-    "workbench"
-  ],
-  "markets": [
-    "BTC-USD",
-    "SPY",
-    "AAPL",
-    "NVDA"
-  ],
-  "preserve": [
-    "BBY Q X01",
-    "XI/Ether",
-    "firma de distribución existente",
-    "datos privados del usuario",
-    "XN01 .xi nativo",
-    "selector BTC/bolsa",
-    "control HTTP 429",
-    "U002 369 señales",
-    "round-trip U002 XI/Ether",
-    "vista Mundo",
-    "registro global único"
-  ],
-  "release_requested_now": false,
-  "requires_node_on_phone": false,
-  "automatic_trading": false,
-  "note": "La próxima APK debe conservar M001 y XN01, además de U002: una captura mundial sellada de 369 señales descargada como snapshot único y verificada byte por byte dentro de XI/Inverse Ether Memory. U002 no modifica la predicción hasta demostrar mejora temporal.",
-  "upstream_commit": "533c69bddd2c76d7f3619b97152a7a7e609aa613",
-  "stock_prediction_backend": "XI/Ether · NativeRuntime",
-  "native_XI_for_all_markets": true,
-  "global_signals": 369,
-  "global_snapshot_path": "laplace-registro/universo/global-latest.json",
-  "global_prediction_inputs_enabled": false,
-  "native_U002_roundtrip": true
+  "bbyq": {
+    "version": "X09-All-Training-1",
+    "source": "70852c46baead5f5885d0f08c8cc12f98bd6a62c",
+    "dictionary_entries": 236256
+  },
+  "android_guest_in_progress": true
 }

@@ -18,6 +18,7 @@ import java.nio.file.Files;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Arrays;
+import java.util.HashSet;
 import android.os.SystemClock;
 import android.view.MotionEvent;
 import android.view.inputmethod.EditorInfo;
@@ -146,7 +147,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
             JSONObject proof=new JSONObject(new String(Files.readAllBytes(dataFile("upgrade-before.json").toPath()),StandardCharsets.UTF_8));
             require(hash("rxe-apps/"+proof.getString("identity")+"/session.rxas").equals(proof.getString("record_sha256")),"Upgrade replaced the retained agent");
             require(js("document.querySelector('[aria-label=\"Respuesta BBY Q\"]').textContent").equals("Ana tiene cinco manzanas."),"Old conversation not restored in the new window");
-        }else{sendMessage("hola","Hola, X. Te leo.");sendMessage("ana tiene dos manzanas","Ana tiene dos manzanas.");sendMessage("ella recibe tres mas","Ana tiene cinco manzanas.");}
+        }else{sendMessage("hola","Hola. Soy BBY Q.");sendMessage("ana tiene dos manzanas","Ana tiene dos manzanas.");sendMessage("ella recibe tres mas","Ana tiene cinco manzanas.");}
         sendMessage("cuantas manzanas tiene ana?","Ana tiene cinco manzanas.");
         tapDom("[data-program-language=\"2\"]");sendMessage("how many apples does she have?","Ana has five apples.");
         require(Arrays.equals(desktopBefore,Files.readAllBytes(dataFile("session.rvp").toPath())),"BBY Q wrote the shared desktop checkpoint");
@@ -218,6 +219,13 @@ public final class WorkbenchTestRunner extends Instrumentation {
         File folder=new File(getTargetContext().getExternalFilesDir(null),"visual-evidence");folder.mkdirs();
         String geometry=js("JSON.stringify({width:innerWidth,height:innerHeight,body:document.body.getBoundingClientRect().toJSON(),desktop:document.querySelector('#desktop').getBoundingClientRect().toJSON(),taskbar:document.querySelector('.taskbar').getBoundingClientRect().toJSON(),wall:getComputedStyle(document.querySelector('#wall-image')).backgroundImage})");
         try(FileOutputStream output=new FileOutputStream(new File(folder,mode+"-geometry.json"))){output.write(geometry.getBytes(java.nio.charset.StandardCharsets.UTF_8));}
+        if(mode.equals("full")||mode.equals("native-full")){
+            tapDom("#show-desktop");
+            File iconsFolder=new File(getTargetContext().getExternalFilesDir(null),"ui-evidence");iconsFolder.mkdirs();
+            Bitmap icons=getUiAutomation().takeScreenshot();
+            if(icons!=null)try(FileOutputStream output=new FileOutputStream(new File(iconsFolder,"desktop-icons.png"))){icons.compress(Bitmap.CompressFormat.PNG,100,output);}finally{icons.recycle();}
+            tapDom("#show-desktop");
+        }
         boolean visible=false;
         for(int attempt=0;attempt<24;attempt++){
             Bitmap screen=getUiAutomation().takeScreenshot();require(screen!=null,"No display screenshot");
@@ -271,7 +279,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
         if(requested.equals("full"))keyboardWorkflow();
         if(restore&&!upgrade){retainedProof(false);fullDisplay();visualCheck("native-"+requested);return;}
         if(upgrade)sendMessage("cuántas manzanas tiene ana","Ana tiene cinco manzanas.");
-        else{sendMessage("hola","Hola, X. Te leo.");sendMessage("ana tiene dos manzanas","Ana tiene dos manzanas.");sendMessage("ella recibe tres mas","Ana tiene cinco manzanas.");}
+        else{sendMessage("hola","Hola. Soy BBY Q.");sendMessage("ana tiene dos manzanas","Ana tiene dos manzanas.");sendMessage("ella recibe tres mas","Ana tiene cinco manzanas.");}
         JSONObject compiled=op("compileApp",new JSONObject().put("name","AAA-native-test.rxe").put("source","#!reverse-pc-machine-v1\nset r0 11\nmul r0 7\nprint r0\nhalt\n").toString(),"shellCompiled");
         require(compiled.getBoolean("ok"),"Internal fixture compilation failed");
         js("createWindow('bbyq');true");sendMessage("ejecuta programa 1","Acción completada.");
@@ -298,74 +306,164 @@ public final class WorkbenchTestRunner extends Instrumentation {
         require(waitJs("window.shellSaved").equals("true"),"Profile not committed");
         retainedProof(true);fullDisplay();visualCheck("native-"+requested);
     }
-    private String laplaceJs(LaplaceActivity laplace,String script)throws Exception{
-        CountDownLatch done=new CountDownLatch(1);AtomicReference<String> value=new AtomicReference<>();
-        runOnMainSync(()->laplace.testingWebView().evaluateJavascript(script,r->{value.set(r);done.countDown();}));
-        require(done.await(15,TimeUnit.SECONDS),"Laplace JS callback timed out");
-        Object result=new JSONArray("["+value.get()+"]").get(0);return result==JSONObject.NULL?"null":String.valueOf(result);
+    private String graphicsJs(RxeGraphicsActivity game,String script)throws Exception{
+        CountDownLatch ready=new CountDownLatch(1);AtomicReference<String> value=new AtomicReference<>();
+        runOnMainSync(()->game.testingWebView().evaluateJavascript(script,result->{value.set(result);ready.countDown();}));
+        require(ready.await(10,TimeUnit.SECONDS),"Graphics JavaScript timeout");return value.get();
     }
-    private void laplaceWorkflow()throws Exception{
-        File core=dataFile("session.rvp");String before=core.exists()?hash("session.rvp"):null;
-        ActivityMonitor monitor=addMonitor(LaplaceActivity.class.getName(),null,false);
-        require(js("typeof window.ReverseNative.openLaplace==='function'&&SHELL_APPS.includes('laplace')").equals("true"),"Laplace absent from launcher");
-        js("createWindow('laplace');true");
-        LaplaceActivity laplace=(LaplaceActivity)waitForMonitorWithTimeout(monitor,15000);removeMonitor(monitor);
-        require(laplace!=null,"Laplace did not open from REVERSE");
-        boolean ready=false;
-        for(int i=0;i<100;i++){if(laplaceJs(laplace,"typeof window.LaplaceHost==='object'").equals("true")){ready=true;break;}Thread.sleep(200);}
-        require(ready,"Packaged modules did not load");
-        require(laplaceJs(laplace,"document.documentElement.lang").equals("es"),"Language");
-        require(laplaceJs(laplace,"document.querySelectorAll('#horizonte option').length").equals("7"),"Horizons");
-        require(laplaceJs(laplace,"isSecureContext&&!!crypto.subtle&&typeof window.LaplaceNative.request==='function'").equals("true"),"Secure WebCrypto/native bridge");
-        require(laplaceJs(laplace,"document.querySelectorAll('.nodo').length").equals("7"),"3D query nodes");
-        laplaceJs(laplace,"document.querySelector('[data-tab=flujo]').click();true");
-        require(laplaceJs(laplace,"!document.querySelector('#flujo').hidden").equals("true"),"3D tab");
-        // Numerical probe only: fixture never becomes a saved live quote.
-        laplaceJs(laplace,"window.laplaceProbe=null;import(new URL('./modelo.mjs',document.baseURI).href).then(async m=>{const end=Math.floor(Date.now()/300000)*300,rows=Array.from({length:500},(_,i)=>[end-(500-i)*300,1000-i-1,1000-i+1,1000-i,1000-i,10]),t=new Date().toISOString();const p=await m.emitirPronosticos(rows,{asset:'BTC-USD',value:'500',observed_at:t,known_at:t},{emitidoEn:t,horizontes:[15,30,60,240,1440,10080],revision:'android-fixture'});window.laplaceProbe=p.length===6&&p[0].precio_predicho<500&&p[5].precio_predicho===null;}).catch(e=>window.laplaceProbe=String(e));true");
-        String probe="null";for(int i=0;i<80;i++){probe=laplaceJs(laplace,"window.laplaceProbe");if(!probe.equals("null"))break;Thread.sleep(200);}
-        require(probe.equals("true"),"M001 did not run in Android WebView: "+probe);
-        // XN01 must execute in the packaged XI/Ether NativeRuntime, not in JavaScript.
-        JSONArray xnBars=new JSONArray();long xnStart=1760000000L-(1760000000L%300);double xnPrice=500.0;
-        for(int i=0;i<120;i++){
-            double open=xnPrice;xnPrice*=i%17<10?1.0012:0.9988;
-            xnBars.put(new JSONArray().put(xnStart+i*300L).put(Math.min(open,xnPrice)*0.9998)
-                .put(Math.max(open,xnPrice)*1.0002).put(open).put(xnPrice).put(1000+(i%9)*120));
+    private void graphicsTap(RxeGraphicsActivity game,String selector)throws Exception{
+        String encoded=graphicsJs(game,"(()=>{const r=document.querySelector("+JSONObject.quote(selector)+").getBoundingClientRect();return JSON.stringify({x:r.x+r.width/2,y:r.y+r.height/2,width:innerWidth});})()");
+        JSONObject point=new JSONObject(new JSONArray("["+encoded+"]").getString(0));
+        int[] origin=new int[2],width={0};runOnMainSync(()->{game.testingWebView().getLocationOnScreen(origin);width[0]=game.testingWebView().getWidth();});
+        float scale=(float)(width[0]/point.getDouble("width")),x=origin[0]+(float)point.getDouble("x")*scale,y=origin[1]+(float)point.getDouble("y")*scale;
+        long t=SystemClock.uptimeMillis();MotionEvent down=MotionEvent.obtain(t,t,MotionEvent.ACTION_DOWN,x,y,0),up=MotionEvent.obtain(t,t+70,MotionEvent.ACTION_UP,x,y,0);
+        try{sendPointerSync(down);sendPointerSync(up);}finally{down.recycle();up.recycle();}
+    }
+    private void graphicsWorkflow(JSONObject before)throws Exception{
+        // Isolated workspace: fresh seeding, exact official upgrade, user file,
+        // removal and repeated starts. Never edits the real desktop fixtures.
+        WorkspaceFiles migration=new WorkspaceFiles(new File(getTargetContext().getCacheDir(),"prisma-upgrade-"+System.nanoTime()));
+        android.content.SharedPreferences flags=getTargetContext().getSharedPreferences("prisma-upgrade-check",0);flags.edit().clear().commit();
+        WorkbenchPrograms.seedGraphics(getTargetContext(),migration,flags);byte[] current=migration.read("Aplicaciones/PRISMA.rxe");
+        require(new JSONObject(new String(NativeRuntime.inspectRxe(current),StandardCharsets.UTF_8)).getString("app_version").equals("1.2.0"),"Fresh install did not seed X Render game");
+        byte[] prior;try(java.io.InputStream input=getContext().getAssets().open("prisma-1.1.rxe")){prior=WorkbenchPrograms.read(input);}
+        require(digest(prior).equals(WorkbenchPrograms.PRISMA_11_SHA),"Wrong official PRISMA upgrade fixture");
+        migration.write("Aplicaciones/PRISMA.rxe",prior,true);flags.edit().putBoolean("prisma-1.2-seeded",false).commit();
+        WorkbenchPrograms.seedGraphics(getTargetContext(),migration,flags);
+        require(Arrays.equals(current,migration.read("Aplicaciones/PRISMA.rxe")),"Official PRISMA 1.1 was not upgraded");
+        byte[] custom=NativeRuntime.compileRxe("#!reverse-pc-machine-v1\nset r0 42\nprint r0\nhalt\n".getBytes(StandardCharsets.UTF_8),"User app".getBytes(StandardCharsets.UTF_8));
+        migration.write("Aplicaciones/PRISMA.rxe",custom,true);flags.edit().putBoolean("prisma-1.2-seeded",false).commit();
+        WorkbenchPrograms.seedGraphics(getTargetContext(),migration,flags);
+        require(Arrays.equals(custom,migration.read("Aplicaciones/PRISMA.rxe")),"Upgrade overwrote a custom executable");
+        migration.trash("Aplicaciones/PRISMA.rxe");flags.edit().putBoolean("prisma-1.2-seeded",false).commit();
+        WorkbenchPrograms.seedGraphics(getTargetContext(),migration,flags);WorkbenchPrograms.seedGraphics(getTargetContext(),migration,flags);
+        require(migration.list("Aplicaciones").isEmpty(),"Upgrade restored a removed game");
+        JSONObject catalog=op("listApps","","graphicsCatalog");JSONObject program=null;
+        for(int i=0;i<catalog.getJSONArray("apps").length();i++){JSONObject app=catalog.getJSONArray("apps").getJSONObject(i);if("org.reverse.prisma".equals(app.getJSONObject("metadata").optString("app_id")))program=app;}
+        require(program!=null,"PRISMA binary missing from native catalog");
+        require(program.getJSONObject("metadata").getInt("version")==3,"Wrong graphics executable format");
+        final JSONObject selected=program;
+        ActivityMonitor monitor=addMonitor(RxeGraphicsActivity.class.getName(),null,false);
+        op("launchGraphics",new JSONObject().put("path",selected.getString("path")).put("identity",selected.getString("identity")).toString(),"graphicsLaunch");
+        RxeGraphicsActivity game=(RxeGraphicsActivity)waitForMonitorWithTimeout(monitor,15000);removeMonitor(monitor);require(game!=null,"RXE did not open its native graphics adapter");
+        long until=SystemClock.uptimeMillis()+20000;boolean loaded=false;
+        while(SystemClock.uptimeMillis()<until){AtomicReference<WebView> view=new AtomicReference<>();runOnMainSync(()->view.set(game.testingWebView()));if(view.get()!=null&&"true".equals(graphicsJs(game,"!!document.getElementById('startBtn')&&!!document.getElementById('game').dataset.renderer"))){loaded=true;break;}SystemClock.sleep(50);}
+        require(loaded,"Local graphics assets did not load");
+        require("true".equals(graphicsJs(game,"innerWidth>innerHeight")),"Game is not landscape");
+        require(graphicsJs(game,"document.getElementById('game').dataset.renderer").contains("ether-render-x-cpu"),"Ether Render X was not selected");
+        long firstFrame=SystemClock.uptimeMillis()+15000;boolean nativeFrame=false;
+        while(SystemClock.uptimeMillis()<firstFrame){if("true".equals(graphicsJs(game,"(()=>{const r=JSON.parse(ReverseGraphics.xRenderInfo());return r.frames>0&&r.cubes===5&&r.surface_pixels>0&&r.candidate_queries<r.width*r.height;})()"))){nativeFrame=true;break;}SystemClock.sleep(60);}
+        require(nativeFrame,"Ether Render X did not resolve and present native cube surfaces");
+        require("true".equals(graphicsJs(game,"document.documentElement.classList.contains('native-xrender')&&!document.querySelector('.gpu-canvas')")),"Legacy GPU cube renderer remained active");
+        graphicsJs(game,"window.graphicReplies=[];window.addEventListener('reverse-score',e=>graphicReplies.push(e.detail));ReverseGraphics.event(1,1,0,0);true");
+        for(int serial=1;serial<=3;serial++){
+            if(serial==2)graphicsJs(game,"ReverseGraphics.event(2,1,1,150);true");
+            if(serial==3)graphicsJs(game,"ReverseGraphics.event(3,1,2,0);true");
+            long end=SystemClock.uptimeMillis()+15000;
+            while(SystemClock.uptimeMillis()<end&&!"true".equals(graphicsJs(game,"graphicReplies.length>="+serial)))SystemClock.sleep(30);
+            require("true".equals(graphicsJs(game,"graphicReplies.length==="+serial+"&&graphicReplies.at(-1).ok")),"Native XI event was not committed");
         }
-        String xnTemplate;try(java.io.InputStream in=getTargetContext().getAssets().open("laplace/x001-native.xi")){
-            xnTemplate=new String(WorkbenchPrograms.read(in),StandardCharsets.UTF_8);
+        require("true".equals(graphicsJs(game,"graphicReplies[1].state.score===150&&graphicReplies[1].state.combo===1&&graphicReplies[2].state.combo===0&&graphicReplies[2].state.misses===1")),"Wrong persisted XI score");
+        graphicsJs(game,"window.blockedNetwork=false;fetch('https://example.com/').catch(()=>blockedNetwork=true);true");
+        require("true".equals(graphicsJs(game,"blockedNetwork")),"Graphics adapter allowed an external connection");
+        File folder=new File(getTargetContext().getExternalFilesDir(null),"ui-evidence");folder.mkdirs();Bitmap screen=getUiAutomation().takeScreenshot();if(screen!=null)try(FileOutputStream output=new FileOutputStream(new File(folder,"prisma-xrender-screen.png"))){screen.compress(Bitmap.CompressFormat.PNG,100,output);screen.recycle();}
+        graphicsTap(game,"#startBtn");long playDeadline=SystemClock.uptimeMillis()+20000;
+        while(SystemClock.uptimeMillis()<playDeadline&&!"true".equals(graphicsJs(game,"document.body.classList.contains('is-playing')")))SystemClock.sleep(60);
+        require("true".equals(graphicsJs(game,"document.body.classList.contains('is-playing')")),"Native game did not start after touch");
+        SystemClock.sleep(3600);require("true".equals(graphicsJs(game,"JSON.parse(ReverseGraphics.xRenderInfo()).frames>10")),"X Render stopped during playback");
+        graphicsTap(game,"#pauseBtn");SystemClock.sleep(200);
+        require("true".equals(graphicsJs(game,"!document.getElementById('pauseOverlay').hidden")),"Native game did not pause");
+        graphicsTap(game,"#resumeBtn");SystemClock.sleep(200);
+        require("true".equals(graphicsJs(game,"document.body.classList.contains('is-playing')")),"Native game did not resume");
+        Files.write(new File(folder,"prisma-xrender-info.json").toPath(),new JSONArray("["+graphicsJs(game,"ReverseGraphics.xRenderInfo()")+"]").getString(0).getBytes(StandardCharsets.UTF_8));
+        runOnMainSync(game::finish);SystemClock.sleep(250);
+        JSONObject after=op("inspect","","graphicsCoreAfter");
+        for(String key:new String[]{"memory_revision","memory_overrides","core_revision"})require(before.getJSONObject("core").getLong(key)==after.getJSONObject("core").getLong(key),"Game altered desktop authority: "+key);
+    }
+    // Runs on a disposable Android emulator profile. This exercises the actual
+    // app bridge -> QdEngine -> native XI -> BBY Q private RVPC2 path, not stubs.
+    private void qdWorkflow()throws Exception{
+        require(js("typeof qdStudioHTML==='function'").equals("true"),"Qd Studio not shipped");
+        String desktopBefore=hash("session.rvp");
+        JSONObject initial=op("qd",new JSONObject().put("action","status").toString(),"qdInitial");
+        require(initial.getBoolean("ok"),"Qd status unavailable: "+initial);
+        int initialLessons=initial.getInt("approved_lessons");
+        String correct="#!reverse-pc-machine-v1\nset r0 {{a}}\nadd r0 {{b}}\nprint r0\nhalt\n";
+        String wrong="#!reverse-pc-machine-v1\nset r0 {{a}}\nsub r0 {{b}}\nprint r0\nhalt\n";
+        JSONObject rejected=op("qd",new JSONObject().put("action","teach").put("skill",1)
+            .put("source",wrong).toString(),"qdRejected");
+        require(rejected.getBoolean("ok")&&!rejected.getBoolean("learned")
+            &&rejected.getInt("passed")==0&&rejected.getInt("total")==32,
+            "Incorrect XI template was accepted: "+rejected);
+        JSONObject afterRejected=op("qd",new JSONObject().put("action","status").toString(),"qdAfterReject");
+        require(afterRejected.getInt("approved_lessons")==initialLessons,
+            "Rejected template mutated BBY Q's lesson count");
+        JSONObject accepted=op("qd",new JSONObject().put("action","teach").put("skill",1)
+            .put("source",correct).toString(),"qdAccepted");
+        require(accepted.getBoolean("ok")&&accepted.getBoolean("learned")
+            &&accepted.getInt("passed")==32&&accepted.getInt("total")==32,
+            "Correct XI template failed independent assessment: "+accepted);
+        JSONArray rows=accepted.getJSONArray("cases");require(rows.length()==32,"Wrong Qd exam length");
+        HashSet<String> unique=new HashSet<>(),oldExam=new HashSet<>(),newExam=new HashSet<>();
+        int practice=0,heldout=0;
+        for(int i=0;i<rejected.getJSONArray("cases").length();i++){
+            JSONObject row=rejected.getJSONArray("cases").getJSONObject(i);
+            if("evaluación".equals(row.getString("set")))oldExam.add(row.getInt("a")+":"+row.getInt("b"));
         }
-        String xnProgram=LaplaceXiCompiler.compile(xnBars,xnTemplate);
-        ResultPacket xnPacket=ResultPacket.parse(NativeRuntime.execute(NativeRuntime.initialize(),xnProgram));
-        JSONObject xnResult=LaplaceXiCompiler.parse(xnPacket.output,"SPY",1L,new JSONObject(NativeRuntime.inspect(xnPacket.state)));
-        require(xnResult.getString("schema").equals("laplace-xn01-native-xi-v1"),"XN01 schema");
-        require(xnResult.getString("backend").contains("XI/Ether"),"XN01 backend");
-        require(xnResult.getInt("mask")>=0&&xnResult.getInt("mask")<16,"XN01 mask");
-        require(xnResult.getDouble("probability_up")>=0&&xnResult.getDouble("probability_up")<=1,"XN01 probability");
-        final boolean[] safeContent={false};
-        runOnMainSync(()->{
-            WebView view=laplace.testingWebView();android.view.View parent=(android.view.View)view.getParent();
-            android.view.WindowInsets insets=parent.getRootWindowInsets();
-            if(insets!=null&&android.os.Build.VERSION.SDK_INT>=30){
-                android.graphics.Insets safe=insets.getInsets(android.view.WindowInsets.Type.systemBars()|
-                    android.view.WindowInsets.Type.displayCutout());
-                safeContent[0]=parent.getPaddingLeft()>=safe.left&&parent.getPaddingTop()>=safe.top&&
-                    parent.getPaddingRight()>=safe.right&&parent.getPaddingBottom()>=safe.bottom&&
-                    view.getWidth()>0&&view.getHeight()>0&&
-                    view.getWidth()<=parent.getWidth()-safe.left-safe.right&&
-                    view.getHeight()<=parent.getHeight()-safe.top-safe.bottom;
-            }else safeContent[0]=insets!=null;
-        });
-        require(safeContent[0],"Laplace controls overlap system bars/cutout");
-        Bitmap laplaceFrame=getUiAutomation().takeScreenshot();
-        require(laplaceFrame!=null,"Laplace screenshot unavailable");
-        try(FileOutputStream output=new FileOutputStream(dataFile("laplace-auditoria.png"))){
-            require(laplaceFrame.compress(Bitmap.CompressFormat.PNG,100,output),"Laplace screenshot failed");
-        }finally{laplaceFrame.recycle();}
-        require(!LaplaceActivity.trusted(android.net.Uri.parse("https://attacker.example/")),"External document accepted");
-        boolean blocked=false;try{LaplaceActivity.urlFor("file:///private",new JSONObject());}catch(Exception expected){blocked=true;}
-        require(blocked,"Arbitrary source accepted");
-        runOnMainSync(laplace::finish);Thread.sleep(300);
-        require(before==null?!core.exists():before.equals(hash("session.rvp")),"Laplace modified native core memory");
+        for(int i=0;i<rows.length();i++){
+            JSONObject row=rows.getJSONObject(i);
+            int a=row.getInt("a"),b=row.getInt("b");
+            require(a>=0&&a<=99&&b>=1&&b<=99,"Exam input outside documented domain");
+            require(row.getBoolean("pass")&&row.getInt("actual")==row.getInt("expected"),
+                "Native XI response did not match oracle");
+            String pair=a+":"+b;
+            require(unique.add(pair),"Repeated Qd exam pair");
+            if("práctica".equals(row.getString("set")))practice++;
+            else if("evaluación".equals(row.getString("set"))){heldout++;newExam.add(pair);}
+            else throw new AssertionError("Unknown Qd exam section");
+        }
+        require(practice==4&&heldout==28&&unique.size()==32,"No independent 4+28 exam");
+        require(!oldExam.equals(newExam),"Two Qd examinations reused all 28 held-out cases");
+        JSONObject status=op("qd",new JSONObject().put("action","status").toString(),"qdFinalStatus");
+        require(status.getInt("approved_lessons")==initialLessons+1
+            &&status.getJSONArray("learned").getBoolean(0),
+            "Qd approved pattern was not persisted in BBY Q RVPC2");
+        JSONObject solved=op("qd",new JSONObject().put("action","solve")
+            .put("skill",1).put("a",87).put("b",9).toString(),"qdSolve");
+        require(solved.getBoolean("ok")&&solved.getBoolean("learned")
+            &&solved.getBoolean("pass")&&solved.getInt("actual")==96
+            &&solved.getString("program").contains("add r0 9"),
+            "Qd failed to retrieve and execute the pattern from the saved RVPC2");
+        require(hash("session.rvp").equals(desktopBefore),"Qd changed desktop master state");
+    }
+    /** The same live Workbench WebView, profile, icons and wallpaper survive both rotations. */
+    private void orientationWorkflow()throws Exception{
+        AtomicReference<WebView> original=new AtomicReference<>();
+        runOnMainSync(()->original.set(activity.testingWebView()));
+        String wallpaper=js("getComputedStyle(document.querySelector('#wall-image')).backgroundImage");
+        String icons=js("document.querySelector('#shortcuts').innerHTML");
+        js("window.__orientationProof='same-webview-same-session';createWindow('files');true");
+        String identity=js("activeId");
+        int windows=Integer.parseInt(js("state.windows.length"));
+        runOnMainSync(()->activity.setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT));
+        waitJs("innerHeight>innerWidth&&matchMedia('(orientation: portrait)').matches");
+        require(js("getComputedStyle(document.querySelector('#shortcuts')).gridAutoFlow").equals("row"),"Portrait shortcut grid did not reflow");
+        require(js("document.documentElement.scrollWidth<=innerWidth").equals("true"),"Portrait desktop overflows horizontally");
+        require(js("(()=>{const r=document.querySelector('.window.focused').getBoundingClientRect();return r.left>=0&&r.right<=innerWidth+1&&r.bottom<=innerHeight+1;})()").equals("true"),"Portrait foreground window is outside display");
+        require(js("getComputedStyle(document.querySelector('#wall-image')).backgroundImage").equals(wallpaper),"Wallpaper changed in portrait");
+        require(js("document.querySelector('#shortcuts').innerHTML").equals(icons),"Original icons changed in portrait");
+        require(activity.testingWebView()==original.get(),"Rotation recreated the trusted WebView");
+        fullDisplay();
+        visualCheck("portrait");
+        runOnMainSync(()->activity.setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE));
+        waitJs("innerWidth>innerHeight&&matchMedia('(orientation: landscape)').matches");
+        require(js("window.__orientationProof").equals("same-webview-same-session"),"Rotation reloaded the Workbench document");
+        require(js("activeId").equals(identity)&&Integer.parseInt(js("state.windows.length"))==windows,"Rotation lost the desktop session");
+        require(js("getComputedStyle(document.querySelector('#wall-image')).backgroundImage").equals(wallpaper),"Wallpaper changed in landscape");
+        require(js("document.querySelector('#shortcuts').innerHTML").equals(icons),"Original icons changed in landscape");
+        require(activity.testingWebView()==original.get(),"Rotation recreated the trusted WebView after landscape");
+        fullDisplay();
+        runOnMainSync(()->activity.setRequestedOrientation(android.content.pm.ActivityInfo.SCREEN_ORIENTATION_FULL_USER));
     }
     @Override public void onStart(){
         Bundle result=new Bundle();
@@ -383,8 +481,9 @@ public final class WorkbenchTestRunner extends Instrumentation {
             activity=(WorkbenchActivity)waitForMonitorWithTimeout(desktopMonitor,15000);removeMonitor(desktopMonitor);
             require(activity!=null,"Entry did not reach Workbench: "+requested);
             waitJs("document.querySelector('[data-task-app]')&&typeof nativeRequest==='function'");
-            if(requested.equals("laplace")){
-                laplaceWorkflow();result.putString("stream","WORKBENCH_TESTS_OK mode=laplace packaged=M001+XN01 native=XI/Ether WebCrypto=verified core=unchanged\n");
+            if(requested.equals("music")){
+                int checks=MusicPlayerChecks.run(this,activity);
+                result.putString("stream","WORKBENCH_TESTS_OK mode=music checks="+checks+" offline-webview=verified\n");
                 result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
             }
             JSONObject snapshot=op("inspect","","testSnapshot");
@@ -392,6 +491,19 @@ public final class WorkbenchTestRunner extends Instrumentation {
             require(snapshot.getJSONObject("android").getLong("ram_total_bytes")>0,"No native RAM reading");
             require(snapshot.getJSONObject("core").getString("state_format").equals("RVPC2"),"Wrong checkpoint format");
             require(snapshot.getJSONObject("build").getString("source_commit").matches("[a-f0-9]{40}"),"Missing build provenance");
+            if(requested.equals("orientation")){
+                orientationWorkflow();
+                result.putString("stream","WORKBENCH_TESTS_OK mode=orientation portrait=verified landscape=verified session=preserved wallpaper=unchanged icons=unchanged\n");
+                result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
+            }
+            if(requested.equals("qd")){
+                qdWorkflow();
+                result.putString("stream","WORKBENCH_TESTS_OK mode=qd native=XI/Ether cases=32 rejected=32 saved=RVPC2\n");
+                result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
+            }
+            if(requested.equals("graphics")){
+                graphicsWorkflow(snapshot);result.putString("stream","WORKBENCH_TESTS_OK mode=graphics native=XI renderer=Ether-Render-X-CPU presenter=GLES3 touch=verified isolation=verified\n");result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
+            }
             if(!seed&&js("typeof window.ReverseShell==='object'").equals("true")){
                 desktopShellWorkflow(requested,snapshot);
                 result.putString("stream","WORKBENCH_TESTS_OK mode="+requested+" native=XI/Ether desktop-shell=verified\n");result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;

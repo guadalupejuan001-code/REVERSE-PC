@@ -10,13 +10,13 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
 
-/** U002: valida y serializa 369 estados globales hacia XI/Inverse Ether Memory.
+/** Valida y serializa estados U002/U003 hacia XI/Inverse Ether Memory.
  * El host no calcula una prediccion. Solo preserva identidad, valor y tiempos;
  * XI ejecuta mem_store + mem_materialize y el resultado se compara byte a byte.
  */
 public final class LaplaceGlobalCompiler {
     private static final BigInteger BASE=new BigInteger("970000000000000000000000000000");
-    private static final int SIGNALS=369,RECORD_BYTES=32,HEADER_BYTES=16;
+    private static final int MAX_SIGNALS=2047,RECORD_BYTES=32,HEADER_BYTES=16;
     private static final int MAX_PROGRAM_BYTES=1024*1024;
     private LaplaceGlobalCompiler(){}
 
@@ -27,7 +27,7 @@ public final class LaplaceGlobalCompiler {
         Compiled(String program,byte[] expected,int nonzero,String snapshotSha256,
                  String captureSha256,String encodedSha256){
             this.program=program;this.expected=expected;this.nonzero=nonzero;
-            this.records=SIGNALS;this.baseAddress=BASE.toString();
+            this.records=(expected.length-HEADER_BYTES)/RECORD_BYTES;this.baseAddress=BASE.toString();
             this.snapshotSha256=snapshotSha256;this.captureSha256=captureSha256;
             this.encodedSha256=encodedSha256;
         }
@@ -72,7 +72,7 @@ public final class LaplaceGlobalCompiler {
     }
 
     public static Compiled compile(JSONObject capture,String template)throws Exception{
-        need(capture!=null&&"laplace-universo-global-u002-v1".equals(capture.optString("schema")),
+        need(capture!=null&&("laplace-universo-global-u002-v1".equals(capture.optString("schema"))||"laplace-universo-global-u003-v4".equals(capture.optString("schema"))),
             "Captura U002 incompatible");
         need(template!=null&&template.startsWith("#!reverse-pc-machine-v1\n")&&
             template.contains("# __GLOBAL_BYTES__")&&template.contains("# __GLOBAL_MATERIALIZE__"),
@@ -85,25 +85,26 @@ public final class LaplaceGlobalCompiler {
         Instant captured=Instant.parse(required(capture,"at"));
 
         JSONObject coverage=capture.getJSONObject("coverage");
-        need(coverage.getInt("known_signals")==SIGNALS&&coverage.getInt("failed_sources")==0,
-            "La captura global no contiene las 369 señales completas");
+        final int count=coverage.getInt("known_signals");
+        need(count>0&&count<=MAX_SIGNALS&&coverage.getInt("failed_sources")>=0,
+            "La captura global supera el presupuesto o tiene metadatos incoherentes");
 
         JSONObject snapshot=capture.getJSONObject("universal_state");
-        need(snapshot.getInt("known_states")==SIGNALS&&!snapshot.optBoolean("complete_universe_observed",true),
+        need(snapshot.getInt("known_states")==count&&!snapshot.optBoolean("complete_universe_observed",true),
             "Snapshot global U002 incompatible");
         String snapshotHash=required(snapshot,"snapshot_sha256");
         need(snapshotHash.matches("[a-f0-9]{64}"),"Hash del snapshot U002 inválido");
         JSONArray states=snapshot.getJSONArray("states");
-        need(states.length()==SIGNALS,"U002 requiere exactamente 369 estados");
+        need(states.length()==count,"El conteo de estados no coincide con la cobertura");
 
-        byte[] bytes=new byte[HEADER_BYTES+SIGNALS*RECORD_BYTES];
+        byte[] bytes=new byte[HEADER_BYTES+count*RECORD_BYTES];
         byte[] magic="LPG2".getBytes(StandardCharsets.US_ASCII);
         System.arraycopy(magic,0,bytes,0,magic.length);
-        putIntLE(bytes,4,SIGNALS);
+        putIntLE(bytes,4,count);
         byte[] snapPrefix=hexBytes(snapshotHash.substring(0,16));
         System.arraycopy(snapPrefix,0,bytes,8,8);
 
-        for(int i=0;i<SIGNALS;i++){
+        for(int i=0;i<count;i++){
             JSONObject row=states.getJSONObject(i);
             String id=required(row,"id"),domain=required(row,"domain"),
                 variable=required(row,"variable"),unit=required(row,"unit"),
@@ -127,6 +128,18 @@ public final class LaplaceGlobalCompiler {
             putLongLE(bytes,at+24,known.toEpochMilli());
         }
 
+        return compileEncoded(bytes,snapshotHash,captureHash,template);
+    }
+
+    static Compiled compileEncoded(byte[] bytes,String snapshotHash,String captureHash,String template)throws Exception{
+        need(bytes!=null&&bytes.length>=HEADER_BYTES+RECORD_BYTES&&bytes.length<=HEADER_BYTES+MAX_SIGNALS*RECORD_BYTES&&
+            (bytes.length-HEADER_BYTES)%RECORD_BYTES==0,"Registros globales inválidos");
+        need(bytes[0]=='L'&&bytes[1]=='P'&&bytes[2]=='G'&&bytes[3]=='2'&&
+            ByteBuffer.wrap(bytes,4,4).order(ByteOrder.LITTLE_ENDIAN).getInt()==(bytes.length-HEADER_BYTES)/RECORD_BYTES,
+            "Cabecera global inválida");
+        need(snapshotHash!=null&&snapshotHash.matches("[a-f0-9]{64}")&&captureHash!=null&&captureHash.matches("[a-f0-9]{64}"),"Sellos globales inválidos");
+        need(template!=null&&template.startsWith("#!reverse-pc-machine-v1\n")&&template.contains("# __GLOBAL_BYTES__")&&
+            template.contains("# __GLOBAL_MATERIALIZE__"),"Plantilla global incompatible");
         StringBuilder stores=new StringBuilder(700_000);
         stores.append("mem_reset 0\n");
         int nonzero=0;
