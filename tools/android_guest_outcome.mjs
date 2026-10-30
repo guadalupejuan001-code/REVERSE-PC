@@ -12,13 +12,15 @@ export function analyzeGuestConsole(consoleText) {
     ['system_mount_failure', /^init:\s*Failed to mount \/system:/],
     ['avb_invalid_size', /^init:\s*\[libfs_avb\]\s*Invalid hash size:/],
     ['avb_digest_failure', /^init:\s*\[libfs_avb\]\s*(?:Failed to verify vbmeta digest|vbmeta digest error isn't allowed)/],
+    ['bootstrap_apex_ambiguity', /^apexd-bootstrap:\s*Found two APEX packages for module/],
+    ['critical_service_failure', /^init:\s*Service [A-Za-z0-9_.-]+ has 'reboot_on_failure' option and failed, shutting down system\./],
     ['reboot_requested', /^reboot:\s*Restarting system(?:\s+with command\b|\s*$)/],
     ['reboot_failed_halt', /^Reboot failed -- System halted/],
   ];
   const signals = rules.filter(([, expression]) => lines.some(line => expression.test(line))).map(([name]) => name);
   const has = name => signals.includes(name);
-  const terminal = has('kernel_panic') || has('init_fatal_reboot') || has('reboot_failed_halt');
-  const failure = terminal || ['required_mount_failure', 'system_mount_failure', 'avb_invalid_size', 'avb_digest_failure'].some(has);
+  const terminal = has('kernel_panic') || has('init_fatal_reboot') || has('reboot_failed_halt') || has('critical_service_failure');
+  const failure = terminal || ['required_mount_failure', 'system_mount_failure', 'avb_invalid_size', 'avb_digest_failure', 'bootstrap_apex_ambiguity'].some(has);
   return {guest_kernel_panic:has('kernel_panic'), guest_boot_failure:failure,
     guest_terminal_failure:terminal, guest_reboot_requested:has('reboot_requested'),
     guest_failure_signals:signals, android_boot_verified:false};
