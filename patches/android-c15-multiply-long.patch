@@ -1,0 +1,23 @@
+--- a/src/minimal_guest_simd.inc
++++ b/src/minimal_guest_simd.inc
+@@ -240,6 +240,20 @@
+       switch(size){case 0:return x^y;case 1:return (old&x)|(~old&y);case 2:return (old&~y)|(x&y);default:return (old&y)|(x&~y);}
+     };value.low=logic(a.low,b.low,d.low);value.high=logic(a.high,b.high,d.high);commit(value);return true;
+   }
++  const auto multiply_long=i&0x9f20fc00u;
++  if(multiply_long==0x0e20c000u||multiply_long==0x0e208000u||multiply_long==0x0e20a000u){ // S/UMULL, S/UMLAL, S/UMLSL, lower or upper source half.
++    if(size==3)return false;
++    fp_access();const auto a=floating_.v[rn],b=floating_.v[rm],old=floating_.v[rd];Vector128 value;
++    const unsigned lanes=64/element,first=q?lanes:0;
++    for(unsigned n=0;n<lanes;n++){
++      auto x=a.lane(first+n,element),y=b.lane(first+n,element);
++      if(!u){const auto sign=UINT64_C(1)<<(element-1);if(x&sign)x|=~low_mask(element);if(y&sign)y|=~low_mask(element);}
++      const auto product=x*y,accumulator=old.lane(n,2*element);
++      value.lane(n,2*element,multiply_long==0x0e20c000u?product:multiply_long==0x0e208000u?accumulator+product:accumulator-product);
++    }
++    // Q selects the narrow source half. Every destination is a full 128-bit vector.
++    floating_.v[rd]=value;return true;
++  }
+   const auto same=i&0x9f20fc00;
+   if(same==0x0e208400||same==0x0e209c00||same==0x0e208c00||same==0x0e203400||same==0x0e203c00){
+     if((element==64&&!q)||(same==0x0e209c00&&(u||size==3))||(same==0x0e208c00&&!u))return false;
