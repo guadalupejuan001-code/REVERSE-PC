@@ -1,6 +1,7 @@
 // REVERSE-PC machine profile: interpreted by the original XI candidate owner.
 // Included inside mundo_x::infinite_program_detail, after execute_line().
 // The explicit shebang opt-in keeps legacy XI semantics byte-identical.
+#include "integration/xi_mesh_raster.inc"
 inline constexpr const char machine_header[] = "#!reverse-pc-machine-v1";
 inline constexpr std::size_t machine_max_steps = 1000000;
 inline constexpr std::size_t machine_register_count = 16;
@@ -152,6 +153,9 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
   }
 
   std::array<std::int64_t, machine_register_count> registers{};
+  // Zeroed CPU scratch belongs to this execution only. It never becomes an
+  // InverseMemory override, a quantum binding or part of a saved snapshot.
+  std::array<std::int64_t,4096> locals{};
   ProgramResult result;
   bool first_command = true, in_batch = false, comparison_valid = false;
   int comparison = 0;
@@ -163,6 +167,8 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
   bool frame_active = false;
   std::uint32_t frame_revision = 0;
   std::uint16_t frame_width = 0, frame_height = 0;
+  MachineMeshRaster mesh;
+  bool mesh_active = false;
   auto append16 = [&](std::uint16_t n) {
     frame.push_back(static_cast<char>(n & 255));
     frame.push_back(static_cast<char>((n >> 8) & 255));
@@ -179,6 +185,7 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
       const auto& words = inst.words;
       const auto op = lower_ascii(words.front());
       auto output_line = [&](const std::string& output) {
+        if (mesh_active) throw std::invalid_argument("text output inside XI mesh");
         if (output.size() > max_response_bytes - result.output.size())
           throw std::length_error("machine output exceeds 16 MiB");
         result.output += output;
@@ -244,6 +251,20 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
           (op == "jgt" && comparison > 0) ||
           (op == "jge" && comparison >= 0);
         if (take) { pc = labels.at(machine_label(words[1])); first_command = false; continue; }
+      } else if (op == "localget") {
+        require_count(words, 3);
+        const auto destination=machine_register(words[1]);
+        const auto address=machine_value(words[2],registers);
+        if(address<0 || address>=static_cast<std::int64_t>(locals.size()))
+          throw std::out_of_range("local scratch index must be in 0..4095");
+        registers[destination]=locals[static_cast<std::size_t>(address)];
+      } else if (op == "localset") {
+        require_count(words, 3);
+        const auto address=machine_value(words[1],registers);
+        if(address<0 || address>=static_cast<std::int64_t>(locals.size()))
+          throw std::out_of_range("local scratch index must be in 0..4095");
+        const auto value=machine_value(words[2],registers);
+        locals[static_cast<std::size_t>(address)]=value;
       } else if (op == "load8") {
         require_count(words, 3);
         if (!memory) throw std::invalid_argument("Inverse Memory is not enabled");
@@ -252,6 +273,35 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
         if (!read.deterministic)
           throw std::runtime_error("load8 requires a deterministic byte; quantum handle " + read.handle);
         registers[index] = read.value;
+      } else if (op == "load16" || op == "load32") {
+        require_count(words, 3);
+        if (!memory) throw std::invalid_argument("Inverse Memory is not enabled");
+        const auto index = machine_register(words[1]);
+        const unsigned count = op == "load16" ? 2U : 4U;
+        const auto address = decimal<std::uint64_t>(machine_substitute(words[2],registers),"bulk memory address");
+        if (address > std::numeric_limits<std::uint64_t>::max()-(count-1))
+          throw std::out_of_range("bulk memory address range exceeds uint64");
+        std::uint64_t value=0;
+        for (unsigned i=0;i<count;++i) {
+          const auto read=memory->read(std::to_string(address+i),core);
+          if (!read.deterministic)
+            throw std::runtime_error(op+" requires deterministic bytes; quantum handle "+read.handle);
+          value |= std::uint64_t(read.value)<<(8*i);
+        }
+        registers[index]=static_cast<std::int64_t>(value);
+      } else if (op == "store16" || op == "store32") {
+        require_count(words, 3);
+        if (!memory) throw std::invalid_argument("Inverse Memory is not enabled");
+        const unsigned count = op == "store16" ? 2U : 4U;
+        const auto address = decimal<std::uint64_t>(machine_substitute(words[1],registers),"bulk memory address");
+        if (address > std::numeric_limits<std::uint64_t>::max()-(count-1))
+          throw std::out_of_range("bulk memory address range exceeds uint64");
+        const auto value=machine_value(words[2],registers);
+        const std::int64_t maximum=count==2 ? INT64_C(65535) : INT64_C(4294967295);
+        if (value<0 || value>maximum)
+          throw std::out_of_range(op+" value exceeds unsigned "+std::to_string(count*8)+"-bit range");
+        for (unsigned i=0;i<count;++i)
+          memory->store(std::to_string(address+i),static_cast<std::uint8_t>((std::uint64_t(value)>>(8*i))&255),core);
       } else if (op == "store8") {
         require_count(words, 3);
         if (!memory) throw std::invalid_argument("Inverse Memory is not enabled");
@@ -260,9 +310,58 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
         if (value < 0 || value > 255)
           throw std::out_of_range("store8 value must be in 0..255");
         memory->store(address, static_cast<std::uint8_t>(value), core);
+      } else if (op == "meshbegin") {
+        require_count(words, 5);
+        if (mesh_active || frame_active || !result.output.empty())
+          throw std::invalid_argument("meshbegin requires a fresh output");
+        mesh.begin(machine_value(words[1],registers),machine_value(words[2],registers),
+                   machine_value(words[3],registers),machine_value(words[4],registers));
+        mesh_active=true;
+      } else if (op == "meshvertex") {
+        require_count(words, 5);
+        if (!mesh_active) throw std::invalid_argument("meshvertex without meshbegin");
+        mesh.vertex(machine_value(words[1],registers),
+                    {machine_value(words[2],registers),machine_value(words[3],registers),machine_value(words[4],registers)});
+      } else if (op == "meshread") {
+        require_count(words, 5);
+        if (!mesh_active) throw std::invalid_argument("meshread without meshbegin");
+        const auto x=machine_register(words[1]),y=machine_register(words[2]),z=machine_register(words[3]);
+        if (x==y || y==z || x==z)
+          throw std::invalid_argument("meshread requires three distinct destination registers");
+        // Resolve and validate the source before assigning any destination;
+        // the vertex-id operand may itself be one of these input registers.
+        const auto vertex=mesh.read(machine_value(words[4],registers));
+        registers[x]=vertex.x;registers[y]=vertex.y;registers[z]=vertex.z;
+      } else if (op == "meshface") {
+        require_count(words, 9);
+        if (!mesh_active) throw std::invalid_argument("meshface without meshbegin");
+        mesh.face(machine_value(words[1],registers),machine_value(words[2],registers),machine_value(words[3],registers),
+                  machine_value(words[4],registers),machine_value(words[5],registers),machine_value(words[6],registers),
+                  machine_value(words[7],registers),machine_value(words[8],registers));
+      } else if (op == "meshtri") {
+        require_count(words, 11);
+        if (!mesh_active) throw std::invalid_argument("meshtri without meshbegin");
+        mesh.triangle({machine_value(words[1],registers),machine_value(words[2],registers),machine_value(words[3],registers)},
+                      {machine_value(words[4],registers),machine_value(words[5],registers),machine_value(words[6],registers)},
+                      {machine_value(words[7],registers),machine_value(words[8],registers),machine_value(words[9],registers)},
+                      machine_value(words[10],registers));
+      } else if (op == "meshtri3") {
+        require_count(words, 15);
+        if (!mesh_active) throw std::invalid_argument("meshtri3 without meshbegin");
+        mesh.triangle3({machine_value(words[1],registers),machine_value(words[2],registers),machine_value(words[3],registers)},
+                       {machine_value(words[4],registers),machine_value(words[5],registers),machine_value(words[6],registers)},
+                       {machine_value(words[7],registers),machine_value(words[8],registers),machine_value(words[9],registers)},
+                       machine_value(words[10],registers),machine_value(words[11],registers),
+                       machine_value(words[12],registers),machine_value(words[13],registers),machine_value(words[14],registers));
+      } else if (op == "meshend") {
+        require_count(words, 1);
+        if (!mesh_active) throw std::invalid_argument("meshend without meshbegin");
+        auto visible=mesh.finish();
+        if (visible.size()>max_response_bytes) throw std::length_error("XI mesh output exceeds transport budget");
+        result.output=std::move(visible);mesh_active=false;
       } else if (op == "framebegin") {
         require_count(words, 4);
-        if (frame_active || !result.output.empty())
+        if (frame_active || mesh_active || !result.output.empty())
           throw std::invalid_argument("framebegin requires a fresh output");
         const auto width = machine_value(words[1], registers);
         const auto height = machine_value(words[2], registers);
@@ -315,7 +414,7 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
                     "\",\"value\":" + std::to_string(registers[index]) + "}\n");
       } else if (op == "halt") {
         require_count(words, 1);
-        if (frame_active) throw std::invalid_argument("unterminated XFS1 frame");
+        if (frame_active || mesh_active) throw std::invalid_argument("unterminated XFS1 frame or mesh");
         break;
       } else {
         auto expanded = words;
@@ -335,6 +434,6 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
     }
   }
   if (in_batch) throw std::invalid_argument("unterminated batch: expected end");
-  if (frame_active) throw std::invalid_argument("unterminated XFS1 frame");
+  if (frame_active || mesh_active) throw std::invalid_argument("unterminated XFS1 frame or mesh");
   return result;
 }

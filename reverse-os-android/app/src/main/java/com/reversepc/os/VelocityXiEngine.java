@@ -17,24 +17,32 @@ import org.json.JSONObject;
  */
 final class VelocityXiEngine {
     static final class Snapshot {
-        final long xCm,zCm,ticks;
-        final int yaw4096,speedCmps,slideCmps,checkpoint;
-        final boolean finished,offRoad;
+        final long xCm,zCm,ticks,totalProgress;
+        final int yaw4096,speedCmps,slideCmps,checkpoint,position,laps,trackS,segment,countdown;
+        final boolean finished,offRoad,wallContact;
         Snapshot(long[] values){
-            if(values==null||values.length!=9)throw new IllegalArgumentException("XI game output needs nine registers");
+            if(values==null||values.length!=16)throw new IllegalArgumentException("XI race output needs sixteen registers");
+            for(int i=2;i<values.length;i++)if(values[i]<Integer.MIN_VALUE||values[i]>Integer.MAX_VALUE)
+                throw new IllegalArgumentException("XI race register exceeds integer range");
             xCm=values[0];zCm=values[1];yaw4096=(int)values[2];
             speedCmps=(int)values[3];slideCmps=(int)values[4];
             checkpoint=(int)values[5];ticks=values[6];
             finished=values[7]==1;offRoad=values[8]==1;
+            position=(int)values[9];laps=(int)values[10];trackS=(int)values[11];
+            segment=(int)values[12];countdown=(int)values[13];wallContact=values[14]==1;
+            totalProgress=values[15];
             if(xCm< -1_500_000||xCm>1_500_000||zCm< -1_500_000||zCm>1_500_000||
-                    yaw4096<0||yaw4096>=4096||speedCmps<0||speedCmps>7800||
-                    slideCmps< -2600||slideCmps>2600||checkpoint<0||checkpoint>6||
+                    yaw4096<0||yaw4096>=4096||speedCmps<0||speedCmps>6500||
+                    slideCmps< -6500||slideCmps>6500||checkpoint<0||checkpoint>12||
                     ticks<0||ticks>Integer.MAX_VALUE||values[7]<0||values[7]>1||
-                    values[8]<0||values[8]>1)
+                    values[8]<0||values[8]>1||position<1||position>4||laps<0||laps>3||
+                    trackS<0||trackS>=160000||segment<0||segment>=80||countdown<0||countdown>150||
+                    values[14]<0||values[14]>1||totalProgress<0||totalProgress>1_000_000)
                 throw new IllegalArgumentException("XI game output beyond the bounded protocol");
         }
         int speedKmh(){return (int)Math.round(speedCmps*.036);}
         long seconds(){return ticks/50;}
+        int displayedLap(){return Math.min(3,laps+1);}
     }
 
     private byte[] privateState;
@@ -44,6 +52,11 @@ final class VelocityXiEngine {
     private final float[] worldPoints; // read-only XI generated geometry samples
     private final int[] palette;
     private Snapshot snapshot;
+    static final class Observation {
+        final RegraphicsFrame frame;
+        final Snapshot state;
+        Observation(RegraphicsFrame frame,Snapshot state){this.frame=frame;this.state=state;}
+    }
 
     VelocityXiEngine(Context context)throws Exception{
         driveXi=asset(context,"velocity/drive.xi");
@@ -57,7 +70,7 @@ final class VelocityXiEngine {
             throw new IllegalStateException("XI game code header missing");
         ResultPacket generated=ResultPacket.parse(NativeRuntime.execute(NativeRuntime.initialize(),world));
         worldPoints=parseRoute(generated.output);
-        // Preserve world.xi's 241 packed route points in *this* isolated RVPC2.
+        // Preserve world.xi's 81 packed circuit vertices in this isolated RVPC2.
         // Reinitializing here would discard the renderer's only geometry source.
         privateState=generated.state; // isolated from REVERSE Desktop/BBY Q
         step(0,0,1,0,true);
@@ -69,7 +82,7 @@ final class VelocityXiEngine {
             ByteArrayOutputStream out=new ByteArrayOutputStream();
             byte[] buffer=new byte[8192];int n;
             while((n=in.read(buffer))>=0){
-                if(out.size()+n>128*1024)throw new IllegalArgumentException("Velocity XI source exceeds limit");
+                if(out.size()+n>512*1024)throw new IllegalArgumentException("Velocity XI source exceeds limit");
                 out.write(buffer,0,n);
             }
             return out.toString("UTF-8");
@@ -85,30 +98,30 @@ final class VelocityXiEngine {
                 throw new IllegalStateException("Track output is not XI register data");
             numbers.add(row.getLong("value"));
         }
-        if(numbers.size()!=482)throw new IllegalStateException("XI track requires 241 (z,x) points");
+        if(numbers.size()!=162)throw new IllegalStateException("XI circuit requires 81 (x,z) points");
         float[] points=new float[numbers.size()];
         for(int i=0;i<numbers.size();i+=2){
-            long z=numbers.get(i),x=numbers.get(i+1);
-            if(z!=-85000L+(long)(i/2)*1000L||Math.abs(x)>8000)
+            long x=numbers.get(i),z=numbers.get(i+1);
+            if(Math.abs(x)>1_500_000||Math.abs(z)>1_500_000)
                 throw new IllegalStateException("XI track samples are out of range");
-            points[i]=z/100.f;
-            points[i+1]=x/100.f;
+            points[i]=x/100.f;
+            points[i+1]=z/100.f;
         }
         return points;
     }
 
     private static Snapshot parseState(String output)throws Exception{
-        long[] observed=new long[9];int n=0;
+        long[] observed=new long[16];int n=0;
         for(String line:output.split("\n")){
             if(line.trim().isEmpty())continue;
-            if(n>=9)throw new IllegalArgumentException("XI game published too many registers");
+            if(n>=16)throw new IllegalArgumentException("XI game published too many registers");
             JSONObject row=new JSONObject(line);
             if(!"register".equals(row.getString("type"))||
                !("r"+n).equals(row.getString("register")))
                 throw new IllegalArgumentException("XI game register order mismatch");
             observed[n++]=row.getLong("value");
         }
-        if(n!=9)throw new IllegalArgumentException("Incomplete XI game observation");
+        if(n!=16)throw new IllegalArgumentException("Incomplete XI game observation");
         return new Snapshot(observed);
     }
 
@@ -134,7 +147,10 @@ final class VelocityXiEngine {
      * projection, shading or collision equations are implemented here.
      * Host validates and unpacks the bounded surface observations only.
      */
-    synchronized RegraphicsFrame renderFrame(int stride,int camera,int paint)throws Exception{
+    RegraphicsFrame renderFrame(int stride,int camera,int paint)throws Exception{
+        return observeFrame(stride,camera,paint).frame;
+    }
+    Observation observeFrame(int stride,int camera,int paint)throws Exception{
         if(stride!=1&&stride!=2&&stride!=4)throw new IllegalArgumentException("XI frame stride must be 1,2 or 4");
         if(camera<0||camera>2||paint<0||paint>4)throw new IllegalArgumentException("XI visual input out of range");
         final String source=XI_HEADER+"store8 200 "+stride+
@@ -142,8 +158,13 @@ final class VelocityXiEngine {
             xiRenderer.substring(XI_HEADER.length());
         // No UTF-8 conversion or JSON records on the frame path.
         // Returned RVPC2 is discarded: frames observe the private game state.
-        ResultPacket packet=ResultPacket.parseBinary(NativeRuntime.execute(privateState,source));
-        return RegraphicsFrame.decode(packet.outputBytes,stride,palette);
+        final byte[] observation;
+        final Snapshot observedState;
+        synchronized(this){observation=privateState.clone();observedState=snapshot;}
+        // Native observations execute on a private immutable copy. The physics
+        // transaction can advance independently while this image is produced.
+        ResultPacket packet=ResultPacket.parseBinary(NativeRuntime.execute(observation,source));
+        return new Observation(RegraphicsFrame.decode(packet.outputBytes,stride,palette),observedState);
     }
     private static int[] parsePalette(String source){
         String[] entries=source.trim().split("\n");
@@ -156,5 +177,5 @@ final class VelocityXiEngine {
         return palette;
     }
     synchronized Snapshot current(){return snapshot;}
-    float[] track(){return worldPoints;} // Existing engine comparison adapter only.
+    float[] track(){return worldPoints.clone();} // Read-only circuit samples for HUD.
 }

@@ -17,8 +17,11 @@ public final class RegraphicsFrameTest {
     static void patch16(byte[] bytes,int at,int n){bytes[at]=(byte)n;bytes[at+1]=(byte)(n>>>8);}
     static void patch32(byte[] bytes,int at,int n){patch16(bytes,at,n);patch16(bytes,at+2,n>>>16);}
     static void span(ByteArrayOutputStream out,int y,int x0,int x1,int material,int depth){
+        spanRev(out,y,x0,x1,material,depth,1);
+    }
+    static void spanRev(ByteArrayOutputStream out,int y,int x0,int x1,int material,int depth,int revision){
         out.write(2);out.write(material);put16(out,y);put16(out,x0);put16(out,x1);
-        put16(out,depth);put32(out,1);
+        put16(out,depth);put32(out,revision);
     }
     static byte[] sample(int stride){
         ByteArrayOutputStream out=new ByteArrayOutputStream();
@@ -49,6 +52,19 @@ public final class RegraphicsFrameTest {
                 span(out,y,layer*10,1279-layer*10,layer%3,100-layer);
         }
         out.write(3);out.write(0);put16(out,0);put32(out,1);
+        return out.toByteArray();
+    }
+    static byte[] mesh(int stride){
+        int width=stride==4?320:stride==2?480:640,height=stride==4?180:stride==2?270:360;
+        ByteArrayOutputStream out=new ByteArrayOutputStream();
+        out.write('X');out.write('F');out.write('S');out.write('1');out.write(1);out.write(0);
+        put16(out,width);put16(out,height);put32(out,2);put16(out,0);
+        for(int y=0;y<height;y++){
+            spanRev(out,y,0,width-1,0,100,2);
+            spanRev(out,y,10,19,1,1,2);
+            spanRev(out,y,width-1,width-1,2,1,2);
+        }
+        out.write(3);out.write(0);put16(out,0);put32(out,2);
         return out.toByteArray();
     }
     public static void main(String[] args){
@@ -140,6 +156,29 @@ public final class RegraphicsFrameTest {
         check(clipped[3*1280+640]==clipped[640]);
         check(clipped[4*1280+640]==(0xff000000|COLORS[0]));
         reject(()->RegraphicsFrame.decode(layered(49),4,COLORS));
+        for(int stride:new int[]{4,2,1}){
+            byte[] wire=mesh(stride);RegraphicsFrame projected=RegraphicsFrame.decode(wire,stride,COLORS);
+            int w=stride==4?320:stride==2?480:640,h=stride==4?180:stride==2?270:360;
+            check(projected.width==w&&projected.height==h&&projected.revision==2);
+            int[] actual=new int[w*h];projected.present(actual,w,h);
+            for(int y=0;y<h;y++){
+                check(actual[y*w+9]==(0xff000000|COLORS[0]));
+                check(actual[y*w+10]==(0xff000000|COLORS[1]));
+                check(actual[y*w+19]==(0xff000000|COLORS[1]));
+                check(actual[y*w+20]==(0xff000000|COLORS[0]));
+                check(actual[y*w+w-1]==(0xff000000|COLORS[2]));
+            }
+            byte[] overlap=wire.clone();patch16(overlap,44+4,19);
+            reject(()->RegraphicsFrame.decode(overlap,stride,COLORS));
+            byte[] wrongDepth=wire.clone();patch16(wrongDepth,30+8,2);
+            reject(()->RegraphicsFrame.decode(wrongDepth,stride,COLORS));
+            byte[] wrongRevision=wire.clone();patch32(wrongRevision,30+10,1);
+            reject(()->RegraphicsFrame.decode(wrongRevision,stride,COLORS));
+            byte[] wrongRows=wire.clone();patch16(wrongRows,58+2,2);
+            reject(()->RegraphicsFrame.decode(wrongRows,stride,COLORS));
+            byte[] wrongSize=wire.clone();patch16(wrongSize,6,w+1);
+            reject(()->RegraphicsFrame.decode(wrongSize,stride,COLORS));
+        }
         int[] untouched={12,34,56};
         reject(()->frame.present(untouched,2,2));
         check(Arrays.equals(untouched,new int[]{12,34,56}));

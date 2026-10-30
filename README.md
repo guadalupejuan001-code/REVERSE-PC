@@ -196,20 +196,23 @@ El runtime, el formato RVPC2 y la dependencia fijada de Mundo X se conservan.
 
 ## REVERSE VELOCITY — juego de carreras con REgraphics
 
-El juego usa `drive.xi` para conducción y carrera, `world.xi` para el circuito y
-`render.xi` para la escena y los materiales. Ether/InverseMemory conserva el
-estado privado; REgraphics emite regiones binarias XFS1 y Android las presenta.
+La versión 0.2 sustituye la carretera deformada en pantalla por un circuito cerrado
+con posiciones de mundo compartidas entre física, cámara y malla. `drive.xi`
+ejecuta inercia, dirección progresiva, agarre lateral, frenado, barreras,
+contactos con tres rivales y una carrera de tres vueltas con doce sectores.
+`world.xi` genera los 81 vértices del estadio y `render.xi` transforma la escena.
 
-El shader costero incluye atardecer, mar, vegetación, asfalto con brillo,
-carrocería sombreada, luces de freno, cinco pinturas y tres cámaras distintas.
-El reloj espera la primera aceleración; P pausa y R reinicia. La resistencia a
-baja velocidad conserva su fracción entre ticks. El escenario se calcula por
-scanlines en perspectiva y el brillo es estilizado.
+REgraphics incorpora primitivas genéricas de triángulos, clipping cercano,
+z-buffer y vértices temporales; conserva XFS1 como transporte al presentador.
+Los temporales de render son locales a la ejecución y no se guardan en Ether.
+La física y la presentación tienen trabajadores independientes. Android aporta
+controles multitáctiles, HUD y mapa, sin ecuaciones de conducción.
 
-Pasaron 52 escenas, 45 combinaciones con JNI y el contrato de conducción. El
-workflow también compila las clases Java contra Android 35. La APK de prueba
-standalone pasó instalación y controles en un emulador Android 35; la prueba
-en teléfono físico sigue pendiente. Véase [APK de prueba](docs/REVERSE_VELOCITY_APK.md).
+La prueba de conducción recorre tres vueltas con entradas normales, sin escribir
+progreso: 7.151 ticks, doce sectores y llegada congelada. Se verifica también
+persistencia, frenado, volante, derrape y contacto con una pared. La escena es un
+**prototipo 3D de acabado sencillo**; no reproduce los materiales, modelos ni
+entornos de Forza. La prueba en el teléfono físico sigue pendiente.
 
-Diseño, comandos, límites y evidencia en
-[Shader costero XI](docs/REVERSE_VELOCITY_SHADER_V2.md).
+[Diseño y pruebas de la carrera 3D](docs/REVERSE_VELOCITY_RACE3D.md) ·
+[APK de prueba](docs/REVERSE_VELOCITY_APK.md).

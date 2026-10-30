@@ -8,16 +8,23 @@ on:
       - 'reverse-os-android/tests/*Regraphics*'
       - 'reverse-os-android/tests/VelocityLoopLifecycleTest.java'
       - 'reverse-os-android/tests/velocity-xi-contract.cjs'
+      - 'reverse-os-android/tests/velocity-gameplay-contract.cpp'
       - 'reverse-os-android/tests/fixtures/**'
       - 'reverse-os-android/app/src/main/java/com/reversepc/os/Velocity*'
       - 'reverse-os-android/app/src/main/java/com/reversepc/os/RegraphicsFrame.java'
       - 'reverse-os-android/app/src/main/java/com/reversepc/os/ResultPacket.java'
       - 'src/integration/xi_machine_extension.inc'
+      - 'src/integration/xi_mesh_raster.inc'
+      - 'src/integration/xi_mesh_raster.inc'
+      - 'tests/xi_machine_test.cpp'
+      - 'tests/xi_mesh_raster.cpp'
+      - 'scripts/author-velocity-scene.cjs'
+      - 'reverse-os-android/tests/velocity-gameplay-contract.cpp'
       - 'experiments/xi-render/direct-binary-test.cjs'
       - '.github/workflows/velocity-xi-render.yml'
   pull_request:
     branches: [main, feature/xi-direct-frame-binary-20261030]
-    paths: ['reverse-os-android/**', 'src/integration/xi_machine_extension.inc', 'experiments/xi-render/**', '.github/workflows/velocity-xi-render.yml']
+    paths: ['reverse-os-android/**', 'src/integration/xi_machine_extension.inc', 'src/integration/xi_mesh_raster.inc', 'experiments/xi-render/**', '.github/workflows/velocity-xi-render.yml']
 permissions: {contents: read}
 jobs:
   xi-render:
@@ -29,7 +36,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: guadalupejuan001-code/mundo-X
-          ref: e2778d962af22f6f1a0794058dd4685fc2573966
+          ref: 1f925786522aba91f72707ad1638a8edcdd31a8f
           path: deps/mundo-x
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -44,10 +51,24 @@ jobs:
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
             -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
             src/reverse_pc.cpp -o build/velocity/reverse_pc
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
+            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
+            reverse-os-android/tests/velocity-gameplay-contract.cpp \
+            -o build/velocity/velocity-gameplay-contract
+      - name: Verify generic XI memory, scratch and mesh primitives
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
+            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
+            tests/xi_machine_test.cpp -o build/velocity/xi-machine-test
+          build/velocity/xi-machine-test
+          g++ -std=c++17 -O2 -fsanitize=undefined -fno-sanitize-recover=all \
+            tests/xi_mesh_raster.cpp -o build/velocity/xi-mesh-test
+          build/velocity/xi-mesh-test
       - name: Execute XI world, XI physics and XI renderer
         run: |
           set -euo pipefail
-          node reverse-os-android/tests/velocity-xi-contract.cjs build/velocity/reverse_pc build/velocity
+          VELOCITY_HOST_BUILD_FLAGS='-O2' node reverse-os-android/tests/velocity-xi-contract.cjs build/velocity/reverse_pc build/velocity
           node reverse-os-android/tests/velocity-xi-render-contract.cjs build/velocity/reverse_pc build/velocity
           node experiments/xi-render/direct-binary-test.cjs build/velocity/reverse_pc build/velocity/direct-regression
       - name: Validate binary packets and Android presenter without a device

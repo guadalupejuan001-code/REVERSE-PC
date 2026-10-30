@@ -9,7 +9,11 @@ on:
       - 'reverse-os-android/app/src/main/assets/velocity/**'
       - 'reverse-os-android/app/src/main/java/com/reversepc/os/Velocity*'
       - 'reverse-os-android/app/src/main/java/com/reversepc/os/RegraphicsFrame.java'
+      - 'reverse-os-android/app/src/main/cpp/**'
+      - 'src/integration/xi_machine_extension.inc'
+      - 'src/rxe.hpp'
       - 'reverse-os-android/tests/velocity-apk-smoke.cjs'
+      - 'reverse-os-android/tests/velocity-apk-package.cjs'
   workflow_dispatch:
 permissions: {contents: read}
 concurrency:
@@ -21,6 +25,7 @@ jobs:
     timeout-minutes: 35
     env:
       REVERSE_SIGNING_KEYSTORE: ${{ github.workspace }}/build-signing/reverse-velocity.jks
+      VELOCITY_EXPECTED_SIGNER_SHA256: 061c28614fffecdc9a53a5661c4acf8c4d1173b631095aaaee8a98070abdf0d7
     steps:
       - uses: actions/checkout@v4
         with: {persist-credentials: false}
@@ -66,7 +71,7 @@ jobs:
               exit 1
             }
           cp reverse-os-android/app/build/outputs/apk/velocity/debug/app-velocity-debug.apk \
-            dist/REVERSE-VELOCITY-0.1.0-Prueba.apk
+            dist/REVERSE-VELOCITY-0.2.0-Carrera.apk
       - uses: actions/cache/save@v4
         if: steps.velocity-signing.outputs.cache-hit != 'true'
         with:
@@ -75,15 +80,19 @@ jobs:
       - name: Verify APK identity, signature, alignment and exact shader assets
         run: |
           set -euo pipefail
-          APK=dist/REVERSE-VELOCITY-0.1.0-Prueba.apk
+          APK=dist/REVERSE-VELOCITY-0.2.0-Carrera.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" \
             > build/velocity-apk/signature.txt
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 4 "$APK" \
             > build/velocity-apk/alignment.txt
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" \
             > build/velocity-apk/badging.txt
+          keytool -exportcert -keystore "$REVERSE_SIGNING_KEYSTORE" \
+            -storepass android -alias reverse-desktop \
+            -file build/velocity-apk/expected-signer.der
           node reverse-os-android/tests/velocity-apk-package.cjs "$APK" \
-            build/velocity-apk/badging.txt build/velocity-apk/package-results.json
+            build/velocity-apk/badging.txt build/velocity-apk/package-results.json \
+            build/velocity-apk/signature.txt build/velocity-apk/expected-signer.der
           sha256sum "$APK" > build/velocity-apk/apk-sha256.txt
       - name: Install and exercise the game on Android 35
         timeout-minutes: 12
@@ -113,14 +122,14 @@ jobs:
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
           adb shell input keyevent 82
-          adb install -r dist/REVERSE-VELOCITY-0.1.0-Prueba.apk \
+          adb install -r dist/REVERSE-VELOCITY-0.2.0-Carrera.apk \
             > build/velocity-apk/install.txt
           node reverse-os-android/tests/velocity-apk-smoke.cjs adb build/velocity-apk/smoke
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: reverse-velocity-apk
-          path: dist/REVERSE-VELOCITY-0.1.0-Prueba.apk
+          path: dist/REVERSE-VELOCITY-0.2.0-Carrera.apk
           if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         if: always()

@@ -3,6 +3,7 @@
 // Actual installed Android APK: launcher, posted Canvas, physical input and lifecycle.
 // Uses only adb transport and framework UI hierarchy; it never substitutes game state.
 const fs=require('node:fs'),path=require('node:path'),cp=require('node:child_process');
+const crypto=require('node:crypto');
 const assert=require('node:assert/strict');
 assert(process.argv.length===4,'velocity-apk-smoke.cjs ADB OUTPUT_DIRECTORY');
 const adb=process.argv[2].includes('/')?path.resolve(process.argv[2]):process.argv[2];
@@ -11,6 +12,7 @@ const pkg='com.reversepc.velocity',component=pkg+'/com.reversepc.os.VelocityActi
 const begin=Date.now(),deadline=begin+180000;
 fs.mkdirSync(out,{recursive:true});
 let checks=0,stage='initial',lastXml='',lastLogs='',initialMarker='',resumedMarker='';
+let video=null;
 const appPids=new Set();
 const report={passed:false,package:pkg,androidDeviceExecution:true,physicalPhoneVerified:false,
   renderer:'XI / REgraphics',checks:[],warnings:[]};
@@ -39,6 +41,62 @@ function screenshot(name){
   return data;
 }
 function markerLines(text){return text.split(/\r?\n/).filter(s=>/ReverseVelocity.*FRAME_READY \d+x\d+/.test(s));}
+function fields(line){
+  const result={};
+  for(const m of line.matchAll(/\b(\w+)=(-?\d+(?:\.\d+)?|true|false)\b/g))
+    result[m[1]]=m[2]==='true'?true:m[2]==='false'?false:Number(m[2]);
+  return result;
+}
+function startVideo(){
+  const remote='/sdcard/velocity-race3d.mp4';
+  adbText(['shell','rm','-f',remote]);
+  const fd=fs.openSync(path.join(out,'screenrecord.txt'),'w');
+  const child=cp.spawn(adb,['shell','screenrecord','--time-limit','10','--bit-rate','2000000',remote],
+    {stdio:['ignore',fd,fd]});
+  fs.closeSync(fd);
+  assert(child.pid,'Android screenrecord did not start');
+  video={remote,started:Date.now(),child,error:null};
+  child.on('error',error=>{video.error=String(error);});
+}
+function mp4Duration(bytes){
+  function boxes(start,end){
+    const found=[];
+    while(start+8<=end){
+      let length=bytes.readUInt32BE(start),header=8;
+      if(length===1){assert(start+16<=end,'truncated MP4 extended size');length=Number(bytes.readBigUInt64BE(start+8));header=16;}
+      if(length===0)length=end-start;
+      assert(length>=header&&start+length<=end,'invalid MP4 box');
+      found.push({type:bytes.toString('ascii',start+4,start+8),start:start+header,end:start+length});
+      start+=length;
+    }
+    return found;
+  }
+  const top=boxes(0,bytes.length);
+  assert(top.some(x=>x.type==='ftyp')&&top.some(x=>x.type==='mdat'),'recording lacks video container/media');
+  const moov=top.find(x=>x.type==='moov');assert(moov,'screenrecord has not finalized movie metadata');
+  const clock=boxes(moov.start,moov.end).find(x=>x.type==='mvhd');assert(clock,'movie clock missing');
+  const version=bytes[clock.start],scaleAt=clock.start+(version===1?20:12);
+  const scale=bytes.readUInt32BE(scaleAt),duration=version===1?
+    Number(bytes.readBigUInt64BE(scaleAt+4)):bytes.readUInt32BE(scaleAt+4);
+  assert(scale>0,'movie clock scale invalid');return duration/scale;
+}
+function finishVideo(){
+  assert(video,'recording was not started');
+  sleep(Math.max(0,video.started+11000-Date.now()));
+  const target=path.join(out,'velocity-race3d-driving.mp4');
+  let error;
+  for(let i=0;i<3;i++){
+    adbText(['pull',video.remote,target],{timeout:15000});
+    try{
+      const bytes=fs.readFileSync(target),seconds=mp4Duration(bytes);
+      check(bytes.length>10000&&seconds>=8&&seconds<=12,'actual Android driving video finalized');
+      report.video={file:path.basename(target),requestedSeconds:10,seconds,bytes:bytes.length,
+        sha256:crypto.createHash('sha256').update(bytes).digest('hex'),source:'adb screenrecord of real APK'};
+      return;
+    }catch(failure){error=failure;sleep(500);}
+  }
+  throw error;
+}
 function waitFrame(previousCount=0){
   for(let i=0;i<40;i++){
     const text=logs(),lines=markerLines(text);
@@ -131,6 +189,7 @@ try{
   check(adbText(['shell','pm','path',pkg]).includes('package:'),'standalone game package installed');
   report.apiLevel=adbText(['shell','getprop','ro.build.version.sdk']).trim();
   report.abi=adbText(['shell','getprop','ro.product.cpu.abi']).trim();
+  report.emulator=adbText(['shell','getprop','ro.kernel.qemu']).trim()==='1';
   adbText(['shell','am','force-stop',pkg]);
   adbText(['logcat','-c']);
   const launch=adbText(['shell','am','start','-W','-a','android.intent.action.MAIN',
@@ -142,10 +201,13 @@ try{
   screenshot('initial-screen');
   stage='ready HUD';
   let ui=waitText(/ACELERA PARA SALIR/);
-  check(ui.some(x=>/REgraphics/.test(x.text||'')),'REgraphics live HUD');
+  check(ui.some(x=>/^VUELTA \d+ \/ 3$/.test(x.text||''))&&
+    ui.some(x=>/^POSICIÓN \d+ \/ 4$/.test(x.text||'')),'minimal race lap and position HUD');
   check(!!findText(ui,'ACELERAR'),'accelerator physical control');
   stage='physical acceleration';
-  tapNode(findText(ui,'ACELERAR'),1800);
+  // A three-second countdown is authoritative XI state; keep physical throttle
+  // held beyond it so the subsequent speed assertion measures actual driving.
+  tapNode(findText(ui,'ACELERAR'),4500);
   // Accessibility dumps can take several seconds. Freeze the real speed with
   // the game's physical pause key before observing it, rather than letting
   // legitimate coasting/off-road drag erase the short acceleration pulse.
@@ -156,21 +218,34 @@ try{
   check(report.observedSpeedKmh>0,'physical accelerator advances XI speed');
   stage='pause';
   ui=waitText(/EN PAUSA/);check(true,'pause freezes game scheduler and shows HUD');
-  const pauseHud=ui.find(x=>/EN PAUSA/.test(x.text||'')).text;
+  const timer=items=>(items.find(x=>/^\d{2}:\d{2}\.\d{2}$/.test(x.text||''))||{}).text;
+  const pauseTime=timer(ui);
   sleep(1100);ui=waitText(/EN PAUSA/);
-  const laterHud=ui.find(x=>/EN PAUSA/.test(x.text||'')).text;
-  const time=s=>(s.match(/\b\d+:\d{2}\b/)||[])[0];
-  check(time(pauseHud)&&time(pauseHud)===time(laterHud),'race timer remains fixed while paused');
+  check(pauseTime&&pauseTime===timer(ui),'race timer remains fixed while paused');
   stage='continue';tapNode(findText(ui,'Continuar'));
-  ui=waitText(/CARRERA/);check(!ui.some(x=>/EN PAUSA/.test(x.text||'')),'continue resumes race');
+  ui=waitText(/^Pausa$/);check(!ui.some(x=>/EN PAUSA/.test(x.text||'')),'continue resumes race');
   stage='camera and paint';tapNode(findText(ui,'Cámara'));
   ui=waitText(/^Cercana$/);check(!!findText(ui,'Cercana'),'physical camera changes to close chase');
   tapNode(findText(ui,'Color'));ui=waitText(/^Color 2$/);
   check(!!findText(ui,'Color 2'),'physical paint selection changes');
   screenshot('changed-camera-paint');
+  stage='physical steering and driving video';
+  const startState=fields(initialMarker);
+  check(Number.isFinite(startState.xCm)&&Number.isFinite(startState.zCm)&&Number.isFinite(startState.yaw4096),
+    'initial posted frame exposes observed XI position and heading');
+  startVideo();
+  tapNode(findText(ui,'ACELERAR'),4500);
+  tapNode(findText(ui,'ACELERAR'),3000);
+  tapNode(findText(ui,'◀'),800);
+  // Freeze immediately after the real steering gesture, before accessibility
+  // diagnostics can consume time or the car can coast into a different state.
+  adbText(['shell','input','keyevent','KEYCODE_P']);
+  finishVideo();
+  ui=waitText(/EN PAUSA/);check(true,'physical steering phase paused for observation');
+  screenshot('steered-race');
   stage='background resume';
-  const before=markerLines(logs()).length;
   adbText(['shell','input','keyevent','KEYCODE_HOME']);sleep(400);
+  const before=markerLines(logs()).length;
   adbText(['shell','am','start','-W','-a','android.intent.action.MAIN',
     '-c','android.intent.category.LAUNCHER','-f','0x10200000','-n',component]);
   rememberPid();
@@ -178,8 +253,20 @@ try{
   report.resumedTicks=Number((/ticks=(\d+)/.exec(resumedMarker)||[])[1]);
   check(Number.isInteger(report.resumedTicks)&&report.resumedTicks>0,
     'Activity resume retains started race state');
-  ui=waitText(/REgraphics/);check(ui.length>0,'game remains usable after resume');
-  checkNoFailure(logs());check(true,'no fatal Java/native or renderer error');
+  const endState=fields(resumedMarker);
+  check(Number.isInteger(endState.yaw4096)&&endState.yaw4096!==startState.yaw4096,
+    'physical steering changes authoritative XI heading');
+  check(Number.isFinite(endState.xCm)&&Number.isFinite(endState.zCm)&&
+    (endState.xCm!==startState.xCm||endState.zCm!==startState.zCm),
+    'physical accelerator moves authoritative XI world position');
+  report.drivingState={before:startState,after:endState,physicalSteering:true};
+  ui=waitText(/^VUELTA \d+ \/ 3$/);check(ui.length>0,'game remains usable after resume');
+  const finalLogs=logs();checkNoFailure(finalLogs);check(true,'no fatal Java/native or renderer error');
+  report.frameStats=finalLogs.split(/\r?\n/).filter(s=>/ReverseVelocity.*FRAME_STATS\b/.test(s)).map(fields);
+  const active=report.frameStats.filter(s=>s.paused===false&&s.frames>0&&s.elapsedNanos>0&&Number.isFinite(s.fps)&&s.fps>0);
+  check(active.length>0,'actual posted-frame FPS measurements recorded');
+  report.activeFps={samples:active.length,min:Math.min(...active.map(s=>s.fps)),max:Math.max(...active.map(s=>s.fps)),
+    source:'FRAME_STATS posted Canvas frames / elapsed nanoseconds; emulator workload with recording'};
   screenshot('final-screen');
   report.passed=true;report.initialFrame=initialMarker;report.resumedFrame=resumedMarker;
 }catch(error){

@@ -1,1850 +1,1623 @@
 #!reverse-pc-machine-v1
-# REVERSE VELOCITY / REgraphics direct XFS1 observation.
-# XI owns perspective, geometry, depth, palette selection and clipping.
-# Coastal shader v2: 256 authored materials; all geometry/shading stays in XI.
-# Inputs: 200=stride 1/2/4; 201=camera 0/1/2; 202=paint 0..4.
-# World/vehicle state stays in the isolated XI RVPC2 snapshot.
-# XFS1 x1 is inclusive; emitted spans are far-to-near, rows ordered.
-load8 r11 1000
-cmp r11 88
-jne missing_world
-load8 r11 1001
-cmp r11 73
-jne missing_world
-load8 r5 200
-cmp r5 1
-je stride_ready
-cmp r5 2
-je stride_ready
-cmp r5 4
-je stride_ready
-set r5 4
-label stride_ready
-load8 r14 202
-cmp r14 1
-je paint_blue
-cmp r14 2
-je paint_silver
-cmp r14 3
-je paint_green
-cmp r14 4
-je paint_gold
-set r14 128
-jmp paint_done
-label paint_blue
-set r14 134
-jmp paint_done
-label paint_silver
-set r14 140
-jmp paint_done
-label paint_green
-set r14 146
-jmp paint_done
-label paint_gold
-set r14 152
-label paint_done
-# Read authoritative vehicle xCm/zCm; there is no new driving equation.
-load8 r13 100
-load8 r11 101
-mul r11 256
-add r13 r11
-load8 r11 102
-mul r11 65536
-add r13 r11
-load8 r11 103
-mul r11 16777216
-add r13 r11
+# REgraphics v3: world-space 3D meshes, perspective, near-plane and Z-buffer.
+# The generic meshtri3 primitive clips/rasterizes; XI owns world geometry and camera.
+# Read-only observation: every scratch byte belongs to the discarded render candidate.
+load32 r12 100
+sub r12 2000000
+load32 r13 104
 sub r13 2000000
-load8 r15 104
-load8 r11 105
-mul r11 256
-add r15 r11
-load8 r11 106
-mul r11 65536
-add r15 r11
-load8 r11 107
-mul r11 16777216
-add r15 r11
-sub r15 2000000
-# Candidate-only observation scratch: road/world phase, slide and tree depth.
-mov r11 r15
-add r11 85000
-mod r11 25600
-cmp r11 0
-jge phase_positive
-add r11 25600
-label phase_positive
-div r11 100
-store8 203 r11
-load8 r6 112
-load8 r7 113
-mul r7 256
-add r6 r7
-sub r6 32768
-div r6 100
-add r6 32
-store8 204 r6
-# Interpolate the XI world samples, every 1 cm of vehicle progress.
-# The same XI source generated the 241 x-coordinates; no C++ road formula.
-mov r11 r15
-add r11 85000
-div r11 1000
-cmp r11 0
-jge near_nonnegative
-set r11 0
-label near_nonnegative
-cmp r11 240
-jle near_clamped
-set r11 240
-label near_clamped
-# r8=remaining centimeter fraction in the 10-meter cell, [0,1000].
-mov r8 r15
-add r8 85000
-mov r4 r11
-mul r4 1000
-sub r8 r4
-cmp r8 0
-jge near_fraction_positive
-set r8 0
-label near_fraction_positive
-cmp r8 1000
-jle near_fraction_bounded
-set r8 1000
-label near_fraction_bounded
-# r10=near sample center xCm, reconstructed from InverseMemory bytes.
-mov r9 r11
-mul r9 2
-add r9 512
-load8 r10 $r9
-add r9 1
-load8 r4 $r9
-mul r4 256
-add r10 r4
-sub r10 8192
-# x(z)=x_i+(x_(i+1)-x_i)*fraction/1000: all operations XI integers.
-cmp r11 240
-jge near_interpolated
-mov r4 r11
-mul r4 2
-add r4 514
-load8 r6 $r4
-add r4 1
-load8 r7 $r4
-mul r7 256
-add r6 r7
-sub r6 8192
-sub r6 r10
-mul r6 r8
-div r6 1000
-add r10 r6
-label near_interpolated
-sub r13 r10
-div r13 4
-# Read and interpolate a second XI road sample 100m ahead.
-sub r11 10
-cmp r11 0
-jge far_nonnegative
-set r11 0
-label far_nonnegative
-mov r6 r11
-mul r11 2
-add r11 512
-load8 r9 $r11
-add r11 1
-load8 r4 $r11
-mul r4 256
-add r9 r4
-sub r9 8192
-cmp r6 240
-jge far_interpolated
-mov r4 r6
-mul r4 2
-add r4 514
-load8 r7 $r4
-add r4 1
-load8 r11 $r4
-mul r11 256
-add r7 r11
-sub r7 8192
-sub r7 r9
-mul r7 r8
-div r7 1000
-add r9 r7
-label far_interpolated
-sub r9 r10
-div r9 12
-mov r15 r9
-# Use the XI driving state yaw to align horizon and road heading.
-load8 r11 108
-load8 r4 109
-mul r4 256
-add r11 r4
-cmp r11 2048
-jle renderer_yaw_ready
-sub r11 4096
-label renderer_yaw_ready
-div r11 24
-add r15 r11
-load8 r6 203
-add r6 0
-mod r6 256
-mul r6 60
-set r7 18000
-sub r7 r6
-set r6 1600000
-div r6 r7
-add r6 290
-mov r11 r6
-mod r11 256
-store8 220 r11
-div r6 256
-store8 221 r6
-set r6 900000
-div r6 r7
-mov r11 r6
-mod r11 256
-store8 222 r11
-div r6 256
-store8 223 r6
-load8 r6 203
-add r6 128
-mod r6 256
-mul r6 60
-set r7 18000
-sub r7 r6
-set r6 1600000
-div r6 r7
-add r6 290
-mov r11 r6
-mod r11 256
-store8 224 r11
-div r6 256
-store8 225 r6
-set r6 900000
-div r6 r7
-mov r11 r6
-mod r11 256
-store8 226 r11
-div r6 256
-store8 227 r6
-framebegin 1280 720 1
-set r0 0
-label scanline
-cmp r0 720
-jge finished
-
-# Layer 0: background.
-label draw_background
-set r1 0
-set r2 1280
-cmp r0 290
-jge background_land
-mov r3 r0
-mul r3 63
-div r3 289
-jmp background_emit
-label background_land
-mov r3 r0
-sub r3 290
-mul r3 31
-div r3 429
-add r3 64
-label background_emit
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_background_start
-set r1 0
-label clip_background_start
-cmp r2 1280
-jle clip_background_end
-set r2 1280
-label clip_background_end
-cmp r1 r2
-jge next_background
-sub r2 1
-framespan r0 r1 r2 r3 100
-add r2 1
-label next_background
-
-# Layer 1: sun_halo.
-label draw_sun_halo
-cmp r0 65
-jlt next_sun_halo
-cmp r0 200
-jge next_sun_halo
-mov r11 r0
-sub r11 132
-mul r11 r11
-div r11 68
-set r1 910
-add r1 r11
-set r2 1090
-sub r2 r11
-set r3 218
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_sun_halo_start
-set r1 0
-label clip_sun_halo_start
-cmp r2 1280
-jle clip_sun_halo_end
-set r2 1280
-label clip_sun_halo_end
-cmp r1 r2
-jge next_sun_halo
-sub r2 1
-framespan r0 r1 r2 r3 99
-add r2 1
-label next_sun_halo
-
-# Layer 2: sun.
-label draw_sun
-cmp r0 94
-jlt next_sun
-cmp r0 171
-jge next_sun
-mov r11 r0
-sub r11 132
-mul r11 r11
-div r11 38
-set r1 962
-add r1 r11
-set r2 1038
-sub r2 r11
-set r3 217
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_sun_start
-set r1 0
-label clip_sun_start
-cmp r2 1280
-jle clip_sun_end
-set r2 1280
-label clip_sun_end
-cmp r1 r2
-jge next_sun
-sub r2 1
-framespan r0 r1 r2 r3 98
-add r2 1
-label next_sun
-
-# Layer 3: cloud_left.
-label draw_cloud_left
-cmp r0 118
-jlt next_cloud_left
-cmp r0 133
-jge next_cloud_left
-mov r11 r0
-sub r11 125
-mul r11 r11
-mul r11 3
-set r1 145
-add r1 r11
-set r2 510
-sub r2 r11
-set r3 215
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_cloud_left_start
-set r1 0
-label clip_cloud_left_start
-cmp r2 1280
-jle clip_cloud_left_end
-set r2 1280
-label clip_cloud_left_end
-cmp r1 r2
-jge next_cloud_left
-sub r2 1
-framespan r0 r1 r2 r3 97
-add r2 1
-label next_cloud_left
-
-# Layer 4: cloud_right.
-label draw_cloud_right
-cmp r0 52
-jlt next_cloud_right
-cmp r0 64
-jge next_cloud_right
-mov r11 r0
-sub r11 58
-mul r11 r11
-mul r11 3
-set r1 650
-add r1 r11
-set r2 880
-sub r2 r11
-set r3 216
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_cloud_right_start
-set r1 0
-label clip_cloud_right_start
-cmp r2 1280
-jle clip_cloud_right_end
-set r2 1280
-label clip_cloud_right_end
-cmp r1 r2
-jge next_cloud_right
-sub r2 1
-framespan r0 r1 r2 r3 96
-add r2 1
-label next_cloud_right
-
-# Layer 5: mountain_far_left.
-label draw_mountain_far_left
-cmp r0 170
-jlt next_mountain_far_left
-cmp r0 303
-jge next_mountain_far_left
-set r1 0
-mov r2 r0
-sub r2 170
+load16 r0 108
+mov r14 r0
+add r14 0
+mod r14 4096
+cmp r14 0
+jge sin_negative_0
+add r14 4096
+label sin_negative_0
+mov r1 r14
+mod r1 2048
+set r2 2048
+sub r2 r1
+mul r1 r2
+mov r2 r1
 mul r2 4
-add r2 140
-mov r3 r0
-sub r3 170
-div r3 45
-add r3 186
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_mountain_far_left_start
-set r1 0
-label clip_mountain_far_left_start
-cmp r2 1280
-jle clip_mountain_far_left_end
-set r2 1280
-label clip_mountain_far_left_end
-cmp r1 r2
-jge next_mountain_far_left
-sub r2 1
-framespan r0 r1 r2 r3 95
-add r2 1
-label next_mountain_far_left
-
-# Layer 6: mountain_far_right.
-label draw_mountain_far_right
-cmp r0 190
-jlt next_mountain_far_right
-cmp r0 303
-jge next_mountain_far_right
-mov r1 r0
-sub r1 190
-mul r1 5
-set r2 1160
+set r15 20971520
+sub r15 r2
+mul r1 262144
+div r1 r15
+cmp r14 2048
+jlt sin_done_1
+mul r1 -1
+label sin_done_1
+mov r14 r1
+mov r2 r14
+mov r9 r2
+add r9 32768
+localset 58 r9
+mov r15 r0
+add r15 1024
+mod r15 4096
+cmp r15 0
+jge sin_negative_2
+add r15 4096
+label sin_negative_2
+mov r1 r15
+mod r1 2048
+set r2 2048
 sub r2 r1
-mov r1 r2
-set r2 1280
-set r3 188
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_mountain_far_right_start
-set r1 0
-label clip_mountain_far_right_start
-cmp r2 1280
-jle clip_mountain_far_right_end
-set r2 1280
-label clip_mountain_far_right_end
-cmp r1 r2
-jge next_mountain_far_right
-sub r2 1
-framespan r0 r1 r2 r3 94
-add r2 1
-label next_mountain_far_right
-
-# Layer 7: mountain_near_left.
-label draw_mountain_near_left
-cmp r0 228
-jlt next_mountain_near_left
-cmp r0 334
-jge next_mountain_near_left
-set r1 0
-mov r2 r0
-sub r2 228
-mul r2 5
-add r2 95
-set r3 191
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_mountain_near_left_start
-set r1 0
-label clip_mountain_near_left_start
-cmp r2 1280
-jle clip_mountain_near_left_end
-set r2 1280
-label clip_mountain_near_left_end
-cmp r1 r2
-jge next_mountain_near_left
-sub r2 1
-framespan r0 r1 r2 r3 93
-add r2 1
-label next_mountain_near_left
-
-# Layer 8: mountain_near_right.
-label draw_mountain_near_right
-cmp r0 252
-jlt next_mountain_near_right
-cmp r0 322
-jge next_mountain_near_right
-mov r1 r0
-sub r1 252
-mul r1 6
-set r2 1170
-sub r2 r1
-mov r1 r2
-set r2 1280
-set r3 192
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_mountain_near_right_start
-set r1 0
-label clip_mountain_near_right_start
-cmp r2 1280
-jle clip_mountain_near_right_end
-set r2 1280
-label clip_mountain_near_right_end
-cmp r1 r2
-jge next_mountain_near_right
-sub r2 1
-framespan r0 r1 r2 r3 92
-add r2 1
-label next_mountain_near_right
-
-# Layer 9: sea.
-label draw_sea
-cmp r0 290
-jlt next_sea
-cmp r0 555
-jge next_sea
-mov r1 r0
-sub r1 290
-div r1 3
-add r1 895
-set r2 1280
-mov r3 r0
-sub r3 290
-mul r3 15
-div r3 265
-add r3 170
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_sea_start
-set r1 0
-label clip_sea_start
-cmp r2 1280
-jle clip_sea_end
-set r2 1280
-label clip_sea_end
-cmp r1 r2
-jge next_sea
-sub r2 1
-framespan r0 r1 r2 r3 91
-add r2 1
-label next_sea
-
-# Layer 10: shore.
-label draw_shore
-cmp r0 291
-jlt next_shore
-cmp r0 555
-jge next_shore
-mov r1 r0
-sub r1 290
-div r1 3
-add r1 884
+mul r1 r2
 mov r2 r1
-add r2 14
-set r3 203
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_shore_start
-set r1 0
-label clip_shore_start
-cmp r2 1280
-jle clip_shore_end
-set r2 1280
-label clip_shore_end
-cmp r1 r2
-jge next_shore
-sub r2 1
-framespan r0 r1 r2 r3 90
-add r2 1
-label next_shore
-
-# Layer 11: asphalt.
-label draw_asphalt
-cmp r0 290
-jlt next_asphalt
-# Projection from the authoritative XI road samples; bounds clipped only at emission.
-mov r6 r0
-sub r6 290
-mov r7 r6
-mul r7 11
-div r7 10
-add r7 22
-mov r8 720
-sub r8 r0
-mul r8 r15
-div r8 430
-sub r8 r13
-add r8 640
-mov r9 r8
-sub r9 r7
-mov r10 r8
-add r10 r7
-mov r1 r9
-mov r2 r10
-mov r3 r6
-mul r3 30
-div r3 429
-add r3 96
-load8 r11 203
-add r11 r0
-div r11 11
-mod r11 2
-add r3 r11
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_asphalt_start
-set r1 0
-label clip_asphalt_start
-cmp r2 1280
-jle clip_asphalt_end
-set r2 1280
-label clip_asphalt_end
-cmp r1 r2
-jge next_asphalt
-sub r2 1
-framespan r0 r1 r2 r3 89
-add r2 1
-label next_asphalt
-
-# Layer 12: road_sheen.
-label draw_road_sheen
-cmp r0 350
-jlt next_road_sheen
-mov r1 r7
+mul r2 4
+set r14 20971520
+sub r14 r2
+mul r1 262144
+div r1 r14
+cmp r15 2048
+jlt sin_done_3
+mul r1 -1
+label sin_done_3
+mov r15 r1
+localget r14 58
+sub r14 32768
+load8 r0 200
+cmp r0 1
+je size_high
+cmp r0 2
+je size_medium
+set r0 320
+set r1 180
+jmp size_done
+label size_medium
+set r0 480
+set r1 270
+jmp size_done
+label size_high
+set r0 640
+set r1 360
+label size_done
+mov r9 r0
+localset 18 r9
+mov r9 r1
+localset 20 r9
+meshbegin r0 r1 2 12
+load8 r0 201
+cmp r0 1
+je camera_close
+cmp r0 2
+je camera_hood
+set r0 900
+set r1 360
+set r2 200
+set r3 980
+jmp camera_ready
+label camera_close
+set r0 650
+set r1 260
+set r2 210
+set r3 978
+jmp camera_ready
+label camera_hood
+set r0 0
+set r1 125
+set r2 70
+set r3 998
+label camera_ready
+mov r9 r0
+localset 0 r9
+mov r9 r1
+localset 2 r9
+mov r9 r2
+localset 4 r9
+mov r9 r3
+localset 6 r9
+localget r0 18
+localget r1 20
+mov r2 r1
+div r2 2
+mov r3 r0
+mul r3 85
+div r3 100
+localget r4 4
+mul r3 r4
+localget r4 6
+div r3 r4
+sub r2 r3
+mov r9 r2
+localset 46 r9
+mov r3 r2
+div r3 2
+meshtri 0 0 999999 r0 0 999999 r0 r3 999999 8
+meshtri 0 0 999999 r0 r3 999999 0 r3 999999 8
+meshtri 0 r3 999999 r0 r3 999999 r0 r2 999999 38
+meshtri 0 r3 999999 r0 r2 999999 0 r2 999999 38
+meshtri 0 r2 999998 r0 r2 999998 r0 r1 999998 72
+meshtri 0 r2 999998 r0 r1 999998 0 r1 999998 72
+load8 r6 108
+load8 r7 109
+mul r7 256
+add r6 r7
+mul r6 5
+div r6 16
+mod r6 160
+localset 44 r6
+set r7 0
+label hills
+localget r0 18
+mov r1 r0
+mul r1 r7
 div r1 5
-add r1 r8
-mov r2 r7
-mul r2 3
-div r2 5
-add r2 r8
-mov r3 r6
-mul r3 7
-div r3 429
-add r3 229
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_road_sheen_start
-set r1 0
-label clip_road_sheen_start
-cmp r2 1280
-jle clip_road_sheen_end
-set r2 1280
-label clip_road_sheen_end
-cmp r1 r2
-jge next_road_sheen
-sub r2 1
-framespan r0 r1 r2 r3 88
-add r2 1
-label next_road_sheen
-
-# Layer 13: curb_left.
-label draw_curb_left
-cmp r0 290
-jlt next_curb_left
-mov r11 r6
-div r11 30
-add r11 6
-mov r1 r9
-sub r1 r11
-mov r2 r9
-load8 r3 203
-add r3 r0
-div r3 18
-mod r3 2
-mul r3 2
-add r3 206
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_curb_left_start
-set r1 0
-label clip_curb_left_start
-cmp r2 1280
-jle clip_curb_left_end
-set r2 1280
-label clip_curb_left_end
-cmp r1 r2
-jge next_curb_left
-sub r2 1
-framespan r0 r1 r2 r3 87
-add r2 1
-label next_curb_left
-
-# Layer 14: curb_right.
-label draw_curb_right
-cmp r0 290
-jlt next_curb_right
-mov r11 r6
-div r11 30
-add r11 6
-mov r1 r10
-mov r2 r10
-add r2 r11
-load8 r3 203
-add r3 r0
-div r3 18
-mod r3 2
-mul r3 2
-add r3 206
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_curb_right_start
-set r1 0
-label clip_curb_right_start
-cmp r2 1280
-jle clip_curb_right_end
-set r2 1280
-label clip_curb_right_end
-cmp r1 r2
-jge next_curb_right
-sub r2 1
-framespan r0 r1 r2 r3 86
-add r2 1
-label next_curb_right
-
-# Layer 15: edge_left.
-label draw_edge_left
-cmp r0 290
-jlt next_edge_left
-mov r11 r6
-div r11 100
-add r11 2
-mov r1 r9
-mov r2 r9
-add r2 r11
-set r3 206
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_edge_left_start
-set r1 0
-label clip_edge_left_start
-cmp r2 1280
-jle clip_edge_left_end
-set r2 1280
-label clip_edge_left_end
-cmp r1 r2
-jge next_edge_left
-sub r2 1
-framespan r0 r1 r2 r3 85
-add r2 1
-label next_edge_left
-
-# Layer 16: edge_right.
-label draw_edge_right
-cmp r0 290
-jlt next_edge_right
-mov r11 r6
-div r11 100
-add r11 2
-mov r1 r10
-sub r1 r11
-mov r2 r10
-set r3 206
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_edge_right_start
-set r1 0
-label clip_edge_right_start
-cmp r2 1280
-jle clip_edge_right_end
-set r2 1280
-label clip_edge_right_end
-cmp r1 r2
-jge next_edge_right
-sub r2 1
-framespan r0 r1 r2 r3 84
-add r2 1
-label next_edge_right
-
-# Layer 17: centerline.
-label draw_centerline
-cmp r0 290
-jlt next_centerline
-load8 r11 203
-add r11 r0
-mod r11 47
-cmp r11 29
-jge next_centerline
-mov r11 r6
-div r11 140
-add r11 1
-mov r1 r8
-sub r1 r11
-mov r2 r8
-add r2 r11
-set r3 207
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_centerline_start
-set r1 0
-label clip_centerline_start
-cmp r2 1280
-jle clip_centerline_end
-set r2 1280
-label clip_centerline_end
-cmp r1 r2
-jge next_centerline
-sub r2 1
-framespan r0 r1 r2 r3 83
-add r2 1
-label next_centerline
-
-# Layer 18: rail_left.
-label draw_rail_left
-cmp r0 310
-jlt next_rail_left
-mov r11 r6
-div r11 12
-add r11 18
-mov r2 r9
-sub r2 r11
-mov r1 r2
-sub r1 7
-mov r3 r0
-div r3 4
-mod r3 2
-add r3 219
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_rail_left_start
-set r1 0
-label clip_rail_left_start
-cmp r2 1280
-jle clip_rail_left_end
-set r2 1280
-label clip_rail_left_end
-cmp r1 r2
-jge next_rail_left
-sub r2 1
-framespan r0 r1 r2 r3 82
-add r2 1
-label next_rail_left
-
-# Layer 19: rail_right.
-label draw_rail_right
-cmp r0 310
-jlt next_rail_right
-mov r11 r6
-div r11 12
-add r11 18
-mov r1 r10
-add r1 r11
-mov r2 r1
-add r2 7
-mov r3 r0
-div r3 4
-mod r3 2
-add r3 219
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_rail_right_start
-set r1 0
-label clip_rail_right_start
-cmp r2 1280
-jle clip_rail_right_end
-set r2 1280
-label clip_rail_right_end
-cmp r1 r2
-jge next_rail_right
-sub r2 1
-framespan r0 r1 r2 r3 81
-add r2 1
-label next_rail_right
-
-# Layer 20: trunk_left.
-label draw_trunk_left
-load8 r6 220
-load8 r11 221
-mul r11 256
-add r6 r11
-load8 r7 222
-load8 r11 223
-mul r11 256
-add r7 r11
-mov r8 r6
-sub r8 290
-mul r8 11
-div r8 10
-add r8 100
-mul r8 -1
-add r8 640
-sub r8 r13
-mov r11 720
-sub r11 r6
-mul r11 r15
-div r11 430
-add r8 r11
-mov r11 r7
-div r11 2
-sub r11 r6
-mul r11 -1
-cmp r0 r11
-jlt next_trunk_left
-cmp r0 r6
-jgt next_trunk_left
-mov r11 r7
-div r11 18
-add r11 2
-mov r1 r8
-sub r1 r11
-mov r2 r8
-add r2 r11
-set r3 202
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_trunk_left_start
-set r1 0
-label clip_trunk_left_start
-cmp r2 1280
-jle clip_trunk_left_end
-set r2 1280
-label clip_trunk_left_end
-cmp r1 r2
-jge next_trunk_left
-sub r2 1
-framespan r0 r1 r2 r3 80
-add r2 1
-label next_trunk_left
-
-# Layer 21: crown_left.
-label draw_crown_left
-mov r11 r6
-sub r11 r7
-cmp r0 r11
-jlt next_crown_left
-mov r1 r7
-div r1 8
-mov r2 r6
-sub r2 r1
-cmp r0 r2
-jge next_crown_left
-mov r11 r0
-sub r11 r6
-add r11 r7
-mul r11 3
-div r11 5
-mov r1 r8
-sub r1 r11
-mov r2 r8
-add r2 r11
-mov r3 r0
-div r3 18
-mod r3 3
-add r3 194
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_crown_left_start
-set r1 0
-label clip_crown_left_start
-cmp r2 1280
-jle clip_crown_left_end
-set r2 1280
-label clip_crown_left_end
-cmp r1 r2
-jge next_crown_left
-sub r2 1
-framespan r0 r1 r2 r3 79
-add r2 1
-label next_crown_left
-
-# Layer 22: crown_lit_left.
-label draw_crown_lit_left
-mov r11 r6
-sub r11 r7
-cmp r0 r11
-jlt next_crown_lit_left
-mov r1 r7
-div r1 8
-mov r2 r6
-sub r2 r1
-cmp r0 r2
-jge next_crown_lit_left
-mov r11 r0
-sub r11 r6
-add r11 r7
-mul r11 3
-div r11 5
-mov r1 r8
-mov r2 r8
-add r2 r11
-mov r3 r0
-div r3 19
-mod r3 3
-add r3 198
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_crown_lit_left_start
-set r1 0
-label clip_crown_lit_left_start
-cmp r2 1280
-jle clip_crown_lit_left_end
-set r2 1280
-label clip_crown_lit_left_end
-cmp r1 r2
-jge next_crown_lit_left
-sub r2 1
-framespan r0 r1 r2 r3 78
-add r2 1
-label next_crown_lit_left
-
-# Layer 23: trunk_right.
-label draw_trunk_right
-load8 r6 224
-load8 r11 225
-mul r11 256
-add r6 r11
-load8 r7 226
-load8 r11 227
-mul r11 256
-add r7 r11
-mov r8 r6
-sub r8 290
-mul r8 11
-div r8 10
-add r8 100
-add r8 640
-sub r8 r13
-mov r11 720
-sub r11 r6
-mul r11 r15
-div r11 430
-add r8 r11
-mov r11 r7
-div r11 2
-sub r11 r6
-mul r11 -1
-cmp r0 r11
-jlt next_trunk_right
-cmp r0 r6
-jgt next_trunk_right
-mov r11 r7
-div r11 18
-add r11 2
-mov r1 r8
-sub r1 r11
-mov r2 r8
-add r2 r11
-set r3 202
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_trunk_right_start
-set r1 0
-label clip_trunk_right_start
-cmp r2 1280
-jle clip_trunk_right_end
-set r2 1280
-label clip_trunk_right_end
-cmp r1 r2
-jge next_trunk_right
-sub r2 1
-framespan r0 r1 r2 r3 77
-add r2 1
-label next_trunk_right
-
-# Layer 24: crown_right.
-label draw_crown_right
-mov r11 r6
-sub r11 r7
-cmp r0 r11
-jlt next_crown_right
-mov r1 r7
-div r1 8
-mov r2 r6
-sub r2 r1
-cmp r0 r2
-jge next_crown_right
-mov r11 r0
-sub r11 r6
-add r11 r7
-mul r11 3
-div r11 5
-mov r1 r8
-sub r1 r11
-mov r2 r8
-add r2 r11
-mov r3 r0
-div r3 18
-mod r3 3
-add r3 194
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_crown_right_start
-set r1 0
-label clip_crown_right_start
-cmp r2 1280
-jle clip_crown_right_end
-set r2 1280
-label clip_crown_right_end
-cmp r1 r2
-jge next_crown_right
-sub r2 1
-framespan r0 r1 r2 r3 76
-add r2 1
-label next_crown_right
-
-# Layer 25: crown_lit_right.
-label draw_crown_lit_right
-mov r11 r6
-sub r11 r7
-cmp r0 r11
-jlt next_crown_lit_right
-mov r1 r7
-div r1 8
-mov r2 r6
-sub r2 r1
-cmp r0 r2
-jge next_crown_lit_right
-mov r11 r0
-sub r11 r6
-add r11 r7
-mul r11 3
-div r11 5
-mov r1 r8
-mov r2 r8
-add r2 r11
-mov r3 r0
-div r3 19
-mod r3 3
-add r3 198
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_crown_lit_right_start
-set r1 0
-label clip_crown_lit_right_start
-cmp r2 1280
-jle clip_crown_lit_right_end
-set r2 1280
-label clip_crown_lit_right_end
-cmp r1 r2
-jge next_crown_lit_right
-sub r2 1
-framespan r0 r1 r2 r3 75
-add r2 1
-label next_crown_lit_right
-
-# Layer 26: gate_left.
-label draw_gate_left
-store8 216 0
-load8 r6 114
-cmp r6 6
-jge next_gate_left
-mul r6 30000
-set r7 90000
-sub r7 r6
-load8 r6 104
-load8 r11 105
-mul r11 256
-add r6 r11
-load8 r11 106
-mul r11 65536
-add r6 r11
-load8 r11 107
-mul r11 16777216
-add r6 r11
-sub r6 2000000
-sub r6 r7
-cmp r6 0
-jlt next_gate_left
-cmp r6 45000
-jgt next_gate_left
-add r6 5000
-set r7 5000000
-div r7 r6
-add r7 290
-set r11 1200000
-div r11 r6
-mov r6 r7
-sub r6 r11
-mov r8 720
-sub r8 r7
-mul r8 r15
-div r8 430
-sub r8 r13
-add r8 640
-mov r9 r7
-sub r9 290
-mul r9 11
-div r9 10
-add r9 22
-mov r10 r8
-add r10 r9
-sub r8 r9
-store8 216 1
-cmp r0 r6
-jlt next_gate_left
-cmp r0 r7
-jge next_gate_left
-mov r1 r8
-sub r1 5
-mov r2 r8
-add r2 5
-set r3 227
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_gate_left_start
-set r1 0
-label clip_gate_left_start
-cmp r2 1280
-jle clip_gate_left_end
-set r2 1280
-label clip_gate_left_end
-cmp r1 r2
-jge next_gate_left
-sub r2 1
-framespan r0 r1 r2 r3 74
-add r2 1
-label next_gate_left
-
-# Layer 27: gate_right.
-label draw_gate_right
-load8 r11 216
-cmp r11 1
-jne next_gate_right
-load8 r11 114
-cmp r11 6
-jge next_gate_right
-cmp r0 r6
-jlt next_gate_right
-cmp r0 r7
-jge next_gate_right
-mov r1 r10
-sub r1 5
-mov r2 r10
-add r2 5
-set r3 227
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_gate_right_start
-set r1 0
-label clip_gate_right_start
-cmp r2 1280
-jle clip_gate_right_end
-set r2 1280
-label clip_gate_right_end
-cmp r1 r2
-jge next_gate_right
-sub r2 1
-framespan r0 r1 r2 r3 73
-add r2 1
-label next_gate_right
-
-# Layer 28: gate_crossbar.
-label draw_gate_crossbar
-load8 r11 216
-cmp r11 1
-jne next_gate_crossbar
-load8 r11 114
-cmp r11 6
-jge next_gate_crossbar
-cmp r0 r6
-jlt next_gate_crossbar
-mov r11 r6
-add r11 6
-cmp r0 r11
-jge next_gate_crossbar
-mov r1 r8
-sub r1 5
-mov r2 r10
-add r2 5
-set r3 228
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_gate_crossbar_start
-set r1 0
-label clip_gate_crossbar_start
-cmp r2 1280
-jle clip_gate_crossbar_end
-set r2 1280
-label clip_gate_crossbar_end
-cmp r1 r2
-jge next_gate_crossbar
-sub r2 1
-framespan r0 r1 r2 r3 72
-add r2 1
-label next_gate_crossbar
-
-# Layer 29: car_shadow.
-label draw_car_shadow
-# Car camera mapping and slip are XI presentation rules.
-mov r6 r0
-load8 r11 201
-cmp r11 1
-jne car_row_ready
-sub r6 700
-mul r6 4
-div r6 5
-add r6 700
-label car_row_ready
-load8 r8 204
-sub r8 32
-add r8 640
-load8 r11 201
-cmp r11 2
-je next_car_shadow
-cmp r6 634
-jlt next_car_shadow
-cmp r6 709
-jge next_car_shadow
-mov r11 r6
-sub r11 674
-mul r11 r11
-div r11 11
-set r7 190
-sub r7 r11
-mov r1 r8
-sub r1 r7
-mov r2 r8
-add r2 r7
-set r3 210
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_car_shadow_start
-set r1 0
-label clip_car_shadow_start
-cmp r2 1280
-jle clip_car_shadow_end
-set r2 1280
-label clip_car_shadow_end
-cmp r1 r2
-jge next_car_shadow
-sub r2 1
-framespan r0 r1 r2 r3 71
-add r2 1
-label next_car_shadow
-
-# Layer 30: tire_left.
-label draw_tire_left
-load8 r11 201
-cmp r11 2
-je next_tire_left
-cmp r6 607
-jlt next_tire_left
-cmp r6 689
-jge next_tire_left
-mov r1 r8
-add r1 -166
-mov r2 r1
-add r2 38
-set r3 209
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_tire_left_start
-set r1 0
-label clip_tire_left_start
-cmp r2 1280
-jle clip_tire_left_end
-set r2 1280
-label clip_tire_left_end
-cmp r1 r2
-jge next_tire_left
-sub r2 1
-framespan r0 r1 r2 r3 70
-add r2 1
-label next_tire_left
-
-# Layer 31: tire_right.
-label draw_tire_right
-load8 r11 201
-cmp r11 2
-je next_tire_right
-cmp r6 607
-jlt next_tire_right
-cmp r6 689
-jge next_tire_right
-mov r1 r8
-add r1 128
-mov r2 r1
-add r2 38
-set r3 209
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_tire_right_start
-set r1 0
-label clip_tire_right_start
-cmp r2 1280
-jle clip_tire_right_end
-set r2 1280
-label clip_tire_right_end
-cmp r1 r2
-jge next_tire_right
-sub r2 1
-framespan r0 r1 r2 r3 69
-add r2 1
-label next_tire_right
-
-# Layer 32: car_body.
-label draw_car_body
-load8 r11 201
-cmp r11 2
-je next_car_body
-cmp r6 530
-jlt next_car_body
-cmp r6 684
-jge next_car_body
-mov r7 r6
-sub r7 530
-div r7 2
-add r7 85
-mov r1 r8
-sub r1 r7
-mov r2 r8
-add r2 r7
-mov r3 r14
-add r3 2
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_car_body_start
-set r1 0
-label clip_car_body_start
-cmp r2 1280
-jle clip_car_body_end
-set r2 1280
-label clip_car_body_end
-cmp r1 r2
-jge next_car_body
-sub r2 1
-framespan r0 r1 r2 r3 68
-add r2 1
-label next_car_body
-
-# Layer 33: car_shadow_side.
-label draw_car_shadow_side
-load8 r11 201
-cmp r11 2
-je next_car_shadow_side
-cmp r6 530
-jlt next_car_shadow_side
-cmp r6 684
-jge next_car_shadow_side
-mov r1 r8
-sub r1 r7
-mov r2 r7
-div r2 4
+mov r2 r0
+div r2 160
+localget r6 44
+mul r6 r2
+sub r1 r6
+mov r2 r0
+div r2 3
 add r2 r1
-mov r3 r14
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_car_shadow_side_start
+mov r4 r1
+add r4 r2
+div r4 2
+localget r3 46
+mov r5 r0
+div r5 20
+mul r5 -1
+add r5 r3
+meshtri r1 r3 999990 r4 r5 999990 r2 r3 999990 189
+add r7 1
+cmp r7 8
+jlt hills
+localset 8 0
+label transform_track
+localget r8 8
+mov r7 r8
+mul r7 8
+add r7 4096
+load32 r0 $r7
+sub r0 65536
+add r7 4
+load32 r2 $r7
+sub r2 65536
 set r1 0
-label clip_car_shadow_side_start
-cmp r2 1280
-jle clip_car_shadow_side_end
-set r2 1280
-label clip_car_shadow_side_end
-cmp r1 r2
-jge next_car_shadow_side
-sub r2 1
-framespan r0 r1 r2 r3 67
-add r2 1
-label next_car_shadow_side
-
-# Layer 34: car_highlight.
-label draw_car_highlight
-load8 r11 201
-cmp r11 2
-je next_car_highlight
-cmp r6 530
-jlt next_car_highlight
-cmp r6 684
-jge next_car_highlight
-mov r2 r8
-add r2 r7
-mov r1 r2
-sub r1 13
-mov r3 r14
-add r3 4
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_car_highlight_start
-set r1 0
-label clip_car_highlight_start
-cmp r2 1280
-jle clip_car_highlight_end
-set r2 1280
-label clip_car_highlight_end
-cmp r1 r2
-jge next_car_highlight
-sub r2 1
-framespan r0 r1 r2 r3 66
-add r2 1
-label next_car_highlight
-
-# Layer 35: roof.
-label draw_roof
-load8 r11 201
-cmp r11 2
-je next_roof
-cmp r6 535
-jlt next_roof
-cmp r6 566
-jge next_roof
-mov r11 r6
-sub r11 530
-div r11 3
-add r11 80
-mov r1 r8
+sub r0 r12
+sub r2 r13
+mov r9 r0
+mul r9 r15
+mov r10 r2
+mul r10 r14
+sub r9 r10
+div r9 16384
+mov r10 r0
+mul r10 r14
+mov r11 r2
+mul r11 r15
+add r10 r11
+div r10 16384
+mov r0 r9
+localget r11 0
+add r10 r11
+localget r11 2
 sub r1 r11
-mov r2 r8
-add r2 r11
-mov r3 r14
-add r3 1
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
+localget r11 4
+mul r11 r1
+localget r9 6
+mov r2 r10
+mul r2 r9
+sub r2 r11
+div r2 1000
+mul r1 r9
+localget r11 4
+mul r11 r10
+add r1 r11
+div r1 1000
+localget r8 8
+mul r8 2
+add r8 1000
+meshvertex r8 r0 r1 r2
+localget r7 8
+mul r7 2
+add r7 5000
+load16 r0 $r7
+mov r1 r0
+add r1 0
+mod r1 4096
 cmp r1 0
-jge clip_roof_start
+jge sin_negative_4
+add r1 4096
+label sin_negative_4
+mov r3 r1
+mod r3 2048
+set r4 2048
+sub r4 r3
+mul r3 r4
+mov r4 r3
+mul r4 4
+set r2 20971520
+sub r2 r4
+mul r3 262144
+div r3 r2
+cmp r1 2048
+jlt sin_done_5
+mul r3 -1
+label sin_done_5
+mov r1 r3
+mov r4 r1
+mov r9 r4
+add r9 32768
+localset 58 r9
+mov r2 r0
+add r2 1024
+mod r2 4096
+cmp r2 0
+jge sin_negative_6
+add r2 4096
+label sin_negative_6
+mov r3 r2
+mod r3 2048
+set r4 2048
+sub r4 r3
+mul r3 r4
+mov r4 r3
+mul r4 4
+set r1 20971520
+sub r1 r4
+mul r3 262144
+div r3 r1
+cmp r2 2048
+jlt sin_done_7
+mul r3 -1
+label sin_done_7
+mov r2 r3
+localget r1 58
+sub r1 32768
+mov r0 r2
+mul r0 r15
+mov r3 r1
+mul r3 r14
+add r0 r3
+div r0 16384
+mov r10 r2
+mul r10 r14
+mul r1 r15
+sub r10 r1
+div r10 16384
 set r1 0
-label clip_roof_start
-cmp r2 1280
-jle clip_roof_end
-set r2 1280
-label clip_roof_end
+set r2 0
+localget r11 4
+mul r11 r1
+localget r9 6
+mov r2 r10
+mul r2 r9
+sub r2 r11
+div r2 1000
+mul r1 r9
+localget r11 4
+mul r11 r10
+add r1 r11
+div r1 1000
+localget r8 8
+mul r8 2
+add r8 1001
+meshvertex r8 r0 r1 r2
+localget r8 8
+add r8 1
+localset 8 r8
+cmp r8 81
+jlt transform_track
+localset 8 0
+label road_segment
+localget r9 8
+mul r9 2
+add r9 1000
+meshread r0 r1 r2 r9
+add r9 2
+meshread r3 r4 r5 r9
+cmp r2 -2000
+jge road_front
+cmp r5 -2000
+jlt next_segment
+label road_front
+cmp r2 45000
+jle road_near
+cmp r5 45000
+jgt next_segment
+label road_near
+mov r6 r0
+mov r7 r3
+cmp r0 0
+jge road_a_abs
+mul r0 -1
+label road_a_abs
+mov r4 r2
+mul r4 2
+add r4 5000
+cmp r0 r4
+jle road_visible
+cmp r3 0
+jge road_b_abs
+mul r3 -1
+label road_b_abs
+mov r4 r5
+mul r4 2
+add r4 5000
+cmp r3 r4
+jle road_visible
+mul r6 r7
+cmp r6 0
+jge next_segment
+label road_visible
+localset 9 0
+label road_band
+localget r0 9
+cmp r0 0
+jne band_0_skip
+set r0 -1000
+set r1 -670
+set r2 0
+set r3 0
+localset 28 78
+jmp band_ready
+label band_0_skip
+localget r0 9
+cmp r0 1
+jne band_1_skip
+set r0 -670
+set r1 -600
+set r2 0
+set r3 0
+localset 28 208
+jmp band_ready
+label band_1_skip
+localget r0 9
+cmp r0 2
+jne band_2_skip
+set r0 -600
+set r1 600
+set r2 0
+set r3 0
+localset 28 108
+jmp band_ready
+label band_2_skip
+localget r0 9
+cmp r0 3
+jne band_3_skip
+set r0 600
+set r1 670
+set r2 0
+set r3 0
+localset 28 208
+jmp band_ready
+label band_3_skip
+localget r0 9
+cmp r0 4
+jne band_4_skip
+set r0 670
+set r1 1000
+set r2 0
+set r3 0
+localset 28 78
+jmp band_ready
+label band_4_skip
+localget r0 9
+cmp r0 5
+jne band_5_skip
+set r0 -590
+set r1 -580
+set r2 1
+set r3 1
+localset 28 206
+jmp band_ready
+label band_5_skip
+localget r0 9
+cmp r0 6
+jne band_6_skip
+set r0 580
+set r1 590
+set r2 1
+set r3 1
+localset 28 206
+jmp band_ready
+label band_6_skip
+localget r0 9
+cmp r0 7
+jne band_7_skip
+set r0 -205
+set r1 -195
+set r2 2
+set r3 2
+localset 28 206
+jmp band_ready
+label band_7_skip
+localget r0 9
+cmp r0 8
+jne band_8_skip
+set r0 195
+set r1 205
+set r2 2
+set r3 2
+localset 28 206
+jmp band_ready
+label band_8_skip
+localget r0 9
+cmp r0 9
+jne band_9_skip
+set r0 -1000
+set r1 -1000
+set r2 0
+set r3 100
+localset 28 204
+jmp band_ready
+label band_9_skip
+localget r0 9
+cmp r0 10
+jne band_10_skip
+set r0 1000
+set r1 1000
+set r2 0
+set r3 100
+localset 28 204
+jmp band_ready
+label band_10_skip
+jmp next_segment
+label band_ready
+mov r9 r0
+add r9 32768
+localset 22 r9
+mov r9 r1
+add r9 32768
+localset 24 r9
+mov r9 r2
+localset 26 r9
+mov r9 r3
+localset 30 r9
+localget r0 9
+cmp r0 7
+jlt stripe_ready
+cmp r0 8
+jgt stripe_ready
+localget r0 8
+mod r0 2
+cmp r0 0
+je next_band
+label stripe_ready
+localget r0 9
+cmp r0 1
+je curb_color
+cmp r0 3
+jne curb_ready
+label curb_color
+localget r0 8
+mod r0 2
+cmp r0 0
+jne curb_ready
+localset 28 206
+label curb_ready
+localget r9 8
+add r9 0
+mul r9 2
+add r9 1000
+meshread r0 r1 r2 r9
+add r9 1
+meshread r9 r10 r11 r9
+localget r12 22
+sub r12 32768
+mul r9 r12
+div r9 16384
+add r0 r9
+mul r10 r12
+div r10 16384
+add r1 r10
+mul r11 r12
+div r11 16384
+add r2 r11
+localget r9 26
+localget r10 6
+mul r10 r9
+div r10 1000
+add r1 r10
+localget r10 4
+mul r10 r9
+div r10 1000
+sub r2 r10
+localget r9 8
+add r9 1
+mul r9 2
+add r9 1000
+meshread r3 r4 r5 r9
+add r9 1
+meshread r9 r10 r11 r9
+localget r12 22
+sub r12 32768
+mul r9 r12
+div r9 16384
+add r3 r9
+mul r10 r12
+div r10 16384
+add r4 r10
+mul r11 r12
+div r11 16384
+add r5 r11
+localget r9 26
+localget r10 6
+mul r10 r9
+div r10 1000
+add r4 r10
+localget r10 4
+mul r10 r9
+div r10 1000
+sub r5 r10
+localget r9 8
+add r9 1
+mul r9 2
+add r9 1000
+meshread r6 r7 r8 r9
+add r9 1
+meshread r9 r10 r11 r9
+localget r12 24
+sub r12 32768
+mul r9 r12
+div r9 16384
+add r6 r9
+mul r10 r12
+div r10 16384
+add r7 r10
+mul r11 r12
+div r11 16384
+add r8 r11
+localget r9 30
+localget r10 6
+mul r10 r9
+div r10 1000
+add r7 r10
+localget r10 4
+mul r10 r9
+div r10 1000
+sub r8 r10
+localget r9 18
+mov r10 r9
+div r10 2
+mov r11 r10
+mul r11 9
+div r11 16
+mul r9 85
+div r9 100
+localget r9 28
+cmp r9 78
+jne material_skip_9
+mov r9 r10
+mul r9 170
+div r9 100
+meshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 78 r9 r10 r11 60
+jmp triangle_emitted_8
+label material_skip_9
+cmp r9 208
+jne material_skip_10
+mov r9 r10
+mul r9 170
+div r9 100
+meshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 208 r9 r10 r11 60
+jmp triangle_emitted_8
+label material_skip_10
+cmp r9 108
+jne material_skip_11
+mov r9 r10
+mul r9 170
+div r9 100
+meshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 108 r9 r10 r11 60
+jmp triangle_emitted_8
+label material_skip_11
+cmp r9 206
+jne material_skip_12
+mov r9 r10
+mul r9 170
+div r9 100
+meshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 206 r9 r10 r11 60
+jmp triangle_emitted_8
+label material_skip_12
+cmp r9 204
+jne material_skip_13
+mov r9 r10
+mul r9 170
+div r9 100
+meshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 204 r9 r10 r11 60
+jmp triangle_emitted_8
+label material_skip_13
+label triangle_emitted_8
+localget r9 8
+add r9 0
+mul r9 2
+add r9 1000
+meshread r0 r1 r2 r9
+add r9 1
+meshread r9 r10 r11 r9
+localget r12 22
+sub r12 32768
+mul r9 r12
+div r9 16384
+add r0 r9
+mul r10 r12
+div r10 16384
+add r1 r10
+mul r11 r12
+div r11 16384
+add r2 r11
+localget r9 26
+localget r10 6
+mul r10 r9
+div r10 1000
+add r1 r10
+localget r10 4
+mul r10 r9
+div r10 1000
+sub r2 r10
+localget r9 8
+add r9 1
+mul r9 2
+add r9 1000
+meshread r3 r4 r5 r9
+add r9 1
+meshread r9 r10 r11 r9
+localget r12 24
+sub r12 32768
+mul r9 r12
+div r9 16384
+add r3 r9
+mul r10 r12
+div r10 16384
+add r4 r10
+mul r11 r12
+div r11 16384
+add r5 r11
+localget r9 30
+localget r10 6
+mul r10 r9
+div r10 1000
+add r4 r10
+localget r10 4
+mul r10 r9
+div r10 1000
+sub r5 r10
+localget r9 8
+add r9 0
+mul r9 2
+add r9 1000
+meshread r6 r7 r8 r9
+add r9 1
+meshread r9 r10 r11 r9
+localget r12 24
+sub r12 32768
+mul r9 r12
+div r9 16384
+add r6 r9
+mul r10 r12
+div r10 16384
+add r7 r10
+mul r11 r12
+div r11 16384
+add r8 r11
+localget r9 30
+localget r10 6
+mul r10 r9
+div r10 1000
+add r7 r10
+localget r10 4
+mul r10 r9
+div r10 1000
+sub r8 r10
+localget r9 18
+mov r10 r9
+div r10 2
+mov r11 r10
+mul r11 9
+div r11 16
+mul r9 85
+div r9 100
+localget r9 28
+cmp r9 78
+jne material_skip_15
+mov r9 r10
+mul r9 170
+div r9 100
+meshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 78 r9 r10 r11 60
+jmp triangle_emitted_14
+label material_skip_15
+cmp r9 208
+jne material_skip_16
+mov r9 r10
+mul r9 170
+div r9 100
+meshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 208 r9 r10 r11 60
+jmp triangle_emitted_14
+label material_skip_16
+cmp r9 108
+jne material_skip_17
+mov r9 r10
+mul r9 170
+div r9 100
+meshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 108 r9 r10 r11 60
+jmp triangle_emitted_14
+label material_skip_17
+cmp r9 206
+jne material_skip_18
+mov r9 r10
+mul r9 170
+div r9 100
+meshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 206 r9 r10 r11 60
+jmp triangle_emitted_14
+label material_skip_18
+cmp r9 204
+jne material_skip_19
+mov r9 r10
+mul r9 170
+div r9 100
+meshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 204 r9 r10 r11 60
+jmp triangle_emitted_14
+label material_skip_19
+label triangle_emitted_14
+label next_band
+localget r0 9
+add r0 1
+localset 9 r0
+cmp r0 11
+jlt road_band
+label next_segment
+localget r0 8
+add r0 1
+localset 8 r0
+cmp r0 80
+jlt road_segment
+load32 r12 100
+sub r12 2000000
+# XI-authored local meshes live only in the generic ephemeral vertex buffer.
+meshvertex 0 -125 3 -245
+meshvertex 1 125 3 -245
+meshvertex 2 115 3 240
+meshvertex 3 -115 3 240
+meshvertex 4 -94 24 -212
+meshvertex 5 94 24 -212
+meshvertex 6 94 62 -212
+meshvertex 7 -94 62 -212
+meshvertex 8 94 24 207
+meshvertex 9 94 62 207
+meshvertex 10 -94 24 207
+meshvertex 11 -94 62 207
+meshvertex 12 98 73 -195
+meshvertex 13 -98 73 -195
+meshvertex 14 88 81 190
+meshvertex 15 -88 81 190
+meshvertex 16 87 91 -75
+meshvertex 17 -87 91 -75
+meshvertex 18 82 91 45
+meshvertex 19 -82 91 45
+meshvertex 20 -85 91 -115
+meshvertex 21 85 91 -115
+meshvertex 22 61 136 -75
+meshvertex 23 -61 136 -75
+meshvertex 24 82 91 86
+meshvertex 25 -82 91 86
+meshvertex 26 -57 128 46
+meshvertex 27 57 128 46
+meshvertex 28 -75 75 -200
+meshvertex 29 -65 75 -200
+meshvertex 30 -65 110 -200
+meshvertex 31 -75 110 -200
+meshvertex 32 -65 75 -190
+meshvertex 33 -65 110 -190
+meshvertex 34 -75 75 -190
+meshvertex 35 -75 110 -190
+meshvertex 36 65 75 -200
+meshvertex 37 75 75 -200
+meshvertex 38 75 110 -200
+meshvertex 39 65 110 -200
+meshvertex 40 75 75 -190
+meshvertex 41 75 110 -190
+meshvertex 42 65 75 -190
+meshvertex 43 65 110 -190
+meshvertex 44 -112 108 -225
+meshvertex 45 112 108 -225
+meshvertex 46 112 117 -225
+meshvertex 47 -112 117 -225
+meshvertex 48 112 108 -195
+meshvertex 49 112 117 -195
+meshvertex 50 -112 108 -195
+meshvertex 51 -112 117 -195
+meshvertex 52 -80 27 -214
+meshvertex 53 80 27 -214
+meshvertex 54 72 57 -214
+meshvertex 55 -72 57 -214
+meshvertex 56 -82 65 -214
+meshvertex 57 -25 65 -214
+meshvertex 58 -25 78 -214
+meshvertex 59 -82 78 -214
+meshvertex 60 25 65 -214
+meshvertex 61 82 65 -214
+meshvertex 62 82 78 -214
+meshvertex 63 25 78 -214
+meshvertex 64 -19 38 -215
+meshvertex 65 19 38 -215
+meshvertex 66 19 54 -215
+meshvertex 67 -19 54 -215
+meshvertex 68 -72 31 -216
+meshvertex 69 -49 31 -216
+meshvertex 70 -49 43 -216
+meshvertex 71 -72 43 -216
+meshvertex 72 49 31 -216
+meshvertex 73 72 31 -216
+meshvertex 74 72 43 -216
+meshvertex 75 49 43 -216
+meshvertex 76 -76 71 208
+meshvertex 77 -39 71 208
+meshvertex 78 -39 81 198
+meshvertex 79 -76 81 198
+meshvertex 80 39 71 208
+meshvertex 81 76 71 208
+meshvertex 82 76 81 198
+meshvertex 83 39 81 198
+meshvertex 84 -82 36 -111
+meshvertex 85 -105 36 -111
+meshvertex 86 -105 59 -121
+meshvertex 87 -82 59 -121
+meshvertex 88 -105 36 -144
+meshvertex 89 -106 36 -144
+meshvertex 90 -106 36 -127
+meshvertex 91 -106 48 -132
+meshvertex 92 -105 69 -144
+meshvertex 93 -82 69 -144
+meshvertex 94 -106 53 -144
+meshvertex 95 -105 59 -167
+meshvertex 96 -82 59 -167
+meshvertex 97 -106 48 -156
+meshvertex 98 -105 36 -177
+meshvertex 99 -82 36 -177
+meshvertex 100 -106 36 -161
+meshvertex 101 -105 13 -167
+meshvertex 102 -82 13 -167
+meshvertex 103 -106 24 -156
+meshvertex 104 -105 3 -144
+meshvertex 105 -82 3 -144
+meshvertex 106 -106 19 -144
+meshvertex 107 -105 13 -121
+meshvertex 108 -82 13 -121
+meshvertex 109 -106 24 -132
+meshvertex 110 -82 36 175
+meshvertex 111 -105 36 175
+meshvertex 112 -105 59 165
+meshvertex 113 -82 59 165
+meshvertex 114 -105 36 142
+meshvertex 115 -106 36 142
+meshvertex 116 -106 36 159
+meshvertex 117 -106 48 154
+meshvertex 118 -105 69 142
+meshvertex 119 -82 69 142
+meshvertex 120 -106 53 142
+meshvertex 121 -105 59 119
+meshvertex 122 -82 59 119
+meshvertex 123 -106 48 130
+meshvertex 124 -105 36 109
+meshvertex 125 -82 36 109
+meshvertex 126 -106 36 125
+meshvertex 127 -105 13 119
+meshvertex 128 -82 13 119
+meshvertex 129 -106 24 130
+meshvertex 130 -105 3 142
+meshvertex 131 -82 3 142
+meshvertex 132 -106 19 142
+meshvertex 133 -105 13 165
+meshvertex 134 -82 13 165
+meshvertex 135 -106 24 154
+meshvertex 136 82 36 -111
+meshvertex 137 105 36 -111
+meshvertex 138 105 59 -121
+meshvertex 139 82 59 -121
+meshvertex 140 105 36 -144
+meshvertex 141 106 36 -144
+meshvertex 142 106 36 -127
+meshvertex 143 106 48 -132
+meshvertex 144 105 69 -144
+meshvertex 145 82 69 -144
+meshvertex 146 106 53 -144
+meshvertex 147 105 59 -167
+meshvertex 148 82 59 -167
+meshvertex 149 106 48 -156
+meshvertex 150 105 36 -177
+meshvertex 151 82 36 -177
+meshvertex 152 106 36 -161
+meshvertex 153 105 13 -167
+meshvertex 154 82 13 -167
+meshvertex 155 106 24 -156
+meshvertex 156 105 3 -144
+meshvertex 157 82 3 -144
+meshvertex 158 106 19 -144
+meshvertex 159 105 13 -121
+meshvertex 160 82 13 -121
+meshvertex 161 106 24 -132
+meshvertex 162 82 36 175
+meshvertex 163 105 36 175
+meshvertex 164 105 59 165
+meshvertex 165 82 59 165
+meshvertex 166 105 36 142
+meshvertex 167 106 36 142
+meshvertex 168 106 36 159
+meshvertex 169 106 48 154
+meshvertex 170 105 69 142
+meshvertex 171 82 69 142
+meshvertex 172 106 53 142
+meshvertex 173 105 59 119
+meshvertex 174 82 59 119
+meshvertex 175 106 48 130
+meshvertex 176 105 36 109
+meshvertex 177 82 36 109
+meshvertex 178 106 36 125
+meshvertex 179 105 13 119
+meshvertex 180 82 13 119
+meshvertex 181 106 24 130
+meshvertex 182 105 3 142
+meshvertex 183 82 3 142
+meshvertex 184 106 19 142
+meshvertex 185 105 13 165
+meshvertex 186 82 13 165
+meshvertex 187 106 24 154
+meshvertex 188 -20 0 -20
+meshvertex 189 20 0 -20
+meshvertex 190 20 280 -20
+meshvertex 191 -20 280 -20
+meshvertex 192 20 0 20
+meshvertex 193 20 280 20
+meshvertex 194 -20 0 20
+meshvertex 195 -20 280 20
+meshvertex 196 215 200 0
+meshvertex 197 0 650 0
+meshvertex 198 152 200 152
+meshvertex 199 0 200 215
+meshvertex 200 -152 200 152
+meshvertex 201 -215 200 0
+meshvertex 202 -152 200 -152
+meshvertex 203 0 200 -215
+meshvertex 204 152 200 -152
+meshvertex 205 155 410 0
+meshvertex 206 0 820 0
+meshvertex 207 110 410 110
+meshvertex 208 0 410 155
+meshvertex 209 -110 410 110
+meshvertex 210 -155 410 0
+meshvertex 211 -110 410 -110
+meshvertex 212 0 410 -155
+meshvertex 213 110 410 -110
+localset 11 0
+label actor
+localset 142 0
+localget r0 11
+cmp r0 4
+jge tree_actor
+set r0 0
+mov r9 r0
+localset 132 r9
+set r0 188
+mov r9 r0
+localset 134 r9
+localget r0 11
+cmp r0 0
+jne rival_actor
+load8 r1 201
+cmp r1 2
+jne player_mesh_ready
+localset 142 1
+label player_mesh_ready
+load32 r0 100
+sub r0 2000000
+load32 r2 104
+sub r2 2000000
+load16 r8 108
+load8 r9 202
+mul r9 6
+localset 126 r9
+jmp actor_ready
+label rival_actor
+localget r7 11
+sub r7 1
+mul r7 32
+add r7 6004
+load32 r0 $r7
+sub r0 65536
+add r7 4
+load32 r2 $r7
+sub r2 65536
+add r7 4
+load16 r8 $r7
+localget r9 11
+mul r9 6
+localset 126 r9
+jmp actor_ready
+label tree_actor
+set r0 188
+mov r9 r0
+localset 132 r9
+set r0 214
+mov r9 r0
+localset 134 r9
+localget r8 11
+sub r8 4
+div r8 2
+mul r8 4
+mov r7 r8
+mul r7 2
+add r7 5000
+load16 r6 $r7
+mov r3 r6
+add r3 0
+mod r3 4096
+cmp r3 0
+jge sin_negative_20
+add r3 4096
+label sin_negative_20
+mov r1 r3
+mod r1 2048
+set r2 2048
+sub r2 r1
+mul r1 r2
+mov r2 r1
+mul r2 4
+set r4 20971520
+sub r4 r2
+mul r1 262144
+div r1 r4
+cmp r3 2048
+jlt sin_done_21
+mul r1 -1
+label sin_done_21
+mov r3 r1
+mov r2 r3
+mov r9 r2
+add r9 32768
+localset 58 r9
+mov r4 r6
+add r4 1024
+mod r4 4096
+cmp r4 0
+jge sin_negative_22
+add r4 4096
+label sin_negative_22
+mov r1 r4
+mod r1 2048
+set r2 2048
+sub r2 r1
+mul r1 r2
+mov r2 r1
+mul r2 4
+set r3 20971520
+sub r3 r2
+mul r1 262144
+div r1 r3
+cmp r4 2048
+jlt sin_done_23
+mul r1 -1
+label sin_done_23
+mov r4 r1
+localget r3 58
+sub r3 32768
+localget r0 11
+mod r0 2
+mul r0 2
+sub r0 1
+mul r0 1650
+mul r4 r0
+div r4 16384
+mul r3 r0
+div r3 16384
+mul r8 8
+add r8 4096
+load32 r0 $r8
+sub r0 65536
+add r0 r4
+add r8 4
+load32 r2 $r8
+sub r2 65536
+sub r2 r3
+set r8 0
+label actor_ready
+mov r3 r8
+add r3 0
+mod r3 4096
+cmp r3 0
+jge sin_negative_24
+add r3 4096
+label sin_negative_24
+mov r5 r3
+mod r5 2048
+set r6 2048
+sub r6 r5
+mul r5 r6
+mov r6 r5
+mul r6 4
+set r4 20971520
+sub r4 r6
+mul r5 262144
+div r5 r4
+cmp r3 2048
+jlt sin_done_25
+mul r5 -1
+label sin_done_25
+mov r3 r5
+mov r6 r3
+mov r9 r6
+add r9 32768
+localset 58 r9
+mov r4 r8
+add r4 1024
+mod r4 4096
+cmp r4 0
+jge sin_negative_26
+add r4 4096
+label sin_negative_26
+mov r5 r4
+mod r5 2048
+set r6 2048
+sub r6 r5
+mul r5 r6
+mov r6 r5
+mul r6 4
+set r3 20971520
+sub r3 r6
+mul r5 262144
+div r5 r3
+cmp r4 2048
+jlt sin_done_27
+mul r5 -1
+label sin_done_27
+mov r4 r5
+localget r3 58
+sub r3 32768
+mov r1 r3
+mul r1 r15
+mov r5 r4
+mul r5 r14
+sub r1 r5
+div r1 16384
+mov r5 r3
+mul r5 r14
+mul r4 r15
+add r5 r4
+div r5 16384
+mov r9 r1
+add r9 32768
+localset 116 r9
+mov r9 r5
+add r9 32768
+localset 118 r9
+sub r0 r12
+sub r2 r13
+mov r1 r0
+mul r1 r15
+mov r3 r2
+mul r3 r14
+sub r1 r3
+div r1 16384
+mul r0 r14
+mul r2 r15
+add r0 r2
+div r0 16384
+mov r9 r1
+add r9 1000000
+localset 108 r9
+mov r9 r0
+add r9 1000000
+localset 112 r9
+cmp r0 -1200
+jlt next_actor
+cmp r0 35000
+jgt next_actor
+mov r2 r0
+mul r2 2
+add r2 3500
+localget r1 108
+sub r1 1000000
+cmp r1 0
+jge actor_side_absolute
+mul r1 -1
+label actor_side_absolute
 cmp r1 r2
-jge next_roof
-sub r2 1
-framespan r0 r1 r2 r3 65
-add r2 1
-label next_roof
-
-# Layer 36: rear_window.
-label draw_rear_window
-load8 r11 201
-cmp r11 2
-je next_rear_window
-cmp r6 566
-jlt next_rear_window
-cmp r6 620
-jge next_rear_window
-mov r11 r6
-sub r11 566
-div r11 3
-add r11 85
-mov r1 r8
+jgt next_actor
+localget r1 11
+cmp r1 0
+je actor_lod_ready
+cmp r1 4
+jge actor_lod_ready
+cmp r0 6500
+jle actor_lod_ready
+localset 142 2
+label actor_lod_ready
+label actor_vertex
+localget r8 132
+meshread r0 r1 r2 r8
+localget r9 118
+sub r9 32768
+mul r9 r0
+localget r10 116
+sub r10 32768
+mul r10 r2
+add r9 r10
+div r9 16384
+mov r10 r9
+add r10 1000000
+localset 128 r10
+localget r9 118
+sub r9 32768
+mul r9 r2
+localget r10 116
+sub r10 32768
+mul r10 r0
+sub r9 r10
+div r9 16384
+localget r10 112
+sub r10 1000000
+add r10 r9
+localget r0 128
+sub r0 1000000
+localget r11 108
+sub r11 1000000
+add r0 r11
+localget r11 0
+add r10 r11
+localget r11 2
 sub r1 r11
-mov r2 r8
-add r2 r11
-mov r3 r6
-sub r3 566
-div r3 5
-add r3 158
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_rear_window_start
-set r1 0
-label clip_rear_window_start
-cmp r2 1280
-jle clip_rear_window_end
-set r2 1280
-label clip_rear_window_end
-cmp r1 r2
-jge next_rear_window
-sub r2 1
-framespan r0 r1 r2 r3 64
-add r2 1
-label next_rear_window
-
-# Layer 37: glass_reflection.
-label draw_glass_reflection
-load8 r11 201
-cmp r11 2
-je next_glass_reflection
-cmp r6 570
-jlt next_glass_reflection
-cmp r6 610
-jge next_glass_reflection
-mov r1 r6
-sub r1 570
-mul r1 3
-sub r1 75
-add r1 r8
-mov r2 r1
-add r2 28
-mov r3 r6
-sub r3 570
-mul r3 7
-div r3 40
-add r3 237
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_glass_reflection_start
-set r1 0
-label clip_glass_reflection_start
-cmp r2 1280
-jle clip_glass_reflection_end
-set r2 1280
-label clip_glass_reflection_end
-cmp r1 r2
-jge next_glass_reflection
-sub r2 1
-framespan r0 r1 r2 r3 63
-add r2 1
-label next_glass_reflection
-
-# Layer 38: bumper.
-label draw_bumper
-load8 r11 201
-cmp r11 2
-je next_bumper
-cmp r6 655
-jlt next_bumper
-cmp r6 681
-jge next_bumper
-mov r1 r8
-sub r1 147
-mov r2 r8
-add r2 147
-mov r3 r14
-add r3 1
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_bumper_start
-set r1 0
-label clip_bumper_start
-cmp r2 1280
-jle clip_bumper_end
-set r2 1280
-label clip_bumper_end
-cmp r1 r2
-jge next_bumper
-sub r2 1
-framespan r0 r1 r2 r3 62
-add r2 1
-label next_bumper
-
-# Layer 39: tail_light_left.
-label draw_tail_light_left
-load8 r11 201
-cmp r11 2
-je next_tail_light_left
-cmp r6 641
-jlt next_tail_light_left
-cmp r6 652
-jge next_tail_light_left
-mov r1 r8
-add r1 -130
-mov r2 r1
-add r2 65
-set r3 213
-load8 r11 129
-cmp r11 1
-jne tail_left_ready
-set r3 253
-label tail_left_ready
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_tail_light_left_start
-set r1 0
-label clip_tail_light_left_start
-cmp r2 1280
-jle clip_tail_light_left_end
-set r2 1280
-label clip_tail_light_left_end
-cmp r1 r2
-jge next_tail_light_left
-sub r2 1
-framespan r0 r1 r2 r3 61
-add r2 1
-label next_tail_light_left
-
-# Layer 40: tail_light_right.
-label draw_tail_light_right
-load8 r11 201
-cmp r11 2
-je next_tail_light_right
-cmp r6 641
-jlt next_tail_light_right
-cmp r6 652
-jge next_tail_light_right
-mov r1 r8
-add r1 65
-mov r2 r1
-add r2 65
-set r3 213
-load8 r11 129
-cmp r11 1
-jne tail_right_ready
-set r3 253
-label tail_right_ready
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_tail_light_right_start
-set r1 0
-label clip_tail_light_right_start
-cmp r2 1280
-jle clip_tail_light_right_end
-set r2 1280
-label clip_tail_light_right_end
-cmp r1 r2
-jge next_tail_light_right
-sub r2 1
-framespan r0 r1 r2 r3 60
-add r2 1
-label next_tail_light_right
-
-# Layer 41: spoiler.
-label draw_spoiler
-load8 r11 201
-cmp r11 2
-je next_spoiler
-cmp r6 628
-jlt next_spoiler
-cmp r6 636
-jge next_spoiler
-mov r1 r8
-sub r1 170
-mov r2 r8
-add r2 170
-mov r3 r14
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_spoiler_start
-set r1 0
-label clip_spoiler_start
-cmp r2 1280
-jle clip_spoiler_end
-set r2 1280
-label clip_spoiler_end
-cmp r1 r2
-jge next_spoiler
-sub r2 1
-framespan r0 r1 r2 r3 59
-add r2 1
-label next_spoiler
-
-# Layer 42: diffuser.
-label draw_diffuser
-load8 r11 201
-cmp r11 2
-je next_diffuser
-cmp r6 673
-jlt next_diffuser
-cmp r6 681
-jge next_diffuser
-mov r1 r8
-sub r1 60
-mov r2 r8
-add r2 60
-set r3 211
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_diffuser_start
-set r1 0
-label clip_diffuser_start
-cmp r2 1280
-jle clip_diffuser_end
-set r2 1280
-label clip_diffuser_end
-cmp r1 r2
-jge next_diffuser
-sub r2 1
-framespan r0 r1 r2 r3 58
-add r2 1
-label next_diffuser
-
-# Layer 43: cockpit_hood.
-label draw_cockpit_hood
-load8 r11 201
-cmp r11 2
-jne next_cockpit_hood
-cmp r0 620
-jlt next_cockpit_hood
-mov r7 r0
-sub r7 620
-mul r7 4
-add r7 170
-mov r1 r8
-sub r1 r7
-mov r2 r8
-add r2 r7
-mov r3 r0
-sub r3 620
-div r3 35
-add r3 r14
-add r3 2
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_cockpit_hood_start
-set r1 0
-label clip_cockpit_hood_start
-cmp r2 1280
-jle clip_cockpit_hood_end
-set r2 1280
-label clip_cockpit_hood_end
-cmp r1 r2
-jge next_cockpit_hood
-sub r2 1
-framespan r0 r1 r2 r3 57
-add r2 1
-label next_cockpit_hood
-
-# Layer 44: dashboard.
-label draw_dashboard
-load8 r11 201
-cmp r11 2
-jne next_dashboard
-cmp r0 704
-jlt next_dashboard
-set r1 0
-set r2 1280
-set r3 246
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_dashboard_start
-set r1 0
-label clip_dashboard_start
-cmp r2 1280
-jle clip_dashboard_end
-set r2 1280
-label clip_dashboard_end
-cmp r1 r2
-jge next_dashboard
-sub r2 1
-framespan r0 r1 r2 r3 56
-add r2 1
-label next_dashboard
-
-# Layer 45: hood_stripe.
-label draw_hood_stripe
-load8 r11 201
-cmp r11 2
-jne next_hood_stripe
-cmp r0 626
-jlt next_hood_stripe
-cmp r0 704
-jge next_hood_stripe
-mov r1 r8
-sub r1 18
-mov r2 r8
-add r2 18
-set r3 247
-# Inline emission keeps the hot path free of a 46-way return dispatcher.
-cmp r1 0
-jge clip_hood_stripe_start
-set r1 0
-label clip_hood_stripe_start
-cmp r2 1280
-jle clip_hood_stripe_end
-set r2 1280
-label clip_hood_stripe_end
-cmp r1 r2
-jge next_hood_stripe
-sub r2 1
-framespan r0 r1 r2 r3 55
-add r2 1
-label next_hood_stripe
-add r0 r5
-jmp scanline
-label finished
-frameend
-halt
-label missing_world
+localget r11 4
+mul r11 r1
+localget r9 6
+mov r2 r10
+mul r2 r9
+sub r2 r11
+div r2 1000
+mul r1 r9
+localget r11 4
+mul r11 r10
+add r1 r11
+div r1 1000
+localget r8 132
+add r8 256
+meshvertex r8 r0 r1 r2
+sub r8 255
+mov r9 r8
+localset 132 r9
+localget r0 134
+cmp r8 r0
+jlt actor_vertex
+localget r9 18
+mov r10 r9
+div r10 2
+mov r11 r10
+mul r11 9
+div r11 16
+mul r9 85
+div r9 100
+localget r12 11
+cmp r12 4
+jge emit_tree
+localget r12 142
+cmp r12 1
+je emit_hood
+meshface 256 257 258 210 r9 r10 r11 60
+meshface 256 258 259 210 r9 r10 r11 60
+localget r12 126
+add r12 128
+meshface 260 261 262 r12 r9 r10 r11 60
+localget r12 126
+add r12 128
+meshface 260 262 263 r12 r9 r10 r11 60
+localget r12 126
+add r12 129
+meshface 261 264 265 r12 r9 r10 r11 60
+localget r12 126
+add r12 129
+meshface 261 265 262 r12 r9 r10 r11 60
+localget r12 126
+add r12 128
+meshface 264 266 267 r12 r9 r10 r11 60
+localget r12 126
+add r12 128
+meshface 264 267 265 r12 r9 r10 r11 60
+localget r12 126
+add r12 130
+meshface 266 260 263 r12 r9 r10 r11 60
+localget r12 126
+add r12 130
+meshface 266 263 267 r12 r9 r10 r11 60
+localget r12 126
+add r12 131
+meshface 263 262 265 r12 r9 r10 r11 60
+localget r12 126
+add r12 131
+meshface 263 265 267 r12 r9 r10 r11 60
+localget r12 126
+add r12 129
+meshface 263 262 268 r12 r9 r10 r11 60
+localget r12 126
+add r12 129
+meshface 263 268 269 r12 r9 r10 r11 60
+localget r12 126
+add r12 128
+meshface 262 265 270 r12 r9 r10 r11 60
+localget r12 126
+add r12 128
+meshface 262 270 268 r12 r9 r10 r11 60
+localget r12 126
+add r12 130
+meshface 267 263 269 r12 r9 r10 r11 60
+localget r12 126
+add r12 130
+meshface 267 269 271 r12 r9 r10 r11 60
+label emit_hood
+localget r12 126
+add r12 132
+meshface 265 267 271 r12 r9 r10 r11 60
+localget r12 126
+add r12 132
+meshface 265 271 270 r12 r9 r10 r11 60
+localget r12 126
+add r12 132
+meshface 269 268 272 r12 r9 r10 r11 60
+localget r12 126
+add r12 132
+meshface 269 272 273 r12 r9 r10 r11 60
+localget r12 126
+add r12 132
+meshface 273 272 274 r12 r9 r10 r11 60
+localget r12 126
+add r12 132
+meshface 273 274 275 r12 r9 r10 r11 60
+localget r12 126
+add r12 133
+meshface 275 274 270 r12 r9 r10 r11 60
+localget r12 126
+add r12 133
+meshface 275 270 271 r12 r9 r10 r11 60
+localget r12 142
+cmp r12 1
+je next_actor
+meshface 276 277 278 160 r9 r10 r11 60
+meshface 276 278 279 160 r9 r10 r11 60
+meshface 280 281 282 164 r9 r10 r11 60
+meshface 280 282 283 164 r9 r10 r11 60
+meshface 276 279 282 158 r9 r10 r11 60
+meshface 276 282 281 158 r9 r10 r11 60
+meshface 278 277 280 162 r9 r10 r11 60
+meshface 278 280 283 162 r9 r10 r11 60
+localget r12 126
+add r12 133
+meshface 279 278 283 r12 r9 r10 r11 60
+localget r12 126
+add r12 133
+meshface 279 283 282 r12 r9 r10 r11 60
+meshface 284 285 286 245 r9 r10 r11 60
+meshface 284 286 287 245 r9 r10 r11 60
+meshface 285 288 289 246 r9 r10 r11 60
+meshface 285 289 286 246 r9 r10 r11 60
+meshface 288 290 291 245 r9 r10 r11 60
+meshface 288 291 289 245 r9 r10 r11 60
+meshface 290 284 287 247 r9 r10 r11 60
+meshface 290 287 291 247 r9 r10 r11 60
+meshface 287 286 289 248 r9 r10 r11 60
+meshface 287 289 291 248 r9 r10 r11 60
+meshface 292 293 294 245 r9 r10 r11 60
+meshface 292 294 295 245 r9 r10 r11 60
+meshface 293 296 297 246 r9 r10 r11 60
+meshface 293 297 294 246 r9 r10 r11 60
+meshface 296 298 299 245 r9 r10 r11 60
+meshface 296 299 297 245 r9 r10 r11 60
+meshface 298 292 295 247 r9 r10 r11 60
+meshface 298 295 299 247 r9 r10 r11 60
+meshface 295 294 297 248 r9 r10 r11 60
+meshface 295 297 299 248 r9 r10 r11 60
+localget r12 126
+add r12 128
+meshface 300 301 302 r12 r9 r10 r11 60
+localget r12 126
+add r12 128
+meshface 300 302 303 r12 r9 r10 r11 60
+localget r12 126
+add r12 129
+meshface 301 304 305 r12 r9 r10 r11 60
+localget r12 126
+add r12 129
+meshface 301 305 302 r12 r9 r10 r11 60
+localget r12 126
+add r12 128
+meshface 304 306 307 r12 r9 r10 r11 60
+localget r12 126
+add r12 128
+meshface 304 307 305 r12 r9 r10 r11 60
+localget r12 126
+add r12 130
+meshface 306 300 303 r12 r9 r10 r11 60
+localget r12 126
+add r12 130
+meshface 306 303 307 r12 r9 r10 r11 60
+localget r12 126
+add r12 131
+meshface 303 302 305 r12 r9 r10 r11 60
+localget r12 126
+add r12 131
+meshface 303 305 307 r12 r9 r10 r11 60
+meshface 308 309 310 209 r9 r10 r11 60
+meshface 308 310 311 209 r9 r10 r11 60
+meshface 312 313 314 213 r9 r10 r11 60
+meshface 312 314 315 213 r9 r10 r11 60
+meshface 316 317 318 213 r9 r10 r11 60
+meshface 316 318 319 213 r9 r10 r11 60
+meshface 320 321 322 211 r9 r10 r11 60
+meshface 320 322 323 211 r9 r10 r11 60
+meshface 324 325 326 211 r9 r10 r11 60
+meshface 324 326 327 211 r9 r10 r11 60
+meshface 328 329 330 211 r9 r10 r11 60
+meshface 328 330 331 211 r9 r10 r11 60
+meshface 332 333 334 212 r9 r10 r11 60
+meshface 332 334 335 212 r9 r10 r11 60
+meshface 336 337 338 212 r9 r10 r11 60
+meshface 336 338 339 212 r9 r10 r11 60
+localget r12 142
+cmp r12 2
+je next_actor
+meshface 340 341 342 209 r9 r10 r11 60
+meshface 340 342 343 209 r9 r10 r11 60
+meshface 344 341 342 245 r9 r10 r11 60
+meshface 345 346 347 211 r9 r10 r11 60
+meshface 343 342 348 209 r9 r10 r11 60
+meshface 343 348 349 209 r9 r10 r11 60
+meshface 344 342 348 245 r9 r10 r11 60
+meshface 345 347 350 211 r9 r10 r11 60
+meshface 349 348 351 209 r9 r10 r11 60
+meshface 349 351 352 209 r9 r10 r11 60
+meshface 344 348 351 245 r9 r10 r11 60
+meshface 345 350 353 211 r9 r10 r11 60
+meshface 352 351 354 209 r9 r10 r11 60
+meshface 352 354 355 209 r9 r10 r11 60
+meshface 344 351 354 245 r9 r10 r11 60
+meshface 345 353 356 211 r9 r10 r11 60
+meshface 355 354 357 209 r9 r10 r11 60
+meshface 355 357 358 209 r9 r10 r11 60
+meshface 344 354 357 245 r9 r10 r11 60
+meshface 345 356 359 211 r9 r10 r11 60
+meshface 358 357 360 209 r9 r10 r11 60
+meshface 358 360 361 209 r9 r10 r11 60
+meshface 344 357 360 245 r9 r10 r11 60
+meshface 345 359 362 211 r9 r10 r11 60
+meshface 361 360 363 209 r9 r10 r11 60
+meshface 361 363 364 209 r9 r10 r11 60
+meshface 344 360 363 245 r9 r10 r11 60
+meshface 345 362 365 211 r9 r10 r11 60
+meshface 364 363 341 209 r9 r10 r11 60
+meshface 364 341 340 209 r9 r10 r11 60
+meshface 344 363 341 245 r9 r10 r11 60
+meshface 345 365 346 211 r9 r10 r11 60
+meshface 366 367 368 209 r9 r10 r11 60
+meshface 366 368 369 209 r9 r10 r11 60
+meshface 370 367 368 245 r9 r10 r11 60
+meshface 371 372 373 211 r9 r10 r11 60
+meshface 369 368 374 209 r9 r10 r11 60
+meshface 369 374 375 209 r9 r10 r11 60
+meshface 370 368 374 245 r9 r10 r11 60
+meshface 371 373 376 211 r9 r10 r11 60
+meshface 375 374 377 209 r9 r10 r11 60
+meshface 375 377 378 209 r9 r10 r11 60
+meshface 370 374 377 245 r9 r10 r11 60
+meshface 371 376 379 211 r9 r10 r11 60
+meshface 378 377 380 209 r9 r10 r11 60
+meshface 378 380 381 209 r9 r10 r11 60
+meshface 370 377 380 245 r9 r10 r11 60
+meshface 371 379 382 211 r9 r10 r11 60
+meshface 381 380 383 209 r9 r10 r11 60
+meshface 381 383 384 209 r9 r10 r11 60
+meshface 370 380 383 245 r9 r10 r11 60
+meshface 371 382 385 211 r9 r10 r11 60
+meshface 384 383 386 209 r9 r10 r11 60
+meshface 384 386 387 209 r9 r10 r11 60
+meshface 370 383 386 245 r9 r10 r11 60
+meshface 371 385 388 211 r9 r10 r11 60
+meshface 387 386 389 209 r9 r10 r11 60
+meshface 387 389 390 209 r9 r10 r11 60
+meshface 370 386 389 245 r9 r10 r11 60
+meshface 371 388 391 211 r9 r10 r11 60
+meshface 390 389 367 209 r9 r10 r11 60
+meshface 390 367 366 209 r9 r10 r11 60
+meshface 370 389 367 245 r9 r10 r11 60
+meshface 371 391 372 211 r9 r10 r11 60
+meshface 392 393 394 209 r9 r10 r11 60
+meshface 392 394 395 209 r9 r10 r11 60
+meshface 396 393 394 245 r9 r10 r11 60
+meshface 397 398 399 211 r9 r10 r11 60
+meshface 395 394 400 209 r9 r10 r11 60
+meshface 395 400 401 209 r9 r10 r11 60
+meshface 396 394 400 245 r9 r10 r11 60
+meshface 397 399 402 211 r9 r10 r11 60
+meshface 401 400 403 209 r9 r10 r11 60
+meshface 401 403 404 209 r9 r10 r11 60
+meshface 396 400 403 245 r9 r10 r11 60
+meshface 397 402 405 211 r9 r10 r11 60
+meshface 404 403 406 209 r9 r10 r11 60
+meshface 404 406 407 209 r9 r10 r11 60
+meshface 396 403 406 245 r9 r10 r11 60
+meshface 397 405 408 211 r9 r10 r11 60
+meshface 407 406 409 209 r9 r10 r11 60
+meshface 407 409 410 209 r9 r10 r11 60
+meshface 396 406 409 245 r9 r10 r11 60
+meshface 397 408 411 211 r9 r10 r11 60
+meshface 410 409 412 209 r9 r10 r11 60
+meshface 410 412 413 209 r9 r10 r11 60
+meshface 396 409 412 245 r9 r10 r11 60
+meshface 397 411 414 211 r9 r10 r11 60
+meshface 413 412 415 209 r9 r10 r11 60
+meshface 413 415 416 209 r9 r10 r11 60
+meshface 396 412 415 245 r9 r10 r11 60
+meshface 397 414 417 211 r9 r10 r11 60
+meshface 416 415 393 209 r9 r10 r11 60
+meshface 416 393 392 209 r9 r10 r11 60
+meshface 396 415 393 245 r9 r10 r11 60
+meshface 397 417 398 211 r9 r10 r11 60
+meshface 418 419 420 209 r9 r10 r11 60
+meshface 418 420 421 209 r9 r10 r11 60
+meshface 422 419 420 245 r9 r10 r11 60
+meshface 423 424 425 211 r9 r10 r11 60
+meshface 421 420 426 209 r9 r10 r11 60
+meshface 421 426 427 209 r9 r10 r11 60
+meshface 422 420 426 245 r9 r10 r11 60
+meshface 423 425 428 211 r9 r10 r11 60
+meshface 427 426 429 209 r9 r10 r11 60
+meshface 427 429 430 209 r9 r10 r11 60
+meshface 422 426 429 245 r9 r10 r11 60
+meshface 423 428 431 211 r9 r10 r11 60
+meshface 430 429 432 209 r9 r10 r11 60
+meshface 430 432 433 209 r9 r10 r11 60
+meshface 422 429 432 245 r9 r10 r11 60
+meshface 423 431 434 211 r9 r10 r11 60
+meshface 433 432 435 209 r9 r10 r11 60
+meshface 433 435 436 209 r9 r10 r11 60
+meshface 422 432 435 245 r9 r10 r11 60
+meshface 423 434 437 211 r9 r10 r11 60
+meshface 436 435 438 209 r9 r10 r11 60
+meshface 436 438 439 209 r9 r10 r11 60
+meshface 422 435 438 245 r9 r10 r11 60
+meshface 423 437 440 211 r9 r10 r11 60
+meshface 439 438 441 209 r9 r10 r11 60
+meshface 439 441 442 209 r9 r10 r11 60
+meshface 422 438 441 245 r9 r10 r11 60
+meshface 423 440 443 211 r9 r10 r11 60
+meshface 442 441 419 209 r9 r10 r11 60
+meshface 442 419 418 209 r9 r10 r11 60
+meshface 422 441 419 245 r9 r10 r11 60
+meshface 423 443 424 211 r9 r10 r11 60
+jmp next_actor
+label emit_tree
+meshface 444 445 446 202 r9 r10 r11 60
+meshface 444 446 447 202 r9 r10 r11 60
+meshface 445 448 449 203 r9 r10 r11 60
+meshface 445 449 446 203 r9 r10 r11 60
+meshface 448 450 451 202 r9 r10 r11 60
+meshface 448 451 449 202 r9 r10 r11 60
+meshface 450 444 447 204 r9 r10 r11 60
+meshface 450 447 451 204 r9 r10 r11 60
+meshface 447 446 449 205 r9 r10 r11 60
+meshface 447 449 451 205 r9 r10 r11 60
+meshface 452 453 454 196 r9 r10 r11 60
+meshface 454 453 455 197 r9 r10 r11 60
+meshface 455 453 456 198 r9 r10 r11 60
+meshface 456 453 457 196 r9 r10 r11 60
+meshface 457 453 458 197 r9 r10 r11 60
+meshface 458 453 459 198 r9 r10 r11 60
+meshface 459 453 460 196 r9 r10 r11 60
+meshface 460 453 452 197 r9 r10 r11 60
+meshface 461 462 463 198 r9 r10 r11 60
+meshface 463 462 464 199 r9 r10 r11 60
+meshface 464 462 465 200 r9 r10 r11 60
+meshface 465 462 466 198 r9 r10 r11 60
+meshface 466 462 467 199 r9 r10 r11 60
+meshface 467 462 468 200 r9 r10 r11 60
+meshface 468 462 469 198 r9 r10 r11 60
+meshface 469 462 461 199 r9 r10 r11 60
+label next_actor
+load32 r12 100
+sub r12 2000000
+localget r0 11
+add r0 1
+localset 11 r0
+cmp r0 44
+jlt actor
+meshend
 halt

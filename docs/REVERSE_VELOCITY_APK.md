@@ -29,9 +29,21 @@ gradle -p reverse-os-android --no-daemon :app:assembleVelocityDebug
 ```
 
 Salida: `reverse-os-android/app/build/outputs/apk/velocity/debug/app-velocity-debug.apk`.
-El artefacto del workflow se llama `REVERSE-VELOCITY-0.1.0-Prueba.apk`.
+El artefacto del workflow se llama `REVERSE-VELOCITY-0.2.0-Carrera.apk`.
 
-## Primera APK verificada
+## Carrera 3D 0.2
+
+La versión `0.2.0-race3d` tiene versionCode 2 y conserva el paquete y certificado
+SHA-256 `061c28614fffecdc9a53a5661c4acf8c4d1173b631095aaaee8a98070abdf0d7`
+de la APK 0.1 verificada. El empaquetado rechaza una identidad diferente.
+El nuevo smoke comprueba aceleración tras la cuenta atrás, giro físico,
+pausa, cámaras, pintura, recuperación y grabación real de diez segundos.
+Los resultados de esta compilación deben consultarse en su workflow: la
+prueba histórica de abajo corresponde exclusivamente a la versión 0.1.
+
+[Arquitectura y límites de la carrera 3D](REVERSE_VELOCITY_RACE3D.md).
+
+## Histórico: primera APK 0.1 verificada
 
 La compilación del commit `8d43d2e1d7c33756f0df5e4f8e12529bdd5165d1`
 pasó [el workflow de APK](https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/41078636019).
