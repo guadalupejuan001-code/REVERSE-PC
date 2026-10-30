@@ -133,7 +133,8 @@ try{
   report.abi=adbText(['shell','getprop','ro.product.cpu.abi']).trim();
   adbText(['shell','am','force-stop',pkg]);
   adbText(['logcat','-c']);
-  const launch=adbText(['shell','am','start','-W','-n',component]);
+  const launch=adbText(['shell','am','start','-W','-a','android.intent.action.MAIN',
+    '-c','android.intent.category.LAUNCHER','-f','0x10200000','-n',component]);
   fs.writeFileSync(path.join(out,'launch.txt'),launch);
   check(!/Error:|Exception|does not exist/i.test(launch),'standalone Velocity launcher starts');
   rememberPid();

@@ -6,6 +6,7 @@
     <activity android:name="com.reversepc.os.BootActivity" tools:node="remove"/>
     <activity android:name="com.reversepc.os.HomeActivity" tools:node="remove"/>
     <activity android:name="com.reversepc.os.VelocityActivity"
+              android:launchMode="singleTask"
               android:exported="true" tools:replace="android:exported">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
