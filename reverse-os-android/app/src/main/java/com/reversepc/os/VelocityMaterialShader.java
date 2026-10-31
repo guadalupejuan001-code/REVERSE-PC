@@ -166,7 +166,7 @@ final class VelocityMaterialShader {
         "      color=vec4(filmic(result),1.0);return;",
         "    }",
         "    if(metal){",
-        "      float machined=(sin(texUV.y*5.0)*0.5+0.5)*0.05;",
+        "      float machined=(1.0-smoothstep(0.02,0.18,abs(fract(texUV.y*0.45)-0.5)))*0.05;",
         "      vec3 result=albedo*(0.60+0.22*lambert+machined);",
         "      result+=reflected*(0.18+0.46*F);",
         "      result+=vec3(0.90,0.94,1.0)*pow(nDotH,75.0)*0.32;",
