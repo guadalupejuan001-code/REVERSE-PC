@@ -4,6 +4,15 @@ import assert from 'node:assert/strict';
 import {sha} from './android_c13_avb.mjs';
 import {analyzeGuestConsole} from './android_guest_outcome.mjs';
 const KERNEL='f722bdd809bfd3485917a564b053b8a6d4938408734091f420c3297a8e3b20c8';
+// Linux v6.12 include/linux/sched.h: __state describes scheduling; exit_state
+// separately describes death. TASK_FREEZABLE (0x2000) and TASK_WAKEKILL (0x100)
+// can accompany ordinary interruptible/uninterruptible userspace sleeps.
+export function isLiveUserspaceTask(task){
+ if(!task||!Number.isSafeInteger(task.pid)||task.pid<=0||task.exit_state!==0||task.has_user_mm!==true||!Number.isInteger(task.state)||task.state<0||task.state>=0x10000)return false;
+ if(task.state===0)return true;
+ const sleep=task.state&~0x2100;
+ return sleep===1||sleep===2;
+}
 export function evaluateFrameworkEvidence({checkpointSha,report,result,host,kernel,frame,ppm}){
  assert.match(checkpointSha,/^[0-9a-f]{64}$/);
  assert.equal(report.checkpoint_sha256,checkpointSha);assert.equal(result.checkpoint_sha256,checkpointSha);
@@ -21,7 +30,7 @@ export function evaluateFrameworkEvidence({checkpointSha,report,result,host,kern
  const processEvidence=[];
  for(const name of ['init','zygote64','system_server','surfaceflinger']){
   const found=kernel.tasks.filter(t=>t.name===name&&(name!=='init'||t.pid===1));
-  const alive=found.length===1&&found[0].exit_state===0&&found[0].has_user_mm===true&&[0,1,2].includes(found[0].state);
+  const alive=found.length===1&&isLiveUserspaceTask(found[0]);
   need(alive,'live_process_missing:'+name);processEvidence.push({name,verified:alive,pid:alive?found[0].pid:null});
  }
  const p=kernel.live_boot_property,init=kernel.tasks.find(t=>t.pid===1);
