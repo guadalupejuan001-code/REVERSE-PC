@@ -1,0 +1,29 @@
+name: REgraphics source snapshot for native development
+on:
+  push:
+    branches: [feature/regraphics-tile-native-20261031]
+    paths: ['.github/workflows/regraphics-source-snapshot.yml']
+permissions: { contents: read }
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: 1f925786522aba91f72707ad1638a8edcdd31a8f
+          path: deps/mundo-x
+          persist-credentials: false
+      - run: |
+          tar czf /tmp/regraphics-xi-source.tgz \
+            --exclude=.git --exclude=build --exclude=results --exclude=docs/evidence \
+            src scripts tests examples CMakeLists.txt reverse-os-android \
+            deps/mundo-x/native/include deps/mundo-x/native/src deps/mundo-x/README.md \
+            .github/workflows
+      - uses: actions/upload-artifact@v4
+        with:
+          name: regraphics-xi-dev-source
+          path: /tmp/regraphics-xi-source.tgz
+          retention-days: 1
