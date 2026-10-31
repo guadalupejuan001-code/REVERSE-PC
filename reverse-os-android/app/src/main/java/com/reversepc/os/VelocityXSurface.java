@@ -147,6 +147,9 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                         if(gpu==null)gpu=new VelocityGpuPresenter(target.getHolder().getSurface(),game.gpuPalette());
                         VelocityXiEngine.GpuObservation observed=game.observe4kFrame(selectedCamera,selectedPaint);
                         if(!lifecycle.shouldRun())break;
+                        // The UI may have hidden the dedicated GL surface while
+                        // XI captured this frame. Do not swap into a destroyed EGL surface.
+                        if(!ultra4K)continue;
                         gpu.render(observed.frame);
                         width=gpu.width();height=gpu.height();state=observed.state;
                         presented=true;
@@ -159,6 +162,14 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                                 " camera="+selectedCamera+" paint="+selectedPaint);
                         }
                     }catch(Exception failure){
+                        // Surface teardown during an intentional GPU->CPU switch
+                        // is NOT a hardware failure and must not override EN PAUSA.
+                        if(!ultra4K){
+                            Log.i("ReverseVelocity","GLES3 surface released after user mode change");
+                            if(gpu!=null){gpu.close();gpu=null;}
+                            error="";
+                            continue;
+                        }
                         Log.w("ReverseVelocity","4K mode unavailable, returning to XI CPU renderer",failure);
                         ultra4K=false;
                         final SurfaceView target=gpuTarget;
