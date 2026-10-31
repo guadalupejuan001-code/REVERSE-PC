@@ -9,7 +9,6 @@ import android.os.SystemClock;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-import android.view.View;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Independent XI driving transactions and REgraphics observations. */
@@ -29,9 +28,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     private boolean fixedDetail;
     private volatile int physicsHz;
     private volatile boolean paused;
-    private volatile boolean ultra4K;
     private volatile boolean reverseGear;
-    private volatile SurfaceView gpuTarget;
     private volatile String error="";
 
     VelocityXSurface(Context context,VelocityXiEngine game,Hud hud){
@@ -59,16 +56,6 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     boolean togglePause(){paused=!paused;if(paused){physicsHz=0;controls(0,0,1,false);}return paused;}
     int cycleCamera(){cameraMode=(cameraMode+1)%3;return cameraMode;}
     int cyclePaint(){paintId=(paintId+1)%5;return paintId;}
-    void attachGpuSurface(SurfaceView view){
-        gpuTarget=view;
-    }
-    boolean is4KEnabled(){return ultra4K;}
-    boolean toggle4K(){
-        ultra4K=!ultra4K;
-        final SurfaceView target=gpuTarget;
-        if(target!=null)target.setVisibility(ultra4K?View.VISIBLE:View.GONE);
-        return ultra4K;
-    }
     boolean toggleSharpness(){
         synchronized(detailLock){
             fixedDetail=!fixedDetail;quality=fixedDetail?2:1;return fixedDetail;
@@ -137,8 +124,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
         Bitmap image=null;int[] pixels=null;
         int width=0,height=0,frames=0,fps=0,slowFrames=0;
         long lastHud=0,lastFps=SystemClock.elapsedRealtimeNanos();
-        boolean firstFramePosted=false,firstGpuFramePosted=false;
-        VelocityGpuPresenter gpu=null;
+        boolean firstFramePosted=false;
         try{
             while(lifecycle.shouldRun()){
                 long begin=SystemClock.elapsedRealtimeNanos();
@@ -148,53 +134,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 int selectedCamera=cameraMode,selectedPaint=paintId;
                 VelocityXiEngine.Snapshot state;
                 boolean presented=false;
-                boolean requestedGPU=ultra4K;
-                if(requestedGPU){
-                    try{
-                        SurfaceView target=gpuTarget;
-                        if(target==null||!target.getHolder().getSurface().isValid()){
-                            Thread.sleep(30);continue;
-                        }
-                        if(gpu==null)gpu=new VelocityGpuPresenter(target.getHolder().getSurface(),game.gpuPalette());
-                        VelocityXiEngine.GpuObservation observed=game.observe4kFrame(selectedCamera,selectedPaint);
-                        if(!lifecycle.shouldRun())break;
-                        // The UI may have hidden the dedicated GL surface while
-                        // XI captured this frame. Do not swap into a destroyed EGL surface.
-                        if(!ultra4K)continue;
-                        gpu.render(observed.frame);
-                        width=gpu.width();height=gpu.height();state=observed.state;
-                        presented=true;
-                        if(!firstGpuFramePosted){
-                            firstGpuFramePosted=true;
-                            Log.i("ReverseVelocity","GPU_FRAME_READY source=3840x2160"+
-                                " internal="+width+"x"+height+" native4K="+gpu.isNative4K()+
-                                " faces="+observed.frame.faces+
-                                " speed="+state.speedKmh()+" ticks="+state.ticks+
-                                " camera="+selectedCamera+" paint="+selectedPaint);
-                        }
-                    }catch(Exception failure){
-                        // Surface teardown during an intentional GPU->CPU switch
-                        // is NOT a hardware failure and must not override EN PAUSA.
-                        if(!ultra4K){
-                            Log.i("ReverseVelocity","GLES3 surface released after user mode change");
-                            if(gpu!=null){gpu.close();gpu=null;}
-                            error="";
-                            continue;
-                        }
-                        Log.w("ReverseVelocity","4K mode unavailable, returning to XI CPU renderer",failure);
-                        ultra4K=false;
-                        final SurfaceView target=gpuTarget;
-                        if(target!=null)target.post(()->target.setVisibility(View.GONE));
-                        if(gpu!=null){gpu.close();gpu=null;}
-                        error="Modo 4K no disponible en este dispositivo";
-                        width=0;height=0;continue;
-                    }
-                }else{
-                    if(gpu!=null){
-                        gpu.close();gpu=null;
-                        if(image!=null){image.recycle();image=null;}
-                        pixels=null;width=0;height=0;
-                    }
+                // REgraphics rasteriza triángulos XI y emite XFS1. Android solo presenta píxeles.
                     VelocityXiEngine.Observation observation=game.observeFrame(stride,selectedCamera,selectedPaint);
                     RegraphicsFrame frame=observation.frame;
                     if(!lifecycle.shouldRun())break;
@@ -220,8 +160,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     }finally{if(canvas!=null)getHolder().unlockCanvasAndPost(canvas);}
                     state=observation.state;
                     presented=canvas!=null;
-                }
-                if(presented&&!requestedGPU&&!firstFramePosted){
+                if(presented&&!firstFramePosted){
                     firstFramePosted=true;
                     Log.i("ReverseVelocity","FRAME_READY "+width+"x"+height+
                         " speed="+state.speedKmh()+" ticks="+state.ticks+
@@ -236,7 +175,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     Log.i("ReverseVelocity","FRAME_STATS frames="+frames+" elapsedNanos="+elapsed+
                         " fps="+fps+" width="+width+" height="+height+" ticks="+state.ticks+
                         " physicsHz="+physicsHz+" fixedDetail="+selectedFixed+" paused="+paused+
-                        " backend="+(requestedGPU?"GLES3":"XI_CPU"));
+                        " backend=REgraphics_XI_CPU");
                     frames=0;lastFps=now;
                 }
                 if(now-lastHud>=100_000_000L){
@@ -256,7 +195,6 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
         }
         catch(Throwable failure){if(lifecycle.shouldRun())failed(failure);}
         finally{
-            if(gpu!=null)gpu.close();
             if(image!=null&&!image.isRecycled())image.recycle();
         }
     }
