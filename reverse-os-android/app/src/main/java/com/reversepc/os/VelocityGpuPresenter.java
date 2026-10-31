@@ -25,52 +25,8 @@ import java.nio.ByteOrder;
 final class VelocityGpuPresenter implements AutoCloseable {
     static final int TARGET_W=3840,TARGET_H=2160;
     private static final int EGL_ES3_BIT=0x0040,VERTEX_BYTES=40;
-    private static final float LOG_FAR=19.931570f;
-    private static final String VERTEX_SHADER =
-        "#version 300 es\n"+
-        "precision highp float;\n"+
-        "layout(location=0) in vec3 position;\n"+
-        "layout(location=1) in vec2 uv;\n"+
-        "layout(location=2) in float light;\n"+
-        "layout(location=3) in vec2 baseCount;\n"+
-        "layout(location=4) in vec2 tileStrength;\n"+
-        "uniform vec2 sourceSize;\n"+
-        "out highp vec2 texUV;\n"+
-        "out highp float shade;\n"+
-        "flat out ivec2 material;\n"+
-        "flat out ivec2 textureParams;\n"+
-        "void main(){\n"+
-        "  float z=max(position.z,1.0);\n"+
-        "  vec2 ndc=vec2(2.0*position.x/sourceSize.x-1.0,\n"+
-        "                1.0-2.0*position.y/sourceSize.y);\n"+
-        "  float depth=2.0*(log2(1.0+z)/"+LOG_FAR+")-1.0;\n"+
-        "  gl_Position=vec4(ndc*z,depth*z,z);\n"+
-        "  texUV=uv;shade=light;\n"+
-        "  material=ivec2(baseCount+0.5);\n"+
-        "  textureParams=ivec2(tileStrength+0.5);\n"+
-        "}\n";
-    private static final String FRAGMENT_SHADER =
-        "#version 300 es\n"+
-        "precision highp float;\n"+
-        "precision highp int;\n"+
-        "in highp vec2 texUV;\n"+
-        "in highp float shade;\n"+
-        "flat in ivec2 material;\n"+
-        "flat in ivec2 textureParams;\n"+
-        "uniform highp sampler2D tileAtlas;\n"+
-        "uniform highp sampler2D palette;\n"+
-        "out vec4 color;\n"+
-        "void main(){\n"+
-        "  float intensity=clamp(shade*255.0,0.0,255.0);\n"+
-        "  if(textureParams.y>0){\n"+
-        "    vec2 t=mod(floor(texUV),16.0);\n"+
-        "    int y=textureParams.x*16+int(t.y);\n"+
-        "    float nibble=texelFetch(tileAtlas,ivec2(int(t.x),y),0).r*255.0;\n"+
-        "    intensity=clamp(intensity+(floor(nibble+0.5)-8.0)*float(textureParams.y),0.0,255.0);\n"+
-        "  }\n"+
-        "  int index=material.x+int(floor(intensity*float(material.y-1)/255.0+0.5));\n"+
-        "  color=texelFetch(palette,ivec2(clamp(index,0,255),0),0);\n"+
-        "}\n";
+    private static final String VERTEX_SHADER=VelocityMaterialShader.VERTEX;
+    private static final String FRAGMENT_SHADER=VelocityMaterialShader.FRAGMENT;
 
     private EGLDisplay display=EGL14.EGL_NO_DISPLAY;
     private EGLContext context=EGL14.EGL_NO_CONTEXT;
@@ -78,6 +34,8 @@ final class VelocityGpuPresenter implements AutoCloseable {
     private int program,vbo,vao,tileTexture,paletteTexture,framebuffer,colorTexture,depthBuffer;
     private int internalW,internalH;
     private int[] palette;
+    private boolean textureAtlasUploaded;
+    private final byte[] cachedTileAtlas=new byte[2048];
     private boolean closed;
     private final int[] tmp=new int[1];
 
@@ -148,6 +106,8 @@ final class VelocityGpuPresenter implements AutoCloseable {
             if(size[0]<=maxTexture&&size[1]<=maxRenderbuffer&&allocateTarget(size[0],size[1]))break;
         }
         if(framebuffer==0)throw new IllegalStateException("Unable to allocate a hardware REgraphics FBO");
+        GLES30.glUseProgram(program);
+        GLES30.glUniform2f(GLES30.glGetUniformLocation(program,"renderSize"),internalW,internalH);
         Log.i("ReverseVelocity","GPU_INITIALIZED source=3840x2160 internal="+internalW+"x"+internalH+
             " gles="+version+" maxTexture="+maxTexture+" maxRenderbuffer="+maxRenderbuffer);
     }
@@ -191,11 +151,24 @@ final class VelocityGpuPresenter implements AutoCloseable {
         GLES30.glUseProgram(program);
         GLES30.glActiveTexture(GLES30.GL_TEXTURE0);
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D,tileTexture);
-        setNearest();
-        GLES30.glPixelStorei(GLES30.GL_UNPACK_ALIGNMENT,1);
+        // Filter the original XI texels rather than enlarging 16x16 blocks.
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D,GLES30.GL_TEXTURE_MIN_FILTER,GLES30.GL_LINEAR);
+        GLES30.glTexParameteri(GLES30.GL_TEXTURE_2D,GLES30.GL_TEXTURE_MAG_FILTER,GLES30.GL_LINEAR);
+        boolean changed=!textureAtlasUploaded;
         frame.tiles.position(0);
-        GLES30.glTexImage2D(GLES30.GL_TEXTURE_2D,0,GLES30.GL_R8,16,128,0,
-            GLES30.GL_RED,GLES30.GL_UNSIGNED_BYTE,frame.tiles);
+        for(int i=0;i<cachedTileAtlas.length;i++){
+            byte value=frame.tiles.get(i);
+            if(value!=cachedTileAtlas[i])changed=true;
+        }
+        if(changed){
+            GLES30.glPixelStorei(GLES30.GL_UNPACK_ALIGNMENT,1);
+            frame.tiles.position(0);
+            GLES30.glTexImage2D(GLES30.GL_TEXTURE_2D,0,GLES30.GL_R8,16,128,0,
+                GLES30.GL_RED,GLES30.GL_UNSIGNED_BYTE,frame.tiles);
+            frame.tiles.position(0);
+            frame.tiles.get(cachedTileAtlas);
+            textureAtlasUploaded=true;
+        }
         GLES30.glActiveTexture(GLES30.GL_TEXTURE1);
         GLES30.glBindTexture(GLES30.GL_TEXTURE_2D,paletteTexture);
         GLES30.glBindVertexArray(vao);
