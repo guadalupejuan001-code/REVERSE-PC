@@ -1,6 +1,6 @@
 // Evidence-policy fixtures only. These bytes are not an Android boot or screen.
 import test from 'node:test';import assert from 'node:assert/strict';
-import {evaluateFrameworkEvidence as evaluate} from '../tools/android_framework_evidence.mjs';
+import {evaluateFrameworkEvidence as evaluate,isLiveUserspaceTask} from '../tools/android_framework_evidence.mjs';
 import {sha} from '../tools/android_c13_avb.mjs';
 function fixture(){
  const checkpointSha='a'.repeat(64),tasks=['init','zygote64','system_server','surfaceflinger'].map((name,i)=>({name,pid:i+1,task:'0xffff00000000'+(i+1),state:1,exit_state:0,has_user_mm:true}));
@@ -12,6 +12,17 @@ function fixture(){
 }
 test('combining valid evidence requests visual review without asserting display content',()=>{const r=evaluate(fixture());assert.equal(r.framework_runtime_verified,true);assert.equal(r.ready_for_visual_review,true);assert.equal(r.android_display_content_verified,false);});
 test('framework evidence and absent scanout stay distinct',()=>{const x=fixture();x.frame.status='no_scanout';delete x.ppm;const r=evaluate(x);assert.equal(r.framework_runtime_verified,true);assert.equal(r.scanout_exported,false);assert.equal(r.ready_for_visual_review,false);});
+for(const state of [0,1,2,0x101,0x102,0x2001,0x2002,0x2101,0x2102])test('live userspace scheduling state remains eligible: '+state,()=>{
+ const x=fixture();for(const task of x.kernel.tasks)task.state=state;
+ assert.equal(evaluate(x).framework_runtime_verified,true);
+});
+for(const state of [-1,1.5,3,4,8,16,32,64,128,0x100,0x200,0x400,0x800,0x1000,0x2000,0x2003,0x2004,0x4000,0x8000,0x10000,0xffffffff])test('dead, stopped, frozen, unknown or malformed task state is ineligible: '+state,()=>{
+ const x=fixture();x.kernel.tasks[2].state=state;assert.equal(evaluate(x).framework_runtime_verified,false);
+});
+test('a freezable sleep never hides a zombie, kernel thread or invalid PID',()=>{
+ const task={pid:396,state:8193,exit_state:0,has_user_mm:true};assert.equal(isLiveUserspaceTask(task),true);
+ for(const mutation of [{exit_state:32},{exit_state:16},{has_user_mm:false},{pid:0},{pid:-1},{pid:NaN}])assert.equal(isLiveUserspaceTask({...task,...mutation}),false);
+});
 const unsafe=[
  ['failed native',x=>x.host.status='process_failed'],['watchdog',x=>x.host.trigger='host_watchdog_wall'],['forced kill',x=>x.host.forced_kill=true],['host mutation',x=>x.host.checkpoint_bytes_modified_by_supervisor=true],['unaccepted progress',x=>x.result.execution_progress_accepted=false],['late mount failure',x=>x.report.console="init: Command 'mount_all --late' action=late-fs (init.rc:73) took 1ms and failed: queue_fs_event() failed: Invalid code: -1"],['panic',x=>x.report.console='Kernel panic - not syncing: fixture'],['reboot',x=>x.report.console='reboot: Restarting system'],['running observation',x=>x.report.stop_reason='running'],['ISA error',x=>x.report.error='unsupported'],['halted',x=>x.report.guest.halted=true],['waiting',x=>x.report.guest.waiting=true],
  ['SELinux permissive',x=>x.kernel.live_kernel_security.selinux_enforcing=false],['policy absent',x=>x.kernel.live_kernel_security.policy_present=false],['security layout unverified',x=>x.kernel.live_kernel_security.btf_layout_verified=false],['security read failed',x=>x.kernel.live_kernel_security.read_error='unmapped'],
