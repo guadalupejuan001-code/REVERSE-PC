@@ -1,7 +1,7 @@
 name: REVERSE VELOCITY installable APK
 on:
   push:
-    branches: [feature/velocity-regraphics-20261030, feature/velocity-cockpit-nature-20261031]
+    branches: [feature/velocity-regraphics-20261030, feature/velocity-cockpit-nature-20261031, feature/velocity-xi-renderer-only-20261031]
     paths:
       - '.github/workflows/velocity-apk.yml'
       - 'reverse-os-android/app/build.gradle'
@@ -16,6 +16,7 @@ on:
       - 'reverse-os-android/tests/velocity-apk-smoke.cjs'
       - 'reverse-os-android/tests/velocity-apk-package.cjs'
       - 'scripts/author-velocity-scene.cjs'
+      - 'scripts/check-velocity-native-only.cjs'
       - 'scripts/velocity-landscape-post.cjs'
       - 'scripts/emit-velocity-car-scene.cjs'
       - 'scripts/velocity-car-mesh.cjs'
@@ -69,6 +70,8 @@ jobs:
             'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' \
             'cmake;3.22.1' platform-tools emulator \
             'system-images;android-35;default;x86_64' > build/velocity-apk/sdk.log
+      - name: Enforce only REgraphics/XI software rasterization
+        run: node scripts/check-velocity-native-only.cjs
       - name: Confirm RV-01 model and regenerated XI assets
         run: |
           set -euo pipefail
@@ -85,16 +88,16 @@ jobs:
               exit 1
             }
           cp reverse-os-android/app/build/outputs/apk/velocity/debug/app-velocity-debug.apk \
-            dist/REVERSE-VELOCITY-0.9.0-Materiales-XI.apk
+            dist/REVERSE-VELOCITY-1.0.0-REgraphics-XI.apk
       - uses: actions/cache/save@v4
         if: steps.velocity-signing.outputs.cache-hit != 'true'
         with:
           path: ${{ env.REVERSE_SIGNING_KEYSTORE }}
           key: reverse-velocity-development-signing-v1
-      - name: Verify APK identity, signature, alignment and exact shader assets
+      - name: Verify native-XI APK identity, signature, alignment and source assets
         run: |
           set -euo pipefail
-          APK=dist/REVERSE-VELOCITY-0.9.0-Materiales-XI.apk
+          APK=dist/REVERSE-VELOCITY-1.0.0-REgraphics-XI.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" \
             > build/velocity-apk/signature.txt
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 4 "$APK" \
@@ -136,14 +139,14 @@ jobs:
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
           adb shell input keyevent 82
-          adb install -r dist/REVERSE-VELOCITY-0.9.0-Materiales-XI.apk \
+          adb install -r dist/REVERSE-VELOCITY-1.0.0-REgraphics-XI.apk \
             > build/velocity-apk/install.txt
           node reverse-os-android/tests/velocity-apk-smoke.cjs adb build/velocity-apk/smoke
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: reverse-velocity-apk
-          path: dist/REVERSE-VELOCITY-0.9.0-Materiales-XI.apk
+          path: dist/REVERSE-VELOCITY-1.0.0-REgraphics-XI.apk
           if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         if: always()
