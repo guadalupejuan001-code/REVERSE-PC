@@ -72,6 +72,7 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/velocity-car-contract.cjs
+          node scripts/velocity-textures-contract.cjs
           node scripts/author-velocity-scene.cjs
           git diff --exit-code -- reverse-os-android/app/src/main/assets/velocity/render.xi reverse-os-android/app/src/main/assets/velocity/palette.txt
       - name: Build the actual standalone game APK for ARM64 and x86_64

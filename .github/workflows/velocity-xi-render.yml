@@ -53,6 +53,7 @@ jobs:
         run: |
           set -euo pipefail
           node scripts/velocity-car-contract.cjs
+          node scripts/velocity-textures-contract.cjs
           node scripts/author-velocity-scene.cjs
           git diff --exit-code -- reverse-os-android/app/src/main/assets/velocity/render.xi reverse-os-android/app/src/main/assets/velocity/palette.txt
       - name: Build real XI interpreter with unchanged verified Ether overlays
@@ -77,6 +78,9 @@ jobs:
           g++ -std=c++17 -O2 -fsanitize=undefined -fno-sanitize-recover=all \
             tests/xi_mesh_raster.cpp -o build/velocity/xi-mesh-test
           build/velocity/xi-mesh-test
+          g++ -std=c++17 -O2 -fsanitize=undefined -fno-sanitize-recover=all \
+            tests/xi_texture_raster.cpp -o build/velocity/xi-texture-test
+          build/velocity/xi-texture-test
       - name: Execute XI world, XI physics and XI renderer
         run: |
           set -euo pipefail
