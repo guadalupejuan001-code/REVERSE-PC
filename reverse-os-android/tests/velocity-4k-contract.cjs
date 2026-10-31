@@ -36,7 +36,7 @@ try {
  const tailIdle=lampBases(first);
  const brakeCommand=path.join(tmp,'press-brake.xi');
  const brakeState=path.join(tmp,'brake-state.rvp');
- fs.writeFileSync(brakeCommand,header+'store8 129 1\\nhalt\\n');
+ fs.writeFileSync(brakeCommand,header+'store8 129 1\nhalt\n');
  run('run',brakeCommand,ready,brakeState);
  const underBrake=run('run',script,brakeState,path.join(tmp,'braking-frame.rvp'));
  const tailBraking=lampBases(underBrake);
