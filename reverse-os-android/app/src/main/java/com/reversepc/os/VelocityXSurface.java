@@ -146,7 +146,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                                 " speed="+state.speedKmh()+" ticks="+state.ticks+
                                 " camera="+selectedCamera+" paint="+selectedPaint);
                         }
-                    }catch(RuntimeException failure){
+                    }catch(Exception failure){
                         Log.w("ReverseVelocity","4K mode unavailable, returning to XI CPU renderer",failure);
                         ultra4K=false;
                         if(gpu!=null){gpu.close();gpu=null;}
