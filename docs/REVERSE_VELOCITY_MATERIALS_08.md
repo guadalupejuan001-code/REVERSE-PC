@@ -9,7 +9,7 @@ superficie 4K, reflejos aproximados de cielo y luces de estudio.
 El shader añade efecto de Fresnel al cristal y a la pintura, reflejo de
 capa transparente sobre carrocería, brillo metálico en las llantas,
 compuesto aerodinámico mate y caucho menos reflectante. La carretera
-usa dos escalas de grano procedente del mismo tile XI; el cielo recibe
+usa un único muestreo filtrado de grano procedente del tile XI; el cielo recibe
 una transición de color según la posición del fotograma. El color
 final sale en RGB y puede variar entre los índices originales XI.
 

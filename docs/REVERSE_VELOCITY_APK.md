@@ -36,7 +36,7 @@ La versión `0.8.0-realismo-xi` mantiene el motor XI, el formato
 XFG4 de la geometría 4K y la vía CPU sin alterar el circuito ni la física.
 El shader REgraphics GLES3 usa normales derivadas de la geometría, una
 aproximación de Fresnel para el cristal, reflejo del cielo sobre la pintura,
-materiales diferenciados para metal, aero y goma, asfalto de dos escalas,
+materiales diferenciados para metal, aero y goma, asfalto con grano filtrado,
 un gradiente atmosférico y muestreo bilineal de los texeles XI.
 El color final de la GPU admite RGB completo además de la paleta XI.
 Esto **no es** PBR completo ni iluminación global fotorrealista.

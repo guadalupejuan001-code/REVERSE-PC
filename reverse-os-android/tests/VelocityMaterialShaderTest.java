@@ -8,7 +8,7 @@ public final class VelocityMaterialShaderTest {
   require(frag.contains("dFdx(viewPoint)")&&frag.contains("dFdy(viewPoint)"),"surface normals from real geometry");
   require(frag.contains("pow(1.0-cosTheta,5.0)"),"Fresnel grazing angle reflection");
   require(frag.contains("base==184")&&frag.contains("base==212")&&frag.contains("base==228"),"individual material categories");
-  require(frag.contains("base==40")&&frag.contains("pattern(texUV*5.3,5)"),"fine XI-asphalt grain");
+  require(frag.contains("base==40")&&frag.contains("float largeGrain=texel/15.0"),"filtered XI-asphalt grain");
   require(frag.contains("renderSize")&&frag.contains("base==0||base==1"),"atmospheric sky gradient");
   require(frag.contains("texture(tileAtlas")&&frag.contains("clamp(result,0.0,1.0)"),"filtered tiles and full-color output");
   require(!frag.contains("gl_FragColor"),"modern GLSL output");
