@@ -29,7 +29,25 @@ gradle -p reverse-os-android --no-daemon :app:assembleVelocityDebug
 ```
 
 Salida: `reverse-os-android/app/build/outputs/apk/velocity/debug/app-velocity-debug.apk`.
-El artefacto actual del workflow se llama `REVERSE-VELOCITY-0.6.0-XI-Texturas.apk`.
+El artefacto actual del workflow se llama `REVERSE-VELOCITY-0.7.0-GLES3-4K.apk`.
+
+## REgraphics 0.7 — GPU nativa 4K (experimental)
+La edición Android `0.7.0-4k-gles3` incrementa `versionCode` a 7 y
+conserva el paquete `com.reversepc.velocity` y la firma de desarrollo.
+
+La interfaz añade el control **4K**, independiente de Auto/Alta. El mismo
+generador de XI crea `render4k.xi` con resolución de proyección
+**3840 × 2160** y revisión de geometría XFG4. XI conserva la cámara,
+las texturas, la iluminación y todas las reglas de física. REgraphics
+usa GLES3 para materializar los triángulos en un framebuffer real;
+la CPU original queda como vía de recuperación.
+
+La resolución interna efectiva, el número de triángulos y los FPS se
+registran en la telemetría. Un equipo incompatible con 4K puede usar
+1080p/720p o regresar a CPU. No se supone rendimiento 4K sostenido en
+Galaxy A16 sin medirlo.
+
+[Arquitectura y limitaciones](REVERSE_VELOCITY_GLES3_4K.md).
 
 ## RV-01 0.6 — texturas reales creadas con XI
 
