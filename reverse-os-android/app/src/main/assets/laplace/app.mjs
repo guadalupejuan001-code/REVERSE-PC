@@ -193,7 +193,7 @@ async function updateBTC(){
     bitcoinCandles(300),bitcoinCandles(3600),bitcoinCandles(86400),
     pub('ticker'),worldForFusion()
   ]);
-  need(tasks[0].status==='fulfilled','No se recibió la serie BTC de 5 minutos');
+  need(tasks[0].status==='fulfilled','Serie BTC 5 minutos: '+String(tasks[0].reason?.message??'sin datos'));
   need(tasks[3].status==='fulfilled','No se recibió una cotización BTC válida');
   const [raw,hourly,daily,response,world]=tasks.map(r=>r.status==='fulfilled'?r.value:null);
   const q=response.value;
