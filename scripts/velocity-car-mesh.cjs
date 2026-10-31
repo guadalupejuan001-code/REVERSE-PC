@@ -5,7 +5,7 @@
 const DETAILS={high:{wheel:16,profile:[-1,-.82,-.45,0,.45,.82,1],roof:5},
   medium:{wheel:8,profile:[-1,0,1],roof:3},
   far:{wheel:4,profile:[-1,0,1],roof:3}};
-const MATERIALS=Object.freeze(['paint','glass','tire','rim','lampRed','lampWhite','grille','shadow']);
+const MATERIALS=Object.freeze(['paint','glass','aero','tire','rim','lampRed','lampWhite','grille','shadow']);
 const WHEELS=Object.freeze([{side:-1,z:-142},{side:1,z:-142},{side:-1,z:138},{side:1,z:138}]);
 const BODY=[[-223,85,69,74,72],[-213,89,80,83,80],[-207,91,76,81,77],[-181,95,78,86,79],
   [-142,97,78,90,80],[-103,92,77,84,77],[-72,87,76,80,75],
@@ -77,7 +77,7 @@ function buildCarMesh(detail='high'){
   const roofFractions=cfg.roof===5?[-1,-.5,0,.5,1]:[-1,0,1];
   const canopy=roof.map(([z,w,c,e])=>roofFractions.map(f=>[w*f,c+(e-c)*f*f,z]));
   for(let i=0;i<canopy.length-1;i++){
-    const z=(roof[i][0]+roof[i+1][0])/2,glass=z< -65||z>48,m=glass?'glass':'paint',g=glass?(z<0?'rearGlass':'windscreen'):'roof';
+    const z=(roof[i][0]+roof[i+1][0])/2,m='glass',g='canopy';
     for(let j=0;j<roofFractions.length-1;j++)quad(canopy[i][j],canopy[i+1][j],canopy[i+1][j+1],canopy[i][j+1],m,g,[0,1,z<0?-0.4:0.4]);
   }
   for(const side of [-1,1]){
@@ -119,8 +119,7 @@ function buildCarMesh(detail='high'){
   // Light signatures follow the fascia curvature. No logos or copied marque cues.
   for(const side of [-1,1]){
     const p=(x,y,z)=>[side*x,y,z];
-    quad(p(30,49,225),p(64,49,225),p(68,54,220),p(32,54,222),'lampWhite','headlights',[0,.3,1]);
-    quad(p(20,61,-225),p(76,61,-224),p(78,66,-221),p(20,66,-223),'lampRed','taillights',[0,.2,-1]);
+    // The two original light blades are authored across both sides, below.
     if(detail!=='far'){
       // Side intake, short mirror stalk and compact aerodynamic mirror housing.
       if(detail==='medium')triangle(p(94,36,-91),p(91,60,-90),p(88,57,-55),'grille','sideVents',[side,0,0]);
@@ -132,21 +131,27 @@ function buildCarMesh(detail='high'){
       }
     }
   }
+  // RV-01: continuous full-width LED geometry and sculpted rear aero fascia.
+  quad([-80,50,226],[80,50,226],[80,53,225],[-80,53,225],'lampWhite','headlights',[0,0,1]);
+  quad([-81,63,-227],[81,63,-227],[81,67,-226],[-81,67,-226],'lampRed','taillights',[0,0,-1]);
+  quad([-84,39,-227],[84,39,-227],[80,57,-225],[-80,57,-225],'aero','rearFascia',[0,0,-1]);
   if(detail!=='far'){
     quad([-51,24,225],[51,24,225],[57,43,225],[-57,43,225],'grille','frontGrille',[0,0,1]);
     quad([-73,15,-225],[73,15,-225],[67,39,-225],[-67,39,-225],'grille','diffuser',[0,-.2,-1]);
     if(detail==='high'){
       for(const x of [-51,-17,17,51])quad([x-1,15,-225],[x+1,15,-225],[x+1,37,-220],[x-1,37,-220],'shadow','diffuser',[0,0,-1]);
-      for(const x of [-61,61]){
-        const outer=Array.from({length:6},(_,k)=>[x+7*Math.cos(k*Math.PI/3),27+5*Math.sin(k*Math.PI/3),-225]);
-        const inner=Array.from({length:6},(_,k)=>[x+5*Math.cos(k*Math.PI/3),27+3*Math.sin(k*Math.PI/3),-225]);
-        for(let k=0;k<6;k++){
-          const j=(k+1)%6;quad(outer[k],outer[j],inner[j],inner[k],'rim','exhaust',[0,0,-1]);
-          triangle([x,27,-224],inner[k],inner[j],'grille','exhaust',[0,0,-1]);
-        }
-      }
+      // Original electric coupe: no rear exhaust rings or logos.
       // The ducktail is a closed raised station of the body loft itself.
       for(const side of [-1,1])quad([side*51,73,108],[side*64,76,112],[side*66,72,158],[side*57,70,157],'grille','hoodVents',[0,1,0]);
+    }
+  }
+  // Dark side skirts match the physical width profile of the 3D body.
+  if(detail!=='far'){
+    const sillStations=detail==='high'?[-103,-72,0,70,99]:[-103,0,99];
+    for(const side of [-1,1])for(let i=0;i<sillStations.length-1;i++){
+      const a=sillStations[i],b=sillStations[i+1];
+      const xa=side*(section(a)[1]+1),xb=side*(section(b)[1]+1);
+      quad([xa,29,a],[xb,29,b],[xb,43,b],[xa,43,a],'aero','sideSills',[side,0,0]);
     }
   }
   // Corner normals preserve glazing/rubber/metal seams while smoothing each
