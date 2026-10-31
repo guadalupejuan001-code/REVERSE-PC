@@ -6,6 +6,14 @@ class MachineMeshRaster {
   static constexpr std::size_t max_triangles = 4096;
   static constexpr std::size_t max_vertices = 4096;
   static constexpr unsigned max_textures = 8, texture_side = 16;
+  // Revision 5: complete XI-owned pixels. It is not XFG4 GPU geometry.
+  // Screens up to 3840x2160 are supported by strip rasterization. The older
+  // revision 2 and geometry-capture revision 4 remain byte-compatible.
+  static constexpr std::uint16_t native_width = 3840, native_height = 2160;
+  static constexpr unsigned native_rows_per_strip = 32;
+  static constexpr std::size_t native_max_triangles = 32768;
+  static constexpr std::size_t native_max_vertices = 16384;
+  static constexpr unsigned native_max_textures = 16;
   static constexpr std::uint16_t gpu_width = 3840, gpu_height = 2160;
   static constexpr std::size_t gpu_max_faces = max_triangles*2;
   static constexpr std::uint64_t max_pixel_tests = 8000000;
@@ -14,6 +22,14 @@ class MachineMeshRaster {
   static constexpr unsigned max_foreground_runs = max_width;
   struct Vertex { std::int64_t x, y, z; };
   struct Texcoord { std::int64_t u, v; };
+  struct DeferredFace {
+    std::array<Vertex,3> p;
+    std::array<Texcoord,3> uv;
+    std::array<std::uint16_t,3> shades;
+    std::int64_t material;
+    unsigned count,texture,strength;
+    bool gradient,textured;
+  };
   struct GpuFace {
     std::array<Vertex,3> p;
     std::array<Texcoord,3> uv;
@@ -24,25 +40,32 @@ class MachineMeshRaster {
   void begin(std::int64_t width, std::int64_t height,
              std::int64_t revision, std::int64_t background) {
     const bool capture=revision==4;
+    const bool native=revision==5;
     if (width < 1 || height < 1 ||
         (capture ? (width!=gpu_width || height!=gpu_height)
-                 : (width>max_width || height>max_height)) ||
+          : native ? (width>native_width || height>native_height)
+                   : (width>max_width || height>max_height)) ||
         revision < 0 || revision > std::numeric_limits<std::uint32_t>::max() ||
         background < 0 || background > 255)
       throw std::out_of_range("invalid XI mesh dimensions, revision or background");
-    gpu_capture_=capture;gpu_faces_.clear();
+    gpu_capture_=capture; native_tiled_=native;gpu_faces_.clear();
+    deferred_faces_.clear();tile_collecting_=native;tile_row_start_=0;
+    tile_row_end_=static_cast<unsigned>(height);
     width_ = static_cast<std::uint16_t>(width);
     height_ = static_cast<std::uint16_t>(height);
     revision_ = static_cast<std::uint32_t>(revision);
     background_ = static_cast<std::uint8_t>(background);
     triangles_ = 0; pixel_tests_ = 0;
-    materials_.assign(gpu_capture_?1:std::size_t(width_)*height_,background_);
+    // Deferred 4K: never allocate an 8.3 Mpx 64-bit depth buffer. Only one
+    // 32-row scan strip plus the final compact XFB5 image is materialized.
+    materials_.assign(gpu_capture_||native?1:std::size_t(width_)*height_,background_);
     inverse_depth_.assign(materials_.size(),0);
-    vertices_.assign(max_vertices,Vertex{0,0,0});
-    vertex_ready_.assign(max_vertices,0);
-    vertex_shades_.assign(max_vertices,0);
-    texcoords_.assign(max_vertices,Texcoord{0,0});
-    texcoord_ready_.assign(max_vertices,0);
+    const auto capacity=native?native_max_vertices:max_vertices;
+    vertices_.assign(capacity,Vertex{0,0,0});
+    vertex_ready_.assign(capacity,0);
+    vertex_shades_.assign(capacity,0);
+    texcoords_.assign(capacity,Texcoord{0,0});
+    texcoord_ready_.assign(capacity,0);
     texture_row_mask_.fill(0);
   }
 
@@ -74,7 +97,7 @@ class MachineMeshRaster {
   // shader/game-state authority. Rows are literal lowercase hex characters.
   void texture_row(std::int64_t tile,std::int64_t row,const std::string& hex) {
     if(materials_.empty())throw std::invalid_argument("meshtexrow without meshbegin");
-    if(tile<0 || tile>=max_textures || row<0 || row>=texture_side ||
+    if(tile<0 || tile>=(native_tiled_?native_max_textures:max_textures) || row<0 || row>=texture_side ||
        hex.size()!=texture_side)
       throw std::out_of_range("invalid XI 16x16 texture tile/row");
     const auto t=static_cast<unsigned>(tile),y=static_cast<unsigned>(row);
@@ -116,7 +139,7 @@ class MachineMeshRaster {
     validate_material(base);
     if(count<2 || count>256 || base+count>256)
       throw std::out_of_range("XI textured ramp outside 8-bit palette");
-    if(tile<0 || tile>=max_textures || strength<1 || strength>16)
+    if(tile<0 || tile>=(native_tiled_?native_max_textures:max_textures) || strength<1 || strength>16)
       throw std::out_of_range("XI texture tile or strength out of bounds");
     if(texture_row_mask_[static_cast<unsigned>(tile)]!=0xffffU)
       throw std::invalid_argument("XI texture tile rows incomplete");
@@ -195,7 +218,7 @@ class MachineMeshRaster {
                       unsigned ramp_count,std::array<Texcoord,3> coords={},
                       unsigned texture_id=0,unsigned texture_strength=0) {
     validate_material(material);
-    if(focal<1 || focal>(gpu_capture_?8192:2048) || center_x < -32768 || center_x>32768 ||
+    if(focal<1 || focal>((gpu_capture_||native_tiled_)?8192:2048) || center_x < -32768 || center_x>32768 ||
        center_y < -32768 || center_y>32768 || near_plane<1 || near_plane>10000)
       throw std::out_of_range("invalid XI mesh camera projection");
     for(const Vertex v:{a,b,c})
@@ -271,9 +294,9 @@ class MachineMeshRaster {
   }
 
  private:
-  static void validate_vertex_id(std::int64_t id) {
-    if(id<0 || id>=static_cast<std::int64_t>(max_vertices))
-      throw std::out_of_range("mesh vertex id must be in 0..4095");
+  void validate_vertex_id(std::int64_t id) const {
+    if(id<0 || id>=static_cast<std::int64_t>(native_tiled_?native_max_vertices:max_vertices))
+      throw std::out_of_range("XI mesh vertex id exceeds the current renderer profile");
   }
   void validate_material(std::int64_t material) const {
     if (materials_.empty()) throw std::invalid_argument("mesh triangle without meshbegin");
@@ -281,7 +304,7 @@ class MachineMeshRaster {
       throw std::out_of_range("mesh material must be in 0..255");
   }
   void count_triangle() {
-    if (triangles_ >= max_triangles)
+    if (triangles_ >= (native_tiled_?native_max_triangles:max_triangles))
       throw std::length_error("XI mesh triangle budget exceeded");
     ++triangles_;
   }
@@ -290,6 +313,14 @@ class MachineMeshRaster {
               std::array<std::uint16_t,3> intensities={},unsigned ramp_count=1,
               std::array<Texcoord,3> coords={},unsigned texture_id=0,
               unsigned texture_strength=0) {
+    if(native_tiled_ && tile_collecting_) {
+      if(!edge(a,b,c.x,c.y))return;
+      if(deferred_faces_.size()>=native_max_triangles*2)
+        throw std::length_error("XI native face budget exceeded");
+      deferred_faces_.push_back({{{a,b,c}},coords,intensities,material,
+        ramp_count,texture_id,texture_strength,Gradient,Textured});
+      return;
+    }
     if(gpu_capture_) {
       if(!edge(a,b,c.x,c.y))return;
       if(gpu_faces_.size()>=gpu_max_faces)
@@ -313,11 +344,14 @@ class MachineMeshRaster {
     }
     const auto left = std::max<std::int64_t>(0, std::min({a.x, b.x, c.x}) / 2);
     const auto right = std::min<std::int64_t>(width_ - 1, std::max({a.x, b.x, c.x}) / 2);
-    const auto top = std::max<std::int64_t>(0, std::min({a.y, b.y, c.y}) / 2);
-    const auto bottom = std::min<std::int64_t>(height_ - 1, std::max({a.y, b.y, c.y}) / 2);
+    const auto top = std::max<std::int64_t>(tile_row_start_, std::min({a.y, b.y, c.y}) / 2);
+    const auto bottom = std::min<std::int64_t>(tile_row_end_ - 1, std::max({a.y, b.y, c.y}) / 2);
     if (left > right || top > bottom) return;
     const auto work = static_cast<std::uint64_t>((right-left+1)*(bottom-top+1));
-    if (work > max_pixel_tests - pixel_tests_)
+    // Work budget scales with actual resolution instead of a 640x360 constant.
+    const std::uint64_t budget=native_tiled_?
+      std::uint64_t(width_)*height_*64 : max_pixel_tests;
+    if (work > budget - pixel_tests_)
       throw std::length_error("XI mesh pixel-work budget exceeded");
     pixel_tests_ += work;
     constexpr std::uint64_t reciprocal_scale = UINT64_C(1) << 40;
@@ -342,7 +376,7 @@ class MachineMeshRaster {
     const auto dy0 = 2*(c.x-b.x), dy1 = 2*(a.x-c.x), dy2 = 2*(b.x-a.x);
     for (auto y=top; y<=bottom; ++y) {
       auto w0=row0,w1=row1,w2=row2;
-      auto at=std::size_t(y)*width_+static_cast<std::size_t>(left);
+      auto at=std::size_t(y-tile_row_start_)*width_+static_cast<std::size_t>(left);
       for (auto x=left; x<=right; ++x,++at) {
         if ((w0>0 || (w0==0 && t0)) && (w1>0 || (w1==0 && t1)) &&
             (w2>0 || (w2==0 && t2))) {
@@ -391,8 +425,57 @@ class MachineMeshRaster {
     }
   }
 
+ private:
+  // Temporal strip bins. The same perspective/z/texture raster() is reused;
+  // there is no second engine or approximation of XI triangles.
+  std::string finish_native_pixels() {
+    const std::size_t expected=std::size_t(width_)*height_;
+    if(expected>std::size_t(3840)*2160)throw std::length_error("XI native pixel output bound");
+    const unsigned strips=(height_+native_rows_per_strip-1)/native_rows_per_strip;
+    std::vector<std::vector<std::size_t>> bin(strips);
+    for(std::size_t i=0;i<deferred_faces_.size();++i){
+      const auto& face=deferred_faces_[i];
+      const auto ymin=std::min({face.p[0].y,face.p[1].y,face.p[2].y});
+      const auto ymax=std::max({face.p[0].y,face.p[1].y,face.p[2].y});
+      if(ymax<0 || ymin>=height_)continue;
+      // Extend the coarse bins one row beyond the triangle's boundaries
+      // to account for integer center rounding, then raster does exact tests.
+      const auto low=std::max<std::int64_t>(0,ymin-1);
+      const auto high=std::min<std::int64_t>(height_-1,ymax+1);
+      for(auto band=unsigned(low)/native_rows_per_strip;
+          band<=unsigned(high)/native_rows_per_strip;++band)bin[band].push_back(i);
+    }
+    std::string out("XFB5",4);
+    append16(out,width_);append16(out,height_);append32(out,5);
+    append32(out,static_cast<std::uint32_t>(expected));
+    out.reserve(16+expected);
+    tile_collecting_=false;
+    for(unsigned band=0;band<strips;++band){
+      tile_row_start_=band*native_rows_per_strip;
+      tile_row_end_=std::min<unsigned>(height_,tile_row_start_+native_rows_per_strip);
+      const auto elements=std::size_t(width_)*(tile_row_end_-tile_row_start_);
+      materials_.assign(elements,background_);
+      inverse_depth_.assign(elements,0);
+      for(auto index:bin[band]){
+        const auto& face=deferred_faces_[index];
+        const auto& p=face.p;
+        if(face.textured)raster<true,true>(p[0],p[1],p[2],face.material,
+          face.shades,face.count,face.uv,face.texture,face.strength);
+        else if(face.gradient)raster<true,false>(p[0],p[1],p[2],face.material,
+          face.shades,face.count);
+        else raster<false,false>(p[0],p[1],p[2],face.material);
+      }
+      out.append(reinterpret_cast<const char*>(materials_.data()),materials_.size());
+    }
+    tile_collecting_=true;
+    tile_row_start_=0;tile_row_end_=height_;
+    materials_.assign(1,background_);inverse_depth_.assign(1,0);
+    if(out.size()!=16+expected)throw std::logic_error("XI native raster pixel count mismatch");
+    return out;
+  }
+
  public:
-  std::string finish() const {
+  std::string finish() {
     if (materials_.empty()) throw std::invalid_argument("meshend without meshbegin");
     if(gpu_capture_){
       // Bounded XFG4 packet: 16-byte header, 2048 tile nibbles, then 60
@@ -400,7 +483,8 @@ class MachineMeshRaster {
       std::string out("XFG4",4);
       append16(out,width_);append16(out,height_);append32(out,4);
       append32(out,static_cast<std::uint32_t>(gpu_faces_.size()));
-      for(const auto& tex:textures_)for(auto nibble:tex)out.push_back(char(nibble));
+      for(unsigned tile=0;tile<max_textures;++tile)
+        for(auto nibble:textures_[tile])out.push_back(char(nibble));
       for(const auto& f:gpu_faces_){
         for(const auto& p:f.p){append32(out,static_cast<std::uint32_t>(p.x));
           append32(out,static_cast<std::uint32_t>(p.y));
@@ -469,10 +553,13 @@ class MachineMeshRaster {
   std::vector<Vertex> vertices_;
   std::vector<std::uint8_t> vertex_ready_;
   bool gpu_capture_=false;
+  bool native_tiled_=false,tile_collecting_=false;
+  unsigned tile_row_start_=0,tile_row_end_=0;
+  std::vector<DeferredFace> deferred_faces_;
   std::vector<GpuFace> gpu_faces_;
   std::vector<std::uint16_t> vertex_shades_;
   std::vector<Texcoord> texcoords_;
   std::vector<std::uint8_t> texcoord_ready_;
-  std::array<std::array<std::uint8_t,texture_side*texture_side>,max_textures> textures_{};
-  std::array<std::uint16_t,max_textures> texture_row_mask_{};
+  std::array<std::array<std::uint8_t,texture_side*texture_side>,native_max_textures> textures_{};
+  std::array<std::uint16_t,native_max_textures> texture_row_mask_{};
 };
