@@ -16,6 +16,7 @@ import android.view.SurfaceView;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.HorizontalScrollView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import java.util.HashSet;
@@ -27,7 +28,9 @@ import java.util.Set;
 /** Physical controls and compact race HUD; all game rules remain in XI. */
 public final class VelocityActivity extends Activity {
     private VelocityXSurface surface;
-    private TextView speed,lap,position,timer,status,warning,renderInfo;
+    private TextView lap,position,timer,status,warning,renderInfo;
+    private VelocityCockpitView cockpit;
+    private Button gearButton;
     private Button pauseButton,gpu4kButton;
     private RaceMap map;
     private boolean gas,brake,left,right,drift;
@@ -87,13 +90,21 @@ public final class VelocityActivity extends Activity {
         gas=brake=left=right=drift=false;
         keyGas=keyBrake=keyLeft=keyRight=keyDrift=false;controls();
     }
+    private void changeGear(){
+        if(surface==null||gearButton==null)return;
+        boolean toReverse=!surface.isReverseGear();
+        if(surface.setReverseGear(toReverse)){
+            gearButton.setText(toReverse?"Marcha R":"Marcha D");
+            gearButton.setContentDescription(toReverse?"Cambiar a marcha adelante":"Cambiar a reversa");
+        }else changedText(warning,"DETÉNTE PARA CAMBIAR");
+    }
     private void togglePause(){
         if(surface==null)return;releaseControls();
         boolean paused=surface.togglePause();pauseButton.setText(paused?"Continuar":"Pausa");
     }
     private void raceHud(VelocityXiEngine.Snapshot s,boolean paused,String error,int w,int h,int fps){
         if(s==null)return;
-        changedText(speed,s.speedKmh()+" km/h");
+        cockpit.update(s,surface.isReverseGear(),surface.isBrakePressed(),surface.isAccelerating());
         changedText(lap,"VUELTA "+s.displayedLap()+" / 3");
         changedText(position,"POSICIÓN "+s.position+" / 4");
         long hundredths=s.ticks*2;
@@ -147,13 +158,14 @@ public final class VelocityActivity extends Activity {
         lap=text("VUELTA 1 / 3",18);add(root,lap,-2,-2,Gravity.TOP|Gravity.LEFT,18,14,0,0);
         position=text("POSICIÓN 4 / 4",18);add(root,position,-2,-2,Gravity.TOP|Gravity.RIGHT,0,14,18,0);
         timer=text("00:00.00",18);add(root,timer,-2,-2,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,14,0,0);
-        speed=text("0 km/h",34);add(root,speed,-2,-2,Gravity.BOTTOM|Gravity.RIGHT,0,0,18,108);
-        warning=text("",12);add(root,warning,-2,-2,Gravity.BOTTOM|Gravity.RIGHT,0,0,20,146);
+        cockpit=new VelocityCockpitView(this);
+        add(root,cockpit,194,106,Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL,0,0,0,124);
+        warning=text("",12);add(root,warning,-2,-2,Gravity.BOTTOM|Gravity.RIGHT,0,0,18,168);
         renderInfo=text("REgraphics XI",10);renderInfo.setTextColor(0xffb4d5e7);
         add(root,renderInfo,-2,-2,Gravity.BOTTOM|Gravity.LEFT,18,0,0,202);
         status=text("ACELERA PARA SALIR",18);status.setGravity(Gravity.CENTER);
         add(root,status,-2,-2,Gravity.CENTER,0,0,0,0);
-        map=new RaceMap(game.track());add(root,map,86,86,Gravity.BOTTOM|Gravity.LEFT,18,0,0,106);
+        map=new RaceMap(game.track());add(root,map,86,86,Gravity.TOP|Gravity.LEFT,16,92,0,0);
         LinearLayout menu=new LinearLayout(this);menu.setOrientation(LinearLayout.HORIZONTAL);
         Button camera=button("Cámara");camera.setOnClickListener(v->{int m=surface.cycleCamera();camera.setText(m==0?"Cámara":m==1?"Cercana":"Capó");});
         Button colors=button("Color");colors.setOnClickListener(v->colors.setText("Color "+(surface.cyclePaint()+1)));
@@ -170,20 +182,35 @@ public final class VelocityActivity extends Activity {
             gpu4k.setContentDescription(on?"Desactivar renderizado 4K":"Activar renderizado 4K");
         });
         pauseButton=button("Pausa");pauseButton.setOnClickListener(v->togglePause());
-        Button restart=button("Reiniciar");restart.setOnClickListener(v->{releaseControls();surface.reset();pauseButton.setText("Pausa");});
+        Button restart=button("Reiniciar");restart.setOnClickListener(v->{releaseControls();surface.reset();pauseButton.setText("Pausa");if(gearButton!=null)gearButton.setText("Marcha D");});
         Button exit=button("Salir");exit.setOnClickListener(v->finish());
         for(Button b:new Button[]{camera,colors,sharpness,gpu4k,pauseButton,restart,exit}){
             LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(66),dp(32));p.setMargins(dp(1),0,dp(1),0);menu.addView(b,p);
         }
-        add(root,menu,-2,32,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,48,0,0);
-        Button bLeft=button("◀");hold(bLeft,0);Button bRight=button("▶");hold(bRight,1);
-        Button bBrake=button("FRENO");hold(bBrake,2);Button bGas=button("ACELERAR");hold(bGas,3);
+        HorizontalScrollView tools=new HorizontalScrollView(this);
+        tools.setHorizontalScrollBarEnabled(false);
+        tools.setFillViewport(false);
+        tools.addView(menu,new HorizontalScrollView.LayoutParams(-2,dp(32)));
+        add(root,tools,-1,36,Gravity.TOP,8,48,8,0);
+        // Native Button descendants keep the accessibility and adb touch contract.
+        VelocitySteeringFrame steering=new VelocitySteeringFrame(this);
+        Button bLeft=button("◀");hold(bLeft,0);
+        Button bRight=button("▶");hold(bRight,1);
+        bLeft.setBackground(background(0x70324a60));bRight.setBackground(background(0x70324a60));
+        FrameLayout.LayoutParams leftParams=new FrameLayout.LayoutParams(dp(66),dp(62),Gravity.LEFT|Gravity.CENTER_VERTICAL);
+        leftParams.leftMargin=dp(3);steering.addView(bLeft,leftParams);
+        FrameLayout.LayoutParams rightParams=new FrameLayout.LayoutParams(dp(66),dp(62),Gravity.RIGHT|Gravity.CENTER_VERTICAL);
+        rightParams.rightMargin=dp(3);steering.addView(bRight,rightParams);
+        add(root,steering,148,100,Gravity.BOTTOM|Gravity.LEFT,12,0,0,10);
+        Button bBrake=new VelocityPedalButton(this,"FRENO",true);hold(bBrake,2);
+        Button bGas=new VelocityPedalButton(this,"ACELERAR",false);hold(bGas,3);
         Button bDrift=button("DERRAPE");hold(bDrift,4);
-        add(root,bLeft,70,70,Gravity.BOTTOM|Gravity.LEFT,18,0,0,18);
-        add(root,bRight,70,70,Gravity.BOTTOM|Gravity.LEFT,100,0,0,18);
-        add(root,bGas,108,72,Gravity.BOTTOM|Gravity.RIGHT,0,0,18,18);
-        add(root,bBrake,82,58,Gravity.BOTTOM|Gravity.RIGHT,0,0,138,18);
-        add(root,bDrift,82,38,Gravity.BOTTOM|Gravity.RIGHT,0,0,232,18);
+        add(root,bGas,88,92,Gravity.BOTTOM|Gravity.RIGHT,0,0,14,10);
+        add(root,bBrake,76,78,Gravity.BOTTOM|Gravity.RIGHT,0,0,114,10);
+        add(root,bDrift,84,32,Gravity.BOTTOM|Gravity.LEFT,16,0,0,112);
+        gearButton=button("Marcha D");
+        gearButton.setOnClickListener(v->changeGear());
+        add(root,gearButton,80,38,Gravity.TOP|Gravity.RIGHT,0,94,16,0);
         setContentView(root);
     }
     /** Circuit projection for a HUD map only; it never feeds game rules. */
@@ -207,7 +234,8 @@ public final class VelocityActivity extends Activity {
     }
     @Override public boolean onKeyDown(int key,KeyEvent event){
         if(key==KeyEvent.KEYCODE_P){if(event.getRepeatCount()==0)togglePause();return true;}
-        if(key==KeyEvent.KEYCODE_R){if(surface!=null){releaseControls();surface.reset();}if(pauseButton!=null)pauseButton.setText("Pausa");return true;}
+        if(key==KeyEvent.KEYCODE_G){if(event.getRepeatCount()==0)changeGear();return true;}
+        if(key==KeyEvent.KEYCODE_R){if(surface!=null){releaseControls();surface.reset();}if(pauseButton!=null)pauseButton.setText("Pausa");if(gearButton!=null)gearButton.setText("Marcha D");return true;}
         if(key==KeyEvent.KEYCODE_W||key==KeyEvent.KEYCODE_DPAD_UP)keyGas=true;
         else if(key==KeyEvent.KEYCODE_S||key==KeyEvent.KEYCODE_DPAD_DOWN)keyBrake=true;
         else if(key==KeyEvent.KEYCODE_A||key==KeyEvent.KEYCODE_DPAD_LEFT)keyLeft=true;
