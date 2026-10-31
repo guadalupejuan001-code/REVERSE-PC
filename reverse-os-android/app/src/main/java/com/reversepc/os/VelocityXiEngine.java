@@ -48,9 +48,12 @@ final class VelocityXiEngine {
     private byte[] privateState;
     private final String driveXi;
     private final String xiRenderer;
+    private final String xiNative4KRenderer;
     private final Object renderSourceLock=new Object();
     private String renderProgramCache,driveProgramCache;
     private int renderProgramKey=-1,driveProgramKey=-1;
+    private String native4KProgramCache;
+    private int native4KProgramKey=-1;
     private static final String XI_HEADER="#!reverse-pc-machine-v1\n";
     private final float[] worldPoints; // read-only XI generated geometry samples
     private final int[] palette;
@@ -65,7 +68,10 @@ final class VelocityXiEngine {
         driveXi=asset(context,"velocity/drive.xi");
         String world=asset(context,"velocity/world.xi");
         xiRenderer=asset(context,"velocity/render.xi");
+        xiNative4KRenderer=asset(context,"velocity/render-native4k.xi");
         palette=parsePalette(asset(context,"velocity/palette.txt"));
+        if(!xiNative4KRenderer.startsWith(XI_HEADER))
+            throw new IllegalStateException("XI native 4K source header missing");
         if(!xiRenderer.startsWith(XI_HEADER))
             throw new IllegalStateException("XI renderer source header missing");
         if(!driveXi.startsWith("#!reverse-pc-machine-v1\n")||
@@ -182,6 +188,27 @@ final class VelocityXiEngine {
         // transaction can advance independently while this image is produced.
         ResultPacket packet=ResultPacket.parseBinary(NativeRuntime.execute(observation,source));
         return new Observation(RegraphicsFrame.decode(packet.outputBytes,stride,palette),observedState);
+    }
+    /** XI performs all native 4K rasterization; Android consumes only XFB5 pixels. */
+    Observation observeNative4KFrame(int camera,int paint)throws Exception{
+        if(camera<0||camera>2||paint<0||paint>4)
+            throw new IllegalArgumentException("Invalid XI native 4K visual input");
+        final String program;
+        final int key=camera*5+paint;
+        synchronized(renderSourceLock){
+            if(key!=native4KProgramKey){
+                native4KProgramCache=XI_HEADER+"store8 200 1\nstore8 201 "+camera+
+                    "\nstore8 202 "+paint+"\n"+
+                    xiNative4KRenderer.substring(XI_HEADER.length());
+                native4KProgramKey=key;
+            }
+            program=native4KProgramCache;
+        }
+        final byte[] observedState;
+        final Snapshot observed;
+        synchronized(this){observedState=privateState.clone();observed=snapshot;}
+        ResultPacket packet=ResultPacket.parseBinary(NativeRuntime.execute(observedState,program));
+        return new Observation(RegraphicsFrame.decodeNative4K(packet.outputBytes,palette),observed);
     }
     private static int[] parsePalette(String source){
         String[] entries=source.trim().split("\n");
