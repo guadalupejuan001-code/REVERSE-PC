@@ -49,7 +49,7 @@ final class VelocityCockpitView extends View {
         color(0xffeef8ff);paint.setTextAlign(Paint.Align.CENTER);
         paint.setTypeface(android.graphics.Typeface.create("sans-serif-medium",1));
         paint.setTextSize(30);
-        canvas.drawText(Integer.toString(Math.round(speed)),100,68,paint);
+        // A real Android TextView renders the XI speed here for accessibility.
         paint.setTextSize(9);paint.setColor(0xffa5c8d9);
         canvas.drawText("km/h",100,84,paint);
         color(0xff102d38);canvas.drawRoundRect(154,16,205,52,9,9,paint);
