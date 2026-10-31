@@ -306,10 +306,12 @@ try{
     'renderer diagnostic exposes real XI pixel-work limit');
   check(ui.some(x=>/No hay OpenGL/.test(x.text||'')),
     'game explicitly discloses no external graphics renderer');
-  tapNode(findText(ui,'Entendido'));
+  screenshot('regraphics-xi-native-panel');
+  // AlertDialog button casing/layout varies across Android skins. Use the
+  // Android back action to close the verified diagnostic on every device.
+  adbText(['shell','input','keyevent','KEYCODE_BACK']);
   ui=waitText(/EN PAUSA/);
   check(true,'native REgraphics-only diagnostics close without modifying physical race');
-  screenshot('regraphics-xi-native-panel');
   stage='physical steering and driving video';
   const startState=fields(initialMarker);
   check(Number.isFinite(startState.xCm)&&Number.isFinite(startState.zCm)&&Number.isFinite(startState.yaw4096),
