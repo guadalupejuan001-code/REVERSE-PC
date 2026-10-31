@@ -290,6 +290,12 @@ mov r5 r0
 div r5 20
 mul r5 -1
 add r5 r3
+mov r6 r7
+mul r6 17
+mod r6 5
+mul r6 r0
+div r6 140
+sub r5 r6
 meshtri r1 r3 999990 r4 r5 999990 r2 r3 999990 3
 add r7 1
 cmp r7 8
@@ -480,7 +486,7 @@ cmp r0 0
 jne band_0_skip
 set r0 -1000
 set r1 -670
-set r2 0
+set r2 22
 set r3 0
 localset 28 78
 jmp band_ready
@@ -521,7 +527,7 @@ jne band_4_skip
 set r0 670
 set r1 1000
 set r2 0
-set r3 0
+set r3 22
 localset 28 78
 jmp band_ready
 label band_4_skip
@@ -3158,36 +3164,86 @@ meshvertex 1526 12 2 -255
 meshtexuv 1526 2 -36
 meshvertex 1527 113 2 -177
 meshtexuv 1527 16 -25
-meshvertex 1528 0 820 0
-meshtexuv 1528 0 0
-meshvertex 1529 215 200 0
-meshtexuv 1529 31 0
-meshvertex 1530 108 200 186
-meshtexuv 1530 15 27
-meshvertex 1531 -107 200 186
-meshtexuv 1531 -15 27
-meshvertex 1532 -215 200 0
-meshtexuv 1532 -31 0
-meshvertex 1533 -108 200 -186
-meshtexuv 1533 -15 -27
-meshvertex 1534 108 200 -186
-meshtexuv 1534 15 -27
-meshvertex 1535 -20 0 0
-meshtexuv 1535 -3 0
-meshvertex 1536 20 0 0
-meshtexuv 1536 3 0
-meshvertex 1537 20 280 0
-meshtexuv 1537 3 0
-meshvertex 1538 -20 280 0
-meshtexuv 1538 -3 0
-meshvertex 1539 0 0 -20
+meshvertex 1528 31 846 -25
+meshtexuv 1528 4 -4
+meshvertex 1529 223 245 22
+meshtexuv 1529 32 3
+meshvertex 1530 99 287 168
+meshtexuv 1530 14 24
+meshvertex 1531 -122 228 201
+meshtexuv 1531 -17 29
+meshvertex 1532 -239 275 -13
+meshtexuv 1532 -34 -2
+meshvertex 1533 -97 210 -192
+meshtexuv 1533 -14 -27
+meshvertex 1534 127 314 -161
+meshtexuv 1534 18 -23
+meshvertex 1535 -23 0 -12
+meshtexuv 1535 -3 -2
+meshvertex 1536 14 0 0
+meshtexuv 1536 2 0
+meshvertex 1537 15 290 -8
+meshtexuv 1537 2 -1
+meshvertex 1538 -16 276 -18
+meshtexuv 1538 -2 -3
+meshvertex 1539 0 0 -23
 meshtexuv 1539 0 -3
 meshvertex 1540 0 0 20
 meshtexuv 1540 0 3
-meshvertex 1541 0 280 20
-meshtexuv 1541 0 3
-meshvertex 1542 0 280 -20
-meshtexuv 1542 0 -3
+meshvertex 1541 11 278 12
+meshtexuv 1541 2 2
+meshvertex 1542 -9 275 -21
+meshtexuv 1542 -1 -3
+meshvertex 1543 24 105 -8
+meshtexuv 1543 3 -1
+meshvertex 1544 -183 48 -93
+meshtexuv 1544 -26 -13
+meshvertex 1545 -72 85 -153
+meshtexuv 1545 -10 -22
+meshvertex 1546 126 64 -142
+meshtexuv 1546 18 -20
+meshvertex 1547 215 43 55
+meshtexuv 1547 31 8
+meshvertex 1548 57 77 155
+meshtexuv 1548 8 22
+meshvertex 1549 -162 58 132
+meshtexuv 1549 -23 19
+meshvertex 1550 -183 0 -93
+meshtexuv 1550 -26 -13
+meshvertex 1551 -72 0 -153
+meshtexuv 1551 -10 -22
+meshvertex 1552 126 0 -142
+meshtexuv 1552 18 -20
+meshvertex 1553 215 0 55
+meshtexuv 1553 31 8
+meshvertex 1554 57 0 155
+meshtexuv 1554 8 22
+meshvertex 1555 -162 0 132
+meshtexuv 1555 -23 19
+meshvertex 1556 -42 0 -22
+meshtexuv 1556 -6 -3
+meshvertex 1557 29 0 17
+meshtexuv 1557 4 2
+meshvertex 1558 -8 103 -17
+meshtexuv 1558 -1 -2
+meshvertex 1559 -13 0 -55
+meshtexuv 1559 -2 -8
+meshvertex 1560 24 0 63
+meshtexuv 1560 3 9
+meshvertex 1561 5 116 15
+meshtexuv 1561 1 2
+meshvertex 1562 -61 0 43
+meshtexuv 1562 -9 6
+meshvertex 1563 45 0 -42
+meshtexuv 1563 6 -6
+meshvertex 1564 23 77 9
+meshtexuv 1564 3 1
+meshvertex 1565 41 0 39
+meshtexuv 1565 6 6
+meshvertex 1566 -43 0 -36
+meshtexuv 1566 -6 -5
+meshvertex 1567 10 88 -35
+meshtexuv 1567 1 -5
 localset 512 256
 localset 513 769
 localset 514 1282
@@ -4731,6 +4787,31 @@ localset 2051 788224
 localset 2052 788736
 localset 2053 789248
 localset 2054 789760
+localset 2055 790016
+localset 2056 790528
+localset 2057 791040
+localset 2058 791552
+localset 2059 792064
+localset 2060 792576
+localset 2061 793088
+localset 2062 793600
+localset 2063 794112
+localset 2064 794624
+localset 2065 795136
+localset 2066 795648
+localset 2067 796160
+localset 2068 796672
+localset 2069 797184
+localset 2070 797696
+localset 2071 798208
+localset 2072 798720
+localset 2073 799232
+localset 2074 799744
+localset 2075 800256
+localset 2076 800768
+localset 2077 801280
+localset 2078 801792
+localset 2079 802304
 localset 11 0
 label actor
 localset 142 0
@@ -4784,12 +4865,35 @@ add r9 64
 localset 126 r9
 jmp actor_ready
 label tree_actor
+localget r0 11
+mod r0 4
+cmp r0 2
+je nature_rock_model
+cmp r0 3
+je nature_grass_model
 set r0 1528
 mov r9 r0
 localset 132 r9
 set r0 1543
 mov r9 r0
 localset 134 r9
+jmp nature_model_ready
+label nature_rock_model
+set r0 1543
+mov r9 r0
+localset 132 r9
+set r0 1556
+mov r9 r0
+localset 134 r9
+jmp nature_model_ready
+label nature_grass_model
+set r0 1556
+mov r9 r0
+localset 132 r9
+set r0 1568
+mov r9 r0
+localset 134 r9
+label nature_model_ready
 localget r8 11
 sub r8 4
 div r8 2
@@ -11727,8 +11831,28 @@ localget r12 126
 meshfacegradienttex 2896 2897 2898 r12 24 0 10 r9 r10 r11 60
 meshface 2899 2900 2901 225 r9 r10 r11 60
 meshface 2899 2901 2902 225 r9 r10 r11 60
+localget r0 11
+cmp r0 0
+jne brake_dim_2903_2904_2905
+load8 r0 129
+cmp r0 1
+jne brake_dim_2903_2904_2905
 meshface 2903 2904 2905 224 r9 r10 r11 60
+jmp brake_done_2903_2904_2905
+label brake_dim_2903_2904_2905
+meshface 2903 2904 2905 242 r9 r10 r11 60
+label brake_done_2903_2904_2905
+localget r0 11
+cmp r0 0
+jne brake_dim_2903_2906_2904
+load8 r0 129
+cmp r0 1
+jne brake_dim_2903_2906_2904
 meshface 2903 2906 2904 224 r9 r10 r11 60
+jmp brake_done_2903_2906_2904
+label brake_dim_2903_2906_2904
+meshface 2903 2906 2904 242 r9 r10 r11 60
+label brake_done_2903_2906_2904
 set r12 228
 meshfacegradienttex 2907 2908 2909 r12 12 1 11 r9 r10 r11 60
 set r12 228
@@ -12379,8 +12503,28 @@ meshface 3357 3358 3359 226 r9 r10 r11 60
 meshface 3360 3361 3362 226 r9 r10 r11 60
 meshface 3363 3364 3365 225 r9 r10 r11 60
 meshface 3363 3365 3366 225 r9 r10 r11 60
+localget r0 11
+cmp r0 0
+jne brake_dim_3367_3368_3369
+load8 r0 129
+cmp r0 1
+jne brake_dim_3367_3368_3369
 meshface 3367 3368 3369 224 r9 r10 r11 60
+jmp brake_done_3367_3368_3369
+label brake_dim_3367_3368_3369
+meshface 3367 3368 3369 242 r9 r10 r11 60
+label brake_done_3367_3368_3369
+localget r0 11
+cmp r0 0
+jne brake_dim_3367_3370_3368
+load8 r0 129
+cmp r0 1
+jne brake_dim_3367_3370_3368
 meshface 3367 3370 3368 224 r9 r10 r11 60
+jmp brake_done_3367_3370_3368
+label brake_dim_3367_3370_3368
+meshface 3367 3370 3368 242 r9 r10 r11 60
+label brake_done_3367_3370_3368
 set r12 228
 meshfacegradienttex 3371 3372 3373 r12 12 1 11 r9 r10 r11 60
 set r12 228
@@ -12611,8 +12755,28 @@ set r12 212
 meshfacegradienttex 3543 3546 3544 r12 12 4 12 r9 r10 r11 60
 meshface 3547 3548 3549 225 r9 r10 r11 60
 meshface 3547 3549 3550 225 r9 r10 r11 60
+localget r0 11
+cmp r0 0
+jne brake_dim_3551_3552_3553
+load8 r0 129
+cmp r0 1
+jne brake_dim_3551_3552_3553
 meshface 3551 3552 3553 224 r9 r10 r11 60
+jmp brake_done_3551_3552_3553
+label brake_dim_3551_3552_3553
+meshface 3551 3552 3553 242 r9 r10 r11 60
+label brake_done_3551_3552_3553
+localget r0 11
+cmp r0 0
+jne brake_dim_3551_3554_3552
+load8 r0 129
+cmp r0 1
+jne brake_dim_3551_3554_3552
 meshface 3551 3554 3552 224 r9 r10 r11 60
+jmp brake_done_3551_3554_3552
+label brake_dim_3551_3554_3552
+meshface 3551 3554 3552 242 r9 r10 r11 60
+label brake_done_3551_3554_3552
 set r12 228
 meshfacegradienttex 3555 3556 3557 r12 12 1 11 r9 r10 r11 60
 set r12 228
@@ -12654,6 +12818,12 @@ meshfacegradient 3567 3575 3568 r12 8 r9 r10 r11 60
 meshfacegradient 3567 3568 3560 r12 8 r9 r10 r11 60
 jmp next_actor
 label emit_tree
+localget r0 11
+mod r0 4
+cmp r0 2
+je nature_emit_rock
+cmp r0 3
+je nature_emit_grass
 meshface 3576 3577 3578 14 r9 r10 r11 60
 meshface 3576 3578 3579 15 r9 r10 r11 60
 meshface 3576 3579 3580 16 r9 r10 r11 60
@@ -12664,6 +12834,30 @@ meshface 3583 3584 3585 9 r9 r10 r11 60
 meshface 3583 3585 3586 10 r9 r10 r11 60
 meshface 3587 3588 3589 9 r9 r10 r11 60
 meshface 3587 3589 3590 10 r9 r10 r11 60
+jmp next_actor
+label nature_emit_rock
+meshface 3591 3592 3593 3 r9 r10 r11 60
+meshface 3592 3598 3593 4 r9 r10 r11 60
+meshface 3591 3593 3594 8 r9 r10 r11 60
+meshface 3593 3599 3594 3 r9 r10 r11 60
+meshface 3591 3594 3595 4 r9 r10 r11 60
+meshface 3594 3600 3595 8 r9 r10 r11 60
+meshface 3591 3595 3596 3 r9 r10 r11 60
+meshface 3595 3601 3596 4 r9 r10 r11 60
+meshface 3591 3596 3597 10 r9 r10 r11 60
+meshface 3596 3602 3597 3 r9 r10 r11 60
+meshface 3591 3597 3592 8 r9 r10 r11 60
+meshface 3597 3603 3592 8 r9 r10 r11 60
+jmp next_actor
+label nature_emit_grass
+meshface 3604 3605 3606 14 r9 r10 r11 60
+meshface 3606 3605 3604 12 r9 r10 r11 60
+meshface 3607 3608 3609 15 r9 r10 r11 60
+meshface 3609 3608 3607 13 r9 r10 r11 60
+meshface 3610 3611 3612 16 r9 r10 r11 60
+meshface 3612 3611 3610 14 r9 r10 r11 60
+meshface 3613 3614 3615 17 r9 r10 r11 60
+meshface 3615 3614 3613 15 r9 r10 r11 60
 label next_actor
 load32 r12 100
 sub r12 2000000
