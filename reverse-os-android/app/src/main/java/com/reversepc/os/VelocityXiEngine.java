@@ -86,7 +86,7 @@ final class VelocityXiEngine {
         // Preserve world.xi's 81 packed circuit vertices in this isolated RVPC2.
         // Reinitializing here would discard the renderer's only geometry source.
         privateState=generated.state; // isolated from REVERSE Desktop/BBY Q
-        step(0,0,1,0,true);
+        step(0,0,1,0,false,true);
         if(snapshot.ticks!=0)throw new IllegalStateException("XI game reset consumed a tick");
     }
 
@@ -138,17 +138,17 @@ final class VelocityXiEngine {
         return new Snapshot(observed);
     }
 
-    synchronized Snapshot step(int gas,int brake,int steer,int drift,boolean reset)throws Exception{
+    synchronized Snapshot step(int gas,int brake,int steer,int drift,boolean reverse,boolean reset)throws Exception{
         if(gas<0||gas>1||brake<0||brake>1||steer<0||steer>2||
            drift<0||drift>1)throw new IllegalArgumentException("XI physical control out of range");
         // Execute the XI source through the *existing* generic runtime.
         // There is no game-specific JNI/C++ renderer, physics or instruction API.
-        final int programKey=gas|(brake<<1)|(steer<<2)|(drift<<4)|(reset?32:0);
+        final int programKey=gas|(brake<<1)|(steer<<2)|(drift<<4)|(reset?32:0)|(reverse?64:0);
         if(programKey!=driveProgramKey){
             driveProgramCache=XI_HEADER+
                 "store8 128 "+gas+"\nstore8 129 "+brake+
                 "\nstore8 130 "+steer+"\nstore8 131 "+drift+
-                "\nstore8 132 "+(reset?1:0)+"\n"+
+                "\nstore8 132 "+(reset?1:0)+"\nstore8 133 "+(reverse?1:0)+"\n"+
                 driveXi.substring(XI_HEADER.length());
             driveProgramKey=programKey;
         }
