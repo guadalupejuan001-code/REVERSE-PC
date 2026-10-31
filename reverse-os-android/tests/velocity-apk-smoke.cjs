@@ -106,6 +106,23 @@ function waitFrame(previousCount=0){
   }
   throw Error('No new Canvas FRAME_READY marker after actual unlockCanvasAndPost');
 }
+function waitNative4KFrame(){
+  for(let i=0;i<100;i++){
+    const text=logs();checkNoFailure(text);
+    const line=text.split(/\r?\n/).find(x=>
+      /ReverseVelocity.*NATIVE_4K_FRAME_READY source=XI_XFB5/.test(x));
+    if(line){
+      const match=/width=(\d+) height=(\d+) pixels=(\d+)/.exec(line);
+      assert(match,'XI 4K telemetry dimensions absent: '+line);
+      return {width:Number(match[1]),height:Number(match[2]),pixels:Number(match[3]),
+        source:'XI / REgraphics XFB5',log:line.trim()};
+    }
+    if(/Native XI 4K unavailable on this device/.test(text))
+      throw Error('Native XI renderer could not produce 4K pixels');
+    sleep(250);
+  }
+  throw Error('No verified XI 4K frame was presented on Android');
+}
 function waitAdvancingFrame(minimumTicks){
   for(let i=0;i<28;i++){
     const text=logs();checkNoFailure(text);
@@ -301,8 +318,8 @@ try{
   check(timer(ui)===detailPauseTime,'automatic detail leaves paused race timer unchanged');
   stage='REgraphics XI renderer ownership';
   tapNode(findText(ui,'Motor XI'));
-  ui=waitText(/Resolución nativa jugable: hasta 640/);
-  check(ui.some(x=>/8\.000\.000 pruebas de píxel/.test(x.text||'')),
+  ui=waitText(/Resolución habitual: hasta 640/);
+  check(ui.some(x=>/XFB5 escala el trabajo por resolución/.test(x.text||'')),
     'renderer diagnostic exposes real XI pixel-work limit');
   check(ui.some(x=>/No hay OpenGL/.test(x.text||'')),
     'game explicitly discloses no external graphics renderer');
@@ -312,7 +329,18 @@ try{
   adbText(['shell','input','keyevent','KEYCODE_BACK']);
   ui=waitText(/EN PAUSA/);
   check(true,'native REgraphics-only diagnostics close without modifying physical race');
-  stage='physical steering and driving video';
+  stage='true XI 4K native pixel mode';
+  tapNode(findText(ui,'4K XI'));
+  ui=waitText(/^4K XI activo$/);
+  check(!!findText(ui,'4K XI activo'),'native XI 4K control enabled');
+  report.native4K=waitNative4KFrame();
+  check(report.native4K.width===3840&&report.native4K.height===2160&&
+    report.native4K.pixels===8294400,'actual XI raster computed 8.294.400 pixels');
+  screenshot('xi-native-4k-real-frame');
+  tapNode(findText(ui,'4K XI activo'));
+  ui=waitText(/^4K XI$/);
+  check(!!findText(ui,'4K XI'),'4K disabled and CPU low-res renderer resumed');
+    stage='physical steering and driving video';
   const startState=fields(initialMarker);
   check(Number.isFinite(startState.xCm)&&Number.isFinite(startState.zCm)&&Number.isFinite(startState.yaw4096),
     'initial posted frame exposes observed XI position and heading');
