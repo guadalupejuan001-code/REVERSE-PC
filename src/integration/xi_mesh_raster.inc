@@ -479,6 +479,7 @@ class MachineMeshRaster {
  public:
   std::string finish() {
     if (materials_.empty()) throw std::invalid_argument("meshend without meshbegin");
+    if(native_tiled_)return finish_native_pixels();
     if(gpu_capture_){
       // Bounded XFG4 packet: 16-byte header, 2048 tile nibbles, then 60
       // bytes per triangle. Geometry and lighting originate in XI.
