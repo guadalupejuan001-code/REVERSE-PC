@@ -51,7 +51,7 @@ final class VelocityCockpitView extends View {
         paint.setTextSize(30);
         // A real Android TextView renders the XI speed here for accessibility.
         paint.setTextSize(9);paint.setColor(0xffa5c8d9);
-        canvas.drawText("km/h",100,84,paint);
+        // The accessible XI speed TextView overlays this gauge once, without duplicates.
         color(0xff102d38);canvas.drawRoundRect(154,16,205,52,9,9,paint);
         paint.setTextAlign(Paint.Align.CENTER);paint.setTextSize(20);
         paint.setColor(reverse?0xffffd56a:0xff80e8ee);
