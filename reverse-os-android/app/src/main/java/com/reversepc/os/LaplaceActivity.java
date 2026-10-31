@@ -127,7 +127,10 @@ public final class LaplaceActivity extends Activity {
             case "candles":{
                 int step=p.getInt("step");long start=p.getLong("start"),end=p.getLong("end");
                 long now=System.currentTimeMillis()/1000;
-                if((step!=300&&step!=60)||start<0||end<=start||end-start>step*300L||end>now+300||start<now-16*86400L)
+                long maxAge=step==60||step==300?16L*86400L:
+                    step==3600?47L*86400L:step==86400?1002L*86400L:0L;
+                if(maxAge==0||start<0||end<=start||end-start>step*300L||
+                   end>now+300||start<now-maxAge)
                     throw new IllegalArgumentException("Ventana de velas no permitida");
                 return root+"BTC-USD/candles?granularity="+step+"&start="+java.net.URLEncoder.encode(Instant.ofEpochSecond(start).toString(),"UTF-8")+"&end="+java.net.URLEncoder.encode(Instant.ofEpochSecond(end).toString(),"UTF-8");
             }
