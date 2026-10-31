@@ -296,7 +296,9 @@ class MachineMeshRaster {
  private:
   void validate_vertex_id(std::int64_t id) const {
     if(id<0 || id>=static_cast<std::int64_t>(native_tiled_?native_max_vertices:max_vertices))
-      throw std::out_of_range("XI mesh vertex id exceeds the current renderer profile");
+      throw std::out_of_range(native_tiled_?
+        "XI native mesh vertex id out of range (0..16383)":
+        "mesh vertex id must be in 0..4095");
   }
   void validate_material(std::int64_t material) const {
     if (materials_.empty()) throw std::invalid_argument("mesh triangle without meshbegin");
