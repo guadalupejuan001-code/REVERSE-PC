@@ -5,6 +5,11 @@
 #include <limits>
 #include <stdexcept>
 #include <string>
+#include <atomic>
+#include <thread>
+#include <array>
+#include <exception>
+#include <memory>
 
 namespace {
 using Runtime = mundo_x::QuantumRuntime;
@@ -77,6 +82,145 @@ int main() {
          restored.memory_persistent_snapshot() == runtime.memory_persistent_snapshot(),
          "machine state failed to persist through existing RVPC2 payloads");
 
+    // Bulk byte operations retain the same little-endian InverseMemory owner.
+    // Unsigned u32 values remain exact in signed64 XI registers.
+    const auto bulk=runtime.execute(std::string(banner)+
+      "store16 2000 65535\nload16 r0 2000\nprint r0\n"
+      "store32 2002 4294967295\nload32 r1 2002\nprint r1\n"
+      "set r2 2010\nstore32 $r2 305419896\nload32 r3 $r2\nprint r3\n"
+      "load8 r4 2010\nprint r4\nload8 r5 2011\nprint r5\n"
+      "load8 r6 2012\nprint r6\nload8 r7 2013\nprint r7\n"
+      "store32 18446744073709551612 305419896\n"
+      "load32 r8 18446744073709551612\nprint r8\n"
+      "store16 2020 0\nload16 r9 2020\nprint r9\n");
+    for(const std::string expected:{
+      "\"register\":\"r0\",\"value\":65535","\"register\":\"r1\",\"value\":4294967295",
+      "\"register\":\"r3\",\"value\":305419896","\"register\":\"r4\",\"value\":120",
+      "\"register\":\"r5\",\"value\":86","\"register\":\"r6\",\"value\":52",
+      "\"register\":\"r7\",\"value\":18","\"register\":\"r8\",\"value\":305419896",
+      "\"register\":\"r9\",\"value\":0"})
+      need(bulk.find(expected)!=std::string::npos,"bulk memory unsigned/little-endian result wrong");
+    need(runtime.memory().read("18446744073709551615",runtime.core()).value==18,
+         "bulk store near UINT64_MAX wrapped its final byte");
+    const auto indexed=runtime.execute(std::string(banner)+
+      "meshbegin 2 2 2 0\nmeshvertex 3 -5 7 12\nset r0 3\n"
+      "meshread r0 r1 r2 r0\nadd r0 32768\n"
+      "store16 2030 r0\nstore16 2032 r1\nstore16 2034 r2\n"
+      "meshvertex 0 -5 5 10\nmeshvertex 1 5 5 10\nmeshvertex 2 -5 -5 10\n"
+      "meshface 0 1 2 4 16 1 1 1\nmeshend\nhalt\n");
+    need(indexed.size()>=24&&indexed.substr(0,4)=="XFS1","indexed mesh did not publish XFS1");
+    need(runtime.memory().read("2030",runtime.core()).value==251&&
+         runtime.memory().read("2031",runtime.core()).value==127&&
+         runtime.memory().read("2032",runtime.core()).value==7&&
+         runtime.memory().read("2034",runtime.core()).value==12,
+         "meshread source id register was overwritten before resolution");
+    const auto before_locals_core=runtime.core_snapshot();
+    const auto before_locals_memory=runtime.memory_persistent_snapshot();
+    const auto locals=runtime.execute(std::string(banner)+
+      "localset 0 -9223372036854775808\nlocalset 1 9223372036854775807\n"
+      "localget r0 0\nprint r0\nlocalget r1 1\nprint r1\n"
+      "set r2 4095\nlocalset r2 -123\nlocalget r3 r2\nprint r3\n"
+      "set r4 1\nlocalget r4 r4\nprint r4\n");
+    need(locals.find("\"register\":\"r0\",\"value\":-9223372036854775808")!=std::string::npos&&
+         locals.find("\"register\":\"r1\",\"value\":9223372036854775807")!=std::string::npos&&
+         locals.find("\"register\":\"r3\",\"value\":-123")!=std::string::npos&&
+         locals.find("\"register\":\"r4\",\"value\":9223372036854775807")!=std::string::npos,
+         "local scratch signed64/dynamic-address observation wrong");
+    const auto fresh_locals=runtime.execute(std::string(banner)+
+      "localget r0 0\nprint r0\nlocalget r1 4095\nprint r1\n");
+    need(fresh_locals.find("\"register\":\"r0\",\"value\":0")!=std::string::npos&&
+         fresh_locals.find("\"register\":\"r1\",\"value\":0")!=std::string::npos,
+         "local scratch survived into a later execute call");
+    need(before_locals_core==runtime.core_snapshot()&&before_locals_memory==runtime.memory_persistent_snapshot(),
+         "CPU local scratch mutated persisted core or InverseMemory");
+    const auto gradient=runtime.execute(std::string(banner)+
+      "meshbegin 2 2 2 0\nmeshvertex 0 -1 1 10\nmeshvertex 1 1 1 10\n"
+      "meshvertex 2 -1 -1 10\nmeshvertex 3 1 -1 10\n"
+      "meshshade 0 0\nmeshshade 1 255\nmeshshade 2 0\nmeshshade 3 255\n"
+      "meshfacegradient 0 1 2 64 24 10 1 1 1\n"
+      "meshfacegradient 1 3 2 64 24 10 1 1 1\nmeshend\nhalt\n");
+    need(gradient.size()==108&&gradient.substr(0,4)=="XFS1"&&
+         static_cast<std::uint8_t>(gradient[31])==70&&static_cast<std::uint8_t>(gradient[45])==81,
+         "XI gradient source did not emit the expected rounded palette samples");
+    need(before_locals_core==runtime.core_snapshot()&&before_locals_memory==runtime.memory_persistent_snapshot(),
+         "mesh shade attributes mutated persisted core or InverseMemory");
+
+    // The parse cache shares immutable syntax only. Exact source edits must
+    // miss, errors must keep their original lines and execution state resets.
+    namespace machine=mundo_x::infinite_program_detail;
+    auto& parse_cache=machine::machine_parse_cache_state();
+    const std::string cache_program=std::string(banner)+"set r0 17\nlocalset 0 r0\nlocalget r1 0\nprint r1\n";
+    const auto misses_before=parse_cache.misses,hits_before=parse_cache.hits;
+    const auto cached_first=runtime.execute(cache_program);
+    const auto cached_entry=parse_cache.program;
+    need(parse_cache.misses==misses_before+1&&cached_entry&&cached_entry->source==cache_program,
+         "first exact-source program did not populate one parse entry");
+    const auto cached_second=runtime.execute(cache_program);
+    need(cached_first==cached_second&&parse_cache.hits==hits_before+1&&parse_cache.program==cached_entry,
+         "exact-source parse hit changed output or reparsed syntax");
+    std::string changed_source=cache_program;
+    changed_source.replace(changed_source.find("17"),2,"18");
+    const auto changed_output=runtime.execute(changed_source);
+    need(changed_source.size()==cache_program.size()&&changed_output!=cached_first&&
+         parse_cache.program!=cached_entry&&parse_cache.program->source==changed_source,
+         "same-length source edit incorrectly hit the old parse entry");
+    auto failure_text=[&](const std::string& source) {
+      const auto core=runtime.core_snapshot(),memory=runtime.memory_persistent_snapshot();
+      std::string error;
+      try{(void)runtime.execute(source);}catch(const std::exception& failure){error=failure.what();}
+      need(!error.empty(),"cache error regression unexpectedly executed successfully");
+      need(core==runtime.core_snapshot()&&memory==runtime.memory_persistent_snapshot(),
+           "cached failed program changed committed core or memory");
+      return error;
+    };
+    const auto valid_entry=parse_cache.program;
+    const std::string bad_jump=std::string(banner)+"store8 3000 42\njmp missing\n";
+    const auto jump_error=failure_text(bad_jump);
+    need(jump_error==failure_text(bad_jump)&&jump_error.find("line 3:")!=std::string::npos&&
+         parse_cache.program==valid_entry,"invalid jump cached partial syntax or changed error line");
+    const std::string bad_type=std::string(banner)+"store8 3000 7\nset r0 not_an_integer\n";
+    const auto type_error=failure_text(bad_type);
+    const auto type_hits=parse_cache.hits;
+    need(type_error==failure_text(bad_type)&&type_error.find("line 3:")!=std::string::npos&&
+         parse_cache.hits==type_hits+1,"cached runtime type error changed line or rollback");
+    const auto bounded_entry=parse_cache.program;
+    const auto large_hits=parse_cache.hits,large_misses=parse_cache.misses;
+    const std::string oversized=std::string(banner)+"#"+
+      std::string(machine::machine_parse_cache_max_source_bytes,'x')+"\nset r0 17\nprint r0\n";
+    const auto large_first=runtime.execute(oversized),large_second=runtime.execute(oversized);
+    need(large_first==large_second&&parse_cache.hits==large_hits&&parse_cache.misses==large_misses+2&&
+         parse_cache.program==bounded_entry&&
+         parse_cache.program->source.size()<=machine::machine_parse_cache_max_source_bytes,
+         "oversized program retained a parse entry or changed execution");
+
+    std::atomic<unsigned> ready{0};
+    std::array<std::exception_ptr,2> failures{};
+    std::array<std::shared_ptr<const machine::MachineParsedProgram>,2> entries{};
+    std::array<unsigned,2> final_values{};
+    const std::string shared_source=std::string(banner)+
+      "load32 r0 3000\nadd r0 1\nstore32 3000 r0\nprint r0\n";
+    auto worker=[&](unsigned index) {
+      try{
+        Runtime isolated;
+        const unsigned initial=index?100:1;
+        isolated.execute(std::string(banner)+"store32 3000 "+std::to_string(initial)+"\n");
+        ready.fetch_add(1);
+        while(ready.load()<2)std::this_thread::yield();
+        const auto before_hits=machine::machine_parse_cache_state().hits;
+        for(unsigned i=0;i<32;++i)(void)isolated.execute(shared_source);
+        need(machine::machine_parse_cache_state().hits==before_hits+31,
+             "worker did not reuse its own immutable program");
+        final_values[index]=isolated.memory().read("3000",isolated.core()).value;
+        entries[index]=machine::machine_parse_cache_state().program;
+      }catch(...){failures[index]=std::current_exception();ready.store(2);}
+    };
+    std::thread first_thread(worker,0),second_thread(worker,1);
+    first_thread.join();second_thread.join();
+    for(const auto& failure:failures)if(failure)std::rethrow_exception(failure);
+    need(final_values[0]==33&&final_values[1]==132&&entries[0]&&entries[1]&&entries[0]!=entries[1]&&
+         entries[0]->source==shared_source&&entries[1]->source==shared_source,
+         "thread-local parse entries mixed independent worker states");
+
     const std::string failure_header = std::string(banner) +
       "set r0 99\nstore8 5 r0\nx 200\n";
     rejects_unchanged(runtime, failure_header + "not_an_instruction\n", "unknown command");
@@ -86,6 +230,32 @@ int main() {
     rejects_unchanged(runtime, failure_header + "jmp missing\n", "unknown jump label");
     rejects_unchanged(runtime, failure_header + "label again\nlabel again\n", "duplicate label");
     rejects_unchanged(runtime, failure_header + "store8 6 256\n", "0..255");
+    rejects_unchanged(runtime, failure_header + "store16 3000 65536\n", "unsigned 16-bit");
+    rejects_unchanged(runtime, failure_header + "store32 3000 4294967296\n", "unsigned 32-bit");
+    rejects_unchanged(runtime, failure_header + "store32 3000 -1\n", "unsigned 32-bit");
+    rejects_unchanged(runtime, failure_header + "load16 r0 -1\n", "decimal digits");
+    rejects_unchanged(runtime, failure_header + "store32 18446744073709551613 1\n", "address range");
+    rejects_unchanged(runtime, failure_header + "load16 r0 18446744073709551615\n", "address range");
+    rejects_unchanged(runtime, failure_header + "load32 r0 18446744073709551616\n", "integer range");
+    rejects_unchanged(runtime, failure_header +
+      "meshbegin 2 2 2 0\nmeshvertex 0 1 2 3\nmeshread r0 r0 r2 0\n", "distinct");
+    rejects_unchanged(runtime, failure_header +
+      "meshbegin 2 2 2 0\nmeshread r0 r1 r2 0\n", "unset");
+    rejects_unchanged(runtime, failure_header +
+      "meshbegin 2 2 2 0\nmeshface 0 1 2 4 16 1 1 1\n", "unset");
+    rejects_unchanged(runtime, failure_header +
+      "meshbegin 2 2 2 0\nmeshvertex 4096 1 2 3\n", "0..4095");
+    rejects_unchanged(runtime, failure_header + "localset -1 0\n", "0..4095");
+    rejects_unchanged(runtime, failure_header + "localget r0 4096\n", "0..4095");
+    rejects_unchanged(runtime, failure_header + "localset 4096 0\n", "0..4095");
+    const std::string gradient_failure=failure_header+
+      "meshbegin 2 2 2 0\nmeshvertex 0 -1 1 10\nmeshvertex 1 1 1 10\nmeshvertex 2 -1 -1 10\n";
+    rejects_unchanged(runtime,gradient_failure+"meshshade 0 -1\n","0..255");
+    rejects_unchanged(runtime,gradient_failure+"meshshade 0 256\n","0..255");
+    rejects_unchanged(runtime,gradient_failure+"meshshade 3 1\n","unset");
+    rejects_unchanged(runtime,gradient_failure+"meshfacegradient 0 1 2 250 24 10 1 1 1\n","palette ramp");
+    rejects_unchanged(runtime,gradient_failure+"meshfacegradient 0 1 2 64 0 10 1 1 1\n","palette ramp");
+    rejects_unchanged(runtime,gradient_failure+"meshfacegradient 0 1 3 64 24 10 1 1 1\n","unset");
     rejects_unchanged(runtime, failure_header + "set r16 1\n", "out of range");
     rejects_unchanged(runtime, failure_header + "jlt nowhere\n", "unknown jump label");
     rejects_unchanged(runtime, failure_header + "label present\njlt present\n", "without cmp");
@@ -97,6 +267,10 @@ int main() {
     quantum_memory.execute("h 0\nmem_bind 7 0\n");
     rejects_unchanged(quantum_memory, std::string(banner) +
       "set r0 9\nstore8 5 r0\nload8 r1 7\n", "quantum handle");
+    rejects_unchanged(quantum_memory, std::string(banner) +
+      "store8 6 42\nload16 r1 6\n", "quantum handle");
+    rejects_unchanged(quantum_memory, std::string(banner) +
+      "store32 6 123456\n", "quantum");
     // A new opt-in profile cannot silently extend native XI.
     rejects_unchanged(quantum_memory, "set r0 5\n", "unknown command");
 
@@ -122,6 +296,11 @@ int main() {
     std::cout << "{\"suite\":\"xi_programmable_machine\","
               << "\"gcd\":21,\"dynamic_qubits\":128,\"long_memory\":42,"
               << "\"rollback\":true,\"bounded_loops\":true,"
+              << "\"bulk_memory_little_endian\":true,"
+              << "\"indexed_mesh_source\":true,"
+              << "\"ephemeral_local_scratch\":true,"
+              << "\"perspective_palette_gradient\":true,"
+              << "\"bounded_thread_local_parse_cache\":true,"
               << "\"legacy_xi_preserved\":true}\n";
     return 0;
   } catch(const std::exception& error) {

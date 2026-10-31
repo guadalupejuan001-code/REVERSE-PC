@@ -1,0 +1,158 @@
+name: REVERSE VELOCITY REgraphics
+on:
+  push:
+    branches: [feature/xi-velocity-no-cpp-render-20261029, feature/velocity-regraphics-20261030]
+    paths:
+      - 'reverse-os-android/app/src/main/assets/velocity/**'
+      - 'reverse-os-android/tests/velocity-xi-render-contract.cjs'
+      - 'reverse-os-android/tests/*Regraphics*'
+      - 'reverse-os-android/tests/VelocityLoopLifecycleTest.java'
+      - 'reverse-os-android/tests/velocity-xi-contract.cjs'
+      - 'reverse-os-android/tests/velocity-gameplay-contract.cpp'
+      - 'reverse-os-android/tests/fixtures/**'
+      - 'reverse-os-android/app/src/main/java/com/reversepc/os/Velocity*'
+      - 'reverse-os-android/app/src/main/java/com/reversepc/os/RegraphicsFrame.java'
+      - 'reverse-os-android/app/src/main/java/com/reversepc/os/ResultPacket.java'
+      - 'src/integration/xi_machine_extension.inc'
+      - 'src/integration/xi_mesh_raster.inc'
+      - 'src/integration/xi_mesh_raster.inc'
+      - 'tests/xi_machine_test.cpp'
+      - 'tests/xi_mesh_raster.cpp'
+      - 'tests/xi_gpu_capture.cpp'
+      - 'scripts/author-velocity-scene.cjs'
+      - 'scripts/velocity-car-contract.cjs'
+      - 'scripts/velocity-car-mesh.cjs'
+      - 'scripts/velocity-materials.cjs'
+      - 'reverse-os-android/tests/velocity-gameplay-contract.cpp'
+      - 'experiments/xi-render/direct-binary-test.cjs'
+      - '.github/workflows/velocity-xi-render.yml'
+  pull_request:
+    branches: [main, feature/xi-direct-frame-binary-20261030]
+    paths: ['reverse-os-android/**', 'src/integration/xi_machine_extension.inc', 'src/integration/xi_mesh_raster.inc', 'experiments/xi-render/**', '.github/workflows/velocity-xi-render.yml']
+permissions: {contents: read}
+concurrency:
+  group: velocity-regraphics-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+jobs:
+  xi-render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: 1f925786522aba91f72707ad1638a8edcdd31a8f
+          path: deps/mundo-x
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - uses: actions/setup-java@v4
+        with: {distribution: 'temurin', java-version: '17'}
+      - name: Ensure car render is reproducibly authored in XI
+        run: |
+          set -euo pipefail
+          node scripts/velocity-car-contract.cjs
+          node scripts/velocity-textures-contract.cjs
+          node scripts/author-velocity-scene.cjs
+          git diff --exit-code -- reverse-os-android/app/src/main/assets/velocity/render.xi reverse-os-android/app/src/main/assets/velocity/palette.txt reverse-os-android/app/src/main/assets/velocity/render4k.xi
+      - name: Build real XI interpreter with unchanged verified Ether overlays
+        run: |
+          set -euo pipefail
+          mkdir -p build/velocity build/ether-compat
+          python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
+            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
+            src/reverse_pc.cpp -o build/velocity/reverse_pc
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
+            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
+            reverse-os-android/tests/velocity-gameplay-contract.cpp \
+            -o build/velocity/velocity-gameplay-contract
+      - name: Verify generic XI memory, scratch and mesh primitives
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
+            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
+            tests/xi_machine_test.cpp -o build/velocity/xi-machine-test
+          build/velocity/xi-machine-test
+          g++ -std=c++17 -O2 -fsanitize=undefined -fno-sanitize-recover=all \
+            tests/xi_mesh_raster.cpp -o build/velocity/xi-mesh-test
+          build/velocity/xi-mesh-test
+          g++ -std=c++17 -O2 -fsanitize=undefined -fno-sanitize-recover=all \
+            tests/xi_texture_raster.cpp -o build/velocity/xi-texture-test
+          build/velocity/xi-texture-test
+          g++ -std=c++17 -O2 -fsanitize=undefined -fno-sanitize-recover=all \
+            tests/xi_gpu_capture.cpp -o build/velocity/xi-gpu-test
+          build/velocity/xi-gpu-test
+      - name: Execute XI world, XI physics and XI renderer
+        run: |
+          set -euo pipefail
+          VELOCITY_HOST_BUILD_FLAGS='-O2' node reverse-os-android/tests/velocity-xi-contract.cjs build/velocity/reverse_pc build/velocity
+          node reverse-os-android/tests/velocity-xi-render-contract.cjs build/velocity/reverse_pc build/velocity
+          node reverse-os-android/tests/velocity-4k-contract.cjs build/velocity/reverse_pc build/velocity/4k-geometry.json
+          node experiments/xi-render/direct-binary-test.cjs build/velocity/reverse_pc build/velocity/direct-regression
+      - name: Validate binary packets and Android presenter without a device
+        run: |
+          set -euo pipefail
+          mkdir -p build/velocity/java
+          javac -d build/velocity/java \
+            reverse-os-android/app/src/main/java/com/reversepc/os/ResultPacket.java \
+            reverse-os-android/app/src/main/java/com/reversepc/os/RegraphicsFrame.java \
+            reverse-os-android/app/src/main/java/com/reversepc/os/VelocityGpuFrame.java \
+            reverse-os-android/app/src/main/java/com/reversepc/os/VelocityMaterialShader.java \
+            reverse-os-android/app/src/main/java/com/reversepc/os/NativeRuntime.java \
+            reverse-os-android/app/src/main/java/com/reversepc/os/VelocityLoopLifecycle.java \
+            reverse-os-android/tests/RxePacketTest.java \
+            reverse-os-android/tests/RegraphicsFrameTest.java \
+            reverse-os-android/tests/VelocityGpuFrameTest.java \
+            reverse-os-android/tests/VelocityMaterialShaderTest.java \
+            reverse-os-android/tests/VelocityLoopLifecycleTest.java \
+            reverse-os-android/tests/NativeRegraphicsTest.java
+          java -cp build/velocity/java com.reversepc.os.RxePacketTest
+          java -cp build/velocity/java com.reversepc.os.RegraphicsFrameTest
+          java -cp build/velocity/java com.reversepc.os.VelocityGpuFrameTest
+          java -cp build/velocity/java com.reversepc.os.VelocityMaterialShaderTest
+          java -cp build/velocity/java com.reversepc.os.VelocityLoopLifecycleTest
+          g++ -std=c++17 -O2 -pthread -shared -fPIC \
+            -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
+            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
+            -I"$JAVA_HOME/include" -I"$JAVA_HOME/include/linux" \
+            reverse-os-android/app/src/main/cpp/reverse_os_jni.cpp \
+            -o build/velocity/libreverse_os.so
+          java -Djava.library.path=build/velocity -cp build/velocity/java \
+            com.reversepc.os.NativeRegraphicsTest reverse-os-android/app/src/main/assets/velocity build/velocity/native-evidence
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: velocity-regraphics-evidence
+          path: build/velocity
+  android-java:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-java@v4
+        with: {distribution: 'temurin', java-version: '17'}
+      - name: Compile Activity, SurfaceView and adapters against Android 35
+        run: |
+          set -euo pipefail
+          mkdir -p build/velocity-android/classes
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' \
+            > build/velocity-android/sdk.log
+          find reverse-os-android/app/src/main/java -name '*.java' -print | sort \
+            > build/velocity-android/android-sources.txt
+          javac -encoding UTF-8 -source 17 -target 17 \
+            -classpath "$ANDROID_HOME/platforms/android-35/android.jar" \
+            -d build/velocity-android/classes \
+            @build/velocity-android/android-sources.txt \
+            > build/velocity-android/java-compile.log 2>&1 || {
+              tail -160 build/velocity-android/java-compile.log
+              exit 1
+            }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: velocity-android-java-evidence
+          path: build/velocity-android

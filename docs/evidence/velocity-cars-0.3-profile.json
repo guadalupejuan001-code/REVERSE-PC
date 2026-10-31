@@ -1,0 +1,395 @@
+{
+  "passed": true,
+  "scope": "same O2 production JNI library and identical real XI reset seed; source-only unused-lighting cull with identical scene; four warmups before each nine-sample source-stable block; block order alternates",
+  "androidDeviceMeasured": false,
+  "workloadsDiffer": false,
+  "seedBytes": 10773,
+  "seedSha256": "672c6e3f015510543a90a25ee0112ea439df1211646362ef8e03ead3ece43d35",
+  "librarySha256": "ecdf16b945af7a5cd7014d61a8c5392d70fd42861f1893861afa95f87d71cf00",
+  "baselineRendererSha256": "361f933cca025af7e42b407f9b719254883099dd3d0d0e2841e14137c810b6dc",
+  "currentRendererSha256": "1853d9ea71aeb91e3554acb1cfbc55e2e5e3626757bf4dc515337b448f6ea484",
+  "cases": [
+    {
+      "stride": 4,
+      "camera": 0,
+      "baseline": {
+        "samples": [
+          48.633941,
+          59.64067,
+          52.709229,
+          63.626554,
+          49.471786,
+          49.19092,
+          48.188083,
+          54.951501,
+          54.289573
+        ],
+        "medianMs": 52.709229,
+        "width": 320,
+        "height": 180,
+        "commands": 2745,
+        "bytes": 38454,
+        "frameSha256": "4c7b26716ed11cdd338855c969b500f92943593fdca0cb550fcf497f89ece784"
+      },
+      "current": {
+        "samples": [
+          79.030591,
+          75.608711,
+          96.40652,
+          85.117915,
+          73.079037,
+          76.760711,
+          81.548262,
+          99.878771,
+          58.614355
+        ],
+        "medianMs": 79.030591,
+        "width": 320,
+        "height": 180,
+        "commands": 2745,
+        "bytes": 38454,
+        "frameSha256": "4c7b26716ed11cdd338855c969b500f92943593fdca0cb550fcf497f89ece784"
+      }
+    },
+    {
+      "stride": 4,
+      "camera": 1,
+      "baseline": {
+        "samples": [
+          55.024628,
+          85.572975,
+          57.813289,
+          51.999628,
+          55.399388,
+          68.34466,
+          61.412479,
+          61.078076,
+          59.123382
+        ],
+        "medianMs": 59.123382,
+        "width": 320,
+        "height": 180,
+        "commands": 2908,
+        "bytes": 40736,
+        "frameSha256": "16702b756da33c3f55961604f7ab849f834fc56bd3f5efdb643a3747a92dcf8e"
+      },
+      "current": {
+        "samples": [
+          56.504135,
+          69.875624,
+          55.214031,
+          57.543543,
+          59.187256,
+          61.295604,
+          60.681075,
+          53.838775,
+          53.774735
+        ],
+        "medianMs": 57.543543,
+        "width": 320,
+        "height": 180,
+        "commands": 2908,
+        "bytes": 40736,
+        "frameSha256": "16702b756da33c3f55961604f7ab849f834fc56bd3f5efdb643a3747a92dcf8e"
+      }
+    },
+    {
+      "stride": 4,
+      "camera": 2,
+      "baseline": {
+        "samples": [
+          49.575627,
+          67.483002,
+          59.967304,
+          73.132885,
+          67.767683,
+          50.321008,
+          54.866176,
+          56.975058,
+          55.606249
+        ],
+        "medianMs": 56.975058,
+        "width": 320,
+        "height": 180,
+        "commands": 2407,
+        "bytes": 33722,
+        "frameSha256": "ca00a7f2a67bb26923f018e4c978b6a7ef24280c732aec93e55463b6ae8eac27"
+      },
+      "current": {
+        "samples": [
+          51.814557,
+          56.90013,
+          57.866949,
+          49.879393,
+          61.144585,
+          53.184083,
+          62.308177,
+          61.54055,
+          54.329173
+        ],
+        "medianMs": 56.90013,
+        "width": 320,
+        "height": 180,
+        "commands": 2407,
+        "bytes": 33722,
+        "frameSha256": "ca00a7f2a67bb26923f018e4c978b6a7ef24280c732aec93e55463b6ae8eac27"
+      }
+    },
+    {
+      "stride": 2,
+      "camera": 0,
+      "baseline": {
+        "samples": [
+          66.264505,
+          59.722388,
+          58.118986,
+          58.996515,
+          60.542728,
+          64.999178,
+          54.392761,
+          84.762244,
+          114.227976
+        ],
+        "medianMs": 60.542728,
+        "width": 480,
+        "height": 270,
+        "commands": 4496,
+        "bytes": 62968,
+        "frameSha256": "56159d68569c77d35d47a9d8ee16026f4634be95889611b0bf2258d6a5f0d8c5"
+      },
+      "current": {
+        "samples": [
+          74.971145,
+          51.752119,
+          61.089989,
+          86.20099,
+          88.720429,
+          66.989493,
+          63.91356,
+          74.927327,
+          62.270245
+        ],
+        "medianMs": 66.989493,
+        "width": 480,
+        "height": 270,
+        "commands": 4496,
+        "bytes": 62968,
+        "frameSha256": "56159d68569c77d35d47a9d8ee16026f4634be95889611b0bf2258d6a5f0d8c5"
+      }
+    },
+    {
+      "stride": 2,
+      "camera": 1,
+      "baseline": {
+        "samples": [
+          91.386743,
+          82.894007,
+          62.501484,
+          58.246302,
+          59.397309,
+          68.087071,
+          70.431961,
+          80.807499,
+          101.219759
+        ],
+        "medianMs": 70.431961,
+        "width": 480,
+        "height": 270,
+        "commands": 4743,
+        "bytes": 66426,
+        "frameSha256": "94d8abeea0ceb6cdcc95875ccdd4f8aef15a164c6bcc1ae19b30c92494892858"
+      },
+      "current": {
+        "samples": [
+          59.948172,
+          59.100832,
+          62.942365,
+          60.266497,
+          63.368092,
+          72.219124,
+          66.167735,
+          66.19326,
+          57.56392
+        ],
+        "medianMs": 62.942365,
+        "width": 480,
+        "height": 270,
+        "commands": 4743,
+        "bytes": 66426,
+        "frameSha256": "94d8abeea0ceb6cdcc95875ccdd4f8aef15a164c6bcc1ae19b30c92494892858"
+      }
+    },
+    {
+      "stride": 2,
+      "camera": 2,
+      "baseline": {
+        "samples": [
+          68.049341,
+          58.450653,
+          68.990332,
+          62.39842,
+          61.119108,
+          61.008607,
+          62.228554,
+          65.576848,
+          75.713657
+        ],
+        "medianMs": 62.39842,
+        "width": 480,
+        "height": 270,
+        "commands": 3765,
+        "bytes": 52734,
+        "frameSha256": "11c1f02ba4be3411d9c82ec8b5ea4c26f0c096bc0785d85e15a010e6c645f9c3"
+      },
+      "current": {
+        "samples": [
+          64.554248,
+          54.205781,
+          62.758053,
+          54.019982,
+          63.671355,
+          59.145242,
+          58.910741,
+          69.969022,
+          59.754664
+        ],
+        "medianMs": 59.754664,
+        "width": 480,
+        "height": 270,
+        "commands": 3765,
+        "bytes": 52734,
+        "frameSha256": "11c1f02ba4be3411d9c82ec8b5ea4c26f0c096bc0785d85e15a010e6c645f9c3"
+      }
+    },
+    {
+      "stride": 1,
+      "camera": 0,
+      "baseline": {
+        "samples": [
+          63.046533,
+          55.553372,
+          63.462558,
+          59.599676,
+          56.687981,
+          58.814372,
+          53.936662,
+          58.839149,
+          60.167866
+        ],
+        "medianMs": 58.839149,
+        "width": 640,
+        "height": 360,
+        "commands": 6239,
+        "bytes": 87370,
+        "frameSha256": "8d5f0cb0a85fb80ad8991a100376b60a9b72ca495b097bad898091e8ce2f09cd"
+      },
+      "current": {
+        "samples": [
+          56.690852,
+          62.894534,
+          86.949543,
+          62.129191,
+          57.619192,
+          56.85137,
+          69.000043,
+          53.07278,
+          58.448128
+        ],
+        "medianMs": 58.448128,
+        "width": 640,
+        "height": 360,
+        "commands": 6239,
+        "bytes": 87370,
+        "frameSha256": "8d5f0cb0a85fb80ad8991a100376b60a9b72ca495b097bad898091e8ce2f09cd"
+      }
+    },
+    {
+      "stride": 1,
+      "camera": 1,
+      "baseline": {
+        "samples": [
+          58.360313,
+          57.393378,
+          58.637969,
+          55.294632,
+          57.104816,
+          78.938907,
+          82.809536,
+          61.50083,
+          62.9976
+        ],
+        "medianMs": 58.637969,
+        "width": 640,
+        "height": 360,
+        "commands": 6631,
+        "bytes": 92858,
+        "frameSha256": "b957754ba459a02e64a0d46148598d3319234e6a08734900d24de7e4875d82ea"
+      },
+      "current": {
+        "samples": [
+          58.045341,
+          76.088202,
+          60.468896,
+          49.554884,
+          58.958799,
+          54.208807,
+          63.05947,
+          56.653966,
+          61.358191
+        ],
+        "medianMs": 58.958799,
+        "width": 640,
+        "height": 360,
+        "commands": 6631,
+        "bytes": 92858,
+        "frameSha256": "b957754ba459a02e64a0d46148598d3319234e6a08734900d24de7e4875d82ea"
+      }
+    },
+    {
+      "stride": 1,
+      "camera": 2,
+      "baseline": {
+        "samples": [
+          69.220181,
+          57.506331,
+          55.492338,
+          55.714629,
+          63.46877,
+          61.021539,
+          96.717488,
+          105.04381,
+          135.645372
+        ],
+        "medianMs": 63.46877,
+        "width": 640,
+        "height": 360,
+        "commands": 5073,
+        "bytes": 71046,
+        "frameSha256": "8bd763364cb9b9308580cc940dc226f5652e17e91d364bd34191e206ce879ffa"
+      },
+      "current": {
+        "samples": [
+          60.213793,
+          54.21875,
+          59.152391,
+          134.090463,
+          87.244033,
+          93.200296,
+          85.47916,
+          67.4179,
+          55.559068
+        ],
+        "medianMs": 67.4179,
+        "width": 640,
+        "height": 360,
+        "commands": 5073,
+        "bytes": 71046,
+        "frameSha256": "8bd763364cb9b9308580cc940dc226f5652e17e91d364bd34191e206ce879ffa"
+      }
+    }
+  ],
+  "sourceComputationsDiffer": true,
+  "scenePixelsEquivalent": true,
+  "exactPixelCases": 45,
+  "identicalBinaryProfileFrames": 9
+}

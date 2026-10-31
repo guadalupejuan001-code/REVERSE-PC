@@ -1,0 +1,151 @@
+name: REVERSE VELOCITY installable APK
+on:
+  push:
+    branches: [feature/velocity-regraphics-20261030]
+    paths:
+      - '.github/workflows/velocity-apk.yml'
+      - 'reverse-os-android/app/build.gradle'
+      - 'reverse-os-android/app/src/velocity/**'
+      - 'reverse-os-android/app/src/main/assets/velocity/**'
+      - 'reverse-os-android/app/src/main/java/com/reversepc/os/Velocity*'
+      - 'reverse-os-android/app/src/main/java/com/reversepc/os/RegraphicsFrame.java'
+      - 'reverse-os-android/app/src/main/cpp/**'
+      - 'src/integration/xi_machine_extension.inc'
+      - 'src/integration/xi_mesh_raster.inc'
+      - 'src/rxe.hpp'
+      - 'reverse-os-android/tests/velocity-apk-smoke.cjs'
+      - 'reverse-os-android/tests/velocity-apk-package.cjs'
+      - 'scripts/author-velocity-scene.cjs'
+      - 'scripts/emit-velocity-car-scene.cjs'
+      - 'scripts/velocity-car-mesh.cjs'
+      - 'scripts/velocity-materials.cjs'
+      - 'scripts/velocity-car-contract.cjs'
+  workflow_dispatch:
+permissions: {contents: read}
+concurrency:
+  group: velocity-apk-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      REVERSE_SIGNING_KEYSTORE: ${{ github.workspace }}/build-signing/reverse-velocity.jks
+      VELOCITY_EXPECTED_SIGNER_SHA256: 061c28614fffecdc9a53a5661c4acf8c4d1173b631095aaaee8a98070abdf0d7
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: 1f925786522aba91f72707ad1638a8edcdd31a8f
+          path: deps/mundo-x
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with: {distribution: 'temurin', java-version: '17'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - uses: gradle/actions/setup-gradle@v4
+        with: {gradle-version: '8.9'}
+      - uses: actions/cache@v4
+        id: velocity-signing
+        with:
+          path: ${{ env.REVERSE_SIGNING_KEYSTORE }}
+          key: reverse-velocity-development-signing-v1
+      - name: Prepare fixed native dependency, SDK and signing identity
+        run: |
+          set -euo pipefail
+          umask 077
+          mkdir -p dist build/velocity-apk build/ether-compat build-signing
+          if [[ ! -f "$REVERSE_SIGNING_KEYSTORE" ]]; then
+            keytool -genkeypair -keystore "$REVERSE_SIGNING_KEYSTORE" -storetype JKS \
+              -storepass android -keypass android -alias reverse-desktop \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname 'CN=REVERSE Velocity Development'
+          fi
+          python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' \
+            'cmake;3.22.1' platform-tools emulator \
+            'system-images;android-35;default;x86_64' > build/velocity-apk/sdk.log
+      - name: Confirm RV-01 model and regenerated XI assets
+        run: |
+          set -euo pipefail
+          node scripts/velocity-car-contract.cjs
+          node scripts/velocity-textures-contract.cjs
+          node scripts/author-velocity-scene.cjs
+          git diff --exit-code -- reverse-os-android/app/src/main/assets/velocity/render.xi reverse-os-android/app/src/main/assets/velocity/palette.txt reverse-os-android/app/src/main/assets/velocity/render4k.xi
+      - name: Build the actual standalone game APK for ARM64 and x86_64
+        run: |
+          set -euo pipefail
+          gradle -p reverse-os-android --no-daemon :app:assembleVelocityDebug \
+            > build/velocity-apk/gradle.log 2>&1 || {
+              tail -180 build/velocity-apk/gradle.log
+              exit 1
+            }
+          cp reverse-os-android/app/build/outputs/apk/velocity/debug/app-velocity-debug.apk \
+            dist/REVERSE-VELOCITY-0.9.0-Materiales-XI.apk
+      - uses: actions/cache/save@v4
+        if: steps.velocity-signing.outputs.cache-hit != 'true'
+        with:
+          path: ${{ env.REVERSE_SIGNING_KEYSTORE }}
+          key: reverse-velocity-development-signing-v1
+      - name: Verify APK identity, signature, alignment and exact shader assets
+        run: |
+          set -euo pipefail
+          APK=dist/REVERSE-VELOCITY-0.9.0-Materiales-XI.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" \
+            > build/velocity-apk/signature.txt
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 4 "$APK" \
+            > build/velocity-apk/alignment.txt
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" \
+            > build/velocity-apk/badging.txt
+          keytool -exportcert -keystore "$REVERSE_SIGNING_KEYSTORE" \
+            -storepass android -alias reverse-desktop \
+            -file build/velocity-apk/expected-signer.der
+          node reverse-os-android/tests/velocity-apk-package.cjs "$APK" \
+            build/velocity-apk/badging.txt build/velocity-apk/package-results.json \
+            build/velocity-apk/signature.txt build/velocity-apk/expected-signer.der
+          sha256sum "$APK" > build/velocity-apk/apk-sha256.txt
+      - name: Install and exercise the game on Android 35
+        timeout-minutes: 12
+        run: |
+          set -euo pipefail
+          export PATH="$ANDROID_HOME/platform-tools:$PATH"
+          sudo chmod a+rw /dev/kvm
+          export ANDROID_AVD_HOME="$(mktemp -d /tmp/velocity-avd.XXXXXX)"
+          printf 'no\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd \
+            --force -n velocity -p "$ANDROID_AVD_HOME/velocity.avd" \
+            -k 'system-images;android-35;default;x86_64'
+          "$ANDROID_HOME/emulator/emulator" -avd velocity -no-window -no-audio \
+            -no-boot-anim -no-snapshot -gpu swiftshader -feature -Vulkan -memory 2048 \
+            > build/velocity-apk/emulator.log 2>&1 &
+          EMULATOR_PID=$!
+          trap 'adb logcat -d > build/velocity-apk/logcat.txt 2>/dev/null || true; kill "$EMULATOR_PID" 2>/dev/null || true' EXIT
+          ready=false
+          for i in $(seq 1 100); do
+            if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == '1' ]]; then
+              ready=true
+              break
+            fi
+            sleep 2
+          done
+          "$ready"
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
+          adb shell input keyevent 82
+          adb install -r dist/REVERSE-VELOCITY-0.9.0-Materiales-XI.apk \
+            > build/velocity-apk/install.txt
+          node reverse-os-android/tests/velocity-apk-smoke.cjs adb build/velocity-apk/smoke
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reverse-velocity-apk
+          path: dist/REVERSE-VELOCITY-0.9.0-Materiales-XI.apk
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: velocity-apk-evidence
+          path: build/velocity-apk
