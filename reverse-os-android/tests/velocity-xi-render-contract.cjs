@@ -135,14 +135,14 @@ try{
   if(label==='reset'){
    assert(visible.has(0)&&visible.has(1),'sky and horizon absent');
    assert(visible.has(2),'terrain absent');
-   assert(visible.has(6),'world-space road absent');
+   assert(count(40,47)>=1,'real road texture was not visible');
    assert(visible.has(7),'road markings absent');
    assert(paintMaterials>=(camera===2?1:2),'selected car/hood paint absent');
   }
   const pixelHash=sha(Buffer.from(pixels.buffer));
   measured.push({label,stride,camera,paint,width:frame.width,height:frame.height,commands:frame.spans.length,
    bytes:first.bytes.length,hostRunMs:rounded(first.ms),uniqueColors:colors.size,
-   selectedPaintShades:paintMaterials,glassShades:count(184,207),visibleMaterials:materials,pixelSha256:pixelHash});
+   selectedPaintShades:paintMaterials,glassShades:count(184,207),asphaltTextureShades:count(40,47),visibleMaterials:materials,pixelSha256:pixelHash});
   if(label==='reset')hashes.set(stride+':'+camera+':'+paint,pixelHash);
   if(label==='reset'&&stride===1&&paint===0)writeImage('camera-'+camera,frame,pixels,first.bytes);
   if(label==='reset'&&camera===0&&paint===0){

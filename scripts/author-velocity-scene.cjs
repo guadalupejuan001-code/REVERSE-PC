@@ -28,6 +28,7 @@ out(`load8 r0 200\ncmp r0 1\nje size_high\ncmp r0 2\nje size_medium\nset r0 320\
 store('r0',8210,2,0);store('r1',8212,2,0);
 out(`meshbegin r0 r1 2 12\nload8 r0 201\ncmp r0 1\nje camera_close\ncmp r0 2\nje camera_hood\nset r0 750\nset r1 250\nset r2 160\nset r3 987\njmp camera_ready\nlabel camera_close\nset r0 650\nset r1 230\nset r2 150\nset r3 989\njmp camera_ready\nlabel camera_hood\nset r0 0\nset r1 115\nset r2 100\nset r3 995\nlabel camera_ready`);
 store('r0',8192,2,0);store('r1',8194,2,0);store('r2',8196,2,0);store('r3',8198,2,0);
+require('./velocity-textures.cjs').emitXiTextures(out);
 function focus(){
  load('r9',8210,2,0,'r11');
  out('mov r10 r9\ndiv r10 2\nmov r11 r10\nmul r11 9\ndiv r11 16\nmul r9 85\ndiv r9 100');
@@ -68,7 +69,22 @@ function roadVertex(tuple,endpoint,side){const[x,y,z]=tuple;
  load('r9',side?8222:8218,2,0,'r11');load('r10',8198,2,0,'r11');out(`mul r10 r9\ndiv r10 1000\nadd ${y} r10`);
  load('r10',8196,2,0,'r11');out(`mul r10 r9\ndiv r10 1000\nsub ${z} r10`);
 }
-for(const tri of [[[0,0],[1,0],[1,1]],[[0,0],[1,1],[0,1]]]){tri.forEach(([e,s],i)=>roadVertex(['r'+(i*3),'r'+(i*3+1),'r'+(i*3+2)],e,s));focus();out('load8 r7 8220\nmeshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 r7 r9 r10 r11 60'); // repair below: material must not reuse r7!
+for(const tri of [[[0,0],[1,0],[1,1]],[[0,0],[1,1],[0,1]]]){
+ tri.forEach(([e,s],i)=>roadVertex(['r'+(i*3),'r'+(i*3+1),'r'+(i*3+2)],e,s));
+ const plain=label('road_plain'),done=label('road_done');
+ out('load8 r9 8220\ncmp r9 108\njne '+plain);
+ for(let i=0;i<3;++i)out('meshvertex '+(1770+i)+' r'+(3*i)+' r'+(3*i+1)+' r'+(3*i+2));
+ for(let i=0;i<3;++i){
+  const [endpoint,side]=tri[i],id=1770+i;
+  out('load8 r0 8200\nadd r0 '+endpoint+'\nmul r0 32');
+  load('r1',side?8216:8214,2,32768);
+  out('div r1 12\nmeshtexuv '+id+' r1 r0\nmeshshade '+id+' 128');
+ }
+ focus();
+ out('meshfacegradienttex 1770 1771 1772 40 8 5 12 r9 r10 r11 60\njmp '+done+'\nlabel '+plain);
+ focus();
+ out('load8 r7 8220\nmeshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 r7 r9 r10 r11 60');
+ out('label '+done);
 }
 // Note material register collides with third y: use memory-free material dispatch.
 // Replace the above meshtri3 line with literal-material dispatch preserving all vertices.

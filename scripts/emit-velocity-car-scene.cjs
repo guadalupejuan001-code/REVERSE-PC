@@ -1,6 +1,7 @@
 'use strict';
 const {buildCarMesh}=require('./velocity-car-mesh.cjs');
 const {RAMPS,FLAT}=require('./velocity-materials.cjs');
+const {carUV,TEXTURED_MATERIALS}=require('./velocity-textures.cjs');
 module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
  const CAMERA=2048,vertices=[],normalIds=[],groups=[],groupMap=new Map(),modelStats={},canonical=[],normalKinds=[],bodyMasks=new Map(),glassMasks=new Map(),wheelBands=[];
  const norm=v=>{const n=Math.hypot(...v)||1;return v.map(x=>x/n);};
@@ -65,7 +66,7 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
  if(groups.length>128)throw Error('Normal-group scalar encoding exceeded');
  const groupNormals=groups.map(g=>norm(g.sum).map(x=>Math.round(x*16384)));
  out('# Original detailed car meshes; all world transforms and lighting execute in XI.');
- vertices.forEach((p,i)=>{if(canonical[i]===i)out(`meshvertex ${i} ${p.join(' ')}`);});
+ vertices.forEach((p,i)=>{if(canonical[i]===i){const uv=carUV(p,normalKinds[i]);out(`meshvertex ${i} ${p.join(' ')}\nmeshtexuv ${i} ${uv.join(' ')}`);}});
  normalIds.forEach((g,i)=>{const code=g>=0?g+256:-g-1;if(code<0||code>511)throw Error('Scalar metadata range');out(`localset ${512+i} ${canonical[i]*512+code}`);});
  function range(start,end){out(`set r0 ${start}`);store('r0',8324,2,0);out(`set r0 ${end}`);store('r0',8326,2,0);}
  out('store8 8203 0\nlabel actor\nstore8 8334 0\nload8 r0 8203\ncmp r0 4\njge tree_actor\ncmp r0 0\njne rival_actor');
@@ -158,14 +159,14 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
   load('r9',8310,2,32768);out('mul r9 r0');load('r10',8308,2,32768);out('mul r10 r2\nadd r9 r10\ndiv r9 16384');store('r9',8320,4,1000000,'r10','r11');
   load('r9',8310,2,32768);out('mul r9 r2');load('r10',8308,2,32768);out('mul r10 r0\nsub r9 r10\ndiv r9 16384');load('r10',8304);out('add r10 r9');load('r0',8320);load('r11',8300);out('add r0 r11');
   load('r11',8192,2,0);out('add r10 r11');load('r11',8194,2,0);out('sub r1 r11');pitch('r0','r1','r2');
-  out('label vertex_publish_position');load('r8',8324,2,0);out(`add r8 ${CAMERA}\nmeshvertex r8 r0 r1 r2\nmov r9 r8\nsub r9 ${CAMERA-512}\nlocalget r9 r9\nmod r9 512\ncmp r9 384\njge vertex_glass_lookup\ncmp r9 256\njge vertex_lighting_lookup\njmp vertex_shade_ready\nlabel vertex_glass_lookup\nadd r9 2216\nlocalget r9 r9\njmp vertex_shade_ready\nlabel vertex_lighting_lookup\nadd r9 2144\nlocalget r9 r9\nlabel vertex_shade_ready\nmeshshade r8 r9\nsub r8 ${CAMERA-1}`);store('r8',8324,2,0);load('r0',8326,2,0);out('cmp r8 r0\njlt actor_vertex');
+  out('label vertex_publish_position');load('r8',8324,2,0);out(`add r8 ${CAMERA}\nmeshvertex r8 r0 r1 r2\nmov r9 r8\nsub r9 ${CAMERA}\nadd r9 512\nlocalget r9 r9\ndiv r9 512\nmeshtexcopy r8 r9\nmov r9 r8\nsub r9 ${CAMERA-512}\nlocalget r9 r9\nmod r9 512\ncmp r9 384\njge vertex_glass_lookup\ncmp r9 256\njge vertex_lighting_lookup\njmp vertex_shade_ready\nlabel vertex_glass_lookup\nadd r9 2216\nlocalget r9 r9\njmp vertex_shade_ready\nlabel vertex_lighting_lookup\nadd r9 2144\nlocalget r9 r9\nlabel vertex_shade_ready\nmeshshade r8 r9\nsub r8 ${CAMERA-1}`);store('r8',8324,2,0);load('r0',8326,2,0);out('cmp r8 r0\njlt actor_vertex');
  }
  transformVertex();
  out('load8 r0 8203\ncmp r0 4\njge actor_geometry_ready\nload8 r0 8335\ncmp r0 1\nje actor_geometry_ready\nstore8 8335 1');range(shadowStart,shadowEnd);out('jmp actor_vertex\nlabel actor_geometry_ready');
  focus();out('load8 r12 8203\ncmp r12 4\njge emit_tree\nload8 r12 8334\ncmp r12 1\nje emit_hood\ncmp r12 2\nje emit_far\nload8 r12 8203\ncmp r12 0\nje emit_high\njmp emit_medium');
  function face(f){
   const [a,b,c]=f.indices.map(i=>i+CAMERA),ramp=RAMPS[f.material];
-  if(ramp){if(f.material==='paint')out('load8 r12 8318');else out(`set r12 ${ramp.base}`);out(`meshfacegradient ${a} ${b} ${c} r12 ${ramp.count} r9 r10 r11 60`);}
+  if(ramp){if(f.material==='paint')out('load8 r12 8318');else out(`set r12 ${ramp.base}`);const t=TEXTURED_MATERIALS[f.material];out(t?`meshfacegradienttex ${a} ${b} ${c} r12 ${ramp.count} ${t.id} ${t.strength} r9 r10 r11 60`:`meshfacegradient ${a} ${b} ${c} r12 ${ramp.count} r9 r10 r11 60`);}
   else out(`meshface ${a} ${b} ${c} ${FLAT[f.material]} r9 r10 r11 60`);
  }
  out('label emit_hood');models.high.faces.filter(f=>f.hood).forEach(face);out('jmp next_actor');
