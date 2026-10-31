@@ -152,10 +152,13 @@ public final class VelocityActivity extends Activity {
         lap=text("VUELTA 1 / 3",18);add(root,lap,-2,-2,Gravity.TOP|Gravity.LEFT,18,14,0,0);
         position=text("POSICIÓN 4 / 4",18);add(root,position,-2,-2,Gravity.TOP|Gravity.RIGHT,0,14,18,0);
         timer=text("00:00.00",18);add(root,timer,-2,-2,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,14,0,0);
-        speed=text("0 km/h",20);
-        add(root,speed,-2,-2,Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL,0,0,0,164);
+        // Three distinct bottom zones: wheel, center instruments, pedals.
+        // Keep the tachometer clear of the top controls on short landscapes.
         cockpit=new VelocityCockpitView(this);
-        add(root,cockpit,194,106,Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL,0,0,0,124);
+        add(root,cockpit,194,106,Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL,0,0,0,6);
+        speed=text("0 km/h",20);
+        speed.setGravity(Gravity.CENTER);
+        add(root,speed,116,32,Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL,0,0,0,42);
         warning=text("",12);add(root,warning,-2,-2,Gravity.BOTTOM|Gravity.RIGHT,0,0,18,168);
         renderInfo=text("REgraphics XI",10);renderInfo.setTextColor(0xffb4d5e7);
         add(root,renderInfo,-2,-2,Gravity.BOTTOM|Gravity.LEFT,18,0,0,154);
