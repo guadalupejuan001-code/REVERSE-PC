@@ -8026,6 +8026,149 @@ label intensity_bounded_473
 localset 2482 r0
 label body_lighting_done_469
 label lighting_table_ready
+localget r0 11
+cmp r0 4
+jge wheel_motion_ready
+localget r0 142
+cmp r0 2
+je wheel_motion_ready
+localget r0 11
+cmp r0 0
+jne wheel_rival_distance
+load32 r0 278
+jmp wheel_distance_ready
+label wheel_rival_distance
+localget r7 11
+sub r7 1
+mul r7 32
+add r7 6016
+load32 r0 $r7
+label wheel_distance_ready
+mod r0 214
+mul r0 4096
+div r0 214
+mov r5 r0
+add r5 0
+mod r5 4096
+cmp r5 0
+jge sin_negative_474
+add r5 4096
+label sin_negative_474
+mov r7 r5
+mod r7 2048
+set r8 2048
+sub r8 r7
+mul r7 r8
+mov r8 r7
+mul r8 4
+set r6 20971520
+sub r6 r8
+mul r7 262144
+div r7 r6
+cmp r5 2048
+jlt sin_done_475
+mul r7 -1
+label sin_done_475
+mov r5 r7
+mov r8 r5
+mov r9 r8
+add r9 32768
+localset 58 r9
+mov r6 r0
+add r6 1024
+mod r6 4096
+cmp r6 0
+jge sin_negative_476
+add r6 4096
+label sin_negative_476
+mov r7 r6
+mod r7 2048
+set r8 2048
+sub r8 r7
+mul r7 r8
+mov r8 r7
+mul r8 4
+set r5 20971520
+sub r5 r8
+mul r7 262144
+div r7 r5
+cmp r6 2048
+jlt sin_done_477
+mul r7 -1
+label sin_done_477
+mov r6 r7
+localget r5 58
+sub r5 32768
+localset 3040 r5
+localset 3041 r6
+localget r0 11
+cmp r0 0
+jne wheel_steer_neutral
+load16 r0 256
+sub r0 1000
+mul r0 320
+div r0 1000
+add r0 4096
+mod r0 4096
+mov r5 r0
+add r5 0
+mod r5 4096
+cmp r5 0
+jge sin_negative_478
+add r5 4096
+label sin_negative_478
+mov r7 r5
+mod r7 2048
+set r8 2048
+sub r8 r7
+mul r7 r8
+mov r8 r7
+mul r8 4
+set r6 20971520
+sub r6 r8
+mul r7 262144
+div r7 r6
+cmp r5 2048
+jlt sin_done_479
+mul r7 -1
+label sin_done_479
+mov r5 r7
+mov r8 r5
+mov r9 r8
+add r9 32768
+localset 58 r9
+mov r6 r0
+add r6 1024
+mod r6 4096
+cmp r6 0
+jge sin_negative_480
+add r6 4096
+label sin_negative_480
+mov r7 r6
+mod r7 2048
+set r8 2048
+sub r8 r7
+mul r7 r8
+mov r8 r7
+mul r8 4
+set r5 20971520
+sub r5 r8
+mul r7 262144
+div r7 r5
+cmp r6 2048
+jlt sin_done_481
+mul r7 -1
+label sin_done_481
+mov r6 r7
+localget r5 58
+sub r5 32768
+localset 3042 r5
+localset 3043 r6
+jmp wheel_motion_ready
+label wheel_steer_neutral
+localset 3042 0
+localset 3043 16384
+label wheel_motion_ready
 localset 143 0
 label actor_vertex
 localget r8 132
@@ -8040,6 +8183,123 @@ meshread r0 r1 r2 r9
 jmp vertex_publish_position
 label vertex_transform_position
 meshread r0 r1 r2 r8
+cmp r8 289
+jlt wheel_next_model_484
+cmp r8 805
+jge wheel_next_model_484
+cmp r8 418
+jge wheel_next_wheel_485
+localset 3044 -88
+localset 3045 -142
+localset 3046 0
+jmp wheel_transform_482
+label wheel_next_wheel_485
+cmp r8 547
+jge wheel_next_wheel_486
+localset 3044 88
+localset 3045 -142
+localset 3046 0
+jmp wheel_transform_482
+label wheel_next_wheel_486
+cmp r8 676
+jge wheel_next_wheel_487
+localset 3044 -88
+localset 3045 138
+localset 3046 1
+jmp wheel_transform_482
+label wheel_next_wheel_487
+cmp r8 805
+jge wheel_next_wheel_488
+localset 3044 88
+localset 3045 138
+localset 3046 1
+jmp wheel_transform_482
+label wheel_next_wheel_488
+label wheel_next_model_484
+cmp r8 1087
+jlt wheel_next_model_489
+cmp r8 1287
+jge wheel_next_model_489
+cmp r8 1137
+jge wheel_next_wheel_490
+localset 3044 -88
+localset 3045 -142
+localset 3046 0
+jmp wheel_transform_482
+label wheel_next_wheel_490
+cmp r8 1187
+jge wheel_next_wheel_491
+localset 3044 88
+localset 3045 -142
+localset 3046 0
+jmp wheel_transform_482
+label wheel_next_wheel_491
+cmp r8 1237
+jge wheel_next_wheel_492
+localset 3044 -88
+localset 3045 138
+localset 3046 1
+jmp wheel_transform_482
+label wheel_next_wheel_492
+cmp r8 1287
+jge wheel_next_wheel_493
+localset 3044 88
+localset 3045 138
+localset 3046 1
+jmp wheel_transform_482
+label wheel_next_wheel_493
+label wheel_next_model_489
+jmp wheel_transform_done_483
+label wheel_transform_482
+sub r1 34
+localget r9 3045
+sub r2 r9
+localget r5 3041
+localget r6 3040
+mov r7 r1
+mul r7 r5
+mov r9 r2
+mul r9 r6
+sub r7 r9
+div r7 16384
+mul r1 r6
+mul r2 r5
+add r1 r2
+div r1 16384
+mov r2 r1
+localget r9 3045
+add r2 r9
+mov r1 r7
+add r1 34
+localget r9 3046
+cmp r9 0
+je wheel_rear_494
+localget r9 3044
+sub r0 r9
+localget r9 3045
+sub r2 r9
+localget r5 3042
+localget r6 3043
+mov r7 r0
+mul r7 r6
+mov r9 r2
+mul r9 r5
+add r7 r9
+div r7 16384
+mov r9 r2
+mul r9 r6
+mov r10 r0
+mul r10 r5
+sub r9 r10
+div r9 16384
+mov r0 r7
+localget r10 3044
+add r0 r10
+mov r2 r9
+localget r10 3045
+add r2 r10
+label wheel_rear_494
+label wheel_transform_done_483
 localget r9 118
 sub r9 32768
 mul r9 r0

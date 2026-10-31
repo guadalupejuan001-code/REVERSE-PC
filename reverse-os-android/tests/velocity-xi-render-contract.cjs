@@ -177,13 +177,26 @@ try{
   poseHashes.push(observe(candidate,4,0,0,label));
  }
  assert.equal(new Set(poseHashes).size,4,'world-position/yaw inspection poses must change the scene');
+
+ // The render observes distance and steering without mutating its input state.
+ const wheelEvidence=[];
+ for(const [name,distance,steer] of [['neutral',0,1000],['rolling',54,1000],['left',54,350],['right',54,1650]]){
+  const program=path.join(temp,'wheel-'+name+'.xi'),snapshot=path.join(temp,'wheel-'+name+'.rvp');
+  fs.writeFileSync(program,HEADER+'store32 278 '+distance+'\nstore16 256 '+steer+'\nhalt\n');
+  run('run',program,state,snapshot);
+  const first=render(snapshot,1,1,0),again=render(snapshot,1,1,0);
+  assert(first.bytes.equals(again.bytes),'wheel scene deterministic: '+name);
+  decode(first.bytes,1);
+  wheelEvidence.push({name,distanceCm:distance,steering:steer,frameSha256:sha(first.bytes)});
+ }
+ assert.equal(sha(fs.readFileSync(state)),retainedHash,'wheel observation changed real race snapshot');
  assert.equal(sha(fs.readFileSync(state)),retainedHash,'scene campaign changed authoritative reset snapshot');
  const report={passed:true,result:'REVERSE_VELOCITY_REGRAPHICS_V3_SCENE_PASS',language:'XI Machine v1',
   output:'XFS1 revision2 from generic 3D mesh visibility',paletteEntries:256,worldVertexCount:81,
   trackLengthCm:rounded(length),stateRegisters:16,modeCases:45,inspectionPoses:4,
   deterministicCases:measured.length,inputStateUnchanged:true,sourceOnlyRenderer:true,
   androidDeviceMeasured:false,threeCamerasDistinct:true,fivePaintsPerCamera:true,
-  rendererSha256:sha(renderer),worldSha256:sha(worldSource),driveSha256:sha(driving),benchmarks,measured};
+  rendererSha256:sha(renderer),worldSha256:sha(worldSource),driveSha256:sha(driving),wheelEvidence,benchmarks,measured};
  fs.writeFileSync(path.join(output,'velocity-regraphics-results.json'),JSON.stringify(report,null,2)+'\n');
  console.log(JSON.stringify({...report,measured:undefined}));
 }catch(error){console.error(error.stack||error);process.exitCode=1;}

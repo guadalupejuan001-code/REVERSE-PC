@@ -2,7 +2,7 @@
 const {buildCarMesh}=require('./velocity-car-mesh.cjs');
 const {RAMPS,FLAT}=require('./velocity-materials.cjs');
 module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
- const CAMERA=2048,vertices=[],normalIds=[],groups=[],groupMap=new Map(),modelStats={},canonical=[],normalKinds=[],bodyMasks=new Map(),glassMasks=new Map();
+ const CAMERA=2048,vertices=[],normalIds=[],groups=[],groupMap=new Map(),modelStats={},canonical=[],normalKinds=[],bodyMasks=new Map(),glassMasks=new Map(),wheelBands=[];
  const norm=v=>{const n=Math.hypot(...v)||1;return v.map(x=>x/n);};
  function normalGroup(n){
   n=norm(n);let az=(Math.round(Math.atan2(n[2],n[0])*16/(Math.PI*2))+16)%16;
@@ -20,6 +20,17 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
     return cache.get(key);
    });faces.push({indices,material:f.material,hood:hoodSet.has(fi)});
   });
+
+  // Wheel intervals are computed from the mesh, not from fixed vertex IDs.
+  const wheelSpans=mesh.landmarks.wheelParts.map(part=>{
+   const ids=new Set(part.faces.flatMap(fi=>faces[fi].indices));
+   const first=Math.min(...ids),last=Math.max(...ids)+1;
+   if(ids.size!==last-first)throw Error('Wheel vertices must be contiguous: '+detail);
+   return {first,last,side:part.side,z:part.center[2],front:part.axle==='front'};
+  });
+  if(wheelSpans.length!==4||wheelSpans.some((w,i)=>i>0&&wheelSpans[i-1].last!==w.first))
+   throw Error('Unexpected wheel intervals: '+detail);
+  wheelBands.push({detail,first:wheelSpans[0].first,last:wheelSpans.at(-1).last,wheels:wheelSpans});
   const mask=detail==='high'?1:detail==='medium'?2:4;
   for(let i=start;i<vertices.length;i++){const kind=normalKinds[i];if(!RAMPS[kind])continue;const map=kind==='glass'?glassMasks:bodyMasks,g=normalIds[i]-(kind==='glass'?128:0);map.set(g,(map.get(g)||0)|mask);}
   modelStats[detail]={sourceVertices:mesh.vertices.length,vertices:vertices.length-start,triangles:faces.length,bounds:mesh.bounds};
@@ -106,9 +117,44 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
   out(`localget r0 3006\nmul r0 ${nx}\nlocalget r1 3007\nmul r1 ${ny}\nadd r0 r1\nlocalget r1 3008\nmul r1 ${nz}\nadd r0 r1\ndiv r0 16384\nmul r0 2\nmul r0 ${ny}\ndiv r0 16384\nlocalget r1 3007\nsub r0 r1\nmul r0 100\ndiv r0 16384\nadd r0 128\ncmp r0 0\njge ${glassLow}\nset r0 0\nlabel ${glassLow}\ncmp r0 255\njle ${glassHigh}\nset r0 255\nlabel ${glassHigh}\nlocalset ${2600+g} r0`);
   out('label '+glassDone);}
  });
- out('label lighting_table_ready\nstore8 8335 0\nlabel actor_vertex');
+
+ // XI physics controls the actual steering and road progress. The rig only reads them.
+ out('label lighting_table_ready\nload8 r0 8203\ncmp r0 4\njge wheel_motion_ready\nload8 r0 8334\ncmp r0 2\nje wheel_motion_ready\nload8 r0 8203\ncmp r0 0\njne wheel_rival_distance');
+ load('r0',278,4,0);
+ out('jmp wheel_distance_ready\nlabel wheel_rival_distance\nload8 r7 8203\nsub r7 1\nmul r7 32\nadd r7 6016');
+ load('r0','r7',4,0);
+ // 34 cm wheel radius, circumference approximated by 214 cm.
+ out('label wheel_distance_ready\nmod r0 214\nmul r0 4096\ndiv r0 214');
+ trig('r0','r5','r6','r7','r8');
+ out('localset 3040 r5\nlocalset 3041 r6\nload8 r0 8203\ncmp r0 0\njne wheel_steer_neutral');
+ load('r0',256,2,0);
+ out('sub r0 1000\nmul r0 320\ndiv r0 1000\nadd r0 4096\nmod r0 4096');
+ trig('r0','r5','r6','r7','r8');
+ out('localset 3042 r5\nlocalset 3043 r6\njmp wheel_motion_ready\nlabel wheel_steer_neutral\nlocalset 3042 0\nlocalset 3043 16384\nlabel wheel_motion_ready\nstore8 8335 0\nlabel actor_vertex');
  function transformVertex(){
   load('r8',8324,2,0);out(`mov r9 r8\nadd r9 512\nlocalget r9 r9\ndiv r9 512\ncmp r9 r8\nje vertex_transform_position\nadd r9 ${CAMERA}\nmeshread r0 r1 r2 r9\njmp vertex_publish_position\nlabel vertex_transform_position\nmeshread r0 r1 r2 r8`);
+
+  // Split-normal vertices reuse the original deformed canonical position.
+  const wheelTransform=label('wheel_transform'),wheelDone=label('wheel_transform_done');
+  for(const band of wheelBands.filter(b=>b.detail!=='far')){
+   const nextModel=label('wheel_next_model');
+   out('cmp r8 '+band.first+'\njlt '+nextModel+'\ncmp r8 '+band.last+'\njge '+nextModel);
+   for(const wheel of band.wheels){
+    const nextWheel=label('wheel_next_wheel');
+    out('cmp r8 '+wheel.last+'\njge '+nextWheel+'\nlocalset 3044 '+wheel.side*88+
+      '\nlocalset 3045 '+wheel.z+'\nlocalset 3046 '+(wheel.front?1:0)+
+      '\njmp '+wheelTransform+'\nlabel '+nextWheel);
+   }
+   out('label '+nextModel);
+  }
+  out('jmp '+wheelDone+'\nlabel '+wheelTransform);
+  // Roll on X about y=34, z=wheel axle.
+  out('sub r1 34\nlocalget r9 3045\nsub r2 r9\nlocalget r5 3041\nlocalget r6 3040\nmov r7 r1\nmul r7 r5\nmov r9 r2\nmul r9 r6\nsub r7 r9\ndiv r7 16384\nmul r1 r6\nmul r2 r5\nadd r1 r2\ndiv r1 16384\nmov r2 r1\nlocalget r9 3045\nadd r2 r9\nmov r1 r7\nadd r1 34');
+  const rear=label('wheel_rear');
+  out('localget r9 3046\ncmp r9 0\nje '+rear);
+  // Front axle steering on Y around the physical hub.
+  out('localget r9 3044\nsub r0 r9\nlocalget r9 3045\nsub r2 r9\nlocalget r5 3042\nlocalget r6 3043\nmov r7 r0\nmul r7 r6\nmov r9 r2\nmul r9 r5\nadd r7 r9\ndiv r7 16384\nmov r9 r2\nmul r9 r6\nmov r10 r0\nmul r10 r5\nsub r9 r10\ndiv r9 16384\nmov r0 r7\nlocalget r10 3044\nadd r0 r10\nmov r2 r9\nlocalget r10 3045\nadd r2 r10');
+  out('label '+rear+'\nlabel '+wheelDone);
   load('r9',8310,2,32768);out('mul r9 r0');load('r10',8308,2,32768);out('mul r10 r2\nadd r9 r10\ndiv r9 16384');store('r9',8320,4,1000000,'r10','r11');
   load('r9',8310,2,32768);out('mul r9 r2');load('r10',8308,2,32768);out('mul r10 r0\nsub r9 r10\ndiv r9 16384');load('r10',8304);out('add r10 r9');load('r0',8320);load('r11',8300);out('add r0 r11');
   load('r11',8192,2,0);out('add r10 r11');load('r11',8194,2,0);out('sub r1 r11');pitch('r0','r1','r2');

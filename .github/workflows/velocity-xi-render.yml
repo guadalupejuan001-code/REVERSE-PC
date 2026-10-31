@@ -46,6 +46,11 @@ jobs:
         with: {node-version: '22'}
       - uses: actions/setup-java@v4
         with: {distribution: 'temurin', java-version: '17'}
+      - name: Ensure car render is reproducibly authored in XI
+        run: |
+          set -euo pipefail
+          node scripts/author-velocity-scene.cjs
+          git diff --exit-code -- reverse-os-android/app/src/main/assets/velocity/render.xi reverse-os-android/app/src/main/assets/velocity/palette.txt
       - name: Build real XI interpreter with unchanged verified Ether overlays
         run: |
           set -euo pipefail
