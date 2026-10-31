@@ -57,3 +57,26 @@ La integración no debe fusionarse ni compilarse como próxima APK si fallan:
 - prueba Android 15 que ejecuta XN01 mediante JNI y verifica que el checkpoint principal queda intacto.
 
 El contrato está en `laplace-android/integration-lock.json` y `NEXT_APK_LAPLACE.json`.
+
+## F001 (rama de actualización, no APK publicada)
+
+- Se incorpora el motor JavaScript puro F001 de LaPlaceDIG sin modificar M001,
+  XN01 o los programas XI nativos. El selector BTC dispone de 14 horizontes
+  (5 minutos hasta 90 días) sobre velas cerradas de 5 min, 1 h y 1 día.
+- Android puede pedir rangos horarios (45 días) y diarios (1.000 días),
+  en lotes de máximo 300 barras por petición y URLs Coinbase autorizadas.
+- La cotización, los tres históricos y la captura mundial se inician
+  conjuntamente. U003 es opcional cuando exista captura firmada en
+  laplace-registro; U002/369 es alternativa con round-trip nativo XI.
+- F001 usa el estado mundial para cobertura, frescura y amplitud exploratoria
+  del escenario, nunca para alterar el precio central sin validación
+  histórica. Cada horizonte sin al menos ocho análogos se abstiene.
+- El reporte móvil conserva en su historial las salidas F001, M001 y XN01,
+  el origen por resolución y qué fuentes fallaron.
+- Esto sólo integra **código fuente para la próxima APK de REVERSE**. No
+  demuestra existencia de una APK independiente 0.4.3 actualizada, ni una
+  compilación/instalación Android real hasta pasar sus pruebas.
+
+Ver pruebas: laplace-android/tests/fusion-f001.test.mjs y flujo CI
+laplace-integration.yml. Probar también latencia, memoria y UI en el dispositivo
+antes de publicar un APK como versión funcional.
