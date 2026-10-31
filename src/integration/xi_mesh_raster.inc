@@ -342,8 +342,11 @@ class MachineMeshRaster {
                 const unsigned tile_x=static_cast<unsigned>(std::uint64_t(u)&15U);
                 const unsigned tile_y=static_cast<unsigned>(std::uint64_t(v)&15U);
                 const int delta=int(textures_[texture_id][tile_y*texture_side+tile_x])-8;
-                const int mixed=int(intensity)+delta*int(texture_strength);
-                shaded=static_cast<std::uint64_t>(std::max(0,std::min(255,mixed)));
+                // XI light intensity is Q8: 0..(255*256), not 0..255.
+                const std::int64_t mixed=static_cast<std::int64_t>(intensity)+
+                  std::int64_t(delta)*std::int64_t(texture_strength)*256;
+                shaded=static_cast<std::uint64_t>(std::max<std::int64_t>(0,
+                  std::min<std::int64_t>(65280,mixed)));
               }
               const auto color=static_cast<std::uint8_t>(material+
                 (shaded*(ramp_count-1)+32640)/65280);
