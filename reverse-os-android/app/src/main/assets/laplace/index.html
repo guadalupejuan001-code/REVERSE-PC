@@ -31,13 +31,20 @@
     </label>
     <label id="horizonteGrupo">Horizonte
       <select id="horizonte" aria-label="Horizonte">
-        <option value="5">5 minutos</option>
+                <option value="5">5 minutos</option>
         <option value="15" selected>15 minutos</option>
         <option value="30">30 minutos</option>
         <option value="60">1 hora</option>
+        <option value="120">2 horas</option>
         <option value="240">4 horas</option>
+        <option value="480">8 horas</option>
+        <option value="720">12 horas</option>
         <option value="1440">24 horas</option>
-        <option value="10080">7 días · soporte limitado</option>
+        <option value="4320">3 días</option>
+        <option value="10080">7 días</option>
+        <option value="20160">14 días</option>
+        <option value="43200">30 días</option>
+        <option value="129600">90 días · experimental</option>
       </select>
     </label>
     <button id="actualizar" class="primario">Consultar ahora</button>
@@ -98,7 +105,7 @@
       </article>
       <article>
         <h3>Cómo leerlo</h3>
-        <p id="interpretacion">BTC usa M001 para producir un precio candidato. La bolsa usa XN01 ejecutado en XI/Ether para clasificar la dirección del siguiente intervalo de 5 minutos.</p>
+        <p id="interpretacion">BTC usa F001 en tres escalas y conserva M001 como referencia; el mundo sólo ajusta el rango exploratorio. La bolsa usa XN01 ejecutado en XI/Ether para clasificar la dirección del siguiente intervalo de 5 minutos.</p>
         <p id="guardado">La última consulta válida se conserva localmente.</p>
       </article>
     </div>
