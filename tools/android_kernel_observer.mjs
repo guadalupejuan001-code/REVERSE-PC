@@ -146,6 +146,12 @@ export function observeAndroidKernel(bytes,expectedCheckpointSha,options){
   const current=pointer===currentTask,liveKernel=current&&inKernel;
   const fp=liveKernel?u(37):read(pointer+BigInt(contextOffset+context.fp.offset)),sp=liveKernel?u(3):read(pointer+BigInt(contextOffset+context.sp.offset)),pc=liveKernel?u(2):read(pointer+BigInt(contextOffset+context.pc.offset));
   const item={pid,name:text(pointer+BigInt(layout.comm),16),task:hex(pointer),state:Number(read(pointer+BigInt(layout.__state),4)),running_on_cpu:current,context_pc:hex(pc),context_sp:hex(sp),context_kind:liveKernel?'live_kernel_registers':'saved_kernel_context',saved_context_may_be_stale:current&&!inKernel,live_user_pc:current&&!inKernel?hex(u(2)):null,stack:[]};
+  if(options?.liveProperties){
+   check(resolveType(types[task.exit_state.type]).type===4&&resolveType(types[task.mm.type]).kind===2,'task lifecycle BTF layout');
+   item.exit_state=Number(read(pointer+BigInt(task.exit_state.offset),4));
+   const mm=read(pointer+BigInt(task.mm.offset));check(mm===0n||mm>=0xffff000000000000n,'invalid task mm');
+   item.has_user_mm=mm!==0n;
+  }
   for(const name of ['on_rq','on_cpu'])if(task[name])item[name]=Number(read(pointer+BigInt(task[name].offset),4));
   item.accounting={};
   for(const name of ['nvcsw','nivcsw','utime','stime'])if(task[name])item.accounting[name]=read(pointer+BigInt(task[name].offset)).toString();
@@ -220,8 +226,19 @@ export function observeAndroidKernel(bytes,expectedCheckpointSha,options){
   Object.assign(capacity,{managed_pages:Number(total),reserved_pages:Number(reserve),global_free_pages:Number(available),managed_bytes:Number(total*4096n),global_free_bytes:Number(available*4096n),vmstat_per_cpu_batches_may_lag:true,android_framework_capacity_proven:false});
  }catch(e){capacity.read_error=e.message;}
  const liveProperty=options?.liveProperties?observePid1BootProperty({tasks,read,physicalByte:physical,physical64:phys64,translateKernel:translate,userAddressBits:64-Number(tcr&63n),layout:name=>Object.fromEntries(Object.entries(members(type(name))).map(([key,member])=>{const t=resolveType(types[member.type]);return [key,{offset:member.offset,count:t.kind===3?kernel.readUInt32LE(t.at+20):null}];}))}):undefined;
+ let liveSecurity;
+ if(options?.liveProperties){
+  liveSecurity={read_only:true,btf_layout_verified:false,selinux_initialized:false,selinux_enforcing:false,policy_present:false};
+  try{
+   const fields=members(type('selinux_state')),address=symbol('selinux_state');
+   const boolean=name=>{const f=fields[name];check(f&&resolveType(types[f.type]).kind===1&&resolveType(types[f.type]).type===1,'SELinux bool BTF layout '+name);const value=read(address+BigInt(f.offset),1);check(value===0n||value===1n,'invalid SELinux bool '+name);return value===1n;};
+   check(fields.policy&&resolveType(types[fields.policy.type]).kind===2,'SELinux policy BTF layout');
+   const policy=read(address+BigInt(fields.policy.offset));check(policy===0n||policy>=0xffff000000000000n,'invalid SELinux policy pointer');
+   Object.assign(liveSecurity,{address:hex(address),btf_layout_verified:true,selinux_initialized:boolean('initialized'),selinux_enforcing:boolean('enforcing'),policy_present:policy!==0n});
+  }catch(error){liveSecurity.read_error=error.message;liveSecurity.btf_layout_verified=false;}
+ }
  check(createHash('sha256').update(bytes).digest('hex')===originalSha,'observation mutated input');
- return {...(liveProperty?{live_boot_property:liveProperty}:{}),status:'read_only_kernel_observation',checkpoint_sha256:originalSha,kernel_sha256:KERNEL,instructions:provenance.instructions,pc:hex(u(2)),pc_symbol:nearest(u(2)),next_opcode:hex(read(u(2),4)),physical_pc:hex(translate(u(2))),ticks:m(27).toString(),exceptions:m(28).toString(),current_task:currentTask===null?null:hex(currentTask),current_task_source:currentTaskSource,current_task_lookup:currentLookup,current_task_read_error:currentTaskError,current_pid:currentDetails?.pid??null,current_task_details:currentDetails,capacity,task_layout:layout,task_count:tasks.length,process_leader_count:tasks.length,all_threads_enumerated:false,tasks,trace_event_sem:{address:hex(sem),count:hex(countValue),owner:hex(owner),owner_pid:ownerTask?.pid??null},initramfs:globals,rootfs_file:rootfsFile,android_init_observed:false,android_boot:false,input_unchanged:true};
+ return {...(liveProperty?{live_boot_property:liveProperty,live_kernel_security:liveSecurity}:{}),status:'read_only_kernel_observation',checkpoint_sha256:originalSha,kernel_sha256:KERNEL,instructions:provenance.instructions,pc:hex(u(2)),pc_symbol:nearest(u(2)),next_opcode:hex(read(u(2),4)),physical_pc:hex(translate(u(2))),ticks:m(27).toString(),exceptions:m(28).toString(),current_task:currentTask===null?null:hex(currentTask),current_task_source:currentTaskSource,current_task_lookup:currentLookup,current_task_read_error:currentTaskError,current_pid:currentDetails?.pid??null,current_task_details:currentDetails,capacity,task_layout:layout,task_count:tasks.length,process_leader_count:tasks.length,all_threads_enumerated:false,tasks,trace_event_sem:{address:hex(sem),count:hex(countValue),owner:hex(owner),owner_pid:ownerTask?.pid??null},initramfs:globals,rootfs_file:rootfsFile,android_init_observed:false,android_boot:false,input_unchanged:true};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  try{check(process.argv[2],'usage: node android_kernel_observer.mjs checkpoint.rvg [expected_sha256]');const maxSnapshotBytes=process.argv[4]===undefined?256*1024*1024:Number(process.argv[4]);check(Number.isSafeInteger(maxSnapshotBytes)&&maxSnapshotBytes>=360&&maxSnapshotBytes<=1024*1024*1024,'invalid host transport bound');check(statSync(process.argv[2]).size<=maxSnapshotBytes,'oversized checkpoint');console.log(JSON.stringify(observeAndroidKernel(readFileSync(process.argv[2]),process.argv[3],{maxSnapshotBytes,liveProperties:process.argv[5]==='--live-properties'}),null,2));}catch(e){console.error(e.message);process.exitCode=1;}
