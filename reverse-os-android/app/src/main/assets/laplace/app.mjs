@@ -1,17 +1,18 @@
 import {emitirPronosticos,verificarPronostico,validarVelas} from './modelo.mjs';
 import {huellaContenido} from './integridad.mjs';
 import {parseStockChart,BOLSA_LAB} from './x001.mjs';
+import {HORIZON_PLAN,HISTORIA_REQUERIDA,fusionTemporal} from './fusion-temporal.mjs';
 
 const UPSTREAM_M001='06ebce4bddf25d615cefd85ed24081f37504a492';
 const UPSTREAM_BOLSA='08cafb094a5c0f81253509eff412214dd526b808';
 const UPSTREAM_U002='533c69bddd2c76d7f3619b97152a7a7e609aa613';
 const ASSETS=Object.freeze({
-  'BTC-USD':{label:'Bitcoin',short:'BTC',kind:'crypto',currency:'USD',model:'M001+XN01'},
+  'BTC-USD':{label:'Bitcoin',short:'BTC',kind:'crypto',currency:'USD',model:'F001+M001+XN01'},
   SPY:{label:'S&P 500 ETF',short:'SPY',kind:'stock',currency:'USD',model:'XN01'},
   AAPL:{label:'Apple',short:'AAPL',kind:'stock',currency:'USD',model:'XN01'},
   NVDA:{label:'NVIDIA',short:'NVDA',kind:'stock',currency:'USD',model:'XN01'}
 });
-const BTC_HORIZONS=new Set([15,30,60,240,1440,10080]);
+const BTC_HORIZONS=new Set(HORIZON_PLAN.map(x=>x.minutes));
 const $=x=>document.getElementById(x),need=(c,m)=>{if(!c)throw Error(m)};
 const money=(n,c='USD')=>Number.isFinite(n)?new Intl.NumberFormat('es-MX',{style:'currency',currency:c,maximumFractionDigits:2}).format(n):'—';
 const date=t=>Number.isFinite(Date.parse(t))?new Intl.DateTimeFormat('es-MX',{dateStyle:'short',timeStyle:'medium'}).format(new Date(t)):'—';
@@ -57,13 +58,16 @@ async function pub(source,params={}){
   catch(e){status(source,'error',e.message);throw e;}
 }
 const sleep=n=>new Promise(ok=>setTimeout(ok,n));
-async function bitcoinCandles(){
-  const end=Math.floor(Date.now()/300000)*300,start=end-14*86400,parts=[];
-  for(let day=0;day<14;day++){
-    const r=await pub('candles',{step:300,start:start+day*86400,end:start+(day+1)*86400});
-    need(Array.isArray(r.value)&&r.value.length<=500,'Velas incompatibles');
-    parts.push(...r.value.filter(x=>Array.isArray(x)&&x[0]>=start&&x[0]<end));
-    if(day<13)await sleep(420);
+async function bitcoinCandles(step=300){
+  const spec=HISTORIA_REQUERIDA[step];
+  need(spec,'Granularidad no admitida');
+  const end=Math.floor(Date.now()/(step*1000))*step,start=end-spec.days*86400;
+  const chunk=spec.chunkDays*86400,parts=[];
+  for(let t=start;t<end;t+=chunk){
+    const last=Math.min(end,t+chunk),r=await pub('candles',{step,start:t,end:last});
+    need(Array.isArray(r.value)&&r.value.length<=300,'Velas incompatibles');
+    parts.push(...r.value.filter(x=>Array.isArray(x)&&x[0]>=t&&(x[0]+step)<=last));
+    if(last<end)await sleep(240); // Limita solicitudes continuas al proveedor.
   }
   return parts;
 }
@@ -85,6 +89,11 @@ async function verifySnapshot(s){
     need(body.upstream===UPSTREAM_M001&&Array.isArray(body.predictions)&&body.predictions.length===6,'Pronósticos BTC incompletos');
     need(body.native_direction?.schema==='laplace-xn01-native-xi-v1'&&body.native_direction.asset==='BTC-USD','XN01 BTC ausente');
     for(const p of body.predictions){await verificarPronostico(p);need(p.precio_inicial===Number(body.quote.value),'Precio BTC incoherente');}
+    if(body.fusion){
+      need(body.fusion.schema==='laplace-fusion-temporal-f001-v1'&&body.fusion.horizons?.length===14,'Informe F001 incompleto');
+      need(body.fusion.quote?.observed_at===body.quote.observed_at&&body.fusion.automatic_trading===false,'Informe F001 incoherente');
+      need(body.fusion.horizons.every(h=>BTC_HORIZONS.has(h.minutes)),'Horizonte F001 inesperado');
+    }
   }else{
     need(body.upstream===UPSTREAM_BOLSA&&body.stock_result?.schema==='laplace-xn01-native-xi-v1','Resultado XN01 nativo ausente');
     need(body.market.asset===body.stock_meta?.symbol,'Símbolo bursátil incoherente');
@@ -102,6 +111,32 @@ async function verifyGlobalCapture(c){
   need(body.prediction_inputs_enabled===false&&body.automatic_trading===false,'U002 no debe activar predicción/trading automáticamente');
   need(Number.isFinite(Date.parse(body.at))&&Date.parse(body.at)<=Date.now()+60000,'Fecha U002 inválida');
   return c;
+}
+async function verifyGlobalU003(c){
+  const {capture_sha256,...body}=c??{};
+  need(body.schema==='laplace-universo-global-u003-v4','Captura U003 incompatible');
+  need(capture_sha256===await huellaContenido(body),'Captura U003 alterada');
+  const states=body.universal_state?.states;
+  need(Array.isArray(states)&&states.length>0&&states.length<=4096,'U003 sin estados válidos');
+  need(body.coverage?.known_signals===states.length,'Cobertura U003 inconsistente');
+  need(body.prediction_inputs_enabled===false&&body.automatic_trading===false,'U003 activó operaciones');
+  need(Date.parse(body.at)<=Date.now()+60000,'Fecha futura U003');
+  return c;
+}
+// U003 es opcional mientras la rama multidominio no publique su registro.
+// U002 sigue verificándose en XI/Ether; no se atribuye a U003 una prueba nativa que no hizo.
+async function worldForFusion(){
+  const [u003,u002]=await Promise.allSettled([
+    host('public',{source:'global_u003',params:{}}).then(async r=>verifyGlobalU003(JSON.parse(r.text))),
+    host('public',{source:'global_u002',params:{}}).then(async r=>{
+      const capture=await verifyGlobalCapture(JSON.parse(r.text));
+      const native=await host('native_u002',capture),proof=verifyGlobalProof(native.result,capture);
+      globalState={capture,proof,received_at:r.received_at,upstream:UPSTREAM_U002};
+      try{localStorage.setItem('laplace-u002-global-v1',JSON.stringify(globalState));}catch{}
+      return capture;
+    })
+  ]);
+  return u003.status==='fulfilled'?u003.value:u002.status==='fulfilled'?u002.value:null;
 }
 function verifyGlobalProof(p,capture){
   need(p?.schema==='laplace-u002-native-xi-v1'&&p.backend==='XI/Ether · NativeRuntime','Prueba U002 nativa incompatible');
@@ -152,16 +187,29 @@ function renderGlobal(){
 }
 async function updateBTC(){
   const extrasTask=Promise.all(selected().map(async source=>{try{return {source,status:'observed',...(await pub(source))};}catch{return {source,status:'unavailable'};}}));
-  const raw=await bitcoinCandles(),response=await pub('ticker'),q=response.value;
+  // Cinco vías de datos arrancan a la vez. Una falla de mundo/escala larga
+  // no se sustituye con cero ni borra la última lectura válida.
+  const tasks=await Promise.allSettled([
+    bitcoinCandles(300),bitcoinCandles(3600),bitcoinCandles(86400),
+    pub('ticker'),worldForFusion()
+  ]);
+  need(tasks[0].status==='fulfilled','No se recibió la serie BTC de 5 minutos');
+  need(tasks[3].status==='fulfilled','No se recibió una cotización BTC válida');
+  const [raw,hourly,daily,response,world]=tasks.map(r=>r.status==='fulfilled'?r.value:null);
+  const q=response.value;
   need(q&&Number.isFinite(Number(q.price))&&Number(q.price)>0,'La fuente no entregó un precio válido');
   const quote={asset:'BTC-USD',value:String(q.price),observed_at:new Date(Date.parse(q.time)).toISOString(),known_at:new Date(Date.parse(response.received_at)).toISOString()};
   const bars=validarVelas(raw,{corte:quote.observed_at});need(bars.length>=60,'Historial insuficiente');
+  const fusion=fusionTemporal({quote,series:{300:raw,3600:hourly??[],86400:daily??[]},
+    world,asOf:new Date().toISOString()});
   const predictions=await emitirPronosticos(bars,quote,{emitidoEn:new Date().toISOString(),horizontes:[15,30,60,240,1440,10080],revision:'REVERSE-Android-M001-'+UPSTREAM_M001});
   const native=await host('native_x001',{asset:'BTC-USD',bars:bars.slice(-240)});
   const nativeDirection=native.result;need(nativeDirection?.schema==='laplace-xn01-native-xi-v1','XN01 BTC no devolvió un resultado compatible');
   const extras=await extrasTask;
   return {schema:'laplace-reverse-v2',upstream:UPSTREAM_M001,at:new Date().toISOString(),
-    market:{asset:'BTC-USD',kind:'crypto',model:'M001+XN01-XI'},quote,bars,predictions,native_direction:nativeDirection,extras};
+    market:{asset:'BTC-USD',kind:'crypto',model:'F001+M001+XN01-XI'},quote,bars,predictions,
+    fusion,fusion_sources:{five_min:'ok',hour:tasks[1].status,day:tasks[2].status,world:world?.schema??'no_disponible'},
+    native_direction:nativeDirection,extras};
 }
 async function updateStock(){
   const id=assetId(),r=await pub('stock',{symbol:id,range:'1mo'}),parsed=parseStockChart(r.value,id,r.received_at);
@@ -186,7 +234,14 @@ async function update(){
   }catch(e){alert(e.message+' No se reemplazó la última lectura válida.');}
   finally{busy=false;$('actualizar').disabled=false;$('actualizar').textContent='Consultar ahora';for(const k in statuses)if(statuses[k].state==='consultando')status(k,'error');statusText();}
 }
-function prediction(s=current()){return s?.predictions?.find(p=>p.horizonte_minutos===Number($('horizonte').value));}
+function prediction(s=current()){
+  const horizon=Number($('horizonte').value);
+  const f=s?.fusion?.horizons?.find(p=>p.minutes===horizon);
+  if(f)return {precio_predicho:f.price_candidate,precio_inicial:Number(s.quote.value),
+    objetivo_en:f.target_at,horizonte_minutos:horizon,analogos:f.analogs,
+    escenario_bajo:f.scenario_low,escenario_alto:f.scenario_high,estado:f.status,origen:'F001'};
+  return s?.predictions?.find(p=>p.horizonte_minutos===horizon);
+}
 function statusText(){
   const s=current();if(!s){$('estado').textContent='Sin lectura';return;}
   const age=Date.now()-Date.parse(s.quote.observed_at);$('estado').textContent=age< -5000?'Revisar reloj':age>180000?'Histórica':'Reciente';
@@ -206,14 +261,15 @@ function render(){
 function renderBTC(s){
   const p=prediction(s);if(!p)return;
   $('resultadoEtiqueta').textContent='PRECIO CALCULADO · '+$('horizonte').selectedOptions[0].textContent.toUpperCase();
-  $('candidato').textContent=money(p.precio_predicho);$('modeloChip').textContent='M001 + XI';
+  $('candidato').textContent=money(p.precio_predicho);$('modeloChip').textContent=p.origen==='F001'?'F001 + XI':'M001 + XI';
   const change=p.precio_predicho===null?null:p.precio_predicho-p.precio_inicial;
   $('candidato').className=change>0?'positivo':change<0?'negativo':'neutral';
   $('cambio').textContent=change===null?'Sin antecedentes suficientes.':(change<0?'Bajada: ':change>0?'Subida: ':'Sin cambio: ')+money(Math.abs(change))+' · '+(100*change/p.precio_inicial).toFixed(3)+' %';
   $('objetivo').textContent=date(p.objetivo_en);$('soporteCorto').textContent=p.analogos+' análogos';
   const xn=s.native_direction;$('validacionCorta').textContent=xn?(xn.direction==='subida'?'XI ↑ ':'XI ↓ ')+percent(xn.confidence):'XI sin lectura';
-  $('soporte').textContent=p.analogos+' análogos M001 · '+s.bars.length+' velas cerradas. '+(xn?'XN01/XI: '+xn.direction+' con soporte '+xn.support+'. ':'')+(p.analogos<8?'Soporte M001 escaso.':'Candidato M001 publicado sin sustituirlo por persistencia.');
-  $('interpretacion').textContent='M001 calcula el precio candidato; XN01 calcula en XI/Ether la dirección inmediata de 5 minutos. Son salidas separadas y ninguna sustituye a la otra.';
+  const context=s.fusion?.context;
+  $('soporte').textContent=p.analogos+' análogos '+(p.origen??'M001')+' · '+(p.escenario_bajo===null?'Sin escenario amplio.':'Escenario '+money(p.escenario_bajo)+' a '+money(p.escenario_alto)+'. ')+(context?'Mundo: '+context.usable+' señales utilizables de '+context.observations+'. ':'')+(xn?'XI 5 min: '+xn.direction+'. ':'')+(p.analogos<8?'Soporte insuficiente.':'');
+  $('interpretacion').textContent=p.origen==='F001'?'F001 combina tres escalas y el estado mundial en un reporte. El mundo amplía el rango exploratorio, NO modifica el precio central. XN01 mide dirección a 5 minutos. Sin ventaja financiera validada.':'M001 calcula precio; XN01 calcula dirección a 5 minutos por separado.';
   renderMaskBits(xn);
 }
 function renderMaskBits(x){
