@@ -3,7 +3,7 @@
 const WORLD_MAP=new Map([[8,0],[38,1],[72,2],[189,3],[78,4],[208,5],[108,6],[206,7],[204,8],[202,9],[203,10],[205,11],[194,12],[195,13],[196,14],[197,15],[198,16],[199,17],[200,18],[201,19]]);
 function worldMaterial(old){if(!WORLD_MAP.has(old))throw Error('Unknown world material '+old);return WORLD_MAP.get(old);}
 const RAMPS=Object.freeze({paint:{base:64,count:24},glass:{base:184,count:24},tire:{base:208,count:4},rim:{base:212,count:12},aero:{base:228,count:12}});
-const FLAT=Object.freeze({lampRed:224,lampWhite:225,grille:226,shadow:227,shadowSoft:28,shadowMid:29,shadowContact:30});
+const FLAT=Object.freeze({lampRed:224,lampWhite:225,grille:226,shadow:227,shadowSoft:28,shadowMid:29,shadowContact:30,seam:240,metal:241});
 function mix(a,b,t){return a.map((n,i)=>Math.round(n+(b[i]-n)*t));}
 const rgb=h=>[0,2,4].map(i=>parseInt(h.slice(i,i+2),16));
 const hex=c=>c.map(n=>Math.max(0,Math.min(255,n)).toString(16).padStart(2,'0')).join('');
@@ -31,6 +31,7 @@ function buildPalette(){
   p[228+n]=hex(t<.72?mix(rgb('0b1016'),rgb('303b47'),Math.pow(t/.72,.85)):
     mix(rgb('303b47'),rgb('677787'),Math.pow((t-.72)/.28,1.9)));
  }
+ p[240]='343d47';p[241]='596977';
  return p;
 }
 module.exports={worldMaterial,RAMPS,FLAT,buildPalette};

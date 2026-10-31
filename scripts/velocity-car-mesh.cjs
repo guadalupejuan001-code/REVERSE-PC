@@ -5,7 +5,7 @@
 const DETAILS={high:{wheel:16,profile:[-1,-.82,-.45,0,.45,.82,1],roof:5},
   medium:{wheel:8,profile:[-1,0,1],roof:3},
   far:{wheel:4,profile:[-1,0,1],roof:3}};
-const MATERIALS=Object.freeze(['paint','glass','aero','tire','rim','lampRed','lampWhite','grille','shadow']);
+const MATERIALS=Object.freeze(['paint','glass','aero','tire','rim','lampRed','lampWhite','grille','shadow','seam','metal']);
 const WHEELS=Object.freeze([{side:-1,z:-142},{side:1,z:-142},{side:-1,z:138},{side:1,z:138}]);
 const BODY=[[-223,85,69,74,72],[-213,89,80,83,80],[-207,91,76,81,77],[-181,95,78,86,79],
   [-142,97,78,90,80],[-103,92,77,84,77],[-72,87,76,80,75],
@@ -153,6 +153,34 @@ function buildCarMesh(detail='high'){
       const xa=side*(section(a)[1]+1),xb=side*(section(b)[1]+1);
       quad([xa,29,a],[xb,29,b],[xb,43,b],[xa,43,a],'aero','sideSills',[side,0,0]);
     }
+  }
+
+  // Model-space RV-01 fidelity: real panel edges and three-dimensional rear aero.
+  // These are baked into the player's high LOD, not a cosmetic screenshot.
+  if(detail==='high'){
+    const sideX=(side,z)=>side*(section(z)[1]+2);
+    for(const side of [-1,1]){
+      for(const z of [-88,80])
+        quad([sideX(side,z),44,z],[sideX(side,z+1),44,z+1],
+             [sideX(side,z+1),73,z+1],[sideX(side,z),73,z],
+             'seam','doorSeams',[side,0,0]);
+      quad([side*59,106,-60],[side*58,103,30],
+           [side*57,106,30],[side*60,109,-60],
+           'seam','canopyTrim',[side,1,0]);
+      quad([sideX(side,-64),67,-64],[sideX(side,65),67,65],
+           [sideX(side,65),69,65],[sideX(side,-64),69,-64],
+           'metal','sideCrease',[side,0,0]);
+    }
+    // Raised diffuser blades show actual depth within the original bounding box.
+    for(const x of [-51,-17,17,51])
+      quad([x-2,15,-227],[x+2,15,-227],[x+2,35,-213],[x-2,35,-213],
+           'aero','diffuserFins',[0,0,-1]);
+    quad([-70,44,-227],[70,44,-227],[68,48,-227],[-68,48,-227],
+         'seam','rearVent',[0,0,-1]);
+    for(const side of [-1,1])
+      quad([side*70,46,-227],[side*80,46,-227],
+           [side*80,49,-227],[side*70,49,-227],
+           'metal','rearCorner',[0,0,-1]);
   }
   // Corner normals preserve glazing/rubber/metal seams while smoothing each
   // continuous painted shell. No extra transform vertices are required.

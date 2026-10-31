@@ -1451,367 +1451,427 @@ meshvertex 911 89 43 70
 meshvertex 912 89 29 70
 meshvertex 913 93 43 99
 meshvertex 914 93 29 99
-meshvertex 915 -85 72 -223
-meshvertex 916 -95 79 -181
-meshvertex 917 0 78 -181
-meshvertex 918 0 69 -223
-meshvertex 919 95 79 -181
-meshvertex 920 85 72 -223
-meshvertex 922 -95 34 -181
-meshvertex 924 -85 22 -223
-meshvertex 927 95 34 -181
-meshvertex 928 85 22 -223
-meshvertex 929 -96 79 -167
-meshvertex 930 0 78 -167
-meshvertex 931 96 79 -167
-meshvertex 932 -96 64 -167
-meshvertex 935 96 64 -167
-meshvertex 936 -97 80 -142
-meshvertex 937 0 78 -142
-meshvertex 938 97 80 -142
-meshvertex 939 -97 73 -142
-meshvertex 942 97 73 -142
-meshvertex 943 -94 78 -117
-meshvertex 944 0 77 -117
-meshvertex 945 94 78 -117
-meshvertex 946 -94 64 -117
-meshvertex 949 94 64 -117
-meshvertex 950 -92 77 -103
-meshvertex 951 0 77 -103
-meshvertex 952 92 77 -103
-meshvertex 953 -92 34 -103
-meshvertex 956 92 34 -103
-meshvertex 957 -92 76 99
-meshvertex 958 0 72 99
-meshvertex 959 92 76 99
-meshvertex 960 -92 34 99
-meshvertex 963 92 34 99
-meshvertex 964 -93 76 113
-meshvertex 965 0 71 113
-meshvertex 966 93 76 113
-meshvertex 967 -93 64 113
-meshvertex 970 93 64 113
-meshvertex 971 -96 76 138
-meshvertex 972 0 69 138
-meshvertex 973 96 76 138
-meshvertex 974 -96 73 138
-meshvertex 977 96 73 138
-meshvertex 978 -93 72 163
-meshvertex 979 0 66 163
-meshvertex 980 93 72 163
-meshvertex 981 -93 64 163
-meshvertex 984 93 64 163
-meshvertex 985 -91 69 177
-meshvertex 986 0 64 177
-meshvertex 987 91 69 177
-meshvertex 988 -91 34 177
-meshvertex 991 91 34 177
-meshvertex 992 -72 48 223
-meshvertex 993 0 46 223
-meshvertex 994 72 48 223
-meshvertex 995 -72 22 223
-meshvertex 998 72 22 223
-meshvertex 999 0 32 -223
-meshvertex 1005 0 32 223
-meshvertex 1008 -71 18 -204
-meshvertex 1009 71 18 197
-meshvertex 1010 -71 18 197
-meshvertex 1011 71 18 -204
-meshvertex 1012 -54 73 -150
-meshvertex 1013 -60 106 -60
-meshvertex 1014 0 113 -60
-meshvertex 1015 0 75 -150
-meshvertex 1016 60 106 -60
-meshvertex 1017 54 73 -150
-meshvertex 1018 -61 108 -10
-meshvertex 1019 0 115 -10
-meshvertex 1020 61 108 -10
-meshvertex 1021 -54 101 48
-meshvertex 1022 0 108 48
-meshvertex 1023 54 101 48
-meshvertex 1024 -69 73 108
-meshvertex 1025 0 75 108
-meshvertex 1026 69 73 108
-meshvertex 1027 -78 79 -126
-meshvertex 1028 -55 101 48
-meshvertex 1029 -61 104 -61
-meshvertex 1030 -74 78 101
-meshvertex 1031 -81 77 -64
-meshvertex 1032 -80 77 -141
-meshvertex 1038 78 79 -126
-meshvertex 1039 61 104 -61
-meshvertex 1040 55 101 48
-meshvertex 1041 74 78 101
-meshvertex 1042 81 77 -64
-meshvertex 1043 80 77 -141
-meshvertex 1049 -76 34 -108
-meshvertex 1050 -98 58 -118
-meshvertex 1051 -98 34 -108
-meshvertex 1052 -76 58 -118
-meshvertex 1053 -98 68 -142
-meshvertex 1054 -76 68 -142
-meshvertex 1055 -98 58 -166
-meshvertex 1056 -76 58 -166
-meshvertex 1057 -98 34 -176
-meshvertex 1058 -76 34 -176
-meshvertex 1059 -98 10 -166
-meshvertex 1060 -76 10 -166
-meshvertex 1061 -98 0 -142
-meshvertex 1062 -76 0 -142
-meshvertex 1063 -98 10 -118
-meshvertex 1064 -76 10 -118
-meshvertex 1066 -100 50 -126
-meshvertex 1067 -100 34 -120
-meshvertex 1069 -100 56 -142
-meshvertex 1071 -100 50 -158
-meshvertex 1073 -100 34 -164
-meshvertex 1075 -100 18 -158
-meshvertex 1077 -100 12 -142
-meshvertex 1079 -100 18 -126
-meshvertex 1081 -100 34 -142
-meshvertex 1099 76 34 -108
-meshvertex 1100 98 34 -108
-meshvertex 1101 98 58 -118
-meshvertex 1102 76 58 -118
-meshvertex 1103 98 68 -142
-meshvertex 1104 76 68 -142
-meshvertex 1105 98 58 -166
-meshvertex 1106 76 58 -166
-meshvertex 1107 98 34 -176
-meshvertex 1108 76 34 -176
-meshvertex 1109 98 10 -166
-meshvertex 1110 76 10 -166
-meshvertex 1111 98 0 -142
-meshvertex 1112 76 0 -142
-meshvertex 1113 98 10 -118
-meshvertex 1114 76 10 -118
-meshvertex 1116 100 34 -120
-meshvertex 1117 100 50 -126
-meshvertex 1119 100 56 -142
-meshvertex 1121 100 50 -158
-meshvertex 1123 100 34 -164
-meshvertex 1125 100 18 -158
-meshvertex 1127 100 12 -142
-meshvertex 1129 100 18 -126
-meshvertex 1131 100 34 -142
-meshvertex 1149 -76 34 172
-meshvertex 1150 -98 58 162
-meshvertex 1151 -98 34 172
-meshvertex 1152 -76 58 162
-meshvertex 1153 -98 68 138
-meshvertex 1154 -76 68 138
-meshvertex 1155 -98 58 114
-meshvertex 1156 -76 58 114
-meshvertex 1157 -98 34 104
-meshvertex 1158 -76 34 104
-meshvertex 1159 -98 10 114
-meshvertex 1160 -76 10 114
-meshvertex 1161 -98 0 138
-meshvertex 1162 -76 0 138
-meshvertex 1163 -98 10 162
-meshvertex 1164 -76 10 162
-meshvertex 1166 -100 50 154
-meshvertex 1167 -100 34 160
-meshvertex 1169 -100 56 138
-meshvertex 1171 -100 50 122
-meshvertex 1173 -100 34 116
-meshvertex 1175 -100 18 122
-meshvertex 1177 -100 12 138
-meshvertex 1179 -100 18 154
-meshvertex 1181 -100 34 138
-meshvertex 1199 76 34 172
-meshvertex 1200 98 34 172
-meshvertex 1201 98 58 162
-meshvertex 1202 76 58 162
-meshvertex 1203 98 68 138
-meshvertex 1204 76 68 138
-meshvertex 1205 98 58 114
-meshvertex 1206 76 58 114
-meshvertex 1207 98 34 104
-meshvertex 1208 76 34 104
-meshvertex 1209 98 10 114
-meshvertex 1210 76 10 114
-meshvertex 1211 98 0 138
-meshvertex 1212 76 0 138
-meshvertex 1213 98 10 162
-meshvertex 1214 76 10 162
-meshvertex 1216 100 34 160
-meshvertex 1217 100 50 154
-meshvertex 1219 100 56 138
-meshvertex 1221 100 50 122
-meshvertex 1223 100 34 116
-meshvertex 1225 100 18 122
-meshvertex 1227 100 12 138
-meshvertex 1229 100 18 154
-meshvertex 1231 100 34 138
-meshvertex 1249 -94 36 -91
-meshvertex 1250 -88 57 -55
-meshvertex 1251 -91 60 -90
-meshvertex 1252 94 36 -91
-meshvertex 1253 91 60 -90
-meshvertex 1254 88 57 -55
-meshvertex 1255 -80 50 226
-meshvertex 1256 80 50 226
-meshvertex 1257 80 53 225
-meshvertex 1258 -80 53 225
-meshvertex 1259 -81 63 -227
-meshvertex 1260 81 67 -226
-meshvertex 1261 81 63 -227
-meshvertex 1262 -81 67 -226
-meshvertex 1263 -84 39 -227
-meshvertex 1264 80 57 -225
-meshvertex 1265 84 39 -227
-meshvertex 1266 -80 57 -225
-meshvertex 1267 -51 24 225
-meshvertex 1268 51 24 225
-meshvertex 1269 57 43 225
-meshvertex 1270 -57 43 225
-meshvertex 1271 -73 15 -225
-meshvertex 1272 67 39 -225
-meshvertex 1273 73 15 -225
-meshvertex 1274 -67 39 -225
-meshvertex 1275 -93 29 -103
-meshvertex 1276 -86 29 0
-meshvertex 1277 -86 43 0
-meshvertex 1278 -93 43 -103
-meshvertex 1279 -93 29 99
-meshvertex 1280 -93 43 99
-meshvertex 1281 93 29 -103
-meshvertex 1282 86 43 0
-meshvertex 1283 86 29 0
-meshvertex 1284 93 43 -103
-meshvertex 1285 93 43 99
-meshvertex 1286 93 29 99
-meshvertex 1287 -85 72 -223
-meshvertex 1288 -97 80 -142
-meshvertex 1289 0 78 -142
-meshvertex 1290 0 69 -223
-meshvertex 1291 97 80 -142
-meshvertex 1292 85 72 -223
-meshvertex 1294 -97 22 -142
-meshvertex 1296 -85 22 -223
-meshvertex 1299 97 22 -142
-meshvertex 1300 85 22 -223
-meshvertex 1301 -87 75 -65
-meshvertex 1302 0 76 -65
-meshvertex 1303 87 75 -65
-meshvertex 1304 -87 22 -65
-meshvertex 1307 87 22 -65
-meshvertex 1308 -88 74 65
-meshvertex 1309 0 75 65
-meshvertex 1310 88 74 65
-meshvertex 1311 -88 22 65
-meshvertex 1314 88 22 65
-meshvertex 1315 -96 76 138
-meshvertex 1316 0 69 138
-meshvertex 1317 96 76 138
-meshvertex 1318 -96 22 138
-meshvertex 1321 96 22 138
-meshvertex 1322 -72 48 223
-meshvertex 1323 0 46 223
-meshvertex 1324 72 48 223
-meshvertex 1325 -72 22 223
-meshvertex 1328 72 22 223
-meshvertex 1335 -71 18 -204
-meshvertex 1336 71 18 197
-meshvertex 1337 -71 18 197
-meshvertex 1338 71 18 -204
-meshvertex 1339 -54 74 -145
-meshvertex 1340 -60 106 -55
-meshvertex 1341 0 113 -55
-meshvertex 1342 0 77 -145
-meshvertex 1343 60 106 -55
-meshvertex 1344 54 74 -145
-meshvertex 1345 -57 107 30
-meshvertex 1346 0 115 30
-meshvertex 1347 57 107 30
-meshvertex 1348 -69 73 108
-meshvertex 1349 0 75 108
-meshvertex 1350 69 73 108
-meshvertex 1351 -78 79 -126
-meshvertex 1352 -55 101 48
-meshvertex 1353 -60 107 -15
-meshvertex 1354 -74 78 101
-meshvertex 1355 78 79 -126
-meshvertex 1356 60 107 -15
-meshvertex 1357 55 101 48
-meshvertex 1358 74 78 101
-meshvertex 1359 -78 34 -108
-meshvertex 1360 -100 68 -142
-meshvertex 1361 -100 34 -108
-meshvertex 1362 -78 68 -142
-meshvertex 1364 -100 34 -176
-meshvertex 1366 -78 34 -176
-meshvertex 1368 -100 0 -142
-meshvertex 1370 -78 0 -142
-meshvertex 1379 78 34 -108
-meshvertex 1380 100 34 -108
-meshvertex 1381 100 68 -142
-meshvertex 1382 78 68 -142
-meshvertex 1385 100 34 -176
-meshvertex 1386 78 34 -176
-meshvertex 1389 100 0 -142
-meshvertex 1390 78 0 -142
-meshvertex 1399 -78 34 172
-meshvertex 1400 -100 68 138
-meshvertex 1401 -100 34 172
-meshvertex 1402 -78 68 138
-meshvertex 1404 -100 34 104
-meshvertex 1406 -78 34 104
-meshvertex 1408 -100 0 138
-meshvertex 1410 -78 0 138
-meshvertex 1419 78 34 172
-meshvertex 1420 100 34 172
-meshvertex 1421 100 68 138
-meshvertex 1422 78 68 138
-meshvertex 1425 100 34 104
-meshvertex 1426 78 34 104
-meshvertex 1429 100 0 138
-meshvertex 1430 78 0 138
-meshvertex 1439 -80 50 226
-meshvertex 1440 80 50 226
-meshvertex 1441 80 53 225
-meshvertex 1442 -80 53 225
-meshvertex 1443 -81 63 -227
-meshvertex 1444 81 67 -226
-meshvertex 1445 81 63 -227
-meshvertex 1446 -81 67 -226
-meshvertex 1447 -84 39 -227
-meshvertex 1448 80 57 -225
-meshvertex 1449 84 39 -227
-meshvertex 1450 -80 57 -225
-meshvertex 1451 12 4 12
-meshvertex 1452 123 3 12
-meshvertex 1453 90 3 181
-meshvertex 1454 12 3 251
-meshvertex 1455 -66 3 181
-meshvertex 1456 -99 3 12
-meshvertex 1457 -66 3 -157
-meshvertex 1458 12 3 -227
-meshvertex 1459 90 3 -157
-meshvertex 1460 155 2 12
-meshvertex 1461 113 2 201
-meshvertex 1462 12 2 279
-meshvertex 1463 -89 2 201
-meshvertex 1464 -131 2 12
-meshvertex 1465 -89 2 -177
-meshvertex 1466 12 2 -255
-meshvertex 1467 113 2 -177
-meshvertex 1468 0 820 0
-meshvertex 1469 215 200 0
-meshvertex 1470 108 200 186
-meshvertex 1471 -107 200 186
-meshvertex 1472 -215 200 0
-meshvertex 1473 -108 200 -186
-meshvertex 1474 108 200 -186
-meshvertex 1475 -20 0 0
-meshvertex 1476 20 0 0
-meshvertex 1477 20 280 0
-meshvertex 1478 -20 280 0
-meshvertex 1479 0 0 -20
-meshvertex 1480 0 0 20
-meshvertex 1481 0 280 20
-meshvertex 1482 0 280 -20
+meshvertex 915 -92 44 -88
+meshvertex 916 -91 44 -87
+meshvertex 917 -91 73 -87
+meshvertex 918 -92 73 -88
+meshvertex 919 -91 44 80
+meshvertex 920 -92 44 81
+meshvertex 921 -92 73 81
+meshvertex 922 -91 73 80
+meshvertex 923 -59 106 -60
+meshvertex 924 -58 103 30
+meshvertex 925 -57 106 30
+meshvertex 926 -60 109 -60
+meshvertex 927 -89 67 -64
+meshvertex 928 -90 67 65
+meshvertex 929 -90 69 65
+meshvertex 930 -89 69 -64
+meshvertex 931 92 44 -88
+meshvertex 932 91 73 -87
+meshvertex 933 91 44 -87
+meshvertex 934 92 73 -88
+meshvertex 935 91 44 80
+meshvertex 936 92 73 81
+meshvertex 937 92 44 81
+meshvertex 938 91 73 80
+meshvertex 939 59 106 -60
+meshvertex 940 57 106 30
+meshvertex 941 58 103 30
+meshvertex 942 60 109 -60
+meshvertex 943 89 67 -64
+meshvertex 944 90 69 65
+meshvertex 945 90 67 65
+meshvertex 946 89 69 -64
+meshvertex 947 -53 15 -227
+meshvertex 948 -49 35 -213
+meshvertex 949 -49 15 -227
+meshvertex 950 -53 35 -213
+meshvertex 951 -19 15 -227
+meshvertex 952 -15 35 -213
+meshvertex 953 -15 15 -227
+meshvertex 954 -19 35 -213
+meshvertex 955 15 15 -227
+meshvertex 956 19 35 -213
+meshvertex 957 19 15 -227
+meshvertex 958 15 35 -213
+meshvertex 959 49 15 -227
+meshvertex 960 53 35 -213
+meshvertex 961 53 15 -227
+meshvertex 962 49 35 -213
+meshvertex 963 -70 44 -227
+meshvertex 964 68 48 -227
+meshvertex 965 70 44 -227
+meshvertex 966 -68 48 -227
+meshvertex 967 -70 46 -227
+meshvertex 968 -80 46 -227
+meshvertex 969 -80 49 -227
+meshvertex 970 -70 49 -227
+meshvertex 971 70 46 -227
+meshvertex 972 80 49 -227
+meshvertex 973 80 46 -227
+meshvertex 974 70 49 -227
+meshvertex 975 -85 72 -223
+meshvertex 976 -95 79 -181
+meshvertex 977 0 78 -181
+meshvertex 978 0 69 -223
+meshvertex 979 95 79 -181
+meshvertex 980 85 72 -223
+meshvertex 982 -95 34 -181
+meshvertex 984 -85 22 -223
+meshvertex 987 95 34 -181
+meshvertex 988 85 22 -223
+meshvertex 989 -96 79 -167
+meshvertex 990 0 78 -167
+meshvertex 991 96 79 -167
+meshvertex 992 -96 64 -167
+meshvertex 995 96 64 -167
+meshvertex 996 -97 80 -142
+meshvertex 997 0 78 -142
+meshvertex 998 97 80 -142
+meshvertex 999 -97 73 -142
+meshvertex 1002 97 73 -142
+meshvertex 1003 -94 78 -117
+meshvertex 1004 0 77 -117
+meshvertex 1005 94 78 -117
+meshvertex 1006 -94 64 -117
+meshvertex 1009 94 64 -117
+meshvertex 1010 -92 77 -103
+meshvertex 1011 0 77 -103
+meshvertex 1012 92 77 -103
+meshvertex 1013 -92 34 -103
+meshvertex 1016 92 34 -103
+meshvertex 1017 -92 76 99
+meshvertex 1018 0 72 99
+meshvertex 1019 92 76 99
+meshvertex 1020 -92 34 99
+meshvertex 1023 92 34 99
+meshvertex 1024 -93 76 113
+meshvertex 1025 0 71 113
+meshvertex 1026 93 76 113
+meshvertex 1027 -93 64 113
+meshvertex 1030 93 64 113
+meshvertex 1031 -96 76 138
+meshvertex 1032 0 69 138
+meshvertex 1033 96 76 138
+meshvertex 1034 -96 73 138
+meshvertex 1037 96 73 138
+meshvertex 1038 -93 72 163
+meshvertex 1039 0 66 163
+meshvertex 1040 93 72 163
+meshvertex 1041 -93 64 163
+meshvertex 1044 93 64 163
+meshvertex 1045 -91 69 177
+meshvertex 1046 0 64 177
+meshvertex 1047 91 69 177
+meshvertex 1048 -91 34 177
+meshvertex 1051 91 34 177
+meshvertex 1052 -72 48 223
+meshvertex 1053 0 46 223
+meshvertex 1054 72 48 223
+meshvertex 1055 -72 22 223
+meshvertex 1058 72 22 223
+meshvertex 1059 0 32 -223
+meshvertex 1065 0 32 223
+meshvertex 1068 -71 18 -204
+meshvertex 1069 71 18 197
+meshvertex 1070 -71 18 197
+meshvertex 1071 71 18 -204
+meshvertex 1072 -54 73 -150
+meshvertex 1073 -60 106 -60
+meshvertex 1074 0 113 -60
+meshvertex 1075 0 75 -150
+meshvertex 1076 60 106 -60
+meshvertex 1077 54 73 -150
+meshvertex 1078 -61 108 -10
+meshvertex 1079 0 115 -10
+meshvertex 1080 61 108 -10
+meshvertex 1081 -54 101 48
+meshvertex 1082 0 108 48
+meshvertex 1083 54 101 48
+meshvertex 1084 -69 73 108
+meshvertex 1085 0 75 108
+meshvertex 1086 69 73 108
+meshvertex 1087 -78 79 -126
+meshvertex 1088 -55 101 48
+meshvertex 1089 -61 104 -61
+meshvertex 1090 -74 78 101
+meshvertex 1091 -81 77 -64
+meshvertex 1092 -80 77 -141
+meshvertex 1098 78 79 -126
+meshvertex 1099 61 104 -61
+meshvertex 1100 55 101 48
+meshvertex 1101 74 78 101
+meshvertex 1102 81 77 -64
+meshvertex 1103 80 77 -141
+meshvertex 1109 -76 34 -108
+meshvertex 1110 -98 58 -118
+meshvertex 1111 -98 34 -108
+meshvertex 1112 -76 58 -118
+meshvertex 1113 -98 68 -142
+meshvertex 1114 -76 68 -142
+meshvertex 1115 -98 58 -166
+meshvertex 1116 -76 58 -166
+meshvertex 1117 -98 34 -176
+meshvertex 1118 -76 34 -176
+meshvertex 1119 -98 10 -166
+meshvertex 1120 -76 10 -166
+meshvertex 1121 -98 0 -142
+meshvertex 1122 -76 0 -142
+meshvertex 1123 -98 10 -118
+meshvertex 1124 -76 10 -118
+meshvertex 1126 -100 50 -126
+meshvertex 1127 -100 34 -120
+meshvertex 1129 -100 56 -142
+meshvertex 1131 -100 50 -158
+meshvertex 1133 -100 34 -164
+meshvertex 1135 -100 18 -158
+meshvertex 1137 -100 12 -142
+meshvertex 1139 -100 18 -126
+meshvertex 1141 -100 34 -142
+meshvertex 1159 76 34 -108
+meshvertex 1160 98 34 -108
+meshvertex 1161 98 58 -118
+meshvertex 1162 76 58 -118
+meshvertex 1163 98 68 -142
+meshvertex 1164 76 68 -142
+meshvertex 1165 98 58 -166
+meshvertex 1166 76 58 -166
+meshvertex 1167 98 34 -176
+meshvertex 1168 76 34 -176
+meshvertex 1169 98 10 -166
+meshvertex 1170 76 10 -166
+meshvertex 1171 98 0 -142
+meshvertex 1172 76 0 -142
+meshvertex 1173 98 10 -118
+meshvertex 1174 76 10 -118
+meshvertex 1176 100 34 -120
+meshvertex 1177 100 50 -126
+meshvertex 1179 100 56 -142
+meshvertex 1181 100 50 -158
+meshvertex 1183 100 34 -164
+meshvertex 1185 100 18 -158
+meshvertex 1187 100 12 -142
+meshvertex 1189 100 18 -126
+meshvertex 1191 100 34 -142
+meshvertex 1209 -76 34 172
+meshvertex 1210 -98 58 162
+meshvertex 1211 -98 34 172
+meshvertex 1212 -76 58 162
+meshvertex 1213 -98 68 138
+meshvertex 1214 -76 68 138
+meshvertex 1215 -98 58 114
+meshvertex 1216 -76 58 114
+meshvertex 1217 -98 34 104
+meshvertex 1218 -76 34 104
+meshvertex 1219 -98 10 114
+meshvertex 1220 -76 10 114
+meshvertex 1221 -98 0 138
+meshvertex 1222 -76 0 138
+meshvertex 1223 -98 10 162
+meshvertex 1224 -76 10 162
+meshvertex 1226 -100 50 154
+meshvertex 1227 -100 34 160
+meshvertex 1229 -100 56 138
+meshvertex 1231 -100 50 122
+meshvertex 1233 -100 34 116
+meshvertex 1235 -100 18 122
+meshvertex 1237 -100 12 138
+meshvertex 1239 -100 18 154
+meshvertex 1241 -100 34 138
+meshvertex 1259 76 34 172
+meshvertex 1260 98 34 172
+meshvertex 1261 98 58 162
+meshvertex 1262 76 58 162
+meshvertex 1263 98 68 138
+meshvertex 1264 76 68 138
+meshvertex 1265 98 58 114
+meshvertex 1266 76 58 114
+meshvertex 1267 98 34 104
+meshvertex 1268 76 34 104
+meshvertex 1269 98 10 114
+meshvertex 1270 76 10 114
+meshvertex 1271 98 0 138
+meshvertex 1272 76 0 138
+meshvertex 1273 98 10 162
+meshvertex 1274 76 10 162
+meshvertex 1276 100 34 160
+meshvertex 1277 100 50 154
+meshvertex 1279 100 56 138
+meshvertex 1281 100 50 122
+meshvertex 1283 100 34 116
+meshvertex 1285 100 18 122
+meshvertex 1287 100 12 138
+meshvertex 1289 100 18 154
+meshvertex 1291 100 34 138
+meshvertex 1309 -94 36 -91
+meshvertex 1310 -88 57 -55
+meshvertex 1311 -91 60 -90
+meshvertex 1312 94 36 -91
+meshvertex 1313 91 60 -90
+meshvertex 1314 88 57 -55
+meshvertex 1315 -80 50 226
+meshvertex 1316 80 50 226
+meshvertex 1317 80 53 225
+meshvertex 1318 -80 53 225
+meshvertex 1319 -81 63 -227
+meshvertex 1320 81 67 -226
+meshvertex 1321 81 63 -227
+meshvertex 1322 -81 67 -226
+meshvertex 1323 -84 39 -227
+meshvertex 1324 80 57 -225
+meshvertex 1325 84 39 -227
+meshvertex 1326 -80 57 -225
+meshvertex 1327 -51 24 225
+meshvertex 1328 51 24 225
+meshvertex 1329 57 43 225
+meshvertex 1330 -57 43 225
+meshvertex 1331 -73 15 -225
+meshvertex 1332 67 39 -225
+meshvertex 1333 73 15 -225
+meshvertex 1334 -67 39 -225
+meshvertex 1335 -93 29 -103
+meshvertex 1336 -86 29 0
+meshvertex 1337 -86 43 0
+meshvertex 1338 -93 43 -103
+meshvertex 1339 -93 29 99
+meshvertex 1340 -93 43 99
+meshvertex 1341 93 29 -103
+meshvertex 1342 86 43 0
+meshvertex 1343 86 29 0
+meshvertex 1344 93 43 -103
+meshvertex 1345 93 43 99
+meshvertex 1346 93 29 99
+meshvertex 1347 -85 72 -223
+meshvertex 1348 -97 80 -142
+meshvertex 1349 0 78 -142
+meshvertex 1350 0 69 -223
+meshvertex 1351 97 80 -142
+meshvertex 1352 85 72 -223
+meshvertex 1354 -97 22 -142
+meshvertex 1356 -85 22 -223
+meshvertex 1359 97 22 -142
+meshvertex 1360 85 22 -223
+meshvertex 1361 -87 75 -65
+meshvertex 1362 0 76 -65
+meshvertex 1363 87 75 -65
+meshvertex 1364 -87 22 -65
+meshvertex 1367 87 22 -65
+meshvertex 1368 -88 74 65
+meshvertex 1369 0 75 65
+meshvertex 1370 88 74 65
+meshvertex 1371 -88 22 65
+meshvertex 1374 88 22 65
+meshvertex 1375 -96 76 138
+meshvertex 1376 0 69 138
+meshvertex 1377 96 76 138
+meshvertex 1378 -96 22 138
+meshvertex 1381 96 22 138
+meshvertex 1382 -72 48 223
+meshvertex 1383 0 46 223
+meshvertex 1384 72 48 223
+meshvertex 1385 -72 22 223
+meshvertex 1388 72 22 223
+meshvertex 1395 -71 18 -204
+meshvertex 1396 71 18 197
+meshvertex 1397 -71 18 197
+meshvertex 1398 71 18 -204
+meshvertex 1399 -54 74 -145
+meshvertex 1400 -60 106 -55
+meshvertex 1401 0 113 -55
+meshvertex 1402 0 77 -145
+meshvertex 1403 60 106 -55
+meshvertex 1404 54 74 -145
+meshvertex 1405 -57 107 30
+meshvertex 1406 0 115 30
+meshvertex 1407 57 107 30
+meshvertex 1408 -69 73 108
+meshvertex 1409 0 75 108
+meshvertex 1410 69 73 108
+meshvertex 1411 -78 79 -126
+meshvertex 1412 -55 101 48
+meshvertex 1413 -60 107 -15
+meshvertex 1414 -74 78 101
+meshvertex 1415 78 79 -126
+meshvertex 1416 60 107 -15
+meshvertex 1417 55 101 48
+meshvertex 1418 74 78 101
+meshvertex 1419 -78 34 -108
+meshvertex 1420 -100 68 -142
+meshvertex 1421 -100 34 -108
+meshvertex 1422 -78 68 -142
+meshvertex 1424 -100 34 -176
+meshvertex 1426 -78 34 -176
+meshvertex 1428 -100 0 -142
+meshvertex 1430 -78 0 -142
+meshvertex 1439 78 34 -108
+meshvertex 1440 100 34 -108
+meshvertex 1441 100 68 -142
+meshvertex 1442 78 68 -142
+meshvertex 1445 100 34 -176
+meshvertex 1446 78 34 -176
+meshvertex 1449 100 0 -142
+meshvertex 1450 78 0 -142
+meshvertex 1459 -78 34 172
+meshvertex 1460 -100 68 138
+meshvertex 1461 -100 34 172
+meshvertex 1462 -78 68 138
+meshvertex 1464 -100 34 104
+meshvertex 1466 -78 34 104
+meshvertex 1468 -100 0 138
+meshvertex 1470 -78 0 138
+meshvertex 1479 78 34 172
+meshvertex 1480 100 34 172
+meshvertex 1481 100 68 138
+meshvertex 1482 78 68 138
+meshvertex 1485 100 34 104
+meshvertex 1486 78 34 104
+meshvertex 1489 100 0 138
+meshvertex 1490 78 0 138
+meshvertex 1499 -80 50 226
+meshvertex 1500 80 50 226
+meshvertex 1501 80 53 225
+meshvertex 1502 -80 53 225
+meshvertex 1503 -81 63 -227
+meshvertex 1504 81 67 -226
+meshvertex 1505 81 63 -227
+meshvertex 1506 -81 67 -226
+meshvertex 1507 -84 39 -227
+meshvertex 1508 80 57 -225
+meshvertex 1509 84 39 -227
+meshvertex 1510 -80 57 -225
+meshvertex 1511 12 4 12
+meshvertex 1512 123 3 12
+meshvertex 1513 90 3 181
+meshvertex 1514 12 3 251
+meshvertex 1515 -66 3 181
+meshvertex 1516 -99 3 12
+meshvertex 1517 -66 3 -157
+meshvertex 1518 12 3 -227
+meshvertex 1519 90 3 -157
+meshvertex 1520 155 2 12
+meshvertex 1521 113 2 201
+meshvertex 1522 12 2 279
+meshvertex 1523 -89 2 201
+meshvertex 1524 -131 2 12
+meshvertex 1525 -89 2 -177
+meshvertex 1526 12 2 -255
+meshvertex 1527 113 2 -177
+meshvertex 1528 0 820 0
+meshvertex 1529 215 200 0
+meshvertex 1530 108 200 186
+meshvertex 1531 -107 200 186
+meshvertex 1532 -215 200 0
+meshvertex 1533 -108 200 -186
+meshvertex 1534 108 200 -186
+meshvertex 1535 -20 0 0
+meshvertex 1536 20 0 0
+meshvertex 1537 20 280 0
+meshvertex 1538 -20 280 0
+meshvertex 1539 0 0 -20
+meshvertex 1540 0 0 20
+meshvertex 1541 0 280 20
+meshvertex 1542 0 280 -20
 localset 512 256
 localset 513 769
 localset 514 1282
@@ -2727,574 +2787,634 @@ localset 1423 466703
 localset 1424 467215
 localset 1425 467727
 localset 1426 468239
-localset 1427 468746
-localset 1428 469258
-localset 1429 469770
-localset 1430 470282
-localset 1431 470794
-localset 1432 471306
-localset 1433 468742
-localset 1434 472326
-localset 1435 469266
-localset 1436 473350
-localset 1437 471303
-localset 1438 470799
-localset 1439 474887
-localset 1440 475399
-localset 1441 475914
-localset 1442 476426
-localset 1443 476938
-localset 1444 477458
-localset 1445 475922
-localset 1446 476943
-localset 1447 478991
-localset 1448 479498
-localset 1449 480010
-localset 1450 480522
-localset 1451 481042
-localset 1452 479506
-localset 1453 480527
-localset 1454 482575
-localset 1455 483082
-localset 1456 483594
-localset 1457 484106
-localset 1458 484626
-localset 1459 483090
-localset 1460 484111
-localset 1461 486159
-localset 1462 486666
-localset 1463 487178
-localset 1464 487690
-localset 1465 488210
-localset 1466 486674
-localset 1467 487695
-localset 1468 489743
-localset 1469 490250
-localset 1470 490762
-localset 1471 491274
-localset 1472 491794
-localset 1473 490258
-localset 1474 491279
-localset 1475 493327
-localset 1476 493834
-localset 1477 494346
-localset 1478 494858
-localset 1479 495378
-localset 1480 493842
-localset 1481 494863
-localset 1482 496911
-localset 1483 497418
-localset 1484 497930
-localset 1485 498442
-localset 1486 498962
-localset 1487 497426
-localset 1488 498447
-localset 1489 500495
+localset 1427 468815
+localset 1428 469327
+localset 1429 469839
+localset 1430 470351
+localset 1431 470864
+localset 1432 471376
+localset 1433 471888
+localset 1434 472400
+localset 1435 472850
+localset 1436 473360
+localset 1437 473874
+localset 1438 474428
+localset 1439 474898
+localset 1440 475410
+localset 1441 475922
+localset 1442 476434
+localset 1443 477009
+localset 1444 477521
+localset 1445 478033
+localset 1446 478545
+localset 1447 479058
+localset 1448 479570
+localset 1449 480082
+localset 1450 480594
+localset 1451 481039
+localset 1452 481551
+localset 1453 482065
+localset 1454 482635
+localset 1455 483087
+localset 1456 483599
+localset 1457 484111
+localset 1458 484623
+localset 1459 485124
+localset 1460 485636
+localset 1461 486148
+localset 1462 486660
+localset 1463 487172
+localset 1464 487684
+localset 1465 488196
+localset 1466 488708
+localset 1467 489220
+localset 1468 489732
+localset 1469 490244
+localset 1470 490756
+localset 1471 491268
+localset 1472 491780
+localset 1473 492292
+localset 1474 492804
+localset 1475 493312
+localset 1476 493824
+localset 1477 494336
+localset 1478 494848
+localset 1479 495360
+localset 1480 495872
+localset 1481 496384
+localset 1482 496896
+localset 1483 497408
+localset 1484 497920
+localset 1485 498432
+localset 1486 498944
+localset 1487 499466
+localset 1488 499978
+localset 1489 500490
 localset 1490 501002
 localset 1491 501514
 localset 1492 502026
-localset 1493 502546
-localset 1494 501010
-localset 1495 502031
-localset 1496 504079
-localset 1497 504588
-localset 1498 505100
-localset 1499 505612
-localset 1500 506143
-localset 1501 504607
-localset 1502 505632
-localset 1503 507680
-localset 1504 508171
-localset 1505 508684
-localset 1506 509195
-localset 1507 509731
-localset 1508 508195
-localset 1509 509220
-localset 1510 511268
-localset 1511 511744
-localset 1512 473344
-localset 1513 468736
-localset 1514 470272
-localset 1515 471296
-localset 1516 475392
-localset 1517 514849
-localset 1518 508239
-localset 1519 509195
-localset 1520 516389
-localset 1521 516901
-localset 1522 517413
-localset 1523 517925
-localset 1524 518530
-localset 1525 519078
-localset 1526 519554
-localset 1527 520066
-localset 1528 520590
-localset 1529 521090
-localset 1530 521610
-localset 1531 522122
-localset 1532 522634
-localset 1533 523164
-localset 1534 523660
-localset 1535 524190
-localset 1536 524684
-localset 1537 525196
-localset 1538 525708
-localset 1539 526227
-localset 1540 526739
-localset 1541 527248
-localset 1542 527763
-localset 1543 528296
-localset 1544 528656
-localset 1545 526096
-localset 1546 527120
-localset 1547 526633
-localset 1548 524585
-localset 1549 527657
-localset 1550 531860
-localset 1551 532369
-localset 1552 532884
-localset 1553 533396
-localset 1554 533901
-localset 1555 534289
-localset 1556 532241
-localset 1557 531729
-localset 1558 532778
-localset 1559 533290
-localset 1560 525610
-localset 1561 537377
-localset 1562 537867
-localset 1563 538401
+localset 1493 499462
+localset 1494 503046
+localset 1495 499986
+localset 1496 504070
+localset 1497 502023
+localset 1498 501519
+localset 1499 505607
+localset 1500 506119
+localset 1501 506634
+localset 1502 507146
+localset 1503 507658
+localset 1504 508178
+localset 1505 506642
+localset 1506 507663
+localset 1507 509711
+localset 1508 510218
+localset 1509 510730
+localset 1510 511242
+localset 1511 511762
+localset 1512 510226
+localset 1513 511247
+localset 1514 513295
+localset 1515 513802
+localset 1516 514314
+localset 1517 514826
+localset 1518 515346
+localset 1519 513810
+localset 1520 514831
+localset 1521 516879
+localset 1522 517386
+localset 1523 517898
+localset 1524 518410
+localset 1525 518930
+localset 1526 517394
+localset 1527 518415
+localset 1528 520463
+localset 1529 520970
+localset 1530 521482
+localset 1531 521994
+localset 1532 522514
+localset 1533 520978
+localset 1534 521999
+localset 1535 524047
+localset 1536 524554
+localset 1537 525066
+localset 1538 525578
+localset 1539 526098
+localset 1540 524562
+localset 1541 525583
+localset 1542 527631
+localset 1543 528138
+localset 1544 528650
+localset 1545 529162
+localset 1546 529682
+localset 1547 528146
+localset 1548 529167
+localset 1549 531215
+localset 1550 531722
+localset 1551 532234
+localset 1552 532746
+localset 1553 533266
+localset 1554 531730
+localset 1555 532751
+localset 1556 534799
+localset 1557 535308
+localset 1558 535820
+localset 1559 536332
+localset 1560 536863
+localset 1561 535327
+localset 1562 536352
+localset 1563 538400
 localset 1564 538891
-localset 1565 539402
-localset 1566 539914
-localset 1567 540420
-localset 1568 540932
-localset 1569 541440
-localset 1570 541952
-localset 1571 542511
-localset 1572 543023
-localset 1573 543525
-localset 1574 544037
-localset 1575 544564
-localset 1576 545076
-localset 1577 538386
-localset 1578 546066
-localset 1579 546578
-localset 1580 537874
-localset 1581 547602
-localset 1582 539410
-localset 1583 548626
-localset 1584 540434
-localset 1585 549650
-localset 1586 541458
-localset 1587 550674
-localset 1588 542482
-localset 1589 551698
-localset 1590 543506
-localset 1591 552722
-localset 1592 544530
-localset 1593 553746
-localset 1594 546578
-localset 1595 546066
-localset 1596 553746
-localset 1597 546066
-localset 1598 547602
-localset 1599 547602
-localset 1600 548626
-localset 1601 548626
-localset 1602 549650
-localset 1603 549650
-localset 1604 550674
-localset 1605 550674
-localset 1606 551698
-localset 1607 551698
-localset 1608 552722
-localset 1609 552722
-localset 1610 546578
-localset 1611 562977
-localset 1612 563489
-localset 1613 563979
-localset 1614 564491
-localset 1615 565002
-localset 1616 565514
-localset 1617 566020
-localset 1618 566532
-localset 1619 567040
-localset 1620 567552
-localset 1621 568111
-localset 1622 568623
-localset 1623 569125
-localset 1624 569637
-localset 1625 570164
-localset 1626 570676
-localset 1627 563471
-localset 1628 571663
-localset 1629 572175
-localset 1630 563983
-localset 1631 573199
-localset 1632 565007
-localset 1633 574223
-localset 1634 566031
-localset 1635 575247
-localset 1636 567055
-localset 1637 576271
-localset 1638 568079
-localset 1639 577295
-localset 1640 569103
-localset 1641 578319
-localset 1642 570127
-localset 1643 579343
-localset 1644 572175
-localset 1645 571663
-localset 1646 579343
-localset 1647 573199
-localset 1648 572175
-localset 1649 574223
-localset 1650 573199
-localset 1651 575247
-localset 1652 574223
-localset 1653 576271
-localset 1654 575247
-localset 1655 577295
-localset 1656 576271
-localset 1657 578319
-localset 1658 577295
-localset 1659 571663
-localset 1660 578319
-localset 1661 588577
-localset 1662 589067
-localset 1663 589601
-localset 1664 590091
-localset 1665 590602
-localset 1666 591114
-localset 1667 591620
-localset 1668 592132
-localset 1669 592640
-localset 1670 593152
-localset 1671 593711
-localset 1672 594223
-localset 1673 594725
-localset 1674 595237
-localset 1675 595764
-localset 1676 596276
-localset 1677 589586
-localset 1678 597266
-localset 1679 597778
-localset 1680 589074
-localset 1681 598802
-localset 1682 590610
-localset 1683 599826
-localset 1684 591634
-localset 1685 600850
-localset 1686 592658
-localset 1687 601874
-localset 1688 593682
-localset 1689 602898
-localset 1690 594706
-localset 1691 603922
-localset 1692 595730
-localset 1693 604946
-localset 1694 597778
-localset 1695 597266
-localset 1696 604946
-localset 1697 597266
-localset 1698 598802
-localset 1699 598802
-localset 1700 599826
-localset 1701 599826
-localset 1702 600850
-localset 1703 600850
-localset 1704 601874
-localset 1705 601874
-localset 1706 602898
-localset 1707 602898
-localset 1708 603922
-localset 1709 603922
-localset 1710 597778
-localset 1711 614177
-localset 1712 614689
-localset 1713 615179
-localset 1714 615691
-localset 1715 616202
-localset 1716 616714
-localset 1717 617220
-localset 1718 617732
-localset 1719 618240
-localset 1720 618752
-localset 1721 619311
-localset 1722 619823
-localset 1723 620325
-localset 1724 620837
-localset 1725 621364
-localset 1726 621876
-localset 1727 614671
-localset 1728 622863
-localset 1729 623375
-localset 1730 615183
-localset 1731 624399
-localset 1732 616207
-localset 1733 625423
-localset 1734 617231
-localset 1735 626447
-localset 1736 618255
-localset 1737 627471
-localset 1738 619279
-localset 1739 628495
-localset 1740 620303
-localset 1741 629519
-localset 1742 621327
-localset 1743 630543
-localset 1744 623375
-localset 1745 622863
-localset 1746 630543
-localset 1747 624399
-localset 1748 623375
-localset 1749 625423
-localset 1750 624399
-localset 1751 626447
-localset 1752 625423
-localset 1753 627471
-localset 1754 626447
-localset 1755 628495
-localset 1756 627471
-localset 1757 629519
-localset 1758 628495
-localset 1759 622863
-localset 1760 629519
-localset 1761 639762
-localset 1762 640274
-localset 1763 640786
-localset 1764 641295
-localset 1765 641807
-localset 1766 642319
-localset 1767 642850
-localset 1768 643362
-localset 1769 643874
-localset 1770 644386
-localset 1771 644867
-localset 1772 645379
-localset 1773 645891
-localset 1774 646403
-localset 1775 646912
-localset 1776 647424
-localset 1777 647936
-localset 1778 648448
-localset 1779 648993
-localset 1780 649505
-localset 1781 650017
-localset 1782 650529
-localset 1783 651008
-localset 1784 651520
-localset 1785 652032
-localset 1786 652544
-localset 1787 653074
-localset 1788 653586
-localset 1789 654098
-localset 1790 654610
-localset 1791 655122
-localset 1792 655634
+localset 1565 539404
+localset 1566 539915
+localset 1567 540451
+localset 1568 538915
+localset 1569 539940
+localset 1570 541988
+localset 1571 542464
+localset 1572 504064
+localset 1573 499456
+localset 1574 500992
+localset 1575 502016
+localset 1576 506112
+localset 1577 545569
+localset 1578 538963
+localset 1579 539915
+localset 1580 547109
+localset 1581 547621
+localset 1582 548133
+localset 1583 548645
+localset 1584 549250
+localset 1585 549798
+localset 1586 550274
+localset 1587 550786
+localset 1588 551310
+localset 1589 551810
+localset 1590 552330
+localset 1591 552842
+localset 1592 553354
+localset 1593 553884
+localset 1594 554380
+localset 1595 554910
+localset 1596 555404
+localset 1597 555916
+localset 1598 556428
+localset 1599 556947
+localset 1600 557459
+localset 1601 557968
+localset 1602 558483
+localset 1603 559016
+localset 1604 559376
+localset 1605 556816
+localset 1606 557840
+localset 1607 557353
+localset 1608 555305
+localset 1609 558377
+localset 1610 562580
+localset 1611 563089
+localset 1612 563604
+localset 1613 564116
+localset 1614 564621
+localset 1615 565009
+localset 1616 562961
+localset 1617 562449
+localset 1618 563498
+localset 1619 564010
+localset 1620 556330
+localset 1621 568097
+localset 1622 568587
+localset 1623 569121
+localset 1624 569611
+localset 1625 570122
+localset 1626 570634
+localset 1627 571140
+localset 1628 571652
+localset 1629 572160
+localset 1630 572672
+localset 1631 573231
+localset 1632 573743
+localset 1633 574245
+localset 1634 574757
+localset 1635 575284
+localset 1636 575796
+localset 1637 569106
+localset 1638 576786
+localset 1639 577298
+localset 1640 568594
+localset 1641 578322
+localset 1642 570130
+localset 1643 579346
+localset 1644 571154
+localset 1645 580370
+localset 1646 572178
+localset 1647 581394
+localset 1648 573202
+localset 1649 582418
+localset 1650 574226
+localset 1651 583442
+localset 1652 575250
+localset 1653 584466
+localset 1654 577298
+localset 1655 576786
+localset 1656 584466
+localset 1657 576786
+localset 1658 578322
+localset 1659 578322
+localset 1660 579346
+localset 1661 579346
+localset 1662 580370
+localset 1663 580370
+localset 1664 581394
+localset 1665 581394
+localset 1666 582418
+localset 1667 582418
+localset 1668 583442
+localset 1669 583442
+localset 1670 577298
+localset 1671 593697
+localset 1672 594209
+localset 1673 594699
+localset 1674 595211
+localset 1675 595722
+localset 1676 596234
+localset 1677 596740
+localset 1678 597252
+localset 1679 597760
+localset 1680 598272
+localset 1681 598831
+localset 1682 599343
+localset 1683 599845
+localset 1684 600357
+localset 1685 600884
+localset 1686 601396
+localset 1687 594191
+localset 1688 602383
+localset 1689 602895
+localset 1690 594703
+localset 1691 603919
+localset 1692 595727
+localset 1693 604943
+localset 1694 596751
+localset 1695 605967
+localset 1696 597775
+localset 1697 606991
+localset 1698 598799
+localset 1699 608015
+localset 1700 599823
+localset 1701 609039
+localset 1702 600847
+localset 1703 610063
+localset 1704 602895
+localset 1705 602383
+localset 1706 610063
+localset 1707 603919
+localset 1708 602895
+localset 1709 604943
+localset 1710 603919
+localset 1711 605967
+localset 1712 604943
+localset 1713 606991
+localset 1714 605967
+localset 1715 608015
+localset 1716 606991
+localset 1717 609039
+localset 1718 608015
+localset 1719 602383
+localset 1720 609039
+localset 1721 619297
+localset 1722 619787
+localset 1723 620321
+localset 1724 620811
+localset 1725 621322
+localset 1726 621834
+localset 1727 622340
+localset 1728 622852
+localset 1729 623360
+localset 1730 623872
+localset 1731 624431
+localset 1732 624943
+localset 1733 625445
+localset 1734 625957
+localset 1735 626484
+localset 1736 626996
+localset 1737 620306
+localset 1738 627986
+localset 1739 628498
+localset 1740 619794
+localset 1741 629522
+localset 1742 621330
+localset 1743 630546
+localset 1744 622354
+localset 1745 631570
+localset 1746 623378
+localset 1747 632594
+localset 1748 624402
+localset 1749 633618
+localset 1750 625426
+localset 1751 634642
+localset 1752 626450
+localset 1753 635666
+localset 1754 628498
+localset 1755 627986
+localset 1756 635666
+localset 1757 627986
+localset 1758 629522
+localset 1759 629522
+localset 1760 630546
+localset 1761 630546
+localset 1762 631570
+localset 1763 631570
+localset 1764 632594
+localset 1765 632594
+localset 1766 633618
+localset 1767 633618
+localset 1768 634642
+localset 1769 634642
+localset 1770 628498
+localset 1771 644897
+localset 1772 645409
+localset 1773 645899
+localset 1774 646411
+localset 1775 646922
+localset 1776 647434
+localset 1777 647940
+localset 1778 648452
+localset 1779 648960
+localset 1780 649472
+localset 1781 650031
+localset 1782 650543
+localset 1783 651045
+localset 1784 651557
+localset 1785 652084
+localset 1786 652596
+localset 1787 645391
+localset 1788 653583
+localset 1789 654095
+localset 1790 645903
+localset 1791 655119
+localset 1792 646927
 localset 1793 656143
-localset 1794 656655
+localset 1794 647951
 localset 1795 657167
-localset 1796 657679
+localset 1796 648975
 localset 1797 658191
-localset 1798 658703
-localset 1799 659210
-localset 1800 659722
-localset 1801 660234
-localset 1802 660746
-localset 1803 661258
-localset 1804 661770
-localset 1805 659218
-localset 1806 662802
-localset 1807 659730
-localset 1808 663826
-localset 1809 661775
-localset 1810 661263
-localset 1811 665359
-localset 1812 665871
-localset 1813 666378
-localset 1814 666890
-localset 1815 667402
-localset 1816 667922
-localset 1817 666386
-localset 1818 667407
-localset 1819 669455
-localset 1820 669962
-localset 1821 670474
-localset 1822 670986
+localset 1798 649999
+localset 1799 659215
+localset 1800 651023
+localset 1801 660239
+localset 1802 652047
+localset 1803 661263
+localset 1804 654095
+localset 1805 653583
+localset 1806 661263
+localset 1807 655119
+localset 1808 654095
+localset 1809 656143
+localset 1810 655119
+localset 1811 657167
+localset 1812 656143
+localset 1813 658191
+localset 1814 657167
+localset 1815 659215
+localset 1816 658191
+localset 1817 660239
+localset 1818 659215
+localset 1819 653583
+localset 1820 660239
+localset 1821 670482
+localset 1822 670994
 localset 1823 671506
-localset 1824 669970
-localset 1825 670991
+localset 1824 672015
+localset 1825 672527
 localset 1826 673039
-localset 1827 673566
-localset 1828 674058
-localset 1829 674570
-localset 1830 675090
-localset 1831 673554
-localset 1832 674575
-localset 1833 676623
-localset 1834 677131
-localset 1835 677644
-localset 1836 678155
-localset 1837 678736
-localset 1838 677155
-localset 1839 678180
-localset 1840 680273
-localset 1841 663808
-localset 1842 659200
-localset 1843 661760
-localset 1844 665856
-localset 1845 678155
-localset 1846 677163
-localset 1847 683813
-localset 1848 684325
-localset 1849 684837
-localset 1850 685349
-localset 1851 685990
-localset 1852 686474
-localset 1853 686978
-localset 1854 687490
-localset 1855 688014
-localset 1856 688514
-localset 1857 689052
-localset 1858 689548
-localset 1859 690058
-localset 1860 690572
-localset 1861 691084
-localset 1862 691596
-localset 1863 692115
-localset 1864 692627
-localset 1865 693136
-localset 1866 693651
-localset 1867 694164
-localset 1868 694673
-localset 1869 695188
-localset 1870 695700
-localset 1871 696075
-localset 1872 696587
-localset 1873 697099
-localset 1874 697611
-localset 1875 697604
-localset 1876 698628
-localset 1877 696580
-localset 1878 699652
-localset 1879 699695
-localset 1880 700719
-localset 1881 698671
-localset 1882 701743
-localset 1883 701748
-localset 1884 697140
-localset 1885 700724
-localset 1886 696116
-localset 1887 697106
-localset 1888 696594
-localset 1889 698642
-localset 1890 700690
-localset 1891 706315
-localset 1892 706827
-localset 1893 707339
+localset 1827 673570
+localset 1828 674082
+localset 1829 674594
+localset 1830 675106
+localset 1831 675587
+localset 1832 676099
+localset 1833 676611
+localset 1834 677123
+localset 1835 677632
+localset 1836 678144
+localset 1837 678656
+localset 1838 679168
+localset 1839 679713
+localset 1840 680225
+localset 1841 680737
+localset 1842 681249
+localset 1843 681728
+localset 1844 682240
+localset 1845 682752
+localset 1846 683264
+localset 1847 683794
+localset 1848 684306
+localset 1849 684818
+localset 1850 685330
+localset 1851 685842
+localset 1852 686354
+localset 1853 686863
+localset 1854 687375
+localset 1855 687887
+localset 1856 688399
+localset 1857 688911
+localset 1858 689423
+localset 1859 689930
+localset 1860 690442
+localset 1861 690954
+localset 1862 691466
+localset 1863 691978
+localset 1864 692490
+localset 1865 689938
+localset 1866 693522
+localset 1867 690450
+localset 1868 694546
+localset 1869 692495
+localset 1870 691983
+localset 1871 696079
+localset 1872 696591
+localset 1873 697098
+localset 1874 697610
+localset 1875 698122
+localset 1876 698642
+localset 1877 697106
+localset 1878 698127
+localset 1879 700175
+localset 1880 700682
+localset 1881 701194
+localset 1882 701706
+localset 1883 702226
+localset 1884 700690
+localset 1885 701711
+localset 1886 703759
+localset 1887 704286
+localset 1888 704778
+localset 1889 705290
+localset 1890 705810
+localset 1891 704274
+localset 1892 705295
+localset 1893 707343
 localset 1894 707851
-localset 1895 707844
-localset 1896 707332
-localset 1897 709380
-localset 1898 709892
-localset 1899 709935
-localset 1900 709423
-localset 1901 711471
-localset 1902 711983
-localset 1903 711988
-localset 1904 711476
-localset 1905 706868
-localset 1906 706356
-localset 1907 706831
-localset 1908 709391
-localset 1909 707343
-localset 1910 711439
-localset 1911 716555
-localset 1912 717067
-localset 1913 717579
-localset 1914 718091
-localset 1915 718084
-localset 1916 719108
-localset 1917 717060
-localset 1918 720132
-localset 1919 720175
-localset 1920 721199
-localset 1921 719151
-localset 1922 722223
-localset 1923 722228
-localset 1924 717620
-localset 1925 721204
-localset 1926 716596
-localset 1927 717586
-localset 1928 717074
-localset 1929 719122
-localset 1930 721170
+localset 1895 708364
+localset 1896 708875
+localset 1897 709455
+localset 1898 707875
+localset 1899 708900
+localset 1900 710993
+localset 1901 694528
+localset 1902 689920
+localset 1903 692480
+localset 1904 696576
+localset 1905 708875
+localset 1906 707883
+localset 1907 714533
+localset 1908 715045
+localset 1909 715557
+localset 1910 716069
+localset 1911 716710
+localset 1912 717194
+localset 1913 717698
+localset 1914 718210
+localset 1915 718734
+localset 1916 719234
+localset 1917 719772
+localset 1918 720268
+localset 1919 720778
+localset 1920 721292
+localset 1921 721804
+localset 1922 722316
+localset 1923 722835
+localset 1924 723347
+localset 1925 723856
+localset 1926 724371
+localset 1927 724884
+localset 1928 725393
+localset 1929 725908
+localset 1930 726420
 localset 1931 726795
 localset 1932 727307
 localset 1933 727819
 localset 1934 728331
 localset 1935 728324
-localset 1936 727812
-localset 1937 729860
+localset 1936 729348
+localset 1937 727300
 localset 1938 730372
 localset 1939 730415
-localset 1940 729903
-localset 1941 731951
+localset 1940 731439
+localset 1941 729391
 localset 1942 732463
 localset 1943 732468
-localset 1944 731956
-localset 1945 727348
+localset 1944 727860
+localset 1945 731444
 localset 1946 726836
-localset 1947 727311
-localset 1948 729871
-localset 1949 727823
-localset 1950 731919
-localset 1951 737058
-localset 1952 737570
-localset 1953 738082
-localset 1954 738594
-localset 1955 739075
-localset 1956 739587
-localset 1957 740099
-localset 1958 740611
-localset 1959 741120
-localset 1960 741632
-localset 1961 742144
-localset 1962 742656
-localset 1963 743167
-localset 1964 743599
-localset 1965 744111
-localset 1966 744623
-localset 1967 745135
-localset 1968 745647
-localset 1969 746159
-localset 1970 746671
-localset 1971 747183
-localset 1972 747520
-localset 1973 748032
-localset 1974 748544
-localset 1975 749056
-localset 1976 749568
-localset 1977 750080
-localset 1978 750592
-localset 1979 751104
-localset 1980 751872
-localset 1981 752384
-localset 1982 752896
-localset 1983 753408
-localset 1984 753920
-localset 1985 754432
-localset 1986 754944
-localset 1987 755456
-localset 1988 755968
-localset 1989 756480
-localset 1990 756992
-localset 1991 757504
-localset 1992 758016
-localset 1993 758528
-localset 1994 759040
+localset 1947 727826
+localset 1948 727314
+localset 1949 729362
+localset 1950 731410
+localset 1951 737035
+localset 1952 737547
+localset 1953 738059
+localset 1954 738571
+localset 1955 738564
+localset 1956 738052
+localset 1957 740100
+localset 1958 740612
+localset 1959 740655
+localset 1960 740143
+localset 1961 742191
+localset 1962 742703
+localset 1963 742708
+localset 1964 742196
+localset 1965 737588
+localset 1966 737076
+localset 1967 737551
+localset 1968 740111
+localset 1969 738063
+localset 1970 742159
+localset 1971 747275
+localset 1972 747787
+localset 1973 748299
+localset 1974 748811
+localset 1975 748804
+localset 1976 749828
+localset 1977 747780
+localset 1978 750852
+localset 1979 750895
+localset 1980 751919
+localset 1981 749871
+localset 1982 752943
+localset 1983 752948
+localset 1984 748340
+localset 1985 751924
+localset 1986 747316
+localset 1987 748306
+localset 1988 747794
+localset 1989 749842
+localset 1990 751890
+localset 1991 757515
+localset 1992 758027
+localset 1993 758539
+localset 1994 759051
+localset 1995 759044
+localset 1996 758532
+localset 1997 760580
+localset 1998 761092
+localset 1999 761135
+localset 2000 760623
+localset 2001 762671
+localset 2002 763183
+localset 2003 763188
+localset 2004 762676
+localset 2005 758068
+localset 2006 757556
+localset 2007 758031
+localset 2008 760591
+localset 2009 758543
+localset 2010 762639
+localset 2011 767778
+localset 2012 768290
+localset 2013 768802
+localset 2014 769314
+localset 2015 769795
+localset 2016 770307
+localset 2017 770819
+localset 2018 771331
+localset 2019 771840
+localset 2020 772352
+localset 2021 772864
+localset 2022 773376
+localset 2023 773887
+localset 2024 774319
+localset 2025 774831
+localset 2026 775343
+localset 2027 775855
+localset 2028 776367
+localset 2029 776879
+localset 2030 777391
+localset 2031 777903
+localset 2032 778240
+localset 2033 778752
+localset 2034 779264
+localset 2035 779776
+localset 2036 780288
+localset 2037 780800
+localset 2038 781312
+localset 2039 781824
+localset 2040 782592
+localset 2041 783104
+localset 2042 783616
+localset 2043 784128
+localset 2044 784640
+localset 2045 785152
+localset 2046 785664
+localset 2047 786176
+localset 2048 786688
+localset 2049 787200
+localset 2050 787712
+localset 2051 788224
+localset 2052 788736
+localset 2053 789248
+localset 2054 789760
 localset 11 0
 label actor
 localset 142 0
@@ -3306,7 +3426,7 @@ jne rival_actor
 set r0 0
 mov r9 r0
 localset 132 r9
-set r0 915
+set r0 975
 mov r9 r0
 localset 134 r9
 load32 r0 100
@@ -3325,10 +3445,10 @@ localset 142 1
 label player_mesh_ready
 jmp actor_ready
 label rival_actor
-set r0 915
+set r0 975
 mov r9 r0
 localset 132 r9
-set r0 1287
+set r0 1347
 mov r9 r0
 localset 134 r9
 localget r7 11
@@ -3348,10 +3468,10 @@ add r9 64
 localset 126 r9
 jmp actor_ready
 label tree_actor
-set r0 1468
+set r0 1528
 mov r9 r0
 localset 132 r9
-set r0 1483
+set r0 1543
 mov r9 r0
 localset 134 r9
 localget r8 11
@@ -3703,10 +3823,10 @@ jge actor_lod_ready
 cmp r0 4000
 jle actor_lod_ready
 localset 142 2
-set r0 1287
+set r0 1347
 mov r9 r0
 localset 132 r9
-set r0 1451
+set r0 1511
 mov r9 r0
 localset 134 r9
 label actor_lod_ready
@@ -3729,10 +3849,10 @@ label lighting_lod_ready
 localget r0 3000
 mul r0 0
 localget r1 3001
-mul r1 453
+mul r1 366
 add r0 r1
 localget r1 3002
-mul r1 -16378
+mul r1 -16380
 add r0 r1
 div r0 16384
 cmp r0 0
@@ -3745,10 +3865,10 @@ add r0 64
 localget r1 3003
 mul r1 0
 localget r2 3004
-mul r2 453
+mul r2 366
 add r1 r2
 localget r2 3005
-mul r2 -16378
+mul r2 -16380
 add r1 r2
 div r1 16384
 cmp r1 0
@@ -3977,12 +4097,12 @@ label glass_high_65
 localset 2603 r0
 label glass_lighting_done_60
 localget r0 3000
-mul r0 30
+mul r0 20
 localget r1 3001
-mul r1 11625
+mul r1 10974
 add r0 r1
 localget r1 3002
-mul r1 -11546
+mul r1 -12166
 add r0 r1
 div r0 16384
 cmp r0 0
@@ -3993,12 +4113,12 @@ mul r0 128
 div r0 16384
 add r0 75
 localget r1 3003
-mul r1 30
+mul r1 20
 localget r2 3004
-mul r2 11625
+mul r2 10974
 add r1 r2
 localget r2 3005
-mul r2 -11546
+mul r2 -12166
 add r1 r2
 div r1 16384
 cmp r1 0
@@ -4617,10 +4737,10 @@ label glass_lighting_done_123
 localget r0 3000
 mul r0 16384
 localget r1 3001
-mul r1 73
+mul r1 71
 add r0 r1
 localget r1 3002
-mul r1 17
+mul r1 18
 add r0 r1
 div r0 16384
 cmp r0 0
@@ -4633,10 +4753,10 @@ add r0 64
 localget r1 3003
 mul r1 16384
 localget r2 3004
-mul r2 73
+mul r2 71
 add r1 r2
 localget r2 3005
-mul r2 17
+mul r2 18
 add r1 r2
 div r1 16384
 cmp r1 0
@@ -4669,7 +4789,7 @@ localget r1 3001
 mul r1 5184
 add r0 r1
 localget r1 3002
-mul r1 145
+mul r1 152
 add r0 r1
 div r0 16384
 cmp r0 0
@@ -4685,7 +4805,7 @@ localget r2 3004
 mul r2 5184
 add r1 r2
 localget r2 3005
-mul r2 145
+mul r2 152
 add r1 r2
 div r1 16384
 cmp r1 0
@@ -4715,7 +4835,7 @@ localget r1 3007
 mul r1 5184
 add r0 r1
 localget r1 3008
-mul r1 145
+mul r1 152
 add r0 r1
 div r0 16384
 mul r0 2
@@ -4740,12 +4860,12 @@ localget r3 3030
 cmp r3 2
 je body_lighting_done_141
 localget r0 3000
-mul r0 15484
+mul r0 15486
 localget r1 3001
-mul r1 5353
+mul r1 5348
 add r0 r1
 localget r1 3002
-mul r1 104
+mul r1 111
 add r0 r1
 div r0 16384
 cmp r0 0
@@ -4756,12 +4876,12 @@ mul r0 128
 div r0 16384
 add r0 69
 localget r1 3003
-mul r1 15484
+mul r1 15486
 localget r2 3004
-mul r2 5353
+mul r2 5348
 add r1 r2
 localget r2 3005
-mul r2 104
+mul r2 111
 add r1 r2
 div r1 16384
 cmp r1 0
@@ -4786,16 +4906,16 @@ label intensity_bounded_145
 localset 2417 r0
 label body_lighting_done_141
 localget r0 3006
-mul r0 15484
+mul r0 15486
 localget r1 3007
-mul r1 5353
+mul r1 5348
 add r0 r1
 localget r1 3008
-mul r1 104
+mul r1 111
 add r0 r1
 div r0 16384
 mul r0 2
-mul r0 5353
+mul r0 5348
 div r0 16384
 localget r1 3007
 sub r0 r1
@@ -4815,7 +4935,7 @@ label glass_lighting_done_142
 localget r0 3000
 mul r0 -16384
 localget r1 3001
-mul r1 52
+mul r1 50
 add r0 r1
 localget r1 3002
 mul r1 40
@@ -4831,7 +4951,7 @@ add r0 64
 localget r1 3003
 mul r1 -16384
 localget r2 3004
-mul r2 52
+mul r2 50
 add r1 r2
 localget r2 3005
 mul r2 40
@@ -7019,12 +7139,12 @@ localget r3 3030
 cmp r3 0
 jne body_lighting_done_370
 localget r0 3000
-mul r0 -15933
+mul r0 -15907
 localget r1 3001
-mul r1 -3817
+mul r1 -3923
 add r0 r1
 localget r1 3002
-mul r1 -88
+mul r1 -55
 add r0 r1
 div r0 16384
 cmp r0 0
@@ -7035,12 +7155,12 @@ mul r0 128
 div r0 16384
 add r0 60
 localget r1 3003
-mul r1 -15933
+mul r1 -15907
 localget r2 3004
-mul r2 -3817
+mul r2 -3923
 add r1 r2
 localget r2 3005
-mul r2 -88
+mul r2 -55
 add r1 r2
 div r1 16384
 cmp r1 0
@@ -7754,12 +7874,12 @@ localget r3 3030
 cmp r3 0
 jne body_lighting_done_445
 localget r0 3000
-mul r0 15933
+mul r0 15907
 localget r1 3001
-mul r1 -3817
+mul r1 -3923
 add r0 r1
 localget r1 3002
-mul r1 -88
+mul r1 -55
 add r0 r1
 div r0 16384
 cmp r0 0
@@ -7770,12 +7890,12 @@ mul r0 128
 div r0 16384
 add r0 60
 localget r1 3003
-mul r1 15933
+mul r1 15907
 localget r2 3004
-mul r2 -3817
+mul r2 -3923
 add r1 r2
 localget r2 3005
-mul r2 -88
+mul r2 -55
 add r1 r2
 div r1 16384
 cmp r1 0
@@ -7947,15 +8067,15 @@ label intensity_bounded_464
 localset 2478 r0
 label body_lighting_done_460
 localget r3 3030
-cmp r3 1
+cmp r3 2
 jne body_lighting_done_465
 localget r0 3000
-mul r0 -3028
+mul r0 -11211
 localget r1 3001
-mul r1 9083
+mul r1 0
 add r0 r1
 localget r1 3002
-mul r1 13295
+mul r1 11948
 add r0 r1
 div r0 16384
 cmp r0 0
@@ -7964,14 +8084,14 @@ set r0 0
 label diffuse_positive_467
 mul r0 128
 div r0 16384
-add r0 73
+add r0 64
 localget r1 3003
-mul r1 -3028
+mul r1 -11211
 localget r2 3004
-mul r2 9083
+mul r2 0
 add r1 r2
 localget r2 3005
-mul r2 13295
+mul r2 11948
 add r1 r2
 div r1 16384
 cmp r1 0
@@ -7997,36 +8117,36 @@ localset 2479 r0
 label body_lighting_done_465
 localget r3 3030
 cmp r3 2
-jne body_lighting_done_470
+jne body_lighting_done_472
 localget r0 3000
-mul r0 -9598
+mul r0 11794
 localget r1 3001
 mul r1 0
 add r0 r1
 localget r1 3002
-mul r1 13279
+mul r1 11373
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_472
+jge diffuse_positive_474
 set r0 0
-label diffuse_positive_472
+label diffuse_positive_474
 mul r0 128
 div r0 16384
 add r0 64
 localget r1 3003
-mul r1 -9598
+mul r1 11794
 localget r2 3004
 mul r2 0
 add r1 r2
 localget r2 3005
-mul r2 13279
+mul r2 11373
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_473
+jge highlight_positive_475
 set r1 0
-label highlight_positive_473
+label highlight_positive_475
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -8039,60 +8159,60 @@ mul r1 104
 div r1 16384
 add r0 r1
 cmp r0 255
-jle intensity_bounded_474
+jle intensity_bounded_476
 set r0 255
-label intensity_bounded_474
-localset 2480 r0
-label body_lighting_done_470
-localget r3 3030
-cmp r3 2
-jne body_lighting_done_475
-localget r0 3000
-mul r0 12589
-localget r1 3001
-mul r1 0
-add r0 r1
-localget r1 3002
-mul r1 10486
-add r0 r1
-div r0 16384
-cmp r0 0
-jge diffuse_positive_477
-set r0 0
-label diffuse_positive_477
-mul r0 128
-div r0 16384
-add r0 64
-localget r1 3003
-mul r1 12589
-localget r2 3004
-mul r2 0
-add r1 r2
-localget r2 3005
-mul r2 10486
-add r1 r2
-div r1 16384
-cmp r1 0
-jge highlight_positive_478
-set r1 0
-label highlight_positive_478
-mul r1 r1
-div r1 16384
-mul r1 r1
-div r1 16384
-mul r1 r1
-div r1 16384
-mul r1 r1
-div r1 16384
-mul r1 104
-div r1 16384
-add r0 r1
-cmp r0 255
-jle intensity_bounded_479
-set r0 255
-label intensity_bounded_479
+label intensity_bounded_476
 localset 2481 r0
-label body_lighting_done_475
+label body_lighting_done_472
+localget r3 3030
+cmp r3 1
+jne body_lighting_done_479
+localget r0 3000
+mul r0 -3028
+localget r1 3001
+mul r1 9083
+add r0 r1
+localget r1 3002
+mul r1 13295
+add r0 r1
+div r0 16384
+cmp r0 0
+jge diffuse_positive_481
+set r0 0
+label diffuse_positive_481
+mul r0 128
+div r0 16384
+add r0 73
+localget r1 3003
+mul r1 -3028
+localget r2 3004
+mul r2 9083
+add r1 r2
+localget r2 3005
+mul r2 13295
+add r1 r2
+div r1 16384
+cmp r1 0
+jge highlight_positive_482
+set r1 0
+label highlight_positive_482
+mul r1 r1
+div r1 16384
+mul r1 r1
+div r1 16384
+mul r1 r1
+div r1 16384
+mul r1 r1
+div r1 16384
+mul r1 104
+div r1 16384
+add r0 r1
+cmp r0 255
+jle intensity_bounded_483
+set r0 255
+label intensity_bounded_483
+localset 2483 r0
+label body_lighting_done_479
 label lighting_table_ready
 localget r0 11
 cmp r0 4
@@ -8115,69 +8235,6 @@ label wheel_distance_ready
 mod r0 214
 mul r0 4096
 div r0 214
-mov r5 r0
-add r5 0
-mod r5 4096
-cmp r5 0
-jge sin_negative_480
-add r5 4096
-label sin_negative_480
-mov r7 r5
-mod r7 2048
-set r8 2048
-sub r8 r7
-mul r7 r8
-mov r8 r7
-mul r8 4
-set r6 20971520
-sub r6 r8
-mul r7 262144
-div r7 r6
-cmp r5 2048
-jlt sin_done_481
-mul r7 -1
-label sin_done_481
-mov r5 r7
-mov r8 r5
-mov r9 r8
-add r9 32768
-localset 58 r9
-mov r6 r0
-add r6 1024
-mod r6 4096
-cmp r6 0
-jge sin_negative_482
-add r6 4096
-label sin_negative_482
-mov r7 r6
-mod r7 2048
-set r8 2048
-sub r8 r7
-mul r7 r8
-mov r8 r7
-mul r8 4
-set r5 20971520
-sub r5 r8
-mul r7 262144
-div r7 r5
-cmp r6 2048
-jlt sin_done_483
-mul r7 -1
-label sin_done_483
-mov r6 r7
-localget r5 58
-sub r5 32768
-localset 3040 r5
-localset 3041 r6
-localget r0 11
-cmp r0 0
-jne wheel_steer_neutral
-load16 r0 256
-sub r0 1000
-mul r0 320
-div r0 1000
-add r0 4096
-mod r0 4096
 mov r5 r0
 add r5 0
 mod r5 4096
@@ -8230,6 +8287,69 @@ label sin_done_487
 mov r6 r7
 localget r5 58
 sub r5 32768
+localset 3040 r5
+localset 3041 r6
+localget r0 11
+cmp r0 0
+jne wheel_steer_neutral
+load16 r0 256
+sub r0 1000
+mul r0 320
+div r0 1000
+add r0 4096
+mod r0 4096
+mov r5 r0
+add r5 0
+mod r5 4096
+cmp r5 0
+jge sin_negative_488
+add r5 4096
+label sin_negative_488
+mov r7 r5
+mod r7 2048
+set r8 2048
+sub r8 r7
+mul r7 r8
+mov r8 r7
+mul r8 4
+set r6 20971520
+sub r6 r8
+mul r7 262144
+div r7 r6
+cmp r5 2048
+jlt sin_done_489
+mul r7 -1
+label sin_done_489
+mov r5 r7
+mov r8 r5
+mov r9 r8
+add r9 32768
+localset 58 r9
+mov r6 r0
+add r6 1024
+mod r6 4096
+cmp r6 0
+jge sin_negative_490
+add r6 4096
+label sin_negative_490
+mov r7 r6
+mod r7 2048
+set r8 2048
+sub r8 r7
+mul r7 r8
+mov r8 r7
+mul r8 4
+set r5 20971520
+sub r5 r8
+mul r7 262144
+div r7 r5
+cmp r6 2048
+jlt sin_done_491
+mul r7 -1
+label sin_done_491
+mov r6 r7
+localget r5 58
+sub r5 32768
 localset 3042 r5
 localset 3043 r6
 jmp wheel_motion_ready
@@ -8252,73 +8372,73 @@ jmp vertex_publish_position
 label vertex_transform_position
 meshread r0 r1 r2 r8
 cmp r8 279
-jlt wheel_next_model_490
+jlt wheel_next_model_494
 cmp r8 795
-jge wheel_next_model_490
+jge wheel_next_model_494
 cmp r8 408
-jge wheel_next_wheel_491
+jge wheel_next_wheel_495
 localset 3044 -88
 localset 3045 -142
 localset 3046 0
-jmp wheel_transform_488
-label wheel_next_wheel_491
+jmp wheel_transform_492
+label wheel_next_wheel_495
 cmp r8 537
-jge wheel_next_wheel_492
-localset 3044 88
-localset 3045 -142
-localset 3046 0
-jmp wheel_transform_488
-label wheel_next_wheel_492
-cmp r8 666
-jge wheel_next_wheel_493
-localset 3044 -88
-localset 3045 138
-localset 3046 1
-jmp wheel_transform_488
-label wheel_next_wheel_493
-cmp r8 795
-jge wheel_next_wheel_494
-localset 3044 88
-localset 3045 138
-localset 3046 1
-jmp wheel_transform_488
-label wheel_next_wheel_494
-label wheel_next_model_490
-cmp r8 1049
-jlt wheel_next_model_495
-cmp r8 1249
-jge wheel_next_model_495
-cmp r8 1099
 jge wheel_next_wheel_496
-localset 3044 -88
+localset 3044 88
 localset 3045 -142
 localset 3046 0
-jmp wheel_transform_488
+jmp wheel_transform_492
 label wheel_next_wheel_496
-cmp r8 1149
+cmp r8 666
 jge wheel_next_wheel_497
-localset 3044 88
-localset 3045 -142
-localset 3046 0
-jmp wheel_transform_488
-label wheel_next_wheel_497
-cmp r8 1199
-jge wheel_next_wheel_498
 localset 3044 -88
 localset 3045 138
 localset 3046 1
-jmp wheel_transform_488
-label wheel_next_wheel_498
-cmp r8 1249
-jge wheel_next_wheel_499
+jmp wheel_transform_492
+label wheel_next_wheel_497
+cmp r8 795
+jge wheel_next_wheel_498
 localset 3044 88
 localset 3045 138
 localset 3046 1
-jmp wheel_transform_488
-label wheel_next_wheel_499
-label wheel_next_model_495
-jmp wheel_transform_done_489
-label wheel_transform_488
+jmp wheel_transform_492
+label wheel_next_wheel_498
+label wheel_next_model_494
+cmp r8 1109
+jlt wheel_next_model_499
+cmp r8 1309
+jge wheel_next_model_499
+cmp r8 1159
+jge wheel_next_wheel_500
+localset 3044 -88
+localset 3045 -142
+localset 3046 0
+jmp wheel_transform_492
+label wheel_next_wheel_500
+cmp r8 1209
+jge wheel_next_wheel_501
+localset 3044 88
+localset 3045 -142
+localset 3046 0
+jmp wheel_transform_492
+label wheel_next_wheel_501
+cmp r8 1259
+jge wheel_next_wheel_502
+localset 3044 -88
+localset 3045 138
+localset 3046 1
+jmp wheel_transform_492
+label wheel_next_wheel_502
+cmp r8 1309
+jge wheel_next_wheel_503
+localset 3044 88
+localset 3045 138
+localset 3046 1
+jmp wheel_transform_492
+label wheel_next_wheel_503
+label wheel_next_model_499
+jmp wheel_transform_done_493
+label wheel_transform_492
 sub r1 34
 localget r9 3045
 sub r2 r9
@@ -8341,7 +8461,7 @@ mov r1 r7
 add r1 34
 localget r9 3046
 cmp r9 0
-je wheel_rear_500
+je wheel_rear_504
 localget r9 3044
 sub r0 r9
 localget r9 3045
@@ -8366,8 +8486,8 @@ add r0 r10
 mov r2 r9
 localget r10 3045
 add r2 r10
-label wheel_rear_500
-label wheel_transform_done_489
+label wheel_rear_504
+label wheel_transform_done_493
 localget r9 118
 sub r9 32768
 mul r9 r0
@@ -8446,10 +8566,10 @@ localget r0 143
 cmp r0 1
 je actor_geometry_ready
 localset 143 1
-set r0 1451
+set r0 1511
 mov r9 r0
 localset 132 r9
-set r0 1468
+set r0 1528
 mov r9 r0
 localset 134 r9
 jmp actor_vertex
@@ -10339,804 +10459,842 @@ set r12 228
 meshfacegradient 2960 2961 2962 r12 12 r9 r10 r11 60
 set r12 228
 meshfacegradient 2960 2959 2961 r12 12 r9 r10 r11 60
+meshface 2963 2964 2965 240 r9 r10 r11 60
+meshface 2963 2965 2966 240 r9 r10 r11 60
+meshface 2967 2968 2969 240 r9 r10 r11 60
+meshface 2967 2969 2970 240 r9 r10 r11 60
+meshface 2971 2972 2973 240 r9 r10 r11 60
+meshface 2971 2973 2974 240 r9 r10 r11 60
+meshface 2975 2976 2977 241 r9 r10 r11 60
+meshface 2975 2977 2978 241 r9 r10 r11 60
+meshface 2979 2980 2981 240 r9 r10 r11 60
+meshface 2979 2982 2980 240 r9 r10 r11 60
+meshface 2983 2984 2985 240 r9 r10 r11 60
+meshface 2983 2986 2984 240 r9 r10 r11 60
+meshface 2987 2988 2989 240 r9 r10 r11 60
+meshface 2987 2990 2988 240 r9 r10 r11 60
+meshface 2991 2992 2993 241 r9 r10 r11 60
+meshface 2991 2994 2992 241 r9 r10 r11 60
+set r12 228
+meshfacegradient 2995 2996 2997 r12 12 r9 r10 r11 60
+set r12 228
+meshfacegradient 2995 2998 2996 r12 12 r9 r10 r11 60
+set r12 228
+meshfacegradient 2999 3000 3001 r12 12 r9 r10 r11 60
+set r12 228
+meshfacegradient 2999 3002 3000 r12 12 r9 r10 r11 60
+set r12 228
+meshfacegradient 3003 3004 3005 r12 12 r9 r10 r11 60
+set r12 228
+meshfacegradient 3003 3006 3004 r12 12 r9 r10 r11 60
+set r12 228
+meshfacegradient 3007 3008 3009 r12 12 r9 r10 r11 60
+set r12 228
+meshfacegradient 3007 3010 3008 r12 12 r9 r10 r11 60
+meshface 3011 3012 3013 240 r9 r10 r11 60
+meshface 3011 3014 3012 240 r9 r10 r11 60
+meshface 3015 3016 3017 241 r9 r10 r11 60
+meshface 3015 3017 3018 241 r9 r10 r11 60
+meshface 3019 3020 3021 241 r9 r10 r11 60
+meshface 3019 3022 3020 241 r9 r10 r11 60
 jmp emit_shadow
 label emit_medium
 localget r12 126
-meshfacegradient 2963 2964 2965 r12 24 r9 r10 r11 60
+meshfacegradient 3023 3024 3025 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 2963 2965 2966 r12 24 r9 r10 r11 60
+meshfacegradient 3023 3025 3026 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 2966 2965 2967 r12 24 r9 r10 r11 60
+meshfacegradient 3026 3025 3027 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 2966 2967 2968 r12 24 r9 r10 r11 60
+meshfacegradient 3026 3027 3028 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 2969 2970 2971 r12 24 r9 r10 r11 60
+meshfacegradient 3029 3030 3031 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 2969 2972 2970 r12 24 r9 r10 r11 60
+meshfacegradient 3029 3032 3030 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 2973 2974 2975 r12 24 r9 r10 r11 60
+meshfacegradient 3033 3034 3035 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 2973 2975 2976 r12 24 r9 r10 r11 60
+meshfacegradient 3033 3035 3036 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 2964 2977 2978 r12 24 r9 r10 r11 60
+meshfacegradient 3024 3037 3038 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 2964 2978 2965 r12 24 r9 r10 r11 60
+meshfacegradient 3024 3038 3025 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 2965 2978 2979 r12 24 r9 r10 r11 60
+meshfacegradient 3025 3038 3039 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 2965 2979 2967 r12 24 r9 r10 r11 60
+meshfacegradient 3025 3039 3027 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 2971 2980 2981 r12 24 r9 r10 r11 60
+meshfacegradient 3031 3040 3041 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 2971 2970 2980 r12 24 r9 r10 r11 60
+meshfacegradient 3031 3030 3040 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 2974 2982 2983 r12 24 r9 r10 r11 60
+meshfacegradient 3034 3042 3043 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 2974 2983 2975 r12 24 r9 r10 r11 60
+meshfacegradient 3034 3043 3035 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 2977 2984 2985 r12 24 r9 r10 r11 60
+meshfacegradient 3037 3044 3045 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 2977 2985 2978 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 2978 2985 2986 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 2978 2986 2979 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 2981 2987 2988 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 2981 2980 2987 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 2982 2989 2990 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 2982 2990 2983 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 2984 2991 2992 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 2984 2992 2985 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 2985 2992 2993 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 2985 2993 2986 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 2988 2994 2995 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 2988 2987 2994 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 2989 2996 2997 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 2989 2997 2990 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 2991 2998 2999 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 2991 2999 2992 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 2992 2999 3000 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 2992 3000 2993 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 2995 3001 3002 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 2995 2994 3001 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 2996 3003 3004 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 2996 3004 2997 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 2998 3005 3006 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 2998 3006 2999 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 2999 3006 3007 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 2999 3007 3000 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3002 3008 3009 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3002 3001 3008 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3003 3010 3011 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3003 3011 3004 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3005 3012 3013 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3005 3013 3006 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3006 3013 3014 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3006 3014 3007 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3009 3015 3016 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3009 3008 3015 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3010 3017 3018 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3010 3018 3011 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3012 3019 3020 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3012 3020 3013 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3013 3020 3021 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3013 3021 3014 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3016 3022 3023 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3016 3015 3022 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3017 3024 3025 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3017 3025 3018 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3019 3026 3027 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3019 3027 3020 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3020 3027 3028 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3020 3028 3021 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3023 3029 3030 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3023 3022 3029 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3024 3031 3032 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3024 3032 3025 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3026 3033 3034 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3026 3034 3027 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3027 3034 3035 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3027 3035 3028 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3030 3036 3037 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3030 3029 3036 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3031 3038 3039 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3031 3039 3032 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3033 3040 3041 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3033 3041 3034 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3034 3041 3042 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3034 3042 3035 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3037 3043 3044 r12 24 r9 r10 r11 60
-localget r12 126
-meshfacegradient 3037 3036 3043 r12 24 r9 r10 r11 60
+meshfacegradient 3037 3045 3038 r12 24 r9 r10 r11 60
 localget r12 126
 meshfacegradient 3038 3045 3046 r12 24 r9 r10 r11 60
 localget r12 126
 meshfacegradient 3038 3046 3039 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3047 3048 3049 r12 24 r9 r10 r11 60
+meshfacegradient 3041 3047 3048 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3047 3049 3050 r12 24 r9 r10 r11 60
+meshfacegradient 3041 3040 3047 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3047 3050 3051 r12 24 r9 r10 r11 60
+meshfacegradient 3042 3049 3050 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3047 3051 3052 r12 24 r9 r10 r11 60
+meshfacegradient 3042 3050 3043 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3047 3052 3048 r12 24 r9 r10 r11 60
+meshfacegradient 3044 3051 3052 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3053 3054 3043 r12 24 r9 r10 r11 60
+meshfacegradient 3044 3052 3045 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3053 3041 3054 r12 24 r9 r10 r11 60
+meshfacegradient 3045 3052 3053 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3053 3055 3041 r12 24 r9 r10 r11 60
+meshfacegradient 3045 3053 3046 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3053 3046 3055 r12 24 r9 r10 r11 60
+meshfacegradient 3048 3054 3055 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3053 3043 3046 r12 24 r9 r10 r11 60
-meshface 3056 3057 3058 227 r9 r10 r11 60
-meshface 3056 3059 3057 227 r9 r10 r11 60
-set r12 184
-meshfacegradient 3060 3061 3062 r12 24 r9 r10 r11 60
-set r12 184
-meshfacegradient 3060 3062 3063 r12 24 r9 r10 r11 60
-set r12 184
-meshfacegradient 3063 3062 3064 r12 24 r9 r10 r11 60
-set r12 184
-meshfacegradient 3063 3064 3065 r12 24 r9 r10 r11 60
-set r12 184
-meshfacegradient 3061 3066 3067 r12 24 r9 r10 r11 60
-set r12 184
-meshfacegradient 3061 3067 3062 r12 24 r9 r10 r11 60
-set r12 184
-meshfacegradient 3062 3067 3068 r12 24 r9 r10 r11 60
-set r12 184
-meshfacegradient 3062 3068 3064 r12 24 r9 r10 r11 60
-set r12 184
-meshfacegradient 3066 3069 3070 r12 24 r9 r10 r11 60
-set r12 184
-meshfacegradient 3066 3070 3067 r12 24 r9 r10 r11 60
-set r12 184
-meshfacegradient 3067 3070 3071 r12 24 r9 r10 r11 60
-set r12 184
-meshfacegradient 3067 3071 3068 r12 24 r9 r10 r11 60
-set r12 184
-meshfacegradient 3069 3072 3073 r12 24 r9 r10 r11 60
-set r12 184
-meshfacegradient 3069 3073 3070 r12 24 r9 r10 r11 60
-set r12 184
-meshfacegradient 3070 3073 3074 r12 24 r9 r10 r11 60
-set r12 184
-meshfacegradient 3070 3074 3071 r12 24 r9 r10 r11 60
-set r12 184
-meshfacegradient 3075 3076 3077 r12 24 r9 r10 r11 60
-set r12 184
-meshfacegradient 3075 3078 3076 r12 24 r9 r10 r11 60
-set r12 184
-meshfacegradient 3075 3079 3078 r12 24 r9 r10 r11 60
+meshfacegradient 3048 3047 3054 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3080 3081 3082 r12 24 r9 r10 r11 60
+meshfacegradient 3049 3056 3057 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3083 3084 3085 r12 24 r9 r10 r11 60
-set r12 184
-meshfacegradient 3086 3087 3088 r12 24 r9 r10 r11 60
-set r12 184
-meshfacegradient 3086 3088 3089 r12 24 r9 r10 r11 60
-set r12 184
-meshfacegradient 3086 3089 3090 r12 24 r9 r10 r11 60
+meshfacegradient 3049 3057 3050 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3091 3092 3093 r12 24 r9 r10 r11 60
+meshfacegradient 3051 3058 3059 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3094 3095 3096 r12 24 r9 r10 r11 60
+meshfacegradient 3051 3059 3052 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3052 3059 3060 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3052 3060 3053 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3055 3061 3062 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3055 3054 3061 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3056 3063 3064 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3056 3064 3057 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3058 3065 3066 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3058 3066 3059 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3059 3066 3067 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3059 3067 3060 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3062 3068 3069 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3062 3061 3068 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3063 3070 3071 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3063 3071 3064 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3065 3072 3073 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3065 3073 3066 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3066 3073 3074 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3066 3074 3067 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3069 3075 3076 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3069 3068 3075 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3070 3077 3078 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3070 3078 3071 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3072 3079 3080 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3072 3080 3073 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3073 3080 3081 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3073 3081 3074 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3076 3082 3083 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3076 3075 3082 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3077 3084 3085 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3077 3085 3078 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3079 3086 3087 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3079 3087 3080 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3080 3087 3088 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3080 3088 3081 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3083 3089 3090 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3083 3082 3089 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3084 3091 3092 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3084 3092 3085 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3086 3093 3094 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3086 3094 3087 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3087 3094 3095 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3087 3095 3088 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3090 3096 3097 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3090 3089 3096 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3091 3098 3099 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3091 3099 3092 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3093 3100 3101 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3093 3101 3094 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3094 3101 3102 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3094 3102 3095 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3097 3103 3104 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3097 3096 3103 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3098 3105 3106 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3098 3106 3099 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3107 3108 3109 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3107 3109 3110 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3107 3110 3111 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3107 3111 3112 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3107 3112 3108 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3113 3114 3103 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3113 3101 3114 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3113 3115 3101 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3113 3106 3115 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3113 3103 3106 r12 24 r9 r10 r11 60
+meshface 3116 3117 3118 227 r9 r10 r11 60
+meshface 3116 3119 3117 227 r9 r10 r11 60
+set r12 184
+meshfacegradient 3120 3121 3122 r12 24 r9 r10 r11 60
+set r12 184
+meshfacegradient 3120 3122 3123 r12 24 r9 r10 r11 60
+set r12 184
+meshfacegradient 3123 3122 3124 r12 24 r9 r10 r11 60
+set r12 184
+meshfacegradient 3123 3124 3125 r12 24 r9 r10 r11 60
+set r12 184
+meshfacegradient 3121 3126 3127 r12 24 r9 r10 r11 60
+set r12 184
+meshfacegradient 3121 3127 3122 r12 24 r9 r10 r11 60
+set r12 184
+meshfacegradient 3122 3127 3128 r12 24 r9 r10 r11 60
+set r12 184
+meshfacegradient 3122 3128 3124 r12 24 r9 r10 r11 60
+set r12 184
+meshfacegradient 3126 3129 3130 r12 24 r9 r10 r11 60
+set r12 184
+meshfacegradient 3126 3130 3127 r12 24 r9 r10 r11 60
+set r12 184
+meshfacegradient 3127 3130 3131 r12 24 r9 r10 r11 60
+set r12 184
+meshfacegradient 3127 3131 3128 r12 24 r9 r10 r11 60
+set r12 184
+meshfacegradient 3129 3132 3133 r12 24 r9 r10 r11 60
+set r12 184
+meshfacegradient 3129 3133 3130 r12 24 r9 r10 r11 60
+set r12 184
+meshfacegradient 3130 3133 3134 r12 24 r9 r10 r11 60
+set r12 184
+meshfacegradient 3130 3134 3131 r12 24 r9 r10 r11 60
+set r12 184
+meshfacegradient 3135 3136 3137 r12 24 r9 r10 r11 60
+set r12 184
+meshfacegradient 3135 3138 3136 r12 24 r9 r10 r11 60
+set r12 184
+meshfacegradient 3135 3139 3138 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3140 3141 3142 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3143 3144 3145 r12 24 r9 r10 r11 60
+set r12 184
+meshfacegradient 3146 3147 3148 r12 24 r9 r10 r11 60
+set r12 184
+meshfacegradient 3146 3148 3149 r12 24 r9 r10 r11 60
+set r12 184
+meshfacegradient 3146 3149 3150 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3151 3152 3153 r12 24 r9 r10 r11 60
+localget r12 126
+meshfacegradient 3154 3155 3156 r12 24 r9 r10 r11 60
 set r12 208
-meshfacegradient 3097 3098 3099 r12 4 r9 r10 r11 60
+meshfacegradient 3157 3158 3159 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3097 3100 3098 r12 4 r9 r10 r11 60
+meshfacegradient 3157 3160 3158 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3100 3101 3098 r12 4 r9 r10 r11 60
+meshfacegradient 3160 3161 3158 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3100 3102 3101 r12 4 r9 r10 r11 60
+meshfacegradient 3160 3162 3161 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3102 3103 3101 r12 4 r9 r10 r11 60
+meshfacegradient 3162 3163 3161 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3102 3104 3103 r12 4 r9 r10 r11 60
+meshfacegradient 3162 3164 3163 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3104 3105 3103 r12 4 r9 r10 r11 60
+meshfacegradient 3164 3165 3163 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3104 3106 3105 r12 4 r9 r10 r11 60
+meshfacegradient 3164 3166 3165 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3106 3107 3105 r12 4 r9 r10 r11 60
+meshfacegradient 3166 3167 3165 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3106 3108 3107 r12 4 r9 r10 r11 60
+meshfacegradient 3166 3168 3167 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3108 3109 3107 r12 4 r9 r10 r11 60
+meshfacegradient 3168 3169 3167 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3108 3110 3109 r12 4 r9 r10 r11 60
+meshfacegradient 3168 3170 3169 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3110 3111 3109 r12 4 r9 r10 r11 60
+meshfacegradient 3170 3171 3169 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3110 3112 3111 r12 4 r9 r10 r11 60
+meshfacegradient 3170 3172 3171 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3112 3099 3111 r12 4 r9 r10 r11 60
+meshfacegradient 3172 3159 3171 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3112 3097 3099 r12 4 r9 r10 r11 60
+meshfacegradient 3172 3157 3159 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3113 3114 3115 r12 4 r9 r10 r11 60
+meshfacegradient 3173 3174 3175 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3113 3116 3114 r12 4 r9 r10 r11 60
+meshfacegradient 3173 3176 3174 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3116 3117 3114 r12 4 r9 r10 r11 60
+meshfacegradient 3176 3177 3174 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3116 3118 3117 r12 4 r9 r10 r11 60
+meshfacegradient 3176 3178 3177 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3118 3119 3117 r12 4 r9 r10 r11 60
+meshfacegradient 3178 3179 3177 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3118 3120 3119 r12 4 r9 r10 r11 60
+meshfacegradient 3178 3180 3179 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3120 3121 3119 r12 4 r9 r10 r11 60
+meshfacegradient 3180 3181 3179 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3120 3122 3121 r12 4 r9 r10 r11 60
+meshfacegradient 3180 3182 3181 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3122 3123 3121 r12 4 r9 r10 r11 60
+meshfacegradient 3182 3183 3181 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3122 3124 3123 r12 4 r9 r10 r11 60
+meshfacegradient 3182 3184 3183 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3124 3125 3123 r12 4 r9 r10 r11 60
+meshfacegradient 3184 3185 3183 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3124 3126 3125 r12 4 r9 r10 r11 60
+meshfacegradient 3184 3186 3185 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3126 3127 3125 r12 4 r9 r10 r11 60
+meshfacegradient 3186 3187 3185 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3126 3128 3127 r12 4 r9 r10 r11 60
+meshfacegradient 3186 3188 3187 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3128 3115 3127 r12 4 r9 r10 r11 60
+meshfacegradient 3188 3175 3187 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3128 3113 3115 r12 4 r9 r10 r11 60
+meshfacegradient 3188 3173 3175 r12 4 r9 r10 r11 60
 set r12 212
-meshfacegradient 3129 3130 3131 r12 12 r9 r10 r11 60
-meshface 3132 3133 3134 226 r9 r10 r11 60
+meshfacegradient 3189 3190 3191 r12 12 r9 r10 r11 60
+meshface 3192 3193 3194 226 r9 r10 r11 60
 set r12 212
-meshfacegradient 3129 3135 3136 r12 12 r9 r10 r11 60
-meshface 3132 3137 3138 226 r9 r10 r11 60
+meshfacegradient 3189 3195 3196 r12 12 r9 r10 r11 60
+meshface 3192 3197 3198 226 r9 r10 r11 60
 set r12 212
-meshfacegradient 3129 3139 3140 r12 12 r9 r10 r11 60
-meshface 3132 3141 3142 226 r9 r10 r11 60
+meshfacegradient 3189 3199 3200 r12 12 r9 r10 r11 60
+meshface 3192 3201 3202 226 r9 r10 r11 60
 set r12 212
-meshfacegradient 3129 3143 3144 r12 12 r9 r10 r11 60
-meshface 3132 3145 3146 226 r9 r10 r11 60
+meshfacegradient 3189 3203 3204 r12 12 r9 r10 r11 60
+meshface 3192 3205 3206 226 r9 r10 r11 60
 set r12 208
-meshfacegradient 3147 3148 3149 r12 4 r9 r10 r11 60
+meshfacegradient 3207 3208 3209 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3147 3149 3150 r12 4 r9 r10 r11 60
+meshfacegradient 3207 3209 3210 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3150 3149 3151 r12 4 r9 r10 r11 60
+meshfacegradient 3210 3209 3211 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3150 3151 3152 r12 4 r9 r10 r11 60
+meshfacegradient 3210 3211 3212 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3152 3151 3153 r12 4 r9 r10 r11 60
+meshfacegradient 3212 3211 3213 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3152 3153 3154 r12 4 r9 r10 r11 60
+meshfacegradient 3212 3213 3214 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3154 3153 3155 r12 4 r9 r10 r11 60
+meshfacegradient 3214 3213 3215 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3154 3155 3156 r12 4 r9 r10 r11 60
+meshfacegradient 3214 3215 3216 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3156 3155 3157 r12 4 r9 r10 r11 60
+meshfacegradient 3216 3215 3217 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3156 3157 3158 r12 4 r9 r10 r11 60
+meshfacegradient 3216 3217 3218 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3158 3157 3159 r12 4 r9 r10 r11 60
+meshfacegradient 3218 3217 3219 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3158 3159 3160 r12 4 r9 r10 r11 60
+meshfacegradient 3218 3219 3220 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3160 3159 3161 r12 4 r9 r10 r11 60
+meshfacegradient 3220 3219 3221 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3160 3161 3162 r12 4 r9 r10 r11 60
+meshfacegradient 3220 3221 3222 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3162 3161 3148 r12 4 r9 r10 r11 60
+meshfacegradient 3222 3221 3208 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3162 3148 3147 r12 4 r9 r10 r11 60
+meshfacegradient 3222 3208 3207 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3163 3164 3165 r12 4 r9 r10 r11 60
+meshfacegradient 3223 3224 3225 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3163 3165 3166 r12 4 r9 r10 r11 60
+meshfacegradient 3223 3225 3226 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3166 3165 3167 r12 4 r9 r10 r11 60
+meshfacegradient 3226 3225 3227 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3166 3167 3168 r12 4 r9 r10 r11 60
+meshfacegradient 3226 3227 3228 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3168 3167 3169 r12 4 r9 r10 r11 60
+meshfacegradient 3228 3227 3229 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3168 3169 3170 r12 4 r9 r10 r11 60
+meshfacegradient 3228 3229 3230 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3170 3169 3171 r12 4 r9 r10 r11 60
+meshfacegradient 3230 3229 3231 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3170 3171 3172 r12 4 r9 r10 r11 60
+meshfacegradient 3230 3231 3232 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3172 3171 3173 r12 4 r9 r10 r11 60
+meshfacegradient 3232 3231 3233 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3172 3173 3174 r12 4 r9 r10 r11 60
+meshfacegradient 3232 3233 3234 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3174 3173 3175 r12 4 r9 r10 r11 60
+meshfacegradient 3234 3233 3235 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3174 3175 3176 r12 4 r9 r10 r11 60
+meshfacegradient 3234 3235 3236 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3176 3175 3177 r12 4 r9 r10 r11 60
+meshfacegradient 3236 3235 3237 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3176 3177 3178 r12 4 r9 r10 r11 60
+meshfacegradient 3236 3237 3238 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3178 3177 3164 r12 4 r9 r10 r11 60
+meshfacegradient 3238 3237 3224 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3178 3164 3163 r12 4 r9 r10 r11 60
+meshfacegradient 3238 3224 3223 r12 4 r9 r10 r11 60
 set r12 212
-meshfacegradient 3179 3180 3181 r12 12 r9 r10 r11 60
-meshface 3182 3183 3184 226 r9 r10 r11 60
+meshfacegradient 3239 3240 3241 r12 12 r9 r10 r11 60
+meshface 3242 3243 3244 226 r9 r10 r11 60
 set r12 212
-meshfacegradient 3179 3185 3186 r12 12 r9 r10 r11 60
-meshface 3182 3187 3188 226 r9 r10 r11 60
+meshfacegradient 3239 3245 3246 r12 12 r9 r10 r11 60
+meshface 3242 3247 3248 226 r9 r10 r11 60
 set r12 212
-meshfacegradient 3179 3189 3190 r12 12 r9 r10 r11 60
-meshface 3182 3191 3192 226 r9 r10 r11 60
+meshfacegradient 3239 3249 3250 r12 12 r9 r10 r11 60
+meshface 3242 3251 3252 226 r9 r10 r11 60
 set r12 212
-meshfacegradient 3179 3193 3194 r12 12 r9 r10 r11 60
-meshface 3182 3195 3196 226 r9 r10 r11 60
+meshfacegradient 3239 3253 3254 r12 12 r9 r10 r11 60
+meshface 3242 3255 3256 226 r9 r10 r11 60
 set r12 208
-meshfacegradient 3197 3198 3199 r12 4 r9 r10 r11 60
+meshfacegradient 3257 3258 3259 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3197 3200 3198 r12 4 r9 r10 r11 60
+meshfacegradient 3257 3260 3258 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3200 3201 3198 r12 4 r9 r10 r11 60
+meshfacegradient 3260 3261 3258 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3200 3202 3201 r12 4 r9 r10 r11 60
+meshfacegradient 3260 3262 3261 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3202 3203 3201 r12 4 r9 r10 r11 60
+meshfacegradient 3262 3263 3261 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3202 3204 3203 r12 4 r9 r10 r11 60
+meshfacegradient 3262 3264 3263 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3204 3205 3203 r12 4 r9 r10 r11 60
+meshfacegradient 3264 3265 3263 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3204 3206 3205 r12 4 r9 r10 r11 60
+meshfacegradient 3264 3266 3265 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3206 3207 3205 r12 4 r9 r10 r11 60
+meshfacegradient 3266 3267 3265 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3206 3208 3207 r12 4 r9 r10 r11 60
+meshfacegradient 3266 3268 3267 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3208 3209 3207 r12 4 r9 r10 r11 60
+meshfacegradient 3268 3269 3267 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3208 3210 3209 r12 4 r9 r10 r11 60
+meshfacegradient 3268 3270 3269 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3210 3211 3209 r12 4 r9 r10 r11 60
+meshfacegradient 3270 3271 3269 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3210 3212 3211 r12 4 r9 r10 r11 60
+meshfacegradient 3270 3272 3271 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3212 3199 3211 r12 4 r9 r10 r11 60
+meshfacegradient 3272 3259 3271 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3212 3197 3199 r12 4 r9 r10 r11 60
+meshfacegradient 3272 3257 3259 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3213 3214 3215 r12 4 r9 r10 r11 60
+meshfacegradient 3273 3274 3275 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3213 3216 3214 r12 4 r9 r10 r11 60
+meshfacegradient 3273 3276 3274 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3216 3217 3214 r12 4 r9 r10 r11 60
+meshfacegradient 3276 3277 3274 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3216 3218 3217 r12 4 r9 r10 r11 60
+meshfacegradient 3276 3278 3277 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3218 3219 3217 r12 4 r9 r10 r11 60
+meshfacegradient 3278 3279 3277 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3218 3220 3219 r12 4 r9 r10 r11 60
+meshfacegradient 3278 3280 3279 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3220 3221 3219 r12 4 r9 r10 r11 60
+meshfacegradient 3280 3281 3279 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3220 3222 3221 r12 4 r9 r10 r11 60
+meshfacegradient 3280 3282 3281 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3222 3223 3221 r12 4 r9 r10 r11 60
+meshfacegradient 3282 3283 3281 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3222 3224 3223 r12 4 r9 r10 r11 60
+meshfacegradient 3282 3284 3283 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3224 3225 3223 r12 4 r9 r10 r11 60
+meshfacegradient 3284 3285 3283 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3224 3226 3225 r12 4 r9 r10 r11 60
+meshfacegradient 3284 3286 3285 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3226 3227 3225 r12 4 r9 r10 r11 60
+meshfacegradient 3286 3287 3285 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3226 3228 3227 r12 4 r9 r10 r11 60
+meshfacegradient 3286 3288 3287 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3228 3215 3227 r12 4 r9 r10 r11 60
+meshfacegradient 3288 3275 3287 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3228 3213 3215 r12 4 r9 r10 r11 60
+meshfacegradient 3288 3273 3275 r12 4 r9 r10 r11 60
 set r12 212
-meshfacegradient 3229 3230 3231 r12 12 r9 r10 r11 60
-meshface 3232 3233 3234 226 r9 r10 r11 60
+meshfacegradient 3289 3290 3291 r12 12 r9 r10 r11 60
+meshface 3292 3293 3294 226 r9 r10 r11 60
 set r12 212
-meshfacegradient 3229 3235 3236 r12 12 r9 r10 r11 60
-meshface 3232 3237 3238 226 r9 r10 r11 60
+meshfacegradient 3289 3295 3296 r12 12 r9 r10 r11 60
+meshface 3292 3297 3298 226 r9 r10 r11 60
 set r12 212
-meshfacegradient 3229 3239 3240 r12 12 r9 r10 r11 60
-meshface 3232 3241 3242 226 r9 r10 r11 60
+meshfacegradient 3289 3299 3300 r12 12 r9 r10 r11 60
+meshface 3292 3301 3302 226 r9 r10 r11 60
 set r12 212
-meshfacegradient 3229 3243 3244 r12 12 r9 r10 r11 60
-meshface 3232 3245 3246 226 r9 r10 r11 60
+meshfacegradient 3289 3303 3304 r12 12 r9 r10 r11 60
+meshface 3292 3305 3306 226 r9 r10 r11 60
 set r12 208
-meshfacegradient 3247 3248 3249 r12 4 r9 r10 r11 60
+meshfacegradient 3307 3308 3309 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3247 3249 3250 r12 4 r9 r10 r11 60
+meshfacegradient 3307 3309 3310 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3250 3249 3251 r12 4 r9 r10 r11 60
+meshfacegradient 3310 3309 3311 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3250 3251 3252 r12 4 r9 r10 r11 60
+meshfacegradient 3310 3311 3312 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3252 3251 3253 r12 4 r9 r10 r11 60
+meshfacegradient 3312 3311 3313 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3252 3253 3254 r12 4 r9 r10 r11 60
+meshfacegradient 3312 3313 3314 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3254 3253 3255 r12 4 r9 r10 r11 60
+meshfacegradient 3314 3313 3315 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3254 3255 3256 r12 4 r9 r10 r11 60
+meshfacegradient 3314 3315 3316 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3256 3255 3257 r12 4 r9 r10 r11 60
+meshfacegradient 3316 3315 3317 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3256 3257 3258 r12 4 r9 r10 r11 60
+meshfacegradient 3316 3317 3318 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3258 3257 3259 r12 4 r9 r10 r11 60
+meshfacegradient 3318 3317 3319 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3258 3259 3260 r12 4 r9 r10 r11 60
+meshfacegradient 3318 3319 3320 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3260 3259 3261 r12 4 r9 r10 r11 60
+meshfacegradient 3320 3319 3321 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3260 3261 3262 r12 4 r9 r10 r11 60
+meshfacegradient 3320 3321 3322 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3262 3261 3248 r12 4 r9 r10 r11 60
+meshfacegradient 3322 3321 3308 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3262 3248 3247 r12 4 r9 r10 r11 60
+meshfacegradient 3322 3308 3307 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3263 3264 3265 r12 4 r9 r10 r11 60
+meshfacegradient 3323 3324 3325 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3263 3265 3266 r12 4 r9 r10 r11 60
+meshfacegradient 3323 3325 3326 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3266 3265 3267 r12 4 r9 r10 r11 60
+meshfacegradient 3326 3325 3327 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3266 3267 3268 r12 4 r9 r10 r11 60
+meshfacegradient 3326 3327 3328 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3268 3267 3269 r12 4 r9 r10 r11 60
+meshfacegradient 3328 3327 3329 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3268 3269 3270 r12 4 r9 r10 r11 60
+meshfacegradient 3328 3329 3330 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3270 3269 3271 r12 4 r9 r10 r11 60
+meshfacegradient 3330 3329 3331 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3270 3271 3272 r12 4 r9 r10 r11 60
+meshfacegradient 3330 3331 3332 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3272 3271 3273 r12 4 r9 r10 r11 60
+meshfacegradient 3332 3331 3333 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3272 3273 3274 r12 4 r9 r10 r11 60
+meshfacegradient 3332 3333 3334 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3274 3273 3275 r12 4 r9 r10 r11 60
+meshfacegradient 3334 3333 3335 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3274 3275 3276 r12 4 r9 r10 r11 60
+meshfacegradient 3334 3335 3336 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3276 3275 3277 r12 4 r9 r10 r11 60
+meshfacegradient 3336 3335 3337 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3276 3277 3278 r12 4 r9 r10 r11 60
+meshfacegradient 3336 3337 3338 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3278 3277 3264 r12 4 r9 r10 r11 60
+meshfacegradient 3338 3337 3324 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3278 3264 3263 r12 4 r9 r10 r11 60
+meshfacegradient 3338 3324 3323 r12 4 r9 r10 r11 60
 set r12 212
-meshfacegradient 3279 3280 3281 r12 12 r9 r10 r11 60
-meshface 3282 3283 3284 226 r9 r10 r11 60
+meshfacegradient 3339 3340 3341 r12 12 r9 r10 r11 60
+meshface 3342 3343 3344 226 r9 r10 r11 60
 set r12 212
-meshfacegradient 3279 3285 3286 r12 12 r9 r10 r11 60
-meshface 3282 3287 3288 226 r9 r10 r11 60
+meshfacegradient 3339 3345 3346 r12 12 r9 r10 r11 60
+meshface 3342 3347 3348 226 r9 r10 r11 60
 set r12 212
-meshfacegradient 3279 3289 3290 r12 12 r9 r10 r11 60
-meshface 3282 3291 3292 226 r9 r10 r11 60
+meshfacegradient 3339 3349 3350 r12 12 r9 r10 r11 60
+meshface 3342 3351 3352 226 r9 r10 r11 60
 set r12 212
-meshfacegradient 3279 3293 3294 r12 12 r9 r10 r11 60
-meshface 3282 3295 3296 226 r9 r10 r11 60
-meshface 3297 3298 3299 226 r9 r10 r11 60
-meshface 3300 3301 3302 226 r9 r10 r11 60
-meshface 3303 3304 3305 225 r9 r10 r11 60
-meshface 3303 3305 3306 225 r9 r10 r11 60
-meshface 3307 3308 3309 224 r9 r10 r11 60
-meshface 3307 3310 3308 224 r9 r10 r11 60
+meshfacegradient 3339 3353 3354 r12 12 r9 r10 r11 60
+meshface 3342 3355 3356 226 r9 r10 r11 60
+meshface 3357 3358 3359 226 r9 r10 r11 60
+meshface 3360 3361 3362 226 r9 r10 r11 60
+meshface 3363 3364 3365 225 r9 r10 r11 60
+meshface 3363 3365 3366 225 r9 r10 r11 60
+meshface 3367 3368 3369 224 r9 r10 r11 60
+meshface 3367 3370 3368 224 r9 r10 r11 60
 set r12 228
-meshfacegradient 3311 3312 3313 r12 12 r9 r10 r11 60
+meshfacegradient 3371 3372 3373 r12 12 r9 r10 r11 60
 set r12 228
-meshfacegradient 3311 3314 3312 r12 12 r9 r10 r11 60
-meshface 3315 3316 3317 226 r9 r10 r11 60
-meshface 3315 3317 3318 226 r9 r10 r11 60
-meshface 3319 3320 3321 226 r9 r10 r11 60
-meshface 3319 3322 3320 226 r9 r10 r11 60
+meshfacegradient 3371 3374 3372 r12 12 r9 r10 r11 60
+meshface 3375 3376 3377 226 r9 r10 r11 60
+meshface 3375 3377 3378 226 r9 r10 r11 60
+meshface 3379 3380 3381 226 r9 r10 r11 60
+meshface 3379 3382 3380 226 r9 r10 r11 60
 set r12 228
-meshfacegradient 3323 3324 3325 r12 12 r9 r10 r11 60
+meshfacegradient 3383 3384 3385 r12 12 r9 r10 r11 60
 set r12 228
-meshfacegradient 3323 3325 3326 r12 12 r9 r10 r11 60
+meshfacegradient 3383 3385 3386 r12 12 r9 r10 r11 60
 set r12 228
-meshfacegradient 3324 3327 3328 r12 12 r9 r10 r11 60
+meshfacegradient 3384 3387 3388 r12 12 r9 r10 r11 60
 set r12 228
-meshfacegradient 3324 3328 3325 r12 12 r9 r10 r11 60
+meshfacegradient 3384 3388 3385 r12 12 r9 r10 r11 60
 set r12 228
-meshfacegradient 3329 3330 3331 r12 12 r9 r10 r11 60
+meshfacegradient 3389 3390 3391 r12 12 r9 r10 r11 60
 set r12 228
-meshfacegradient 3329 3332 3330 r12 12 r9 r10 r11 60
+meshfacegradient 3389 3392 3390 r12 12 r9 r10 r11 60
 set r12 228
-meshfacegradient 3331 3333 3334 r12 12 r9 r10 r11 60
+meshfacegradient 3391 3393 3394 r12 12 r9 r10 r11 60
 set r12 228
-meshfacegradient 3331 3330 3333 r12 12 r9 r10 r11 60
+meshfacegradient 3391 3390 3393 r12 12 r9 r10 r11 60
 jmp emit_shadow
 label emit_far
 localget r12 126
-meshfacegradient 3335 3336 3337 r12 24 r9 r10 r11 60
+meshfacegradient 3395 3396 3397 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3335 3337 3338 r12 24 r9 r10 r11 60
+meshfacegradient 3395 3397 3398 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3338 3337 3339 r12 24 r9 r10 r11 60
+meshfacegradient 3398 3397 3399 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3338 3339 3340 r12 24 r9 r10 r11 60
+meshfacegradient 3398 3399 3400 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3341 3342 3343 r12 24 r9 r10 r11 60
+meshfacegradient 3401 3402 3403 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3341 3344 3342 r12 24 r9 r10 r11 60
+meshfacegradient 3401 3404 3402 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3345 3346 3347 r12 24 r9 r10 r11 60
+meshfacegradient 3405 3406 3407 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3345 3347 3348 r12 24 r9 r10 r11 60
+meshfacegradient 3405 3407 3408 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3336 3349 3350 r12 24 r9 r10 r11 60
+meshfacegradient 3396 3409 3410 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3336 3350 3337 r12 24 r9 r10 r11 60
+meshfacegradient 3396 3410 3397 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3337 3350 3351 r12 24 r9 r10 r11 60
+meshfacegradient 3397 3410 3411 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3337 3351 3339 r12 24 r9 r10 r11 60
+meshfacegradient 3397 3411 3399 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3343 3352 3353 r12 24 r9 r10 r11 60
+meshfacegradient 3403 3412 3413 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3343 3342 3352 r12 24 r9 r10 r11 60
+meshfacegradient 3403 3402 3412 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3346 3354 3355 r12 24 r9 r10 r11 60
+meshfacegradient 3406 3414 3415 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3346 3355 3347 r12 24 r9 r10 r11 60
+meshfacegradient 3406 3415 3407 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3349 3356 3357 r12 24 r9 r10 r11 60
+meshfacegradient 3409 3416 3417 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3349 3357 3350 r12 24 r9 r10 r11 60
+meshfacegradient 3409 3417 3410 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3350 3357 3358 r12 24 r9 r10 r11 60
+meshfacegradient 3410 3417 3418 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3350 3358 3351 r12 24 r9 r10 r11 60
+meshfacegradient 3410 3418 3411 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3353 3359 3360 r12 24 r9 r10 r11 60
+meshfacegradient 3413 3419 3420 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3353 3352 3359 r12 24 r9 r10 r11 60
+meshfacegradient 3413 3412 3419 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3354 3361 3362 r12 24 r9 r10 r11 60
+meshfacegradient 3414 3421 3422 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3354 3362 3355 r12 24 r9 r10 r11 60
+meshfacegradient 3414 3422 3415 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3356 3363 3364 r12 24 r9 r10 r11 60
+meshfacegradient 3416 3423 3424 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3356 3364 3357 r12 24 r9 r10 r11 60
+meshfacegradient 3416 3424 3417 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3357 3364 3365 r12 24 r9 r10 r11 60
+meshfacegradient 3417 3424 3425 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3357 3365 3358 r12 24 r9 r10 r11 60
+meshfacegradient 3417 3425 3418 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3360 3366 3367 r12 24 r9 r10 r11 60
+meshfacegradient 3420 3426 3427 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3360 3359 3366 r12 24 r9 r10 r11 60
+meshfacegradient 3420 3419 3426 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3361 3368 3369 r12 24 r9 r10 r11 60
+meshfacegradient 3421 3428 3429 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3361 3369 3362 r12 24 r9 r10 r11 60
+meshfacegradient 3421 3429 3422 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3363 3370 3371 r12 24 r9 r10 r11 60
+meshfacegradient 3423 3430 3431 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3363 3371 3364 r12 24 r9 r10 r11 60
+meshfacegradient 3423 3431 3424 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3364 3371 3372 r12 24 r9 r10 r11 60
+meshfacegradient 3424 3431 3432 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3364 3372 3365 r12 24 r9 r10 r11 60
+meshfacegradient 3424 3432 3425 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3367 3373 3374 r12 24 r9 r10 r11 60
+meshfacegradient 3427 3433 3434 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3367 3366 3373 r12 24 r9 r10 r11 60
+meshfacegradient 3427 3426 3433 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3368 3375 3376 r12 24 r9 r10 r11 60
+meshfacegradient 3428 3435 3436 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3368 3376 3369 r12 24 r9 r10 r11 60
+meshfacegradient 3428 3436 3429 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3377 3378 3379 r12 24 r9 r10 r11 60
+meshfacegradient 3437 3438 3439 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3377 3379 3380 r12 24 r9 r10 r11 60
+meshfacegradient 3437 3439 3440 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3373 3381 3382 r12 24 r9 r10 r11 60
+meshfacegradient 3433 3441 3442 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradient 3373 3376 3381 r12 24 r9 r10 r11 60
-meshface 3383 3384 3385 227 r9 r10 r11 60
-meshface 3383 3386 3384 227 r9 r10 r11 60
+meshfacegradient 3433 3436 3441 r12 24 r9 r10 r11 60
+meshface 3443 3444 3445 227 r9 r10 r11 60
+meshface 3443 3446 3444 227 r9 r10 r11 60
 set r12 184
-meshfacegradient 3387 3388 3389 r12 24 r9 r10 r11 60
+meshfacegradient 3447 3448 3449 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradient 3387 3389 3390 r12 24 r9 r10 r11 60
+meshfacegradient 3447 3449 3450 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradient 3390 3389 3391 r12 24 r9 r10 r11 60
+meshfacegradient 3450 3449 3451 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradient 3390 3391 3392 r12 24 r9 r10 r11 60
+meshfacegradient 3450 3451 3452 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradient 3388 3393 3394 r12 24 r9 r10 r11 60
+meshfacegradient 3448 3453 3454 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradient 3388 3394 3389 r12 24 r9 r10 r11 60
+meshfacegradient 3448 3454 3449 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradient 3389 3394 3395 r12 24 r9 r10 r11 60
+meshfacegradient 3449 3454 3455 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradient 3389 3395 3391 r12 24 r9 r10 r11 60
+meshfacegradient 3449 3455 3451 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradient 3393 3396 3397 r12 24 r9 r10 r11 60
+meshfacegradient 3453 3456 3457 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradient 3393 3397 3394 r12 24 r9 r10 r11 60
+meshfacegradient 3453 3457 3454 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradient 3394 3397 3398 r12 24 r9 r10 r11 60
+meshfacegradient 3454 3457 3458 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradient 3394 3398 3395 r12 24 r9 r10 r11 60
+meshfacegradient 3454 3458 3455 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradient 3399 3400 3401 r12 24 r9 r10 r11 60
+meshfacegradient 3459 3460 3461 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradient 3399 3402 3400 r12 24 r9 r10 r11 60
+meshfacegradient 3459 3462 3460 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradient 3403 3404 3405 r12 24 r9 r10 r11 60
+meshfacegradient 3463 3464 3465 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradient 3403 3405 3406 r12 24 r9 r10 r11 60
-set r12 208
-meshfacegradient 3407 3408 3409 r12 4 r9 r10 r11 60
-set r12 208
-meshfacegradient 3407 3410 3408 r12 4 r9 r10 r11 60
-set r12 208
-meshfacegradient 3411 3412 3413 r12 4 r9 r10 r11 60
-set r12 208
-meshfacegradient 3411 3414 3412 r12 4 r9 r10 r11 60
-set r12 208
-meshfacegradient 3415 3416 3417 r12 4 r9 r10 r11 60
-set r12 208
-meshfacegradient 3415 3418 3416 r12 4 r9 r10 r11 60
-set r12 208
-meshfacegradient 3419 3420 3421 r12 4 r9 r10 r11 60
-set r12 208
-meshfacegradient 3419 3422 3420 r12 4 r9 r10 r11 60
-set r12 212
-meshfacegradient 3423 3424 3425 r12 12 r9 r10 r11 60
-set r12 212
-meshfacegradient 3423 3425 3426 r12 12 r9 r10 r11 60
-set r12 208
-meshfacegradient 3427 3428 3429 r12 4 r9 r10 r11 60
-set r12 208
-meshfacegradient 3427 3429 3430 r12 4 r9 r10 r11 60
-set r12 208
-meshfacegradient 3431 3432 3433 r12 4 r9 r10 r11 60
-set r12 208
-meshfacegradient 3431 3433 3434 r12 4 r9 r10 r11 60
-set r12 208
-meshfacegradient 3435 3436 3437 r12 4 r9 r10 r11 60
-set r12 208
-meshfacegradient 3435 3437 3438 r12 4 r9 r10 r11 60
-set r12 208
-meshfacegradient 3439 3440 3441 r12 4 r9 r10 r11 60
-set r12 208
-meshfacegradient 3439 3441 3442 r12 4 r9 r10 r11 60
-set r12 212
-meshfacegradient 3443 3444 3445 r12 12 r9 r10 r11 60
-set r12 212
-meshfacegradient 3443 3446 3444 r12 12 r9 r10 r11 60
-set r12 208
-meshfacegradient 3447 3448 3449 r12 4 r9 r10 r11 60
-set r12 208
-meshfacegradient 3447 3450 3448 r12 4 r9 r10 r11 60
-set r12 208
-meshfacegradient 3451 3452 3453 r12 4 r9 r10 r11 60
-set r12 208
-meshfacegradient 3451 3454 3452 r12 4 r9 r10 r11 60
-set r12 208
-meshfacegradient 3455 3456 3457 r12 4 r9 r10 r11 60
-set r12 208
-meshfacegradient 3455 3458 3456 r12 4 r9 r10 r11 60
-set r12 208
-meshfacegradient 3459 3460 3461 r12 4 r9 r10 r11 60
-set r12 208
-meshfacegradient 3459 3462 3460 r12 4 r9 r10 r11 60
-set r12 212
-meshfacegradient 3463 3464 3465 r12 12 r9 r10 r11 60
-set r12 212
-meshfacegradient 3463 3465 3466 r12 12 r9 r10 r11 60
+meshfacegradient 3463 3465 3466 r12 24 r9 r10 r11 60
 set r12 208
 meshfacegradient 3467 3468 3469 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3467 3469 3470 r12 4 r9 r10 r11 60
+meshfacegradient 3467 3470 3468 r12 4 r9 r10 r11 60
 set r12 208
 meshfacegradient 3471 3472 3473 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3471 3473 3474 r12 4 r9 r10 r11 60
+meshfacegradient 3471 3474 3472 r12 4 r9 r10 r11 60
 set r12 208
 meshfacegradient 3475 3476 3477 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3475 3477 3478 r12 4 r9 r10 r11 60
+meshfacegradient 3475 3478 3476 r12 4 r9 r10 r11 60
 set r12 208
 meshfacegradient 3479 3480 3481 r12 4 r9 r10 r11 60
 set r12 208
-meshfacegradient 3479 3481 3482 r12 4 r9 r10 r11 60
+meshfacegradient 3479 3482 3480 r12 4 r9 r10 r11 60
 set r12 212
 meshfacegradient 3483 3484 3485 r12 12 r9 r10 r11 60
 set r12 212
-meshfacegradient 3483 3486 3484 r12 12 r9 r10 r11 60
-meshface 3487 3488 3489 225 r9 r10 r11 60
-meshface 3487 3489 3490 225 r9 r10 r11 60
-meshface 3491 3492 3493 224 r9 r10 r11 60
-meshface 3491 3494 3492 224 r9 r10 r11 60
+meshfacegradient 3483 3485 3486 r12 12 r9 r10 r11 60
+set r12 208
+meshfacegradient 3487 3488 3489 r12 4 r9 r10 r11 60
+set r12 208
+meshfacegradient 3487 3489 3490 r12 4 r9 r10 r11 60
+set r12 208
+meshfacegradient 3491 3492 3493 r12 4 r9 r10 r11 60
+set r12 208
+meshfacegradient 3491 3493 3494 r12 4 r9 r10 r11 60
+set r12 208
+meshfacegradient 3495 3496 3497 r12 4 r9 r10 r11 60
+set r12 208
+meshfacegradient 3495 3497 3498 r12 4 r9 r10 r11 60
+set r12 208
+meshfacegradient 3499 3500 3501 r12 4 r9 r10 r11 60
+set r12 208
+meshfacegradient 3499 3501 3502 r12 4 r9 r10 r11 60
+set r12 212
+meshfacegradient 3503 3504 3505 r12 12 r9 r10 r11 60
+set r12 212
+meshfacegradient 3503 3506 3504 r12 12 r9 r10 r11 60
+set r12 208
+meshfacegradient 3507 3508 3509 r12 4 r9 r10 r11 60
+set r12 208
+meshfacegradient 3507 3510 3508 r12 4 r9 r10 r11 60
+set r12 208
+meshfacegradient 3511 3512 3513 r12 4 r9 r10 r11 60
+set r12 208
+meshfacegradient 3511 3514 3512 r12 4 r9 r10 r11 60
+set r12 208
+meshfacegradient 3515 3516 3517 r12 4 r9 r10 r11 60
+set r12 208
+meshfacegradient 3515 3518 3516 r12 4 r9 r10 r11 60
+set r12 208
+meshfacegradient 3519 3520 3521 r12 4 r9 r10 r11 60
+set r12 208
+meshfacegradient 3519 3522 3520 r12 4 r9 r10 r11 60
+set r12 212
+meshfacegradient 3523 3524 3525 r12 12 r9 r10 r11 60
+set r12 212
+meshfacegradient 3523 3525 3526 r12 12 r9 r10 r11 60
+set r12 208
+meshfacegradient 3527 3528 3529 r12 4 r9 r10 r11 60
+set r12 208
+meshfacegradient 3527 3529 3530 r12 4 r9 r10 r11 60
+set r12 208
+meshfacegradient 3531 3532 3533 r12 4 r9 r10 r11 60
+set r12 208
+meshfacegradient 3531 3533 3534 r12 4 r9 r10 r11 60
+set r12 208
+meshfacegradient 3535 3536 3537 r12 4 r9 r10 r11 60
+set r12 208
+meshfacegradient 3535 3537 3538 r12 4 r9 r10 r11 60
+set r12 208
+meshfacegradient 3539 3540 3541 r12 4 r9 r10 r11 60
+set r12 208
+meshfacegradient 3539 3541 3542 r12 4 r9 r10 r11 60
+set r12 212
+meshfacegradient 3543 3544 3545 r12 12 r9 r10 r11 60
+set r12 212
+meshfacegradient 3543 3546 3544 r12 12 r9 r10 r11 60
+meshface 3547 3548 3549 225 r9 r10 r11 60
+meshface 3547 3549 3550 225 r9 r10 r11 60
+meshface 3551 3552 3553 224 r9 r10 r11 60
+meshface 3551 3554 3552 224 r9 r10 r11 60
 set r12 228
-meshfacegradient 3495 3496 3497 r12 12 r9 r10 r11 60
+meshfacegradient 3555 3556 3557 r12 12 r9 r10 r11 60
 set r12 228
-meshfacegradient 3495 3498 3496 r12 12 r9 r10 r11 60
+meshfacegradient 3555 3558 3556 r12 12 r9 r10 r11 60
 jmp emit_shadow
 label emit_shadow
 set r12 24
@@ -11148,42 +11306,42 @@ cmp r0 0
 je shadow_base_ready
 set r12 32
 label shadow_base_ready
-meshfacegradient 3499 3500 3501 r12 8 r9 r10 r11 60
-meshfacegradient 3500 3508 3509 r12 8 r9 r10 r11 60
-meshfacegradient 3500 3509 3501 r12 8 r9 r10 r11 60
-meshfacegradient 3499 3501 3502 r12 8 r9 r10 r11 60
-meshfacegradient 3501 3509 3510 r12 8 r9 r10 r11 60
-meshfacegradient 3501 3510 3502 r12 8 r9 r10 r11 60
-meshfacegradient 3499 3502 3503 r12 8 r9 r10 r11 60
-meshfacegradient 3502 3510 3511 r12 8 r9 r10 r11 60
-meshfacegradient 3502 3511 3503 r12 8 r9 r10 r11 60
-meshfacegradient 3499 3503 3504 r12 8 r9 r10 r11 60
-meshfacegradient 3503 3511 3512 r12 8 r9 r10 r11 60
-meshfacegradient 3503 3512 3504 r12 8 r9 r10 r11 60
-meshfacegradient 3499 3504 3505 r12 8 r9 r10 r11 60
-meshfacegradient 3504 3512 3513 r12 8 r9 r10 r11 60
-meshfacegradient 3504 3513 3505 r12 8 r9 r10 r11 60
-meshfacegradient 3499 3505 3506 r12 8 r9 r10 r11 60
-meshfacegradient 3505 3513 3514 r12 8 r9 r10 r11 60
-meshfacegradient 3505 3514 3506 r12 8 r9 r10 r11 60
-meshfacegradient 3499 3506 3507 r12 8 r9 r10 r11 60
-meshfacegradient 3506 3514 3515 r12 8 r9 r10 r11 60
-meshfacegradient 3506 3515 3507 r12 8 r9 r10 r11 60
-meshfacegradient 3499 3507 3500 r12 8 r9 r10 r11 60
-meshfacegradient 3507 3515 3508 r12 8 r9 r10 r11 60
-meshfacegradient 3507 3508 3500 r12 8 r9 r10 r11 60
+meshfacegradient 3559 3560 3561 r12 8 r9 r10 r11 60
+meshfacegradient 3560 3568 3569 r12 8 r9 r10 r11 60
+meshfacegradient 3560 3569 3561 r12 8 r9 r10 r11 60
+meshfacegradient 3559 3561 3562 r12 8 r9 r10 r11 60
+meshfacegradient 3561 3569 3570 r12 8 r9 r10 r11 60
+meshfacegradient 3561 3570 3562 r12 8 r9 r10 r11 60
+meshfacegradient 3559 3562 3563 r12 8 r9 r10 r11 60
+meshfacegradient 3562 3570 3571 r12 8 r9 r10 r11 60
+meshfacegradient 3562 3571 3563 r12 8 r9 r10 r11 60
+meshfacegradient 3559 3563 3564 r12 8 r9 r10 r11 60
+meshfacegradient 3563 3571 3572 r12 8 r9 r10 r11 60
+meshfacegradient 3563 3572 3564 r12 8 r9 r10 r11 60
+meshfacegradient 3559 3564 3565 r12 8 r9 r10 r11 60
+meshfacegradient 3564 3572 3573 r12 8 r9 r10 r11 60
+meshfacegradient 3564 3573 3565 r12 8 r9 r10 r11 60
+meshfacegradient 3559 3565 3566 r12 8 r9 r10 r11 60
+meshfacegradient 3565 3573 3574 r12 8 r9 r10 r11 60
+meshfacegradient 3565 3574 3566 r12 8 r9 r10 r11 60
+meshfacegradient 3559 3566 3567 r12 8 r9 r10 r11 60
+meshfacegradient 3566 3574 3575 r12 8 r9 r10 r11 60
+meshfacegradient 3566 3575 3567 r12 8 r9 r10 r11 60
+meshfacegradient 3559 3567 3560 r12 8 r9 r10 r11 60
+meshfacegradient 3567 3575 3568 r12 8 r9 r10 r11 60
+meshfacegradient 3567 3568 3560 r12 8 r9 r10 r11 60
 jmp next_actor
 label emit_tree
-meshface 3516 3517 3518 14 r9 r10 r11 60
-meshface 3516 3518 3519 15 r9 r10 r11 60
-meshface 3516 3519 3520 16 r9 r10 r11 60
-meshface 3516 3520 3521 14 r9 r10 r11 60
-meshface 3516 3521 3522 15 r9 r10 r11 60
-meshface 3516 3522 3517 16 r9 r10 r11 60
-meshface 3523 3524 3525 9 r9 r10 r11 60
-meshface 3523 3525 3526 10 r9 r10 r11 60
-meshface 3527 3528 3529 9 r9 r10 r11 60
-meshface 3527 3529 3530 10 r9 r10 r11 60
+meshface 3576 3577 3578 14 r9 r10 r11 60
+meshface 3576 3578 3579 15 r9 r10 r11 60
+meshface 3576 3579 3580 16 r9 r10 r11 60
+meshface 3576 3580 3581 14 r9 r10 r11 60
+meshface 3576 3581 3582 15 r9 r10 r11 60
+meshface 3576 3582 3577 16 r9 r10 r11 60
+meshface 3583 3584 3585 9 r9 r10 r11 60
+meshface 3583 3585 3586 10 r9 r10 r11 60
+meshface 3587 3588 3589 9 r9 r10 r11 60
+meshface 3587 3589 3590 10 r9 r10 r11 60
 label next_actor
 load32 r12 100
 sub r12 2000000
