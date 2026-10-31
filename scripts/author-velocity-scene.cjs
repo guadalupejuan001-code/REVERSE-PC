@@ -132,3 +132,12 @@ console.log(JSON.stringify({file:path.basename(destination),bytes:fs.statSync(de
 fs.writeFileSync(path.join(path.dirname(destination),'palette.txt'),buildPalette().join('\n')+'\n');
 // Deterministic landscape geometry still executes entirely as XI/REgraphics.
 console.log('XI_LANDSCAPE_GEOMETRY_PASS',JSON.stringify(require('./velocity-landscape-post.cjs').run()));
+ // Exactly the same native XI scene (cars, materials, mountains, road). Revision 5
+ // rasterizes all 3840x2160 pixels through REgraphics software strips, never GLES.
+ const gpuLegacy=fs.readFileSync(path.join(path.dirname(destination),'render4k.xi'),'utf8');
+ const legacyStart='meshbegin r0 r1 4 0';
+ if(gpuLegacy.split(legacyStart).length!==2)throw Error('Expected a single XI 4K meshbegin');
+ const nativeSource=gpuLegacy.replace(legacyStart,'meshbegin r0 r1 5 0');
+ const nativePath=path.join(path.dirname(destination),'render-native4k.xi');
+ fs.writeFileSync(nativePath,nativeSource);
+ console.log('XI_NATIVE_4K_SOURCE_READY',JSON.stringify({name:path.basename(nativePath),bytes:nativeSource.length,revision:5}));

@@ -11,6 +11,7 @@ final class RegraphicsFrame {
     static final int LOGICAL_WIDTH=1280,LOGICAL_HEIGHT=720;
     static final int MAX_SPANS_PER_ROW=48;
     static final int MAX_FRAME_BYTES=24+14*360*641;
+    static final int NATIVE_4K_BYTES=16+3840*2160;
     final int width,height,stride,commands,revision;
     private final byte[] bytes;
     private final int[] palette;
@@ -84,11 +85,29 @@ final class RegraphicsFrame {
         require(expectedRow==height,"incomplete frame");
         return new RegraphicsFrame(frame,stride,palette,(frame.length-24)/14,width,height,revision);
     }
+    /** Exact XI native 4K pixels: XFB5, one material index per real pixel. */
+    static RegraphicsFrame decodeNative4K(byte[] source,int[] colors){
+        require(colors!=null&&colors.length==256,"native palette must have 256 colors");
+        require(source!=null&&source.length==NATIVE_4K_BYTES,"native 4K frame size mismatch");
+        require(source[0]=='X'&&source[1]=='F'&&source[2]=='B'&&source[3]=='5',
+            "native 4K signature mismatch");
+        require(u16(source,4)==3840&&u16(source,6)==2160&&u32(source,8)==5&&
+            u32(source,12)==3840L*2160L,"native 4K dimension mismatch");
+        for(int color:colors)require(color>=0&&color<=0xffffff,"native palette RGB out of range");
+        return new RegraphicsFrame(source.clone(),1,colors.clone(),3840*2160,3840,2160,5);
+    }
     /** Expand exact XI intervals; x1 on the XFS1 wire is inclusive. */
     void present(int[] destination,int width,int height){
         require(destination!=null&&width>0&&width<=8192&&height>0&&height<=8192&&
             (long)width*height<=16_777_216L&&destination.length==(long)width*height,
             "invalid destination dimensions");
+        if(revision==5){
+            require(width==this.width&&height==this.height,
+                "native 4K pixels cannot be quietly relabeled as another resolution");
+            for(int i=0;i<destination.length;i++)
+                destination[i]=0xff000000|palette[bytes[16+i]&255];
+            return;
+        }
         final int end=bytes.length-8;
         for(int at=16;at<end;at+=14){
             int y=u16(bytes,at+2),x0=u16(bytes,at+4),x1=u16(bytes,at+6);
