@@ -28,7 +28,7 @@ import java.util.Set;
 /** Physical controls and compact race HUD; all game rules remain in XI. */
 public final class VelocityActivity extends Activity {
     private VelocityXSurface surface;
-    private TextView lap,position,timer,status,warning,renderInfo;
+    private TextView speed,lap,position,timer,status,warning,renderInfo;
     private VelocityCockpitView cockpit;
     private Button gearButton;
     private Button pauseButton,gpu4kButton;
@@ -104,6 +104,7 @@ public final class VelocityActivity extends Activity {
     }
     private void raceHud(VelocityXiEngine.Snapshot s,boolean paused,String error,int w,int h,int fps){
         if(s==null)return;
+        changedText(speed,s.speedKmh()+" km/h");
         cockpit.update(s,surface.isReverseGear(),surface.isBrakePressed(),surface.isAccelerating());
         changedText(lap,"VUELTA "+s.displayedLap()+" / 3");
         changedText(position,"POSICIÓN "+s.position+" / 4");
@@ -158,6 +159,8 @@ public final class VelocityActivity extends Activity {
         lap=text("VUELTA 1 / 3",18);add(root,lap,-2,-2,Gravity.TOP|Gravity.LEFT,18,14,0,0);
         position=text("POSICIÓN 4 / 4",18);add(root,position,-2,-2,Gravity.TOP|Gravity.RIGHT,0,14,18,0);
         timer=text("00:00.00",18);add(root,timer,-2,-2,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,14,0,0);
+        speed=text("0 km/h",16);
+        add(root,speed,-2,-2,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,96,0,0);
         cockpit=new VelocityCockpitView(this);
         add(root,cockpit,194,106,Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL,0,0,0,124);
         warning=text("",12);add(root,warning,-2,-2,Gravity.BOTTOM|Gravity.RIGHT,0,0,18,168);
