@@ -137,6 +137,7 @@ try{
    assert(visible.has(2),'terrain absent');
    assert(count(40,47)>=1,'real road texture was not visible');
    assert(visible.has(7),'road markings absent');
+   if(paintMaterials<(camera===2?1:2)){console.error('XI_TEXTURE_DIAGNOSTIC',JSON.stringify({label,stride,camera,paint,visibleMaterials:materials,colors:colors.size,frameBytes:first.bytes.length}));writeImage('debug-texture-missing-paint',frame,pixels,first.bytes);}
    assert(paintMaterials>=(camera===2?1:2),'selected car/hood paint absent');
   }
   const pixelHash=sha(Buffer.from(pixels.buffer));
