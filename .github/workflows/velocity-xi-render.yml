@@ -98,14 +98,17 @@ jobs:
           javac -d build/velocity/java \
             reverse-os-android/app/src/main/java/com/reversepc/os/ResultPacket.java \
             reverse-os-android/app/src/main/java/com/reversepc/os/RegraphicsFrame.java \
+            reverse-os-android/app/src/main/java/com/reversepc/os/VelocityGpuFrame.java \
             reverse-os-android/app/src/main/java/com/reversepc/os/NativeRuntime.java \
             reverse-os-android/app/src/main/java/com/reversepc/os/VelocityLoopLifecycle.java \
             reverse-os-android/tests/RxePacketTest.java \
             reverse-os-android/tests/RegraphicsFrameTest.java \
+            reverse-os-android/tests/VelocityGpuFrameTest.java \
             reverse-os-android/tests/VelocityLoopLifecycleTest.java \
             reverse-os-android/tests/NativeRegraphicsTest.java
           java -cp build/velocity/java com.reversepc.os.RxePacketTest
           java -cp build/velocity/java com.reversepc.os.RegraphicsFrameTest
+          java -cp build/velocity/java com.reversepc.os.VelocityGpuFrameTest
           java -cp build/velocity/java com.reversepc.os.VelocityLoopLifecycleTest
           g++ -std=c++17 -O2 -pthread -shared -fPIC \
             -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
