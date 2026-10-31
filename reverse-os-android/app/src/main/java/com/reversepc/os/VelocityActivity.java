@@ -12,6 +12,7 @@ import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.SurfaceView;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
@@ -27,7 +28,7 @@ import java.util.Set;
 public final class VelocityActivity extends Activity {
     private VelocityXSurface surface;
     private TextView speed,lap,position,timer,status,warning,renderInfo;
-    private Button pauseButton;
+    private Button pauseButton,gpu4kButton;
     private RaceMap map;
     private boolean gas,brake,left,right,drift;
     private boolean keyGas,keyBrake,keyLeft,keyRight,keyDrift;
@@ -105,6 +106,10 @@ public final class VelocityActivity extends Activity {
         if(Math.abs(status.getTextSize()-statusSp*getResources().getDisplayMetrics().scaledDensity)>.5f)
             status.setTextSize(statusSp);
         changedText(warning,s.wallContact?"CONTACTO":s.offRoad?"FUERA DE PISTA":"");
+        if(gpu4kButton!=null&&!surface.is4KEnabled()&&"4K activo".contentEquals(gpu4kButton.getText())){
+            gpu4kButton.setText("4K");
+            gpu4kButton.setBackground(background(0xa318283a));
+        }
         if(renderInfo!=null){String backend=w>640?"REgraphics GLES3":"REgraphics XI";
             changedText(renderInfo,backend+"  "+w+" × "+h+"  |  "+fps+" FPS");}
         map.setCar(s.xCm/100f,s.zCm/100f);
@@ -123,6 +128,12 @@ public final class VelocityActivity extends Activity {
         root.setBackgroundColor(0xff101a24);
         surface=new VelocityXSurface(this,game,(s,paused,fps,w,h,error)->runOnUiThread(()->raceHud(s,paused,error,w,h,fps)));
         root.addView(surface,new FrameLayout.LayoutParams(-1,-1));
+        // Dedicated hardware SurfaceView avoids mixing Canvas and EGL clients.
+        SurfaceView gpuOverlay=new SurfaceView(this);
+        gpuOverlay.setZOrderMediaOverlay(true);
+        gpuOverlay.setVisibility(View.GONE);
+        root.addView(gpuOverlay,new FrameLayout.LayoutParams(-1,-1));
+        surface.attachGpuSurface(gpuOverlay);
         View topWash=new View(this);
         topWash.setBackground(new GradientDrawable(
             GradientDrawable.Orientation.TOP_BOTTOM,
@@ -150,7 +161,7 @@ public final class VelocityActivity extends Activity {
             boolean high=surface.toggleSharpness();sharpness.setText(high?"Alta":"Auto");
             sharpness.setContentDescription(high?"Nitidez alta":"Nitidez automática");
         });
-        Button gpu4k=button("4K");
+        Button gpu4k=button("4K");gpu4kButton=gpu4k;
         gpu4k.setContentDescription("Activar renderizado 4K");
         gpu4k.setOnClickListener(v->{
             boolean on=surface.toggle4K();

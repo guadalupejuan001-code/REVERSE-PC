@@ -9,6 +9,7 @@ import android.os.SystemClock;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.View;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /** Independent XI driving transactions and REgraphics observations. */
@@ -29,6 +30,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     private volatile int physicsHz;
     private volatile boolean paused;
     private volatile boolean ultra4K;
+    private volatile SurfaceView gpuTarget;
     private volatile String error="";
 
     VelocityXSurface(Context context,VelocityXiEngine game,Hud hud){
@@ -46,8 +48,14 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     boolean togglePause(){paused=!paused;if(paused){physicsHz=0;controls(0,0,1,false);}return paused;}
     int cycleCamera(){cameraMode=(cameraMode+1)%3;return cameraMode;}
     int cyclePaint(){paintId=(paintId+1)%5;return paintId;}
+    void attachGpuSurface(SurfaceView view){
+        gpuTarget=view;
+    }
+    boolean is4KEnabled(){return ultra4K;}
     boolean toggle4K(){
         ultra4K=!ultra4K;
+        final SurfaceView target=gpuTarget;
+        if(target!=null)target.setVisibility(ultra4K?View.VISIBLE:View.GONE);
         return ultra4K;
     }
     boolean toggleSharpness(){
@@ -132,7 +140,11 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 boolean requestedGPU=ultra4K;
                 if(requestedGPU){
                     try{
-                        if(gpu==null)gpu=new VelocityGpuPresenter(getHolder().getSurface(),game.gpuPalette());
+                        SurfaceView target=gpuTarget;
+                        if(target==null||!target.getHolder().getSurface().isValid()){
+                            Thread.sleep(30);continue;
+                        }
+                        if(gpu==null)gpu=new VelocityGpuPresenter(target.getHolder().getSurface(),game.gpuPalette());
                         VelocityXiEngine.GpuObservation observed=game.observe4kFrame(selectedCamera,selectedPaint);
                         if(!lifecycle.shouldRun())break;
                         gpu.render(observed.frame);
@@ -149,6 +161,8 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     }catch(Exception failure){
                         Log.w("ReverseVelocity","4K mode unavailable, returning to XI CPU renderer",failure);
                         ultra4K=false;
+                        final SurfaceView target=gpuTarget;
+                        if(target!=null)target.post(()->target.setVisibility(View.GONE));
                         if(gpu!=null){gpu.close();gpu=null;}
                         error="Modo 4K no disponible en este dispositivo";
                         width=0;height=0;continue;
