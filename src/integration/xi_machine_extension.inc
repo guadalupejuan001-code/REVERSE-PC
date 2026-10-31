@@ -358,6 +358,28 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
         require_count(words, 3);
         if (!mesh_active) throw std::invalid_argument("meshshade without meshbegin");
         mesh.shade(machine_value(words[1],registers),machine_value(words[2],registers));
+      } else if (op == "meshtexrow") {
+        require_count(words, 4);
+        if (!mesh_active)throw std::invalid_argument("meshtexrow without meshbegin");
+        mesh.texture_row(machine_value(words[1],registers),machine_value(words[2],registers),words[3]);
+      } else if (op == "meshtexuv") {
+        require_count(words, 4);
+        if (!mesh_active)throw std::invalid_argument("meshtexuv without meshbegin");
+        mesh.texcoord(machine_value(words[1],registers),machine_value(words[2],registers),
+                      machine_value(words[3],registers));
+      } else if (op == "meshtexcopy") {
+        require_count(words, 3);
+        if (!mesh_active)throw std::invalid_argument("meshtexcopy without meshbegin");
+        mesh.copy_texcoord(machine_value(words[1],registers),machine_value(words[2],registers));
+      } else if (op == "meshfacegradienttex") {
+        require_count(words, 12);
+        if (!mesh_active)throw std::invalid_argument("meshfacegradienttex without meshbegin");
+        mesh.textured_gradient_face(machine_value(words[1],registers),
+          machine_value(words[2],registers),machine_value(words[3],registers),
+          machine_value(words[4],registers),machine_value(words[5],registers),
+          machine_value(words[6],registers),machine_value(words[7],registers),
+          machine_value(words[8],registers),machine_value(words[9],registers),
+          machine_value(words[10],registers),machine_value(words[11],registers));
       } else if (op == "meshfacegradient") {
         require_count(words, 10);
         if (!mesh_active) throw std::invalid_argument("meshfacegradient without meshbegin");

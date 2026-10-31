@@ -5,11 +5,13 @@ class MachineMeshRaster {
   static constexpr std::uint16_t max_width = 640, max_height = 360;
   static constexpr std::size_t max_triangles = 4096;
   static constexpr std::size_t max_vertices = 4096;
+  static constexpr unsigned max_textures = 8, texture_side = 16;
   static constexpr std::uint64_t max_pixel_tests = 8000000;
   // A valid visibility row may alternate material at every pixel. This natural
   // bound encodes every raster image; it must not reject a detailed scene.
   static constexpr unsigned max_foreground_runs = max_width;
   struct Vertex { std::int64_t x, y, z; };
+  struct Texcoord { std::int64_t u, v; };
 
   void begin(std::int64_t width, std::int64_t height,
              std::int64_t revision, std::int64_t background) {
@@ -27,6 +29,9 @@ class MachineMeshRaster {
     vertices_.assign(max_vertices,Vertex{0,0,0});
     vertex_ready_.assign(max_vertices,0);
     vertex_shades_.assign(max_vertices,0);
+    texcoords_.assign(max_vertices,Texcoord{0,0});
+    texcoord_ready_.assign(max_vertices,0);
+    texture_row_mask_.fill(0);
   }
 
   // XI computes/authors/transforms each distinct camera vertex once. Indexed
@@ -40,6 +45,7 @@ class MachineMeshRaster {
     vertices_[static_cast<std::size_t>(id)]=value;
     vertex_ready_[static_cast<std::size_t>(id)]=1;
     vertex_shades_[static_cast<std::size_t>(id)]=0;
+    texcoord_ready_[static_cast<std::size_t>(id)]=0;
   }
 
   // Lighting remains an XI calculation. This is a generic scalar attribute,
@@ -49,6 +55,72 @@ class MachineMeshRaster {
     if(intensity<0 || intensity>255)
       throw std::out_of_range("mesh intensity must be in 0..255");
     vertex_shades_[static_cast<std::size_t>(id)]=static_cast<std::uint16_t>(intensity*256);
+  }
+
+
+  // A bounded 16x16, four-bit tile atlas is authored by XI, not a second
+  // shader/game-state authority. Rows are literal lowercase hex characters.
+  void texture_row(std::int64_t tile,std::int64_t row,const std::string& hex) {
+    if(materials_.empty())throw std::invalid_argument("meshtexrow without meshbegin");
+    if(tile<0 || tile>=max_textures || row<0 || row>=texture_side ||
+       hex.size()!=texture_side)
+      throw std::out_of_range("invalid XI 16x16 texture tile/row");
+    const auto t=static_cast<unsigned>(tile),y=static_cast<unsigned>(row);
+    if(texture_row_mask_[t]&(1U<<y))throw std::invalid_argument("duplicate XI texture row");
+    std::array<std::uint8_t,texture_side> decoded{};
+    for(unsigned x=0;x<texture_side;++x) {
+      const char c=hex[x];
+      if(c<'0'||(c>'9'&&c<'a')||c>'f')
+        throw std::invalid_argument("XI texture texels must be lowercase hex nibbles");
+      decoded[x]=static_cast<std::uint8_t>(c<='9'?c-'0':c-'a'+10);
+    }
+    for(unsigned x=0;x<texture_side;++x)textures_[t][y*texture_side+x]=decoded[x];
+    texture_row_mask_[t]=static_cast<std::uint16_t>(texture_row_mask_[t]|(1U<<y));
+  }
+
+  void texcoord(std::int64_t id,std::int64_t u,std::int64_t v) {
+    (void)read(id);
+    if(u<-32768 || u>32767 || v<-32768 || v>32767)
+      throw std::out_of_range("XI mesh UV coordinate exceeds bound");
+    texcoords_[static_cast<std::size_t>(id)]={u,v};
+    texcoord_ready_[static_cast<std::size_t>(id)]=1;
+  }
+
+  void copy_texcoord(std::int64_t target,std::int64_t original) {
+    (void)read(target);(void)read(original);
+    if(!texcoord_ready_[static_cast<std::size_t>(original)])
+      throw std::invalid_argument("meshtexcopy source UV unset");
+    texcoords_[static_cast<std::size_t>(target)]=texcoords_[static_cast<std::size_t>(original)];
+    texcoord_ready_[static_cast<std::size_t>(target)]=1;
+  }
+
+  // Perspective-correct UV + interpolated XI lighting -> existing XFS1
+  // palette indexes. Does not alter the physical world or scene positions.
+  void textured_gradient_face(std::int64_t a,std::int64_t b,std::int64_t c,
+                              std::int64_t base,std::int64_t count,
+                              std::int64_t tile,std::int64_t strength,
+                              std::int64_t focal,std::int64_t cx,
+                              std::int64_t cy,std::int64_t near_plane) {
+    validate_material(base);
+    if(count<2 || count>256 || base+count>256)
+      throw std::out_of_range("XI textured ramp outside 8-bit palette");
+    if(tile<0 || tile>=max_textures || strength<1 || strength>16)
+      throw std::out_of_range("XI texture tile or strength out of bounds");
+    if(texture_row_mask_[static_cast<unsigned>(tile)]!=0xffffU)
+      throw std::invalid_argument("XI texture tile rows incomplete");
+    const auto va=read(a),vb=read(b),vc=read(c);
+    const std::array<std::int64_t,3> ids{{a,b,c}};
+    for(auto id:ids)if(!texcoord_ready_[static_cast<std::size_t>(id)])
+      throw std::invalid_argument("meshfacegradienttex requires assigned UV coordinates");
+    triangle3_impl<true,true>(va,vb,vc,base,focal,cx,cy,near_plane,
+      {{vertex_shades_[static_cast<std::size_t>(a)],
+        vertex_shades_[static_cast<std::size_t>(b)],
+        vertex_shades_[static_cast<std::size_t>(c)]}},
+      static_cast<unsigned>(count),
+      {{texcoords_[static_cast<std::size_t>(a)],
+        texcoords_[static_cast<std::size_t>(b)],
+        texcoords_[static_cast<std::size_t>(c)]}},
+      static_cast<unsigned>(tile),static_cast<unsigned>(strength));
   }
 
   void gradient_face(std::int64_t a,std::int64_t b,std::int64_t c,std::int64_t base,
@@ -104,11 +176,12 @@ class MachineMeshRaster {
   }
 
  private:
-  template<bool Gradient>
+  template<bool Gradient,bool Textured=false>
   void triangle3_impl(Vertex a,Vertex b,Vertex c,std::int64_t material,
                       std::int64_t focal,std::int64_t center_x,std::int64_t center_y,
                       std::int64_t near_plane,std::array<std::uint16_t,3> intensities,
-                      unsigned ramp_count) {
+                      unsigned ramp_count,std::array<Texcoord,3> coords={},
+                      unsigned texture_id=0,unsigned texture_strength=0) {
     validate_material(material);
     if(focal<1 || focal>2048 || center_x < -32768 || center_x>32768 ||
        center_y < -32768 || center_y>32768 || near_plane<1 || near_plane>10000)
@@ -120,11 +193,14 @@ class MachineMeshRaster {
     count_triangle();
     std::array<Vertex,4> clipped{};
     std::array<std::uint16_t,4> clipped_intensities{};
+    std::array<Texcoord,4> clipped_coords{};
     unsigned count=0;
     const std::array<Vertex,3> input{{a,b,c}};
     Vertex previous=c;
     std::uint16_t previous_intensity=0;
     if constexpr(Gradient)previous_intensity=intensities[2];
+    Texcoord previous_uv{};
+    if constexpr(Textured)previous_uv=coords[2];
     for(unsigned vertex_index=0;vertex_index<3;++vertex_index) {
       const Vertex current=input[vertex_index];
       const bool inside=current.z>=near_plane,was_inside=previous.z>=near_plane;
@@ -146,15 +222,23 @@ class MachineMeshRaster {
           clipped_intensities[count]=static_cast<std::uint16_t>(
             (numerator+positive_denominator/2)/positive_denominator);
         }
+        if constexpr(Textured) {
+          clipped_coords[count].u=static_cast<std::int64_t>(
+            (__int128(coords[vertex_index].u)*da-__int128(previous_uv.u)*db)/denominator);
+          clipped_coords[count].v=static_cast<std::int64_t>(
+            (__int128(coords[vertex_index].v)*da-__int128(previous_uv.v)*db)/denominator);
+        }
         ++count;
       }
       if(inside) {
         clipped[count]=current;
         if constexpr(Gradient)clipped_intensities[count]=intensities[vertex_index];
+        if constexpr(Textured)clipped_coords[count]=coords[vertex_index];
         ++count;
       }
       previous=current;
       if constexpr(Gradient)previous_intensity=intensities[vertex_index];
+      if constexpr(Textured)previous_uv=coords[vertex_index];
     }
     if(count<3)return;
     for(unsigned i=0;i<count;++i) {
@@ -162,7 +246,12 @@ class MachineMeshRaster {
       clipped[i].y=center_y-clipped[i].y*focal/clipped[i].z;
     }
     for(unsigned i=1;i+1<count;++i) {
-      if constexpr(Gradient)
+      if constexpr(Textured)
+        raster<true,true>(clipped[0],clipped[i],clipped[i+1],material,
+          {{clipped_intensities[0],clipped_intensities[i],clipped_intensities[i+1]}},
+          ramp_count,{{clipped_coords[0],clipped_coords[i],clipped_coords[i+1]}},
+          texture_id,texture_strength);
+      else if constexpr(Gradient)
         raster<true>(clipped[0],clipped[i],clipped[i+1],material,
           {{clipped_intensities[0],clipped_intensities[i],clipped_intensities[i+1]}},ramp_count);
       else raster<false>(clipped[0],clipped[i],clipped[i+1],material);
@@ -184,9 +273,11 @@ class MachineMeshRaster {
       throw std::length_error("XI mesh triangle budget exceeded");
     ++triangles_;
   }
-  template<bool Gradient>
+  template<bool Gradient,bool Textured=false>
   void raster(Vertex a,Vertex b,Vertex c,std::int64_t material,
-              std::array<std::uint16_t,3> intensities={},unsigned ramp_count=1) {
+              std::array<std::uint16_t,3> intensities={},unsigned ramp_count=1,
+              std::array<Texcoord,3> coords={},unsigned texture_id=0,
+              unsigned texture_strength=0) {
     // Pixel centers are half-integers. Doubled screen coordinates make the
     // top-left fill convention exact and avoid floating-point edge cracks.
     a.x *= 2; a.y *= 2; b.x *= 2; b.y *= 2; c.x *= 2; c.y *= 2;
@@ -195,6 +286,7 @@ class MachineMeshRaster {
     if (area < 0) {
       std::swap(b,c);area=-area;
       if constexpr(Gradient)std::swap(intensities[1],intensities[2]);
+      if constexpr(Textured)std::swap(coords[1],coords[2]);
     }
     const auto left = std::max<std::int64_t>(0, std::min({a.x, b.x, c.x}) / 2);
     const auto right = std::min<std::int64_t>(width_ - 1, std::max({a.x, b.x, c.x}) / 2);
@@ -212,6 +304,13 @@ class MachineMeshRaster {
     std::uint64_t ia=0,ib=0,ic=0;
     if constexpr(Gradient) {
       ia=za*intensities[0];ib=zb*intensities[1];ic=zc*intensities[2];
+    }
+    std::array<std::int64_t,3> iu{},iv{};
+    if constexpr(Textured) {
+      iu={{std::int64_t(za)*coords[0].u,std::int64_t(zb)*coords[1].u,
+           std::int64_t(zc)*coords[2].u}};
+      iv={{std::int64_t(za)*coords[0].v,std::int64_t(zb)*coords[1].v,
+           std::int64_t(zc)*coords[2].v}};
     }
     const bool t0 = top_left(b,c), t1 = top_left(c,a), t2 = top_left(a,b);
     const auto px = 2*left+1, py = 2*top+1;
@@ -234,8 +333,20 @@ class MachineMeshRaster {
             if(depth>=inverse_depth_[at]) {
               const __int128 weighted_intensity=__int128(w0)*ia+__int128(w1)*ib+__int128(w2)*ic;
               const auto intensity=static_cast<std::uint64_t>((weighted_intensity+numerator/2)/numerator);
+              std::uint64_t shaded=intensity;
+              if constexpr(Textured) {
+                const auto wu=__int128(w0)*iu[0]+__int128(w1)*iu[1]+__int128(w2)*iu[2];
+                const auto wv=__int128(w0)*iv[0]+__int128(w1)*iv[1]+__int128(w2)*iv[2];
+                const auto u=static_cast<std::int64_t>(wu/numerator);
+                const auto v=static_cast<std::int64_t>(wv/numerator);
+                const unsigned tile_x=static_cast<unsigned>(std::uint64_t(u)&15U);
+                const unsigned tile_y=static_cast<unsigned>(std::uint64_t(v)&15U);
+                const int delta=int(textures_[texture_id][tile_y*texture_side+tile_x])-8;
+                const int mixed=int(intensity)+delta*int(texture_strength);
+                shaded=static_cast<std::uint64_t>(std::max(0,std::min(255,mixed)));
+              }
               const auto color=static_cast<std::uint8_t>(material+
-                (intensity*(ramp_count-1)+32640)/65280);
+                (shaded*(ramp_count-1)+32640)/65280);
               if(depth>inverse_depth_[at] || color<materials_[at]) {
                 inverse_depth_[at]=depth;materials_[at]=color;
               }
@@ -312,4 +423,8 @@ class MachineMeshRaster {
   std::vector<Vertex> vertices_;
   std::vector<std::uint8_t> vertex_ready_;
   std::vector<std::uint16_t> vertex_shades_;
+  std::vector<Texcoord> texcoords_;
+  std::vector<std::uint8_t> texcoord_ready_;
+  std::array<std::array<std::uint8_t,texture_side*texture_side>,max_textures> textures_{};
+  std::array<std::uint16_t,max_textures> texture_row_mask_{};
 };
