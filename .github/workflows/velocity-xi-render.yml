@@ -1,7 +1,7 @@
 name: REVERSE VELOCITY REgraphics
 on:
   push:
-    branches: [feature/xi-velocity-no-cpp-render-20261029, feature/velocity-regraphics-20261030]
+    branches: [feature/xi-velocity-no-cpp-render-20261029, feature/velocity-regraphics-20261030, feature/velocity-cockpit-nature-20261031]
     paths:
       - 'reverse-os-android/app/src/main/assets/velocity/**'
       - 'reverse-os-android/tests/velocity-xi-render-contract.cjs'
@@ -20,6 +20,7 @@ on:
       - 'tests/xi_mesh_raster.cpp'
       - 'tests/xi_gpu_capture.cpp'
       - 'scripts/author-velocity-scene.cjs'
+      - 'scripts/velocity-landscape-post.cjs'
       - 'scripts/velocity-car-contract.cjs'
       - 'scripts/velocity-car-mesh.cjs'
       - 'scripts/velocity-materials.cjs'

@@ -27,6 +27,26 @@ try {
  const first=run('run',script,ready,path.join(tmp,'candidate-a.rvp'));
  const second=run('run',script,ready,path.join(tmp,'candidate-b.rvp'));
  assert(first.equals(second),'GPU geometry packet must be deterministic');
+ // Compare brake light geometry from two real XI snapshots, not a mocked shader input.
+ const lampBases=packet=>{
+  const n=packet.readUInt32LE(12),seen=new Map();
+  for(let i=0;i<n;i++){const b=packet[16+2048+i*60+54];seen.set(b,(seen.get(b)||0)+1);}
+  return seen;
+ };
+ const tailIdle=lampBases(first);
+ const brakeCommand=path.join(tmp,'press-brake.xi');
+ const brakeState=path.join(tmp,'brake-state.rvp');
+ fs.writeFileSync(brakeCommand,header+'store8 129 1\nhalt\n');
+ run('run',brakeCommand,ready,brakeState);
+ const underBrake=run('run',script,brakeState,path.join(tmp,'braking-frame.rvp'));
+ const tailBraking=lampBases(underBrake);
+ assert(tailIdle.get(242)>0,'idle XI rear LED must render its darker material');
+ assert((tailBraking.get(224)||0)>0,'real XI braking must brighten the player rear LED');
+ assert((tailIdle.get(224)||0)<(tailBraking.get(224)||0),
+  'rear LED brightness must increase only with brake input');
+ assert(!first.equals(underBrake),'4K frame must visibly change on braking');
+ console.log('XI_BRAKE_LIGHT_PASS',JSON.stringify({
+  idleDimFaces:tailIdle.get(242),brakingBrightFaces:tailBraking.get(224)}));
  assert.equal(sha(fs.readFileSync(ready)),original,'4K render mutated the XI race state');
  assert.equal(first.toString('ascii',0,4),'XFG4');
  assert.equal(first.readUInt16LE(4),3840);

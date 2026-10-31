@@ -167,7 +167,13 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
  function face(f){
   const [a,b,c]=f.indices.map(i=>i+CAMERA),ramp=RAMPS[f.material];
   if(ramp){if(f.material==='paint')out('load8 r12 8318');else out(`set r12 ${ramp.base}`);const t=TEXTURED_MATERIALS[f.material];out(t?`meshfacegradienttex ${a} ${b} ${c} r12 ${ramp.count} ${t.id} ${t.strength} r9 r10 r11 60`:`meshfacegradient ${a} ${b} ${c} r12 ${ramp.count} r9 r10 r11 60`);}
-  else out(`meshface ${a} ${b} ${c} ${FLAT[f.material]} r9 r10 r11 60`);
+  else if(f.material==='lampRed'){
+   const dim='brake_dim_'+a+'_'+b+'_'+c;
+   const done='brake_done_'+a+'_'+b+'_'+c;
+   out('load8 r0 8203\ncmp r0 0\njne '+dim+'\nload8 r0 129\ncmp r0 1\njne '+dim+
+      `\nmeshface ${a} ${b} ${c} 224 r9 r10 r11 60\njmp `+done+'\nlabel '+dim+
+      `\nmeshface ${a} ${b} ${c} 242 r9 r10 r11 60\nlabel `+done);
+  }else out(`meshface ${a} ${b} ${c} ${FLAT[f.material]} r9 r10 r11 60`);
  }
  out('label emit_hood');models.high.faces.filter(f=>f.hood).forEach(face);out('jmp next_actor');
  for(const d of ['high','medium','far']){out('label emit_'+d);models[d].faces.forEach(face);out('jmp emit_shadow');}

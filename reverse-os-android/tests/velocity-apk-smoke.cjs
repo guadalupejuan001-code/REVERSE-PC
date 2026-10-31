@@ -243,6 +243,15 @@ try{
   check(ui.some(x=>/^VUELTA \d+ \/ 3$/.test(x.text||''))&&
     ui.some(x=>/^POSICIÓN \d+ \/ 4$/.test(x.text||'')),'minimal race lap and position HUD');
   check(!!findText(ui,'ACELERAR'),'accelerator physical control');
+  check(!!findText(ui,'FRENO')&&!!findText(ui,'◀')&&!!findText(ui,'▶'),
+    'real driving pedal/steering accessibility controls');
+  check(!!findText(ui,'Marcha D'),'visible real-world transmission selector');
+  tapNode(findText(ui,'Marcha D'));
+  ui=waitText(/^Marcha R$/);
+  check(!!findText(ui,'Marcha R'),'stationary gear selector engages reverse in the APK');
+  tapNode(findText(ui,'Marcha R'));
+  ui=waitText(/^Marcha D$/);
+  check(!!findText(ui,'Marcha D'),'gear selector returns to forward before racing');
   stage='physical acceleration';
   // A three-second countdown is authoritative XI state; keep physical throttle
   // held beyond it so the subsequent speed assertion measures actual driving.

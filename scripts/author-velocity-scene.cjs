@@ -130,3 +130,5 @@ fs.writeFileSync(path.join(path.dirname(destination),'render4k.xi'),capture.join
 console.log(JSON.stringify({file:path.basename(destination),bytes:fs.statSync(destination).size,...modelStats}));
 // Palette and XI lighting are authored together; Android only presents.
 fs.writeFileSync(path.join(path.dirname(destination),'palette.txt'),buildPalette().join('\n')+'\n');
+// Deterministic landscape geometry still executes entirely as XI/REgraphics.
+console.log('XI_LANDSCAPE_GEOMETRY_PASS',JSON.stringify(require('./velocity-landscape-post.cjs').run()));

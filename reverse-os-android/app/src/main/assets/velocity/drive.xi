@@ -1,6 +1,6 @@
 #!reverse-pc-machine-v1
 # REVERSE VELOCITY world-space bicycle/tire physics; XI owns every race state.
-# cm, cm/s, 50Hz. yaw4096:0=+z,1024=+x. Controls128..132 unchanged.
+# cm, cm/s, 50Hz. yaw4096:0=+z,1024=+x. Controls 128..132, 133=reverse gear.
 # World4096+:81(x,z) vertices; tangent5000+. Rivals6000+32*i.
 # No screen projection participates in driving, collision or race progress.
 load8 r0 1002
@@ -36,6 +36,7 @@ label countdown_store
 store16 259 r0
 jmp rivals
 label initialize
+store8 133 0
 set r0 0
 mov r14 r0
 add r14 2000000
@@ -512,6 +513,11 @@ add r14 1000
 store16 256 r14
 load16 r1 110
 mul r0 r1
+load8 r6 133
+cmp r6 1
+jne reverse_steering_ready
+mul r0 -1
+label reverse_steering_ready
 load32 r3 265
 sub r3 300000
 add r0 r3
@@ -602,6 +608,11 @@ mov r6 r1
 mul r6 r2
 sub r5 r6
 div r5 16384
+load8 r6 133
+cmp r6 1
+jne reverse_forward_ready
+mul r4 -1
+label reverse_forward_ready
 cmp r4 0
 jge forward_nonnegative
 set r4 0
@@ -646,6 +657,13 @@ cmp r4 6500
 jle speed_max
 set r4 6500
 label speed_max
+load8 r6 133
+cmp r6 1
+jne reverse_speed_limit_ready
+cmp r4 800
+jle reverse_speed_limit_ready
+set r4 800
+label reverse_speed_limit_ready
 set r6 24
 load8 r0 120
 cmp r0 1
@@ -670,6 +688,11 @@ jge grip_lower
 mov r7 r0
 label grip_lower
 add r5 r7
+load8 r6 133
+cmp r6 1
+jne reverse_wheel_velocity_ready
+mul r4 -1
+label reverse_wheel_velocity_ready
 mov r0 r4
 mul r0 r2
 mov r1 r5
@@ -688,6 +711,11 @@ store16 261 r14
 mov r14 r1
 add r14 32768
 store16 263 r14
+load8 r6 133
+cmp r6 1
+jne reverse_magnitude_ready
+mul r4 -1
+label reverse_magnitude_ready
 store16 110 r4
 mov r14 r5
 add r14 32768
@@ -1014,6 +1042,11 @@ mov r5 r1
 mul r5 r3
 add r4 r5
 div r4 16384
+load8 r6 133
+cmp r6 1
+jne reverse_final_speed_ready
+mul r4 -1
+label reverse_final_speed_ready
 cmp r4 0
 jge final_forward
 set r4 0

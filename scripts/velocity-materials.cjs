@@ -33,7 +33,10 @@ function buildPalette(){
   p[228+n]=hex(t<.72?mix(rgb('0b1016'),rgb('303b47'),Math.pow(t/.72,.85)):
     mix(rgb('303b47'),rgb('677787'),Math.pow((t-.72)/.28,1.9)));
  }
+ p[3]='89958b'; // distant mountain slate
+ p[4]='4d7041'; // real grassy verge, not gray concrete
  p[240]='343d47';p[241]='596977';
+ p[242]='69202b'; // tail light at idle; braking lights use hot-red 224
  return p;
 }
 module.exports={worldMaterial,RAMPS,FLAT,buildPalette};
