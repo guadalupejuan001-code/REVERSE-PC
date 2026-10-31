@@ -1,4 +1,6 @@
 #include <algorithm>
+#include <array>
+#include <vector>
 #include <cstdint>
 #include <stdexcept>
 #include <string>
