@@ -19,6 +19,7 @@ on:
       - 'scripts/emit-velocity-car-scene.cjs'
       - 'scripts/velocity-car-mesh.cjs'
       - 'scripts/velocity-materials.cjs'
+      - 'scripts/velocity-car-contract.cjs'
   workflow_dispatch:
 permissions: {contents: read}
 concurrency:
@@ -67,6 +68,12 @@ jobs:
             'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' \
             'cmake;3.22.1' platform-tools emulator \
             'system-images;android-35;default;x86_64' > build/velocity-apk/sdk.log
+      - name: Confirm RV-01 model and regenerated XI assets
+        run: |
+          set -euo pipefail
+          node scripts/velocity-car-contract.cjs
+          node scripts/author-velocity-scene.cjs
+          git diff --exit-code -- reverse-os-android/app/src/main/assets/velocity/render.xi reverse-os-android/app/src/main/assets/velocity/palette.txt
       - name: Build the actual standalone game APK for ARM64 and x86_64
         run: |
           set -euo pipefail
@@ -76,7 +83,7 @@ jobs:
               exit 1
             }
           cp reverse-os-android/app/build/outputs/apk/velocity/debug/app-velocity-debug.apk \
-            dist/REVERSE-VELOCITY-0.3.0-Autos.apk
+            dist/REVERSE-VELOCITY-0.4.0-RV01.apk
       - uses: actions/cache/save@v4
         if: steps.velocity-signing.outputs.cache-hit != 'true'
         with:
@@ -85,7 +92,7 @@ jobs:
       - name: Verify APK identity, signature, alignment and exact shader assets
         run: |
           set -euo pipefail
-          APK=dist/REVERSE-VELOCITY-0.3.0-Autos.apk
+          APK=dist/REVERSE-VELOCITY-0.4.0-RV01.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" \
             > build/velocity-apk/signature.txt
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 4 "$APK" \
@@ -127,14 +134,14 @@ jobs:
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
           adb shell input keyevent 82
-          adb install -r dist/REVERSE-VELOCITY-0.3.0-Autos.apk \
+          adb install -r dist/REVERSE-VELOCITY-0.4.0-RV01.apk \
             > build/velocity-apk/install.txt
           node reverse-os-android/tests/velocity-apk-smoke.cjs adb build/velocity-apk/smoke
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: reverse-velocity-apk
-          path: dist/REVERSE-VELOCITY-0.3.0-Autos.apk
+          path: dist/REVERSE-VELOCITY-0.4.0-RV01.apk
           if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         if: always()

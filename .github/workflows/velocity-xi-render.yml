@@ -19,6 +19,9 @@ on:
       - 'tests/xi_machine_test.cpp'
       - 'tests/xi_mesh_raster.cpp'
       - 'scripts/author-velocity-scene.cjs'
+      - 'scripts/velocity-car-contract.cjs'
+      - 'scripts/velocity-car-mesh.cjs'
+      - 'scripts/velocity-materials.cjs'
       - 'reverse-os-android/tests/velocity-gameplay-contract.cpp'
       - 'experiments/xi-render/direct-binary-test.cjs'
       - '.github/workflows/velocity-xi-render.yml'
@@ -49,6 +52,7 @@ jobs:
       - name: Ensure car render is reproducibly authored in XI
         run: |
           set -euo pipefail
+          node scripts/velocity-car-contract.cjs
           node scripts/author-velocity-scene.cjs
           git diff --exit-code -- reverse-os-android/app/src/main/assets/velocity/render.xi reverse-os-android/app/src/main/assets/velocity/palette.txt
       - name: Build real XI interpreter with unchanged verified Ether overlays
