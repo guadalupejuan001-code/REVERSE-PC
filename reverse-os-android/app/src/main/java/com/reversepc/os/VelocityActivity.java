@@ -31,7 +31,7 @@ public final class VelocityActivity extends Activity {
     private TextView speed,lap,position,timer,status,warning,renderInfo;
     private VelocityCockpitView cockpit;
     private Button gearButton;
-    private Button pauseButton;
+    private Button pauseButton,native4KButton;
     private RaceMap map;
     private boolean gas,brake,left,right,drift;
     private boolean keyGas,keyBrake,keyLeft,keyRight,keyDrift;
@@ -118,7 +118,10 @@ public final class VelocityActivity extends Activity {
         if(Math.abs(status.getTextSize()-statusSp*getResources().getDisplayMetrics().scaledDensity)>.5f)
             status.setTextSize(statusSp);
         changedText(warning,s.wallContact?"CONTACTO":s.offRoad?"FUERA DE PISTA":"");
-        if(renderInfo!=null){String backend="REgraphics XI";
+        if(native4KButton!=null&&!surface.is4KEnabled()&&
+                "4K XI activo".contentEquals(native4KButton.getText()))
+            native4KButton.setText("4K XI");
+        if(renderInfo!=null){String backend=w==3840?"REgraphics XI 4K nativo":"REgraphics XI";
             changedText(renderInfo,backend+"  "+w+" × "+h+"  |  "+fps+" FPS");}
         map.setCar(s.xCm/100f,s.zCm/100f);
     }
@@ -170,23 +173,30 @@ public final class VelocityActivity extends Activity {
         });
         // No third-party GPU renderer. Display the exact REgraphics technical
         // boundary, instead of pretending the XI 640x360 image is native 4K.
+        Button native4k=button("4K XI");native4KButton=native4k;
+        native4k.setContentDescription("Activar 4K nativo experimental mediante XI");
+        native4k.setOnClickListener(v->{
+            boolean enabled=surface.toggle4K();
+            native4k.setText(enabled?"4K XI activo":"4K XI");
+            native4k.setContentDescription(enabled?"Desactivar 4K XI":"Activar 4K nativo XI");
+        });
         Button engine=button("Motor XI");
         engine.setContentDescription("Capacidades y límites actuales del renderizador XI");
         engine.setOnClickListener(v->new AlertDialog.Builder(this)
             .setTitle("REgraphics XI • nativo")
             .setMessage("REgraphics hace proyección, texturas, sombras y rasterizado. "+
-                "Android únicamente muestra los píxeles XFS1.\n\n"+
-                "Resolución nativa jugable: hasta 640 × 360.\n"+
-                "Límite actual: 8.000.000 pruebas de píxel y 16 MiB de salida XI por imagen.\n"+
-                "Para 3840 × 2160 reales necesitamos un rasterizador XI propio "+
-                "por bloques, profundidad compacta y pruebas de rendimiento. "+
+                "Android únicamente muestra píxeles XFS1/XFB5.\n\n"+
+                "Resolución habitual: hasta 640 × 360; 4K XI nativo experimental.\n"+
+                "XFS1 anterior: 8.000.000 pruebas; XFB5 escala el trabajo por resolución.\n"+
+                "El modo 4K XI calcula 3840 × 2160 píxeles por franjas de 32 filas. "+
+                "El rendimiento depende del dispositivo; 60/120 FPS no están certificados. "+
                 "No hay OpenGL ni escalado presentado como 4K.")
             .setPositiveButton("Entendido",(dialog,which)->dialog.dismiss())
             .show());
         pauseButton=button("Pausa");pauseButton.setOnClickListener(v->togglePause());
         Button restart=button("Reiniciar");restart.setOnClickListener(v->{releaseControls();surface.reset();pauseButton.setText("Pausa");if(gearButton!=null)gearButton.setText("Marcha D");});
         Button exit=button("Salir");exit.setOnClickListener(v->finish());
-        for(Button b:new Button[]{camera,colors,sharpness,engine,pauseButton,restart,exit}){
+        for(Button b:new Button[]{camera,colors,sharpness,native4k,engine,pauseButton,restart,exit}){
             LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(66),dp(32));p.setMargins(dp(1),0,dp(1),0);menu.addView(b,p);
         }
         HorizontalScrollView tools=new HorizontalScrollView(this);
