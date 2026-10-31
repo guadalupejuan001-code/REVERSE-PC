@@ -10,6 +10,8 @@ assert.equal(p.length,256,'XFS1 palette stays eight bit');
 assert.deepEqual(RAMPS.aero,{base:228,count:12});
 assert(luma(p[83])>luma(p[239]),'white pearl should be brighter than dark aero');
 assert(luma(p[228])<38,'matte aero must remain dark');
+assert.equal(p[240],'343d47','visible panel seam material');
+assert.equal(p[241],'596977','bright metallic character line material');
 const report={};
 for(const detail of ['high','medium','far']){
  const m=buildCarMesh(detail);
@@ -26,6 +28,10 @@ for(const detail of ['high','medium','far']){
  assert(!(m.groups.exhaust||[]).length,'no exhaust for electric car');
  assert(m.faces.filter(f=>f.material==='aero').length>=2,'sculpted dark aero');
  assert.equal((m.groups.sideSills||[]).length,detail==='high'?16:detail==='medium'?8:0);
+ const highDetail={doorSeams:8,canopyTrim:4,sideCrease:4,diffuserFins:8,rearVent:2,rearCorner:4};
+ for(const [group,expected] of Object.entries(highDetail))
+  assert.equal((m.groups[group]||[]).length,detail==='high'?expected:0,
+    'actual RV-01 high-LOD detail geometry '+group);
  for(const f of m.faces){
   assert(f.indices.every(i=>i>=0&&i<m.vertices.length),'mesh indices');
   assert(MATERIALS.includes(f.material),'known material');

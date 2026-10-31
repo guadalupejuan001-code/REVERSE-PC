@@ -29,7 +29,25 @@ gradle -p reverse-os-android --no-daemon :app:assembleVelocityDebug
 ```
 
 Salida: `reverse-os-android/app/build/outputs/apk/velocity/debug/app-velocity-debug.apk`.
-El artefacto actual del workflow se llama `REVERSE-VELOCITY-0.3.0-Autos.apk`.
+El artefacto actual del workflow se llama `REVERSE-VELOCITY-0.5.0-RV01-Detalles.apk`.
+
+## RV-01 0.5 — detalles 3D de carrocería (verificar evidencia en CI)
+
+La versión `0.5.0-rv01-detail` (versionCode 5) mantiene el paquete
+`com.reversepc.velocity` y el certificado de desarrollo de 0.4.
+Su automóvil principal suma paneles reales en la malla: juntas de puertas,
+marcos del techo, líneas de carrocería, aletas de difusor con profundidad,
+un receso trasero y remates metálicos.
+Su LOD alto usa 894 triángulos; los LOD de rivales se mantienen en
+306 y 108. La escena completa tiene un máximo acotado de
+4082/4096 triángulos. XI transforma 1543 entradas de vértice
+(`max 1600`). No se cambian las pistas ni las reglas de conducción.
+
+La referencia visual de alta fidelidad compartida por el autor del proyecto
+es un **objetivo**, no una captura producida por REgraphics. La etapa 0.5
+no incluye todavía mapas PBR, texturas de asfalto o cielo, reflejos
+de escena ni resolución 1080p. [Criterios de calidad y plan del
+renderizador](REVERSE_VELOCITY_FIDELITY_TARGET.md).
 
 ## Coches 0.3
 
