@@ -1,38 +1,23 @@
-# REgraphics 0.7 — ruta 4K por GPU
+# REVERSE VELOCITY: 4K legado y transición a REgraphics nativo
 
-## Lo implementado
+> Documento histórico. La ruta OpenGL ES 3 del prototipo 0.9 fue eliminada de la aplicación jugable en 1.0. Consulta `REVERSE_VELOCITY_XI_NATIVE.md` para el estado vigente.
 
-- `render4k.xi` comparte la geometría, los estados, las texturas
-  y las ecuaciones con `render.xi`. No crea una nueva pista.
-- `MachineMeshRaster` capta el mismo flujo de triángulos de XI a
-  resolución de proyección 3840×2160 en el formato XFG4.
-- El paquete XFG4 contiene coordenadas de pantalla y profundidad,
-  iluminación de XI (Q8), UV, identificadores de material y tiles XI.
-- `VelocityGpuFrame` comprueba todos los límites antes de enviar
-  datos a la GPU. Evita geometría no confiable o dimensiones espurias.
-- `VelocityGpuPresenter` crea un contexto OpenGL ES 3.0 y un
-  framebuffer de color RGBA8 con profundidad. El fragment shader
-  interpola UV e intensidad en perspectiva y lee las texturas originales.
-- La imagen se blitea a la pantalla. El framebuffer **interno** objetivo
-  es 3840×2160 (8.294.400 píxeles), no un escalado del render CPU.
-- El botón 4K de la APK es opcional: los teléfonos incompatibles
-  pueden utilizar 1920×1080, 1280×720 o la vía CPU.
+## Qué tenía el prototipo
 
-## Recursos y limitaciones reales
+- XI generaba geometría y texturas originales a coordenadas de proyección 3840 × 2160 (`render4k.xi`, XFG4).
+- En la APK 0.9, OpenGL ES 3 rasterizaba esos triángulos y materializaba los píxeles.
+- Por tanto, el flujo era híbrido y **no una renderización enteramente propia de REgraphics**.
 
-Un framebuffer RGBA8 de 3840×2160 requiere aproximadamente 31,6 MiB;
-un búfer de profundidad 16-bit requiere otros 15,8 MiB, sin contar
-memoria del driver, Java, geometría y texturas.
+## Qué conserva Reverse Velocity 1.0
 
-Es una mejora de resolución y precisión geométrica. Todavía no se
-alcanzan los materiales PBR, normal maps, iluminación global,
-texturas de alta resolución o las pistas y efectos de la referencia
-conceptual. El motor no promete 60/120 FPS ni soporte 4K en Galaxy A16.
+- La carrera física, los rivales y la geometría siguen íntegramente en XI.
+- `render.xi` y `MachineMeshRaster` siguen realizando proyección, z-buffer, interpolación de luz y texelado, sin motor externo.
+- Android usa `SurfaceView` y `Canvas` solamente para mostrar la matriz final de píxeles de XFS1.
+- Se conserva `render4k.xi` **como captura geométrica de investigación**, no como promesa de 4K jugable.
+- Se retiraron `VelocityGpuPresenter`, `VelocityGpuFrame` y `VelocityMaterialShader` de la ruta de compilación, así como el botón que usaba OpenGL.
 
-## Criterios de verificación
+## Limitación no resuelta
 
-La CI prueba el transporte XFG4, la escena real de XI, y una carrera
-completa manteniendo la física. La APK instala y ejercita la opción 4K
-en un emulador Android con GPU SwiftShader, comprobando la resolución
-interna realmente asignada y el retorno al render CPU. El benchmark
-del dispositivo físico todavía es un trabajo independiente.
+La rasterización XI actual se limita a 640 × 360, 8.000.000 pruebas de píxel y 16 MiB de salida por fotograma. 4K físico equivale a 8.294.400 píxeles: la rasterización plena exige optimización por regiones, salida compacta, un z-buffer más eficiente y una nueva campaña de benchmarks Android.
+
+No se declarará que REgraphics produce 4K nativo jugable hasta que lo haga y una prueba real lo confirme.

@@ -48,20 +48,13 @@ final class VelocityXiEngine {
     private byte[] privateState;
     private final String driveXi;
     private final String xiRenderer;
-    private final String xiGpuRenderer;
     private final Object renderSourceLock=new Object();
-    private String renderProgramCache,driveProgramCache,gpuProgramCache;
-    private int gpuProgramKey=-1;
+    private String renderProgramCache,driveProgramCache;
     private int renderProgramKey=-1,driveProgramKey=-1;
     private static final String XI_HEADER="#!reverse-pc-machine-v1\n";
     private final float[] worldPoints; // read-only XI generated geometry samples
     private final int[] palette;
     private Snapshot snapshot;
-    static final class GpuObservation {
-        final VelocityGpuFrame frame;
-        final Snapshot state;
-        GpuObservation(VelocityGpuFrame frame,Snapshot state){this.frame=frame;this.state=state;}
-    }
     static final class Observation {
         final RegraphicsFrame frame;
         final Snapshot state;
@@ -72,10 +65,7 @@ final class VelocityXiEngine {
         driveXi=asset(context,"velocity/drive.xi");
         String world=asset(context,"velocity/world.xi");
         xiRenderer=asset(context,"velocity/render.xi");
-        xiGpuRenderer=asset(context,"velocity/render4k.xi");
         palette=parsePalette(asset(context,"velocity/palette.txt"));
-        if(!xiGpuRenderer.startsWith(XI_HEADER))
-            throw new IllegalStateException("XI 4K renderer source header missing");
         if(!xiRenderer.startsWith(XI_HEADER))
             throw new IllegalStateException("XI renderer source header missing");
         if(!driveXi.startsWith("#!reverse-pc-machine-v1\n")||
@@ -193,27 +183,6 @@ final class VelocityXiEngine {
         ResultPacket packet=ResultPacket.parseBinary(NativeRuntime.execute(observation,source));
         return new Observation(RegraphicsFrame.decode(packet.outputBytes,stride,palette),observedState);
     }
-    /** The actual XI 4K geometry and materials, without Java scene duplication. */
-    GpuObservation observe4kFrame(int camera,int paint)throws Exception{
-        if(camera<0||camera>2||paint<0||paint>4)
-            throw new IllegalArgumentException("XI 4K visual input out of range");
-        final String program;
-        final int key=camera*5+paint;
-        synchronized(renderSourceLock){
-            if(key!=gpuProgramKey){
-                gpuProgramCache=XI_HEADER+"store8 200 1\nstore8 201 "+camera+
-                    "\nstore8 202 "+paint+"\n"+xiGpuRenderer.substring(XI_HEADER.length());
-                gpuProgramKey=key;
-            }
-            program=gpuProgramCache;
-        }
-        final byte[] state;
-        final Snapshot observed;
-        synchronized(this){state=privateState.clone();observed=snapshot;}
-        ResultPacket packet=ResultPacket.parseBinary(NativeRuntime.execute(state,program));
-        return new GpuObservation(VelocityGpuFrame.decode(packet.outputBytes),observed);
-    }
-    int[] gpuPalette(){return palette.clone();}
     private static int[] parsePalette(String source){
         String[] entries=source.trim().split("\n");
         if(entries.length!=256)throw new IllegalArgumentException("REgraphics palette size mismatch");

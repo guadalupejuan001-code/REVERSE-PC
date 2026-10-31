@@ -1,6 +1,7 @@
 package com.reversepc.os;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
@@ -12,7 +13,6 @@ import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.SurfaceView;
 import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
@@ -31,7 +31,7 @@ public final class VelocityActivity extends Activity {
     private TextView speed,lap,position,timer,status,warning,renderInfo;
     private VelocityCockpitView cockpit;
     private Button gearButton;
-    private Button pauseButton,gpu4kButton;
+    private Button pauseButton;
     private RaceMap map;
     private boolean gas,brake,left,right,drift;
     private boolean keyGas,keyBrake,keyLeft,keyRight,keyDrift;
@@ -118,11 +118,7 @@ public final class VelocityActivity extends Activity {
         if(Math.abs(status.getTextSize()-statusSp*getResources().getDisplayMetrics().scaledDensity)>.5f)
             status.setTextSize(statusSp);
         changedText(warning,s.wallContact?"CONTACTO":s.offRoad?"FUERA DE PISTA":"");
-        if(gpu4kButton!=null&&!surface.is4KEnabled()&&"4K activo".contentEquals(gpu4kButton.getText())){
-            gpu4kButton.setText("4K");
-            gpu4kButton.setBackground(background(0xa318283a));
-        }
-        if(renderInfo!=null){String backend=w>640?"REgraphics GLES3":"REgraphics XI";
+        if(renderInfo!=null){String backend="REgraphics XI";
             changedText(renderInfo,backend+"  "+w+" × "+h+"  |  "+fps+" FPS");}
         map.setCar(s.xCm/100f,s.zCm/100f);
     }
@@ -140,12 +136,6 @@ public final class VelocityActivity extends Activity {
         root.setBackgroundColor(0xff101a24);
         surface=new VelocityXSurface(this,game,(s,paused,fps,w,h,error)->runOnUiThread(()->raceHud(s,paused,error,w,h,fps)));
         root.addView(surface,new FrameLayout.LayoutParams(-1,-1));
-        // Dedicated hardware SurfaceView avoids mixing Canvas and EGL clients.
-        SurfaceView gpuOverlay=new SurfaceView(this);
-        gpuOverlay.setZOrderMediaOverlay(true);
-        gpuOverlay.setVisibility(View.GONE);
-        root.addView(gpuOverlay,new FrameLayout.LayoutParams(-1,-1));
-        surface.attachGpuSurface(gpuOverlay);
         View topWash=new View(this);
         topWash.setBackground(new GradientDrawable(
             GradientDrawable.Orientation.TOP_BOTTOM,
@@ -178,18 +168,25 @@ public final class VelocityActivity extends Activity {
             boolean high=surface.toggleSharpness();sharpness.setText(high?"Alta":"Auto");
             sharpness.setContentDescription(high?"Nitidez alta":"Nitidez automática");
         });
-        Button gpu4k=button("4K");gpu4kButton=gpu4k;
-        gpu4k.setContentDescription("Activar renderizado 4K");
-        gpu4k.setOnClickListener(v->{
-            boolean on=surface.toggle4K();
-            gpu4k.setText(on?"4K activo":"4K");
-            gpu4k.setBackground(background(on?0xcc145f85:0xa318283a));
-            gpu4k.setContentDescription(on?"Desactivar renderizado 4K":"Activar renderizado 4K");
-        });
+        // No third-party GPU renderer. Display the exact REgraphics technical
+        // boundary, instead of pretending the XI 640x360 image is native 4K.
+        Button engine=button("Motor XI");
+        engine.setContentDescription("Capacidades y límites actuales del renderizador XI");
+        engine.setOnClickListener(v->new AlertDialog.Builder(this)
+            .setTitle("REgraphics XI • nativo")
+            .setMessage("REgraphics hace proyección, texturas, sombras y rasterizado. "+
+                "Android únicamente muestra los píxeles XFS1.\n\n"+
+                "Resolución nativa jugable: hasta 640 × 360.\n"+
+                "Límite actual: 8.000.000 pruebas de píxel y 16 MiB de salida XI por imagen.\n"+
+                "Para 3840 × 2160 reales necesitamos un rasterizador XI propio "+
+                "por bloques, profundidad compacta y pruebas de rendimiento. "+
+                "No hay OpenGL ni escalado presentado como 4K.")
+            .setPositiveButton("Entendido",(dialog,which)->dialog.dismiss())
+            .show());
         pauseButton=button("Pausa");pauseButton.setOnClickListener(v->togglePause());
         Button restart=button("Reiniciar");restart.setOnClickListener(v->{releaseControls();surface.reset();pauseButton.setText("Pausa");if(gearButton!=null)gearButton.setText("Marcha D");});
         Button exit=button("Salir");exit.setOnClickListener(v->finish());
-        for(Button b:new Button[]{camera,colors,sharpness,gpu4k,pauseButton,restart,exit}){
+        for(Button b:new Button[]{camera,colors,sharpness,engine,pauseButton,restart,exit}){
             LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(66),dp(32));p.setMargins(dp(1),0,dp(1),0);menu.addView(b,p);
         }
         HorizontalScrollView tools=new HorizontalScrollView(this);
