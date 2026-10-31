@@ -29,7 +29,33 @@ gradle -p reverse-os-android --no-daemon :app:assembleVelocityDebug
 ```
 
 Salida: `reverse-os-android/app/build/outputs/apk/velocity/debug/app-velocity-debug.apk`.
-El artefacto actual del workflow se llama `REVERSE-VELOCITY-0.8.0-Realismo-XI.apk`.
+El artefacto actual del workflow se llama `REVERSE-VELOCITY-0.9.0-Materiales-XI.apk`.
+
+## REgraphics 0.9 — materiales y luz refinados (GLES3)
+
+El RV-01 conserva su geometría original y la física de XI. La versión
+`0.9.0-materiales-xi` cambia el **fragment shader real** de REgraphics
+en modo GPU, no una imagen generada. Mejora las superficies:
+
+- pintura perlada: doble lóbulo especular, reflejo atmosférico, capa
+  transparente simulada y microrelieve basado en UV de XI;
+- cristales: Fresnel variable con la cámara, tinte interior y reflejos
+  diferenciados de la carrocería;
+- llantas, neumáticos, piezas aerodinámicas y juntas: respuesta específica
+  de metal, caucho, fibra y paneles;
+- carretera: grano fino de varias frecuencias sobre la textura de asfalto
+  existente, sin cambiar la geometría ni la física de las pistas;
+- LED: respuesta luminosa separada para las barras delanteras y traseras,
+  con matiz distinto para cada material;
+- imagen: gradiente atmosférico y corrección tonal limitada a RGB real.
+
+Se conserva la ruta REgraphics CPU para dispositivos incompatibles. Los
+ajustes nuevos se aprecian al activar **4K**, el backend GLES3 de la APK.
+No equivale a PBR completo, iluminación global, reflejos reales de la
+escena ni geometría de videojuego AAA. FPS/temperatura en el dispositivo
+físico deben medirse, no suponerse.
+
+[Detalles y criterios de la versión](REVERSE_VELOCITY_MATERIALS_09.md).
 
 ## REgraphics 0.8 — materiales GLES3 más realistas
 La versión `0.8.0-realismo-xi` mantiene el motor XI, el formato
