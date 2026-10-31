@@ -29,7 +29,7 @@ public final class VelocityGpuFrameTest {
         check(frame.vertices.capacity()==120&&frame.tiles.capacity()==2048,"GPU memory budget");
         check(frame.tiles.get(15)==15,"tile retained");
         byte[] bad=sample.clone();bad[0]='Z';reject(bad,"bad magic");
-        bad=sample.clone();bad[4]=0;reject(bad,"wrong width");
+        bad=sample.clone();bad[5]=0;reject(bad,"wrong width");
         bad=Arrays.copyOf(sample,sample.length-1);reject(bad,"truncated face");
         bad=sample.clone();bad[16]=(byte)16;reject(bad,"out of range nibble");
         bad=sample.clone();bad[16+2048+54]=(byte)250;reject(bad,"invalid palette span");
