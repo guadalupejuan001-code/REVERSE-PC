@@ -29,7 +29,20 @@ gradle -p reverse-os-android --no-daemon :app:assembleVelocityDebug
 ```
 
 Salida: `reverse-os-android/app/build/outputs/apk/velocity/debug/app-velocity-debug.apk`.
-El artefacto actual del workflow se llama `REVERSE-VELOCITY-0.7.0-GLES3-4K.apk`.
+El artefacto actual del workflow se llama `REVERSE-VELOCITY-0.8.0-Realismo-XI.apk`.
+
+## REgraphics 0.8 — materiales GLES3 más realistas
+La versión `0.8.0-realismo-xi` mantiene el motor XI, el formato
+XFG4 de la geometría 4K y la vía CPU sin alterar el circuito ni la física.
+El shader REgraphics GLES3 usa normales derivadas de la geometría, una
+aproximación de Fresnel para el cristal, reflejo del cielo sobre la pintura,
+materiales diferenciados para metal, aero y goma, asfalto de dos escalas,
+un gradiente atmosférico y muestreo bilineal de los texeles XI.
+El color final de la GPU admite RGB completo además de la paleta XI.
+Esto **no es** PBR completo ni iluminación global fotorrealista.
+La prueba Android registra 4K, FPS y captura la pintura blanca real
+seleccionada por el usuario en la interfaz de juego.
+[Detalles técnicos de materiales](REVERSE_VELOCITY_MATERIALS_08.md).
 
 ## REgraphics 0.7 — GPU nativa 4K (experimental)
 La edición Android `0.7.0-4k-gles3` incrementa `versionCode` a 7 y

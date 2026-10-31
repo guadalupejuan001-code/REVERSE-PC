@@ -281,6 +281,105 @@ try{
   tapNode(findText(ui,'Color'));ui=waitText(/^Color 2$/);
   check(!!findText(ui,'Color 2'),'physical paint selection changes');
   screenshot('changed-camera-paint');
+  // The material-quality screenshot uses the real RV-01 pearl-white paint.
+  // Select it through the existing in-game control without editing saved XI state.
+  for(const [current,next] of [['Color 2','Color 3'],['Color 3','Color 4'],
+                                ['Color 4','Color 5'],['Color 5','Color 1']]){
+    tapNode(findText(ui,current));
+    ui=waitText(new RegExp('^'+next+'
+  stage='high detail profile';
+  const detailPauseTime=timer(ui),beforeHigh=frameRecords(logs()).length;
+  tapNode(findText(ui,'Nitidez'));
+  report.highDetailFrame=waitProfileFrame(beforeHigh,s=>s.width===640&&s.height===360&&
+    s.fixedDetail===true&&s.paused===true&&s.frames>0,'fixed high detail 640x360');
+  check(true,'Nitidez produces a new actual fixed 640x360 frame');
+  ui=waitText(/^Alta$/);check(!!findText(ui,'Alta'),'high detail physical control shows Alta');
+  check(timer(ui)===detailPauseTime,'high detail leaves paused race timer unchanged');
+  screenshot('high-detail-car');
+  stage='automatic detail profile';
+  const beforeAuto=frameRecords(logs()).length;
+  tapNode(findText(ui,'Alta'));
+  report.autoDetailFrame=waitProfileFrame(beforeAuto,s=>s.fixedDetail===false&&s.paused===true&&s.frames>0&&
+    ((s.width===480&&s.height===270)||(s.width===320&&s.height===180)),'automatic detail profile');
+  check(true,'Auto restores an actual automatic-resolution frame');
+  ui=waitText(/^Auto$/);check(!!findText(ui,'Auto'),'automatic detail physical control shows Auto');
+  check(timer(ui)===detailPauseTime,'automatic detail leaves paused race timer unchanged');
+  stage='native 4K GPU graphics';
+  tapNode(findText(ui,'4K'));
+  ui=waitText(/^4K activo$/);check(!!findText(ui,'4K activo'),'graphics switch enables 4K mode');
+  report.gpu4K=wait4KFrame();
+  check(report.gpu4K.faces>1200,'4K frame must contain real XI scene geometry');
+  check(report.gpu4K.native4K&&report.gpu4K.width===3840&&report.gpu4K.height===2160,
+    'real 3840x2160 hardware framebuffer was allocated');
+  screenshot('real-4k-mode-device-preview');
+  screenshot('real-4k-white-pearl-rv01');
+  tapNode(findText(ui,'4K activo'));
+  ui=waitText(/^4K$/);check(!!findText(ui,'4K'),'graphics switch restores CPU rendering');
+  stage='physical steering and driving video';
+  const startState=fields(initialMarker);
+  check(Number.isFinite(startState.xCm)&&Number.isFinite(startState.zCm)&&Number.isFinite(startState.yaw4096),
+    'initial posted frame exposes observed XI position and heading');
+  startVideo();
+  adbText(['shell','input','keyevent','KEYCODE_P']);
+  tapNode(findText(ui,'ACELERAR'),4500);
+  tapNode(findText(ui,'ACELERAR'),3000);
+  tapNode(findText(ui,'◀'),800);
+  // Freeze immediately after the real steering gesture, before accessibility
+  // diagnostics can consume time or the car can coast into a different state.
+  adbText(['shell','input','keyevent','KEYCODE_P']);
+  finishVideo();
+  ui=waitText(/EN PAUSA/);check(true,'physical steering phase paused for observation');
+  screenshot('steered-race');
+  stage='background resume';
+  adbText(['shell','input','keyevent','KEYCODE_HOME']);sleep(400);
+  const before=markerLines(logs()).length;
+  adbText(['shell','am','start','-W','-a','android.intent.action.MAIN',
+    '-c','android.intent.category.LAUNCHER','-f','0x10200000','-n',component]);
+  rememberPid();
+  resumedMarker=waitFrame(before);check(!!resumedMarker,'new actual Canvas frame after Activity resume');
+  report.resumedTicks=Number((/ticks=(\d+)/.exec(resumedMarker)||[])[1]);
+  check(Number.isInteger(report.resumedTicks)&&report.resumedTicks>0,
+    'Activity resume retains started race state');
+  const endState=fields(resumedMarker);
+  check(Number.isInteger(endState.yaw4096)&&endState.yaw4096!==startState.yaw4096,
+    'physical steering changes authoritative XI heading');
+  check(Number.isFinite(endState.xCm)&&Number.isFinite(endState.zCm)&&
+    (endState.xCm!==startState.xCm||endState.zCm!==startState.zCm),
+    'physical accelerator moves authoritative XI world position');
+  report.drivingState={before:startState,after:endState,physicalSteering:true};
+  ui=waitText(/^VUELTA \d+ \/ 3$/);check(ui.length>0,'game remains usable after resume');
+  const finalLogs=logs();checkNoFailure(finalLogs);check(true,'no fatal Java/native or renderer error');
+  report.frameStats=finalLogs.split(/\r?\n/).filter(s=>/ReverseVelocity.*FRAME_STATS\b/.test(s)).map(fields);
+  const active=report.frameStats.filter(s=>s.paused===false&&s.frames>0&&s.elapsedNanos>0&&Number.isFinite(s.fps)&&s.fps>0);
+  check(active.length>0,'actual posted-frame FPS measurements recorded');
+  report.activeFps={samples:active.length,min:Math.min(...active.map(s=>s.fps)),max:Math.max(...active.map(s=>s.fps)),
+    source:'FRAME_STATS posted Canvas frames / elapsed nanoseconds; emulator workload with recording'};
+  screenshot('final-screen');
+  report.passed=true;report.initialFrame=initialMarker;report.resumedFrame=resumedMarker;
+}catch(error){
+  report.error=String(error.stack||error);report.failedStage=stage;
+  process.exitCode=1;
+}finally{
+  // Diagnostic capture must not turn a failed action into a pass.
+  try{fs.writeFileSync(path.join(out,'logcat.txt'),adbText(['logcat','-d','-v','threadtime'],
+    {timeout:5000,allowFailure:true}));}catch(error){
+      fs.writeFileSync(path.join(out,'logcat.txt'),lastLogs);
+      report.warnings.push('logcat: '+String(error));
+    }
+  if(!report.passed){
+    try{screenshot('failure-screen');}catch(error){report.warnings.push('screenshot: '+String(error));}
+    if(lastXml)fs.writeFileSync(path.join(out,'failure-ui.xml'),lastXml);
+  }
+  report.elapsedMs=Date.now()-begin;report.checkCount=checks;report.appPids=[...appPids];
+  fs.writeFileSync(path.join(out,'result.json'),JSON.stringify(report,null,2)+'\n');
+  console.log(JSON.stringify({result:report.passed?'VELOCITY_ANDROID_APK_PASS':'VELOCITY_ANDROID_APK_FAIL',
+    checks,observedSpeedKmh:report.observedSpeedKmh,failedStage:report.failedStage,error:report.error,
+    elapsedMs:report.elapsedMs}));
+}
+));
+    check(!!findText(ui,next),'physical paint selector reaches '+next);
+  }
+  report.verified4KPaint='pearl-white';
   stage='high detail profile';
   const detailPauseTime=timer(ui),beforeHigh=frameRecords(logs()).length;
   tapNode(findText(ui,'Nitidez'));
