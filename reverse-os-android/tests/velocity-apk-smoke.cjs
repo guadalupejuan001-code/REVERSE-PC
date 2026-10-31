@@ -9,7 +9,7 @@ assert(process.argv.length===4,'velocity-apk-smoke.cjs ADB OUTPUT_DIRECTORY');
 const adb=process.argv[2].includes('/')?path.resolve(process.argv[2]):process.argv[2];
 const out=path.resolve(process.argv[3]);
 const pkg='com.reversepc.velocity',component=pkg+'/com.reversepc.os.VelocityActivity';
-const begin=Date.now(),deadline=begin+180000;
+const begin=Date.now(),deadline=begin+240000;
 fs.mkdirSync(out,{recursive:true});
 let checks=0,stage='initial',lastXml='',lastLogs='',initialMarker='',resumedMarker='';
 let video=null;
@@ -105,6 +105,22 @@ function waitFrame(previousCount=0){
     sleep(250);
   }
   throw Error('No new Canvas FRAME_READY marker after actual unlockCanvasAndPost');
+}
+function wait4KFrame(){
+ for(let i=0;i<54;i++){
+  const text=logs();checkNoFailure(text);
+  const line=text.split(/\r?\n/).find(s=>/ReverseVelocity.*GPU_FRAME_READY source=3840x2160/.test(s));
+  if(line){
+   const r=/internal=(\d+)x(\d+) native4K=(true|false) faces=(\d+)/.exec(line);
+   assert(r,'real GPU 4K telemetry is incomplete: '+line);
+   return {width:Number(r[1]),height:Number(r[2]),native4K:r[3]==='true',
+     faces:Number(r[4]),source:'3840x2160',marker:line.trim()};
+  }
+  if(/4K mode unavailable, returning to XI CPU renderer/.test(text))
+   throw Error('OpenGL ES 3 GPU mode unavailable; inspect Android logcat');
+  sleep(500);
+ }
+ throw Error('No real 4K GLES3 frame presented');
 }
 function waitAdvancingFrame(minimumTicks){
   for(let i=0;i<28;i++){
@@ -282,6 +298,16 @@ try{
   check(true,'Auto restores an actual automatic-resolution frame');
   ui=waitText(/^Auto$/);check(!!findText(ui,'Auto'),'automatic detail physical control shows Auto');
   check(timer(ui)===detailPauseTime,'automatic detail leaves paused race timer unchanged');
+  stage='native 4K GPU graphics';
+  tapNode(findText(ui,'4K'));
+  ui=waitText(/^4K activo$/);check(!!findText(ui,'4K activo'),'graphics switch enables 4K mode');
+  report.gpu4K=wait4KFrame();
+  check(report.gpu4K.faces>1200,'4K frame must contain real XI scene geometry');
+  check(report.gpu4K.native4K&&report.gpu4K.width===3840&&report.gpu4K.height===2160,
+    'real 3840x2160 hardware framebuffer was allocated');
+  screenshot('real-4k-mode-device-preview');
+  tapNode(findText(ui,'4K activo'));
+  ui=waitText(/^4K$/);check(!!findText(ui,'4K'),'graphics switch restores CPU rendering');
   stage='physical steering and driving video';
   const startState=fields(initialMarker);
   check(Number.isFinite(startState.xCm)&&Number.isFinite(startState.zCm)&&Number.isFinite(startState.yaw4096),
