@@ -1,10 +1,12 @@
 name: REVERSE VELOCITY REgraphics
 on:
   push:
-    branches: [feature/xi-velocity-no-cpp-render-20261029, feature/velocity-regraphics-20261030, feature/velocity-cockpit-nature-20261031, feature/velocity-xi-renderer-only-20261031]
+    branches: [feature/xi-velocity-no-cpp-render-20261029, feature/velocity-regraphics-20261030, feature/velocity-cockpit-nature-20261031, feature/velocity-xi-renderer-only-20261031, feature/regraphics-tile-native-20261031]
     paths:
       - 'reverse-os-android/app/src/main/assets/velocity/**'
       - 'reverse-os-android/tests/velocity-xi-render-contract.cjs'
+      - 'reverse-os-android/tests/velocity-native4k-contract.cjs'
+      - 'tests/xi_native_tile_raster.cpp'
       - 'reverse-os-android/tests/*Regraphics*'
       - 'reverse-os-android/tests/VelocityLoopLifecycleTest.java'
       - 'reverse-os-android/tests/velocity-xi-contract.cjs'
@@ -60,7 +62,7 @@ jobs:
           node scripts/velocity-car-contract.cjs
           node scripts/velocity-textures-contract.cjs
           node scripts/author-velocity-scene.cjs
-          git diff --exit-code -- reverse-os-android/app/src/main/assets/velocity/render.xi reverse-os-android/app/src/main/assets/velocity/palette.txt reverse-os-android/app/src/main/assets/velocity/render4k.xi
+          git diff --exit-code -- reverse-os-android/app/src/main/assets/velocity/render.xi reverse-os-android/app/src/main/assets/velocity/palette.txt reverse-os-android/app/src/main/assets/velocity/render4k.xi reverse-os-android/app/src/main/assets/velocity/render-native4k.xi
       - name: Build real XI interpreter with unchanged verified Ether overlays
         run: |
           set -euo pipefail
@@ -84,6 +86,9 @@ jobs:
             tests/xi_mesh_raster.cpp -o build/velocity/xi-mesh-test
           build/velocity/xi-mesh-test
           g++ -std=c++17 -O2 -fsanitize=undefined -fno-sanitize-recover=all \
+            tests/xi_native_tile_raster.cpp -o build/velocity/xi-native-tile-test
+          build/velocity/xi-native-tile-test
+          g++ -std=c++17 -O2 -fsanitize=undefined -fno-sanitize-recover=all \
             tests/xi_texture_raster.cpp -o build/velocity/xi-texture-test
           build/velocity/xi-texture-test
           g++ -std=c++17 -O2 -fsanitize=undefined -fno-sanitize-recover=all \
@@ -95,6 +100,7 @@ jobs:
           VELOCITY_HOST_BUILD_FLAGS='-O2' node reverse-os-android/tests/velocity-xi-contract.cjs build/velocity/reverse_pc build/velocity
           node reverse-os-android/tests/velocity-xi-render-contract.cjs build/velocity/reverse_pc build/velocity
           node reverse-os-android/tests/velocity-4k-contract.cjs build/velocity/reverse_pc build/velocity/4k-geometry.json
+          node reverse-os-android/tests/velocity-native4k-contract.cjs build/velocity/reverse_pc build/velocity/4k-native-pixels.json
           node experiments/xi-render/direct-binary-test.cjs build/velocity/reverse_pc build/velocity/direct-regression
       - name: Validate binary packets and Android presenter without a device
         run: |
@@ -107,10 +113,12 @@ jobs:
             reverse-os-android/app/src/main/java/com/reversepc/os/VelocityLoopLifecycle.java \
             reverse-os-android/tests/RxePacketTest.java \
             reverse-os-android/tests/RegraphicsFrameTest.java \
+            reverse-os-android/tests/RegraphicsNative4KTest.java \
             reverse-os-android/tests/VelocityLoopLifecycleTest.java \
             reverse-os-android/tests/NativeRegraphicsTest.java
           java -cp build/velocity/java com.reversepc.os.RxePacketTest
           java -cp build/velocity/java com.reversepc.os.RegraphicsFrameTest
+          java -Xmx512m -cp build/velocity/java com.reversepc.os.RegraphicsNative4KTest
           java -cp build/velocity/java com.reversepc.os.VelocityLoopLifecycleTest
           g++ -std=c++17 -O2 -pthread -shared -fPIC \
             -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
