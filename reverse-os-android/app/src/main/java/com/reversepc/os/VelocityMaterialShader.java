@@ -113,6 +113,13 @@ final class VelocityMaterialShader {
         "      result*=0.72+0.08*cosTheta-0.06*grooves;",
         "    }",
         "  }",
+        "  // Filmic shoulder and subtle high-frequency material grain.",
+        "  float luminance=dot(result,vec3(0.2126,0.7152,0.0722));",
+        "  float shoulder=max(luminance-0.65,0.0);",
+        "  result/=1.0+shoulder*0.22;",
+        "  float noise=fract(sin(dot(gl_FragCoord.xy,vec2(12.9898,78.233)))*43758.5453);",
+        "  float grainStrength=(base>=64&&base<184)?0.004:base==40?0.013:0.002;",
+        "  result+=(noise-0.5)*grainStrength;",
         "  color=vec4(clamp(result,0.0,1.0),1.0);",
         "}"
     )+"\n";
