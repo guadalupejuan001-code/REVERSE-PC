@@ -116,6 +116,17 @@ lines=lines.map(s=>{
  return s;
 });
 fs.writeFileSync(destination,lines.join('\n')+'\n');
+// The GPU 4K program is the SAME XI scene, lighting, physics inputs and
+// authored meshes. Only the output mode and native projection size change.
+// REgraphics/GL receives a bounded triangle transport, not enlarged pixels.
+const capture=lines.slice();
+const sizeDone=capture.indexOf('label size_done');
+if(sizeDone<0)throw Error('Expected a XI size_done label');
+capture.splice(sizeDone+1,0,'set r0 3840','set r1 2160');
+const gpuBegin=capture.indexOf('meshbegin r0 r1 2 0');
+if(gpuBegin<0)throw Error('Expected a bounded XI meshbegin');
+capture[gpuBegin]='meshbegin r0 r1 4 0';
+fs.writeFileSync(path.join(path.dirname(destination),'render4k.xi'),capture.join('\n')+'\n');
 console.log(JSON.stringify({file:path.basename(destination),bytes:fs.statSync(destination).size,...modelStats}));
 // Palette and XI lighting are authored together; Android only presents.
 fs.writeFileSync(path.join(path.dirname(destination),'palette.txt'),buildPalette().join('\n')+'\n');

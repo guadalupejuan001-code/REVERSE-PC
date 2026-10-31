@@ -6,26 +6,38 @@ class MachineMeshRaster {
   static constexpr std::size_t max_triangles = 4096;
   static constexpr std::size_t max_vertices = 4096;
   static constexpr unsigned max_textures = 8, texture_side = 16;
+  static constexpr std::uint16_t gpu_width = 3840, gpu_height = 2160;
+  static constexpr std::size_t gpu_max_faces = max_triangles*2;
   static constexpr std::uint64_t max_pixel_tests = 8000000;
   // A valid visibility row may alternate material at every pixel. This natural
   // bound encodes every raster image; it must not reject a detailed scene.
   static constexpr unsigned max_foreground_runs = max_width;
   struct Vertex { std::int64_t x, y, z; };
   struct Texcoord { std::int64_t u, v; };
+  struct GpuFace {
+    std::array<Vertex,3> p;
+    std::array<Texcoord,3> uv;
+    std::array<std::uint16_t,3> shade;
+    std::uint8_t base,count,texture,strength;
+  };
 
   void begin(std::int64_t width, std::int64_t height,
              std::int64_t revision, std::int64_t background) {
-    if (width < 1 || width > max_width || height < 1 || height > max_height ||
+    const bool capture=revision==4;
+    if (width < 1 || height < 1 ||
+        (capture ? (width!=gpu_width || height!=gpu_height)
+                 : (width>max_width || height>max_height)) ||
         revision < 0 || revision > std::numeric_limits<std::uint32_t>::max() ||
         background < 0 || background > 255)
       throw std::out_of_range("invalid XI mesh dimensions, revision or background");
+    gpu_capture_=capture;gpu_faces_.clear();
     width_ = static_cast<std::uint16_t>(width);
     height_ = static_cast<std::uint16_t>(height);
     revision_ = static_cast<std::uint32_t>(revision);
     background_ = static_cast<std::uint8_t>(background);
     triangles_ = 0; pixel_tests_ = 0;
-    materials_.assign(std::size_t(width_) * height_, background_);
-    inverse_depth_.assign(materials_.size(), 0);
+    materials_.assign(gpu_capture_?1:std::size_t(width_)*height_,background_);
+    inverse_depth_.assign(materials_.size(),0);
     vertices_.assign(max_vertices,Vertex{0,0,0});
     vertex_ready_.assign(max_vertices,0);
     vertex_shades_.assign(max_vertices,0);
@@ -183,7 +195,7 @@ class MachineMeshRaster {
                       unsigned ramp_count,std::array<Texcoord,3> coords={},
                       unsigned texture_id=0,unsigned texture_strength=0) {
     validate_material(material);
-    if(focal<1 || focal>2048 || center_x < -32768 || center_x>32768 ||
+    if(focal<1 || focal>(gpu_capture_?8192:2048) || center_x < -32768 || center_x>32768 ||
        center_y < -32768 || center_y>32768 || near_plane<1 || near_plane>10000)
       throw std::out_of_range("invalid XI mesh camera projection");
     for(const Vertex v:{a,b,c})
@@ -278,6 +290,17 @@ class MachineMeshRaster {
               std::array<std::uint16_t,3> intensities={},unsigned ramp_count=1,
               std::array<Texcoord,3> coords={},unsigned texture_id=0,
               unsigned texture_strength=0) {
+    if(gpu_capture_) {
+      if(!edge(a,b,c.x,c.y))return;
+      if(gpu_faces_.size()>=gpu_max_faces)
+        throw std::length_error("XI 4K GPU triangle transport budget exceeded");
+      GpuFace face{{{a,b,c}},coords,intensities,
+        static_cast<std::uint8_t>(material),
+        static_cast<std::uint8_t>(Gradient?ramp_count:1),
+        static_cast<std::uint8_t>(Textured?texture_id:0),
+        static_cast<std::uint8_t>(Textured?texture_strength:0)};
+      gpu_faces_.push_back(face);return;
+    }
     // Pixel centers are half-integers. Doubled screen coordinates make the
     // top-left fill convention exact and avoid floating-point edge cracks.
     a.x *= 2; a.y *= 2; b.x *= 2; b.y *= 2; c.x *= 2; c.y *= 2;
@@ -371,6 +394,26 @@ class MachineMeshRaster {
  public:
   std::string finish() const {
     if (materials_.empty()) throw std::invalid_argument("meshend without meshbegin");
+    if(gpu_capture_){
+      // Bounded XFG4 packet: 16-byte header, 2048 tile nibbles, then 60
+      // bytes per triangle. Geometry and lighting originate in XI.
+      std::string out("XFG4",4);
+      append16(out,width_);append16(out,height_);append32(out,4);
+      append32(out,static_cast<std::uint32_t>(gpu_faces_.size()));
+      for(const auto& tex:textures_)for(auto nibble:tex)out.push_back(char(nibble));
+      for(const auto& f:gpu_faces_){
+        for(const auto& p:f.p){append32(out,static_cast<std::uint32_t>(p.x));
+          append32(out,static_cast<std::uint32_t>(p.y));
+          append32(out,static_cast<std::uint32_t>(p.z));}
+        for(const auto& uv:f.uv){append16(out,static_cast<std::uint16_t>(uv.u));
+          append16(out,static_cast<std::uint16_t>(uv.v));}
+        for(auto value:f.shade)append16(out,value);
+        out.push_back(char(f.base));out.push_back(char(f.count));
+        out.push_back(char(f.texture));out.push_back(char(f.strength));
+        append16(out,0);
+      }
+      return out;
+    }
     std::string output("XFS1",4);
     output.push_back(char(1));output.push_back(char(0));
     append16(output,width_);append16(output,height_);append32(output,revision_);append16(output,0);
@@ -425,6 +468,8 @@ class MachineMeshRaster {
   std::vector<std::uint64_t> inverse_depth_;
   std::vector<Vertex> vertices_;
   std::vector<std::uint8_t> vertex_ready_;
+  bool gpu_capture_=false;
+  std::vector<GpuFace> gpu_faces_;
   std::vector<std::uint16_t> vertex_shades_;
   std::vector<Texcoord> texcoords_;
   std::vector<std::uint8_t> texcoord_ready_;

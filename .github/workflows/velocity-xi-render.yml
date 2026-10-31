@@ -18,6 +18,7 @@ on:
       - 'src/integration/xi_mesh_raster.inc'
       - 'tests/xi_machine_test.cpp'
       - 'tests/xi_mesh_raster.cpp'
+      - 'tests/xi_gpu_capture.cpp'
       - 'scripts/author-velocity-scene.cjs'
       - 'scripts/velocity-car-contract.cjs'
       - 'scripts/velocity-car-mesh.cjs'
@@ -81,6 +82,9 @@ jobs:
           g++ -std=c++17 -O2 -fsanitize=undefined -fno-sanitize-recover=all \
             tests/xi_texture_raster.cpp -o build/velocity/xi-texture-test
           build/velocity/xi-texture-test
+          g++ -std=c++17 -O2 -fsanitize=undefined -fno-sanitize-recover=all \
+            tests/xi_gpu_capture.cpp -o build/velocity/xi-gpu-test
+          build/velocity/xi-gpu-test
       - name: Execute XI world, XI physics and XI renderer
         run: |
           set -euo pipefail
