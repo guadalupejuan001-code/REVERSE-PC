@@ -26,7 +26,7 @@ import java.util.Set;
 /** Physical controls and compact race HUD; all game rules remain in XI. */
 public final class VelocityActivity extends Activity {
     private VelocityXSurface surface;
-    private TextView speed,lap,position,timer,status,warning;
+    private TextView speed,lap,position,timer,status,warning,renderInfo;
     private Button pauseButton;
     private RaceMap map;
     private boolean gas,brake,left,right,drift;
@@ -35,8 +35,8 @@ public final class VelocityActivity extends Activity {
     private int dp(float value){return Math.round(getResources().getDisplayMetrics().density*value);}
     private GradientDrawable background(int color){
         GradientDrawable drawable=new GradientDrawable();
-        drawable.setColor(color);drawable.setCornerRadius(dp(10));
-        drawable.setStroke(dp(1),0x35ffffff);return drawable;
+        drawable.setColor(color);drawable.setCornerRadius(dp(14));
+        drawable.setStroke(dp(1),0x557ab9e3);return drawable;
     }
     private TextView text(String value,int size){
         TextView t=new TextView(this);t.setText(value);t.setTextColor(Color.WHITE);t.setTextSize(size);
@@ -51,8 +51,8 @@ public final class VelocityActivity extends Activity {
         p.setMargins(dp(l),dp(t),dp(r),dp(b));root.addView(view,p);
     }
     private Button button(String label){
-        Button b=new Button(this);b.setText(label);b.setTextColor(Color.WHITE);b.setTextSize(12);
-        b.setAllCaps(false);b.setBackground(background(0x55121a22));b.setMinWidth(0);b.setMinimumWidth(0);
+        Button b=new Button(this);b.setText(label);b.setTextColor(0xfff3f8fe);b.setTextSize(12);
+        b.setAllCaps(false);b.setBackground(background(0xa318283a));b.setMinWidth(0);b.setMinimumWidth(0);
         b.setMinHeight(0);b.setMinimumHeight(0);b.setPadding(dp(5),0,dp(5),0);
         b.setContentDescription(label);return b;
     }
@@ -90,7 +90,7 @@ public final class VelocityActivity extends Activity {
         if(surface==null)return;releaseControls();
         boolean paused=surface.togglePause();pauseButton.setText(paused?"Continuar":"Pausa");
     }
-    private void raceHud(VelocityXiEngine.Snapshot s,boolean paused,String error){
+    private void raceHud(VelocityXiEngine.Snapshot s,boolean paused,String error,int w,int h,int fps){
         if(s==null)return;
         changedText(speed,s.speedKmh()+" km/h");
         changedText(lap,"VUELTA "+s.displayedLap()+" / 3");
@@ -105,6 +105,8 @@ public final class VelocityActivity extends Activity {
         if(Math.abs(status.getTextSize()-statusSp*getResources().getDisplayMetrics().scaledDensity)>.5f)
             status.setTextSize(statusSp);
         changedText(warning,s.wallContact?"CONTACTO":s.offRoad?"FUERA DE PISTA":"");
+        if(renderInfo!=null){String backend=w>640?"REgraphics GLES3":"REgraphics XI";
+            changedText(renderInfo,backend+"  "+w+" × "+h+"  |  "+fps+" FPS");}
         map.setCar(s.xCm/100f,s.zCm/100f);
     }
     @Override public void onCreate(Bundle saved){
@@ -119,13 +121,25 @@ public final class VelocityActivity extends Activity {
         }
         FrameLayout root=new FrameLayout(this);root.setMotionEventSplittingEnabled(true);
         root.setBackgroundColor(0xff101a24);
-        surface=new VelocityXSurface(this,game,(s,paused,fps,w,h,error)->runOnUiThread(()->raceHud(s,paused,error)));
+        surface=new VelocityXSurface(this,game,(s,paused,fps,w,h,error)->runOnUiThread(()->raceHud(s,paused,error,w,h,fps)));
         root.addView(surface,new FrameLayout.LayoutParams(-1,-1));
+        View topWash=new View(this);
+        topWash.setBackground(new GradientDrawable(
+            GradientDrawable.Orientation.TOP_BOTTOM,
+            new int[]{0xe20a1522,0x9e13263a,0x0013263a}));
+        add(root,topWash,-1,114,Gravity.TOP,0,0,0,0);
+        View bottomWash=new View(this);
+        bottomWash.setBackground(new GradientDrawable(
+            GradientDrawable.Orientation.BOTTOM_TOP,
+            new int[]{0xa808101c,0x0008101c}));
+        add(root,bottomWash,-1,130,Gravity.BOTTOM,0,0,0,0);
         lap=text("VUELTA 1 / 3",18);add(root,lap,-2,-2,Gravity.TOP|Gravity.LEFT,18,14,0,0);
         position=text("POSICIÓN 4 / 4",18);add(root,position,-2,-2,Gravity.TOP|Gravity.RIGHT,0,14,18,0);
         timer=text("00:00.00",18);add(root,timer,-2,-2,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,14,0,0);
-        speed=text("0 km/h",30);add(root,speed,-2,-2,Gravity.BOTTOM|Gravity.RIGHT,0,0,18,108);
+        speed=text("0 km/h",34);add(root,speed,-2,-2,Gravity.BOTTOM|Gravity.RIGHT,0,0,18,108);
         warning=text("",12);add(root,warning,-2,-2,Gravity.BOTTOM|Gravity.RIGHT,0,0,20,146);
+        renderInfo=text("REgraphics XI",10);renderInfo.setTextColor(0xffb4d5e7);
+        add(root,renderInfo,-2,-2,Gravity.BOTTOM|Gravity.LEFT,18,0,0,202);
         status=text("ACELERA PARA SALIR",18);status.setGravity(Gravity.CENTER);
         add(root,status,-2,-2,Gravity.CENTER,0,0,0,0);
         map=new RaceMap(game.track());add(root,map,86,86,Gravity.BOTTOM|Gravity.LEFT,18,0,0,106);
@@ -141,6 +155,7 @@ public final class VelocityActivity extends Activity {
         gpu4k.setOnClickListener(v->{
             boolean on=surface.toggle4K();
             gpu4k.setText(on?"4K activo":"4K");
+            gpu4k.setBackground(background(on?0xcc145f85:0xa318283a));
             gpu4k.setContentDescription(on?"Desactivar renderizado 4K":"Activar renderizado 4K");
         });
         pauseButton=button("Pausa");pauseButton.setOnClickListener(v->togglePause());
