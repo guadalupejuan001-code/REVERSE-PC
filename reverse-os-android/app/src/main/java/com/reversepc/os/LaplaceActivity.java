@@ -117,6 +117,7 @@ public final class LaplaceActivity extends Activity {
             case "noaa":return "https://services.swpc.noaa.gov/products/noaa-planetary-k-index.json";
             case "registro":return "https://raw.githubusercontent.com/guadalupejuan001-code/LaPlaceDIG/laplace-registro/seguimiento/resumen.json";
             case "global_u002":return "https://raw.githubusercontent.com/guadalupejuan001-code/LaPlaceDIG/laplace-registro/universo/global-latest.json";
+            case "global_u003":return "https://raw.githubusercontent.com/guadalupejuan001-code/LaPlaceDIG/laplace-registro/universo/u003-latest.json";
             case "stock":{
                 String symbol=stockSymbol(p),range=p.optString("range","1mo");
                 if(!range.equals("5d")&&!range.equals("1mo")&&!range.equals("3mo"))throw new IllegalArgumentException("Rango bursátil inválido");
