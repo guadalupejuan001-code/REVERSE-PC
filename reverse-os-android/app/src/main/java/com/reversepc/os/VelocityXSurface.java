@@ -30,6 +30,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     private volatile int physicsHz;
     private volatile boolean paused;
     private volatile boolean ultra4K;
+    private volatile boolean reverseGear;
     private volatile SurfaceView gpuTarget;
     private volatile String error="";
 
@@ -44,7 +45,17 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
             throw new IllegalArgumentException("Control fuera del protocolo XI");
         input=gas|(brake<<1)|(steer<<2)|(handbrake?16:0);
     }
-    void reset(){resetRequested.set(true);paused=false;}
+    void reset(){resetRequested.set(true);paused=false;reverseGear=false;}
+    boolean isReverseGear(){return reverseGear;}
+    boolean isBrakePressed(){return (input&2)!=0;}
+    boolean isAccelerating(){return (input&1)!=0;}
+    boolean setReverseGear(boolean reverse){
+        VelocityXiEngine.Snapshot s=game.current();
+        // A stationary-only gear selector avoids reversing a moving drivetrain.
+        if(s!=null&&s.speedCmps>25)return false;
+        reverseGear=reverse;
+        return true;
+    }
     boolean togglePause(){paused=!paused;if(paused){physicsHz=0;controls(0,0,1,false);}return paused;}
     int cycleCamera(){cameraMode=(cameraMode+1)%3;return cameraMode;}
     int cyclePaint(){paintId=(paintId+1)%5;return paintId;}
@@ -94,7 +105,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
         try{
             while(physicsLifecycle.shouldRun()){
                 if(resetRequested.getAndSet(false)){
-                    game.step(0,0,1,0,true);next=SystemClock.elapsedRealtimeNanos();
+                    game.step(0,0,1,0,false,true);next=SystemClock.elapsedRealtimeNanos();
                     measuredFrom=next;measuredSteps=0;
                 }
                 if(paused){
@@ -104,7 +115,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 long now=SystemClock.elapsedRealtimeNanos(),wait=next-now;
                 if(wait>0){Thread.sleep(Math.max(1L,wait/1_000_000L));continue;}
                 int current=input;
-                game.step(current&1,(current>>>1)&1,(current>>>2)&3,(current>>>4)&1,false);
+                game.step(current&1,(current>>>1)&1,(current>>>2)&3,(current>>>4)&1,reverseGear,false);
                 measuredSteps++;
                 next+=20_000_000L;
                 // Keep fixed XI steps; a slow host does not invent simulation ticks.
