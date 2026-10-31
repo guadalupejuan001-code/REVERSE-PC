@@ -136,11 +136,18 @@ public final class VelocityActivity extends Activity {
             boolean high=surface.toggleSharpness();sharpness.setText(high?"Alta":"Auto");
             sharpness.setContentDescription(high?"Nitidez alta":"Nitidez automática");
         });
+        Button gpu4k=button("4K");
+        gpu4k.setContentDescription("Activar renderizado 4K");
+        gpu4k.setOnClickListener(v->{
+            boolean on=surface.toggle4K();
+            gpu4k.setText(on?"4K activo":"4K");
+            gpu4k.setContentDescription(on?"Desactivar renderizado 4K":"Activar renderizado 4K");
+        });
         pauseButton=button("Pausa");pauseButton.setOnClickListener(v->togglePause());
         Button restart=button("Reiniciar");restart.setOnClickListener(v->{releaseControls();surface.reset();pauseButton.setText("Pausa");});
         Button exit=button("Salir");exit.setOnClickListener(v->finish());
-        for(Button b:new Button[]{camera,colors,sharpness,pauseButton,restart,exit}){
-            LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(74),dp(32));p.setMargins(dp(2),0,dp(2),0);menu.addView(b,p);
+        for(Button b:new Button[]{camera,colors,sharpness,gpu4k,pauseButton,restart,exit}){
+            LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(66),dp(32));p.setMargins(dp(1),0,dp(1),0);menu.addView(b,p);
         }
         add(root,menu,-2,32,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,48,0,0);
         Button bLeft=button("◀");hold(bLeft,0);Button bRight=button("▶");hold(bRight,1);

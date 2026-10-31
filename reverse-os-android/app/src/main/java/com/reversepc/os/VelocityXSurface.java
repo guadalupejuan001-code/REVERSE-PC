@@ -28,6 +28,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     private boolean fixedDetail;
     private volatile int physicsHz;
     private volatile boolean paused;
+    private volatile boolean ultra4K;
     private volatile String error="";
 
     VelocityXSurface(Context context,VelocityXiEngine game,Hud hud){
@@ -45,6 +46,10 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     boolean togglePause(){paused=!paused;if(paused){physicsHz=0;controls(0,0,1,false);}return paused;}
     int cycleCamera(){cameraMode=(cameraMode+1)%3;return cameraMode;}
     int cyclePaint(){paintId=(paintId+1)%5;return paintId;}
+    boolean toggle4K(){
+        ultra4K=!ultra4K;
+        return ultra4K;
+    }
     boolean toggleSharpness(){
         synchronized(detailLock){
             fixedDetail=!fixedDetail;quality=fixedDetail?2:1;return fixedDetail;
@@ -113,7 +118,8 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
         Bitmap image=null;int[] pixels=null;
         int width=0,height=0,frames=0,fps=0,slowFrames=0;
         long lastHud=0,lastFps=SystemClock.elapsedRealtimeNanos();
-        boolean firstFramePosted=false;
+        boolean firstFramePosted=false,firstGpuFramePosted=false;
+        VelocityGpuPresenter gpu=null;
         try{
             while(lifecycle.shouldRun()){
                 long begin=SystemClock.elapsedRealtimeNanos();
@@ -121,45 +127,80 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 synchronized(detailLock){selected=fixedDetail?2:Math.max(0,Math.min(2,quality));selectedFixed=fixedDetail;}
                 int stride=selected==0?4:selected==1?2:1;
                 int selectedCamera=cameraMode,selectedPaint=paintId;
-                VelocityXiEngine.Observation observation=game.observeFrame(stride,selectedCamera,selectedPaint);
-                RegraphicsFrame frame=observation.frame;
-                if(!lifecycle.shouldRun())break;
-                if(frame.width!=width||frame.height!=height){
-                    width=frame.width;height=frame.height;pixels=new int[width*height];
-                    if(image!=null)image.recycle();
-                    image=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
-                    sourceRect.set(0,0,width,height);
-                }
-                frame.present(pixels,width,height);
-                image.setPixels(pixels,0,width,0,0,width,height);
-                Canvas canvas=null;
-                try{
-                    canvas=getHolder().lockCanvas();
-                    if(canvas!=null){
-                        canvas.drawColor(0xff101a24);
-                        float fit=Math.min((float)canvas.getWidth()/width,(float)canvas.getHeight()/height);
-                        int shownWidth=Math.round(width*fit),shownHeight=Math.round(height*fit);
-                        int left=(canvas.getWidth()-shownWidth)/2,top=(canvas.getHeight()-shownHeight)/2;
-                        targetRect.set(left,top,left+shownWidth,top+shownHeight);
-                        canvas.drawBitmap(image,sourceRect,targetRect,paint);
+                VelocityXiEngine.Snapshot state;
+                boolean presented=false;
+                boolean requestedGPU=ultra4K;
+                if(requestedGPU){
+                    try{
+                        if(gpu==null)gpu=new VelocityGpuPresenter(getHolder().getSurface(),game.gpuPalette());
+                        VelocityXiEngine.GpuObservation observed=game.observe4kFrame(selectedCamera,selectedPaint);
+                        if(!lifecycle.shouldRun())break;
+                        gpu.render(observed.frame);
+                        width=gpu.width();height=gpu.height();state=observed.state;
+                        presented=true;
+                        if(!firstGpuFramePosted){
+                            firstGpuFramePosted=true;
+                            Log.i("ReverseVelocity","GPU_FRAME_READY source=3840x2160"+
+                                " internal="+width+"x"+height+" native4K="+gpu.isNative4K()+
+                                " faces="+observed.frame.faces+
+                                " speed="+state.speedKmh()+" ticks="+state.ticks+
+                                " camera="+selectedCamera+" paint="+selectedPaint);
+                        }
+                    }catch(RuntimeException failure){
+                        Log.w("ReverseVelocity","4K mode unavailable, returning to XI CPU renderer",failure);
+                        ultra4K=false;
+                        if(gpu!=null){gpu.close();gpu=null;}
+                        error="Modo 4K no disponible en este dispositivo";
+                        width=0;height=0;continue;
                     }
-                }finally{if(canvas!=null)getHolder().unlockCanvasAndPost(canvas);}
-                VelocityXiEngine.Snapshot state=observation.state;
-                if(canvas!=null&&!firstFramePosted){
+                }else{
+                    if(gpu!=null){
+                        gpu.close();gpu=null;
+                        if(image!=null){image.recycle();image=null;}
+                        pixels=null;width=0;height=0;
+                    }
+                    VelocityXiEngine.Observation observation=game.observeFrame(stride,selectedCamera,selectedPaint);
+                    RegraphicsFrame frame=observation.frame;
+                    if(!lifecycle.shouldRun())break;
+                    if(frame.width!=width||frame.height!=height||pixels==null){
+                        width=frame.width;height=frame.height;pixels=new int[width*height];
+                        if(image!=null)image.recycle();
+                        image=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
+                        sourceRect.set(0,0,width,height);
+                    }
+                    frame.present(pixels,width,height);
+                    image.setPixels(pixels,0,width,0,0,width,height);
+                    Canvas canvas=null;
+                    try{
+                        canvas=getHolder().lockCanvas();
+                        if(canvas!=null){
+                            canvas.drawColor(0xff101a24);
+                            float fit=Math.min((float)canvas.getWidth()/width,(float)canvas.getHeight()/height);
+                            int shownWidth=Math.round(width*fit),shownHeight=Math.round(height*fit);
+                            int left=(canvas.getWidth()-shownWidth)/2,top=(canvas.getHeight()-shownHeight)/2;
+                            targetRect.set(left,top,left+shownWidth,top+shownHeight);
+                            canvas.drawBitmap(image,sourceRect,targetRect,paint);
+                        }
+                    }finally{if(canvas!=null)getHolder().unlockCanvasAndPost(canvas);}
+                    state=observation.state;
+                    presented=canvas!=null;
+                }
+                if(presented&&!requestedGPU&&!firstFramePosted){
                     firstFramePosted=true;
                     Log.i("ReverseVelocity","FRAME_READY "+width+"x"+height+
                         " speed="+state.speedKmh()+" ticks="+state.ticks+
                         " xCm="+state.xCm+" zCm="+state.zCm+" yaw4096="+state.yaw4096+
                         " camera="+selectedCamera+" paint="+selectedPaint);
                 }
-                if(canvas!=null)frames++;
+                if(presented)frames++;
                 long now=SystemClock.elapsedRealtimeNanos();
                 if(now-lastFps>=1_000_000_000L){
                     long elapsed=now-lastFps;
                     fps=(int)Math.round(frames*1_000_000_000.0/elapsed);
                     Log.i("ReverseVelocity","FRAME_STATS frames="+frames+" elapsedNanos="+elapsed+
                         " fps="+fps+" width="+width+" height="+height+" ticks="+state.ticks+
-                        " physicsHz="+physicsHz+" fixedDetail="+selectedFixed+" paused="+paused);
+                        " physicsHz="+physicsHz+" fixedDetail="+selectedFixed+" paused="+paused+
+                        " backend="+(requestedGPU?"GLES3":"XI_CPU"));
                     frames=0;lastFps=now;
                 }
                 if(now-lastHud>=100_000_000L){
@@ -178,6 +219,9 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
             physicsLifecycle.fail();lifecycle.fail();Thread.currentThread().interrupt();
         }
         catch(Throwable failure){if(lifecycle.shouldRun())failed(failure);}
-        finally{if(image!=null&&!image.isRecycled())image.recycle();}
+        finally{
+            if(gpu!=null)gpu.close();
+            if(image!=null&&!image.isRecycled())image.recycle();
+        }
     }
 }
