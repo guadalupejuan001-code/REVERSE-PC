@@ -90,6 +90,7 @@ jobs:
           set -euo pipefail
           VELOCITY_HOST_BUILD_FLAGS='-O2' node reverse-os-android/tests/velocity-xi-contract.cjs build/velocity/reverse_pc build/velocity
           node reverse-os-android/tests/velocity-xi-render-contract.cjs build/velocity/reverse_pc build/velocity
+          node reverse-os-android/tests/velocity-4k-contract.cjs build/velocity/reverse_pc build/velocity/4k-geometry.json
           node experiments/xi-render/direct-binary-test.cjs build/velocity/reverse_pc build/velocity/direct-regression
       - name: Validate binary packets and Android presenter without a device
         run: |
