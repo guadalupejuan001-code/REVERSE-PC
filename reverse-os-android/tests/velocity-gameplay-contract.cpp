@@ -74,6 +74,20 @@ int main(int argc,char** argv){try{
  auto accelerated=reverse_pc::rvpc2::restore(raceStart);State moving{};
  for(int i=0;i<180;i++)moving=state(accelerated.execute(command({1,0,1,0})));
  check(moving[3]>1000&&moving[1]>0,"XI throttle produces world-space motion");
+ // Reverse is a genuine world-space XI drivetrain state, not a negative HUD number.
+ auto reverseRuntime=reverse_pc::rvpc2::restore(raceStart);
+ const std::string gearReverse=inject(drive,
+  "store8 128 1\nstore8 129 0\nstore8 130 1\nstore8 131 0\nstore8 132 0\nstore8 133 1\n");
+ const std::string reverseBrake=inject(drive,
+  "store8 128 0\nstore8 129 1\nstore8 130 1\nstore8 131 0\nstore8 132 0\nstore8 133 1\n");
+ State backwards{};
+ for(int i=0;i<30;i++)backwards=state(reverseRuntime.execute(gearReverse));
+ check(backwards[1]<-10&&backwards[3]>0&&backwards[3]<=800,
+  "reverse gear physically moves car backward while enforcing XI speed cap");
+ const auto movingReverse=backwards[3];
+ State brakingReverse{};
+ for(int i=0;i<20;i++)brakingReverse=state(reverseRuntime.execute(reverseBrake));
+ check(brakingReverse[3]<movingReverse,"reverse braking reduces actual world-space velocity");
  const auto movingSeed=reverse_pc::rvpc2::save(accelerated);
  auto brake=reverse_pc::rvpc2::restore(movingSeed),coast=reverse_pc::rvpc2::restore(movingSeed),
   powered=reverse_pc::rvpc2::restore(movingSeed),turn=reverse_pc::rvpc2::restore(movingSeed),
