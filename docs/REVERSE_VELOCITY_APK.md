@@ -29,7 +29,22 @@ gradle -p reverse-os-android --no-daemon :app:assembleVelocityDebug
 ```
 
 Salida: `reverse-os-android/app/build/outputs/apk/velocity/debug/app-velocity-debug.apk`.
-El artefacto actual del workflow se llama `REVERSE-VELOCITY-0.5.0-RV01-Detalles.apk`.
+El artefacto actual del workflow se llama `REVERSE-VELOCITY-0.6.0-XI-Texturas.apk`.
+
+## RV-01 0.6 — texturas reales creadas con XI
+
+VersionCode **6**, versión `0.6.0-xi-textures`. Mantiene el paquete y firma
+de desarrollo de la 0.5 para instalación como actualización Android.
+El rasterizador REgraphics conserva la iluminación generada por XI y
+ahora interpola coordenadas UV por perspectiva, con tiles indexados 16×16
+y modulación tonal Q8. La pintura blanca, cristal tintado, carbono, goma
+y metal de las llantas poseen materiales texturizados; la superficie
+asfáltica existente recibe un mosaico anclado a su geometría 3D.
+No se modifican el trazado, las reglas físicas, ni los controles.
+Los datos se producen por `scripts/velocity-textures.cjs`, no por un render
+generado artificialmente. Los resultados y velocidad del teléfono físico
+no se infieren de las pruebas del emulador.
+[Documentación del pipeline XI](REVERSE_VELOCITY_TEXTURES_XI.md).
 
 ## RV-01 0.5 — detalles 3D de carrocería (verificar evidencia en CI)
 
