@@ -162,19 +162,27 @@ export class MusicStageDirector {
   }
   cancelCombo() { this.pending = null; }
   armCombo(combo, time) {
-    const milestone = combo === 10 || combo === 20 || combo === 30 || combo === 50 || (combo >= 100 && combo % 50 === 0);
+    const milestone = combo === 10 || combo === 20 || combo === 30 ||
+      combo === 50 || (combo >= 100 && combo % 50 === 0);
     if (!milestone || !numeric(time) || this.map.fallback) return false;
-    const horizon = clamp(60 / musicBpmAt(this.map, time) * 1.4, 0.36, 0.85);
-    const start = firstAfter(this.map.accents, time - 0.065);
-    for (let i = start; i < this.map.accents.length; i++) {
-      const accent = this.map.accents[i];
-      if (accent.t > time + horizon) break;
-      if (accent.major) {
-        this.pending = { t: accent.t, combo, strength: accent.strength, drop: accent.drop };
-        return true;
-      }
+    const horizon = clamp(60 / musicBpmAt(this.map, time) * 1.4, .36, .85);
+    const start = firstAfter(this.map.accents, time - .065);
+    let selected = null, score = -Infinity;
+    for(let i=start;i<this.map.accents.length;i++){
+      const accent=this.map.accents[i],delta=accent.t-time;
+      if(delta>horizon)break;
+      if(!accent.major)continue;
+      // Music decides when. If two accents qualify, a genuine drop can take
+      // precedence, but long arbitrary waits cannot.
+      const weight=(accent.drop?1.1:0)+accent.strength*.32-Math.max(0,delta)*.67;
+      if(weight>score){selected=accent;score=weight;}
     }
-    return false;
+    if(!selected)return false;
+    this.pending={
+      t:selected.t,combo,strength:selected.strength,drop:selected.drop,
+      energy:musicLevelAt(this.map,selected.t),armedAt:time,horizon
+    };
+    return true;
   }
   step(time) {
     if (!numeric(time)) time = this.lastTime;
@@ -183,6 +191,11 @@ export class MusicStageDirector {
       this.lastAccent = this.map.accents[this.cursor++];
     }
     let explosion = null;
+    const waiting = this.pending && time < this.pending.t - 1e-6 ? this.pending : null;
+    const charge = waiting ? { combo:waiting.combo, t:waiting.t,
+      dueIn:Math.max(0,waiting.t-time),
+      progress:clamp(1-(waiting.t-time)/waiting.horizon,0,1),
+      strength:waiting.strength } : null;
     if (this.pending && time >= this.pending.t - 1e-6) {
       // A late frame may be discarded, never converted into a random delayed explosion.
       if (time - this.pending.t <= 0.18) explosion = this.pending;
@@ -192,6 +205,6 @@ export class MusicStageDirector {
     const delay = this.lastAccent ? time - this.lastAccent.t : Infinity;
     const beat = delay >= 0 && delay <= 0.6 ? this.lastAccent.strength * Math.exp(-delay * 9) : 0;
     const energy = musicLevelAt(this.map, time);
-    return { time, beat, energy, period: 60 / musicBpmAt(this.map, time), intensity: clamp(energy * 0.7 + beat * 0.3, 0, 1), explosion };
+    return { time, beat, energy, period: 60 / musicBpmAt(this.map, time), intensity: clamp(energy * 0.7 + beat * 0.3, 0, 1), charge, explosion };
   }
 }
