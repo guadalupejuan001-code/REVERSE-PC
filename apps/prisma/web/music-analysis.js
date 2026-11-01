@@ -54,13 +54,15 @@ export function extractMusicBands(buffer, hopSeconds = 0.02) {
 export function detectMusicalOnsets(bands, duration) {
   const n = bands.energy.length, hop = bands.hopSeconds;
   const parts = [bands.bass, bands.mid, bands.treble];
-  const reference = parts.map(b => Math.max(0.000001, percentile(b, 0.92)));
+  // Shared loudness scale preserves real band balance (a bass tone must not
+  // look like equally powerful high-frequency percussion).
+  const reference = Math.max(0.000001, percentile(bands.energy, 0.92));
   const flux = parts.map(() => new Float32Array(n));
   const smooth = [0, 0, 0], previous = [0, 0, 0];
   const aggregate = new Float32Array(n);
   for (let i = 0; i < n; i++) {
     for (let band = 0; band < 3; band++) {
-      const level = clamp(parts[band][i] / reference[band], 0, 4);
+      const level = clamp(parts[band][i] / reference, 0, 4);
       const onset = Math.max(0, level - previous[band]) * 0.72 +
                     Math.max(0, level - smooth[band]) * 0.28;
       flux[band][i] = onset;
