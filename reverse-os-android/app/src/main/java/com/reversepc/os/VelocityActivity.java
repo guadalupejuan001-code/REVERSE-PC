@@ -161,7 +161,11 @@ public final class VelocityActivity extends Activity {
         countdown.setVisibility(isCounting?View.VISIBLE:View.GONE);
         if(isCounting)changedText(countdown,Integer.toString((s.countdown+49)/50));
         String roadWarning=s.jumpHeightCm>0?"AIRE · "+s.jumpHeightCm+" cm":
-            s.landingPulse?"ATERRIZAJE":s.wallContact?"CONTACTO":s.offRoad?"FUERA DE PISTA":"";
+            s.landingPulse?"ATERRIZAJE":s.wallContact?"CONTACTO":
+            s.offRoad?(s.surface==2?"BORDE · AGARRE MEDIO":"PASTO · POCO AGARRE"):
+            s.drafting?"REBUFO · NITRO +":
+            s.driftComboPct>100?
+                "DERRAPE "+s.driftScore+" PTS · x"+String.format(Locale.ROOT,"%.1f",s.driftComboPct/100f):"";
         if(SystemClock.elapsedRealtime()<gearWarningUntil)roadWarning="DETENTE PARA CAMBIAR";
         changedText(warning,roadWarning);
         if(native4KButton!=null)
