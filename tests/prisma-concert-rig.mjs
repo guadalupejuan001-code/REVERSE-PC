@@ -101,6 +101,34 @@ scene.stageExplosions=[];
 scene.drawStageFX(ctx,14,false,cue,reducedA);
 check(events.includes('stroke'),'Reduced-motion drawing path failed');
 
+// Full native render regression: if 80 visible notes compete with the 64-body
+// packet, nearest playable notes must win over far notes and every stage body.
+const gameplay=Object.create(Scene.prototype);
+const submitted=[];
+gameplay.gpu={
+  native:true,count:0,quality:0,
+  begin:()=>{gameplay.gpu.count=0;},
+  cube:(...values)=>{if(gameplay.gpu.count>=64)return;
+    submitted.push(values);gameplay.gpu.count++;},
+  flush:()=>{}
+};
+gameplay.canvas={width:880,height:440,dataset:{}};
+gameplay.ctx={...ctx,clearRect:()=>{},setTransform:()=>{},translate:()=>{}};
+gameplay.settings=()=>({palette:'coral',quality:'auto',effects:true});
+gameplay.width=880;gameplay.height=440;gameplay.dpr=1;
+gameplay.paletteKey='';gameplay.rgb=[];gameplay.view=new Float32Array(4);
+gameplay.energy=0;gameplay.pulse=0;gameplay.shake=0;gameplay.diagnostics=false;
+gameplay.musicStage=null;gameplay.concertProgram=previews;
+gameplay.stageExplosions=[];gameplay.particles=[];gameplay.shards=[];gameplay.trails=new Map();
+const packed=Array.from({length:80},(_,i)=>({
+  t:1+i*.03,lane:1,row:0,color:0,dir:0,hit:false,missed:false
+}));
+gameplay.render(1,1/60,packed,false,0,0,true);
+check(submitted.length===64,'Expected 64 playable native notes');
+check(Math.abs(submitted[0][2])<1e-8,'Closest note should render first');
+check(submitted.every(n=>n[7]!==-1),'Mechanical decorations displaced playable notes');
+check(gameplay.canvas.dataset.rigNativeCount==='0','Decoration should be trimmed at body cap');
+
 console.log(JSON.stringify({suite:'prisma-concert-rig',passed,bars:program.bars.length,
   fixtures:auto.fixtures.length,nativeAuto:concertNativeParts(auto).length,
   nativeHigh:concertNativeParts(high).length,nativeBattery:concertNativeParts(battery).length}));
