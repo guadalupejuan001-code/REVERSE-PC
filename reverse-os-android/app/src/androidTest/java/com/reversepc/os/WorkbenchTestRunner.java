@@ -324,17 +324,22 @@ public final class WorkbenchTestRunner extends Instrumentation {
         WorkspaceFiles migration=new WorkspaceFiles(new File(getTargetContext().getCacheDir(),"prisma-upgrade-"+System.nanoTime()));
         android.content.SharedPreferences flags=getTargetContext().getSharedPreferences("prisma-upgrade-check",0);flags.edit().clear().commit();
         WorkbenchPrograms.seedGraphics(getTargetContext(),migration,flags);byte[] current=migration.read("Aplicaciones/PRISMA.rxe");
-        require(new JSONObject(new String(NativeRuntime.inspectRxe(current),StandardCharsets.UTF_8)).getString("app_version").equals("1.2.0"),"Fresh install did not seed X Render game");
+        require(new JSONObject(new String(NativeRuntime.inspectRxe(current),StandardCharsets.UTF_8)).getString("app_version").equals("2.0.0"),"Fresh install did not seed PRISMA 2.0");
         byte[] prior;try(java.io.InputStream input=getContext().getAssets().open("prisma-1.1.rxe")){prior=WorkbenchPrograms.read(input);}
         require(digest(prior).equals(WorkbenchPrograms.PRISMA_11_SHA),"Wrong official PRISMA upgrade fixture");
-        migration.write("Aplicaciones/PRISMA.rxe",prior,true);flags.edit().putBoolean("prisma-1.2-seeded",false).commit();
+        require(WorkbenchPrograms.trustedOldPrisma("8eab78b37f7d18365f26746e4ed30bf6433c36109f23c0ee92d6c42804b534f0"),"Official PRISMA 1.2 was not allowlisted");
+        require(WorkbenchPrograms.trustedOldPrisma("c6bd13581a7a565cd9ea54b34dbefc3f92ca473d4bd5701478853a0205653fd9"),"Last official PRISMA 1.2 was not allowlisted");
+        require(!WorkbenchPrograms.trustedOldPrisma(digest(current)),"New official release wrongly matches an old executable");
+        migration.write("Aplicaciones/PRISMA.rxe",prior,true);flags.edit().remove("prisma-ui-origin-sha").putBoolean("prisma-2.0-seeded",false).commit();
         WorkbenchPrograms.seedGraphics(getTargetContext(),migration,flags);
         require(Arrays.equals(current,migration.read("Aplicaciones/PRISMA.rxe")),"Official PRISMA 1.1 was not upgraded");
+        require(digest(prior).equals(flags.getString("prisma-ui-origin-sha","")),"Official upgrade lost its WebView records origin");
         byte[] custom=NativeRuntime.compileRxe("#!reverse-pc-machine-v1\nset r0 42\nprint r0\nhalt\n".getBytes(StandardCharsets.UTF_8),"User app".getBytes(StandardCharsets.UTF_8));
-        migration.write("Aplicaciones/PRISMA.rxe",custom,true);flags.edit().putBoolean("prisma-1.2-seeded",false).commit();
+        migration.write("Aplicaciones/PRISMA.rxe",custom,true);flags.edit().putBoolean("prisma-2.0-seeded",false).commit();
         WorkbenchPrograms.seedGraphics(getTargetContext(),migration,flags);
         require(Arrays.equals(custom,migration.read("Aplicaciones/PRISMA.rxe")),"Upgrade overwrote a custom executable");
-        migration.trash("Aplicaciones/PRISMA.rxe");flags.edit().putBoolean("prisma-1.2-seeded",false).commit();
+        require(!WorkbenchPrograms.trustedOldPrisma(digest(custom)),"Customized image was misclassified as official");
+        migration.trash("Aplicaciones/PRISMA.rxe");flags.edit().putBoolean("prisma-2.0-seeded",false).commit();
         WorkbenchPrograms.seedGraphics(getTargetContext(),migration,flags);WorkbenchPrograms.seedGraphics(getTargetContext(),migration,flags);
         require(migration.list("Aplicaciones").isEmpty(),"Upgrade restored a removed game");
         JSONObject catalog=op("listApps","","graphicsCatalog");JSONObject program=null;
@@ -350,6 +355,10 @@ public final class WorkbenchTestRunner extends Instrumentation {
         require(loaded,"Local graphics assets did not load");
         require("true".equals(graphicsJs(game,"innerWidth>innerHeight")),"Game is not landscape");
         require(graphicsJs(game,"document.getElementById('game').dataset.renderer").contains("ether-render-x-cpu"),"Ether Render X was not selected");
+        String uiOrigin=getTargetContext().getSharedPreferences("workbench-programs",0).getString("prisma-ui-origin-sha","");
+        require(uiOrigin.matches("[0-9a-f]{64}"),"Official WebView origin was not saved");
+        String expectedHost=uiOrigin.substring(0,32)+"."+uiOrigin.substring(32)+".rxe.reverse.local";
+        require(JSONObject.quote(expectedHost).equals(graphicsJs(game,"location.host")),"Official PRISMA WebView did not retain its records origin");
         long firstFrame=SystemClock.uptimeMillis()+15000;boolean nativeFrame=false;
         while(SystemClock.uptimeMillis()<firstFrame){if("true".equals(graphicsJs(game,"(()=>{const r=JSON.parse(ReverseGraphics.xRenderInfo());return r.frames>0&&r.cubes>=7&&r.cubes<=23&&r.surface_pixels>0&&r.candidate_queries<r.width*r.height&&Number(document.getElementById('game').dataset.rigNativeCount)>0;})()"))){nativeFrame=true;break;}SystemClock.sleep(60);}
         require(nativeFrame,"Ether Render X must present playable preview cubes and native moving-head parts; stats="+graphicsJs(game,"ReverseGraphics.xRenderInfo()"));
