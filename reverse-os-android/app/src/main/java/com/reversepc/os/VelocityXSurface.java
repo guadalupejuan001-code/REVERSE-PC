@@ -128,6 +128,8 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
         int width=0,height=0,frames=0,fps=0,slowFrames=0;
         long lastHud=0,lastFps=SystemClock.elapsedRealtimeNanos();
         boolean firstFramePosted=false;
+        int cacheHits=0,xiRenders=0;
+        final VelocityFrameReuse frameReuse=new VelocityFrameReuse();
         try{
             while(lifecycle.shouldRun()){
                 long begin=SystemClock.elapsedRealtimeNanos();
@@ -138,6 +140,31 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 VelocityXiEngine.Snapshot state;
                 boolean presented=false;
                 boolean selected4K=native4K;
+                VelocityXiEngine.Snapshot currentState=game.current();
+                if(frameReuse.canReuse(paused,currentState,selectedCamera,selectedPaint,stride,selected4K)){
+                    // Static XI snapshot: leave the already-posted SurfaceView pixels
+                    // untouched. In 4K this avoids all 8.3M fragments, packet copies,
+                    // Bitmap upload and heat while paused. The HUD remains responsive.
+                    cacheHits++;
+                    long now=SystemClock.elapsedRealtimeNanos();
+                    if(now-lastFps>=1_000_000_000L){
+                        long elapsed=now-lastFps;
+                        fps=(int)Math.round(frames*1_000_000_000.0/elapsed);
+                        Log.i("ReverseVelocity","FRAME_STATS frames="+frames+
+                            " elapsedNanos="+elapsed+" fps="+fps+" width="+width+
+                            " height="+height+" ticks="+currentState.ticks+
+                            " physicsHz="+physicsHz+" fixedDetail="+selectedFixed+
+                            " paused="+paused+
+                            " backend="+(selected4K?"REgraphics_XI_4K_NATIVE":"REgraphics_XI_CPU")+
+                            " cacheHits="+cacheHits+" xiRenders="+xiRenders);
+                        frames=0;cacheHits=0;xiRenders=0;lastFps=now;
+                    }
+                    if(now-lastHud>=100_000_000L){
+                        lastHud=now;hud.update(currentState,paused,fps,width,height,error);
+                    }
+                    Thread.sleep(70);
+                    continue;
+                }
                 // REgraphics rasteriza triángulos XI y emite XFS1. Android solo presenta píxeles.
                     VelocityXiEngine.Observation observation;
                     if(selected4K){
@@ -145,10 +172,12 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                         catch(Exception nativeFailure){
                             Log.w("ReverseVelocity","Native XI 4K unavailable on this device",nativeFailure);
                             native4K=false;
+                            frameReuse.invalidate();
                             error="4K XI no disponible: "+nativeFailure.getMessage();
                             continue;
                         }
                     }else observation=game.observeFrame(stride,selectedCamera,selectedPaint);
+                    xiRenders++;
                     RegraphicsFrame frame=observation.frame;
                     if(!lifecycle.shouldRun())break;
                     if(frame.width!=width||frame.height!=height||pixels==null){
@@ -173,6 +202,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     }finally{if(canvas!=null)getHolder().unlockCanvasAndPost(canvas);}
                     state=observation.state;
                     presented=canvas!=null;
+                    if(presented)frameReuse.framePosted(state,selectedCamera,selectedPaint,stride,selected4K);
                     if(presented&&selected4K)
                         Log.i("ReverseVelocity","NATIVE_4K_FRAME_READY source=XI_XFB5 width="+
                             width+" height="+height+" pixels="+(width*height)+
@@ -192,8 +222,9 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     Log.i("ReverseVelocity","FRAME_STATS frames="+frames+" elapsedNanos="+elapsed+
                         " fps="+fps+" width="+width+" height="+height+" ticks="+state.ticks+
                         " physicsHz="+physicsHz+" fixedDetail="+selectedFixed+" paused="+paused+
-                        " backend="+(selected4K?"REgraphics_XI_4K_NATIVE":"REgraphics_XI_CPU"));
-                    frames=0;lastFps=now;
+                        " backend="+(selected4K?"REgraphics_XI_4K_NATIVE":"REgraphics_XI_CPU")+
+                        " cacheHits="+cacheHits+" xiRenders="+xiRenders);
+                    frames=0;cacheHits=0;xiRenders=0;lastFps=now;
                 }
                 if(now-lastHud>=100_000_000L){
                     lastHud=now;hud.update(state,paused,fps,width,height,error);
