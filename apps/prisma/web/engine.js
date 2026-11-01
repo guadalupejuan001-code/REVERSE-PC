@@ -1,7 +1,7 @@
 import { CubeGPU } from './gpu-scene.js';
 import { NativeXRender } from './native-xrender.js';
 import { seeded } from './audio.js';
-import { MusicStageDirector } from './music-stage.mjs';
+import { MusicStageDirector } from './music-stage.js';
 export const PALETTES = { coral: ['#63ffb4','#ff5074'], violet: ['#63ffb4','#bd8bff'], ice: ['#7aeaff','#ff5074'] };
 export const DIRECTIONS = [{x:0,y:-1},{x:1,y:0},{x:0,y:1},{x:-1,y:0}];
 export function makeChart(peaks, level, seed = 7721) {
