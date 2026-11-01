@@ -54,3 +54,18 @@ No reutilizar el checkpoint terminal como si fuera sano. No cambiar AVB,
 SELinux, los medios originales ni atribuir pantalla o boot. Una nueva
 continuación será válida solo si termina limpiamente y conserva una
 nueva procedencia reproducible de resultados.
+
+## Segundo stop ISA de C33 con USRA ya resuelto
+
+La siguiente ejecución desde C32 [CI 41341874317](https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/41341874317) superó el bloqueo original de USRA: llegó a **13,919,192,922** instrucciones (+51,794,083 desde C32), **701,386 instrucciones más allá** del primer stop.
+
+El nuevo stop independiente es `0x6ee0b821` en `0x7065cd4940`,
+que LLVM desensambla como **`neg v1.2d, v1.2d`**. La CPU fue detenida por el intérprete con `architectural_stop` y no por un reinicio fatal del Android invitado. Su checkpoint `ba84eedeec3cb47a53db9028f7e9b632d4e3aff508cada23a568b0c1bdbcabe1` **no** se acepta como frontera sana.
+
+La misma rama incorpora ahora **NEG vectorial** en la CPU XI/Ether,
+para B/H/S/D (según disposición Q), por elemento aritmético módulo 2^n.
+La suite nativa verifica negativos extremos, `Rd==Rn`, preservación
+NZCV/FPCR/FPSR, memoria XI/Ether, traps y rechazo de la disposición 1D no asignada.
+La nueva prueba CI debe validar **ambas** correcciones (USRA/SSRA + NEG)
+antes de reanudar el **checkpoint limpio de C32**, sin utilizar ninguno de
+los dos checkpoints terminales como fuente.
