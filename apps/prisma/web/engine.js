@@ -43,6 +43,7 @@ export class Scene {
   }
   armCombo(combo, time) { return this.musicStage?.armCombo(combo, time) || false; }
   cancelCombo() { this.musicStage?.cancelCombo(); }
+  clearMusicStage() { this.musicStage = null; this.stageExplosions = []; }
   resize() {
     const r=this.canvas.getBoundingClientRect(),quality=this.settings().quality||'auto';
     const budget=this.gpu?(quality==='high'?3000000:1600000):850000;
