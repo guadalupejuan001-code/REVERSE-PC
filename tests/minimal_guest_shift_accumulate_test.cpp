@@ -75,7 +75,7 @@ void neg_execute(MinimalGuest g,unsigned bits,bool q,unsigned rn,unsigned rd,boo
  if(restore){auto copy=MinimalGuest::from_snapshot(g.snapshot());g.run(1);copy.run(1);
   check(g.snapshot()==copy.snapshot(),"NEG differs after checkpoint restoration");
  }else g.run(1);
- const auto after=g.floating(),unused=0u; (void)unused;
+ const auto after=g.floating();
  for(unsigned n=0;n<(q?128u:64u)/bits;n++){
    const auto value=before.v[rn].lane(n,bits);
    check(after.v[rd].lane(n,bits)==((UINT64_C(0)-value)&mask(bits)),
