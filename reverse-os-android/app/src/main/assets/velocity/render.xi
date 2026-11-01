@@ -3284,54 +3284,54 @@ meshvertex 1564 11 278 12
 meshtexuv 1564 2 2
 meshvertex 1565 -9 275 -21
 meshtexuv 1565 -1 -3
-meshvertex 1591 -125 30 -151
-meshtexuv 1591 -18 -22
-meshvertex 1592 -57 31 -154
-meshtexuv 1592 -8 -22
-meshvertex 1593 -33 132 -248
-meshtexuv 1593 -5 -35
-meshvertex 1594 -149 125 -238
-meshtexuv 1594 -21 -34
-meshvertex 1595 -91 26 -134
+meshvertex 1591 -109 26 -151
+meshtexuv 1591 -16 -22
+meshvertex 1592 -73 27 -154
+meshtexuv 1592 -10 -22
+meshvertex 1593 -62 88 -212
+meshtexuv 1593 -9 -30
+meshvertex 1594 -120 82 -204
+meshtexuv 1594 -17 -29
+meshvertex 1595 -91 25 -134
 meshtexuv 1595 -13 -19
-meshvertex 1596 -91 25 -180
-meshtexuv 1596 -13 -26
-meshvertex 1597 -91 153 -226
-meshtexuv 1597 -13 -32
-meshvertex 1598 -91 145 -116
-meshtexuv 1598 -13 -17
-meshvertex 1599 57 30 -151
-meshtexuv 1599 8 -22
-meshvertex 1600 125 31 -154
-meshtexuv 1600 18 -22
-meshvertex 1601 149 132 -248
-meshtexuv 1601 21 -35
-meshvertex 1602 33 125 -238
-meshtexuv 1602 5 -34
-meshvertex 1603 91 26 -134
+meshvertex 1596 -91 24 -168
+meshtexuv 1596 -13 -24
+meshvertex 1597 -91 96 -198
+meshtexuv 1597 -13 -28
+meshvertex 1598 -91 90 -124
+meshtexuv 1598 -13 -18
+meshvertex 1599 73 26 -151
+meshtexuv 1599 10 -22
+meshvertex 1600 109 27 -154
+meshtexuv 1600 16 -22
+meshvertex 1601 120 88 -212
+meshtexuv 1601 17 -30
+meshvertex 1602 62 82 -204
+meshtexuv 1602 9 -29
+meshvertex 1603 91 25 -134
 meshtexuv 1603 13 -19
-meshvertex 1604 91 25 -180
-meshtexuv 1604 13 -26
-meshvertex 1605 91 153 -226
-meshtexuv 1605 13 -32
-meshvertex 1606 91 145 -116
-meshtexuv 1606 13 -17
-meshvertex 1607 -62 21 -226
-meshtexuv 1607 -9 -32
-meshvertex 1608 -36 21 -226
-meshtexuv 1608 -5 -32
-meshvertex 1609 -24 12 -344
-meshtexuv 1609 -3 -49
-meshvertex 1610 -74 12 -344
-meshtexuv 1610 -11 -49
-meshvertex 1611 36 21 -226
-meshtexuv 1611 5 -32
-meshvertex 1612 62 21 -226
-meshtexuv 1612 9 -32
-meshvertex 1613 74 12 -344
-meshtexuv 1613 11 -49
-meshvertex 1614 24 12 -344
-meshtexuv 1614 3 -49
+meshvertex 1604 91 24 -168
+meshtexuv 1604 13 -24
+meshvertex 1605 91 96 -198
+meshtexuv 1605 13 -28
+meshvertex 1606 91 90 -124
+meshtexuv 1606 13 -18
+meshvertex 1607 -58 21 -226
+meshtexuv 1607 -8 -32
+meshvertex 1608 -40 21 -226
+meshtexuv 1608 -6 -32
+meshvertex 1609 -34 15 -302
+meshtexuv 1609 -5 -43
+meshvertex 1610 -64 15 -302
+meshtexuv 1610 -9 -43
+meshvertex 1611 40 21 -226
+meshtexuv 1611 6 -32
+meshvertex 1612 58 21 -226
+meshtexuv 1612 8 -32
+meshvertex 1613 64 15 -302
+meshtexuv 1613 9 -43
+meshvertex 1614 34 15 -302
+meshtexuv 1614 5 -43
 meshvertex 1615 -101 3 -250
 meshtexuv 1615 -14 -36
 meshvertex 1616 -83 3 -250
@@ -4964,30 +4964,30 @@ localset 2074 800000
 localset 2075 800512
 localset 2076 801024
 localset 2077 801536
-localset 2103 814624
-localset 2104 815189
-localset 2105 815840
+localset 2103 814637
+localset 2104 815199
+localset 2105 815796
 localset 2106 816243
-localset 2107 816674
-localset 2108 817247
-localset 2109 817868
-localset 2110 818320
-localset 2111 818720
-localset 2112 819285
-localset 2113 819936
+localset 2107 816690
+localset 2108 817257
+localset 2109 817859
+localset 2110 818309
+localset 2111 818733
+localset 2112 819295
+localset 2113 819892
 localset 2114 820339
-localset 2115 820770
-localset 2116 821343
-localset 2117 821964
-localset 2118 822416
+localset 2115 820786
+localset 2116 821353
+localset 2117 821955
+localset 2118 822405
 localset 2119 822839
 localset 2120 823426
-localset 2121 824056
-localset 2122 824504
+localset 2121 824043
+localset 2122 824493
 localset 2123 824887
 localset 2124 825474
-localset 2125 826104
-localset 2126 826552
+localset 2125 826091
+localset 2126 826541
 localset 2127 827100
 localset 2128 827607
 localset 2129 828104
