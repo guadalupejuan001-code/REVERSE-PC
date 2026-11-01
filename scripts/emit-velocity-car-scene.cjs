@@ -75,7 +75,7 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
  for(const axis of [0,2]){const pts=[[-20,0],[20,0],[20,280],[-20,280]].map(([x,y])=>{const p=[0,y,0];p[axis]=x;return tp(p);});treeTri(pts[0],pts[1],pts[2],9);treeTri(pts[0],pts[2],pts[3],10);}
  const treeEnd=vertices.length;
  if(vertices.length>1600||CAMERA+vertices.length>4096)throw Error('Car buffers overlap bounded engine IDs');
- const maxTriangles=80*11*2+14+models.high.faces.length+3*models.medium.faces.length+4*shadowFaces.length+40*treeFaces.length+airJetFaces.length;
+ const maxTriangles=80*11*2+18+models.high.faces.length+3*models.medium.faces.length+4*shadowFaces.length+40*treeFaces.length+airJetFaces.length;
  if(maxTriangles>4096)throw Error('Scene triangle budget exceeded: '+maxTriangles);
  if(groups.length>128)throw Error('Normal-group scalar encoding exceeded');
  const groupNormals=groups.map(g=>norm(g.sum).map(x=>Math.round(x*16384)));
