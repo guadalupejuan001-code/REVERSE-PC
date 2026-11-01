@@ -16,7 +16,7 @@
 #include <vector>
 using Runtime=reverse_pc::rvpc2::Runtime;
 using Bytes=std::vector<std::uint8_t>;
-using State=std::array<std::int64_t,22>;
+using State=std::array<std::int64_t,26>;
 using Clock=std::chrono::steady_clock;
 const std::string header="#!reverse-pc-machine-v1\n";
 static std::size_t checks=0;
@@ -33,7 +33,7 @@ std::vector<std::int64_t> numbers(const std::string& text,bool world=false){
   check(consumed==row.size()-prefix.size()-1,"integer observation");out.push_back(value);
  }return out;
 }
-State state(const std::string& text){const auto n=numbers(text);check(n.size()==22,"22 authoritative game registers");State s{};std::copy(n.begin(),n.end(),s.begin());
+State state(const std::string& text){const auto n=numbers(text);check(n.size()==26,"26 authoritative game registers");State s{};std::copy(n.begin(),n.end(),s.begin());
  check(s[0]>=-100000&&s[0]<=150000&&s[1]>=-100000&&s[1]<=150000,"bounded world position");
  check(s[2]>=0&&s[2]<4096&&s[3]>=0&&s[3]<=10000,"bounded heading/speed");
  check(s[5]>=0&&s[5]<=12&&s[6]>=0&&s[7]>=0&&s[7]<=1&&s[8]>=0&&s[8]<=1,"progress/clock flags");
@@ -42,7 +42,10 @@ State state(const std::string& text){const auto n=numbers(text);check(n.size()==
  check(s[15]>=0&&s[15]<=480000,"unwrapped progress");
  check(s[16]>=0&&s[16]<=1000&&s[17]>=0&&s[17]<=1&&s[18]>=0&&s[18]<=300&&
        s[19]>=0&&s[19]<=30&&s[20]>=0&&s[20]<=90&&s[21]>=0&&s[21]<=1,
-       "bounded XI turbo/compressor telemetry");return s;
+       "bounded XI turbo/compressor telemetry");
+ check(s[22]>=0&&s[22]<=9999999&&s[23]>=100&&s[23]<=400&&
+       s[24]>=0&&s[24]<=1&&s[25]>=0&&s[25]<=2,
+       "bounded XI score, drift multiplier, slipstream and contact surface");return s;
 }
 struct Input{int gas=0,brake=0,steer=1,drift=0,nitro=0,jump=0;};
 struct Point{double x,z;};
@@ -155,6 +158,46 @@ int main(int argc,char** argv){try{
  check(co[6]==moving[6]+30,"race clock continues during coasting");
  check(tu[2]!=po[2]&&tu[0]!=po[0],"steering changes actual heading and world position");
  check(std::abs(dr[4])>std::abs(tu[4]),"handbrake reduces grip and increases actual lateral motion");
+ // Real drift earns score and nitro; leaving it preserves score but expires combo.
+ auto skilled=reverse_pc::rvpc2::restore(movingSeed);
+ State scoring{};
+ for(int i=0;i<50;i++)scoring=state(skilled.execute(command({1,0,2,1})));
+ check(scoring[22]>0&&scoring[23]>100,
+  "sustained XI sideslip earns points and a multiplier");
+ const auto scoreEarned=scoring[22];
+ for(int i=0;i<100;i++)scoring=state(skilled.execute(command({0,0,1,0})));
+ check(scoring[22]==scoreEarned&&scoring[23]==100,
+  "combo grace resets without deleting scored points");
+ // Actual rival world positions determine slipstream, not the HUD angle.
+ auto slip=reverse_pc::rvpc2::restore(raceStart),
+      crawl=reverse_pc::rvpc2::restore(raceStart);
+ slip.execute(header+"store16 110 2000\nstore16 261 32768\n"+
+    "store16 263 34768\nstore16 380 500\nhalt\n");
+ crawl.execute(header+"store16 110 900\nstore16 261 32768\n"+
+    "store16 263 33668\nstore16 380 500\nhalt\n");
+ const auto streamed=state(slip.execute(command({1,0,1,0})));
+ const auto unstreamed=state(crawl.execute(command({1,0,1,0})));
+ check(streamed[24]==1&&unstreamed[24]==0&&streamed[16]>unstreamed[16],
+       "driving behind an actual XI rival rewards nitro only at sufficient speed");
+ // Terrain classification is calculated from the real track centerline.
+ auto paved=reverse_pc::rvpc2::restore(raceStart),
+      curb=reverse_pc::rvpc2::restore(raceStart),
+      grass=reverse_pc::rvpc2::restore(raceStart);
+ auto setupSurface=[&](Runtime& rt,int x){
+  rt.execute(header+"store32 100 "+std::to_string(2000000+x)+
+   "\nstore16 110 1200\nstore16 261 32768\nstore16 263 33968\nhalt\n");
+ };
+ setupSurface(paved,0);setupSurface(curb,630);setupSurface(grass,800);
+ State onRoad{},onCurb{},onGrass{};
+ for(int i=0;i<45;i++){
+   onRoad=state(paved.execute(command({1,0,1,0})));
+   onCurb=state(curb.execute(command({1,0,1,0})));
+   onGrass=state(grass.execute(command({1,0,1,0})));
+ }
+ check(onRoad[25]==0&&onCurb[25]==2&&onGrass[25]==1,
+       "XI track distance classifies asphalt, curb and grass");
+ check(onRoad[3]>onCurb[3]&&onCurb[3]>onGrass[3],
+       "paved road retains more speed than curb and grass");
  auto wall=reverse_pc::rvpc2::restore(raceStart);
  std::string wallSetup=header+"store32 100 2002000\nstore32 104 2010000\nstore16 108 0\n"+
   "store16 110 1800\nstore16 261 32768\nstore16 263 34568\nstore8 273 5\n"+
@@ -204,6 +247,6 @@ int main(int argc,char** argv){try{
  {std::ofstream observation(out/"final-observation.json");observation<<'[';
   for(std::size_t i=0;i<s.size();i++){if(i)observation<<',';observation<<s[i];}
   observation<<"]\n";}
- std::ostringstream report;report<<"{\"passed\":"<<(s[7]?"true":"false")<<",\"checks\":"<<checks<<",\"worldPoints\":81,\"gameRegisters\":22,\"countdownTicks\":"<<countdown<<",\"raceInputTicks\":"<<ticks<<",\"raceVirtualSeconds\":"<<lastTicks/50.<<",\"raceWallMs\":"<<raceMs<<",\"raceExecuteMs\":"<<executeMs<<",\"maxSpeedCmps\":"<<maxSpeed<<",\"offRoadTicks\":"<<offRoad<<",\"wallTicks\":"<<walls<<",\"finished\":"<<(s[7]?"true":"false")<<",\"completedLaps\":"<<s[10]<<",\"sectors\":"<<s[5]<<",\"finishFrozen\":"<<(frozen?"true":"false")<<",\"persistenceSampleTicks\":"<<sample<<",\"residentMsPerTick\":"<<(sample?liveMs/sample:0)<<",\"serializedMsPerTick\":"<<(sample?persistMs/sample:0)<<",\"exactSerializedState\":true,\"seedBytes\":"<<seed.size()<<",\"finalBytes\":"<<final.size()<<",\"pilotGain\":"<<gain<<",\"pilotLookaheadSegments\":"<<lookahead<<",\"curveTargetCmps\":"<<curveSpeed<<",\"androidDeviceMeasured\":false}\n";
+ std::ostringstream report;report<<"{\"passed\":"<<(s[7]?"true":"false")<<",\"checks\":"<<checks<<",\"worldPoints\":81,\"gameRegisters\":26,\"countdownTicks\":"<<countdown<<",\"raceInputTicks\":"<<ticks<<",\"raceVirtualSeconds\":"<<lastTicks/50.<<",\"raceWallMs\":"<<raceMs<<",\"raceExecuteMs\":"<<executeMs<<",\"maxSpeedCmps\":"<<maxSpeed<<",\"offRoadTicks\":"<<offRoad<<",\"wallTicks\":"<<walls<<",\"finished\":"<<(s[7]?"true":"false")<<",\"completedLaps\":"<<s[10]<<",\"sectors\":"<<s[5]<<",\"finishFrozen\":"<<(frozen?"true":"false")<<",\"persistenceSampleTicks\":"<<sample<<",\"residentMsPerTick\":"<<(sample?liveMs/sample:0)<<",\"serializedMsPerTick\":"<<(sample?persistMs/sample:0)<<",\"exactSerializedState\":true,\"seedBytes\":"<<seed.size()<<",\"finalBytes\":"<<final.size()<<",\"pilotGain\":"<<gain<<",\"pilotLookaheadSegments\":"<<lookahead<<",\"curveTargetCmps\":"<<curveSpeed<<",\"androidDeviceMeasured\":false}\n";
  std::ofstream(out/"gameplay-results.json")<<report.str();std::cout<<report.str();return s[7]?0:2;
 }catch(const std::exception& e){std::cerr<<"VELOCITY_GAMEPLAY_FAIL "<<e.what()<<"\n";return 1;}}
