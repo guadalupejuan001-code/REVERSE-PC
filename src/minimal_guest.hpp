@@ -226,6 +226,12 @@ class MinimalGuest {
 
   std::uint8_t read8(std::uint64_t address) const {
     range(address,1);
+#ifndef REVERSE_PC_DATA_CACHE_REFERENCE
+    if(!runtime_.memory().stats().quantum_bindings){
+      const auto& e=data_cache_[data_slot(address)];
+      if(e.epoch==data_cache_epoch_&&e.address==address)return e.value;
+    }
+#endif
 #ifdef REVERSE_PC_NUMERIC_READ_REFERENCE
     const auto key=std::to_string(address);
     const auto delta=byte_transaction_?byte_transaction_->read(key):runtime_.memory().read(key,runtime_.core());
@@ -233,7 +239,13 @@ class MinimalGuest {
     const auto delta=byte_transaction_?byte_transaction_->read(address):runtime_.memory().read_numeric(address,runtime_.core());
 #endif
     require(delta.deterministic, "Guest read reached an unresolved quantum byte; explicit observation required");
-    return backing(address)^delta.value;
+    const auto value=std::uint8_t(backing(address)^delta.value);
+#ifndef REVERSE_PC_DATA_CACHE_REFERENCE
+    if(!runtime_.memory().stats().quantum_bindings){
+      auto& entry=data_cache_[data_slot(address)];entry={address,data_cache_epoch_,value};
+    }
+#endif
+    return value;
   }
   std::uint64_t read(std::uint64_t address,unsigned size) const {
     require(size==1 || size==2 || size==4 || size==8, "Invalid guest word size"); range(address,size);
@@ -472,54 +484,105 @@ class MinimalGuest {
   // AArch64 instruction words. Every fetch still walks the guest's current
   // translation/permission rules; this is neither a new guest memory store
   // nor a synthetic hardware cache visible to Android.
+  // Non-serializable physical 64-byte code blocks. Decode each slot lazily;
+  // never speculatively fetch bytes beyond the currently executable word.
+  struct HotSlot {std::uint32_t word=0;std::uint8_t kind=0;};
   struct CodeEntry {
-    std::uint64_t physical=UINT64_MAX,epoch=0;
-    std::uint32_t word=0;
+    std::uint64_t physical_base=UINT64_MAX,epoch=0;
+    std::array<HotSlot,16> slots{};
+    std::uint16_t valid=0;
   };
-  static constexpr unsigned code_entries=8192;
+  static constexpr unsigned code_entries=512; // 512 * 16 = 8192 code words
   std::array<CodeEntry,code_entries> code_cache_{};
   std::uint64_t code_cache_epoch_=1;
-  void clear_code_cache(){
-    if(++code_cache_epoch_==0){code_cache_={};code_cache_epoch_=1;}
+
+  // C39: nonpersistent exact physical byte cache. No bypass of address
+  // validation and no caching of quantum-bound memory aliases.
+  struct DataEntry {std::uint64_t address=UINT64_MAX,epoch=0;std::uint8_t value=0;};
+  static constexpr unsigned data_entries=2048;
+  mutable std::array<DataEntry,data_entries> data_cache_{};
+  std::uint64_t data_cache_epoch_=1;
+  static unsigned data_slot(std::uint64_t a){return unsigned((a^(a>>11)^(a>>20))&(data_entries-1));}
+  void clear_data_cache(){if(++data_cache_epoch_==0){data_cache_={};data_cache_epoch_=1;}}
+  void invalidate_data_byte(std::uint64_t address){
+    if(runtime_.memory().stats().quantum_bindings){clear_data_cache();return;}
+    auto& e=data_cache_[data_slot(address)];
+    if(e.epoch==data_cache_epoch_&&e.address==address)e.epoch=0;
   }
+  void invalidate_data_physical(const std::array<std::uint64_t,16>& phys,unsigned size){
+    if(runtime_.memory().stats().quantum_bindings){clear_data_cache();return;}
+    for(unsigned i=0;i<size;i++){
+      const auto address=phys[i];auto& e=data_cache_[data_slot(address)];
+      if(e.epoch==data_cache_epoch_&&e.address==address)e.epoch=0;
+    }
+  }
+
+  static unsigned classify_hot(std::uint32_t i){
+#ifdef REVERSE_PC_BLOCK_TRANSLATION_REFERENCE
+    (void)i;return 0;
+#else
+    if(i==0xd503201f||i==0xd503203f||i==0xd503229f||i==0xd503241f||
+       i==0xd503245f||i==0xd503249f||i==0xd50324df||i==0xd50320ff||
+       i==0xd503233f||i==0xd503237f||i==0xd50323bf||i==0xd50323ff)return 1;
+    const unsigned bits=(i>>31)?64:32;
+    if((i&0x1f800000)==0x12800000){
+      const unsigned op=(i>>29)&3,pos=((i>>21)&3)*16;
+      if(op!=1&&pos<bits)return 2;
+    }
+    if((i&0x1f000000)==0x11000000&&!(i&0x00800000))return 3;
+    if((i&0x1f200000)==0x0b000000&&((i>>22)&3)!=3&&((i>>10)&63)<bits)return 4;
+    if((i&0x1f000000)==0x0a000000&&((i>>10)&63)<bits)return 5;
+    if((i&0x1f000000)==0x10000000)return 6;
+    if((i&0x7c000000)==0x14000000)return 7;
+    if((i&0xff000010)==0x54000000)return 8;
+    if((i&0x7e000000)==0x34000000)return 9;
+    if((i&0x7e000000)==0x36000000)return 10;
+    if((i&0x7fe00000)==0x1b000000)return 11;
+    if((i&0x1fe00800)==0x1a800000)return 12;
+    if((i&0x1fe0fc00)==0x1a000000)return 13;
+    return 0;
+#endif
+  }
+  struct HotFetch {std::uint32_t word;unsigned kind;};
+  void clear_code_cache(){if(++code_cache_epoch_==0){code_cache_={};code_cache_epoch_=1;}}
   void invalidate_code_physical(const std::array<std::uint64_t,16>& physical,unsigned size){
-    // Quantum bindings can couple an arbitrary stored byte to other keys.
     if(runtime_.memory().stats().quantum_bindings){clear_code_cache();return;}
-    for(unsigned i=0;i<size;++i){
-      const auto key=physical[i]&~UINT64_C(3);
-      auto& e=code_cache_[(key>>2)&(code_entries-1)];
-      if(e.epoch==code_cache_epoch_&&e.physical==key)e.epoch=0;
+    for(unsigned i=0;i<size;i++){
+      const auto aligned=physical[i]&~UINT64_C(3),base=aligned&~UINT64_C(63);
+      auto& b=code_cache_[(base>>6)&(code_entries-1)];
+      if(b.epoch==code_cache_epoch_&&b.physical_base==base)b.valid&=std::uint16_t(~(1u<<((aligned>>2)&15)));
     }
   }
   void invalidate_dma_code(std::uint64_t address,unsigned size){
     if(runtime_.memory().stats().quantum_bindings){clear_code_cache();return;}
-    for(unsigned i=0;i<size;++i){
-      const auto key=(address+i)&~UINT64_C(3);
-      auto& e=code_cache_[(key>>2)&(code_entries-1)];
-      if(e.epoch==code_cache_epoch_&&e.physical==key)e.epoch=0;
+    for(unsigned i=0;i<size;i++){
+      const auto aligned=(address+i)&~UINT64_C(3),base=aligned&~UINT64_C(63);
+      auto& b=code_cache_[(base>>6)&(code_entries-1)];
+      if(b.epoch==code_cache_epoch_&&b.physical_base==base)b.valid&=std::uint16_t(~(1u<<((aligned>>2)&15)));
     }
   }
-  std::uint32_t instruction_word(std::uint64_t address,RunResult& result){
+  HotFetch instruction_fetch(std::uint64_t address,RunResult& result){
 #ifdef REVERSE_PC_INSTR_CACHE_REFERENCE
-    return std::uint32_t(cpu_read(address,4,result,true));
+    return {std::uint32_t(cpu_read(address,4,result,true)),0};
 #else
     if(machine_.enabled&&!runtime_.memory().stats().quantum_bindings){
-      // Access and executable permissions are checked on *every* fetch.
-      // Never bypass the MMU, EL0 restrictions or an MMIO fetch fault.
-      const auto physical=resolve_access(address,4,false,true);
-      const auto first=physical[0];
+      // This translation validates the CURRENT EL, permissions and MMU; it
+      // must never be bypassed by a cached block or reordering of exceptions.
+      const auto physical=resolve_access(address,4,false,true);const auto first=physical[0];
       if(!(first&3)&&physical[1]==first+1&&physical[2]==first+2&&physical[3]==first+3){
-        auto& e=code_cache_[(first>>2)&(code_entries-1)];
-        if(e.epoch==code_cache_epoch_&&e.physical==first)return e.word;
-        const auto word=std::uint32_t(read8(first))|
-          (std::uint32_t(read8(first+1))<<8)|
-          (std::uint32_t(read8(first+2))<<16)|
-          (std::uint32_t(read8(first+3))<<24);
-        e.physical=first;e.word=word;e.epoch=code_cache_epoch_;
-        return word;
+        const auto base=first&~UINT64_C(63);const auto slot=unsigned((first>>2)&15);
+        auto& b=code_cache_[(base>>6)&(code_entries-1)];
+        if(b.epoch!=code_cache_epoch_||b.physical_base!=base){b.physical_base=base;b.epoch=code_cache_epoch_;b.valid=0;}
+        if(b.valid&(1u<<slot))return {b.slots[slot].word,b.slots[slot].kind};
+        const auto word=std::uint32_t(read8(first))|(
+          std::uint32_t(read8(first+1))<<8)|(
+          std::uint32_t(read8(first+2))<<16)|(
+          std::uint32_t(read8(first+3))<<24);
+        b.slots[slot]={word,std::uint8_t(classify_hot(word))};b.valid|=std::uint16_t(1u<<slot);
+        return {word,b.slots[slot].kind};
       }
     }
-    return std::uint32_t(cpu_read(address,4,result,true));
+    return {std::uint32_t(cpu_read(address,4,result,true)),0};
 #endif
   }
 
@@ -534,6 +597,7 @@ class MinimalGuest {
 #endif
   }
   void invalidate_translation_hints() {
+    clear_data_cache();
     translation_table_pages_={};
     if(++translation_generation_==0){translation_hints_={};translation_generation_=1;}
   }
@@ -626,6 +690,7 @@ class MinimalGuest {
     return ((value>>amount)|(value<<(bits-amount)))&mask(bits);
   }
   void step(RunResult& result);
+  bool try_hot_step(unsigned kind,std::uint32_t instruction,std::uint64_t pc);
   void advance(){require(registers_.instructions!=UINT64_MAX,"Guest instruction counter overflow");++registers_.instructions;
     if(machine_.enabled){require(machine_.ticks!=UINT64_MAX,"Guest virtual timer overflow");machine_.ticks+=machine_.counter_latency.instruction_tick();}}
   void validate_system_configuration() const;
@@ -642,7 +707,7 @@ class MinimalGuest {
   void pci_notify(unsigned device,unsigned queue);
   void dma_write(std::uint64_t address,std::uint64_t value,unsigned size);
   std::uint8_t logical_device_byte(std::uint64_t address) const {const auto r=byte_transaction_?byte_transaction_->read(address):runtime_.memory().read_numeric(address,runtime_.core());require(r.deterministic,"Device read reached unresolved quantum state; explicit observation required");return r.value;}
-  void logical_device_store(std::uint64_t address,std::uint8_t value){require(byte_transaction_,"Device write outside XI transaction");byte_transaction_->store(std::to_string(address),value);}
+  void logical_device_store(std::uint64_t address,std::uint8_t value){require(byte_transaction_,"Device write outside XI transaction");invalidate_data_byte(address);byte_transaction_->store(std::to_string(address),value);}
  public:
   Bytes display_rgb() const;
  private:
@@ -669,12 +734,15 @@ class MinimalGuest {
 #include "minimal_guest_system.inc"
 #include "minimal_guest_pci.inc"
 #include "minimal_guest_simd.inc"
+#include "minimal_guest_hot_block.inc"
 
 inline void MinimalGuest::step(RunResult& result) {
   auto& cpu=registers_;
   require(cpu.pc%4==0,"Unaligned AArch64 instruction address");
   const auto pc=cpu.pc;
-  const auto instruction=instruction_word(pc,result);
+  const auto fetched=instruction_fetch(pc,result);
+  const auto instruction=fetched.word;
+  if(fetched.kind&&try_hot_step(fetched.kind,instruction,pc))return;
   auto next=pc+4;
   const unsigned bits=(instruction>>31)?64:32, rd=instruction&31, rn=(instruction>>5)&31, rm=(instruction>>16)&31;
   auto unsupported=[&](){throw std::runtime_error("Unsupported AArch64 instruction "+hex(instruction)+" at "+hex(pc));};
@@ -898,7 +966,7 @@ inline void MinimalGuest::step(RunResult& result) {
       if(success){
         // Pin the already checked physical extent for the whole atomic
         // instruction, even if its first half changes a page-table entry.
-        invalidate_translation_hints();invalidate_code_physical(physical,total);
+        invalidate_translation_hints();invalidate_code_physical(physical,total);invalidate_data_physical(physical,total);
         auto store=[&](mundo_x::QuantumRuntime::ByteAccess& bytes){
           for(unsigned i=0;i<total;++i){
             const auto value=std::uint8_t((i<size?first:last)>>(8*(i%size)));

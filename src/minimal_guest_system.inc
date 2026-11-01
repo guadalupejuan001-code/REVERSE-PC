@@ -122,7 +122,7 @@ inline void MinimalGuest::cpu_write(std::uint64_t address,std::uint64_t value,un
   const auto physical=resolve_access(address,size,true,false,unprivileged);machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;
   // Include table pages used by validation itself: the store can replace
   // the descriptor that resolved its own destination, including its tail.
-  invalidate_cpu_store_hints(physical,size);invalidate_code_physical(physical,size);
+  invalidate_cpu_store_hints(physical,size);invalidate_code_physical(physical,size);invalidate_data_physical(physical,size);
   if(!machine_.enabled){write(address,value,size);return;}
   const auto first=physical[0];
   if(device_address(first)){device_write(first,value&low_mask(size*8),size,result);return;}
