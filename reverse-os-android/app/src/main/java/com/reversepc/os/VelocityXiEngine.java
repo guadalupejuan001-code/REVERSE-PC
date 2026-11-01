@@ -21,8 +21,10 @@ final class VelocityXiEngine {
         final int yaw4096,speedCmps,slideCmps,checkpoint,position,laps,trackS,segment,countdown;
         final boolean finished,offRoad,wallContact,nitroActive,landingPulse;
         final int nitroCharge,jumpHeightCm,airPulse,jumpCooldown;
+        final int driftScore,driftComboPct,surface;
+        final boolean drafting;
         Snapshot(long[] values){
-            if(values==null||values.length!=22)throw new IllegalArgumentException("XI race output needs twenty-two registers");
+            if(values==null||values.length!=26)throw new IllegalArgumentException("XI race output needs 26 registers");
             for(int i=2;i<values.length;i++)if(values[i]<Integer.MIN_VALUE||values[i]>Integer.MAX_VALUE)
                 throw new IllegalArgumentException("XI race register exceeds integer range");
             xCm=values[0];zCm=values[1];yaw4096=(int)values[2];
@@ -35,6 +37,11 @@ final class VelocityXiEngine {
             nitroCharge=(int)values[16];nitroActive=values[17]==1;
             jumpHeightCm=(int)values[18];airPulse=(int)values[19];
             jumpCooldown=(int)values[20];landingPulse=values[21]==1;
+            driftScore=(int)values[22];driftComboPct=(int)values[23];
+            drafting=values[24]==1;surface=(int)values[25];
+            if(driftScore<0||driftScore>9_999_999||driftComboPct<100||driftComboPct>400||
+                    values[24]<0||values[24]>1||surface<0||surface>2)
+                throw new IllegalArgumentException("XI drift/rebufo/surface state outside limits");
             if(nitroCharge<0||nitroCharge>1000||values[17]<0||values[17]>1||
                     jumpHeightCm<0||jumpHeightCm>300||airPulse<0||airPulse>30||
                     jumpCooldown<0||jumpCooldown>90||values[21]<0||values[21]>1)
@@ -139,17 +146,17 @@ final class VelocityXiEngine {
     }
 
     private static Snapshot parseState(String output)throws Exception{
-        long[] observed=new long[22];int n=0;
+        long[] observed=new long[26];int n=0;
         for(String line:output.split("\n")){
             if(line.trim().isEmpty())continue;
-            if(n>=22)throw new IllegalArgumentException("XI game published too many registers");
+            if(n>=26)throw new IllegalArgumentException("XI game published too many registers");
             JSONObject row=new JSONObject(line);
             if(!"register".equals(row.getString("type"))||
                !("r"+(n%16)).equals(row.getString("register")))
                 throw new IllegalArgumentException("XI game register order mismatch");
             observed[n++]=row.getLong("value");
         }
-        if(n!=22)throw new IllegalArgumentException("Incomplete XI game observation");
+        if(n!=26)throw new IllegalArgumentException("Incomplete XI game observation");
         return new Snapshot(observed);
     }
 
