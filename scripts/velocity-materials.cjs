@@ -17,6 +17,11 @@ function buildPalette(){
  p[21]='566c4b'; // Foreground grassy soil
  // Asfalto con 8 matices, recorrido espacial constante en la pista XI.
  for(let i=0;i<16;i++)p[40+i]=hex(mix(rgb('242b31'),rgb('56606a'),Math.pow(i/15,1.08)));
+ // XI exhaust nitro: deep electric blue core through pale cyan. No screen-space bloom.
+ for(let i=0;i<8;i++){
+  const t=i/7;
+  p[56+i]=hex(mix(rgb('0b3474'),rgb('a2f8ff'),Math.pow(t,.67)));
+ }
  for(let i=0;i<8;i++){p[24+i]=hex(mix(rgb('4b535a'),rgb('151e25'),i/7));p[32+i]=hex(mix(rgb('667356'),rgb('19271e'),i/7));}
  const paints=['e8edf3','b50920','135c9c','164c3b','d6a32b'];
  paints.forEach((paint,k)=>{const c=rgb(paint);for(let n=0;n<24;n++){
