@@ -1,8 +1,8 @@
 name: REVERSE 2.5.4 desktop icons and PRISMA
 on:
   push:
-    branches: [main]
-    paths: ['reverse-os-android/**', 'bbyq-interface/**', 'src/**', 'scripts/**', '.github/workflows/workbench-android.yml']
+    branches: [main, codex/prisma-rhythm-20261028]
+    paths: ['reverse-os-android/**', 'bbyq-interface/**', 'src/**', 'scripts/**', 'apps/prisma/**', 'tests/prisma-stage.mjs', '.github/workflows/workbench-android.yml']
   pull_request:
     branches: [main]
     paths: ['reverse-os-android/**', 'bbyq-interface/**', 'src/**', 'scripts/**', '.github/workflows/workbench-android.yml']
@@ -21,6 +21,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: {persist-credentials: false}
+      - name: Verify PRISMA musical timing and cancellation
+        run: node tests/prisma-stage.mjs
       - uses: actions/checkout@v4
         with:
           repository: guadalupejuan001-code/REVERSE-PC
