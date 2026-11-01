@@ -1369,6 +1369,150 @@ label effect_expire_next
 add r7 1
 cmp r7 4
 jlt effect_expire_loop
+# Cycle 3: rebufo takes the actual relative positions from the XI rivals.
+# +/-220cm side corridor, 250..1400cm directly ahead, only on paved track.
+store8 488 0
+load16 r0 110
+cmp r0 1600
+jlt draft_done
+load8 r0 489
+cmp r0 0
+jne draft_done
+load16 r0 384
+cmp r0 0
+jne draft_done
+load8 r0 133
+cmp r0 0
+jne draft_done
+set r7 0
+label draft_loop
+mov r12 r7
+mul r12 32
+add r12 6023
+load8 r0 $r12
+cmp r0 1
+je draft_next
+mov r12 r7
+mul r12 32
+add r12 6004
+load32 r0 $r12
+sub r0 65536
+load32 r1 100
+sub r1 2000000
+sub r0 r1
+add r12 4
+load32 r1 $r12
+sub r1 65536
+load32 r2 104
+sub r2 2000000
+sub r1 r2
+load16 r3 304
+sub r3 32768
+load16 r4 306
+sub r4 32768
+mov r5 r0
+mul r5 r3
+mov r6 r1
+mul r6 r4
+add r5 r6
+div r5 16384
+cmp r5 250
+jlt draft_next
+cmp r5 1400
+jgt draft_next
+mul r0 r4
+mul r1 r3
+sub r0 r1
+div r0 16384
+cmp r0 0
+jge draft_lateral_abs
+mul r0 -1
+label draft_lateral_abs
+cmp r0 220
+jgt draft_next
+store8 488 1
+load16 r0 380
+add r0 4
+cmp r0 1000
+jle draft_charge_stored
+set r0 1000
+label draft_charge_stored
+store16 380 r0
+jmp draft_done
+label draft_next
+add r7 1
+cmp r7 3
+jlt draft_loop
+label draft_done
+# Score requires a real sideslip, speed, handbrake and wheels on asphalt.
+store8 487 0
+load8 r0 131
+cmp r0 1
+jne skill_combo_decay
+load8 r0 489
+cmp r0 0
+jne skill_combo_decay
+load8 r0 133
+cmp r0 0
+jne skill_combo_decay
+load16 r0 384
+cmp r0 0
+jne skill_combo_decay
+load16 r0 110
+cmp r0 900
+jlt skill_combo_decay
+load16 r0 112
+sub r0 32768
+cmp r0 0
+jge skill_slide_abs
+mul r0 -1
+label skill_slide_abs
+cmp r0 120
+jlt skill_combo_decay
+store8 487 1
+mov r2 r0
+div r2 110
+add r2 3
+cmp r2 55
+jle skill_tick_bounded
+set r2 55
+label skill_tick_bounded
+load16 r3 484
+add r3 2
+cmp r3 400
+jle skill_combo_bounded
+set r3 400
+label skill_combo_bounded
+store16 484 r3
+mul r2 r3
+div r2 100
+load32 r1 480
+add r1 r2
+cmp r1 9999999
+jle skill_score_bounded
+set r1 9999999
+label skill_score_bounded
+store32 480 r1
+store8 486 80
+load16 r0 380
+add r0 3
+cmp r0 1000
+jle skill_charge_bounded
+set r0 1000
+label skill_charge_bounded
+store16 380 r0
+jmp skill_done
+label skill_combo_decay
+load8 r0 486
+cmp r0 0
+jle skill_combo_reset
+sub r0 1
+store8 486 r0
+cmp r0 0
+jgt skill_done
+label skill_combo_reset
+store16 484 100
+label skill_done
 label rank
 set r0 1
 store8 282 r0
@@ -1462,6 +1606,15 @@ load8 r4 389
 print r4
 load8 r5 391
 print r5
+# Cycle 3: the original 22 ABI observations remain ordered and unchanged.
+load32 r6 480
+print r6
+load16 r7 484
+print r7
+load8 r8 488
+print r8
+load8 r9 489
+print r9
 halt
 label missing_world
 set r0 0
