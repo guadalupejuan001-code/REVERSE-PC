@@ -7,7 +7,13 @@ case 1:return (x+y)%4<2?11:(x-y+64)%4<2?7:5;
 case 2:return (x+3*y)%17<2?12:h%13===0?10:8;
 case 3:return (x+2*y)%9<2?4:h%7===0?12:9;
 case 4:return y%5===0?12:x%7===0?10:7;
-case 5:return 4+h%12;
+case 5: {
+ // XI asfalto: manchas de agregado mineral + micrograno. Se evita el
+ // mosaico aleatorio de 12 niveles que hacía parecer la carretera pintada.
+ const aggregate=(hash(x>>1,y>>1,k)>>>8)&7;
+ const fine=(h>>>18)&3;
+ return Math.min(14,6+(aggregate>>1)+fine);
+}
 case 6:return h%13===0?4:10;
 case 7:return (x+y)%4===0?3:9;}throw Error('unknown texture');}
 const TILES=Object.freeze(Array.from({length:8},(_,k)=>Object.freeze(Array.from({length:16},(_,y)=>Array.from({length:16},(_,x)=>tex(x,y,k).toString(16)).join('')))));
