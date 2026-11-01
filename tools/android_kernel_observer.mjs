@@ -198,6 +198,28 @@ export function observeAndroidKernel(bytes,expectedCheckpointSha,options){
       check(file>=0xffff000000000000n,'IOCTL fd missing file');
       item.guest_syscall.file=mountedFilePath(file,{read,layout:name=>Object.fromEntries(Object.entries(members(type(name))).map(([k,v])=>[k,{offset:v.offset}]))});
       item.guest_syscall.file_pointer=hex(file);
+      if(item.guest_syscall.file==='/dev/binderfs/binder'){
+       // Binder's binder_open attaches the binder_proc to the kernel struct file.
+       // Unlike binder_procs global enumeration, this is a per-fd direct pointer
+       // with independently checked file identity and BTF field offsets.
+       const fl=members(type('file')),bp=members(type('binder_proc'));
+       check(fl.private_data&&bp.pid&&bp.proc_node&&bp.threads&&bp.todo,'Binder private_data BTF fields unavailable');
+       const priv=read(file+BigInt(fl.private_data.offset));
+       check(priv>=0xffff000000000000n&&(priv&7n)===0n,'Binder file private_data invalid');
+       const binderPid=Number(read(priv+BigInt(bp.pid.offset),4));
+       check(binderPid>0&&binderPid<=4194304,'Binder proc PID invalid');
+       item.guest_syscall.binder_private={
+         pointer:hex(priv),pid:binderPid,fd_owner_pid:pid,
+         proc_node_next:hex(read(priv+BigInt(bp.proc_node.offset))),
+         process_threads_root:hex(read(priv+BigInt(bp.threads.offset))),
+         todo_head_next:hex(read(priv+BigInt(bp.todo.offset))),
+         outstanding_txns:Number(read(priv+BigInt(bp.outstanding_txns.offset),4)),
+         is_dead:Number(read(priv+BigInt(bp.is_dead.offset),1))!==0,
+         context_pointer:bp.context?hex(read(priv+BigInt(bp.context.offset))):null,
+         source:'verified_binder_fd_private_data',
+         read_only:true
+       };
+      }
      }catch(e){item.guest_syscall.fd_path_error=e.message;}
     }
    }catch(e){item.guest_syscall={unverified:true,error:e.message};}
