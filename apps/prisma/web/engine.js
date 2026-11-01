@@ -337,6 +337,23 @@ export class Scene {
           ctx.fillStyle='rgba('+rgb+','+(fx.opacity*.075)+')';ctx.fill();
         }
       }
+      // Nova iris and bounded radial rays, released only by an earned
+      // combination + the exact major accent chosen by the music director.
+      if(!reduced&&fx.opacity>.015){
+        const centerHalo=radial(center.x,center.y,unit*(.12+fx.phase*.29));
+        centerHalo.addColorStop(0,'rgba('+rgb+','+Math.min(.20,fx.opacity*.16)+')');
+        centerHalo.addColorStop(1,'rgba('+rgb+',0)');
+        ctx.fillStyle=centerHalo;
+        ctx.fillRect(center.x-unit*.35,center.y-unit*.35,unit*.7,unit*.7);
+      }
+      for(const ray of fx.spokes||[]){
+        const dx=Math.cos(ray.angle),dy=Math.sin(ray.angle);
+        ctx.beginPath();
+        ctx.moveTo(center.x+dx*ray.from*unit,center.y+dy*ray.from*unit);
+        ctx.lineTo(center.x+dx*ray.to*unit,center.y+dy*ray.to*unit);
+        ctx.strokeStyle='rgba('+rgb+','+Math.min(.74,ray.alpha)+')';
+        ctx.lineWidth=ray.width;ctx.stroke();
+      }
       for(const shard of fx.shards){
         const cx=center.x+shard.x*unit,cy=center.y+shard.y*unit;
         const dx=Math.cos(shard.angle),dy=Math.sin(shard.angle);
