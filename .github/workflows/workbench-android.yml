@@ -26,6 +26,7 @@ jobs:
           node tests/prisma-stage.mjs
           node tests/prisma-music-analysis.mjs
           node tests/prisma-concert-rig.mjs
+          node tests/prisma-combo-spectacle.mjs
       - uses: actions/checkout@v4
         with:
           repository: guadalupejuan001-code/REVERSE-PC
