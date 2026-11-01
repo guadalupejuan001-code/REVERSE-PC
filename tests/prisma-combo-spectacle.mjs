@@ -133,6 +133,7 @@ scene.paletteKey='';scene.rgb=[];scene.view=new Float32Array(4);
 scene.particles=[];scene.shards=[];scene.trails=new Map();
 scene.pulse=scene.energy=scene.shake=0;
 scene.diagnostics=false;scene.qualityScale=1;scene.stageExplosions=[];
+scene.visualState={quality:'balanced',slowFrames:0,fastFrames:0,cooldownUntil:0};
 scene.setMusicStage(map);
 check(scene.armCombo(10,1.22),'scene integration did not arm');
 scene.render(1.35,1/60,[],false,0,0,true);
