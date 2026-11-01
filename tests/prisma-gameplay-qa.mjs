@@ -10,6 +10,7 @@ const load=async filename=>{
   return import('data:text/javascript;base64,'+body.toString('base64'));
 };
 const qa=await load('rhythm-qa.js');
+const {nextVisualQuality,visualBudget}=await load('performance-policy.js');
 const demo=readFileSync(new URL('../apps/prisma/web/audio.js',import.meta.url),'utf8')
   .replace(/^export \{.*$/gm,'').replace(/^export /gm,'');
 const {RhythmAudio}=new Function(demo+';return {RhythmAudio};')();
@@ -100,17 +101,19 @@ const engineText=readFileSync(new URL('../apps/prisma/web/engine.js',import.meta
 const Scene=new Function('CubeGPU','NativeXRender','seeded','MusicStageDirector','makeIntelligentChart',
   'makeConcertProgram','concertPose','concertNativeParts','RIG_MAX_CUBOIDS',
   'createSpectacleEvent','pruneSpectacles','spectacleEnvelope','spectacleGeometry',
-  'SPECTACLE_MAX_EVENTS',engineText+';return Scene;')(
+  'SPECTACLE_MAX_EVENTS','nextVisualQuality','visualBudget',engineText+';return Scene;')(
     {},{},()=>()=>.5,music.MusicStageDirector,()=>[],
     cb.makeConcertProgram,cb.concertPose,cb.concertNativeParts,cb.RIG_MAX_CUBOIDS,
     effects.createSpectacleEvent,effects.pruneSpectacles,effects.spectacleEnvelope,
-    effects.spectacleGeometry,effects.SPECTACLE_MAX_EVENTS
+    effects.spectacleGeometry,effects.SPECTACLE_MAX_EVENTS,
+    nextVisualQuality,visualBudget
   );
 const scene=Object.create(Scene.prototype);
 let resizeCalls=0;
 scene.resize=()=>{resizeCalls++};
 scene.settings=()=>({quality:'auto',palette:'coral',effects:false});
 scene.frameTotal=0;scene.frameCount=0;scene.cooldown=0;scene.qualityScale=1;
+scene.visualState={quality:'balanced',slowFrames:0,fastFrames:0,cooldownUntil:0};
 for(let i=0;i<90;i++)scene.adapt(.034,10000+i*34);
 test(scene.qualityScale<1&&resizeCalls===1,'Auto quality did not adapt to expensive frames');
 const reduced=scene.qualityScale;
