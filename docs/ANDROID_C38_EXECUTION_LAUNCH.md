@@ -14,3 +14,9 @@
 - Al terminar comprueba procesos reales, propiedades `odsign.key.done` y `odsign.verification.done`, Zygote, SELinux, `sys.boot_completed` y framebuffer.
 
 **Esta activación no afirma que Zygote ya esté iniciado.** No hay `setprop` artificial, no se desactiva la verificación ni se modifica `main`.
+
+## Reanudación validada tras C36
+- C36 CI 41352354242 finalizó con éxito y generó checkpoint limpio SHA-256 `ad81a49f9ec6212d4ff292be850f4238a34e56fba3488b497b134d0f58044175`, 16,592,448,839 instrucciones.
+- `odsign` ya no está vivo; esto **no** prueba salida con código cero. El `init` aún está procesando `post-fs-data`, y Zygote no se ha observado.
+- C38 detectó una ruta errónea para `actual-stage.json` dentro del artefacto ZIP (`c36-diagnostics/actual-stage.json`). La ruta fue corregida en el workflow y el reintento mantiene todas las comprobaciones originales.
+- La ejecución anterior C38 no alteró el invitado, pues falló antes de cargar la CPU; se reintenta desde el mismo checkpoint C36 sano.
