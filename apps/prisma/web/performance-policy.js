@@ -14,7 +14,8 @@ export function nextVisualQuality({quality='balanced',slowFrames=0,fastFrames=0,
  return {quality:target,slowFrames:0,fastFrames:0,cooldownUntil:now+8000};
 }
 export function visualBudget(quality='balanced',reduced=false){
- if(reduced||quality==='battery')return {particles:48,rig:'battery',material:0,lightCones:false};
+ if(reduced)return {particles:24,rig:'battery',material:0,lightCones:false};
+ if(quality==='battery')return {particles:48,rig:'battery',material:0,lightCones:false};
  if(quality==='high')return {particles:240,rig:'high',material:1,lightCones:true};
  return {particles:120,rig:'auto',material:1,lightCones:true};
 }
