@@ -74,7 +74,43 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
  for(let k=0;k<5;k++)treeTri(top,ring[k],ring[(k+1)%5],14+k%3);
  for(const axis of [0,2]){const pts=[[-20,0],[20,0],[20,280],[-20,280]].map(([x,y])=>{const p=[0,y,0];p[axis]=x;return tp(p);});treeTri(pts[0],pts[1],pts[2],9);treeTri(pts[0],pts[2],pts[3],10);}
  const treeEnd=vertices.length;
- if(vertices.length>1600||CAMERA+vertices.length>4096)throw Error('Car buffers overlap bounded engine IDs');
+ if(vertices.length!==1566)throw Error('Landscape mesh offset changed');
+ for(let i=0;i<25;i++){
+  vertices.push([0,0,0]);normalIds.push(0);
+  normalKinds.push('reserved');canonical.push(-1);
+ }
+ const fxVertex=(x,y,z,shade)=>{
+  const id=vertices.length;vertices.push([x,y,z]);
+  normalIds.push(-shade-1);normalKinds.push('fx');canonical.push(id);return id;
+ };
+ const smokeStart=vertices.length,smokeFaces=[];
+ for(const side of [-1,1]){
+  const x=side*91,z=-146;
+  const a=fxVertex(x-34,30,z-5,32),b=fxVertex(x+34,31,z-8,85);
+  const c=fxVertex(x+58,132,z-102,224),d=fxVertex(x-58,125,z-92,115);
+  smokeFaces.push([a,b,c],[a,c,d]);
+  const e=fxVertex(x,26,z+12,34),f=fxVertex(x,25,z-34,95);
+  const g=fxVertex(x,153,z-80,204),h=fxVertex(x,145,z+30,144);
+  smokeFaces.push([e,f,g],[e,g,h]);
+ }
+ const smokeEnd=vertices.length;
+ const nitroStart=vertices.length,nitroFaces=[];
+ for(const side of [-1,1]){
+  const x=side*49;
+  const a=fxVertex(x-13,21,-226,55),b=fxVertex(x+13,21,-226,130);
+  const c=fxVertex(x+25,12,-344,248),d=fxVertex(x-25,12,-344,184);
+  nitroFaces.push([a,b,c],[a,c,d]);
+ }
+ const nitroEnd=vertices.length;
+ const skidStart=vertices.length,skidFaces=[];
+ for(const side of [-1,1]){
+  const x=side*92,w=9;
+  const a=fxVertex(x-w,3,-250,220),b=fxVertex(x+w,3,-250,215);
+  const c=fxVertex(x+w,3,-15,200),d=fxVertex(x-w,3,-15,220);
+  skidFaces.push([a,b,c],[a,c,d]);
+ }
+ const skidEnd=vertices.length;
+ if(skidEnd!==1623)throw Error('XI local metadata range exceeded');
  const maxTriangles=80*11*2+18+models.high.faces.length+3*models.medium.faces.length+4*shadowFaces.length+40*treeFaces.length+airJetFaces.length;
  if(maxTriangles>4096)throw Error('Scene triangle budget exceeded: '+maxTriangles);
  if(groups.length>128)throw Error('Normal-group scalar encoding exceeded');
