@@ -1,4 +1,4 @@
-name: Reverse Velocity v1.7 — regenerate authored XI scenes
+name: Reverse Velocity — regenerate authored XI scenes
 on:
   push:
     branches: [feature/velocity-v04-nitro-airjump-20261101, feature/velocity-v18-garage-photo-hud-20261101]
@@ -9,6 +9,7 @@ on:
       - 'scripts/velocity-textures.cjs'
       - 'scripts/velocity-textures-contract.cjs'
       - 'scripts/velocity-landscape-post.cjs'
+      - 'scripts/check-velocity-native-only.cjs'
       - '.github/workflows/velocity-v04-author.yml'
 permissions:
   contents: write
