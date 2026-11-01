@@ -28,10 +28,14 @@ final class VelocityOrbitMath {
         if(!Float.isFinite(dx)||!Float.isFinite(dy)||!Float.isFinite(viewWidth))
             throw new IllegalArgumentException("Invalid touch delta");
         // Horizontal drag orbits the rendered camera, not the car steering.
-        int nextYaw=(yaw(packed)+Math.round(dx*FULL_TURN/
-            Math.max(360f,viewWidth*1.2f)))&4095;
+        // Symmetric quantization matters: moving the same pixels back must undo
+        // an orbit exactly, including half-unit deltas and negative gestures.
+        int yawStep=Math.round(Math.abs(dx)*FULL_TURN/
+            Math.max(360f,viewWidth*1.2f));
+        int pitchStep=Math.round(Math.abs(dy)*.65f);
+        int nextYaw=(yaw(packed)+(dx<0?-yawStep:yawStep))&4095;
         int nextPitch=Math.max(MIN_PITCH,Math.min(MAX_PITCH,
-            pitch(packed)-Math.round(dy*.65f)));
+            pitch(packed)-(dy<0?-pitchStep:pitchStep)));
         return pack(nextYaw,nextPitch);
     }
 }
