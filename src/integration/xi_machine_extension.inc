@@ -19,8 +19,13 @@ struct MachineParsedProgram {
   std::vector<MachineInstruction> code;
   std::map<std::string,std::size_t> labels;
 };
+// A small per-thread working set avoids reparsing entire camera variants.
+// Bounded by both entry count and source bytes; never retains runtime state.
+inline constexpr std::size_t machine_parse_cache_slots=4;
+inline constexpr std::size_t machine_parse_cache_total_bytes=1024U*1024U;
 struct MachineParseCacheState {
-  std::shared_ptr<const MachineParsedProgram> program;
+  std::vector<std::shared_ptr<const MachineParsedProgram>> programs;
+  std::size_t source_bytes=0;
   std::uint64_t hits=0,misses=0;
 };
 inline MachineParseCacheState& machine_parse_cache_state() {
@@ -140,9 +145,20 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
   auto& parse_cache=machine_parse_cache_state();
   const bool cacheable=program.size()<=machine_parse_cache_max_source_bytes;
   std::shared_ptr<const MachineParsedProgram> parsed;
-  if(cacheable&&parse_cache.program&&parse_cache.program->source==program) {
-    ++parse_cache.hits;parsed=parse_cache.program;
-  }else{
+  if(cacheable) {
+    for(std::size_t i=0;i<parse_cache.programs.size();++i) {
+      if(parse_cache.programs[i]->source==program) {
+        parsed=parse_cache.programs[i];
+        ++parse_cache.hits;
+        if(i!=0) {
+          parse_cache.programs.erase(parse_cache.programs.begin()+i);
+          parse_cache.programs.insert(parse_cache.programs.begin(),parsed);
+        }
+        break;
+      }
+    }
+  }
+  if(!parsed){
     ++parse_cache.misses;
     auto candidate=std::make_shared<MachineParsedProgram>();
     auto& code=candidate->code;
@@ -178,7 +194,17 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
     }
     // Only fully parsed and jump-validated candidates can replace the entry.
     // Large programs execute normally without retaining another source copy.
-    if(cacheable) { candidate->source=program;parse_cache.program=candidate; }
+    if(cacheable) {
+      candidate->source=program;
+      while(!parse_cache.programs.empty() &&
+            (parse_cache.programs.size()>=machine_parse_cache_slots ||
+             parse_cache.source_bytes+program.size()>machine_parse_cache_total_bytes)) {
+        parse_cache.source_bytes-=parse_cache.programs.back()->source.size();
+        parse_cache.programs.pop_back();
+      }
+      parse_cache.source_bytes+=program.size();
+      parse_cache.programs.insert(parse_cache.programs.begin(),candidate);
+    }
     parsed=std::move(candidate);
   }
   const auto& code=parsed->code;
