@@ -351,8 +351,8 @@ public final class WorkbenchTestRunner extends Instrumentation {
         require("true".equals(graphicsJs(game,"innerWidth>innerHeight")),"Game is not landscape");
         require(graphicsJs(game,"document.getElementById('game').dataset.renderer").contains("ether-render-x-cpu"),"Ether Render X was not selected");
         long firstFrame=SystemClock.uptimeMillis()+15000;boolean nativeFrame=false;
-        while(SystemClock.uptimeMillis()<firstFrame){if("true".equals(graphicsJs(game,"(()=>{const r=JSON.parse(ReverseGraphics.xRenderInfo());return r.frames>0&&r.cubes===5&&r.surface_pixels>0&&r.candidate_queries<r.width*r.height;})()"))){nativeFrame=true;break;}SystemClock.sleep(60);}
-        require(nativeFrame,"Ether Render X did not resolve and present native cube surfaces");
+        while(SystemClock.uptimeMillis()<firstFrame){if("true".equals(graphicsJs(game,"(()=>{const r=JSON.parse(ReverseGraphics.xRenderInfo());return r.frames>0&&r.cubes===11&&r.surface_pixels>0&&r.candidate_queries<r.width*r.height;})()"))){nativeFrame=true;break;}SystemClock.sleep(60);}
+        require(nativeFrame,"Ether Render X expected 5 preview cubes plus 6 moving lights; stats="+graphicsJs(game,"ReverseGraphics.xRenderInfo()"));
         require("true".equals(graphicsJs(game,"document.documentElement.classList.contains('native-xrender')&&!document.querySelector('.gpu-canvas')")),"Legacy GPU cube renderer remained active");
         graphicsJs(game,"window.graphicReplies=[];window.addEventListener('reverse-score',e=>graphicReplies.push(e.detail));ReverseGraphics.event(1,1,0,0);true");
         for(int serial=1;serial<=3;serial++){
