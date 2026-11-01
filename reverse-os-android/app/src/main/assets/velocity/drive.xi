@@ -1,6 +1,6 @@
 #!reverse-pc-machine-v1
 # REVERSE VELOCITY world-space bicycle/tire physics; XI owns every race state.
-# cm, cm/s, 50Hz. yaw4096:0=+z,1024=+x. Controls 128..132, 133=reverse gear.
+# cm, cm/s, 50Hz. yaw4096:0=+z,1024=+x. Inputs 128..135; 134=nitro, 135=pneumatic jump. Persistent energy/altitude at 380..391.
 # World4096+:81(x,z) vertices; tangent5000+. Rivals6000+32*i.
 # No screen projection participates in driving, collision or race progress.
 load8 r0 1002
@@ -101,6 +101,24 @@ set r0 0
 mov r14 r0
 add r14 1000
 store16 314 r14
+# Nitro/air suspension lives in durable XI state; not in the Android view.
+store16 380 1000
+store8 382 0
+store16 384 0
+store16 386 10000
+store8 388 0
+store8 389 0
+store8 390 0
+store8 391 0
+# XI effect history is durable Ether state (not host-generated graphics).
+store8 393 0
+store8 394 0
+store8 395 0
+store8 396 0
+store8 410 0
+store8 422 0
+store8 434 0
+store8 446 0
 store8 121 1
 store8 258 0
 set r0 450
@@ -490,6 +508,90 @@ load8 r0 258
 cmp r0 2
 jne rank
 store8 283 0
+# Nitro reservoir: 4 seconds of boost, 10 seconds of normal recharge.
+load16 r0 380
+load8 r1 134
+cmp r1 1
+jne nitro_recover
+load8 r1 128
+cmp r1 1
+jne nitro_recover
+load8 r1 129
+cmp r1 1
+je nitro_recover
+load8 r1 133
+cmp r1 1
+je nitro_recover
+cmp r0 5
+jlt nitro_recover
+sub r0 5
+store8 382 1
+jmp nitro_store
+label nitro_recover
+store8 382 0
+add r0 2
+cmp r0 1000
+jle nitro_store
+set r0 1000
+label nitro_store
+store16 380 r0
+# Debounced single-jump impulse, four compressors and 50Hz ballistic gravity.
+load8 r0 389
+cmp r0 0
+jle jump_cooldown_done
+sub r0 1
+store8 389 r0
+label jump_cooldown_done
+load8 r0 388
+cmp r0 0
+jle air_pulse_done
+sub r0 1
+store8 388 r0
+label air_pulse_done
+store8 391 0
+load8 r0 135
+cmp r0 0
+jne jump_button_down
+store8 390 0
+jmp jump_integrator
+label jump_button_down
+load8 r0 390
+cmp r0 0
+jne jump_integrator
+store8 390 1
+load16 r0 384
+cmp r0 0
+jne jump_integrator
+load8 r0 389
+cmp r0 0
+jne jump_integrator
+store16 386 10700
+store8 389 90
+store8 388 22
+label jump_integrator
+load16 r0 386
+sub r0 10000
+load16 r1 384
+cmp r0 0
+jne jump_in_flight
+cmp r1 0
+je jump_complete
+label jump_in_flight
+sub r0 30
+mov r2 r0
+div r2 50
+add r1 r2
+cmp r1 0
+jgt jump_still_flying
+set r1 0
+set r0 0
+store8 388 10
+store8 391 1
+label jump_still_flying
+store16 384 r1
+add r0 10000
+store16 386 r0
+label jump_complete
 load16 r0 256
 sub r0 1000
 load8 r1 130
@@ -513,6 +615,13 @@ add r14 1000
 store16 256 r14
 load16 r1 110
 mul r0 r1
+# Reduced steering response while airborne.
+load16 r6 384
+cmp r6 0
+je ground_steering
+mul r0 35
+div r0 100
+label ground_steering
 load8 r6 133
 cmp r6 1
 jne reverse_steering_ready
@@ -619,6 +728,11 @@ set r4 0
 label forward_nonnegative
 load8 r0 128
 mul r0 1100
+load8 r6 382
+cmp r6 1
+jne turbo_acceleration_done
+add r0 2500
+label turbo_acceleration_done
 load8 r1 129
 mul r1 2400
 sub r0 r1
@@ -756,6 +870,10 @@ add r1 r0
 mov r14 r1
 add r14 2000000
 store32 104 r14
+# Collisions with ground-based opponents only while grounded.
+load16 r0 384
+cmp r0 0
+jgt skip_ground_contacts
 store8 328 0
 label contact_loop
 load8 r12 328
@@ -847,6 +965,7 @@ add r0 1
 store8 328 r0
 cmp r0 3
 jlt contact_loop
+label skip_ground_contacts
 load32 r0 274
 store32 300 r0
 set r0 4294967295
@@ -956,6 +1075,9 @@ store8 120 1
 label inside_road
 cmp r0 819025
 jle after_wall
+load16 r3 384
+cmp r3 0
+jgt after_wall
 store8 283 1
 load32 r1 100
 sub r1 2000000
@@ -1143,6 +1265,85 @@ label race_distance_finished
 set r1 480000
 label distance_ready
 store32 278 r1
+# Cycle 2: physical event history for visible tire marks, wheel smoke
+# and spring settling. Four world-space skid samples, each X/Z/Yaw/TTL.
+# Slots 400..447 are unused by world, opponents and gameplay ABI.
+label effect_history
+load8 r0 395
+cmp r0 0
+jle effect_smoke_faded
+sub r0 1
+store8 395 r0
+label effect_smoke_faded
+load8 r0 396
+cmp r0 0
+jle effect_suspension_rest
+sub r0 1
+store8 396 r0
+label effect_suspension_rest
+load8 r0 391
+cmp r0 1
+jne effect_after_landing
+store8 396 18
+label effect_after_landing
+load8 r0 394
+cmp r0 0
+jle effect_cooldown_ready
+sub r0 1
+store8 394 r0
+label effect_cooldown_ready
+load8 r0 131
+cmp r0 1
+jne effect_drift_done
+load16 r0 110
+cmp r0 900
+jlt effect_drift_done
+load8 r0 120
+cmp r0 0
+jne effect_drift_done
+load16 r0 384
+cmp r0 0
+jne effect_drift_done
+load8 r0 133
+cmp r0 0
+jne effect_drift_done
+store8 395 16
+load8 r0 394
+cmp r0 0
+jne effect_drift_done
+load8 r0 393
+mov r12 r0
+mul r12 12
+add r12 400
+load32 r1 100
+store32 $r12 r1
+add r12 4
+load32 r1 104
+store32 $r12 r1
+add r12 4
+load16 r1 108
+store16 $r12 r1
+add r12 2
+store8 $r12 120
+add r0 1
+mod r0 4
+store8 393 r0
+store8 394 7
+label effect_drift_done
+set r7 0
+label effect_expire_loop
+mov r12 r7
+mul r12 12
+add r12 410
+load8 r0 $r12
+cmp r0 0
+jle effect_expire_next
+sub r0 1
+store8 $r12 r0
+label effect_expire_next
+add r7 1
+cmp r7 4
+jlt effect_expire_loop
 label rank
 set r0 1
 store8 282 r0
@@ -1223,6 +1424,19 @@ print r14
 load32 r0 278
 mov r15 r0
 print r15
+# Observation ABI v0.4: legacy 16 registers untouched.
+load16 r0 380
+print r0
+load8 r1 382
+print r1
+load16 r2 384
+print r2
+load8 r3 388
+print r3
+load8 r4 389
+print r4
+load8 r5 391
+print r5
 halt
 label missing_world
 set r0 0

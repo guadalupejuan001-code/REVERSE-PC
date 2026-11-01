@@ -26,6 +26,15 @@ on:
       - 'scripts/velocity-car-mesh.cjs'
       - 'scripts/velocity-materials.cjs'
       - 'scripts/velocity-car-contract.cjs'
+  # Pull request runs can restore the trusted release key scoped to the base
+  # branch. A feature-branch push cannot, and must never silently sign an
+  # incompatible update with an unrelated newly generated certificate.
+  pull_request:
+    branches: [feature/velocity-regraphics-20261030, feature/velocity-v04-nitro-airjump-20261101]
+    paths:
+      - '.github/workflows/velocity-apk.yml'
+      - 'reverse-os-android/**'
+      - 'scripts/**'
   workflow_dispatch:
 permissions: {contents: read}
 concurrency:
@@ -33,6 +42,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   apk:
+    # Never expose the base branch's cached signing identity to outside PRs.
+    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && (github.head_ref == 'feature/velocity-v04-nitro-airjump-20261101' || github.head_ref == 'feature/velocity-v18-garage-photo-hud-20261101' || github.head_ref == 'feature/velocity-v19-orbit-textures-20261101' || github.head_ref == 'feature/velocity-v20-effects-drift-20261101'))
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
@@ -82,7 +93,7 @@ jobs:
           node scripts/velocity-car-contract.cjs
           node scripts/velocity-textures-contract.cjs
           node scripts/author-velocity-scene.cjs
-          git diff --exit-code -- reverse-os-android/app/src/main/assets/velocity/render.xi reverse-os-android/app/src/main/assets/velocity/palette.txt reverse-os-android/app/src/main/assets/velocity/render4k.xi
+          git diff --exit-code -- reverse-os-android/app/src/main/assets/velocity/render.xi reverse-os-android/app/src/main/assets/velocity/palette.txt reverse-os-android/app/src/main/assets/velocity/render4k.xi reverse-os-android/app/src/main/assets/velocity/render-native4k.xi
       - name: Build the actual standalone game APK for ARM64 and x86_64
         run: |
           set -euo pipefail
@@ -92,7 +103,7 @@ jobs:
               exit 1
             }
           cp reverse-os-android/app/build/outputs/apk/velocity/debug/app-velocity-debug.apk \
-            dist/REVERSE-VELOCITY-1.3.0-EtherSpatial-XI.apk
+            dist/REVERSE-VELOCITY-2.0.0-EFFECTS-XI.apk
       - uses: actions/cache/save@v4
         if: steps.velocity-signing.outputs.cache-hit != 'true'
         with:
@@ -101,7 +112,7 @@ jobs:
       - name: Verify native-XI APK identity, signature, alignment and source assets
         run: |
           set -euo pipefail
-          APK=dist/REVERSE-VELOCITY-1.3.0-EtherSpatial-XI.apk
+          APK=dist/REVERSE-VELOCITY-2.0.0-EFFECTS-XI.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" \
             > build/velocity-apk/signature.txt
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 4 "$APK" \
@@ -115,6 +126,14 @@ jobs:
             build/velocity-apk/badging.txt build/velocity-apk/package-results.json \
             build/velocity-apk/signature.txt build/velocity-apk/expected-signer.der
           sha256sum "$APK" > build/velocity-apk/apk-sha256.txt
+      # The user can install immediately once the package/signature/source hashes
+      # pass, while the slower emulator smoke continues in the same job.
+      - name: Publish cryptographically verified upgrade APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: reverse-velocity-apk
+          path: dist/REVERSE-VELOCITY-2.0.0-EFFECTS-XI.apk
+          if-no-files-found: error
       - name: Install and exercise the game on Android 35
         timeout-minutes: 12
         run: |
@@ -143,15 +162,9 @@ jobs:
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
           adb shell input keyevent 82
-          adb install -r dist/REVERSE-VELOCITY-1.3.0-EtherSpatial-XI.apk \
+          adb install -r dist/REVERSE-VELOCITY-2.0.0-EFFECTS-XI.apk \
             > build/velocity-apk/install.txt
           node reverse-os-android/tests/velocity-apk-smoke.cjs adb build/velocity-apk/smoke
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: reverse-velocity-apk
-          path: dist/REVERSE-VELOCITY-1.3.0-EtherSpatial-XI.apk
-          if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         if: always()
         with:
