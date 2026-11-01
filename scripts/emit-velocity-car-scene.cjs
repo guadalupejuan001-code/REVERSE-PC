@@ -258,15 +258,28 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
  for(const d of ['high','medium','far']){
   out('label emit_'+d);models[d].faces.forEach(face);
   if(d==='high'){
-   const skip=label('air_jet_pulse_done');
-   out('load8 r0 388\ncmp r0 0\njle '+skip);
+   const airSkip=label('air_jet_pulse_done');
+   out('load8 r0 388\ncmp r0 0\njle '+airSkip);
    for(const f of airJetFaces)
     out('meshfacegradient '+f.map(i=>i+CAMERA).join(' ')+' 244 12 r9 r10 r11 60');
-   out('label '+skip);
+   out('label '+airSkip);
+   const smokeSkip=label('smoke_done');
+   out('load8 r0 395\ncmp r0 0\njle '+smokeSkip+
+      '\nload16 r0 384\ncmp r0 0\njne '+smokeSkip);
+   for(const f of smokeFaces)
+    out('meshfacegradient '+f.map(i=>i+CAMERA).join(' ')+' 244 12 r9 r10 r11 60');
+   out('label '+smokeSkip);
+   const nitroSkip=label('nitro_done');
+   out('load8 r0 382\ncmp r0 1\njne '+nitroSkip);
+   for(const f of nitroFaces)
+    out('meshfacegradient '+f.map(i=>i+CAMERA).join(' ')+' 56 8 r9 r10 r11 60');
+   out('label '+nitroSkip);
   }
   out('jmp emit_shadow');
  }
- out('label emit_shadow\nset r12 24\nload8 r0 8203\ncmp r0 0\njne shadow_base_ready\nload8 r0 120\ncmp r0 0\nje shadow_base_ready\nset r12 32\nlabel shadow_base_ready');
+ out('label emit_skid');
+ skidFaces.forEach(f=>out('meshfacegradient '+f.map(i=>i+CAMERA).join(' ')+' 24 8 r9 r10 r11 60'));
+ out('jmp next_actor\nlabel emit_shadow\nset r12 24\nload8 r0 8203\ncmp r0 0\njne shadow_base_ready\nload8 r0 120\ncmp r0 0\nje shadow_base_ready\nset r12 32\nlabel shadow_base_ready');
  shadowFaces.forEach(f=>out(`meshfacegradient ${f.map(i=>i+CAMERA).join(' ')} r12 8 r9 r10 r11 60`));out('jmp next_actor\nlabel emit_tree');
  treeFaces.forEach(f=>out(`meshface ${f.indices.map(i=>i+CAMERA).join(' ')} ${f.material} r9 r10 r11 60`));
  out('label next_actor');load('r12',100,4,2000000);out('load8 r0 8203\nadd r0 1\nstore8 8203 r0\ncmp r0 48\njlt actor\nmeshend\nhalt');
