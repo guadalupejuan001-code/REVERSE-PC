@@ -2,7 +2,7 @@ name: REVERSE 2.5.4 desktop icons and PRISMA
 on:
   push:
     branches: [main, codex/prisma-rhythm-20261028]
-    paths: ['reverse-os-android/**', 'bbyq-interface/**', 'src/**', 'scripts/**', 'apps/prisma/**', 'tests/prisma-stage.mjs', '.github/workflows/workbench-android.yml']
+    paths: ['reverse-os-android/**', 'bbyq-interface/**', 'src/**', 'scripts/**', 'apps/prisma/**', 'tests/prisma-*.mjs', '.github/workflows/workbench-android.yml']
   pull_request:
     branches: [main]
     paths: ['reverse-os-android/**', 'bbyq-interface/**', 'src/**', 'scripts/**', '.github/workflows/workbench-android.yml']
@@ -25,6 +25,7 @@ jobs:
         run: |
           node tests/prisma-stage.mjs
           node tests/prisma-music-analysis.mjs
+          node tests/prisma-concert-rig.mjs
       - uses: actions/checkout@v4
         with:
           repository: guadalupejuan001-code/REVERSE-PC

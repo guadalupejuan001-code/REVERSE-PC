@@ -26,7 +26,8 @@ class PrismaXRender {
       for(std::size_t n=0;n<count;++n){const auto i=header+n*stride;
         in(i,-100,100);in(i+1,-100,100);in(i+2,-4,100);in(i+3,.05f,5);
         for(unsigned c=4;c<=7;++c)in(i+c,0,1);
-        in(i+8,-10,10);in(i+9,0,3);in(i+10,0,1);
+        in(i+8,-10,10);in(i+9,-1,3);in(i+10,0,1);
+        // -1 denotes an arrowless mechanical body; 0..3 remain playable cut arrows.
         if(data[i+9]!=std::floor(data[i+9])||data[i+11]!=0.f)throw std::invalid_argument("invalid X Render cube direction/reserved field");
       }
     }

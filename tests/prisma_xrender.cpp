@@ -52,6 +52,20 @@ int main(){try{
   P render;render.resize(1600,720);auto info=render.render(P::Frame(packet));
   need(info.surface_pixels>0&&info.cubes==1,"empty rendered cube");need(info.candidate_queries<info.width*info.height/3,"spatial observation traced the whole screen");
   need(render.rgba().size()==info.width*info.height*4,"invalid display texture extent");
+  // Mechanical moving heads have no cutting arrows. Direction -1 is a
+  // backward-compatible material choice on the same sparse X Render observer.
+  auto machinery=packet;machinery[P::header+9]=-1.f;
+  auto mechanicalFrame=P::Frame(machinery);
+  need(mechanicalFrame.count==1,"mechanical body packet was not accepted");
+  const auto machineInfo=render.render(mechanicalFrame);
+  need(machineInfo.cubes==1&&machineInfo.surface_pixels>0,"arrowless body was not rendered");
+  for(float wrong:{-2.f,4.f,.5f}){
+    auto invalidDirection=packet;invalidDirection[P::header+9]=wrong;
+    bool rejected=false;
+    try{P::Frame bad(invalidDirection);}catch(const std::invalid_argument&){rejected=true;}
+    need(rejected,"invalid stage direction bypassed validation");
+  }
+
   std::cout<<"{\"xrender_exact\":true,\"triangle_oracle_checks\":"<<checks<<",\"display\":"<<info.json()<<"}\n";
   for(unsigned k=0;k<packet.size();++k){auto invalid=packet;invalid[k]=NAN;bool rejected=false;try{P::Frame f(invalid);}catch(const std::invalid_argument&){rejected=true;}need(rejected,"accepted nonfinite packet");}
   return 0;

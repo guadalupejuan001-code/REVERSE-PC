@@ -1,4 +1,5 @@
 // Scene descriptors only. Cubes are resolved by native Ether Render X.
+// Direction -1 denotes plain stage machinery (no cutting arrow), preserving 0..3 for notes.
 export class NativeXRender {
  static create(){
   if(!window.ReverseGraphics?.xRender||window.ReverseGraphics.xRender()!=='ether-render-x-cuboids-v1')return null;
