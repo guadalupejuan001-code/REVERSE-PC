@@ -1,11 +1,11 @@
-name: REVERSE PRISMA 2.3.0 — Release QA
+name: REVERSE PRISMA 2.4.0 — Galaxy Stage QA
 on:
   push:
     branches: [main, codex/prisma-rhythm-20261028]
     paths: ['reverse-os-android/**', 'bbyq-interface/**', 'src/**', 'scripts/**', 'apps/prisma/**', 'tests/prisma-*.mjs', '.github/workflows/workbench-android.yml']
   pull_request:
     branches: [main]
-    paths: ['reverse-os-android/**', 'bbyq-interface/**', 'src/**', 'scripts/**', '.github/workflows/workbench-android.yml']
+    paths: ['reverse-os-android/**', 'bbyq-interface/**', 'src/**', 'scripts/**', 'apps/prisma/**', 'tests/prisma-*.mjs', '.github/workflows/workbench-android.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -28,6 +28,7 @@ jobs:
           node tests/prisma-stage.mjs
           node tests/prisma-music-analysis.mjs
           node tests/prisma-concert-rig.mjs
+          node tests/prisma-galactic-stage.mjs
           node tests/prisma-combo-spectacle.mjs
           node tests/prisma-materials.mjs
           node tests/prisma-quality.mjs
@@ -128,10 +129,10 @@ jobs:
           keytool -genkeypair -keystore "$REVERSE_SIGNING_KEYSTORE" -storetype JKS -storepass android -keypass android -alias reverse-desktop -keyalg RSA -keysize 2048 -validity 30 -dname 'CN=REVERSE Disposable CI'
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1' platform-tools emulator 'system-images;android-35;default;x86_64' > evidence/sdk.log
           gradle -p reverse-os-android --no-daemon :app:assembleControlDebug :app:assembleControlDebugAndroidTest > evidence/gradle.log 2>&1 || { tail -180 evidence/gradle.log; exit 1; }
-          cp reverse-os-android/app/build/outputs/apk/control/debug/app-control-debug.apk dist/REVERSE-PRISMA-2.3.0-cycle6-ci.apk
+          cp reverse-os-android/app/build/outputs/apk/control/debug/app-control-debug.apk dist/REVERSE-PRISMA-2.4.0-galaxy-ci.apk
           cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" dist/apksigner.jar
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/REVERSE-PRISMA-2.3.0-cycle6-ci.apk > evidence/ci-signature.txt
-          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -p 4 dist/REVERSE-PRISMA-2.3.0-cycle6-ci.apk > evidence/alignment.txt
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/REVERSE-PRISMA-2.4.0-galaxy-ci.apk > evidence/ci-signature.txt
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -p 4 dist/REVERSE-PRISMA-2.4.0-galaxy-ci.apk > evidence/alignment.txt
       - name: Run migration, keyboard and desktop on Android 15
         timeout-minutes: 20
         shell: bash
@@ -158,7 +159,7 @@ jobs:
           adb shell settings put secure immersive_mode_confirmations confirmed
           adb shell settings put system screen_off_timeout 600000
           adb shell input keyevent 82
-          adb install -r dist/REVERSE-PRISMA-2.3.0-cycle6-ci.apk
+          adb install -r dist/REVERSE-PRISMA-2.4.0-galaxy-ci.apk
           adb install -r reverse-os-android/app/build/outputs/apk/androidTest/control/debug/app-control-debug-androidTest.apk
           sleep 20
           adb logcat -c
@@ -182,7 +183,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: REVERSE-PRISMA-2.3.0-cycle6
+          name: REVERSE-PRISMA-2.4.0-galaxy
           path: |
             dist/
             evidence/
