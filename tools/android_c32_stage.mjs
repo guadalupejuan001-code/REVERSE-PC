@@ -103,7 +103,7 @@ export function evaluateC32({sourceContract,sourceReport,sourceBoundary,report,r
   ready_for_visual_review:framework.ready_for_visual_review,
   android_display_content_verified:false,
   readiness_reasons:framework.reasons,
-  last_new_console_lines:fresh.split(/\\r?\\n/).filter(Boolean).slice(-40).map(s=>s.slice(0,280)),
+  last_new_console_lines:fresh.split(/\r?\n/).filter(Boolean).slice(-40).map(s=>s.slice(0,280)),
   source_checkpoint_unchanged:true
  };
 }
