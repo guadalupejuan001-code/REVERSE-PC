@@ -19,12 +19,12 @@ Trabajo incremental: codex/prisma-2-musical-stage-20261101.
 | --- | --- | --- |
 | 01. Dirección musical | Clasificar acentos fuertes con datos de audio, energía por ventanas, reloj de canción, reinicio/pausa/seek | Implementación inicial terminada |
 | 02. Beatmap inteligente | Densidad y direcciones por bandas grave/medio/agudo, tempo local, validación con pistas sintéticas | Implementado; CI Android aprobó el 2026-11-01 |
-| 03. Maquinaria de concierto | Seis focos articulados, bases/cabezales nativos, juntas y vigas de metal, programa escénico por compases, guardarraíl de 64 cuboides, luces adaptativas | Implementado; CI Android del ciclo 03 pendiente |
-| 04. Combos musicales | Hitos 10/20/30/50 y múltiplos de 50 desde 100, evento diferido hasta siguiente acento, cancelación por fallo | Prototipo integrado |
+| 03. Maquinaria de concierto | Seis focos articulados, bases/cabezales nativos, juntas y vigas de metal, programa escénico por compases, guardarraíl de 64 cuboides, luces adaptativas | Validado en emulador Android 15 (workflow 41288455075) |
+| 04. Combos musicales | Cinco niveles de explosiones prismáticas, carga y liberación por acento, sincronía del concierto, control de intensidad y coste | Implementado; requiere validar el nuevo CI Android |
 | 05. Materiales y escenarios | Mejoras del renderizador, refracción/materiales XI y geometría escénica con oráculos de exactitud | Pendiente |
 | 06. Android/QA/optimización | Compilar RXE3/APK, verificar WebView y XI, rendimiento, protección contra mareo, pruebas en móvil físico | Pendiente |
 
-## Ciclo 01/03/04 — cómo funciona el prototipo
+## Ciclos iniciales — director musical y escenario
 
 apps/prisma/web/music-stage.js convierte onsets, duración, BPM y una envolvente energética en acentos y energía normalizada. Descarta tiempos inválidos, elimina picos muy próximos conservando el más intenso y diferencia acentos mayores. Todo el cálculo es local.
 
@@ -86,3 +86,20 @@ Para conservar los registros y ajustes de la WebView, el nuevo PRISMA oficial re
 El estado RVPC2 de XI permanece individual por identidad del ejecutable; los récords locales de la UI se guardan en la WebView y usan el origen conservado. La validación Android debe incluir la conservación de ese origen y las rutas de actualización oficial, personalizada y eliminada. No confundir los registros UI preservados con una migración completa del estado RVPC2 entre ejecutables.
 
 Se verifican las firmas SHA de artefactos oficiales descargados del proyecto. El mecanismo preserva datos para versiones reconocidas; las compilaciones oficiales no incluidas en la lista solo podrán instalarse mediante importación explícita, evitando reemplazos inseguros.
+
+
+## Ciclo 04 — espectáculo musical de combos (2026-11-01)
+
+Implementación: music-stage.js, combo-spectacle.js, concert-rig.js y engine.js. Se mantiene la puntuación XI de game.xi sin modificaciones.
+
+- El jugador alcanza uno de los hitos 10/20/30/50/100/150... El director busca un acento mayor *medido* dentro de un horizonte corto y ajustado al BPM local. Se favorece un drop real cuando la canción lo permite; de lo contrario se utiliza un acento fuerte próximo. Un combo sin acento disponible NO puede crear una explosión mayor. No hay timers propios ni Math.random para elegir la liberación.
+- Mientras espera ese acento, aparece una carga visual discreta calculada a partir del tiempo de audio. Un fallo elimina el evento pendiente. Una pausa congela el tiempo de audio. Una búsqueda hacia atrás reinicia la cola; un cuadro que llega más de 180 ms tarde descarta el efecto antes de soltarlo a destiempo.
+- El efecto se convierte en un plan determinista, inmutable y temporalmente acotado: spark (x10), surge (x20), prism (x30), cascade (x50), finale (x100+). Produce hasta 3 ondas y 40 fragmentos geométricos 2D en el modo más alto. Los fragmentos dependen únicamente del combo y el tiempo musical, nunca de la velocidad de los frames.
+- Drops acústicos confirmados pueden abrir dos alas prismáticas; el solo hito del combo no declara un drop. La envolvente decae y la intensidad máxima de los focos permanece limitada para no deslumbrar, incluso durante el final.
+- La cinemática del concierto reacciona a la envolvente del evento. Modo batería: máximo 8 fragmentos, una onda y la geometría 3D de cabezales ya reducida. «Efectos suaves»: cero fragmentos, una onda tenue, cabezas inmóviles y brillo limitado. Máximo tres eventos visuales activos.
+- Los flashes son locales y progresivos; no hay estrobo de pantalla completa ni modificación de muestras musicales. Ether Render X sigue resolviendo las notas y cuerpos nativos, mientras que las ondas y fragmentos se presentan como efectos compuestos.
+- La prueba tests/prisma-combo-spectacle.mjs verifica tiempo de carga/liberación, no repetición, cancelación, descarte de cuadros tardíos, niveles, número de fragmentos, renderización con el observador nativo simulado y reglas de reducción. Se integra a la CI del proyecto junto con suites anteriores.
+
+**Versionado e instalación:** el nuevo empaquetado anuncia PRISMA 2.1.0 (Ciclo 04). REVERSE reconoce el hash SHA-256 del ejecutable oficial de PRISMA 2.0.0 del Ciclo 03 como predecesor verificado; crea el flag específico prisma-2.1-seeded y preserva el origen de récords/ajustes de WebView sin sobrescribir ejecutables personalizados. La memoria XI RVPC2 continúa aislada por identidad de ejecutable; los récords de la UI sí conservan su origen cuando la actualización es oficial reconocida.
+
+**Estado de validación al registrar este documento:** el código ha superado pruebas funcionales sintéticas del director, pero las pruebas de integración completas de este commit y sus artefactos Android quedan condicionadas a la ejecución de GitHub Actions.

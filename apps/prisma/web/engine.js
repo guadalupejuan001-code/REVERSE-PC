@@ -3,6 +3,7 @@ import { NativeXRender } from './native-xrender.js';
 import { seeded } from './audio.js';
 import { MusicStageDirector, makeIntelligentChart } from './music-stage.js';
 import { makeConcertProgram, concertPose, concertNativeParts, RIG_MAX_CUBOIDS } from './concert-rig.js';
+import { createSpectacleEvent, pruneSpectacles, spectacleEnvelope, spectacleGeometry, SPECTACLE_MAX_EVENTS } from './combo-spectacle.js';
 export const PALETTES = { coral: ['#63ffb4','#ff5074'], violet: ['#63ffb4','#bd8bff'], ice: ['#7aeaff','#ff5074'] };
 export const DIRECTIONS = [{x:0,y:-1},{x:1,y:0},{x:0,y:1},{x:-1,y:0}];
 export function makeChart(peaks, level, seed = 7721, music = null) {
@@ -20,7 +21,7 @@ export function visibleRange(chart,time,latency=0){
 export class Scene {
   constructor(canvas, getSettings) {
     this.canvas = canvas; this.ctx = canvas.getContext('2d', { alpha:true, desynchronized:true }); this.settings = getSettings;
-    this.width = 0; this.height = 0; this.particles = []; this.shards = []; this.trails = new Map(); this.pulse = 0; this.energy = 0; this.flash = 0; this.shake = 0; this.musicStage = null; this.stageExplosions = []; this.concertProgram = makeConcertProgram(null); this.rigPose = null;
+    this.width = 0; this.height = 0; this.particles = []; this.shards = []; this.trails = new Map(); this.pulse = 0; this.energy = 0; this.flash = 0; this.shake = 0; this.musicStage = null; this.stageExplosions = []; this.concertProgram = makeConcertProgram(null); this.rigPose = null; this.stageShow = null;
     const random = seeded(6631); this.stars = Array.from({length:100}, () => ({x:random(),y:random(),a:.15+random()*.5,s:random()>.9?1.4:.6}));
     this.qualityScale=1;this.frameTotal=0;this.frameCount=0;this.cooldown=0;this.view=new Float32Array(4);this.paletteKey='';this.rgb=[];this.diagnostics=new URLSearchParams(location.search).has('diagnostics');this.cpuTimes=[];
     this.gpu=NativeXRender.create()||(new URLSearchParams(location.search).get('renderer')==='canvas'?null:CubeGPU.create(canvas.parentElement));
@@ -33,10 +34,11 @@ export class Scene {
     this.concertProgram = makeConcertProgram(map);
     this.rigPose = null;
     this.stageExplosions = [];
+    this.stageShow = null;
   }
   armCombo(combo, time) { return this.musicStage?.armCombo(combo, time) || false; }
   cancelCombo() { this.musicStage?.cancelCombo(); }
-  clearMusicStage() { this.musicStage = null; this.stageExplosions = []; this.concertProgram = makeConcertProgram(null); this.rigPose = null; }
+  clearMusicStage() { this.musicStage = null; this.stageExplosions = []; this.concertProgram = makeConcertProgram(null); this.rigPose = null; this.stageShow = null; }
   resize() {
     const r=this.canvas.getBoundingClientRect(),quality=this.settings().quality||'auto';
     const budget=this.gpu?(quality==='high'?3000000:1600000):850000;
@@ -214,27 +216,54 @@ export class Scene {
       ctx.strokeStyle='rgba('+rgb+','+Math.min(.20,cue.beat*.13)+')';
       ctx.lineWidth=1.5;ctx.stroke();
     }
-    this.stageExplosions=this.stageExplosions.filter(event=>time>=event.t&&time-event.t<=.8);
-    for(const event of this.stageExplosions) {
-      const age=time-event.t,phase=age/.8;
+    // Charging is only visual anticipation for an earned scheduled event.
+    // It does not generate another beat or a random explosion.
+    if(cue.charge && !reduced){
+      const p=this.projection(0,0,2,preview),progress=cue.charge.progress;
+      const radius=Math.min(this.width,this.height)*(.035+.035*progress);
+      const rgb=hexRGB(colors[cue.charge.combo%20===0?1:0]);
+      ctx.beginPath();ctx.arc(p.x,p.y,radius,0,Math.PI*2);
+      ctx.strokeStyle='rgba('+rgb+','+(.045+progress*.11)+')';
+      ctx.lineWidth=1.4;ctx.stroke();
+    }
+    // The cut milestone prepares the event, but ONLY the decoded musical
+    // accent releases it. Geometry is a function of the exact audio time.
+    for(const event of this.stageExplosions){
+      const fx=spectacleGeometry(event,time,{
+        reduced,battery:pose.quality==='battery'
+      });
+      if(!fx)continue;
       const center=this.projection(0,0,2,preview);
-      const size=Math.min(this.width,this.height)*(.09+.45*phase);
+      const unit=Math.min(this.width,this.height)*.82;
       const rgb=hexRGB(colors[event.combo%20===0?1:0]);
-      const alpha=(1-phase)*(reduced?.16:Math.min(.64,.28+event.strength*.32));
-      ctx.beginPath();ctx.arc(center.x,center.y,size,0,Math.PI*2);
-      ctx.lineWidth=reduced?1.5:2.5+(1-phase)*3;
-      ctx.strokeStyle='rgba('+rgb+','+alpha+')';ctx.stroke();
-      if(!reduced) {
-        const count=Math.min(32,12+Math.floor(event.combo/10));
-        for(let i=0;i<count;i++) {
-          const angle=(i+(event.combo%11)*.09)*2.3999632297;
-          const distance=size*(.3+(i%5)*.14);
-          const px=center.x+Math.cos(angle)*distance,py=center.y+Math.sin(angle)*distance;
-          ctx.beginPath();ctx.moveTo(px,py);
-          ctx.lineTo(px+Math.cos(angle)*(9+phase*18),py+Math.sin(angle)*(9+phase*18));
-          ctx.strokeStyle='rgba('+rgb+','+(alpha*.68)+')';ctx.lineWidth=1.8;ctx.stroke();
+      ctx.save();ctx.globalCompositeOperation='lighter';
+      for(const ring of fx.rings){
+        ctx.beginPath();ctx.arc(center.x,center.y,Math.max(2,ring.radius*unit),0,Math.PI*2);
+        ctx.strokeStyle='rgba('+rgb+','+ring.alpha+')';
+        ctx.lineWidth=ring.width;ctx.stroke();
+      }
+      if(fx.drop && !reduced && fx.phase<.65){
+        for(const side of [-1,1]){
+          const span=unit*(.16+fx.phase*.34);
+          ctx.beginPath();ctx.moveTo(center.x+side*span*.28,center.y-unit*.14);
+          ctx.lineTo(center.x+side*span,center.y-unit*.45);
+          ctx.lineTo(center.x+side*span*.67,center.y+unit*.26);
+          ctx.closePath();
+          ctx.fillStyle='rgba('+rgb+','+(fx.opacity*.075)+')';ctx.fill();
         }
       }
+      for(const shard of fx.shards){
+        const cx=center.x+shard.x*unit,cy=center.y+shard.y*unit;
+        const dx=Math.cos(shard.angle),dy=Math.sin(shard.angle);
+        const reach=Math.max(2,shard.length*unit),width=Math.max(.7,shard.width*unit);
+        ctx.beginPath();
+        ctx.moveTo(cx+dx*reach,cy+dy*reach);
+        ctx.lineTo(cx-dx*reach*.55-dy*width,cy-dy*reach*.55+dx*width);
+        ctx.lineTo(cx-dx*reach*.55+dy*width,cy-dy*reach*.55-dx*width);
+        ctx.closePath();
+        ctx.fillStyle='rgba('+rgb+','+Math.min(.82,shard.alpha)+')';ctx.fill();
+      }
+      ctx.restore();
     }
     ctx.restore();
   }
@@ -246,8 +275,18 @@ export class Scene {
     ctx.setTransform(this.dpr,0,0,this.dpr,0,0);this.energy+=(audioEnergy-this.energy)*.12;this.pulse=Math.max(0,this.pulse-dt*2.7);this.shake=Math.max(0,this.shake-dt*22);
     ctx.save();if(this.shake&&!this.settings().effects)ctx.translate((Math.random()-.5)*this.shake,(Math.random()-.5)*this.shake);
     if(!this.gpu)this.background(time,preview,this.energy);
-    const stageCue = this.musicStage ? this.musicStage.step(time) : { beat: Math.exp(-((time % (60 / 122) + (60 / 122)) % (60 / 122)) * 8) * .55, energy: .28, explosion: null };
-    if(stageCue.explosion)this.stageExplosions.push(stageCue.explosion);
+    const stageCue = this.musicStage ? this.musicStage.step(time) : { beat: Math.exp(-((time % (60 / 122) + (60 / 122)) % (60 / 122)) * 8) * .55, energy: .28, charge:null, explosion:null };
+    if(stageCue.explosion){
+      const event=createSpectacleEvent(stageCue.explosion);
+      if(event)this.stageExplosions.push(event);
+      if(this.stageExplosions.length>SPECTACLE_MAX_EVENTS)
+        this.stageExplosions=this.stageExplosions.slice(-SPECTACLE_MAX_EVENTS);
+    }
+    this.stageExplosions=pruneSpectacles(this.stageExplosions,time);
+    stageCue.show=spectacleEnvelope(this.stageExplosions,time,this.settings().effects);
+    this.stageShow={charge:stageCue.charge||null,
+      release:stageCue.explosion?stageCue.explosion.combo:null,
+      active:this.stageExplosions.length?this.stageExplosions[this.stageExplosions.length-1].tier:null};
     const quality=this.settings().quality==='auto'&&this.qualityScale<.78?'battery':this.settings().quality;
     const rigPose=concertPose(this.concertProgram,time,stageCue,{quality,reduced:this.settings().effects});
     this.rigPose=rigPose;
@@ -276,6 +315,6 @@ export class Scene {
     for(let i=this.particles.length-1;i>=0;i--){const p=this.particles[i];p.life-=dt*1.8;if(p.life<=0){this.particles.splice(i,1);continue;}p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=140*dt;ctx.globalAlpha=p.life;ctx.strokeStyle=p.color;ctx.lineWidth=p.size;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x-p.vx*.017,p.y-p.vy*.017);ctx.stroke();}ctx.globalAlpha=1;
     for(const [id,trail]of this.trails){for(const p of trail.points)p.life-=dt*4.3;trail.points=trail.points.filter(p=>p.life>0);if(!trail.points.length){if(!trail.active)this.trails.delete(id);continue;}ctx.save();ctx.strokeStyle=trail.color;ctx.lineJoin='round';ctx.lineCap='round';ctx.shadowColor=trail.color;ctx.shadowBlur=0;for(let i=1;i<trail.points.length;i++){const a=trail.points[i-1],b=trail.points[i];ctx.globalAlpha=b.life*.8;ctx.lineWidth=b.life*5;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}ctx.shadowBlur=0;ctx.strokeStyle='#f0fff8';for(let i=1;i<trail.points.length;i++){const a=trail.points[i-1],b=trail.points[i];ctx.globalAlpha=b.life;ctx.lineWidth=b.life*1.4;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}ctx.restore();}
   }
-  clearEffects(){this.particles=[];this.shards=[];this.trails.clear();this.stageExplosions=[];this.cancelCombo();}
+  clearEffects(){this.particles=[];this.shards=[];this.trails.clear();this.stageExplosions=[];this.stageShow=null;this.cancelCombo();}
 }
 export function hexRGB(hex){return `${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(3,5),16)},${parseInt(hex.slice(5,7),16)}`;}
