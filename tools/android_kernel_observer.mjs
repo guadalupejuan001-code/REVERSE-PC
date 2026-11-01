@@ -207,9 +207,10 @@ export function observeAndroidKernel(bytes,expectedCheckpointSha,options){
        const priv=read(file+BigInt(fl.private_data.offset));
        check(priv>=0xffff000000000000n&&(priv&7n)===0n,'Binder file private_data invalid');
        const binderPid=Number(read(priv+BigInt(bp.pid.offset),4));
-       check(binderPid>0&&binderPid<=4194304,'Binder proc PID invalid');
        item.guest_syscall.binder_private={
          pointer:hex(priv),pid:binderPid,fd_owner_pid:pid,
+         plausible_binder_proc_pid:binderPid>0&&binderPid<=4194304,
+         file_private_data_field_offset:fl.private_data.offset,
          proc_node_next:hex(read(priv+BigInt(bp.proc_node.offset))),
          process_threads_root:hex(read(priv+BigInt(bp.threads.offset))),
          todo_head_next:hex(read(priv+BigInt(bp.todo.offset))),
