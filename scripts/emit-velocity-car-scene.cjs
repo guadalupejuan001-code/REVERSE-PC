@@ -119,7 +119,7 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
  vertices.forEach((p,i)=>{if(canonical[i]===i){const uv=carUV(p,normalKinds[i]);out(`meshvertex ${i} ${p.join(' ')}\nmeshtexuv ${i} ${uv.join(' ')}`);}});
  normalIds.forEach((g,i)=>{if(canonical[i]<0)return;const code=g>=0?g+256:-g-1;if(code<0||code>511)throw Error('Scalar metadata range');out(`localset ${512+i} ${canonical[i]*512+code}`);});
  function range(start,end){out(`set r0 ${start}`);store('r0',8324,2,0);out(`set r0 ${end}`);store('r0',8326,2,0);}
- out('store8 8203 0\nlabel actor\nstore8 8334 0\nstore8 8336 0\nload8 r0 8203\ncmp r0 44\njge skid_actor\ncmp r0 4\njge tree_actor\ncmp r0 0\njne rival_actor');
+ out('store8 8203 0\nlabel actor\nstore8 8334 0\nstore8 8336 0\nstore8 8337 0\nstore8 8338 0\nload8 r0 8203\ncmp r0 44\njge skid_actor\ncmp r0 4\njge tree_actor\ncmp r0 0\njne rival_actor');
  range(models.high.start,models.high.end);
  load('r0',100,4,2000000);load('r2',104,4,2000000);load('r8',108,2,0);
  out('load8 r9 202\nmul r9 24\nadd r9 64\nstore8 8318 r9\nload8 r9 201\ncmp r9 2\njne player_mesh_ready\nstore8 8334 1\nlabel player_mesh_ready\njmp actor_ready\nlabel rival_actor');
@@ -268,7 +268,17 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
   out('label vertex_publish_position');load('r8',8324,2,0);out(`add r8 ${CAMERA}\nmeshvertex r8 r0 r1 r2\nmov r9 r8\nsub r9 ${CAMERA}\nadd r9 512\nlocalget r9 r9\ndiv r9 512\nmeshtexcopy r8 r9\nmov r9 r8\nsub r9 ${CAMERA-512}\nlocalget r9 r9\nmod r9 512\ncmp r9 384\njge vertex_glass_lookup\ncmp r9 256\njge vertex_lighting_lookup\njmp vertex_shade_ready\nlabel vertex_glass_lookup\nadd r9 2216\nlocalget r9 r9\njmp vertex_shade_ready\nlabel vertex_lighting_lookup\nadd r9 2144\nlocalget r9 r9\nlabel vertex_shade_ready\nmeshshade r8 r9\nsub r8 ${CAMERA-1}`);store('r8',8324,2,0);load('r0',8326,2,0);out('cmp r8 r0\njlt actor_vertex');
  }
  transformVertex();
- out('load8 r0 8203\ncmp r0 0\njne actor_shadow_stage\nload8 r0 8336\ncmp r0 1\nje actor_shadow_stage\nload8 r0 388\ncmp r0 0\njle actor_shadow_stage\nstore8 8336 1');
+ // Expand the ephemeral smoke and nitro meshes once per frame, only when
+ // XI's authoritative event flags are active. Each next pass continues the
+ // same actor with a fresh vertex interval (no Java particle overlay).
+ out('load8 r0 8203\ncmp r0 0\njne actor_shadow_stage'+
+     '\nload8 r0 8337\ncmp r0 1\nje actor_nitro_stage'+
+     '\nstore8 8337 1\nload8 r0 395\ncmp r0 0\njle actor_nitro_stage');
+ range(smokeStart,smokeEnd);out('jmp actor_vertex\nlabel actor_nitro_stage');
+ out('load8 r0 8338\ncmp r0 1\nje actor_air_stage'+
+     '\nstore8 8338 1\nload8 r0 382\ncmp r0 1\njne actor_air_stage');
+ range(nitroStart,nitroEnd);out('jmp actor_vertex\nlabel actor_air_stage');
+ out('load8 r0 8336\ncmp r0 1\nje actor_shadow_stage\nload8 r0 388\ncmp r0 0\njle actor_shadow_stage\nstore8 8336 1');
  range(airJetStart,airJetEnd);out('jmp actor_vertex\nlabel actor_shadow_stage');
  out('load8 r0 8203\ncmp r0 4\njge actor_geometry_ready\nload8 r0 8335\ncmp r0 1\nje actor_geometry_ready\nstore8 8335 1');
  range(shadowStart,shadowEnd);out('jmp actor_vertex\nlabel actor_geometry_ready');
