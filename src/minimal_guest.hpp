@@ -139,7 +139,7 @@ class MinimalGuest {
       require(candidate[i-1].size<=candidate[i].address-candidate[i-1].address, "Overlapping ELF segments are not supported");
     auto immutable=std::make_shared<const Bytes>(std::move(bytes));
     auto empty=make_runtime(override_limit_);
-    image_=std::move(immutable); segments_=std::move(candidate); runtime_=std::move(empty);invalidate_translation_hints();
+    image_=std::move(immutable); segments_=std::move(candidate); runtime_=std::move(empty);invalidate_translation_hints();clear_code_cache();
     machine_=MachineState{};machine_.enabled=privileged;machine_.image_kind=privileged?1:0;floating_=FloatingState{};block_image_.reset();
     registers_=Registers{}; registers_.pc=entry; registers_.sp=(ram_base()+ram_)&~UINT64_C(15);
     machine_.sp1=registers_.sp;
@@ -200,7 +200,7 @@ class MinimalGuest {
                           prefix+kernel.size()+tree.size(),initrd.size(),4});
     std::sort(segments.begin(),segments.end(),
               [](const Segment& a,const Segment& b){return a.address<b.address;});
-    image_=std::move(immutable);segments_=std::move(segments);invalidate_translation_hints();
+    image_=std::move(immutable);segments_=std::move(segments);invalidate_translation_hints();clear_code_cache();
     runtime_=std::move(empty);machine_=MachineState{};
     machine_.enabled=true;machine_.image_kind=2;floating_=FloatingState{};
     block_image_=std::move(disk);machine_.pci.enabled=pci;machine_.pci.disk_bytes=block_image_?block_image_->size():0;
@@ -243,7 +243,7 @@ class MinimalGuest {
   }
   void write(std::uint64_t address,std::uint64_t value,unsigned size) {
     require(size==1 || size==2 || size==4 || size==8, "Invalid guest word size"); range(address,size);
-    invalidate_translation_hints();
+    invalidate_translation_hints();clear_code_cache();
     auto store=[&](mundo_x::QuantumRuntime::ByteAccess& bytes){
       for(unsigned i=0;i<size;++i)bytes.store(std::to_string(address+i),std::uint8_t(value>>(i*8))^backing(address+i));
     };
@@ -252,8 +252,8 @@ class MinimalGuest {
     if(byte_transaction_)store(*byte_transaction_);else runtime_.transact_bytes(store);
     machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;
   }
-  std::string apply_xi_delta(const std::string& source) { invalidate_translation_hints();auto output=runtime_.execute(source);machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;return output; }
-  std::string apply_rxe_delta(const Bytes& image) { invalidate_translation_hints();auto output=reverse_pc::rxe::execute(runtime_,image);machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;return output; }
+  std::string apply_xi_delta(const std::string& source) { invalidate_translation_hints();clear_code_cache();auto output=runtime_.execute(source);machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;return output; }
+  std::string apply_rxe_delta(const Bytes& image) { invalidate_translation_hints();clear_code_cache();auto output=reverse_pc::rxe::execute(runtime_,image);machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;return output; }
 
   // Explicit opt-in: migrate a legacy RVG to the same QuantumRuntime and
   // InverseMemory with adaptive classical storage and no count-only ceiling.
@@ -467,6 +467,62 @@ class MinimalGuest {
   // Bloom footprint of physical table pages read in this generation.
   // Collisions can only force extra invalidations, never retain stale data.
   mutable std::array<std::uint64_t,4> translation_table_pages_{};
+
+  // C37, nonpersistent fetch-only cache of already validated *physical*
+  // AArch64 instruction words. Every fetch still walks the guest's current
+  // translation/permission rules; this is neither a new guest memory store
+  // nor a synthetic hardware cache visible to Android.
+  struct CodeEntry {
+    std::uint64_t physical=UINT64_MAX,epoch=0;
+    std::uint32_t word=0;
+  };
+  static constexpr unsigned code_entries=8192;
+  std::array<CodeEntry,code_entries> code_cache_{};
+  std::uint64_t code_cache_epoch_=1;
+  void clear_code_cache(){
+    if(++code_cache_epoch_==0){code_cache_={};code_cache_epoch_=1;}
+  }
+  void invalidate_code_physical(const std::array<std::uint64_t,16>& physical,unsigned size){
+    // Quantum bindings can couple an arbitrary stored byte to other keys.
+    if(runtime_.memory().stats().quantum_bindings){clear_code_cache();return;}
+    for(unsigned i=0;i<size;++i){
+      const auto key=physical[i]&~UINT64_C(3);
+      auto& e=code_cache_[(key>>2)&(code_entries-1)];
+      if(e.epoch==code_cache_epoch_&&e.physical==key)e.epoch=0;
+    }
+  }
+  void invalidate_dma_code(std::uint64_t address,unsigned size){
+    if(runtime_.memory().stats().quantum_bindings){clear_code_cache();return;}
+    for(unsigned i=0;i<size;++i){
+      const auto key=(address+i)&~UINT64_C(3);
+      auto& e=code_cache_[(key>>2)&(code_entries-1)];
+      if(e.epoch==code_cache_epoch_&&e.physical==key)e.epoch=0;
+    }
+  }
+  std::uint32_t instruction_word(std::uint64_t address,RunResult& result){
+#ifdef REVERSE_PC_INSTR_CACHE_REFERENCE
+    return std::uint32_t(cpu_read(address,4,result,true));
+#else
+    if(machine_.enabled&&!runtime_.memory().stats().quantum_bindings){
+      // Access and executable permissions are checked on *every* fetch.
+      // Never bypass the MMU, EL0 restrictions or an MMIO fetch fault.
+      const auto physical=resolve_access(address,4,false,true);
+      const auto first=physical[0];
+      if(!(first&3)&&physical[1]==first+1&&physical[2]==first+2&&physical[3]==first+3){
+        auto& e=code_cache_[(first>>2)&(code_entries-1)];
+        if(e.epoch==code_cache_epoch_&&e.physical==first)return e.word;
+        const auto word=std::uint32_t(read8(first))|
+          (std::uint32_t(read8(first+1))<<8)|
+          (std::uint32_t(read8(first+2))<<16)|
+          (std::uint32_t(read8(first+3))<<24);
+        e.physical=first;e.word=word;e.epoch=code_cache_epoch_;
+        return word;
+      }
+    }
+    return std::uint32_t(cpu_read(address,4,result,true));
+#endif
+  }
+
   static unsigned translation_page_slot(std::uint64_t address) {
     const auto page=address>>12;
     return unsigned((page^(page>>8)^(page>>16))&255);
@@ -618,7 +674,7 @@ inline void MinimalGuest::step(RunResult& result) {
   auto& cpu=registers_;
   require(cpu.pc%4==0,"Unaligned AArch64 instruction address");
   const auto pc=cpu.pc;
-  const auto instruction=std::uint32_t(cpu_read(pc,4,result,true));
+  const auto instruction=instruction_word(pc,result);
   auto next=pc+4;
   const unsigned bits=(instruction>>31)?64:32, rd=instruction&31, rn=(instruction>>5)&31, rm=(instruction>>16)&31;
   auto unsupported=[&](){throw std::runtime_error("Unsupported AArch64 instruction "+hex(instruction)+" at "+hex(pc));};
@@ -842,7 +898,7 @@ inline void MinimalGuest::step(RunResult& result) {
       if(success){
         // Pin the already checked physical extent for the whole atomic
         // instruction, even if its first half changes a page-table entry.
-        invalidate_translation_hints();
+        invalidate_translation_hints();invalidate_code_physical(physical,total);
         auto store=[&](mundo_x::QuantumRuntime::ByteAccess& bytes){
           for(unsigned i=0;i<total;++i){
             const auto value=std::uint8_t((i<size?first:last)>>(8*(i%size)));
