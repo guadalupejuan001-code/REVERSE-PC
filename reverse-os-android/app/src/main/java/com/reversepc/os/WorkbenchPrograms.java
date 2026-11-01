@@ -26,7 +26,8 @@ final class WorkbenchPrograms {
         "c6bd13581a7a565cd9ea54b34dbefc3f92ca473d4bd5701478853a0205653fd9",
         "3d4659559cf02e2f4509971afc84db56b84bc9a07faaf545d0064d44504399ce",
         "446bebd4c97cbd4807aea0624da0bd45e076541f5e491540f9bffd4b4797370e",
-        "3eaac57ab33904349381ed1e9ea3e4695cb5550d2fce9f6f1fae6eeb50fa3baa"
+        "3eaac57ab33904349381ed1e9ea3e4695cb5550d2fce9f6f1fae6eeb50fa3baa",
+        "9bfad000b33e33a861e45d4bdcc24fc943a71f743f600d08ef06f9e28ec65300"
     };
     static boolean trustedOldPrisma(String hash){
         if(hash==null)return false;
