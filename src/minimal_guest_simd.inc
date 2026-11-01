@@ -191,6 +191,18 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
       value.lane(n,lane_bits,result);
     }commit(value);return true;
   }
+  if(shift_immediate&&immediate_shift==0x0f001400u){ // SSRA/USRA: arithmetic or logical shift right, accumulate modulo each lane.
+    const unsigned encoded=(i>>16)&127;if(encoded<8)return false;
+    unsigned lane_bits=8;while(lane_bits*2<=encoded)lane_bits*=2;
+    if(lane_bits==64&&!q)return false; // Unallocated 1D form.
+    const unsigned amount=2*lane_bits-encoded; // 1..element width; never shift C++ by 64.
+    fp_access();const auto source=floating_.v[rn],old=floating_.v[rd];Vector128 value;
+    for(unsigned n=0;n<width/lane_bits;n++){
+      const auto shifted=right_shift(source.lane(n,lane_bits),amount,lane_bits,!u);
+      value.lane(n,lane_bits,old.lane(n,lane_bits)+shifted);
+    }
+    commit(value);return true; // Correct when Rd aliases Rn; unrelated state unchanged.
+  }
   if(shift_immediate&&immediate_shift==0x0f00a400u){ // SSHLL/USHLL and upper-half variants (SXTL/UXTL at shift zero).
     const unsigned encoded=(i>>16)&127;if(encoded>=64)return false; // immh[3] is reserved.
     unsigned narrow=8;while(narrow*2<=encoded)narrow*=2;
@@ -239,6 +251,12 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
       result.lane(n,narrow,(x>>shift)+unsigned(carry));
     }
     if(q)floating_.v[rd].high=result.low;else floating_.v[rd]={result.low,0};return true;
+  }
+  if((i&0xbf3ffc00u)==0x2e20b800u){ // NEG Vd.<T>, Vn.<T>: modular vector integer negate.
+    if(element==64&&!q)return false; // 1D is unallocated; reject before FP access.
+    fp_access();const auto source=floating_.v[rn];Vector128 value;
+    for(unsigned n=0;n<width/element;n++)value.lane(n,element,UINT64_C(0)-source.lane(n,element));
+    commit(value);return true; // 64-bit vectors zero their high half; Rd==Rn supported.
   }
   const auto compare_zero=i&0xbf3ffc00u;
   if(compare_zero==0x0e208800u||compare_zero==0x2e208800u||compare_zero==0x0e209800u||compare_zero==0x2e209800u||compare_zero==0x0e20a800u){ // CMGT/CMGE/CMEQ/CMLE/CMLT, signed comparisons with zero.
