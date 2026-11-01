@@ -25,6 +25,18 @@ jbyteArray output(JNIEnv* e,const std::vector<std::uint8_t>& v){
   if(arr&&!v.empty())e->SetByteArrayRegion(arr,0,jsize(v.size()),reinterpret_cast<const jbyte*>(v.data()));
   return arr;
 }
+// Read-only XI image observation: write the interpreter's binary result
+// directly into the JNI output. No RXOS1 envelope, copied state, or temporary
+// uint8 vector. Java owns the resulting fresh array exclusively.
+jbyteArray output_frame(JNIEnv* e,const std::string& frame){
+  if(frame.size()>std::size_t(std::numeric_limits<jsize>::max()))
+    throw std::length_error("XI observation exceeds JNI array limit");
+  jbyteArray arr=e->NewByteArray(jsize(frame.size()));
+  if(arr&&!frame.empty())
+    e->SetByteArrayRegion(arr,0,jsize(frame.size()),
+       reinterpret_cast<const jbyte*>(frame.data()));
+  return arr;
+}
 std::string source(JNIEnv* e,jstring text){
   if(!text)throw std::invalid_argument("XI program missing");
   const char* chars=e->GetStringUTFChars(text,nullptr);
@@ -52,6 +64,20 @@ Java_com_reversepc_os_NativeRuntime_execute(JNIEnv* e,jclass,jbyteArray state,js
     return output(e,reverse_os::packet(lines,reverse_os::save(runtime)));
   }catch(const std::exception& x){throw_java(e,x);return nullptr;}
 }
+// One-shot immutable observation. The renderer executes the exact same XI
+// program against a private restored RVPC2 snapshot as execute(), but its
+// candidate state is deliberately discarded. Only original XFS1/XFB5 bytes
+// cross JNI; no engine equations, pixels or materials are implemented here.
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_observeFrame(JNIEnv* e,jclass,
+    jbyteArray state,jstring text){
+  try{
+    auto runtime=reverse_os::restore(bytes(e,state));
+    const auto frame=runtime.execute(source(e,text));
+    return output_frame(e,frame);
+  }catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_reversepc_os_NativeRuntime_inspect(JNIEnv* e,jclass,jbyteArray state){
   try{
