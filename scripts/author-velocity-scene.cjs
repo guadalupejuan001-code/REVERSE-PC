@@ -27,7 +27,9 @@ load('r0',108,2,0);trig('r0','r14','r15','r1','r2');
 out(`load8 r0 200\ncmp r0 1\nje size_high\ncmp r0 2\nje size_medium\nset r0 320\nset r1 180\njmp size_done\nlabel size_medium\nset r0 480\nset r1 270\njmp size_done\nlabel size_high\nset r0 640\nset r1 360\nlabel size_done`);
 store('r0',8210,2,0);store('r1',8212,2,0);
 out(`meshbegin r0 r1 2 12\nload8 r0 201\ncmp r0 1\nje camera_close\ncmp r0 2\nje camera_hood\nset r0 750\nset r1 250\nset r2 160\nset r3 987\njmp camera_ready\nlabel camera_close\nset r0 650\nset r1 230\nset r2 150\nset r3 989\njmp camera_ready\nlabel camera_hood\nset r0 0\nset r1 115\nset r2 100\nset r3 995\nlabel camera_ready`);
-store('r0',8192,2,0);store('r1',8194,2,0);store('r2',8196,2,0);store('r3',8198,2,0);
+ // Chase camera rises with the XI-controlled chassis; no artificial screen shake.
+ out('load16 r4 384\nmul r4 3\ndiv r4 5\nadd r1 r4');
+ store('r0',8192,2,0);store('r1',8194,2,0);store('r2',8196,2,0);store('r3',8198,2,0);
 require('./velocity-textures.cjs').emitXiTextures(out);
 function focus(){
  load('r9',8210,2,0,'r11');
@@ -81,7 +83,7 @@ for(const tri of [[[0,0],[1,0],[1,1]],[[0,0],[1,1],[0,1]]]){
   out('div r1 12\nmeshtexuv '+id+' r1 r0\nmeshshade '+id+' 128');
  }
  focus();
- out('meshfacegradienttex 1770 1771 1772 40 8 5 12 r9 r10 r11 60\njmp '+done+'\nlabel '+plain);
+ out('meshfacegradienttex 1770 1771 1772 40 16 5 4 r9 r10 r11 60\njmp '+done+'\nlabel '+plain);
  focus();
  out('load8 r7 8220\nmeshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 r7 r9 r10 r11 60');
  out('label '+done);

@@ -42,9 +42,12 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
         getHolder().addCallback(this);setKeepScreenOn(true);
     }
     void controls(int gas,int brake,int steer,boolean handbrake){
+        controls(gas,brake,steer,handbrake,false,false);
+    }
+    void controls(int gas,int brake,int steer,boolean handbrake,boolean nitro,boolean jump){
         if(gas<0||gas>1||brake<0||brake>1||steer<0||steer>2)
             throw new IllegalArgumentException("Control fuera del protocolo XI");
-        input=gas|(brake<<1)|(steer<<2)|(handbrake?16:0);
+        input=gas|(brake<<1)|(steer<<2)|(handbrake?16:0)|(nitro?32:0)|(jump?64:0);
     }
     void reset(){resetRequested.set(true);paused=false;reverseGear=false;}
     boolean isReverseGear(){return reverseGear;}
@@ -110,7 +113,8 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 long now=SystemClock.elapsedRealtimeNanos(),wait=next-now;
                 if(wait>0){Thread.sleep(Math.max(1L,wait/1_000_000L));continue;}
                 int current=input;
-                game.step(current&1,(current>>>1)&1,(current>>>2)&3,(current>>>4)&1,reverseGear,false);
+                game.step(current&1,(current>>>1)&1,(current>>>2)&3,(current>>>4)&1,
+                     (current&32)!=0,(current&64)!=0,reverseGear,false);
                 measuredSteps++;
                 next+=20_000_000L;
                 // Keep fixed XI steps; a slow host does not invent simulation ticks.

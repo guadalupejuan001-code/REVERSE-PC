@@ -9,8 +9,10 @@ for(const [id,rows] of TILES.entries()){
  assert(new Set(rows.join('')).size>=2,'texture '+id+' must have distinct texels');
 }
 const bound=Object.values(TEXTURED_MATERIALS);
-assert.equal(bound.length,5);
-assert.equal(new Set(bound.map(m=>m.id)).size,5,'separate material texture maps');
+assert.equal(bound.length,3);
+assert(!('paint' in TEXTURED_MATERIALS)&&!('glass' in TEXTURED_MATERIALS),
+ 'Body and glazing use smooth XI normals; do not reintroduce 16x16 color stippling');
+assert.equal(new Set(bound.map(m=>m.id)).size,3,'separate material texture maps');
 for(const entry of bound){
  assert(entry.id>=0&&entry.id<8);
  assert(entry.strength>=1&&entry.strength<=16);
@@ -21,4 +23,4 @@ for(const p of [[0,80,0],[100,34,138],[-100,34,-142],[0,115,-15]])
   assert.equal(uv.length,2);
   assert(uv.every(v=>Number.isInteger(v)&&v>=-32768&&v<=32767));
  }
-console.log('XI_TEXTURE_ATLAS_PASS tiles=8 cells=2048 materials=5');
+console.log('XI_TEXTURE_ATLAS_PASS tiles=8 cells=2048 materials=3; smooth_paint_glass=true');

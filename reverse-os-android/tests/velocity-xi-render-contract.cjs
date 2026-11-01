@@ -117,7 +117,7 @@ try{
  const reset=path.join(temp,'reset.xi');
  fs.writeFileSync(reset,inject(driving,'store8 128 0\nstore8 129 0\nstore8 130 1\nstore8 131 0\nstore8 132 1\n'));
  const started=registers(run('run',reset,world,state));
- assert.equal(started.length,16,'driving observation ABI');started.forEach((r,i)=>assert.equal(r.register,i));
+ assert.equal(started.length,22,'driving observation ABI');started.forEach((r,i)=>assert.equal(r.register,i%16));
  assert.deepEqual(started.slice(0,9).map(r=>r.value),[0,0,0,0,0,0,0,0,0],'race reset pose');
  assert.equal(started[9].value,4);assert.equal(started[10].value,0);assert.equal(started[13].value,150);
  const retainedHash=sha(fs.readFileSync(state)),measured=[],benchmarks=[],hashes=new Map();

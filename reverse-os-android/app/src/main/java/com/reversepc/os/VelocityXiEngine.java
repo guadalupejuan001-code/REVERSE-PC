@@ -19,9 +19,10 @@ final class VelocityXiEngine {
     static final class Snapshot {
         final long xCm,zCm,ticks,totalProgress;
         final int yaw4096,speedCmps,slideCmps,checkpoint,position,laps,trackS,segment,countdown;
-        final boolean finished,offRoad,wallContact;
+        final boolean finished,offRoad,wallContact,nitroActive,landingPulse;
+        final int nitroCharge,jumpHeightCm,airPulse,jumpCooldown;
         Snapshot(long[] values){
-            if(values==null||values.length!=16)throw new IllegalArgumentException("XI race output needs sixteen registers");
+            if(values==null||values.length!=22)throw new IllegalArgumentException("XI race output needs twenty-two registers");
             for(int i=2;i<values.length;i++)if(values[i]<Integer.MIN_VALUE||values[i]>Integer.MAX_VALUE)
                 throw new IllegalArgumentException("XI race register exceeds integer range");
             xCm=values[0];zCm=values[1];yaw4096=(int)values[2];
@@ -31,6 +32,13 @@ final class VelocityXiEngine {
             position=(int)values[9];laps=(int)values[10];trackS=(int)values[11];
             segment=(int)values[12];countdown=(int)values[13];wallContact=values[14]==1;
             totalProgress=values[15];
+            nitroCharge=(int)values[16];nitroActive=values[17]==1;
+            jumpHeightCm=(int)values[18];airPulse=(int)values[19];
+            jumpCooldown=(int)values[20];landingPulse=values[21]==1;
+            if(nitroCharge<0||nitroCharge>1000||values[17]<0||values[17]>1||
+                    jumpHeightCm<0||jumpHeightCm>300||airPulse<0||airPulse>30||
+                    jumpCooldown<0||jumpCooldown>90||values[21]<0||values[21]>1)
+                throw new IllegalArgumentException("XI air/nitro state outside physical bounds");
             if(xCm< -1_500_000||xCm>1_500_000||zCm< -1_500_000||zCm>1_500_000||
                     yaw4096<0||yaw4096>=4096||speedCmps<0||speedCmps>6500||
                     slideCmps< -6500||slideCmps>6500||checkpoint<0||checkpoint>12||
@@ -41,6 +49,7 @@ final class VelocityXiEngine {
                 throw new IllegalArgumentException("XI game output beyond the bounded protocol");
         }
         int speedKmh(){return (int)Math.round(speedCmps*.036);}
+        int nitroPercent(){return nitroCharge/10;}
         long seconds(){return ticks/50;}
         int displayedLap(){return Math.min(3,laps+1);}
     }
@@ -130,31 +139,35 @@ final class VelocityXiEngine {
     }
 
     private static Snapshot parseState(String output)throws Exception{
-        long[] observed=new long[16];int n=0;
+        long[] observed=new long[22];int n=0;
         for(String line:output.split("\n")){
             if(line.trim().isEmpty())continue;
-            if(n>=16)throw new IllegalArgumentException("XI game published too many registers");
+            if(n>=22)throw new IllegalArgumentException("XI game published too many registers");
             JSONObject row=new JSONObject(line);
             if(!"register".equals(row.getString("type"))||
-               !("r"+n).equals(row.getString("register")))
+               !("r"+(n%16)).equals(row.getString("register")))
                 throw new IllegalArgumentException("XI game register order mismatch");
             observed[n++]=row.getLong("value");
         }
-        if(n!=16)throw new IllegalArgumentException("Incomplete XI game observation");
+        if(n!=22)throw new IllegalArgumentException("Incomplete XI game observation");
         return new Snapshot(observed);
     }
 
     synchronized Snapshot step(int gas,int brake,int steer,int drift,boolean reverse,boolean reset)throws Exception{
+        return step(gas,brake,steer,drift,false,false,reverse,reset);
+    }
+    synchronized Snapshot step(int gas,int brake,int steer,int drift,boolean nitro,boolean jump,boolean reverse,boolean reset)throws Exception{
         if(gas<0||gas>1||brake<0||brake>1||steer<0||steer>2||
            drift<0||drift>1)throw new IllegalArgumentException("XI physical control out of range");
         // Execute the XI source through the *existing* generic runtime.
         // There is no game-specific JNI/C++ renderer, physics or instruction API.
-        final int programKey=gas|(brake<<1)|(steer<<2)|(drift<<4)|(reset?32:0)|(reverse?64:0);
+        final int programKey=gas|(brake<<1)|(steer<<2)|(drift<<4)|(reset?32:0)|(reverse?64:0)|(nitro?128:0)|(jump?256:0);
         if(programKey!=driveProgramKey){
             driveProgramCache=XI_HEADER+
                 "store8 128 "+gas+"\nstore8 129 "+brake+
                 "\nstore8 130 "+steer+"\nstore8 131 "+drift+
-                "\nstore8 132 "+(reset?1:0)+"\nstore8 133 "+(reverse?1:0)+"\n"+
+                "\nstore8 132 "+(reset?1:0)+"\nstore8 133 "+(reverse?1:0)+
+                 "\nstore8 134 "+(nitro?1:0)+"\nstore8 135 "+(jump?1:0)+"\n"+
                 driveXi.substring(XI_HEADER.length());
             driveProgramKey=programKey;
         }

@@ -249,6 +249,8 @@ try{
   check(ui.some(x=>/^VUELTA \d+ \/ 3$/.test(x.text||''))&&
     ui.some(x=>/^POSICIÓN \d+ \/ 4$/.test(x.text||'')),'minimal race lap and position HUD');
   check(!!findText(ui,'ACELERAR'),'accelerator physical control');
+   check(!!findText(ui,'NITRO')&&!!findText(ui,'SALTO'),
+     'physical boost and pneumatic jump buttons exist in the installed APK');
   check(!!findText(ui,'FRENO')&&!!findText(ui,'◀')&&!!findText(ui,'▶'),
     'real driving pedal/steering accessibility controls');
   check(!!findText(ui,'Marcha D'),'visible real-world transmission selector');

@@ -38,6 +38,20 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
   return {detail,start,end:vertices.length,faces};
  }
  const models={high:appendModel('high'),medium:appendModel('medium'),far:appendModel('far')};
+ // Four physical wheel pressure nozzles, modelled as crossed 3D XI ribbons.
+ const airJetStart=vertices.length,airJetFaces=[];
+ function pressureVertex(x,y,z,shade){
+  const id=vertices.length;vertices.push([x,y,z]);
+  normalIds.push(-shade-1);normalKinds.push('air');canonical.push(id);return id;
+ }
+ for(const side of [-1,1])for(const z of [-142,138]){
+  const x=side*91;
+  const top=pressureVertex(x,24,z,225),low=pressureVertex(x,-75,z,22);
+  const left=pressureVertex(x-14,-40,z,87),right=pressureVertex(x+14,-40,z,87);
+  const fore=pressureVertex(x,-40,z+17,91),aft=pressureVertex(x,-40,z-17,91);
+  airJetFaces.push([top,left,low],[top,low,right],[top,fore,low],[top,low,aft]);
+ }
+ const airJetEnd=vertices.length;
  // Shared soft contact ellipse. Its scalar attribute is authored coverage,
  // independent of directional lighting; it is never a stored world mutation.
  const shadowStart=vertices.length;
@@ -56,12 +70,12 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
  function treeTri(a,b,c,m){treeFaces.push({indices:[a,b,c],material:m});}
  const tp=p=>{canonical.push(vertices.length);vertices.push(p);normalIds.push(0);return vertices.length-1;};
  const top=tp([0,820,0]),ring=[];
- for(let k=0;k<6;k++){const t=k*Math.PI/3;ring.push(tp([Math.round(215*Math.cos(t)),200,Math.round(215*Math.sin(t))]));}
- for(let k=0;k<6;k++)treeTri(top,ring[k],ring[(k+1)%6],14+k%3);
+ for(let k=0;k<5;k++){const t=k*Math.PI*2/5;ring.push(tp([Math.round(215*Math.cos(t)),200,Math.round(215*Math.sin(t))]));}
+ for(let k=0;k<5;k++)treeTri(top,ring[k],ring[(k+1)%5],14+k%3);
  for(const axis of [0,2]){const pts=[[-20,0],[20,0],[20,280],[-20,280]].map(([x,y])=>{const p=[0,y,0];p[axis]=x;return tp(p);});treeTri(pts[0],pts[1],pts[2],9);treeTri(pts[0],pts[2],pts[3],10);}
  const treeEnd=vertices.length;
  if(vertices.length>1600||CAMERA+vertices.length>4096)throw Error('Car buffers overlap bounded engine IDs');
- const maxTriangles=80*11*2+14+models.high.faces.length+3*models.medium.faces.length+4*shadowFaces.length+40*treeFaces.length;
+ const maxTriangles=80*11*2+14+models.high.faces.length+3*models.medium.faces.length+4*shadowFaces.length+40*treeFaces.length+airJetFaces.length;
  if(maxTriangles>4096)throw Error('Scene triangle budget exceeded: '+maxTriangles);
  if(groups.length>128)throw Error('Normal-group scalar encoding exceeded');
  const groupNormals=groups.map(g=>norm(g.sum).map(x=>Math.round(x*16384)));
@@ -69,7 +83,7 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
  vertices.forEach((p,i)=>{if(canonical[i]===i){const uv=carUV(p,normalKinds[i]);out(`meshvertex ${i} ${p.join(' ')}\nmeshtexuv ${i} ${uv.join(' ')}`);}});
  normalIds.forEach((g,i)=>{const code=g>=0?g+256:-g-1;if(code<0||code>511)throw Error('Scalar metadata range');out(`localset ${512+i} ${canonical[i]*512+code}`);});
  function range(start,end){out(`set r0 ${start}`);store('r0',8324,2,0);out(`set r0 ${end}`);store('r0',8326,2,0);}
- out('store8 8203 0\nlabel actor\nstore8 8334 0\nload8 r0 8203\ncmp r0 4\njge tree_actor\ncmp r0 0\njne rival_actor');
+ out('store8 8203 0\nlabel actor\nstore8 8334 0\nstore8 8336 0\nload8 r0 8203\ncmp r0 4\njge tree_actor\ncmp r0 0\njne rival_actor');
  range(models.high.start,models.high.end);
  load('r0',100,4,2000000);load('r2',104,4,2000000);load('r8',108,2,0);
  out('load8 r9 202\nmul r9 24\nadd r9 64\nstore8 8318 r9\nload8 r9 201\ncmp r9 2\njne player_mesh_ready\nstore8 8334 1\nlabel player_mesh_ready\njmp actor_ready\nlabel rival_actor');
@@ -156,13 +170,20 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
   // Front axle steering on Y around the physical hub.
   out('localget r9 3044\nsub r0 r9\nlocalget r9 3045\nsub r2 r9\nlocalget r5 3042\nlocalget r6 3043\nmov r7 r0\nmul r7 r6\nmov r9 r2\nmul r9 r5\nadd r7 r9\ndiv r7 16384\nmov r9 r2\nmul r9 r6\nmov r10 r0\nmul r10 r5\nsub r9 r10\ndiv r9 16384\nmov r0 r7\nlocalget r10 3044\nadd r0 r10\nmov r2 r9\nlocalget r10 3045\nadd r2 r10');
   out('label '+rear+'\nlabel '+wheelDone);
+  // XI chassis altitude; ground shadow remains at road height.
+  const noRise=label('vertex_no_pneumatic_rise');
+  out('load8 r9 8203\ncmp r9 0\njne '+noRise+'\ncmp r8 '+shadowStart+'\njge '+noRise+
+     '\nload16 r9 384\nadd r1 r9\nlabel '+noRise);
   load('r9',8310,2,32768);out('mul r9 r0');load('r10',8308,2,32768);out('mul r10 r2\nadd r9 r10\ndiv r9 16384');store('r9',8320,4,1000000,'r10','r11');
   load('r9',8310,2,32768);out('mul r9 r2');load('r10',8308,2,32768);out('mul r10 r0\nsub r9 r10\ndiv r9 16384');load('r10',8304);out('add r10 r9');load('r0',8320);load('r11',8300);out('add r0 r11');
   load('r11',8192,2,0);out('add r10 r11');load('r11',8194,2,0);out('sub r1 r11');pitch('r0','r1','r2');
   out('label vertex_publish_position');load('r8',8324,2,0);out(`add r8 ${CAMERA}\nmeshvertex r8 r0 r1 r2\nmov r9 r8\nsub r9 ${CAMERA}\nadd r9 512\nlocalget r9 r9\ndiv r9 512\nmeshtexcopy r8 r9\nmov r9 r8\nsub r9 ${CAMERA-512}\nlocalget r9 r9\nmod r9 512\ncmp r9 384\njge vertex_glass_lookup\ncmp r9 256\njge vertex_lighting_lookup\njmp vertex_shade_ready\nlabel vertex_glass_lookup\nadd r9 2216\nlocalget r9 r9\njmp vertex_shade_ready\nlabel vertex_lighting_lookup\nadd r9 2144\nlocalget r9 r9\nlabel vertex_shade_ready\nmeshshade r8 r9\nsub r8 ${CAMERA-1}`);store('r8',8324,2,0);load('r0',8326,2,0);out('cmp r8 r0\njlt actor_vertex');
  }
  transformVertex();
- out('load8 r0 8203\ncmp r0 4\njge actor_geometry_ready\nload8 r0 8335\ncmp r0 1\nje actor_geometry_ready\nstore8 8335 1');range(shadowStart,shadowEnd);out('jmp actor_vertex\nlabel actor_geometry_ready');
+ out('load8 r0 8203\ncmp r0 0\njne actor_shadow_stage\nload8 r0 8336\ncmp r0 1\nje actor_shadow_stage\nload8 r0 388\ncmp r0 0\njle actor_shadow_stage\nstore8 8336 1');
+ range(airJetStart,airJetEnd);out('jmp actor_vertex\nlabel actor_shadow_stage');
+ out('load8 r0 8203\ncmp r0 4\njge actor_geometry_ready\nload8 r0 8335\ncmp r0 1\nje actor_geometry_ready\nstore8 8335 1');
+ range(shadowStart,shadowEnd);out('jmp actor_vertex\nlabel actor_geometry_ready');
  focus();out('load8 r12 8203\ncmp r12 4\njge emit_tree\nload8 r12 8334\ncmp r12 1\nje emit_hood\ncmp r12 2\nje emit_far\nload8 r12 8203\ncmp r12 0\nje emit_high\njmp emit_medium');
  function face(f){
   const [a,b,c]=f.indices.map(i=>i+CAMERA),ramp=RAMPS[f.material];
@@ -176,10 +197,20 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
   }else out(`meshface ${a} ${b} ${c} ${FLAT[f.material]} r9 r10 r11 60`);
  }
  out('label emit_hood');models.high.faces.filter(f=>f.hood).forEach(face);out('jmp next_actor');
- for(const d of ['high','medium','far']){out('label emit_'+d);models[d].faces.forEach(face);out('jmp emit_shadow');}
+ for(const d of ['high','medium','far']){
+  out('label emit_'+d);models[d].faces.forEach(face);
+  if(d==='high'){
+   const skip=label('air_jet_pulse_done');
+   out('load8 r0 388\ncmp r0 0\njle '+skip);
+   for(const f of airJetFaces)
+    out('meshfacegradient '+f.map(i=>i+CAMERA).join(' ')+' 244 12 r9 r10 r11 60');
+   out('label '+skip);
+  }
+  out('jmp emit_shadow');
+ }
  out('label emit_shadow\nset r12 24\nload8 r0 8203\ncmp r0 0\njne shadow_base_ready\nload8 r0 120\ncmp r0 0\nje shadow_base_ready\nset r12 32\nlabel shadow_base_ready');
  shadowFaces.forEach(f=>out(`meshfacegradient ${f.map(i=>i+CAMERA).join(' ')} r12 8 r9 r10 r11 60`));out('jmp next_actor\nlabel emit_tree');
  treeFaces.forEach(f=>out(`meshface ${f.indices.map(i=>i+CAMERA).join(' ')} ${f.material} r9 r10 r11 60`));
  out('label next_actor');load('r12',100,4,2000000);out('load8 r0 8203\nadd r0 1\nstore8 8203 r0\ncmp r0 44\njlt actor\nmeshend\nhalt');
- return {modelStats,normalGroups:groups.length,bodyLightingGroups:bodyMasks.size,glassLightingGroups:glassMasks.size,vertices:vertices.length,maxTriangles,trianglesPerTree:treeFaces.length,shadowTrianglesPerCar:shadowFaces.length};
+ return {modelStats,normalGroups:groups.length,bodyLightingGroups:bodyMasks.size,glassLightingGroups:glassMasks.size,vertices:vertices.length,maxTriangles,airJetTriangles:airJetFaces.length,trianglesPerTree:treeFaces.length,shadowTrianglesPerCar:shadowFaces.length};
 };

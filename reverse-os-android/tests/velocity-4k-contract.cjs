@@ -80,7 +80,10 @@ try {
  assert(asphalt>0,'4K road is not using original XI asphalt texture');
  assert(paint>0,'4K vehicle not using its paint materials');
  assert(glass>0,'4K canopy not using its tinted glass materials');
- assert(tiles.has(0)&&tiles.has(2)&&tiles.has(5),'paint, glass and asphalt tiles not integrated');
+ assert(tiles.has(1)&&tiles.has(3)&&tiles.has(4)&&tiles.has(5),
+  'asphalt, composite trim, tire and rim microtextures must stay visible');
+ assert(!tiles.has(0)&&!tiles.has(2),
+  'smooth XI paint and glass must not use old 16x16 color-stipple tiles');
  const result={passed:true,width:3840,height:2160,faces,packetBytes:first.length,
    texturedFaces:textured,asphaltFaces:asphalt,paintFaces:paint,glassFaces:glass,
    tileIds:[...tiles].sort(),paletteBases:[...bases].sort((a,b)=>a-b),
