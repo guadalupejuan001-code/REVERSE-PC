@@ -95,55 +95,5 @@ export function waveformOf(buffer, count = 160) {
   for (let i = 0; i < count; i++) { let sum = 0, n = 0; for (let j = i * stride; j < Math.min(data.length, (i + 1) * stride); j += 23) { sum += (data[j] * data[j] + other[j] * other[j]) * .5; n++; } out.push(Math.sqrt(sum / Math.max(n, 1))); }
   const max = Math.max(.001, ...out); return out.map(v => v / max);
 }
-export async function analyseRhythm(buffer) {
-  const sampleRate = buffer.sampleRate, data = buffer.getChannelData(0), hop = Math.round(sampleRate * .01), windowSize = Math.round(sampleRate * .035);
-  const other = buffer.numberOfChannels > 1 ? buffer.getChannelData(1) : data;
-  const n = Math.ceil(data.length / hop), energy = new Float32Array(n), flux = new Float32Array(n);
-  let smooth = 0;
-  for (let i = 0; i < n; i++) {
-    let sum = 0, count = 0;
-    for (let j = i * hop; j < Math.min(data.length, i * hop + windowSize); j += 5) { sum += (data[j] * data[j] + other[j] * other[j]) * .5; count++; }
-    const e = Math.sqrt(sum / Math.max(1, count)); energy[i] = e;
-    flux[i] = Math.max(0, e - smooth); smooth = smooth * .78 + e * .22;
-    if (i % 10000 === 9999) await new Promise(resolve => setTimeout(resolve, 0));
-  }
-  const dt = hop / sampleRate, analysisLength = Math.min(n, Math.round(100 / dt));
-  let bestBpm = 120, bestScore = -1;
-  for (let bpm = 80; bpm <= 175; bpm++) {
-    const lag = Math.round(60 / bpm / dt); let score = 0;
-    for (let i = lag; i < analysisLength; i++) score += flux[i] * flux[i - lag];
-    score /= Math.max(1, analysisLength - lag);
-    // Mild tempo prior reduces octave ambiguity without imposing a fixed grid.
-    score *= 1 - Math.abs(bpm - 122) * .001;
-    if (score > bestScore) { bestScore = score; bestBpm = bpm; }
-  }
-  let peakMax = 0; for (const f of flux) peakMax = Math.max(peakMax, f);
-  const peaks = [], rollingWindow = Math.round(.7 / dt); let rolling = 0;
-  for (let i = 2; i < n - 2; i++) {
-    rolling += flux[i]; if (i >= rollingWindow) rolling -= flux[i - rollingWindow];
-    const threshold = Math.max(peakMax * .055, rolling / Math.min(i + 1, rollingWindow) * 1.38);
-    if (flux[i] > threshold && flux[i] >= flux[i - 1] && flux[i] > flux[i + 1]) {
-      const t = i * dt + windowSize / sampleRate * .35;
-      if (t < .7 || t > buffer.duration - .4) continue;
-      const p = { t, strength: flux[i] / Math.max(peakMax, .0001) };
-      if (peaks.length && t - peaks[peaks.length - 1].t < .15) { if (p.strength > peaks[peaks.length - 1].strength) peaks[peaks.length - 1] = p; }
-      else peaks.push(p);
-    }
-  }
-  // Refine the coarse autocorrelation tempo with longer onset intervals.
-  // Multiple-beat spans reduce the quantisation error of a 10 ms envelope.
-  if (peaks.length > 6) {
-    const period = 60 / bestBpm; let totalTime = 0, totalBeats = 0;
-    for (let i = 0; i < Math.min(peaks.length, 700); i++) for (let j = i + 2; j < Math.min(peaks.length, i + 9); j++) {
-      const interval = peaks[j].t - peaks[i].t, beats = Math.round(interval / period);
-      if (beats < 2 || beats > 8 || Math.abs(interval / period - beats) > .13) continue;
-      const weight = .2 + Math.min(peaks[i].strength, peaks[j].strength);
-      totalTime += interval * weight; totalBeats += beats * weight;
-    }
-    if (totalBeats) { const refined = Math.round(60 * totalBeats / totalTime); if (Math.abs(refined - bestBpm) <= 5) bestBpm = refined; }
-  }
-  // Ambient tracks without clear transients get a gentle regular chart.
-  const fallback = peaks.length < Math.min(8, buffer.duration / 3);
-  if (fallback) { peaks.length = 0; for (let t = 1; t < buffer.duration - .4; t += 60 / bestBpm) peaks.push({ t, strength: .5 }); }
-  return { bpm: bestBpm, peaks, fallback, energy };
-}
+// Offline spectral analysis lives in a pure, testable module.
+export { analyseMusicBuffer as analyseRhythm } from './music-analysis.js';
