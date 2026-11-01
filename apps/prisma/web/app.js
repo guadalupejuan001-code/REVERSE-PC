@@ -1,5 +1,6 @@
 import { RhythmAudio, DEMO_BPM, DEMO_DURATION, analyseRhythm, waveformOf, seeded } from './audio.js';
 import { Scene, makeChart, segmentDistance, DIRECTIONS, PALETTES, visibleRange } from './engine.js';
+import { makeMusicStage } from './music-stage.mjs';
 const $ = id => document.getElementById(id);
 const all = selector => [...document.querySelectorAll(selector)];
 const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
@@ -77,7 +78,8 @@ async function startGame(){
     const peaks=track.demo&&level==='flow'?track.peaks.filter((_,i)=>i%2===0):track.peaks;
     chart=makeChart(peaks,level,track.demo?7721:Math.round(track.duration*173));
     if(!chart.length)throw new Error('No hay suficientes golpes para una partida. Prueba con una canción más larga.');
-    score=combo=maxCombo=hits=misses=missIndex=0;activePointers.clear();scene.clearEffects();frozenTime=0;
+    score=combo=maxCombo=hits=misses=missIndex=0;activePointers.clear();scene.clearEffects();
+     scene.setMusicStage(makeMusicStage(track.peaks,{bpm:track.bpm,duration:track.duration,energy:track.energy,fallback:track.fallback}));frozenTime=0;
     $('bestInGame').textContent=`RÉCORD ${bestForTrack().toLocaleString('es')}`;updateScores();
     $('hitHelp').style.opacity='1';$('feedback').classList.remove('show');
     nativeFailure=false;if(nativeGraphics&&!await nativeEvent(0,0,thisRun))throw new Error('No se pudo iniciar la sesión XI.');
@@ -87,7 +89,7 @@ async function startGame(){
 }
 function pauseGame(){if(status!=='playing')return;frozenTime=audio.pause();activePointers.clear();for(const id of scene.trails.keys())scene.endTrail(id);setStatus('paused');$('resumeBtn').focus({preventScroll:true});}
 async function resumeGame(){if(status!=='paused')return;try{await audio.init();audio.play(frozenTime,0);setStatus('playing');$('game').focus({preventScroll:true});}catch{toast('Toca Continuar para reactivar el audio.');}}
-function goHome(){runId++;audio.stop();audio.offset=0;activePointers.clear();scene.clearEffects();setLoading(false);setStatus('home');$('elapsed').textContent='0:00';$('feedback').classList.remove('show');drawWave(0);}
+function goHome(){runId++;audio.stop();audio.offset=0;activePointers.clear();scene.clearEffects();scene.clearMusicStage();setLoading(false);setStatus('home');$('elapsed').textContent='0:00';$('feedback').classList.remove('show');drawWave(0);}
 async function finishGame(){
   if(status!=='playing')return;audio.stop();frozenTime=track.duration;
   const finishRun=runId;
@@ -108,6 +110,7 @@ function cut(note,t,dx,dy,isTap=false,isKey=false){
   const dir=DIRECTIONS[note.dir],length=Math.hypot(dx,dy),dot=length?(dx*dir.x+dy*dir.y)/length:0,correct=dot>.43;
   if(settings.precise&&(!correct||isTap))return false;
   note.hit=true;audio.swish(note.color);hits++;combo++;maxCombo=Math.max(combo,maxCombo);
+   scene.armCombo(combo,t);
   const perfect=Math.abs(delta)<.145&&(correct||isKey),base=perfect?150:correct?105:isTap?70:80,multiplier=Math.min(4,1+Math.floor(combo/12));
   score+=base*multiplier;if(nativeGraphics)nativeEvent(1,base);
   const p=scene.noteProjection(note,t,settings.latency/1000);scene.burst(note,p,dx||15,dy||-35,perfect?1:.6);
@@ -156,7 +159,7 @@ async function loadFile(file){
     const buffer=await audio.decode(file);if(buffer.duration<3)throw new Error('Elige un audio de al menos 3 segundos para crear una pista.');
     setLoading(true,'Encontrando los golpes de tu música…');await new Promise(r=>setTimeout(r,30));
     const analysis=await analyseRhythm(buffer);
-    track={name:file.name.replace(/\.[^/.]+$/,''),demo:false,bpm:analysis.bpm,duration:buffer.duration,peaks:analysis.peaks,wave:waveformOf(buffer),buffer,fallback:analysis.fallback};
+    track={name:file.name.replace(/\.[^/.]+$/,''),demo:false,bpm:analysis.bpm,duration:buffer.duration,peaks:analysis.peaks,energy:analysis.energy,wave:waveformOf(buffer),buffer,fallback:analysis.fallback};
     updateTrack();toast(analysis.fallback?'Pista lista. Esta canción tiene un pulso suave: creamos una secuencia regular.':'Tu música, tu pista. Lista para entrar en flow.');
   }catch(error){toast(error.message||'No se pudo analizar esta canción. Prueba con otro archivo.');}
   finally{setLoading(false);booting=false;$('audioFile').value='';}
@@ -220,7 +223,7 @@ function frame(now){
   let t=status==='playing'?audio.time():frozenTime;
   if(status==='playing'){
     const missAfter=hitWindow();let changed=false;
-    while(missIndex<chart.length&&chart[missIndex].t+settings.latency/1000<t-missAfter){const n=chart[missIndex++];if(!n.hit&&!n.missed){n.missed=true;misses++;combo=0;changed=true;if(nativeGraphics)nativeEvent(2,0);}}
+    while(missIndex<chart.length&&chart[missIndex].t+settings.latency/1000<t-missAfter){const n=chart[missIndex++];if(!n.hit&&!n.missed){n.missed=true;misses++;combo=0;scene.cancelCombo();changed=true;if(nativeGraphics)nativeEvent(2,0);}}
     if(changed){updateScores();feedback('SIGUE EL RITMO','#809c89');}
     $('countdown').hidden=t>=0;
     if(t<0){const count=Math.ceil(-t);if($('countdown').dataset.count!==String(count)){$('countdown').dataset.count=count;$('countdown').replaceChildren();$('countdown').append(String(count));const small=document.createElement('small');small.textContent='ENCUENTRA EL RITMO';$('countdown').append(small);}}
