@@ -45,6 +45,15 @@ try {
  assert((tailIdle.get(224)||0)<(tailBraking.get(224)||0),
   'rear LED brightness must increase only with brake input');
  assert(!first.equals(underBrake),'4K frame must visibly change on braking');
+ const variants=[first];
+ for(let car=1;car<3;car++){
+  const choice=header+'store8 200 1\nstore8 201 0\nstore8 202 0\nstore8 203 '+car+'\n'+gpuSource.slice(header.length);
+  const model=path.join(tmp,'garage-'+car+'.xi');
+  fs.writeFileSync(model,choice);
+  variants.push(run('run',model,ready,path.join(tmp,'garage-'+car+'.rvp')));
+ }
+ assert.equal(new Set(variants.map(sha)).size,3,
+  'true 4K source must contain three different 3D vehicle geometries');
  console.log('XI_BRAKE_LIGHT_PASS',JSON.stringify({
   idleDimFaces:tailIdle.get(242),brakingBrightFaces:tailBraking.get(224)}));
  assert.equal(sha(fs.readFileSync(ready)),original,'4K render mutated the XI race state');
@@ -87,7 +96,7 @@ try {
  const result={passed:true,width:3840,height:2160,faces,packetBytes:first.length,
    texturedFaces:textured,asphaltFaces:asphalt,paintFaces:paint,glassFaces:glass,
    tileIds:[...tiles].sort(),paletteBases:[...bases].sort((a,b)=>a-b),
-   sha256:sha(first),unchangedRaceSnapshot:true};
+   sha256:sha(first),selectableCarSilhouettes:3,unchangedRaceSnapshot:true};
  console.log('XI_4K_SCENE_CAPTURE_PASS '+JSON.stringify(result));
  if(process.argv[3])fs.writeFileSync(path.resolve(process.argv[3]),JSON.stringify(result,null,2)+'\n');
 }finally{fs.rmSync(tmp,{recursive:true,force:true});}
