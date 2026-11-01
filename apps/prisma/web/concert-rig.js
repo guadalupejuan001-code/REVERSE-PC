@@ -100,9 +100,12 @@ export function concertPose(program, time, cue = {}, { quality = 'auto', reduced
   const energy = clamp(finite(cue.energy) ? cue.energy : section.energy, 0, 1);
   const phase = concertBeat(program, t);
   const sectionType = program.map?.fallback ? 'quiet' : section.kind;
-  const amplitude = reduced ? 0 : sectionAmplitude[sectionType];
-  const fan = reduced ? 0 : sectionFan[sectionType];
-  const intensity = reduced ? .07 : clamp(.06 + energy * .12 + beat * .095, .04, .27);
+  // Only a musically released combo accent supplies show energy. The safety
+  // clamp prevents a gameplay milestone from creating a blinding stage wash.
+  const show = reduced ? 0 : clamp(finite(cue.show) ? cue.show : 0, 0, 1);
+  const amplitude = reduced ? 0 : sectionAmplitude[sectionType] + show * .09;
+  const fan = reduced ? 0 : Math.min(.80, sectionFan[sectionType] + show * .15);
+  const intensity = reduced ? .07 : clamp(.06 + energy * .12 + beat * .095 + show * .085, .04, .29);
   // Two fixtures remain in battery mode, one on each side. Other modes
   // retain the entire six-head stage; high quality adds a third body per arm.
   const stations = quality === 'battery' ? RIG_STATIONS.filter(s => s.depth === 1) : RIG_STATIONS;
