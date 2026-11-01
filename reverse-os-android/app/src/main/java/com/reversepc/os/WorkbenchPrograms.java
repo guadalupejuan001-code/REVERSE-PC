@@ -14,6 +14,26 @@ import java.util.Locale;
 /** RXE catalog and transactions for the current desktop. Call on RuntimeExecutor. */
 final class WorkbenchPrograms {
     static final String BBYQ="Aplicaciones/BBY-Q.rxe";
+    static final String PRISMA_11_SHA="be811baf5404d97fae1803185b3e4679ec81fe2524a613ff81451a13d3fa3e64";
+    // Exact released RXE3 images recovered from GitHub Actions:
+    // 2.5.3 / 2.5.4 / PRISMA cycles 1 and 2. Do not replace an arbitrary RXE
+    // based only on app_id, user-facing version or source_sha metadata.
+    static final String[] PRISMA_PREVIOUS_TRUSTED={
+        PRISMA_11_SHA,
+        "5726c5b514d408049b2361c9d191b8079e326c77ddd703a376261d7d6fb9154b",
+        "8eab78b37f7d18365f26746e4ed30bf6433c36109f23c0ee92d6c42804b534f0",
+        "acad7b0a07524af9c077f5860e585c025fd7bff07354acdfdb52c6ff9e3f276a",
+        "c6bd13581a7a565cd9ea54b34dbefc3f92ca473d4bd5701478853a0205653fd9",
+        "3d4659559cf02e2f4509971afc84db56b84bc9a07faaf545d0064d44504399ce",
+        "446bebd4c97cbd4807aea0624da0bd45e076541f5e491540f9bffd4b4797370e",
+        "3eaac57ab33904349381ed1e9ea3e4695cb5550d2fce9f6f1fae6eeb50fa3baa",
+        "9bfad000b33e33a861e45d4bdcc24fc943a71f743f600d08ef06f9e28ec65300"
+    };
+    static boolean trustedOldPrisma(String hash){
+        if(hash==null)return false;
+        for(String allowed:PRISMA_PREVIOUS_TRUSTED)if(allowed.equals(hash))return true;
+        return false;
+    }
     private final Context context;
     private final WorkspaceFiles files;
     private byte[] retiredHello;
@@ -31,6 +51,65 @@ final class WorkbenchPrograms {
             prefs.edit().putBoolean("seeded",true).apply();
         }
         upgradeBbyq();
+        seedGraphics();
+    }
+    private void seedGraphics()throws Exception{
+        android.content.SharedPreferences prefs=context.getSharedPreferences("workbench-programs",0);
+        seedGraphics(context,files,prefs);
+    }
+    static void seedGraphics(Context context,WorkspaceFiles files,android.content.SharedPreferences prefs)throws Exception{
+        // Each release uses its own flag. A previous 1.2 seed must not prevent
+        // PRISMA 2.0 from being published into an existing REVERSE installation.
+        if(prefs.getBoolean("prisma-2.3-seeded",false))return;
+        final byte[] image;
+        try(InputStream in=context.getAssets().open("native-apps/PRISMA.rxe")){image=read(in);}
+        catch(java.io.FileNotFoundException optional){return;}
+        JSONObject metadata=info(image);
+        if(!"graphics".equals(metadata.optString("ui"))||
+            !"org.reverse.prisma".equals(metadata.optString("app_id"))||
+            !"2.3.0".equals(metadata.optString("app_version")))
+            throw new IOException("El paquete PRISMA 2.3 no coincide con el perfil esperado");
+        final String bundledHash=identity(image);
+        boolean present=false;
+        for(WorkspaceFiles.Entry entry:files.list("Aplicaciones"))
+            if(entry.path.equals("Aplicaciones/PRISMA.rxe"))present=true;
+        if(present){
+            String installedHash=identity(files.read("Aplicaciones/PRISMA.rxe"));
+            if(trustedOldPrisma(installedHash)){
+                // Existing 1.2 releases use their RXE hash as WebView origin.
+                // Retain that exact origin for the trusted successor so old
+                // localStorage records/settings survive without cross-app leaks.
+                String previousOrigin=prefs.getString("prisma-ui-origin-sha",installedHash);
+                if(previousOrigin==null||!previousOrigin.matches("[0-9a-f]{64}"))
+                    previousOrigin=installedHash;
+                if(!prefs.edit().putString("prisma-ui-origin-sha",previousOrigin).commit())
+                    throw new IOException("No se pudo proteger el origen de PRISMA");
+                files.write("Aplicaciones/PRISMA.rxe",image,true);
+            }else if(bundledHash.equals(installedHash)&&
+                    !prefs.contains("prisma-ui-origin-sha")){
+                // Already current: keep its isolated origin on future upgrades.
+                if(!prefs.edit().putString("prisma-ui-origin-sha",bundledHash).commit())
+                    throw new IOException("No se pudo guardar el origen de PRISMA");
+            }
+            // Customized/unknown PRISMA images remain byte-for-byte unchanged.
+        }else if(!prefs.getBoolean("prisma-1.1-seeded",false)){
+            files.write("Aplicaciones/PRISMA.rxe",image,false);
+            if(!prefs.contains("prisma-ui-origin-sha")&&
+                !prefs.edit().putString("prisma-ui-origin-sha",bundledHash).commit())
+                throw new IOException("No se pudo guardar el origen de PRISMA");
+        }
+        // Never resurrect an intentionally deleted application.
+        prefs.edit().putBoolean("prisma-1.1-seeded",true)
+             .putBoolean("prisma-1.2-seeded",true)
+             .putBoolean("prisma-2.0-seeded",true)
+             .putBoolean("prisma-2.1-seeded",true)
+             .putBoolean("prisma-2.2-seeded",true)
+             .putBoolean("prisma-2.3-seeded",true).apply();
+    }
+    JSONObject graphicsLaunch(JSONObject request)throws Exception{
+        byte[] image=checked(request);JSONObject metadata=info(image);
+        if(!"graphics".equals(metadata.optString("ui")))throw new IOException("El programa no es una aplicación gráfica RXE");
+        return new JSONObject().put("ok",true).put("path",path(request.getString("path"))).put("identity",identity(image));
     }
     private void upgradeBbyq()throws Exception{
         byte[] bundled=BbyqInterface.asset(context,"native-apps/BBY-Q.rxe");

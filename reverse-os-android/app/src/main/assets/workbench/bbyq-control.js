@@ -3,7 +3,7 @@
 const BBYQ_TARGETS=Object.freeze({1:'files',2:'calculator',3:'settings',4:'programs',5:'xi',6:'help',7:'control',8:'bbyq',9:'notes',10:'wallpaper'});
 const bbyqControlTickets=new Set();
 function bbyqPrograms(){
-  return (programCatalog?.apps||[]).filter(app=>app.metadata.app_id!=='org.reverse.bbyq'&&app.path!=='Aplicaciones/BBY-Q.rxe')
+  return (programCatalog?.apps||[]).filter(app=>app.metadata.app_id!=='org.reverse.bbyq'&&app.path!=='Aplicaciones/BBY-Q.rxe'&&app.metadata.ui!=='graphics')
     .slice().sort((a,b)=>a.path<b.path?-1:a.path>b.path?1:0).slice(0,16)
     .map((app,i)=>({target:i+16,path:app.path,identity:app.identity,title:app.metadata.title,capability:app.metadata.ui==='chat'?1:2}));
 }
