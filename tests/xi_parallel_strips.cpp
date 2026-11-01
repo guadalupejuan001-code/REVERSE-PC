@@ -71,6 +71,15 @@ int main(){
   case_one(1280,720,210,0x4a2);
   case_one(1920,1080,220,0x4a3);
   case_one(3840,2160,225,0x4a4);
+  // Even with concurrent workers the global XI work ceiling must hold.
+  parallel::MachineMeshRaster heavy;
+  heavy.begin(1280,720,5,0);
+  for(int i=0;i<150;i++)
+    heavy.triangle({0,0,10},{1280,0,10},{0,720,10},8+i%10);
+  bool rejected=false;
+  try{(void)heavy.finish();}
+  catch(const std::length_error&){rejected=true;}
+  require(rejected,"parallel work must not bypass global XI pixel budget");
   std::cout<<"XI_PARALLEL_STRIPS_PASS checks="<<checks
            <<" availableWorkers="<<std::thread::hardware_concurrency()<<'\n';
  }catch(const std::exception& e){
