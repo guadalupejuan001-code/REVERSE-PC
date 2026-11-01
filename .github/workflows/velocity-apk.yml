@@ -43,7 +43,7 @@ concurrency:
 jobs:
   apk:
     # Never expose the base branch's cached signing identity to outside PRs.
-    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && (github.head_ref == 'feature/velocity-v04-nitro-airjump-20261101' || github.head_ref == 'feature/velocity-v18-garage-photo-hud-20261101'))
+    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && (github.head_ref == 'feature/velocity-v04-nitro-airjump-20261101' || github.head_ref == 'feature/velocity-v18-garage-photo-hud-20261101' || github.head_ref == 'feature/velocity-v19-orbit-textures-20261101'))
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
@@ -103,7 +103,7 @@ jobs:
               exit 1
             }
           cp reverse-os-android/app/build/outputs/apk/velocity/debug/app-velocity-debug.apk \
-            dist/REVERSE-VELOCITY-1.8.0-Garage-Photo-XI.apk
+            dist/REVERSE-VELOCITY-1.9.0-ORBIT-XI.apk
       - uses: actions/cache/save@v4
         if: steps.velocity-signing.outputs.cache-hit != 'true'
         with:
@@ -112,7 +112,7 @@ jobs:
       - name: Verify native-XI APK identity, signature, alignment and source assets
         run: |
           set -euo pipefail
-          APK=dist/REVERSE-VELOCITY-1.8.0-Garage-Photo-XI.apk
+          APK=dist/REVERSE-VELOCITY-1.9.0-ORBIT-XI.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" \
             > build/velocity-apk/signature.txt
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 4 "$APK" \
@@ -132,7 +132,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: reverse-velocity-apk
-          path: dist/REVERSE-VELOCITY-1.8.0-Garage-Photo-XI.apk
+          path: dist/REVERSE-VELOCITY-1.9.0-ORBIT-XI.apk
           if-no-files-found: error
       - name: Install and exercise the game on Android 35
         timeout-minutes: 12
@@ -162,7 +162,7 @@ jobs:
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
           adb shell input keyevent 82
-          adb install -r dist/REVERSE-VELOCITY-1.8.0-Garage-Photo-XI.apk \
+          adb install -r dist/REVERSE-VELOCITY-1.9.0-ORBIT-XI.apk \
             > build/velocity-apk/install.txt
           node reverse-os-android/tests/velocity-apk-smoke.cjs adb build/velocity-apk/smoke
       - uses: actions/upload-artifact@v4
