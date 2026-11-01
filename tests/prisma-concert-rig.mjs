@@ -123,6 +123,8 @@ gameplay.width=880;gameplay.height=440;gameplay.dpr=1;
 gameplay.paletteKey='';gameplay.rgb=[];gameplay.view=new Float32Array(4);
 gameplay.energy=0;gameplay.pulse=0;gameplay.shake=0;gameplay.diagnostics=false;
 gameplay.musicStage=null;gameplay.concertProgram=previews;
+gameplay.qualityScale=1;
+gameplay.visualState={quality:'balanced',slowFrames:0,fastFrames:0,cooldownUntil:0};
 gameplay.stageExplosions=[];gameplay.particles=[];gameplay.shards=[];gameplay.trails=new Map();
 const packed=Array.from({length:80},(_,i)=>({
   t:1+i*.03,lane:1,row:0,color:0,dir:0,hit:false,missed:false
