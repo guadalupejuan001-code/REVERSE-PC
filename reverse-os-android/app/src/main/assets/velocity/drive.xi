@@ -2,6 +2,7 @@
 # REVERSE VELOCITY world-space bicycle/tire physics; XI owns every race state.
 # cm, cm/s, 50Hz. yaw4096:0=+z,1024=+x. Inputs 128..135; 134=nitro, 135=pneumatic jump. Persistent energy/altitude at 380..391.
 # World4096+:81(x,z) vertices; tangent5000+. Rivals6000+32*i.
+# XI Cycle 3 Ether 480..489: score, combo, grace, rebufo and current surface.
 # No screen projection participates in driving, collision or race progress.
 load8 r0 1002
 cmp r0 2
@@ -115,6 +116,13 @@ store8 393 0
 store8 394 0
 store8 395 0
 store8 396 0
+# Driving skills state; HUD reads snapshots only.
+store32 480 0
+store16 484 100
+store8 486 0
+store8 487 0
+store8 488 0
+store8 489 0
 store8 410 0
 store8 422 0
 store8 434 0
@@ -741,10 +749,17 @@ mov r6 r4
 mul r6 r4
 div r6 180000
 add r1 r6
-load8 r6 120
+# Contact material is projected from the nearest XI circuit boundary.
+# 0=tarmac, 1=grass, 2=curb. The stored surface is last tick's footprint.
+load8 r6 489
 cmp r6 1
-jne paved_drag
+jne curb_drag
 add r1 900
+jmp paved_drag
+label curb_drag
+cmp r6 2
+jne paved_drag
+add r1 280
 label paved_drag
 load8 r6 131
 cmp r6 1
@@ -779,10 +794,15 @@ jle reverse_speed_limit_ready
 set r4 800
 label reverse_speed_limit_ready
 set r6 24
-load8 r0 120
+load8 r0 489
 cmp r0 1
-jne paved_grip
+jne curb_grip
 set r6 10
+jmp paved_grip
+label curb_grip
+cmp r0 2
+jne paved_grip
+set r6 17
 label paved_grip
 load8 r0 131
 cmp r0 1
@@ -1069,9 +1089,14 @@ mod r0 160000
 store32 274 r0
 load32 r0 342
 store8 120 0
+store8 489 0
 cmp r0 360000
 jle inside_road
 store8 120 1
+store8 489 2
+cmp r0 448900
+jle inside_road
+store8 489 1
 label inside_road
 cmp r0 819025
 jle after_wall
