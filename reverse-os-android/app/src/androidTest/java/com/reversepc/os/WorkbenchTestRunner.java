@@ -406,7 +406,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
         require(WorkbenchPrograms.trustedOldPrisma("6386c60ca4b3aefdb84ac956fa59dae2c51e8fb78f8f6fefed56ff604bc48c37"),"Cycle 06 final release must migrate");
         require(WorkbenchPrograms.trustedOldPrisma("9332f95a8405d248bd52a13d4669c301c81793aeef3f1d7b20d85ee7374fc543"),"Official 2.3 main APK must upgrade");
         require(!WorkbenchPrograms.trustedOldPrisma(digest(current)),"New official release wrongly matches an old executable");
-        migration.write("Aplicaciones/PRISMA.rxe",prior,true);flags.edit().remove("prisma-ui-origin-sha").putBoolean("prisma-2.3-seeded",true).putBoolean("prisma-2.3-main-seeded",true).commit();
+        migration.write("Aplicaciones/PRISMA.rxe",prior,true);flags.edit().remove("prisma-ui-origin-sha").putBoolean("prisma-2.3-seeded",true).putBoolean("prisma-2.3-main-seeded",true).putBoolean("prisma-2.4-galaxy-seeded",false).commit();
         WorkbenchPrograms.seedGraphics(getTargetContext(),migration,flags);
         require(Arrays.equals(current,migration.read("Aplicaciones/PRISMA.rxe")),"Official PRISMA 1.1 was not upgraded");
         require(flags.getBoolean("prisma-2.4-galaxy-seeded",false),"An older 2.3 seed flag blocked the galaxy upgrade");
