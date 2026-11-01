@@ -145,7 +145,7 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
  load('r0',256,2,0);
  out('sub r0 1000\nmul r0 320\ndiv r0 1000\nadd r0 4096\nmod r0 4096');
  trig('r0','r5','r6','r7','r8');
- out('localset 3042 r5\nlocalset 3043 r6\njmp wheel_motion_ready\nlabel wheel_steer_neutral\nlocalset 3042 0\nlocalset 3043 16384\nlabel wheel_motion_ready\nstore8 8335 0\nlabel actor_vertex');
+ out('localset 3042 r5\nlocalset 3043 r6\njmp wheel_motion_ready\nlabel wheel_steer_neutral\nlocalset 3042 0\nlocalset 3043 16384\nlabel wheel_motion_ready\nlocalset 3070 0\nload8 r0 8203\ncmp r0 0\njne car_selection_ready\nload8 r0 203\nlocalset 3070 r0\nlabel car_selection_ready\nstore8 8335 0\nlabel actor_vertex');
  function transformVertex(){
   load('r8',8324,2,0);out(`mov r9 r8\nadd r9 512\nlocalget r9 r9\ndiv r9 512\ncmp r9 r8\nje vertex_transform_position\nadd r9 ${CAMERA}\nmeshread r0 r1 r2 r9\njmp vertex_publish_position\nlabel vertex_transform_position\nmeshread r0 r1 r2 r8`);
 
@@ -170,6 +170,21 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
   // Front axle steering on Y around the physical hub.
   out('localget r9 3044\nsub r0 r9\nlocalget r9 3045\nsub r2 r9\nlocalget r5 3042\nlocalget r6 3043\nmov r7 r0\nmul r7 r6\nmov r9 r2\nmul r9 r5\nadd r7 r9\ndiv r7 16384\nmov r9 r2\nmul r9 r6\nmov r10 r0\nmul r10 r5\nsub r9 r10\ndiv r9 16384\nmov r0 r7\nlocalget r10 3044\nadd r0 r10\nmov r2 r9\nlocalget r10 3045\nadd r2 r10');
   out('label '+rear+'\nlabel '+wheelDone);
+  // Garage models share the exact bounded topology/LOD, but change the real
+  // 3D silhouette before projection. No overlay, image swap or Java geometry.
+  // X-01 is the original 4.5m Aero. GT X-02 is a longer narrow fastback
+  // with a taller roof; Track X-03 is shorter, wider and lower.
+  const morphGT=label('garage_gt'),morphTrack=label('garage_track'),
+    morphDone=label('garage_morph_done');
+  out('localget r9 3070\ncmp r9 1\nje '+morphGT+
+      '\ncmp r9 2\nje '+morphTrack+'\njmp '+morphDone+
+      '\nlabel '+morphGT+
+      '\nmul r0 96\ndiv r0 100\nmul r2 113\ndiv r2 100'+
+      '\ncmp r1 74\njle '+morphDone+'\nadd r1 18\njmp '+morphDone+
+      '\nlabel '+morphTrack+
+      '\nmul r0 114\ndiv r0 100\nmul r2 92\ndiv r2 100'+
+      '\ncmp r1 77\njle '+morphDone+'\nsub r1 14'+
+      '\nlabel '+morphDone);
   // XI chassis altitude; ground shadow remains at road height.
   const noRise=label('vertex_no_pneumatic_rise');
   out('load8 r9 8203\ncmp r9 0\njne '+noRise+'\ncmp r8 '+shadowStart+'\njge '+noRise+
