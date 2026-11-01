@@ -54,6 +54,18 @@ try {
  }
  assert.equal(new Set(variants.map(sha)).size,3,
   'true 4K source must contain three different 3D vehicle geometries');
+ const orbitPackets=[first];
+ for(const [yaw,pitch] of [[1024,0],[2048,0],[1024,90]]){
+  const orbitProgram=header+'store8 200 1\nstore8 201 0\nstore8 202 0\nstore16 204 '+yaw+
+   '\nstore16 206 '+pitch+'\n'+gpuSource.slice(header.length);
+  const program=path.join(tmp,'orbit-'+yaw+'-'+pitch+'.xi');
+  fs.writeFileSync(program,orbitProgram);
+  orbitPackets.push(run('run',program,ready,path.join(tmp,'orbit-'+yaw+'-'+pitch+'.rvp')));
+ }
+ assert.equal(new Set(orbitPackets.map(sha)).size,4,
+  'native 4K XI geometry must rotate with touch yaw and elevation');
+ assert.equal(sha(fs.readFileSync(ready)),original,
+  'orbiting the 4K renderer must not alter the XI car state');
  console.log('XI_BRAKE_LIGHT_PASS',JSON.stringify({
   idleDimFaces:tailIdle.get(242),brakingBrightFaces:tailBraking.get(224)}));
  assert.equal(sha(fs.readFileSync(ready)),original,'4K render mutated the XI race state');
@@ -96,7 +108,7 @@ try {
  const result={passed:true,width:3840,height:2160,faces,packetBytes:first.length,
    texturedFaces:textured,asphaltFaces:asphalt,paintFaces:paint,glassFaces:glass,
    tileIds:[...tiles].sort(),paletteBases:[...bases].sort((a,b)=>a-b),
-   sha256:sha(first),selectableCarSilhouettes:3,unchangedRaceSnapshot:true};
+   sha256:sha(first),selectableCarSilhouettes:3,orbitCameraViews:4,unchangedRaceSnapshot:true};
  console.log('XI_4K_SCENE_CAPTURE_PASS '+JSON.stringify(result));
  if(process.argv[3])fs.writeFileSync(path.resolve(process.argv[3]),JSON.stringify(result,null,2)+'\n');
 }finally{fs.rmSync(tmp,{recursive:true,force:true});}
