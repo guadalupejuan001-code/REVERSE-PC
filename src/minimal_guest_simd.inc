@@ -191,6 +191,18 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
       value.lane(n,lane_bits,result);
     }commit(value);return true;
   }
+  if(shift_immediate&&immediate_shift==0x0f001400u){ // SSRA/USRA: arithmetic or logical shift right, accumulate modulo each lane.
+    const unsigned encoded=(i>>16)&127;if(encoded<8)return false;
+    unsigned lane_bits=8;while(lane_bits*2<=encoded)lane_bits*=2;
+    if(lane_bits==64&&!q)return false; // Unallocated 1D form.
+    const unsigned amount=2*lane_bits-encoded; // 1..element width; never shift C++ by 64.
+    fp_access();const auto source=floating_.v[rn],old=floating_.v[rd];Vector128 value;
+    for(unsigned n=0;n<width/lane_bits;n++){
+      const auto shifted=right_shift(source.lane(n,lane_bits),amount,lane_bits,!u);
+      value.lane(n,lane_bits,old.lane(n,lane_bits)+shifted);
+    }
+    commit(value);return true; // Correct when Rd aliases Rn; unrelated state unchanged.
+  }
   if(shift_immediate&&immediate_shift==0x0f00a400u){ // SSHLL/USHLL and upper-half variants (SXTL/UXTL at shift zero).
     const unsigned encoded=(i>>16)&127;if(encoded>=64)return false; // immh[3] is reserved.
     unsigned narrow=8;while(narrow*2<=encoded)narrow*=2;
