@@ -65,7 +65,7 @@ public final class NativeRegraphicsTest {
         check(Arrays.equals(initial,initialCopy),"world JNI mutated input snapshot");
         check(generated.output.trim().split("\\n").length==162,"world samples are observable");
         ResultPacket reset=ResultPacket.parse(NativeRuntime.execute(generated.state,drive(drive,true)));
-        check(reset.output.trim().split("\\n").length==22,"race telemetry requires twenty-two XI registers");
+        check(reset.output.trim().split("\\n").length==26,"race telemetry requires 26 XI registers");
         byte[] state=reset.state,retained=state.clone();
         String inspection=NativeRuntime.inspect(state);
         ResultPacket baselineTick=ResultPacket.parse(NativeRuntime.execute(state,drive(drive,false)));
