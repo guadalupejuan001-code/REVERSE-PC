@@ -176,7 +176,16 @@ $('pauseBtn').addEventListener('click',pauseGame);$('resumeBtn').addEventListene
 $('navPlay').addEventListener('click',()=>{if(status==='paused')resumeGame();else if(status==='home')$('startBtn').focus({preventScroll:true});else $('game').focus({preventScroll:true});});
 document.querySelector('.brand').addEventListener('click',e=>{e.preventDefault();if(!booting)goHome();});
 all('[data-level]').forEach(b=>b.addEventListener('click',()=>{level=b.dataset.level;all('[data-level]').forEach(x=>{const selected=x===b;x.classList.toggle('selected',selected);x.setAttribute('aria-pressed',String(selected));});if(status==='ended')goHome();toast({flow:'Flow · un golpe a la vez. También admite toques.',pulse:'Pulso · más notas y cortes más rápidos.',vertigo:'Vértigo · dobles cubos y máxima intensidad.'}[level]);}));
-function openDialog(id){if(status==='playing')pauseGame();if(id==='recordsDialog')renderRecords();$(id).showModal();}
+function updateRendererStatus(){
+  $('rendererStatus').textContent='Motor gráfico: '+(scene.gpu?.native?'Ether Render X nativo':
+    scene.gpu?'Graphics/COSMIC WebGL':'Canvas de reserva');
+}
+function openDialog(id){
+  if(status==='playing')pauseGame();
+  if(id==='recordsDialog')renderRecords();
+  if(id==='settingsDialog')updateRendererStatus();
+  $(id).showModal();
+}
 all('[data-dialog]').forEach(b=>b.addEventListener('click',()=>openDialog(b.dataset.dialog)));
 all('.close-dialog').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
 all('dialog').forEach(dialog=>dialog.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();}}));
@@ -188,6 +197,7 @@ $('palette').addEventListener('change',e=>{settings.palette=e.target.value;updat
 $('precise').addEventListener('change',e=>{settings.precise=e.target.checked;persistSettings();});
 $('effects').addEventListener('change',e=>{settings.effects=e.target.checked;persistSettings();});
 $('latency').addEventListener('input',e=>{settings.latency=Number(e.target.value);$('latencyValue').textContent=`${settings.latency>0?'+':''}${settings.latency} ms`;persistSettings();});
+$('latencyReset').addEventListener('click',()=>{settings.latency=0;$('latency').value='0';$('latencyValue').textContent='0 ms';persistSettings();});
 function updateMute(){const muted=audio.muted||settings.volume===0;$('muteBtn').querySelector('use').setAttribute('href',muted?'#i-mute':'#i-sound');$('muteBtn').setAttribute('aria-label',muted?'Activar música':'Silenciar música');}
 $('volume').addEventListener('input',e=>{settings.volume=Number(e.target.value);audio.setVolume(settings.volume/100,false);updateMute();persistSettings();});
 $('muteBtn').addEventListener('click',()=>{audio.setVolume(settings.volume/100,!audio.muted);updateMute();});
