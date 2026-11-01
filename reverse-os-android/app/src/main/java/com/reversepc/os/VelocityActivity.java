@@ -227,7 +227,10 @@ public final class VelocityActivity extends Activity {
         countdown.setVisibility(View.GONE);
         map=new RaceMap(game.track());add(root,map,68,68,Gravity.TOP|Gravity.LEFT,16,96,0,0);
         LinearLayout menu=new LinearLayout(this);menu.setOrientation(LinearLayout.HORIZONTAL);
-        Button camera=button("Cámara");camera.setOnClickListener(v->{int m=surface.cycleCamera();camera.setText(m==0?"Cámara":m==1?"Cercana":"Capó");});
+        Button camera=button("Cámara");
+        camera.setContentDescription("Cámara: toque para cambiar de vista; arrastra la pantalla para orbitar 360 grados o cambiar altura; doble toque o pulsación larga aquí para centrar");
+        camera.setOnClickListener(v->{int m=surface.cycleCamera();camera.setText(m==0?"Cámara":m==1?"Cercana":"Capó");});
+        camera.setOnLongClickListener(v->{surface.centerCamera();return true;});
         Button colors=button("Color");colors.setOnClickListener(v->colors.setText("Color "+(surface.cyclePaint()+1)));
         Button sharpness=button("Nitidez");sharpness.setOnClickListener(v->{
             boolean high=surface.toggleSharpness();sharpness.setText(high?"Alta":"Auto");
@@ -328,6 +331,7 @@ public final class VelocityActivity extends Activity {
     @Override public boolean onKeyDown(int key,KeyEvent event){
         if(key==KeyEvent.KEYCODE_P){if(event.getRepeatCount()==0)togglePause();return true;}
         if(key==KeyEvent.KEYCODE_G){if(event.getRepeatCount()==0)changeGear();return true;}
+        if(key==KeyEvent.KEYCODE_C){if(surface!=null)surface.centerCamera();return true;}
         if(key==KeyEvent.KEYCODE_R){if(surface!=null){releaseControls();surface.reset();}if(pauseButton!=null)pauseButton.setText("Pausa");if(gearButton!=null)gearButton.setText("Marcha D");return true;}
         if(key==KeyEvent.KEYCODE_W||key==KeyEvent.KEYCODE_DPAD_UP)keyGas=true;
         else if(key==KeyEvent.KEYCODE_S||key==KeyEvent.KEYCODE_DPAD_DOWN)keyBrake=true;
