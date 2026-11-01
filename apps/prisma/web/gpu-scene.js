@@ -89,7 +89,16 @@ float grid(float value,float width){float d=abs(fract(value-.5)-.5);return 1.-sm
 void main(){
  vec2 uv=vec2(gl_FragCoord.x/resolution.x,1.-gl_FragCoord.y/resolution.y);
  vec2 ray=(uv-view.xy)/view.zw;
- vec3 color=vec3(.008,.018,.014)+green*.013*exp(-dot(ray,ray)*1.6);
+ // Bounded cosmic cloud and distant stage atmosphere (no stochastic frames).
+ vec3 color=vec3(.006,.008,.020)+green*.013*exp(-dot(ray,ray)*1.6);
+ vec2 nebulaA=(uv-vec2(.16+.016*sin(time*.05),.19))*vec2(1.1,2.2);
+ vec2 nebulaB=(uv-vec2(.87+.012*cos(time*.04),.32))*vec2(1.2,2.6);
+ float cloudA=exp(-dot(nebulaA,nebulaA)*4.4);
+ float cloudB=exp(-dot(nebulaB,nebulaB)*5.0);
+ float veil=(.7+.3*sin(uv.x*11.3-uv.y*9.2+time*.10));
+ color+=(vec3(.048,.026,.14)*cloudA+vec3(.01,.07,.13)*cloudB)*veil*(1.-quiet*.82);
+ float halo=exp(-pow(length((uv-vec2(.5,.20))*vec2(1.,1.8))-.33,2.)*86.);
+ color+=mix(green,coral,.42)*halo*(.006+.009*energy)*(1.-quiet*.65);
  float move=time*.65*(1.-quiet);
  if(ray.y>.025){
   float d=2.4/ray.y;float x=ray.x*d,z=d-4.8;
@@ -111,7 +120,8 @@ void main(){
  }
  vec2 cell=floor(uv*vec2(180.,100.));float noise=fract(sin(dot(cell,vec2(127.1,311.7)))*43758.5453);
  float star=step(.9985,noise)*(1.-smoothstep(.0,.08,length(fract(uv*vec2(180.,100.))-.5)));
- color+=vec3(.2,.32,.24)*star;
+ // Tiny stars, tinted by distance; never a full-screen beat flash.
+ color+=mix(vec3(.32,.42,.86),vec3(.58,.84,.90),noise)*star*(1.-quiet*.55);
  float vignette=smoothstep(.15,.85,length((uv-.5)*vec2(1.,.8)));
  color*=1.-vignette*.7;outColor=vec4(color,1.);
 }`;

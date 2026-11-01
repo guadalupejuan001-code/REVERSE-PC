@@ -7,13 +7,14 @@ const all = selector => [...document.querySelectorAll(selector)];
 const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
 const formatTime = seconds => { const s=Math.max(0,Math.floor(seconds));return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; };
 let saved={};try{saved=JSON.parse(localStorage.getItem('prisma.settings')||'{}')||{};}catch{}
-const settings={quality:['auto','high','battery'].includes(saved.quality)?saved.quality:'auto',palette:['coral','violet','ice'].includes(saved.palette)?saved.palette:'coral',precise:!!saved.precise,effects:saved.effects??matchMedia('(prefers-reduced-motion: reduce)').matches,latency:clamp(Number(saved.latency)||0,-200,200),volume:clamp(saved.volume??65,0,100)};
+const settings={quality:['auto','high','battery'].includes(saved.quality)?saved.quality:'auto',palette:['coral','violet','ice'].includes(saved.palette)?saved.palette:'coral',stageStyle:['galaxy','club','classic'].includes(saved.stageStyle)?saved.stageStyle:'galaxy',precise:!!saved.precise,effects:saved.effects??matchMedia('(prefers-reduced-motion: reduce)').matches,latency:clamp(Number(saved.latency)||0,-200,200),volume:clamp(saved.volume??65,0,100)};
 let records=[];try{records=JSON.parse(localStorage.getItem('prisma.records')||'[]');if(!Array.isArray(records))records=[];}catch{}
 const audio=new RhythmAudio();audio.volume=settings.volume/100;
 const scene=new Scene($('game'),()=>settings);
 const random=seeded(3334);
 const demoWave=Array.from({length:160},(_,i)=>.18+random()*.55+Math.sin(i*.38)**2*.23);
 const demoPeaks=Array.from({length:252},(_,i)=>({t:(i+4)*60/DEMO_BPM/2,strength:i%2===0?1:.36})).filter(p=>p.t<DEMO_DURATION-2.0);
+let demoEnergyCache=null; // measured from the synthesized audio, not invented light events
 let track={name:'Midnight Motion',demo:true,bpm:DEMO_BPM,duration:DEMO_DURATION,peaks:demoPeaks,wave:demoWave,buffer:null,fallback:false};
 let level='flow', chart=[], status='home', frozenTime=0, booting=false, missIndex=0, sceneDirty=true, gameBounds=null, lastScene=0, lastElapsed='';
 let score=0,combo=0,maxCombo=0,hits=0,misses=0,lastFrame=performance.now(),lastUI=0,feedbackUntil=0,toastTimer,activePointers=new Map(),runId=0;
@@ -74,6 +75,16 @@ async function startGame(){
     if(matchMedia('(orientation: portrait)').matches){toast('Gira el dispositivo para jugar en horizontal.');return;}
     await audio.init();
     if(!track.buffer){setLoading(true,'Preparando tu primera sesión…');track.buffer=await audio.makeDemo();track.wave=waveformOf(track.buffer);}
+    // The demo used to create an all-zero energy map, leaving the entire
+    // moving-head stage stuck in quiet mode. Measure its real generated audio
+    // once, and keep the original composer-aligned hit chart unchanged.
+    if(track.demo){
+      if(!demoEnergyCache){
+        const measured=await analyseRhythm(track.buffer);
+        demoEnergyCache=measured.energy;
+      }
+      track.energy=demoEnergyCache;
+    }
     if(thisRun!==runId)return;
     setLoading(false);audio.buffer=track.buffer;
     const peaks=track.demo&&level==='flow'?track.peaks.filter((_,i)=>i%2===0):track.peaks;
@@ -190,10 +201,11 @@ all('[data-dialog]').forEach(b=>b.addEventListener('click',()=>openDialog(b.data
 all('.close-dialog').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
 all('dialog').forEach(dialog=>dialog.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();}}));
 function renderRecords(){const list=$('recordList');list.replaceChildren();if(!records.length){const p=document.createElement('p');p.className='dialog-lead';p.textContent='Tu primera marca todavía está por escribirse. Completa una pista y vuelve aquí.';list.append(p);return;}for(const r of records.slice(0,8)){const row=document.createElement('div'),meta=document.createElement('span'),small=document.createElement('small'),value=document.createElement('strong');meta.textContent=r.track;small.textContent=`${levelNames[r.level]||'Flow'} · ${r.accuracy}% precisión · ${r.combo} combo`;meta.append(small);value.textContent=r.score.toLocaleString('es');row.append(meta,value);list.append(row);}}
-$('quality').value=settings.quality;$('palette').value=settings.palette;$('precise').checked=settings.precise;$('effects').checked=settings.effects;$('latency').value=settings.latency;$('volume').value=settings.volume;$('latencyValue').textContent=`${settings.latency>0?'+':''}${settings.latency} ms`;
+$('quality').value=settings.quality;$('palette').value=settings.palette;$('stageStyle').value=settings.stageStyle;$('precise').checked=settings.precise;$('effects').checked=settings.effects;$('latency').value=settings.latency;$('volume').value=settings.volume;$('latencyValue').textContent=`${settings.latency>0?'+':''}${settings.latency} ms`;
 function updatePalette(){sceneDirty=true;const palette=PALETTES[settings.palette];document.documentElement.style.setProperty('--green',palette[0]);document.documentElement.style.setProperty('--coral',palette[1]);all('.palette-legend>span')[0].lastChild.textContent=settings.palette==='ice'?'HIELO':'ESMERALDA';all('.palette-legend>span')[1].lastChild.textContent=settings.palette==='violet'?'VIOLETA':'CORAL';}
 $('quality').addEventListener('change',e=>{settings.quality=e.target.value;scene.qualityScale=1;scene.resize();sceneDirty=true;persistSettings();});
 $('palette').addEventListener('change',e=>{settings.palette=e.target.value;updatePalette();persistSettings();});
+$('stageStyle').addEventListener('change',e=>{settings.stageStyle=e.target.value;sceneDirty=true;persistSettings();toast({galaxy:'Galaxia viva · luces orbitales sincronizadas.',club:'Club orbital · persecuciones más rápidas.',classic:'Concierto clásico · iluminación contenida.'}[settings.stageStyle]);});
 $('precise').addEventListener('change',e=>{settings.precise=e.target.checked;persistSettings();});
 $('effects').addEventListener('change',e=>{settings.effects=e.target.checked;persistSettings();});
 $('latency').addEventListener('input',e=>{settings.latency=Number(e.target.value);$('latencyValue').textContent=`${settings.latency>0?'+':''}${settings.latency} ms`;persistSettings();});
