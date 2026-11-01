@@ -72,9 +72,14 @@ export class Scene {
     this.pulse = Math.max(this.pulse,.65); if (!reduced) {this.shake=2.5;this.flash=.025;}
     const length = Math.hypot(dx,dy) || 1, nx=dx/length, ny=dy/length;
     for (let side of [-1,1]) this.shards.push({x:p.x,y:p.y,size:p.s*.68,angle:Math.atan2(dy,dx),vx:(-ny*side*150+nx*65),vy:(nx*side*150+ny*45),vr:side*1.8,life:1,color,side});
-    const count = reduced ? 8 : 23;
+    // Scale disposable impact particles before touching playable note quality.
+    // Quality:auto responds to the existing frame-time governor.
+    const qualityMode=this.settings().quality;
+    const count=reduced?4:qualityMode==='battery'?6:
+      qualityMode==='auto'&&this.qualityScale<.76?9:qualityMode==='high'?27:23;
     for (let i=0;i<count;i++) {const a=Math.random()*Math.PI*2,s=70+Math.random()*270;this.particles.push({x:p.x,y:p.y,vx:Math.cos(a)*s+nx*60,vy:Math.sin(a)*s+ny*40,life:.5+Math.random()*.4,size:1+Math.random()*2,color});}
-    if (this.particles.length>330) this.particles.splice(0,this.particles.length-330);
+    const maxParticles=reduced||qualityMode==='battery'?90:qualityMode==='auto'&&this.qualityScale<.76?180:330;
+    if(this.particles.length>maxParticles)this.particles.splice(0,this.particles.length-maxParticles);
     if (this.shards.length>50) this.shards.splice(0,this.shards.length-50);
   }
   cube(x,y,z,size,colorIndex,dir,rot=0,preview=false,hot=false,alpha=1) {
