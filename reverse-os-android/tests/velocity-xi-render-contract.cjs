@@ -210,7 +210,12 @@ try{
       disabled=path.join(temp,'without-'+item.name+'.rvp');
   fs.writeFileSync(program,HEADER+item.disable.join('\n')+'\nhalt\n');
   run('run',program,original,disabled);
-  const withFX=render(original,1,0,0),withoutFX=render(disabled,1,0,0);
+  // Historic tire marks move behind a fast car. Inspect the back-facing
+  // XI orbit for rubber so the camera actually looks toward that world-space
+  // location; the forward camera must not fabricate visible marks.
+  const rearLook=item.name==='rubber'?2048:0;
+  const withFX=render(original,1,0,0,0,rearLook,0),
+    withoutFX=render(disabled,1,0,0,0,rearLook,0);
   const actual=decode(withFX.bytes,1),clean=decode(withoutFX.bytes,1);
   const pixels=materialize(actual),cleanPixels=materialize(clean);
   const hash=sha(Buffer.from(pixels.buffer)),base=sha(Buffer.from(cleanPixels.buffer));
