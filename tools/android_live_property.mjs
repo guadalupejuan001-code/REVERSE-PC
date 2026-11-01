@@ -1,7 +1,7 @@
 // Read-only PID1 VMA/property mapping from the byte-pinned kernel's BTF layout.
 // Maple node tags/end rules: Linux v6.12 include/linux/maple_tree.h, lib/maple_tree.c.
 import assert from 'node:assert/strict';import {inspectBootPropertyArea} from './android_boot_property.mjs';
-export const ODSIGN_BOOT_PATH_PROPERTIES=Object.freeze(['odsign.key.done','odsign.verification.done','init.svc.odsign','init.svc.keystore2','init.svc.android.hardware.security.keymint-service','apexd.status']);
+export const ODSIGN_BOOT_PATH_PROPERTIES=Object.freeze(['odsign.key.done','odsign.verification.done','init.svc.odsign','init.svc.keystore2','init.svc.android.hardware.security.keymint-service','init.svc.zygote','init.svc.zygote_secondary','apexd.status']);
 const MASK=0xffffffffffffffffn,PA=0x0000fffffffff000n,hex=x=>'0x'+x.toString(16);
 export function enumerateMapleVmas({mm,read,layout,maxVmas=8192}){
  const m=layout('mm_struct'),tree=mm+BigInt(m.mm_mt.offset),t=layout('maple_tree'),v=layout('vm_area_struct'),nodeLayout=layout('maple_node');
