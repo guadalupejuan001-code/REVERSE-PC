@@ -70,8 +70,8 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
  function treeTri(a,b,c,m){treeFaces.push({indices:[a,b,c],material:m});}
  const tp=p=>{canonical.push(vertices.length);vertices.push(p);normalIds.push(0);return vertices.length-1;};
  const top=tp([0,820,0]),ring=[];
- for(let k=0;k<6;k++){const t=k*Math.PI/3;ring.push(tp([Math.round(215*Math.cos(t)),200,Math.round(215*Math.sin(t))]));}
- for(let k=0;k<6;k++)treeTri(top,ring[k],ring[(k+1)%6],14+k%3);
+ for(let k=0;k<5;k++){const t=k*Math.PI*2/5;ring.push(tp([Math.round(215*Math.cos(t)),200,Math.round(215*Math.sin(t))]));}
+ for(let k=0;k<5;k++)treeTri(top,ring[k],ring[(k+1)%5],14+k%3);
  for(const axis of [0,2]){const pts=[[-20,0],[20,0],[20,280],[-20,280]].map(([x,y])=>{const p=[0,y,0];p[axis]=x;return tp(p);});treeTri(pts[0],pts[1],pts[2],9);treeTri(pts[0],pts[2],pts[3],10);}
  const treeEnd=vertices.length;
  if(vertices.length>1600||CAMERA+vertices.length>4096)throw Error('Car buffers overlap bounded engine IDs');
