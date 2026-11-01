@@ -12,7 +12,8 @@ def configure(expected, replacements):
     // Zero half-size preserves every historical sphere contract.
     double cube_half=0.,yaw=0.,pitch=0.,alpha=1.;
     int direction=-1;
-    bool hot=false;'''),
+    bool hot=false;
+    int material=0; // 0 legacy; 1 prism, 2 alloy, 3 luminous lens.'''),
         ('  void add_body(const Body& b) {', '''  void set_screen_center(double x,double y){
     if(!std::isfinite(x)||!std::isfinite(y)||x<0.||x>1.||y<0.||y>1.)
       throw std::invalid_argument("invalid spatial screen center");
@@ -23,7 +24,7 @@ def configure(expected, replacements):
         ('    for(const auto c:b.color)if(!std::isfinite(c)||c<0.||c>1.)', '''    if(!std::isfinite(b.cube_half)||b.cube_half<0.||
        !std::isfinite(b.yaw)||!std::isfinite(b.pitch)||
        !std::isfinite(b.alpha)||b.alpha<0.||b.alpha>1.||
-       b.direction < -1||b.direction>3||
+       b.direction < -1||b.direction>3||b.material<0||b.material>3||
        (b.cube_half>0.&&b.radius+1e-12<std::sqrt(3.)*b.cube_half))
       throw std::invalid_argument("invalid spatial cube/material");
     for(const auto c:b.color)if(!std::isfinite(c)||c<0.||c>1.)'''),
@@ -119,6 +120,34 @@ def configure(expected, replacements):
     }
     if(edge)luminance=b.hot?1.:.88;
     if(arrow)luminance=1.;
+    // Keep material zero BIT-FOR-BIT compatible with the original X Render
+    // cuboid shading. New materials only change the resolved surface color;
+    // candidate region planning, depth, exact box intersection and IDs stay.
+    if(b.material!=0){
+      const auto toward=sub(Vec3{0.,0.,4.8},point);
+      const auto view=length(toward)>1e-9?normalize(toward):normal;
+      const double nv=std::max(0.,std::min(1.,dot(normal,view)));
+      const double nd=std::max(0.,dot(normal,light));
+      const double fr=std::pow(1.-nv,5.);
+      const auto halfway=normalize(Vec3{light.x+view.x,light.y+view.y,light.z+view.z});
+      const double spec=std::pow(std::max(0.,dot(normal,halfway)),b.material==2?35.:18.);
+      const unsigned u=(axis+1)%3,w=(axis+2)%3;
+      if(b.material==1){ // stylized faceted glass, NOT physical ray refraction
+        const double facets=.5+.5*std::cos((local[u]*1.4+local[w]*.9)*10.);
+        luminance=.16+.31*nd+.15*facets+.30*fr+.28*spec;
+        if(edge)luminance=b.hot?1.12:.91;
+      }else if(b.material==2){ // brushed alloy with view-dependent glints
+        const double grain=.5+.5*std::cos(local[u]*46.);
+        luminance=.16+.44*nd+.23*spec*(.74+.26*grain)+.12*fr;
+        if(edge)luminance=.71+.14*spec;
+      }else if(b.material==3){ // recessed concert lens and constrained core
+        const double radial=std::hypot(local[u],local[w]);
+        const double halo=std::exp(-radial*radial*2.7);
+        luminance=.12+.22*nd+.70*halo+.15*fr+.18*spec;
+        if(edge)luminance=.28+.18*nd;
+      }
+      if(arrow)luminance=1.12;
+    }
     auto channel=[&](double color){
       double value=color*luminance*gains_[b.id];
       if(arrow&&b.hot)value=value*.45+.55;
