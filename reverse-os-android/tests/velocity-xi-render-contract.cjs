@@ -194,6 +194,8 @@ try{
  assert.equal(sha(fs.readFileSync(state)),retainedHash,'wheel observation changed real race snapshot');
  // Causal A/B comparisons from real XI physics saved by gameplay-contract:
  // disable only the visual event, preserve identical x/z/velocity/Ether.
+ const checkFxPixels=(kind,count)=>assert(count>=(kind==='landing'?2:15),
+   'XI '+kind+' must visibly affect multiple actual pixels, found '+count);
  const visualCases=[
   {name:'nitro',file:'fx-nitro.rvp',disable:['store8 382 0']},
   {name:'smoke',file:'fx-drift.rvp',disable:['store8 395 0']},
@@ -220,8 +222,13 @@ try{
   const pixels=materialize(actual),cleanPixels=materialize(clean);
   const hash=sha(Buffer.from(pixels.buffer)),base=sha(Buffer.from(cleanPixels.buffer));
   assert.notEqual(hash,base,'physical XI '+item.name+' must change real car/track pixels');
+  let changedPixels=0;
+  for(let pixel=0;pixel<pixels.length;pixel++)
+   if(pixels[pixel]!==cleanPixels[pixel])changedPixels++;
+  checkFxPixels(item.name,changedPixels);
   assert.equal(sha(fs.readFileSync(original)),retained,'effect render changed authoritative XI state');
-  effects.push({name:item.name,actualHash:hash,withoutEffectHash:base,pixelWidth:actual.width});
+  effects.push({name:item.name,actualHash:hash,withoutEffectHash:base,
+    changedPixels,orbitYaw:rearLook,pixelWidth:actual.width});
   writeImage('fx-'+item.name,actual,pixels,withFX.bytes);
  }
  console.log('VELOCITY_XI_FX_CAUSAL_PASS',JSON.stringify(effects));
