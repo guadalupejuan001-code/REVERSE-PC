@@ -131,7 +131,12 @@ export class Scene {
     const parts=concertNativeParts(pose,Math.max(0,capacity-(this.gpu.count||0)));
     const metal=[.24,.29,.34];
     for(const p of parts) {
-      this.gpu.cube(p.x,p.y,p.z,p.size,p.color<0?metal:this.rgb[p.color],
+      const tint=p.kind==='head'&&pose.style!=='classic'&&p.lightColor
+        ? [parseInt(p.lightColor.slice(1,3),16)/255,
+           parseInt(p.lightColor.slice(3,5),16)/255,
+           parseInt(p.lightColor.slice(5,7),16)/255]
+        : p.color<0?metal:this.rgb[p.color];
+      this.gpu.cube(p.x,p.y,p.z,p.size,tint,
         p.alpha,p.rotation,p.direction,p.hot,
         pose.quality==='battery'?0:p.kind==='head'?3:2);
     }
