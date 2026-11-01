@@ -310,6 +310,36 @@ try{
   tapNode(findText(ui,'HUD tablero'));
   ui=waitText(/^HUD libre$/);
   check(!!findText(ui,'HUD libre'),'large animated dashboard can be hidden again');
+  stage='physical touchscreen orbit';
+  const sceneNode=ui.find(x=>x.class==='android.view.SurfaceView')||
+    ui.filter(x=>x.class==='android.widget.FrameLayout'&&x.bounds)
+      .sort((a,b)=>{
+        const area=v=>{const p=/^\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]$/.exec(v.bounds||'');
+          return p?(Number(p[3])-Number(p[1]))*(Number(p[4])-Number(p[2])):0;};
+        return area(b)-area(a);
+      })[0];
+  check(!!sceneNode,'gesture target visible in native Android hierarchy');
+  const screen=/^\\[(\\d+),(\\d+)\\]\\[(\\d+),(\\d+)\\]$/.exec(sceneNode.bounds||'');
+  check(!!screen,'landscape scene has valid physical bounds');
+  const sx=Number(screen[1]),sy=Number(screen[2]),
+    sw=Number(screen[3])-sx,sh=Number(screen[4])-sy;
+  check(sw>500&&sh>200,'gesture area is large enough to avoid driving controls');
+  const y=sy+Math.round(sh*.43),startX=sx+Math.round(sw*.38),
+    endX=sx+Math.round(sw*.67);
+  adbText(['shell','input','swipe',String(startX),String(y),
+    String(endX),String(y-28),'400']);
+  let orbitReported=false,orbitRendered=false;
+  for(let k=0;k<15;k++){
+    const lines=logs();
+    orbitReported=/ORBIT_INPUT yaw=[1-9]\\d* pitch=/.test(lines);
+    orbitRendered=/ORBIT_FRAME yaw=[1-9]\\d* pitch=/.test(lines);
+    if(orbitReported&&orbitRendered)break;
+    sleep(250);
+  }
+  check(orbitReported&&orbitRendered,
+    'real screen drag rotates XI camera and posts an independently rendered view');
+  screenshot('touch-orbit-camera');
+  ui=waitText(/EN PAUSA/);
   stage='camera and paint';tapNode(findText(ui,'Cámara'));
   ui=waitText(/^Cercana$/);check(!!findText(ui,'Cercana'),'physical camera changes to close chase');
   tapNode(findText(ui,'Color'));ui=waitText(/^Color 2$/);
