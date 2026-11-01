@@ -160,10 +160,10 @@ test(!parsed.fallback&&parsed.peaks.length>200,'Three-minute song analysis lost 
 test(Math.abs(parsed.bpm-120)<=8,'Three-minute synthetic beat detection drift');
 const map=music.makeMusicStage(parsed.peaks,{bpm:parsed.bpm,duration:180,
   energy:parsed.energy,tempoSegments:parsed.tempoSegments,fallback:false});
-const chart=music.makeIntelligentChart(parsed.peaks,'pulse',7721,map);
-test(chart.length>=200&&chart.every((n,i)=>!i||chart[i-1].t<=n.t),
+const longChart=music.makeIntelligentChart(parsed.peaks,'pulse',7721,map);
+test(longChart.length>=200&&longChart.every((n,i)=>!i||longChart[i-1].t<=n.t),
   'Long song produced invalid or unordered chart');
 test(elapsed<30000,'Three-minute analysis exceeded 30s CI safety budget');
 console.log(JSON.stringify({suite:'prisma-cycle6-gameplay',
   passed,analysisMs:+elapsed.toFixed(2),songSeconds:duration,peaks:parsed.peaks.length,
-  chartNotes:chart.length,qualityScale:scene.qualityScale}));
+  chartNotes:longChart.length,qualityScale:scene.qualityScale}));

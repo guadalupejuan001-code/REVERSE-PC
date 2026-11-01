@@ -22,7 +22,9 @@ jobs:
       - uses: actions/checkout@v4
         with: {persist-credentials: false}
       - name: Verify PRISMA musical timing, spectral cues and beatmaps
+        shell: bash
         run: |
+          set -euo pipefail
           node tests/prisma-stage.mjs
           node tests/prisma-music-analysis.mjs
           node tests/prisma-concert-rig.mjs
@@ -30,6 +32,8 @@ jobs:
           node tests/prisma-materials.mjs
           node tests/prisma-quality.mjs
           node tests/prisma-gameplay-qa.mjs | tee prisma-gameplay-qa.json
+          test -s prisma-gameplay-qa.json
+          python3 -m json.tool prisma-gameplay-qa.json >/dev/null
       - uses: actions/checkout@v4
         with:
           repository: guadalupejuan001-code/REVERSE-PC
