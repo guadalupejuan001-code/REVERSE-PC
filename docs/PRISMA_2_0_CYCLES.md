@@ -18,8 +18,8 @@ Trabajo incremental: codex/prisma-2-musical-stage-20261101.
 | Ciclo | Alcance | Estado |
 | --- | --- | --- |
 | 01. Dirección musical | Clasificar acentos fuertes con datos de audio, energía por ventanas, reloj de canción, reinicio/pausa/seek | Implementación inicial terminada |
-| 02. Beatmap inteligente | Densidad y direcciones por bandas grave/medio/agudo, tempo local, validación con pistas sintéticas | Implementado; validación Android pendiente |
-| 03. Maquinaria de concierto | Seis focos móviles, ráfagas de haces y reacción por beat y energía | Prototipo integrado; falta geometría/articulaciones avanzadas y luces volumétricas nativas |
+| 02. Beatmap inteligente | Densidad y direcciones por bandas grave/medio/agudo, tempo local, validación con pistas sintéticas | Implementado; CI Android aprobó el 2026-11-01 |
+| 03. Maquinaria de concierto | Seis focos articulados, bases/cabezales nativos, juntas y vigas de metal, programa escénico por compases, guardarraíl de 64 cuboides, luces adaptativas | Implementado; CI Android del ciclo 03 pendiente |
 | 04. Combos musicales | Hitos 10/20/30/50 y múltiplos de 50 desde 100, evento diferido hasta siguiente acento, cancelación por fallo | Prototipo integrado |
 | 05. Materiales y escenarios | Mejoras del renderizador, refracción/materiales XI y geometría escénica con oráculos de exactitud | Pendiente |
 | 06. Android/QA/optimización | Compilar RXE3/APK, verificar WebView y XI, rendimiento, protección contra mareo, pruebas en móvil físico | Pendiente |
@@ -40,7 +40,7 @@ Las explosiones no se generan por intervalos de reloj ni por alcanzar el combo a
 - Prueba sintética adicional: parámetros y cantidad de focos nativos, dibujo de haces y modo reducido.
 - Prueba repetible en Node: node tests/prisma-stage.mjs.
 
-**No es todavía una prueba de juego en pantalla real o Android.** El Ciclo 02 ya detecta transitorios mediante tres bandas de frecuencia y deriva tempo por ventanas, pero NO separa instrumentos ni transcribe notas o melodías. El tempo local puede sufrir ambigüedad de medio/doble tiempo y las transiciones se estiman por ventanas, no al milisegundo. La fase 03 solo tiene un prototipo de focos, no iluminación volumétrica físicamente basada. Debe construirse un ejecutable RXE3 y validar la APK de extremo a extremo antes de considerarla lista para entrega.
+**La compilación y emulación Android del Ciclo 02 terminaron satisfactoriamente** (workflow #41286237762); eso NO equivale a una medición en teléfono físico. El Ciclo 02 detecta transitorios en tres bandas y deriva tempo por ventanas, pero NO separa instrumentos ni transcribe notas o melodías. El tempo local puede sufrir ambigüedad de medio/doble tiempo. El Ciclo 03 incorpora cabezas y apoyos nativos articulados mediante piezas cúbicas y juntas con líneas 2D; NO es iluminación volumétrica físicamente basada, cinemática de esqueletos 3D arbitrarios ni materiales metálicos PBR. Esta nueva revisión todavía necesita la prueba Android de su propio commit.
 
 ## Construcción en la base RXE3
 
@@ -57,3 +57,17 @@ Usar los comandos existentes de docs/PRISMA_RXE_GRAPHICS.md. El empaquetador de 
 - tests/prisma-music-analysis.mjs: pruebas sintéticas graves/agudos/medios, tempo 100→140 BPM, dificultades, orden temporal, estabilidad del caso 120 BPM, silencio y estéreo en contrafase. Ejecutar: node tests/prisma-music-analysis.mjs.
 
 Siguiente: Ciclo 03 (mejorar brazos mecánicos, cinemática y visualización con materiales nativos que soporte realmente la ABI).
+
+
+## Ciclo 03 — escena mecánica musical (2026-11-01)
+
+- apps/prisma/web/concert-rig.js: programa offline por compases. Mide la energía de la canción y reconoce estados visuales quiet, groove, build, impact, peak, release, calculados por variaciones energéticas; no infiere letras, géneros ni un detector de drops perfecto. Integra BPM variable preservando continuidad del tiempo musical para los movimientos.
+- Seis focos, tres a la izquierda y tres a la derecha, con base fija, codo calculado y cabezal móvil. Brazos de articulación y vigas se dibujan como líneas metálicas proyectadas 2D; cuerpos cúbicos de las bases y cabezales se resuelven mediante el observador espacial Ether Render X nativo en Android. En el navegador se usa el adaptador de referencia WebGL o Canvas disponible.
+- **Sin flechas falsas:** la dirección -1 en el protocolo de cuboides PRISMA indica una pieza escénica sin flecha. Sigue habiendo flechas 0..3 en las notas. Esta opción aprovecha la extensión de EtherRenderSpatial::Body, que ya admite -1. El paquete se valida en PrismaXRender::Frame. WebGL respeta la misma semántica.
+- **Prioridad jugable:** las notas se añaden primero al paquete de cubos. Los cabezales, bases y codos solo utilizan el presupuesto restante, con límite de 64 cuboides en la ruta nativa; al agotarse se sacrifica decoración, nunca una nota. Alta: hasta 18 cuerpos escénicos. Automática: hasta 12. Ahorro: 2 (uno por lado). La calidad automática puede reducir las cabezas cuando caen los FPS.
+- **Luces y seguridad:** seis haces de luz en una superposición Canvas 2D con barridos controlados, brillo acotado, articulaciones y pulsos de piso. No utiliza ráfagas estroboscópicas de pantalla completa. «Efectos suaves» mantiene las cabezas inmóviles y los haces tenues.
+- **Determinismo y reproducción:** cualquier posición de las luces es función del tiempo de audio y del mapa energético/tempo; al pausar, continuar o buscar tiempo no se ejecuta una simulación física divergente.
+- tests/prisma-concert-rig.mjs: prueba reproducible con sección calma/ascenso/pico/descanso, continuidad en BPM variable, seis articulaciones, congelación reducida, modo batería, validez ABI y prioridad de las notas en el límite de 64.
+- tests/prisma_xrender.cpp: cobertura nueva para los cuerpos escénicos con dirección -1 y rechazo de campos fuera de rango. Instrumentación Android valida la presencia de cuerpos nativos en la escena sin presuponer el mismo número para todos los ajustes.
+
+**Pendientes de otros ciclos:** geometría 3D no cúbica, superficies metálicas PBR, niebla volumétrica real y benchmark de Android físico. El navegador WebGL no es Ether Render X. La apariencia de varillas y vigas del ciclo 03 se compone en el overlay, pero sus cuboides no se falsifican: provienen del renderizador nativo.
