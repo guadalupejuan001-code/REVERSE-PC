@@ -11,6 +11,10 @@ class MachineMeshRaster {
   // revision 2 and geometry-capture revision 4 remain byte-compatible.
   static constexpr std::uint16_t native_width = 3840, native_height = 2160;
   static constexpr unsigned native_rows_per_strip = 32;
+  // Conservative per-region candidates inspired by EtherRenderSpatial.
+  // Faces remain authoritative XI; this only removes impossible pixel tests.
+  static constexpr unsigned spatial_tile_width = 32;
+  static constexpr unsigned spatial_tile_columns = (native_width+spatial_tile_width-1)/spatial_tile_width;
   static constexpr std::size_t native_max_triangles = 32768;
   static constexpr std::size_t native_max_vertices = 16384;
   static constexpr unsigned native_max_textures = 16;
@@ -349,7 +353,45 @@ class MachineMeshRaster {
     const auto top = std::max<std::int64_t>(tile_row_start_, std::min({a.y, b.y, c.y}) / 2);
     const auto bottom = std::min<std::int64_t>(tile_row_end_ - 1, std::max({a.y, b.y, c.y}) / 2);
     if (left > right || top > bottom) return;
-    const auto work = static_cast<std::uint64_t>((right-left+1)*(bottom-top+1));
+    // Ether's spatial principle, translated to XI's exact top-left triangle
+    // raster: reject a 32x32 tile only when one oriented triangle edge is
+    // strictly outside every pixel center in its rectangle. Since edge
+    // functions are affine, their maximum lies at one of the four corners.
+    // A conservative tile rejection therefore cannot remove a visible pixel.
+    // Keep small faces on the original direct path: indexing costs more there.
+    std::array<std::uint8_t,spatial_tile_columns> candidates{};
+    // Compile-time reference switch exists only to verify pixel-level parity
+    // with the previous XI renderer. The production build keeps this enabled.
+#ifdef REGRAPHICS_DISABLE_SPATIAL_CANDIDATES
+    const bool use_spatial = false;
+#else
+    const bool use_spatial = native_tiled_ && !tile_collecting_ &&
+      right-left>=128 && bottom-top>=8;
+#endif
+    std::uint64_t eligible_columns=0;
+    if(use_spatial){
+      const std::array<Vertex,3> triangle{{a,b,c}};
+      const std::array<bool,3> inclusive{{top_left(b,c),top_left(c,a),top_left(a,b)}};
+      for(auto tile=static_cast<unsigned>(left)/spatial_tile_width;
+          tile<=static_cast<unsigned>(right)/spatial_tile_width;++tile){
+        const auto x0=std::max<std::int64_t>(left,std::int64_t(tile)*spatial_tile_width);
+        const auto x1=std::min<std::int64_t>(right,(std::int64_t(tile)+1)*spatial_tile_width-1);
+        const auto lx=2*x0+1,rx=2*x1+1,ty=2*top+1,by=2*bottom+1;
+        bool possible=true;
+        for(unsigned e=0;e<3;++e){
+          const auto& from=triangle[(e+1)%3];
+          const auto& to=triangle[(e+2)%3];
+          const auto m=std::max({edge(from,to,lx,ty),edge(from,to,rx,ty),
+                                 edge(from,to,lx,by),edge(from,to,rx,by)});
+          if(m<0 || (m==0&&!inclusive[e])){possible=false;break;}
+        }
+        candidates[tile]=possible?1:0;
+        if(possible)eligible_columns+=static_cast<std::uint64_t>(x1-x0+1);
+      }
+      if(!eligible_columns)return;
+    }
+    const auto work=(use_spatial?eligible_columns:static_cast<std::uint64_t>(right-left+1))*
+      static_cast<std::uint64_t>(bottom-top+1);
     // Work budget scales with actual resolution instead of a 640x360 constant.
     const std::uint64_t budget=native_tiled_?
       std::uint64_t(width_)*height_*64 : max_pixel_tests;
@@ -380,6 +422,17 @@ class MachineMeshRaster {
       auto w0=row0,w1=row1,w2=row2;
       auto at=std::size_t(y-tile_row_start_)*width_+static_cast<std::size_t>(left);
       for (auto x=left; x<=right; ++x,++at) {
+        if(use_spatial && !candidates[static_cast<unsigned>(x)/spatial_tile_width]){
+          // Jump across an entire impossible 2D region. Advance affine edge
+          // values by precisely the skipped pixel count, preserving bitwise
+          // coverage and barycentric interpolation at the next candidate.
+          const auto stop=std::min<std::int64_t>(right+1,
+            (x/spatial_tile_width+1)*spatial_tile_width);
+          const auto delta=stop-x;
+          x+=delta-1;at+=static_cast<std::size_t>(delta-1);
+          w0+=dx0*delta;w1+=dx1*delta;w2+=dx2*delta;
+          continue;
+        }
         if ((w0>0 || (w0==0 && t0)) && (w1>0 || (w1==0 && t1)) &&
             (w2>0 || (w2==0 && t2))) {
           // Reciprocal camera depth is affine in projected screen space.
