@@ -385,8 +385,8 @@ try{
   const active=report.frameStats.filter(s=>s.paused===false&&s.frames>0&&s.elapsedNanos>0&&Number.isFinite(s.fps)&&s.fps>0);
   check(active.length>0,'actual posted-frame FPS measurements recorded');
   check(active.some(s=>s.xiRenders>0),'live race continues rendering updated XI snapshots');
-  report.framePipeline=finalLogs.split(/\\r?\\n/)
-    .filter(s=>/ReverseVelocity.*FRAME_PIPELINE\\b/.test(s))
+  report.framePipeline=finalLogs.split(/\r?\n/)
+    .filter(s=>/ReverseVelocity.*FRAME_PIPELINE\b/.test(s))
     .map(line=>({mode:/mode=(XI_4K|XI_STANDARD)/.exec(line)?.[1],...fields(line)}));
   check(report.framePipeline.length>0,'real frame stage timings are emitted');
   check(report.framePipeline.some(s=>s.mode==='XI_STANDARD'&&s.samples>0),
