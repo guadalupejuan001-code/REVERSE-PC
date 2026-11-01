@@ -86,19 +86,19 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
  const smokeStart=vertices.length,smokeFaces=[];
  for(const side of [-1,1]){
   const x=side*91,z=-146;
-  const a=fxVertex(x-34,30,z-5,32),b=fxVertex(x+34,31,z-8,85);
-  const c=fxVertex(x+58,132,z-102,224),d=fxVertex(x-58,125,z-92,115);
+  const a=fxVertex(x-18,26,z-5,45),b=fxVertex(x+18,27,z-8,95);
+  const c=fxVertex(x+29,88,z-66,180),d=fxVertex(x-29,82,z-58,115);
   smokeFaces.push([a,b,c],[a,c,d]);
-  const e=fxVertex(x,26,z+12,34),f=fxVertex(x,25,z-34,95);
-  const g=fxVertex(x,153,z-80,204),h=fxVertex(x,145,z+30,144);
+  const e=fxVertex(x,25,z+12,50),f=fxVertex(x,24,z-22,105);
+  const g=fxVertex(x,96,z-52,195),h=fxVertex(x,90,z+22,133);
   smokeFaces.push([e,f,g],[e,g,h]);
  }
  const smokeEnd=vertices.length;
  const nitroStart=vertices.length,nitroFaces=[];
  for(const side of [-1,1]){
   const x=side*49;
-  const a=fxVertex(x-13,21,-226,55),b=fxVertex(x+13,21,-226,130);
-  const c=fxVertex(x+25,12,-344,248),d=fxVertex(x-25,12,-344,184);
+  const a=fxVertex(x-9,21,-226,55),b=fxVertex(x+9,21,-226,130);
+  const c=fxVertex(x+15,15,-302,235),d=fxVertex(x-15,15,-302,173);
   nitroFaces.push([a,b,c],[a,c,d]);
  }
  const nitroEnd=vertices.length;
