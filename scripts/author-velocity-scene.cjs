@@ -89,7 +89,12 @@ for(const tri of [[[0,0],[1,0],[1,1]],[[0,0],[1,1],[0,1]]]){
   out('div r1 12\nmeshtexuv '+id+' r1 r0\nmeshshade '+id+' 128');
  }
  focus();
- out('meshfacegradienttex 1770 1771 1772 40 16 5 4 r9 r10 r11 60\njmp '+done+'\nlabel '+plain);
+ // Independent world-space asphalt tone per segment. Adjacent road triangles
+  // reuse the same authored material and XI texture; no screen-space overlays.
+  out('load8 r12 8200\nmod r12 7\ncmp r12 3\njle asphalt_darker_'+i+
+    '\nset r12 42\njmp asphalt_tone_done_'+i+
+    '\nlabel asphalt_darker_'+i+'\nset r12 40\nlabel asphalt_tone_done_'+i);
+  out('meshfacegradienttex 1770 1771 1772 r12 12 5 3 r9 r10 r11 60\njmp '+done+'\nlabel '+plain);
  focus();
  out('load8 r7 8220\nmeshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 r7 r9 r10 r11 60');
  out('label '+done);
