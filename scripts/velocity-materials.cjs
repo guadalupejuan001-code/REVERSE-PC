@@ -1,6 +1,6 @@
 'use strict';
 // Fixed 8-bit material transport, with dedicated smooth lighting ramps.
-const WORLD_MAP=new Map([[8,0],[38,1],[72,2],[189,3],[78,4],[208,5],[108,6],[206,7],[204,8],[202,9],[203,10],[205,11],[194,12],[195,13],[196,14],[197,15],[198,16],[199,17],[200,18],[201,19]]);
+const WORLD_MAP=new Map([[8,0],[38,1],[72,2],[210,20],[211,21],[189,3],[78,4],[208,5],[108,6],[206,7],[204,8],[202,9],[203,10],[205,11],[194,12],[195,13],[196,14],[197,15],[198,16],[199,17],[200,18],[201,19]]);
 function worldMaterial(old){if(!WORLD_MAP.has(old))throw Error('Unknown world material '+old);return WORLD_MAP.get(old);}
 const RAMPS=Object.freeze({paint:{base:64,count:24},glass:{base:184,count:24},tire:{base:208,count:4},rim:{base:212,count:12},aero:{base:228,count:12}});
 const FLAT=Object.freeze({lampRed:224,lampWhite:225,grille:226,shadow:227,shadowSoft:28,shadowMid:29,shadowContact:30,seam:240,metal:241});
@@ -11,6 +11,10 @@ function buildPalette(){
  const p=Array(256).fill('485259');
  const world=['4c98c5','b7d3e2','667356','8d9f9d','858c82','ce4843','4b535a','e4e6df','a5adae','65503b','736046','806c50','203d2c','294b32','34583a','3c6240','446b45','4d744a','567d50','608457'];
  world.forEach((v,i)=>p[i]=v);
+ // Additional XI material strips for atmospheric depth and terrain shading.
+ // They are not full-screen Android color effects: XI owns these triangles.
+ p[20]='254a64'; // Deep overhead sky
+ p[21]='566c4b'; // Foreground grassy soil
  // Asfalto con 8 matices, recorrido espacial constante en la pista XI.
  for(let i=0;i<16;i++)p[40+i]=hex(mix(rgb('242b31'),rgb('56606a'),Math.pow(i/15,1.08)));
  for(let i=0;i<8;i++){p[24+i]=hex(mix(rgb('4b535a'),rgb('151e25'),i/7));p[32+i]=hex(mix(rgb('667356'),rgb('19271e'),i/7));}
