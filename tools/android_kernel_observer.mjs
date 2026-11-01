@@ -7,7 +7,8 @@ import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {auditGkiRvg} from './audit_gki_rvg.mjs';
 import {rvgMemoryLines} from './rvg_memory_lines.mjs';
-import {observePid1BootProperty} from './android_live_property.mjs';
+import {observePid1BootProperty,mountedFilePath} from './android_live_property.mjs';
+import {inspectBinderQueues} from './android_binder_snapshot_probe.mjs';
 const KERNEL='f722bdd809bfd3485917a564b053b8a6d4938408734091f420c3297a8e3b20c8';
 const VBASE=0xffffffc080000000n, RAM=0x40000000n;
 const MASK=0xffffffffffffffffn, PA=0x0000fffffffff000n;
@@ -128,6 +129,20 @@ export function observeAndroidKernel(bytes,expectedCheckpointSha,options){
    else Object.assign(out,members(types[id],offset,depth+1));
   }return out;
  };
+ const binderLayoutDebug=options?.binderDebug?(()=>{
+    // Read-only BTF metadata from the exact pinned kernel: no task, RAM or Binder state writes.
+    const targets=['binder_proc','binder_thread','binder_transaction','binder_work','hlist_head','hlist_node','rb_root','rb_node','list_head'];
+    const layouts={};
+    for(const name of targets){
+      try{
+        const t=type(name),fields=members(t);
+        layouts[name]={size:t.type,fields:Object.fromEntries(Object.entries(fields).map(([field,member])=>[field,member.offset]))};
+      }catch(e){layouts[name]={unavailable:e.message};}
+    }
+    return {schema:'reverse-android-binder-layout-v1',
+      candidate_symbols:symbols.filter(x=>['binder_procs','binder_dead_nodes','binder_deferred_list','binder_context_mgr_node'].includes(x.name)).map(x=>({name:x.name,address:hex(x.address)})),
+      layouts,read_only:true};
+  })():undefined;
  const task=members(type('task_struct')),thread=members(types[task.thread.type]),context=members(types[thread.cpu_context.type]);
  const layout=Object.fromEntries(['tasks','pid','comm','__state','stack'].map(n=>[n,task[n].offset]));
  const contextOffset=task.thread.offset+thread.cpu_context.offset;
@@ -151,6 +166,64 @@ export function observeAndroidKernel(bytes,expectedCheckpointSha,options){
    item.exit_state=Number(read(pointer+BigInt(task.exit_state.offset),4));
    const mm=read(pointer+BigInt(task.mm.offset));check(mm===0n||mm>=0xffff000000000000n,'invalid task mm');
    item.has_user_mm=mm!==0n;
+  }
+  // Read the saved userspace syscall frame of sleeping processes.
+  // A kernel call frame named ioctl alone does not establish Binder IPC.
+  if(options?.binderDebug&&item.has_user_mm&&!current&&/^(odsign|keystore2|android\.hardwar|servicemanager|hwservicemanage)$/.test(item.name)){
+   try{
+    check(task.stack&&ptregs.regs&&ptregs.syscallno&&ptregs.pc,'ARM64 syscall BTF layout incomplete');
+    const base=read(pointer+BigInt(task.stack.offset));
+    check(base>=0xffff000000000000n,'Invalid task stack base');
+    const size=type('pt_regs').type;
+    const layouts=[16384,32768,8192,65536],candidates=[];
+    for(const threadSize of layouts){
+     if(sp<base||sp>=base+BigInt(threadSize)||size>threadSize)continue;
+     try{
+      const at=base+BigInt(threadSize-size),syscall=Number(read(at+BigInt(ptregs.syscallno.offset),4));
+      const userPc=read(at+BigInt(ptregs.pc.offset));
+      const arg=i=>read(at+BigInt(ptregs.regs.offset+i*8));
+      candidates.push({thread_stack_bytes:threadSize,number:syscall,user_pc:hex(userPc),fd:Number(arg(0)),request:hex(arg(1)),third_argument:hex(arg(2))});
+     }catch(e){candidates.push({thread_stack_bytes:threadSize,error:e.message});}
+    }
+    const ioctl=candidates.find(x=>x.number===29&&x.fd>=0&&x.fd<65536);
+    item.guest_syscall=ioctl??{unverified:true,candidates};
+    if(ioctl&&task.files){
+     try{
+      const files=read(pointer+BigInt(task.files.offset)),filesLayout=members(type('files_struct')),
+       fdtableLayout=members(type('fdtable'));
+      const table=read(files+BigInt(filesLayout.fdt.offset)),max=Number(read(table+BigInt(fdtableLayout.max_fds.offset),4));
+      check(ioctl.fd<max&&max<=1048576,'IOCTL fd out of bounds');
+      const entries=read(table+BigInt(fdtableLayout.fd.offset));
+      const file=read(entries+BigInt(8*ioctl.fd));
+      check(file>=0xffff000000000000n,'IOCTL fd missing file');
+      item.guest_syscall.file=mountedFilePath(file,{read,layout:name=>Object.fromEntries(Object.entries(members(type(name))).map(([k,v])=>[k,{offset:v.offset}]))});
+      item.guest_syscall.file_pointer=hex(file);
+      if(item.guest_syscall.file==='/dev/binderfs/binder'){
+       // Binder's binder_open attaches the binder_proc to the kernel struct file.
+       // Unlike binder_procs global enumeration, this is a per-fd direct pointer
+       // with independently checked file identity and BTF field offsets.
+       const fl=members(type('file')),bp=members(type('binder_proc'));
+       check(fl.private_data&&bp.pid&&bp.proc_node&&bp.threads&&bp.todo,'Binder private_data BTF fields unavailable');
+       const priv=read(file+BigInt(fl.private_data.offset));
+       check(priv>=0xffff000000000000n&&(priv&7n)===0n,'Binder file private_data invalid');
+       const binderPid=Number(read(priv+BigInt(bp.pid.offset),4));
+       item.guest_syscall.binder_private={
+         pointer:hex(priv),pid:binderPid,fd_owner_pid:pid,
+         plausible_binder_proc_pid:binderPid>0&&binderPid<=4194304,
+         file_private_data_field_offset:fl.private_data.offset,
+         proc_node_next:hex(read(priv+BigInt(bp.proc_node.offset))),
+         process_threads_root:hex(read(priv+BigInt(bp.threads.offset))),
+         todo_head_next:hex(read(priv+BigInt(bp.todo.offset))),
+         outstanding_txns:Number(read(priv+BigInt(bp.outstanding_txns.offset),4)),
+         is_dead:Number(read(priv+BigInt(bp.is_dead.offset),1))!==0,
+         context_pointer:bp.context?hex(read(priv+BigInt(bp.context.offset))):null,
+         source:'verified_binder_fd_private_data',
+         read_only:true
+       };
+      }
+     }catch(e){item.guest_syscall.fd_path_error=e.message;}
+    }
+   }catch(e){item.guest_syscall={unverified:true,error:e.message};}
   }
   for(const name of ['on_rq','on_cpu'])if(task[name])item[name]=Number(read(pointer+BigInt(task[name].offset),4));
   item.accounting={};
@@ -226,6 +299,12 @@ export function observeAndroidKernel(bytes,expectedCheckpointSha,options){
   Object.assign(capacity,{managed_pages:Number(total),reserved_pages:Number(reserve),global_free_pages:Number(available),managed_bytes:Number(total*4096n),global_free_bytes:Number(available*4096n),vmstat_per_cpu_batches_may_lag:true,android_framework_capacity_proven:false});
  }catch(e){capacity.read_error=e.message;}
  const liveProperty=options?.liveProperties?observePid1BootProperty({tasks,read,physicalByte:physical,physical64:phys64,translateKernel:translate,userAddressBits:64-Number(tcr&63n),layout:name=>Object.fromEntries(Object.entries(members(type(name))).map(([key,member])=>{const t=resolveType(types[member.type]);return [key,{offset:member.offset,count:t.kind===3?kernel.readUInt32LE(t.at+20):null}];}))}):undefined;
+ let binderQueues;
+ if(options?.binderDebug){
+  try{
+   binderQueues=inspectBinderQueues({read,globalAddress:symbol('binder_procs'),layouts:binderLayoutDebug.layouts,tasks});
+  }catch(e){binderQueues={schema:'reverse-binder-live-queues-v1',read_only:true,error:e.message};}
+ }
  let liveSecurity;
  if(options?.liveProperties){
   liveSecurity={read_only:true,btf_layout_verified:false,selinux_initialized:false,selinux_enforcing:false,policy_present:false};
@@ -238,8 +317,8 @@ export function observeAndroidKernel(bytes,expectedCheckpointSha,options){
   }catch(error){liveSecurity.read_error=error.message;liveSecurity.btf_layout_verified=false;}
  }
  check(createHash('sha256').update(bytes).digest('hex')===originalSha,'observation mutated input');
- return {...(liveProperty?{live_boot_property:liveProperty,live_kernel_security:liveSecurity}:{}),status:'read_only_kernel_observation',checkpoint_sha256:originalSha,kernel_sha256:KERNEL,instructions:provenance.instructions,pc:hex(u(2)),pc_symbol:nearest(u(2)),next_opcode:hex(read(u(2),4)),physical_pc:hex(translate(u(2))),ticks:m(27).toString(),exceptions:m(28).toString(),current_task:currentTask===null?null:hex(currentTask),current_task_source:currentTaskSource,current_task_lookup:currentLookup,current_task_read_error:currentTaskError,current_pid:currentDetails?.pid??null,current_task_details:currentDetails,capacity,task_layout:layout,task_count:tasks.length,process_leader_count:tasks.length,all_threads_enumerated:false,tasks,trace_event_sem:{address:hex(sem),count:hex(countValue),owner:hex(owner),owner_pid:ownerTask?.pid??null},initramfs:globals,rootfs_file:rootfsFile,android_init_observed:false,android_boot:false,input_unchanged:true};
+ return {...(binderQueues?{binder_live_queues:binderQueues}:{}),...(binderLayoutDebug?{binder_layout_debug:binderLayoutDebug}:{}),...(liveProperty?{live_boot_property:liveProperty,live_kernel_security:liveSecurity}:{}),status:'read_only_kernel_observation',checkpoint_sha256:originalSha,kernel_sha256:KERNEL,instructions:provenance.instructions,pc:hex(u(2)),pc_symbol:nearest(u(2)),next_opcode:hex(read(u(2),4)),physical_pc:hex(translate(u(2))),ticks:m(27).toString(),exceptions:m(28).toString(),current_task:currentTask===null?null:hex(currentTask),current_task_source:currentTaskSource,current_task_lookup:currentLookup,current_task_read_error:currentTaskError,current_pid:currentDetails?.pid??null,current_task_details:currentDetails,capacity,task_layout:layout,task_count:tasks.length,process_leader_count:tasks.length,all_threads_enumerated:false,tasks,trace_event_sem:{address:hex(sem),count:hex(countValue),owner:hex(owner),owner_pid:ownerTask?.pid??null},initramfs:globals,rootfs_file:rootfsFile,android_init_observed:false,android_boot:false,input_unchanged:true};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
- try{check(process.argv[2],'usage: node android_kernel_observer.mjs checkpoint.rvg [expected_sha256]');const maxSnapshotBytes=process.argv[4]===undefined?256*1024*1024:Number(process.argv[4]);check(Number.isSafeInteger(maxSnapshotBytes)&&maxSnapshotBytes>=360&&maxSnapshotBytes<=1024*1024*1024,'invalid host transport bound');check(statSync(process.argv[2]).size<=maxSnapshotBytes,'oversized checkpoint');console.log(JSON.stringify(observeAndroidKernel(readFileSync(process.argv[2]),process.argv[3],{maxSnapshotBytes,liveProperties:process.argv[5]==='--live-properties'}),null,2));}catch(e){console.error(e.message);process.exitCode=1;}
+ try{check(process.argv[2],'usage: node android_kernel_observer.mjs checkpoint.rvg [expected_sha256]');const maxSnapshotBytes=process.argv[4]===undefined?256*1024*1024:Number(process.argv[4]);check(Number.isSafeInteger(maxSnapshotBytes)&&maxSnapshotBytes>=360&&maxSnapshotBytes<=1024*1024*1024,'invalid host transport bound');check(statSync(process.argv[2]).size<=maxSnapshotBytes,'oversized checkpoint');console.log(JSON.stringify(observeAndroidKernel(readFileSync(process.argv[2]),process.argv[3],{maxSnapshotBytes,liveProperties:process.argv.includes('--live-properties'),binderDebug:process.argv.includes('--binder-probe')}),null,2));}catch(e){console.error(e.message);process.exitCode=1;}
 }

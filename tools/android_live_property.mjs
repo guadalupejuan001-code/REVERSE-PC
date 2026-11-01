@@ -1,6 +1,7 @@
 // Read-only PID1 VMA/property mapping from the byte-pinned kernel's BTF layout.
 // Maple node tags/end rules: Linux v6.12 include/linux/maple_tree.h, lib/maple_tree.c.
 import assert from 'node:assert/strict';import {inspectBootPropertyArea} from './android_boot_property.mjs';
+export const ODSIGN_BOOT_PATH_PROPERTIES=Object.freeze(['odsign.key.done','odsign.verification.done','init.svc.odsign','init.svc.keystore2','init.svc.android.hardware.security.keymint-service','apexd.status']);
 const MASK=0xffffffffffffffffn,PA=0x0000fffffffff000n,hex=x=>'0x'+x.toString(16);
 export function enumerateMapleVmas({mm,read,layout,maxVmas=8192}){
  const m=layout('mm_struct'),tree=mm+BigInt(m.mm_mt.offset),t=layout('maple_tree'),v=layout('vm_area_struct'),nodeLayout=layout('maple_node');
@@ -63,7 +64,7 @@ export function userMemoryReader({pgdPhysical,userAddressBits,physicalByte,physi
  return {translate,read(address,length){assert.ok(Number.isSafeInteger(length)&&length>0&&length<=1048576);const out=Buffer.alloc(length);for(let i=0;i<length;){const at=address+BigInt(i),p=translate(at),n=Math.min(length-i,4096-Number(at&4095n));for(let j=0;j<n;j++)out[i+j]=physicalByte(p+BigInt(j));i+=n;}return out;}};
 }
 export function observePid1BootProperty({tasks,read,layout,translateKernel,physicalByte,physical64,userAddressBits}){
- const result={schema:'reverse-live-pid1-property-v1',read_only:true,live_property_mapping_verified:false,boot_completed_property_live:false,observations:[],android_framework_verified:false,android_display_verified:false};
+ const result={schema:'reverse-live-pid1-property-v1',read_only:true,live_property_mapping_verified:false,boot_completed_property_live:false,observations:[],boot_chain_property_observations:[],boot_chain_property_status_counts:{},android_framework_verified:false,android_display_verified:false};
  try{
   const leaders=tasks.filter(t=>t.pid===1);assert.equal(leaders.length,1,'Missing unique PID1');const leader=leaders[0],task=layout('task_struct'),mmLayout=layout('mm_struct'),mm=read(BigInt(leader.task)+BigInt(task.mm.offset));assert.ok(mm>=0xffff000000000000n,'PID1 has no valid live mm');
   const pgd=read(mm+BigInt(mmLayout.pgd.offset));assert.ok(pgd>=0xffff000000000000n,'Invalid PID1 pgd');const memory=userMemoryReader({pgdPhysical:translateKernel(pgd),userAddressBits,physicalByte,physical64});
@@ -80,6 +81,23 @@ export function observePid1BootProperty({tasks,read,layout,translateKernel,physi
     const status=property?.status??'invalid_property_header';statusCounts[status]=(statusCounts[status]??0)+1;
     if(property?.diagnostic_error&&(result.invalid_area_samples??=[]).length<8)result.invalid_area_samples.push({file:path,status,error:property.diagnostic_error});
     if(status==='property_observed')result.observations.push({file:path,vma:hex(area.start),physical_header:hex(memory.translate(area.start)),vma_shared:true,live_pid1_mapping_verified:true,...property});
+    // Each target is queried through Bionic's structured trie in PID1's
+    // verified file-backed shared VMA, never by raw byte-string scanning.
+    // These observations do NOT by themselves prove Zygote or successful boot.
+    for(const name of ODSIGN_BOOT_PATH_PROPERTIES){
+      let sample=inspectBootPropertyArea(first,{diagnostics:true,name});
+      if(sample?.status==='needs_virtual_page_mapping'){
+        const n=Math.ceil((first.readUInt32LE(0)+128)/4096)*4096;
+        assert.ok(n>=4096&&n<=1048576&&area.start+BigInt(n)<=area.end,'Property target exceeds live VMA');
+        sample=inspectBootPropertyArea(memory.read(area.start,n),{diagnostics:true,name});
+      }
+      const seenStatus=sample?.status??'invalid_property_header';
+      const counts=result.boot_chain_property_status_counts[name]??={};
+      counts[seenStatus]=(counts[seenStatus]??0)+1;
+      if(seenStatus==='property_observed')result.boot_chain_property_observations.push({
+        file:path,vma:hex(area.start),vma_shared:true,live_pid1_mapping_verified:true,...sample
+      });
+    }
    }catch(e){result.mapping_read_errors=(result.mapping_read_errors??0)+1;}
   }
   result.live_property_mapping_verified=result.observations.length>0;const values=new Set(result.observations.map(x=>x.value));result.ambiguous_property_values=values.size>1;
