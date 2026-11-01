@@ -22,6 +22,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     private final Rect sourceRect=new Rect(),targetRect=new Rect();
     private final VelocityLoopLifecycle lifecycle,physicsLifecycle;
     private final AtomicBoolean resetRequested=new AtomicBoolean();
+    private final AtomicBoolean repaintRequested=new AtomicBoolean(true);
     private volatile int input=4,cameraMode,paintId;
     private final Object detailLock=new Object();
     private int quality=1;
@@ -74,11 +75,15 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
         physicsLifecycle.awaitStopped(250);lifecycle.awaitStopped(250);
     }
     @Override public void surfaceCreated(SurfaceHolder holder){
+        repaintRequested.set(true);
         boolean ready=holder.getSurface().isValid();
         physicsLifecycle.setSurfaceReady(ready);lifecycle.setSurfaceReady(ready);
     }
-    @Override public void surfaceChanged(SurfaceHolder holder,int format,int w,int h){}
+    @Override public void surfaceChanged(SurfaceHolder holder,int format,int w,int h){
+        repaintRequested.set(true);
+    }
     @Override public void surfaceDestroyed(SurfaceHolder holder){
+        repaintRequested.set(true);
         physicsLifecycle.setSurfaceReady(false);lifecycle.setSurfaceReady(false);
         physicsLifecycle.awaitStopped(250);lifecycle.awaitStopped(250);
     }
@@ -140,6 +145,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 VelocityXiEngine.Snapshot state;
                 boolean presented=false;
                 boolean selected4K=native4K;
+                if(repaintRequested.getAndSet(false))frameReuse.invalidate();
                 VelocityXiEngine.Snapshot currentState=game.current();
                 if(frameReuse.canReuse(paused,currentState,selectedCamera,selectedPaint,stride,selected4K)){
                     // Static XI snapshot: leave the already-posted SurfaceView pixels
