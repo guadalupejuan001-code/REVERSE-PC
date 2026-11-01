@@ -7,7 +7,7 @@ import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {auditGkiRvg} from './audit_gki_rvg.mjs';
 import {rvgMemoryLines} from './rvg_memory_lines.mjs';
-import {observePid1BootProperty,mountedFilePath} from './android_live_property.mjs';
+import {observePid1BootProperty,mountedFilePath,enumerateMapleVmas} from './android_live_property.mjs';
 import {inspectBinderQueues} from './android_binder_snapshot_probe.mjs';
 const KERNEL='f722bdd809bfd3485917a564b053b8a6d4938408734091f420c3297a8e3b20c8';
 const VBASE=0xffffffc080000000n, RAM=0x40000000n;
@@ -266,6 +266,75 @@ export function observeAndroidKernel(bytes,expectedCheckpointSha,options){
   }catch(error){currentTaskError=error.message;currentTask=null;}
  }
  const currentDetails=currentTask===null?null:{pid:Number(read(currentTask+BigInt(layout.pid),4)),name:text(currentTask+BigInt(layout.comm),16),task:hex(currentTask),verification:currentTaskVerification,live_exception_level:Number(m(4)),live_pc:hex(u(2))};
+
+ // Read-only scheduling state of the real pinned GKI. No guest writes.
+ const schedPeek=(pointer)=>{
+  const output={task:hex(pointer),read_only:true};
+  const take=(name,n=4)=>{
+   const field=task[name];if(!field)return;
+   const value=read(pointer+BigInt(field.offset),n);
+   output[name]=n===8?hex(value):Number(value);
+  };
+  for(const name of ['pid','tgid','policy','prio','static_prio','normal_prio','rt_priority','on_rq','on_cpu'])take(name);
+  output.comm=text(pointer+BigInt(layout.comm),16);
+  if(task.sched_class){
+   const address=read(pointer+BigInt(task.sched_class.offset));output.sched_class=hex(address);
+   const exact=symbols.filter(s=>s.address===address);
+   if(exact.length===1)output.sched_class_symbol=exact[0].name;
+  }
+  if(task.group_leader){
+   const leader=read(pointer+BigInt(task.group_leader.offset));
+   output.group_leader=hex(leader);
+   if(leader>=0xffff000000000000n){
+    output.group_leader_pid=Number(read(leader+BigInt(task.pid.offset),4));
+    output.group_leader_comm=text(leader+BigInt(layout.comm),16);
+   }
+  }
+  try{
+   const mm=read(pointer+BigInt(task.mm.offset));
+   if(mm){const mml=members(type('mm_struct'));
+    if(mml.exe_file){const file=read(mm+BigInt(mml.exe_file.offset));
+     if(file)output.exe_path=mountedFilePath(file,{read,layout:name=>
+      Object.fromEntries(Object.entries(members(type(name))).map(([key,field])=>[key,{offset:field.offset}]))});
+    }
+   }
+  }catch(e){output.exe_path_error=e.message;}
+  return output;
+ };
+ let schedulerProbe;
+ if(options?.schedulerProbe){
+  const selected=tasks.filter(t=>['init','odsign','keystore2','servicemanager','hwservicemanager'].includes(t.name)).slice(0,32);
+  schedulerProbe={schema:'reverse-android-task-scheduler-readonly-v1',
+   current_task_verified:currentTaskVerification==='process_list'||currentTaskVerification==='process_thread_list',
+   source_machine_ticks:m(27).toString(),timer_frequency_hz:1000000,
+   virtual_timer:{control:Number(m(34)),compare:m(30).toString(),pending:Number(m(34))%2===1&&m(27)>=m(30)},
+   virtual_irq:{daif:Number(m(6)),cpu_interface:Number(m(36)),distributor:Number(m(35)),
+    enabled_irq0:hex(m(44)),pending_irq0:hex(m(46)),active_irq0:hex(m(48))},
+   current:currentTask?schedPeek(currentTask):null,
+   observed_service_leaders:selected.map(t=>schedPeek(BigInt(t.task))),read_only:true};
+  if(currentTask&&Number(m(4))===0){
+   // The current EL0 address is not a kernel symbol: identify its actual
+   // file-backed executable VMA before claiming any hot library or function.
+   try{
+    const mm=read(currentTask+BigInt(task.mm.offset));
+    check(mm>=0xffff000000000000n,'Current process has no valid mm');
+    const layoutOf=name=>Object.fromEntries(Object.entries(members(type(name))).map(([k,v])=>{
+     const t=resolveType(types[v.type]);return [k,{offset:v.offset,count:t.kind===3?kernel.readUInt32LE(t.at+20):null}];
+    }));
+    const areas=enumerateMapleVmas({mm,read,layout:layoutOf,maxVmas:8192});
+    const currentPc=u(2),vma=areas.find(x=>currentPc>=x.start&&currentPc<x.end);
+    check(vma,'Current EL0 PC not mapped in process VMA tree');
+    const mapped={start:hex(vma.start),end:hex(vma.end),pc:hex(currentPc),
+     file_page_offset:vma.filePageOffset.toString(),
+     offset_in_vma:(currentPc-vma.start).toString(),is_file_backed:vma.file!==0n};
+    if(vma.file){
+     mapped.file=mountedFilePath(vma.file,{read,layout:layoutOf});
+     mapped.offset_in_file=(vma.filePageOffset*4096n+currentPc-vma.start).toString();
+    }
+    schedulerProbe.current_pc_mapping=mapped;
+   }catch(e){schedulerProbe.current_pc_mapping_error=e.message;}
+  }
+ }
  const rwsem=members(type('rw_semaphore')),sem=symbol('trace_event_sem');
  const countValue=read(sem+BigInt(rwsem.count.offset)),owner=read(sem+BigInt(rwsem.owner.offset)),ownerTask=tasks.find(t=>t.task===hex(owner&~7n));
  // The known initramfs globals are selected by index to avoid ambiguous
@@ -317,8 +386,8 @@ export function observeAndroidKernel(bytes,expectedCheckpointSha,options){
   }catch(error){liveSecurity.read_error=error.message;liveSecurity.btf_layout_verified=false;}
  }
  check(createHash('sha256').update(bytes).digest('hex')===originalSha,'observation mutated input');
- return {...(binderQueues?{binder_live_queues:binderQueues}:{}),...(binderLayoutDebug?{binder_layout_debug:binderLayoutDebug}:{}),...(liveProperty?{live_boot_property:liveProperty,live_kernel_security:liveSecurity}:{}),status:'read_only_kernel_observation',checkpoint_sha256:originalSha,kernel_sha256:KERNEL,instructions:provenance.instructions,pc:hex(u(2)),pc_symbol:nearest(u(2)),next_opcode:hex(read(u(2),4)),physical_pc:hex(translate(u(2))),ticks:m(27).toString(),exceptions:m(28).toString(),current_task:currentTask===null?null:hex(currentTask),current_task_source:currentTaskSource,current_task_lookup:currentLookup,current_task_read_error:currentTaskError,current_pid:currentDetails?.pid??null,current_task_details:currentDetails,capacity,task_layout:layout,task_count:tasks.length,process_leader_count:tasks.length,all_threads_enumerated:false,tasks,trace_event_sem:{address:hex(sem),count:hex(countValue),owner:hex(owner),owner_pid:ownerTask?.pid??null},initramfs:globals,rootfs_file:rootfsFile,android_init_observed:false,android_boot:false,input_unchanged:true};
+ return {...(schedulerProbe?{scheduler_probe:schedulerProbe}:{}),...(binderQueues?{binder_live_queues:binderQueues}:{}),...(binderLayoutDebug?{binder_layout_debug:binderLayoutDebug}:{}),...(liveProperty?{live_boot_property:liveProperty,live_kernel_security:liveSecurity}:{}),status:'read_only_kernel_observation',checkpoint_sha256:originalSha,kernel_sha256:KERNEL,instructions:provenance.instructions,pc:hex(u(2)),pc_symbol:nearest(u(2)),next_opcode:hex(read(u(2),4)),physical_pc:hex(translate(u(2))),ticks:m(27).toString(),exceptions:m(28).toString(),current_task:currentTask===null?null:hex(currentTask),current_task_source:currentTaskSource,current_task_lookup:currentLookup,current_task_read_error:currentTaskError,current_pid:currentDetails?.pid??null,current_task_details:currentDetails,capacity,task_layout:layout,task_count:tasks.length,process_leader_count:tasks.length,all_threads_enumerated:false,tasks,trace_event_sem:{address:hex(sem),count:hex(countValue),owner:hex(owner),owner_pid:ownerTask?.pid??null},initramfs:globals,rootfs_file:rootfsFile,android_init_observed:false,android_boot:false,input_unchanged:true};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
- try{check(process.argv[2],'usage: node android_kernel_observer.mjs checkpoint.rvg [expected_sha256]');const maxSnapshotBytes=process.argv[4]===undefined?256*1024*1024:Number(process.argv[4]);check(Number.isSafeInteger(maxSnapshotBytes)&&maxSnapshotBytes>=360&&maxSnapshotBytes<=1024*1024*1024,'invalid host transport bound');check(statSync(process.argv[2]).size<=maxSnapshotBytes,'oversized checkpoint');console.log(JSON.stringify(observeAndroidKernel(readFileSync(process.argv[2]),process.argv[3],{maxSnapshotBytes,liveProperties:process.argv.includes('--live-properties'),binderDebug:process.argv.includes('--binder-probe')}),null,2));}catch(e){console.error(e.message);process.exitCode=1;}
+ try{check(process.argv[2],'usage: node android_kernel_observer.mjs checkpoint.rvg [expected_sha256]');const maxSnapshotBytes=process.argv[4]===undefined?256*1024*1024:Number(process.argv[4]);check(Number.isSafeInteger(maxSnapshotBytes)&&maxSnapshotBytes>=360&&maxSnapshotBytes<=1024*1024*1024,'invalid host transport bound');check(statSync(process.argv[2]).size<=maxSnapshotBytes,'oversized checkpoint');console.log(JSON.stringify(observeAndroidKernel(readFileSync(process.argv[2]),process.argv[3],{maxSnapshotBytes,liveProperties:process.argv.includes('--live-properties'),binderDebug:process.argv.includes('--binder-probe'),schedulerProbe:process.argv.includes('--scheduler-probe')}),null,2));}catch(e){console.error(e.message);process.exitCode=1;}
 }
