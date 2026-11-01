@@ -8,6 +8,7 @@ on:
       - 'scripts/velocity-materials.cjs'
       - 'scripts/velocity-textures.cjs'
       - 'scripts/velocity-textures-contract.cjs'
+      - 'scripts/velocity-landscape-post.cjs'
       - '.github/workflows/velocity-v04-author.yml'
 permissions:
   contents: write
