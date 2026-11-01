@@ -31,6 +31,17 @@ final class RegraphicsFrame {
             ((data[at+2]&255L)<<16)|((data[at+3]&255L)<<24);
     }
     static RegraphicsFrame decode(byte[] source,int stride,int[] colors){
+        return decodeChecked(source,stride,colors,false);
+    }
+    /**
+     * Ownership-transfer entry point for an exclusive JNI byte[] just returned
+     * by NativeRuntime.observeFrame(). No caller may mutate this array after
+     * transfer. The legacy decode() keeps its defensive-copy guarantee.
+     */
+    static RegraphicsFrame decodeOwned(byte[] ownedSource,int stride,int[] colors){
+        return decodeChecked(ownedSource,stride,colors,true);
+    }
+    private static RegraphicsFrame decodeChecked(byte[] source,int stride,int[] colors,boolean owned){
         require(stride==1||stride==2||stride==4,"invalid stride");
         require(colors!=null&&colors.length>0&&colors.length<=256,"invalid palette size");
         int[] palette=colors.clone();
@@ -38,8 +49,9 @@ final class RegraphicsFrame {
         require(source!=null&&source.length>=24&&source.length<=MAX_FRAME_BYTES,
             "invalid frame length");
         require((source.length-24)%14==0,"unaligned spans");
-        // Retain a private copy: callers cannot modify a validated observation.
-        byte[] frame=source.clone();
+        // Legacy untrusted callers get their own private defensive copy.
+        // JNI ownership-transfer frames can be held without copying the pixels.
+        byte[] frame=owned?source:source.clone();
         require(frame[0]=='X'&&frame[1]=='F'&&frame[2]=='S'&&frame[3]=='1'&&
             frame[4]==1,"signature/version mismatch");
         require(frame[5]==0&&u16(frame,14)==0,"header reserved fields");
@@ -87,6 +99,13 @@ final class RegraphicsFrame {
     }
     /** Exact XI native 4K pixels: XFB5, one material index per real pixel. */
     static RegraphicsFrame decodeNative4K(byte[] source,int[] colors){
+        return decodeNative4KChecked(source,colors,false);
+    }
+    /** Take sole ownership of a freshly produced JNI XFB5 frame (8.3 MiB). */
+    static RegraphicsFrame decodeNative4KOwned(byte[] source,int[] colors){
+        return decodeNative4KChecked(source,colors,true);
+    }
+    private static RegraphicsFrame decodeNative4KChecked(byte[] source,int[] colors,boolean owned){
         require(colors!=null&&colors.length==256,"native palette must have 256 colors");
         require(source!=null&&source.length==NATIVE_4K_BYTES,"native 4K frame size mismatch");
         require(source[0]=='X'&&source[1]=='F'&&source[2]=='B'&&source[3]=='5',
@@ -94,7 +113,7 @@ final class RegraphicsFrame {
         require(u16(source,4)==3840&&u16(source,6)==2160&&u32(source,8)==5&&
             u32(source,12)==3840L*2160L,"native 4K dimension mismatch");
         for(int color:colors)require(color>=0&&color<=0xffffff,"native palette RGB out of range");
-        return new RegraphicsFrame(source.clone(),1,colors.clone(),3840*2160,3840,2160,5);
+        return new RegraphicsFrame(owned?source:source.clone(),1,colors.clone(),3840*2160,3840,2160,5);
     }
     /** Expand exact XI intervals; x1 on the XFS1 wire is inclusive. */
     void present(int[] destination,int width,int height){
