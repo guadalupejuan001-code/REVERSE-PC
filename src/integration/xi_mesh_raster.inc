@@ -59,7 +59,7 @@ class MachineMeshRaster {
     height_ = static_cast<std::uint16_t>(height);
     revision_ = static_cast<std::uint32_t>(revision);
     background_ = static_cast<std::uint8_t>(background);
-    triangles_ = 0; pixel_tests_ = 0;
+    triangles_ = 0; pixel_tests_ = 0; native_workers_used_=0;
     // Deferred 4K: never allocate an 8.3 Mpx 64-bit depth buffer. Only one
     // 32-row scan strip plus the final compact XFB5 image is materialized.
     materials_.assign(gpu_capture_||native?1:std::size_t(width_)*height_,background_);
@@ -503,28 +503,91 @@ class MachineMeshRaster {
     std::string out("XFB5",4);
     append16(out,width_);append16(out,height_);append32(out,5);
     append32(out,static_cast<std::uint32_t>(expected));
-    out.reserve(16+expected);
-    tile_collecting_=false;
-    for(unsigned band=0;band<strips;++band){
-      tile_row_start_=band*native_rows_per_strip;
-      tile_row_end_=std::min<unsigned>(height_,tile_row_start_+native_rows_per_strip);
-      const auto elements=std::size_t(width_)*(tile_row_end_-tile_row_start_);
-      materials_.assign(elements,background_);
-      inverse_depth_.assign(elements,0);
-      for(auto index:bin[band]){
-        const auto& face=deferred_faces_[index];
-        const auto& p=face.p;
-        if(face.textured)raster<true,true>(p[0],p[1],p[2],face.material,
-          face.shades,face.count,face.uv,face.texture,face.strength);
-        else if(face.gradient)raster<true,false>(p[0],p[1],p[2],face.material,
-          face.shades,face.count);
-        else raster<false,false>(p[0],p[1],p[2],face.material);
+    // One stable output buffer: workers own disjoint 32-row byte ranges.
+    // Neither a second renderer nor an intermediate full-frame image exists.
+    out.resize(16+expected,char(background_));
+    char* const output_pixels=out.data()+16;
+#ifdef REGRAPHICS_FORCE_SERIAL_STRIPS
+    constexpr unsigned max_workers=1;
+#elif defined(REGRAPHICS_MAX_STRIP_WORKERS)
+    constexpr unsigned max_workers=REGRAPHICS_MAX_STRIP_WORKERS;
+#else
+    constexpr unsigned max_workers=4;
+#endif
+    static_assert(max_workers>=1 && max_workers<=8,"XI worker budget must be 1..8");
+    const auto available=std::thread::hardware_concurrency();
+    const auto workers=(expected>=std::size_t(1280)*720 &&
+        deferred_faces_.size()>=128 && strips>=8)?
+        std::min<unsigned>(max_workers,std::max(1u,available)):1u;
+    native_workers_used_=workers;
+    std::atomic<unsigned> next_band{0};
+    std::atomic<std::uint64_t> accounted_work{pixel_tests_};
+    std::array<std::exception_ptr,max_workers> failures{};
+    // Each worker owns a private 32-row material buffer and a private 1/z
+    // depth buffer. XI triangle order, top-left edge tests, texels and
+    // perspective interpolation remain exactly those of the serial kernel.
+    auto render_worker=[&](unsigned id){
+      try {
+        MachineMeshRaster worker;
+        worker.width_=width_;worker.height_=height_;worker.background_=background_;
+        worker.native_tiled_=true;worker.tile_collecting_=false;
+        worker.textures_=textures_;
+        for(;;){
+          const auto band=next_band.fetch_add(1,std::memory_order_relaxed);
+          if(band>=strips)break;
+          worker.tile_row_start_=band*native_rows_per_strip;
+          worker.tile_row_end_=std::min<unsigned>(height_,worker.tile_row_start_+native_rows_per_strip);
+          const auto elements=std::size_t(width_)*(worker.tile_row_end_-worker.tile_row_start_);
+          worker.materials_.assign(elements,background_);
+          worker.inverse_depth_.assign(elements,0);
+          const auto before_work=worker.pixel_tests_;
+          for(const auto index:bin[band]){
+            const auto& face=deferred_faces_[index];
+            const auto& p=face.p;
+            if(face.textured)worker.raster<true,true>(p[0],p[1],p[2],face.material,
+              face.shades,face.count,face.uv,face.texture,face.strength);
+            else if(face.gradient)worker.raster<true,false>(p[0],p[1],p[2],face.material,
+              face.shades,face.count);
+            else worker.raster<false,false>(p[0],p[1],p[2],face.material);
+          }
+          // Preserve XI's global pixel-work bound, shared across workers.
+          // Only one atomic reservation is required per strip, not per pixel.
+          const auto new_work=worker.pixel_tests_-before_work;
+          const auto previous=accounted_work.fetch_add(new_work,std::memory_order_relaxed);
+          const auto budget=std::uint64_t(width_)*height_*64;
+          if(new_work>budget || previous>budget-new_work)
+            throw std::length_error("XI mesh pixel-work budget exceeded");
+          std::memcpy(output_pixels+std::size_t(band)*native_rows_per_strip*width_,
+                      worker.materials_.data(),elements);
+        }
+      }catch(...){failures[id]=std::current_exception();}
+    };
+    std::array<std::thread,max_workers-1> threads{};
+    unsigned launched=0;
+    bool unavailable=false;
+    try{
+      for(unsigned id=1;id<workers;++id){
+        threads[id-1]=std::thread(render_worker,id);++launched;
       }
-      out.append(reinterpret_cast<const char*>(materials_.data()),materials_.size());
+    }catch(const std::system_error&){
+      // A phone may refuse to start an extra thread. Join the workers already
+      // launched and reconstruct the whole frame serially, not partially.
+      unavailable=true;
+    }catch(...){
+      for(unsigned id=0;id<launched;++id)if(threads[id].joinable())threads[id].join();
+      throw;
     }
-    tile_collecting_=true;
-    tile_row_start_=0;tile_row_end_=height_;
-    materials_.assign(1,background_);inverse_depth_.assign(1,0);
+    if(!unavailable)render_worker(0);
+    for(unsigned id=0;id<launched;++id)threads[id].join();
+    if(unavailable){
+      next_band.store(0,std::memory_order_relaxed);
+      accounted_work.store(pixel_tests_,std::memory_order_relaxed);
+      for(auto& error:failures)error=nullptr;
+      render_worker(0);native_workers_used_=1;
+    }
+    for(unsigned id=0;id<workers;++id)
+      if(failures[id])std::rethrow_exception(failures[id]);
+    pixel_tests_=accounted_work.load(std::memory_order_relaxed);
     if(out.size()!=16+expected)throw std::logic_error("XI native raster pixel count mismatch");
     return out;
   }
@@ -579,6 +642,7 @@ class MachineMeshRaster {
 
   const std::vector<std::uint8_t>& materials() const { return materials_; }
   std::uint64_t pixel_tests() const { return pixel_tests_; }
+  unsigned native_workers_used() const { return native_workers_used_; }
 
  private:
   static __int128 edge(const Vertex& a,const Vertex& b,std::int64_t x,std::int64_t y) {
@@ -604,6 +668,7 @@ class MachineMeshRaster {
   std::uint8_t background_=0;
   std::size_t triangles_=0;
   std::uint64_t pixel_tests_=0;
+  unsigned native_workers_used_=0;
   std::vector<std::uint8_t> materials_;
   std::vector<std::uint64_t> inverse_depth_;
   std::vector<Vertex> vertices_;
