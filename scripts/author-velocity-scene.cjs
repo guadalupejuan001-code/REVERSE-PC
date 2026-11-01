@@ -45,7 +45,20 @@ function focus(){
 load('r0',8210,2,0);load('r1',8212,2,0);
 out('mov r2 r1\ndiv r2 2\nmov r3 r0\nmul r3 85\ndiv r3 100');load('r4',8196,2,0);out('mul r3 r4');load('r4',8198,2,0);out('div r3 r4\nsub r2 r3');
 store('r2',8238,2,0,'r9','r10');
-out('mov r3 r2\ndiv r3 2\nmeshtri 0 0 999999 r0 0 999999 r0 r3 999999 8\nmeshtri 0 0 999999 r0 r3 999999 0 r3 999999 8\nmeshtri 0 r3 999999 r0 r3 999999 r0 r2 999999 38\nmeshtri 0 r3 999999 r0 r2 999999 0 r2 999999 38\nmeshtri 0 r2 999998 r0 r2 999998 r0 r1 999998 72\nmeshtri 0 r2 999998 r0 r1 999998 0 r1 999998 72');
+// True XI rasterized multi-band sky and terrain, with fixed costs: four
+// extra triangles per frame, independent of native render resolution.
+out('mov r3 r2\ndiv r3 2\nmov r4 r3\ndiv r4 2'+
+ '\nmeshtri 0 0 999999 r0 0 999999 r0 r4 999999 210'+
+ '\nmeshtri 0 0 999999 r0 r4 999999 0 r4 999999 210'+
+ '\nmeshtri 0 r4 999999 r0 r4 999999 r0 r3 999999 8'+
+ '\nmeshtri 0 r4 999999 r0 r3 999999 0 r3 999999 8'+
+ '\nmeshtri 0 r3 999999 r0 r3 999999 r0 r2 999999 38'+
+ '\nmeshtri 0 r3 999999 r0 r2 999999 0 r2 999999 38'+
+ '\nmov r4 r1\nsub r4 r2\ndiv r4 2\nadd r4 r2'+
+ '\nmeshtri 0 r2 999998 r0 r2 999998 r0 r4 999998 72'+
+ '\nmeshtri 0 r2 999998 r0 r4 999998 0 r4 999998 72'+
+ '\nmeshtri 0 r4 999998 r0 r4 999998 r0 r1 999998 211'+
+ '\nmeshtri 0 r4 999998 r0 r1 999998 0 r1 999998 211');
 // Distant hills rotate as a panoramic skyline with the actual yaw.
 out('load8 r6 108\nload8 r7 109\nmul r7 256\nadd r6 r7\nload16 r7 204\nadd r6 r7\nmul r6 5\ndiv r6 16\nmod r6 160\nstore8 8236 r6\nset r7 0\nlabel hills');
 load('r0',8210,2,0);out('mov r1 r0\nmul r1 r7\ndiv r1 5\nmov r2 r0\ndiv r2 160\nload8 r6 8236\nmul r6 r2\nsub r1 r6\nmov r2 r0\ndiv r2 3\nadd r2 r1\nmov r4 r1\nadd r4 r2\ndiv r4 2');load('r3',8238,2,0);out('mov r5 r0\ndiv r5 20\nmul r5 -1\nadd r5 r3\nmeshtri r1 r3 999990 r4 r5 999990 r2 r3 999990 189\nadd r7 1\ncmp r7 8\njlt hills');
