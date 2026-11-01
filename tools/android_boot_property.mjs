@@ -12,7 +12,7 @@ const NAME='sys.boot_completed',MAGIC=0x504f5250,VERSION=0xfc6ed0ab;
 export function inspectBootPropertyPage(page){
  assert.ok(Buffer.isBuffer(page)&&page.length===4096);return inspectBootPropertyArea(page);
 }
-export function inspectBootPropertyArea(page,{diagnostics=false,name=name}={}){
+export function inspectBootPropertyArea(page,{diagnostics=false,name=NAME}={}){
  assert.ok(Buffer.isBuffer(page)&&page.length>=4096&&page.length<=1048576&&page.length%4096===0);
  assert.ok(typeof name==='string'&&name.length>=1&&name.length<=90&&/^[a-zA-Z0-9._-]+$/.test(name),'Invalid target property');
  if(page.readUInt32LE(8)!==MAGIC||page.readUInt32LE(12)!==VERSION)return null;
