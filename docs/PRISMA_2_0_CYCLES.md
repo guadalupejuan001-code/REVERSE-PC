@@ -18,7 +18,7 @@ Trabajo incremental: codex/prisma-2-musical-stage-20261101.
 | Ciclo | Alcance | Estado |
 | --- | --- | --- |
 | 01. Dirección musical | Clasificar acentos fuertes con datos de audio, energía por ventanas, reloj de canción, reinicio/pausa/seek | Implementación inicial terminada |
-| 02. Beatmap inteligente | Densidad/direcciones dependientes de acento e instrumento; estimación BPM mejorada; pruebas con músicas de ritmos variables | Pendiente |
+| 02. Beatmap inteligente | Densidad y direcciones por bandas grave/medio/agudo, tempo local, validación con pistas sintéticas | Implementado; validación Android pendiente |
 | 03. Maquinaria de concierto | Seis focos móviles, ráfagas de haces y reacción por beat y energía | Prototipo integrado; falta geometría/articulaciones avanzadas y luces volumétricas nativas |
 | 04. Combos musicales | Hitos 10/20/30/50 y múltiplos de 50 desde 100, evento diferido hasta siguiente acento, cancelación por fallo | Prototipo integrado |
 | 05. Materiales y escenarios | Mejoras del renderizador, refracción/materiales XI y geometría escénica con oráculos de exactitud | Pendiente |
@@ -40,8 +40,20 @@ Las explosiones no se generan por intervalos de reloj ni por alcanzar el combo a
 - Prueba sintética adicional: parámetros y cantidad de focos nativos, dibujo de haces y modo reducido.
 - Prueba repetible en Node: node tests/prisma-stage.mjs.
 
-**No es todavía una prueba de juego en pantalla real o Android.** El análisis existente en audio.js aún tiene BPM fijo durante toda la pista y una detección basada en energía, no separa instrumentos; el Ciclo 02 resolverá esas limitaciones. La fase 03 solo tiene un prototipo de focos, no iluminación volumétrica físicamente basada. Debe construirse un ejecutable RXE3 y validar la APK de extremo a extremo antes de considerarla lista para entrega.
+**No es todavía una prueba de juego en pantalla real o Android.** El Ciclo 02 ya detecta transitorios mediante tres bandas de frecuencia y deriva tempo por ventanas, pero NO separa instrumentos ni transcribe notas o melodías. El tempo local puede sufrir ambigüedad de medio/doble tiempo y las transiciones se estiman por ventanas, no al milisegundo. La fase 03 solo tiene un prototipo de focos, no iluminación volumétrica físicamente basada. Debe construirse un ejecutable RXE3 y validar la APK de extremo a extremo antes de considerarla lista para entrega.
 
 ## Construcción en la base RXE3
 
 Usar los comandos existentes de docs/PRISMA_RXE_GRAPHICS.md. El empaquetador de scripts/build-prisma.mjs incluye todos los ficheros de apps/prisma/web. La puntuación sigue en apps/prisma/game.xi; no se modificó en estos ciclos.
+
+
+## Ciclo 02 — lectura espectral y beatmaps (implementación)
+
+- music-analysis.js: procesa audio local decodificado (primeros dos canales) a ventanas de unos 20 ms; usa filtros paso bajo para aproximar regiones grave, media y aguda sin FFT masiva ni peticiones de red. Calcula energía RMS, ataques de amplitud por banda, descarta ruido bajo un umbral relativo y etiqueta heurísticamente cada evento: bass, percussion, melody o mixed.
+- Estima autocorrelación de eventos por ventanas temporales y agrega segmentos locales de BPM; las ventanas superpuestas y una mediana atenúan errores aislados. La precisión depende de que existan ataques regulares en el audio. En música ambiental sin transitorios se conserva un mapa sintético, explícitamente etiquetado como tal.
+- music-stage.js: makeIntelligentChart usa las etiquetas, fuerza del ataque, energía local y BPM del segmento para separar Flow, Pulso y Vértigo. Graves producen gestos verticales bajos, agudos cortes laterales alternos y medios trayectorias conectadas. Los tiempos de impacto vienen de ataques acústicos existentes; no se inventan golpes para densificar patrones salvo el fallback explícito.
+- app.js: conserva audio, entrada, UX, puntuación y estado XI, pero alimenta el mapa y director del escenario con los datos espectrales y presenta la indicación aproximada de tempo variable cuando corresponde.
+- La frecuencia local también ajusta la ventana de programación de explosiones y el movimiento de los focos. No se cambia el contrato de cuboides de Ether Render X.
+- tests/prisma-music-analysis.mjs: pruebas sintéticas graves/agudos/medios, tempo 100→140 BPM, dificultades, orden temporal, estabilidad del caso 120 BPM, silencio y estéreo en contrafase. Ejecutar: node tests/prisma-music-analysis.mjs.
+
+Siguiente: Ciclo 03 (mejorar brazos mecánicos, cinemática y visualización con materiales nativos que soporte realmente la ABI).
