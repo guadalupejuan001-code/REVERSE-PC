@@ -63,6 +63,8 @@ const invalid=[
   ['mixed C34 stage digest',x=>x.stage.output_sha256='0'.repeat(64)],
   ['wrong stage instruction count',x=>x.stage.instructions++],
   ['unsupported stage state',x=>x.stage.stage='android_ready'],
+  ['failed odsign service',x=>x.stage.stage='odsign_exit_nonzero'],
+  ['SELinux enforcement missing',x=>x.stage.selinux_enforcing_live=false],
   ['modified input checkpoint',x=>x.stage.source_checkpoint_unchanged=false],
   ['visual proof invented',x=>x.stage.android_display_content_verified=true],
   ['inconsistent visual readiness',x=>x.stage.ready_for_visual_review=true]
