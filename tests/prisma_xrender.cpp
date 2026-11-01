@@ -59,6 +59,49 @@ int main(){try{
   need(mechanicalFrame.count==1,"mechanical body packet was not accepted");
   const auto machineInfo=render.render(mechanicalFrame);
   need(machineInfo.cubes==1&&machineInfo.surface_pixels>0,"arrowless body was not rendered");
+  // ABI v2 adds material IDs in the formerly reserved 12th descriptor float.
+  // ABI v1 retains its original strict validation and visual output.
+  const auto baseline=render.rgba();
+  for(unsigned material=0;material<=3;++material){
+    auto improved=packet;improved[0]=2.f;improved[P::header+11]=static_cast<float>(material);
+    const auto frame=P::Frame(improved);
+    const auto& metrics=render.render(frame);
+    need(metrics.surface_pixels==machineInfo.surface_pixels,
+        "material changed conservative surface coverage");
+    const auto rgba=render.rgba();
+    need(rgba.size()==baseline.size(),"material changed framebuffer dimensions");
+    std::size_t differences=0,alphaDifferences=0;
+    for(std::size_t byte=0;byte<rgba.size();++byte){
+      if(rgba[byte]!=baseline[byte]){
+        ++differences;if(byte%4==3)++alphaDifferences;
+      }
+    }
+    need(alphaDifferences==0,"material changed opacity/depth coverage");
+    if(material==0)need(differences==0,"v2 legacy material changed old exact pixels");
+    else need(differences>100,"material failed to shade native cube");
+    need(metrics.faceted==(material==1?1u:0u) &&
+         metrics.alloy==(material==2?1u:0u) &&
+         metrics.lenses==(material==3?1u:0u),
+         "native material selection metrics not grounded");
+  }
+  for(float wrong:{-1.f,.2f,1.5f,4.f}){
+    auto bad=packet;bad[0]=2.f;bad[P::header+11]=wrong;
+    bool rejected=false;
+    try{P::Frame invalid(bad);}catch(const std::invalid_argument&){rejected=true;}
+    need(rejected,"accepted invalid X Render material");
+  }
+  {
+    auto bad=packet;bad[P::header+11]=1.f;
+    bool rejected=false;
+    try{P::Frame invalid(bad);}catch(const std::invalid_argument&){rejected=true;}
+    need(rejected,"v1 reserved field accepted nonzero material");
+  }
+  {
+    auto bad=packet;bad[0]=3.f;
+    bool rejected=false;
+    try{P::Frame invalid(bad);}catch(const std::invalid_argument&){rejected=true;}
+    need(rejected,"unsupported future packet version was accepted");
+  }
   for(float wrong:{-2.f,4.f,.5f}){
     auto invalidDirection=packet;invalidDirection[P::header+9]=wrong;
     bool rejected=false;
