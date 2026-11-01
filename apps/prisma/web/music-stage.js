@@ -98,13 +98,13 @@ export function musicBpmAt(map, time) {
 // not isolated instruments and not a true melody/pitch transcription.
 export function makeIntelligentChart(peaks, level = 'flow', seed = 7721, map = null) {
   if (!Array.isArray(peaks)) return [];
-  const spacing = { flow: 0.36, pulse: 0.235, vertigo: 0.16 }[level] || 0.36;
+  const spacing = { flow: 0.36, pulse: 0.18, vertigo: 0.13 }[level] || 0.36;
   const minStrength = { flow: 0.32, pulse: 0.19, vertigo: 0.10 }[level] || 0.32;
   const hasDynamics = !!map?.energyBins?.some(e => e > 0.005);
   const chart = [];
   const inputs = peaks.filter(p => p && numeric(p.t) && numeric(p.strength) && p.t >= 0)
     .slice().sort((a, b) => a.t - b.t);
-  let previousTime = -Infinity, previousLane = 1, previousRow = 1;
+  let previousTime = -Infinity, previousLane = 1;
   let nextPercussionSide = (seed & 1) ? 0 : 2;
   let melodyDirection = (seed & 2) ? 1 : -1;
   let melodicCount = 0;
@@ -113,9 +113,9 @@ export function makeIntelligentChart(peaks, level = 'flow', seed = 7721, map = n
     const adjustedSpacing = spacing * clamp(Math.sqrt(localPeriod / 0.5), 0.79, 1.26);
     if (p.t - previousTime < adjustedSpacing) continue;
     const energy = hasDynamics ? musicLevelAt(map, p.t) : 0.55;
-    const floor = minStrength + (energy < 0.17 ? 0.10 : energy > 0.72 ? -0.065 : 0);
+    const floor = minStrength + (energy < 0.17 ? 0.08 : energy > 0.72 ? -0.065 : 0);
     const source = ['bass', 'percussion', 'melody', 'mixed', 'synthetic'].includes(p.source) ? p.source : 'mixed';
-    if (source !== 'synthetic' && p.strength < floor) continue;
+    if (source !== 'synthetic' && p.strength < floor - (source === 'percussion' && level !== 'flow' ? 0.045 : 0)) continue;
     const beat = Math.round(p.t / localPeriod);
     let lane, row, dir, color;
     if (source === 'bass') {
@@ -147,7 +147,7 @@ export function makeIntelligentChart(peaks, level = 'flow', seed = 7721, map = n
         row: 1 - row, color: 1 - color, dir: (dir + 2) % 4,
         source, accent: true, hit: false, missed: false });
     }
-    previousTime = p.t; previousLane = lane; previousRow = row;
+    previousTime = p.t; previousLane = lane;
   }
   return chart.sort((a, b) => a.t - b.t);
 }
