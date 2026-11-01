@@ -1,0 +1,30 @@
+name: REgraphics XI prep source snapshot
+on:
+  push:
+    branches: [feature/regraphics-xi-prep-cycle3-20261101]
+    paths: ['.github/workflows/regraphics-xi-prep-snapshot.yml']
+permissions: {contents: read}
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: 1f925786522aba91f72707ad1638a8edcdd31a8f
+          path: deps/mundo-x
+          persist-credentials: false
+      - name: Package XI source and dependencies for local profiling
+        run: |
+          tar czf /tmp/regraphics-xi-prep-source.tgz \
+            --exclude=.git --exclude=build --exclude=docs/evidence \
+            src scripts tests examples CMakeLists.txt \
+            reverse-os-android deps/mundo-x/native/include deps/mundo-x/native/src \
+            .github/workflows
+      - uses: actions/upload-artifact@v4
+        with:
+          name: regraphics-xi-prep-sources
+          path: /tmp/regraphics-xi-prep-source.tgz
+          retention-days: 1
