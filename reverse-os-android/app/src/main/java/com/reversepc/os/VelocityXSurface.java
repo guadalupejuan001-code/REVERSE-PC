@@ -31,7 +31,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     private volatile boolean paused;
     private volatile boolean reverseGear;
     private volatile boolean native4K;
-    private boolean pausedBeforePhoto;
+    private volatile boolean pausedBeforePhoto;
     boolean is4KEnabled(){return native4K;}
     boolean isPaused(){return paused;}
     /**
