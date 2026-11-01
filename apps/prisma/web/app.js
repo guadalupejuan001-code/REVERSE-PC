@@ -14,6 +14,7 @@ const scene=new Scene($('game'),()=>settings);
 const random=seeded(3334);
 const demoWave=Array.from({length:160},(_,i)=>.18+random()*.55+Math.sin(i*.38)**2*.23);
 const demoPeaks=Array.from({length:252},(_,i)=>({t:(i+4)*60/DEMO_BPM/2,strength:i%2===0?1:.36})).filter(p=>p.t<DEMO_DURATION-2.0);
+let demoEnergyCache=null; // measured from the synthesized audio, not invented light events
 let track={name:'Midnight Motion',demo:true,bpm:DEMO_BPM,duration:DEMO_DURATION,peaks:demoPeaks,wave:demoWave,buffer:null,fallback:false};
 let level='flow', chart=[], status='home', frozenTime=0, booting=false, missIndex=0, sceneDirty=true, gameBounds=null, lastScene=0, lastElapsed='';
 let score=0,combo=0,maxCombo=0,hits=0,misses=0,lastFrame=performance.now(),lastUI=0,feedbackUntil=0,toastTimer,activePointers=new Map(),runId=0;
@@ -74,6 +75,16 @@ async function startGame(){
     if(matchMedia('(orientation: portrait)').matches){toast('Gira el dispositivo para jugar en horizontal.');return;}
     await audio.init();
     if(!track.buffer){setLoading(true,'Preparando tu primera sesión…');track.buffer=await audio.makeDemo();track.wave=waveformOf(track.buffer);}
+    // The demo used to create an all-zero energy map, leaving the entire
+    // moving-head stage stuck in quiet mode. Measure its real generated audio
+    // once, and keep the original composer-aligned hit chart unchanged.
+    if(track.demo){
+      if(!demoEnergyCache){
+        const measured=await analyseRhythm(track.buffer);
+        demoEnergyCache=measured.energy;
+      }
+      track.energy=demoEnergyCache;
+    }
     if(thisRun!==runId)return;
     setLoading(false);audio.buffer=track.buffer;
     const peaks=track.demo&&level==='flow'?track.peaks.filter((_,i)=>i%2===0):track.peaks;
