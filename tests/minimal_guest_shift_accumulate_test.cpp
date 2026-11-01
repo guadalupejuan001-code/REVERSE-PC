@@ -66,6 +66,60 @@ void execute(MinimalGuest g,unsigned bits,bool q,bool uns,unsigned shift,unsigne
   check(after.v[n].low==f.v[n].low&&after.v[n].high==f.v[n].high,"USRA corrupted unrelated vector");
  ++cases;
 }
+void neg_execute(MinimalGuest g,unsigned bits,bool q,unsigned rn,unsigned rd,bool restore){
+ unsigned size=0;while((8u<<size)<bits)++size;
+ const auto op=0x2e20b800u|(q?0x40000000u:0u)|(size<<22)|(rn<<5)|rd;
+ g.write(g.registers().pc,op,4);
+ const auto before=g.floating();const auto cpu=g.registers();
+ const auto mem=g.runtime().memory_snapshot(),core=g.runtime().core_snapshot();
+ if(restore){auto copy=MinimalGuest::from_snapshot(g.snapshot());g.run(1);copy.run(1);
+  check(g.snapshot()==copy.snapshot(),"NEG differs after checkpoint restoration");
+ }else g.run(1);
+ const auto after=g.floating(),unused=0u; (void)unused;
+ for(unsigned n=0;n<(q?128u:64u)/bits;n++){
+   const auto value=before.v[rn].lane(n,bits);
+   check(after.v[rd].lane(n,bits)==((UINT64_C(0)-value)&mask(bits)),
+     "NEG lane differs from modular negation");
+ }
+ if(!q)check(after.v[rd].high==0,"NEG 64-bit form failed to clear upper half");
+ check(g.registers().pc==cpu.pc+4&&g.registers().instructions==cpu.instructions+1,"NEG instruction count or PC wrong");
+ check(g.registers().x==cpu.x&&g.registers().nzcv==cpu.nzcv,"NEG modified integer regs or NZCV");
+ check(after.fpcr==before.fpcr&&after.fpsr==before.fpsr,"NEG modified FP flags");
+ check(g.runtime().memory_snapshot()==mem&&g.runtime().core_snapshot()==core,"NEG modified XI/Ether memory");
+ for(unsigned n=0;n<32;n++)if(n!=rd)
+  check(after.v[n].low==before.v[n].low&&after.v[n].high==before.v[n].high,
+    "NEG altered unrelated vector registers");
+}
+void neg_suite(){
+ // The second real C33 stop is NEG V1.2D,V1.2D in a user process.
+ check((0x2e20b800u|0x40000000u|(3u<<22)|(1u<<5)|1u)==0x6ee0b821u,
+   "Exact observed NEG opcode encoding differs");
+ for(unsigned bits:{8u,16u,32u,64u})for(bool q:{false,true}){
+  if(bits==64&&!q)continue;
+  for(unsigned n:{0u,1u,2u,31u})for(unsigned rd:{0u,1u,31u}){
+   for(auto low:{UINT64_C(0),UINT64_C(1),UINT64_MAX,
+     UINT64_C(0x8000000000000000),UINT64_C(0x0123456789abcdef),
+     UINT64_C(0xfffffffffffffff0)}){
+    auto g=prepared(low,low^UINT64_C(0x55aacc33f00f0f0f));
+    neg_execute(g,bits,q,n,rd,rd==n||low==UINT64_MAX);
+   }
+  }
+ }
+ for(unsigned rd:{0u,31u})for(unsigned rn:{0u,31u}){
+  MinimalGuest bad(65536);
+  bad.load_elf(elf({0x2e20b800u|(3u<<22)|(rn<<5)|rd}));
+  const auto before=bad.snapshot();bool rejected=false;
+  try{bad.run(1);}catch(const std::exception&){rejected=true;}
+  check(rejected&&bad.snapshot()==before,"NEG 1D form accepted or changed guest state");
+ }
+ for(unsigned bits:{8u,64u}){
+  const unsigned sz=bits==64?3u:0u;
+  MinimalGuest trapped(128*1024*1024);
+  trapped.load_elf(elf({0x6e20b800u|(sz<<22)|(1u<<5)|1u},true),true);trapped.run(1);
+  check(trapped.machine().exceptions==1&&(trapped.machine().esr>>26)==7&&!trapped.floating().nonzero(),
+   "NEG bypassed FP access trap");
+ }
+}
 void suite(){
  check(opcode(64,true,true,1,2,0)==0x6f7f1440u,"Exact observed C33 opcode mismatch");
  const std::array<std::uint64_t,9> edge{0,1,UINT64_MAX,UINT64_C(0x8000000000000000),
@@ -102,7 +156,7 @@ void suite(){
  }
 }
 }
-int main(){try{suite();
+int main(){try{suite();neg_suite();
  std::cout<<"{\"checks\":"<<checks<<",\"cases\":"<<cases<<",\"rejected_unallocated\":"<<rejections
           <<",\"observed_opcode\":\"0x6f7f1440\",\"android_boot\":false}\n";
  }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
