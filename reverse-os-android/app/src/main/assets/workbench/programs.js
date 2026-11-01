@@ -7,6 +7,7 @@ Object.assign(APP_DESCRIPTIONS,{programs:'Tus programas del dispositivo.',bbyq:'
 function refreshProgramViews(){
   for(const w of state.windows)if(w.app==='programs')renderWindowContent(w);
   if(!$('#launcher').hidden)renderLauncher($('#global-search').value);
+  renderShortcuts();
 }
 async function refreshPrograms(){
   if(!nativeAvailable||programCatalogLoading)return;
@@ -18,7 +19,7 @@ async function refreshPrograms(){
 function programCards(){
   if(programCatalogError)return '<p role="alert">'+esc(programCatalogError)+'</p>';
   if(!programCatalog)return '<p class="muted">'+(nativeAvailable?'Leyendo tus ejecutables…':'Abre la aplicación Android para ejecutar programas .rxe.')+'</p>';
-  return programCatalog.apps.map(app=>'<article class="program-card"><div>'+icon(app.metadata.ui==='chat'?'help':'desktop')+'<span><strong>'+esc(app.metadata.title)+'</strong><small>'+esc(app.metadata.app_version||'RXE1')+(bbyqPrograms().find(p=>p.path===app.path)?' · Programa '+(bbyqPrograms().find(p=>p.path===app.path).target-15):'')+' · '+Math.ceil(app.bytes/1024)+' KB · '+esc(app.path.split('/').pop())+'</small></span></div><div class="program-actions"><button class="primary-button" data-program-path="'+esc(app.path)+'">Abrir</button><button class="secondary-button" data-program-export="'+esc(app.path)+'" aria-label="Exportar '+esc(app.metadata.title)+'">'+icon('download')+'</button></div></article>').join('')+(programCatalog.apps.length?'':'<p>No hay ejecutables. Agrega un .rxe o créalo desde XI Studio.</p>')+(programCatalog.rejected?'<p role="status">Se omitieron '+programCatalog.rejected+' archivos que no son ejecutables válidos.</p>':'');
+  return programCatalog.apps.map(app=>'<article class="program-card"><div>'+appIcon(programIconName(app))+'<span><strong>'+esc(app.metadata.title)+'</strong><small>'+esc(app.metadata.app_version||'RXE1')+(bbyqPrograms().find(p=>p.path===app.path)?' · Programa '+(bbyqPrograms().find(p=>p.path===app.path).target-15):'')+' · '+Math.ceil(app.bytes/1024)+' KB · '+esc(app.path.split('/').pop())+'</small></span></div><div class="program-actions"><button class="primary-button" data-program-path="'+esc(app.path)+'">Abrir</button><button class="secondary-button" data-program-export="'+esc(app.path)+'" aria-label="Exportar '+esc(app.metadata.title)+'">'+icon('download')+'</button></div></article>').join('')+(programCatalog.apps.length?'':'<p>No hay ejecutables. Agrega un .rxe o créalo desde XI Studio.</p>')+(programCatalog.rejected?'<p role="status">Se omitieron '+programCatalog.rejected+' archivos que no son ejecutables válidos.</p>':'');
 }
 function programsHTML(){
   if(!programCatalog&&!programCatalogLoading&&!programCatalogError)queueMicrotask(refreshPrograms);
@@ -51,6 +52,7 @@ function programHTML(w){
   const plan=saved.agents;
   const progress=plan&&plan.steps?'<p class="rxe-status">W4u · Plan: '+plan.steps+' paso'+(plan.steps===1?'':'s')+' · '+(plan.status===3?'Comprobado':plan.status===4?'Detenido':plan.completed+'/'+plan.steps+' completados')+'</p>':'';
   const message='<p class="rxe-status" role="status">'+esc(status)+'</p>'+progress;
+  if(meta.ui==='graphics')return '<div class="rxe-layout">'+heading+'<p class="rxe-status" role="status">'+esc(data.error||'Juego · Pantalla completa · Música propia')+'</p><h2>'+esc(meta.title)+'</h2><p>Una experiencia horizontal a pantalla completa. Carga tu música y desliza sobre los cubos.</p><button class="primary-button" data-program-action="graphics"'+disabled+'>Jugar a pantalla completa</button></div>';
   if(!chat)return '<div class="rxe-layout">'+heading+message+'<pre class="rxe-output" aria-label="Salida RXE">'+esc(saved.output||'Pulsa Ejecutar para iniciar.')+'</pre><button class="primary-button" data-program-action="run"'+(data.busy||data.uncertain?' disabled':'')+'>Ejecutar</button></div>';
   const history=saved.history.length?saved.history.map((item,i)=>'<div class="rxe-message '+(item.role==='user'?'from-user':'from-agent')+'"><small>'+esc(item.role==='user'?'TÚ':meta.title)+'</small><p'+(item.role==='assistant'&&i===saved.history.length-1?' aria-label="Respuesta BBY Q"':'')+'>'+esc(item.text)+'</p></div>').join(''):'<p class="muted">Memoria '+esc(meta.app_version)+' lista. Lista para conversar. W4u opera tus programas y ventanas.</p>';
   queueMicrotask(()=>{const el=$('.rxe-history',$('#'+w.id));if(el)el.scrollTop=el.scrollHeight;});
@@ -86,6 +88,7 @@ async function transactProgram(w,operation){
   try{
     if(operation==='askApp'&&snapshot.desktop_control){await refreshPrograms();payload.desktop=captureBbyqDesktop(snapshot.identity);}
     let result=await nativeRequest(operation,JSON.stringify(payload));
+    if(operation==='launchGraphics'){data.busy=false;if(getWindow(w.id))renderWindowContent(w);return;}
     if(operation==='askApp'){
       let observation=payload.desktop,steps=0;
       while(result.control){
@@ -120,6 +123,7 @@ document.addEventListener('click',async event=>{
   if(action==='refresh')refreshPrograms();
   if(action==='import'){if(nativeAvailable)window.ReverseNative.importRxe();else toast('Requiere la aplicación Android.','help');}
   if(action==='reload'&&w)loadProgram(w);
+  if(action==='graphics'&&w)transactProgram(w,'launchGraphics');
   if(action==='run'&&w)transactProgram(w,'runApp');
   if((action==='export'||action==='memory')&&data?.snapshot)window.ReverseNative.exportRxe(w.rxePath,data.snapshot.identity,action==='memory');
   if(action==='compile'&&w){

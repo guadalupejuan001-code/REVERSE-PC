@@ -212,6 +212,11 @@ public final class WorkbenchActivity extends Activity {
                     else if("saveProfile".equals(operation))result=saveProfile(payload);
                     else if("listApps".equals(operation))result=programs().catalog();
                     else if("openApp".equals(operation))result=programs().open(new JSONObject(payload).getString("path"));
+                    else if("launchGraphics".equals(operation)){
+                        result=programs().graphicsLaunch(new JSONObject(payload));
+                        final String path=result.getString("path"),identity=result.getString("identity");
+                        ui.post(()->{if(!closed)startActivity(new Intent(WorkbenchActivity.this,RxeGraphicsActivity.class).putExtra("path",path).putExtra("identity",identity));});
+                    }
                     else if("askApp".equals(operation))result=programs().ask(new JSONObject(payload));
                     else if("ackControl".equals(operation))result=programs().acknowledge(new JSONObject(payload));
                     else if("runApp".equals(operation))result=programs().run(new JSONObject(payload),session());
