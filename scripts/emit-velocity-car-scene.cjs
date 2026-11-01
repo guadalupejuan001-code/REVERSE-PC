@@ -111,13 +111,13 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
  }
  const skidEnd=vertices.length;
  if(skidEnd!==1623)throw Error('XI local metadata range exceeded');
- const maxTriangles=80*11*2+18+models.high.faces.length+3*models.medium.faces.length+4*shadowFaces.length+40*treeFaces.length+airJetFaces.length;
+ const maxTriangles=80*11*2+18+models.high.faces.length+3*models.medium.faces.length+4*shadowFaces.length+40*treeFaces.length+airJetFaces.length+smokeFaces.length+nitroFaces.length+4*skidFaces.length;
  if(maxTriangles>4096)throw Error('Scene triangle budget exceeded: '+maxTriangles);
  if(groups.length>128)throw Error('Normal-group scalar encoding exceeded');
  const groupNormals=groups.map(g=>norm(g.sum).map(x=>Math.round(x*16384)));
  out('# Original detailed car meshes; all world transforms and lighting execute in XI.');
  vertices.forEach((p,i)=>{if(canonical[i]===i){const uv=carUV(p,normalKinds[i]);out(`meshvertex ${i} ${p.join(' ')}\nmeshtexuv ${i} ${uv.join(' ')}`);}});
- normalIds.forEach((g,i)=>{const code=g>=0?g+256:-g-1;if(code<0||code>511)throw Error('Scalar metadata range');out(`localset ${512+i} ${canonical[i]*512+code}`);});
+ normalIds.forEach((g,i)=>{if(canonical[i]<0)return;const code=g>=0?g+256:-g-1;if(code<0||code>511)throw Error('Scalar metadata range');out(`localset ${512+i} ${canonical[i]*512+code}`);});
  function range(start,end){out(`set r0 ${start}`);store('r0',8324,2,0);out(`set r0 ${end}`);store('r0',8326,2,0);}
  out('store8 8203 0\nlabel actor\nstore8 8334 0\nstore8 8336 0\nload8 r0 8203\ncmp r0 4\njge tree_actor\ncmp r0 0\njne rival_actor');
  range(models.high.start,models.high.end);
@@ -263,5 +263,5 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
  shadowFaces.forEach(f=>out(`meshfacegradient ${f.map(i=>i+CAMERA).join(' ')} r12 8 r9 r10 r11 60`));out('jmp next_actor\nlabel emit_tree');
  treeFaces.forEach(f=>out(`meshface ${f.indices.map(i=>i+CAMERA).join(' ')} ${f.material} r9 r10 r11 60`));
  out('label next_actor');load('r12',100,4,2000000);out('load8 r0 8203\nadd r0 1\nstore8 8203 r0\ncmp r0 44\njlt actor\nmeshend\nhalt');
- return {modelStats,normalGroups:groups.length,bodyLightingGroups:bodyMasks.size,glassLightingGroups:glassMasks.size,vertices:vertices.length,maxTriangles,airJetTriangles:airJetFaces.length,trianglesPerTree:treeFaces.length,shadowTrianglesPerCar:shadowFaces.length};
+ return {modelStats,normalGroups:groups.length,bodyLightingGroups:bodyMasks.size,glassLightingGroups:glassMasks.size,vertices:vertices.length,maxTriangles,airJetTriangles:airJetFaces.length,smokeTriangles:smokeFaces.length,nitroTriangles:nitroFaces.length,skidTriangles:4*skidFaces.length,trianglesPerTree:treeFaces.length,shadowTrianglesPerCar:shadowFaces.length};
 };
