@@ -102,6 +102,10 @@ set r1 115
 set r2 100
 set r3 995
 label camera_ready
+load16 r4 384
+mul r4 3
+div r4 5
+add r1 r4
 mov r9 r0
 localset 0 r9
 mov r9 r1
@@ -744,7 +748,7 @@ mul r11 9
 div r11 16
 mul r9 85
 div r9 100
-meshfacegradienttex 1770 1771 1772 40 8 5 12 r9 r10 r11 60
+meshfacegradienttex 1770 1771 1772 40 16 5 4 r9 r10 r11 60
 jmp road_done_9
 label road_plain_8
 localget r9 18
@@ -917,7 +921,7 @@ mul r11 9
 div r11 16
 mul r9 85
 div r9 100
-meshfacegradienttex 1770 1771 1772 40 8 5 12 r9 r10 r11 60
+meshfacegradienttex 1770 1771 1772 40 16 5 4 r9 r10 r11 60
 jmp road_done_11
 label road_plain_10
 localget r9 18
@@ -3130,120 +3134,166 @@ meshvertex 1509 84 39 -227
 meshtexuv 1509 17 -45
 meshvertex 1510 -80 57 -225
 meshtexuv 1510 -16 -45
-meshvertex 1511 12 4 12
-meshtexuv 1511 2 2
-meshvertex 1512 123 3 12
-meshtexuv 1512 18 2
-meshvertex 1513 90 3 181
-meshtexuv 1513 13 26
-meshvertex 1514 12 3 251
-meshtexuv 1514 2 36
-meshvertex 1515 -66 3 181
-meshtexuv 1515 -9 26
-meshvertex 1516 -99 3 12
-meshtexuv 1516 -14 2
-meshvertex 1517 -66 3 -157
-meshtexuv 1517 -9 -22
-meshvertex 1518 12 3 -227
-meshtexuv 1518 2 -32
-meshvertex 1519 90 3 -157
-meshtexuv 1519 13 -22
-meshvertex 1520 155 2 12
-meshtexuv 1520 22 2
-meshvertex 1521 113 2 201
-meshtexuv 1521 16 29
-meshvertex 1522 12 2 279
-meshtexuv 1522 2 40
-meshvertex 1523 -89 2 201
-meshtexuv 1523 -13 29
-meshvertex 1524 -131 2 12
-meshtexuv 1524 -19 2
-meshvertex 1525 -89 2 -177
-meshtexuv 1525 -13 -25
-meshvertex 1526 12 2 -255
-meshtexuv 1526 2 -36
-meshvertex 1527 113 2 -177
-meshtexuv 1527 16 -25
-meshvertex 1528 31 846 -25
-meshtexuv 1528 4 -4
-meshvertex 1529 223 245 22
-meshtexuv 1529 32 3
-meshvertex 1530 99 287 168
-meshtexuv 1530 14 24
-meshvertex 1531 -122 228 201
-meshtexuv 1531 -17 29
-meshvertex 1532 -239 275 -13
-meshtexuv 1532 -34 -2
-meshvertex 1533 -97 210 -192
-meshtexuv 1533 -14 -27
-meshvertex 1534 127 314 -161
-meshtexuv 1534 18 -23
-meshvertex 1535 -23 0 -12
-meshtexuv 1535 -3 -2
-meshvertex 1536 14 0 0
-meshtexuv 1536 2 0
-meshvertex 1537 15 290 -8
-meshtexuv 1537 2 -1
-meshvertex 1538 -16 276 -18
-meshtexuv 1538 -2 -3
-meshvertex 1539 0 0 -23
-meshtexuv 1539 0 -3
-meshvertex 1540 0 0 20
-meshtexuv 1540 0 3
-meshvertex 1541 11 278 12
-meshtexuv 1541 2 2
-meshvertex 1542 -9 275 -21
-meshtexuv 1542 -1 -3
-meshvertex 1543 24 105 -8
-meshtexuv 1543 3 -1
-meshvertex 1544 -183 48 -93
-meshtexuv 1544 -26 -13
-meshvertex 1545 -72 85 -153
-meshtexuv 1545 -10 -22
-meshvertex 1546 126 64 -142
-meshtexuv 1546 18 -20
-meshvertex 1547 215 43 55
-meshtexuv 1547 31 8
-meshvertex 1548 57 77 155
-meshtexuv 1548 8 22
-meshvertex 1549 -162 58 132
-meshtexuv 1549 -23 19
-meshvertex 1550 -183 0 -93
-meshtexuv 1550 -26 -13
-meshvertex 1551 -72 0 -153
-meshtexuv 1551 -10 -22
-meshvertex 1552 126 0 -142
-meshtexuv 1552 18 -20
-meshvertex 1553 215 0 55
-meshtexuv 1553 31 8
-meshvertex 1554 57 0 155
-meshtexuv 1554 8 22
-meshvertex 1555 -162 0 132
-meshtexuv 1555 -23 19
-meshvertex 1556 -42 0 -22
-meshtexuv 1556 -6 -3
-meshvertex 1557 29 0 17
-meshtexuv 1557 4 2
-meshvertex 1558 -8 103 -17
-meshtexuv 1558 -1 -2
-meshvertex 1559 -13 0 -55
-meshtexuv 1559 -2 -8
-meshvertex 1560 24 0 63
-meshtexuv 1560 3 9
-meshvertex 1561 5 116 15
-meshtexuv 1561 1 2
-meshvertex 1562 -61 0 43
-meshtexuv 1562 -9 6
-meshvertex 1563 45 0 -42
-meshtexuv 1563 6 -6
-meshvertex 1564 23 77 9
-meshtexuv 1564 3 1
-meshvertex 1565 41 0 39
-meshtexuv 1565 6 6
-meshvertex 1566 -43 0 -36
-meshtexuv 1566 -6 -5
-meshvertex 1567 10 88 -35
-meshtexuv 1567 1 -5
+meshvertex 1511 -91 24 -142
+meshtexuv 1511 -13 -20
+meshvertex 1512 -91 -75 -142
+meshtexuv 1512 -13 -20
+meshvertex 1513 -105 -40 -142
+meshtexuv 1513 -15 -20
+meshvertex 1514 -77 -40 -142
+meshtexuv 1514 -11 -20
+meshvertex 1515 -91 -40 -125
+meshtexuv 1515 -13 -18
+meshvertex 1516 -91 -40 -159
+meshtexuv 1516 -13 -23
+meshvertex 1517 -91 24 138
+meshtexuv 1517 -13 20
+meshvertex 1518 -91 -75 138
+meshtexuv 1518 -13 20
+meshvertex 1519 -105 -40 138
+meshtexuv 1519 -15 20
+meshvertex 1520 -77 -40 138
+meshtexuv 1520 -11 20
+meshvertex 1521 -91 -40 155
+meshtexuv 1521 -13 22
+meshvertex 1522 -91 -40 121
+meshtexuv 1522 -13 17
+meshvertex 1523 91 24 -142
+meshtexuv 1523 13 -20
+meshvertex 1524 91 -75 -142
+meshtexuv 1524 13 -20
+meshvertex 1525 77 -40 -142
+meshtexuv 1525 11 -20
+meshvertex 1526 105 -40 -142
+meshtexuv 1526 15 -20
+meshvertex 1527 91 -40 -125
+meshtexuv 1527 13 -18
+meshvertex 1528 91 -40 -159
+meshtexuv 1528 13 -23
+meshvertex 1529 91 24 138
+meshtexuv 1529 13 20
+meshvertex 1530 91 -75 138
+meshtexuv 1530 13 20
+meshvertex 1531 77 -40 138
+meshtexuv 1531 11 20
+meshvertex 1532 105 -40 138
+meshtexuv 1532 15 20
+meshvertex 1533 91 -40 155
+meshtexuv 1533 13 22
+meshvertex 1534 91 -40 121
+meshtexuv 1534 13 17
+meshvertex 1535 12 4 12
+meshtexuv 1535 2 2
+meshvertex 1536 123 3 12
+meshtexuv 1536 18 2
+meshvertex 1537 90 3 181
+meshtexuv 1537 13 26
+meshvertex 1538 12 3 251
+meshtexuv 1538 2 36
+meshvertex 1539 -66 3 181
+meshtexuv 1539 -9 26
+meshvertex 1540 -99 3 12
+meshtexuv 1540 -14 2
+meshvertex 1541 -66 3 -157
+meshtexuv 1541 -9 -22
+meshvertex 1542 12 3 -227
+meshtexuv 1542 2 -32
+meshvertex 1543 90 3 -157
+meshtexuv 1543 13 -22
+meshvertex 1544 155 2 12
+meshtexuv 1544 22 2
+meshvertex 1545 113 2 201
+meshtexuv 1545 16 29
+meshvertex 1546 12 2 279
+meshtexuv 1546 2 40
+meshvertex 1547 -89 2 201
+meshtexuv 1547 -13 29
+meshvertex 1548 -131 2 12
+meshtexuv 1548 -19 2
+meshvertex 1549 -89 2 -177
+meshtexuv 1549 -13 -25
+meshvertex 1550 12 2 -255
+meshtexuv 1550 2 -36
+meshvertex 1551 113 2 -177
+meshtexuv 1551 16 -25
+meshvertex 1552 31 846 -25
+meshtexuv 1552 4 -4
+meshvertex 1553 223 245 22
+meshtexuv 1553 32 3
+meshvertex 1554 99 287 168
+meshtexuv 1554 14 24
+meshvertex 1555 -122 228 201
+meshtexuv 1555 -17 29
+meshvertex 1556 -239 275 -13
+meshtexuv 1556 -34 -2
+meshvertex 1557 -97 210 -192
+meshtexuv 1557 -14 -27
+meshvertex 1558 -23 0 -12
+meshtexuv 1558 -3 -2
+meshvertex 1559 14 0 0
+meshtexuv 1559 2 0
+meshvertex 1560 15 290 -8
+meshtexuv 1560 2 -1
+meshvertex 1561 -16 276 -18
+meshtexuv 1561 -2 -3
+meshvertex 1562 0 0 -23
+meshtexuv 1562 0 -3
+meshvertex 1563 0 0 20
+meshtexuv 1563 0 3
+meshvertex 1564 11 278 12
+meshtexuv 1564 2 2
+meshvertex 1565 -9 275 -21
+meshtexuv 1565 -1 -3
+meshvertex 1566 24 105 -8
+meshtexuv 1566 3 -1
+meshvertex 1567 -183 48 -93
+meshtexuv 1567 -26 -13
+meshvertex 1568 -72 85 -153
+meshtexuv 1568 -10 -22
+meshvertex 1569 126 64 -142
+meshtexuv 1569 18 -20
+meshvertex 1570 215 43 55
+meshtexuv 1570 31 8
+meshvertex 1571 57 77 155
+meshtexuv 1571 8 22
+meshvertex 1572 -162 58 132
+meshtexuv 1572 -23 19
+meshvertex 1573 -183 0 -93
+meshtexuv 1573 -26 -13
+meshvertex 1574 -72 0 -153
+meshtexuv 1574 -10 -22
+meshvertex 1575 126 0 -142
+meshtexuv 1575 18 -20
+meshvertex 1576 215 0 55
+meshtexuv 1576 31 8
+meshvertex 1577 57 0 155
+meshtexuv 1577 8 22
+meshvertex 1578 -162 0 132
+meshtexuv 1578 -23 19
+meshvertex 1579 -42 0 -22
+meshtexuv 1579 -6 -3
+meshvertex 1580 29 0 17
+meshtexuv 1580 4 2
+meshvertex 1581 -8 103 -17
+meshtexuv 1581 -1 -2
+meshvertex 1582 -13 0 -55
+meshtexuv 1582 -2 -8
+meshvertex 1583 24 0 63
+meshtexuv 1583 3 9
+meshvertex 1584 5 116 15
+meshtexuv 1584 1 2
+meshvertex 1585 -61 0 43
+meshtexuv 1585 -9 6
+meshvertex 1586 45 0 -42
+meshtexuv 1586 6 -6
+meshvertex 1587 23 77 9
+meshtexuv 1587 3 1
+meshvertex 1588 41 0 39
+meshtexuv 1588 6 6
+meshvertex 1589 -43 0 -36
+meshtexuv 1589 -6 -5
+meshvertex 1590 10 88 -35
+meshtexuv 1590 1 -5
 localset 512 256
 localset 513 769
 localset 514 1282
@@ -4755,39 +4805,39 @@ localset 2019 771840
 localset 2020 772352
 localset 2021 772864
 localset 2022 773376
-localset 2023 773887
-localset 2024 774319
-localset 2025 774831
-localset 2026 775343
-localset 2027 775855
-localset 2028 776367
-localset 2029 776879
-localset 2030 777391
-localset 2031 777903
-localset 2032 778240
-localset 2033 778752
-localset 2034 779264
-localset 2035 779776
-localset 2036 780288
-localset 2037 780800
-localset 2038 781312
-localset 2039 781824
-localset 2040 782592
-localset 2041 783104
-localset 2042 783616
-localset 2043 784128
-localset 2044 784640
-localset 2045 785152
-localset 2046 785664
-localset 2047 786176
-localset 2048 786688
-localset 2049 787200
-localset 2050 787712
-localset 2051 788224
-localset 2052 788736
-localset 2053 789248
-localset 2054 789760
-localset 2055 790016
+localset 2023 773857
+localset 2024 774166
+localset 2025 774743
+localset 2026 775255
+localset 2027 775771
+localset 2028 776283
+localset 2029 776929
+localset 2030 777238
+localset 2031 777815
+localset 2032 778327
+localset 2033 778843
+localset 2034 779355
+localset 2035 780001
+localset 2036 780310
+localset 2037 780887
+localset 2038 781399
+localset 2039 781915
+localset 2040 782427
+localset 2041 783073
+localset 2042 783382
+localset 2043 783959
+localset 2044 784471
+localset 2045 784987
+localset 2046 785499
+localset 2047 786175
+localset 2048 786607
+localset 2049 787119
+localset 2050 787631
+localset 2051 788143
+localset 2052 788655
+localset 2053 789167
+localset 2054 789679
+localset 2055 790191
 localset 2056 790528
 localset 2057 791040
 localset 2058 791552
@@ -4796,25 +4846,49 @@ localset 2060 792576
 localset 2061 793088
 localset 2062 793600
 localset 2063 794112
-localset 2064 794624
-localset 2065 795136
-localset 2066 795648
-localset 2067 796160
-localset 2068 796672
-localset 2069 797184
-localset 2070 797696
-localset 2071 798208
-localset 2072 798720
-localset 2073 799232
-localset 2074 799744
-localset 2075 800256
-localset 2076 800768
-localset 2077 801280
+localset 2064 794880
+localset 2065 795392
+localset 2066 795904
+localset 2067 796416
+localset 2068 796928
+localset 2069 797440
+localset 2070 797952
+localset 2071 798464
+localset 2072 798976
+localset 2073 799488
+localset 2074 800000
+localset 2075 800512
+localset 2076 801024
+localset 2077 801536
 localset 2078 801792
 localset 2079 802304
+localset 2080 802816
+localset 2081 803328
+localset 2082 803840
+localset 2083 804352
+localset 2084 804864
+localset 2085 805376
+localset 2086 805888
+localset 2087 806400
+localset 2088 806912
+localset 2089 807424
+localset 2090 807936
+localset 2091 808448
+localset 2092 808960
+localset 2093 809472
+localset 2094 809984
+localset 2095 810496
+localset 2096 811008
+localset 2097 811520
+localset 2098 812032
+localset 2099 812544
+localset 2100 813056
+localset 2101 813568
+localset 2102 814080
 localset 11 0
 label actor
 localset 142 0
+localset 144 0
 localget r0 11
 cmp r0 4
 jge tree_actor
@@ -4871,26 +4945,26 @@ cmp r0 2
 je nature_rock_model
 cmp r0 3
 je nature_grass_model
-set r0 1528
+set r0 1552
 mov r9 r0
 localset 132 r9
-set r0 1543
+set r0 1566
 mov r9 r0
 localset 134 r9
 jmp nature_model_ready
 label nature_rock_model
-set r0 1543
+set r0 1566
 mov r9 r0
 localset 132 r9
-set r0 1556
+set r0 1579
 mov r9 r0
 localset 134 r9
 jmp nature_model_ready
 label nature_grass_model
-set r0 1556
+set r0 1579
 mov r9 r0
 localset 132 r9
-set r0 1568
+set r0 1591
 mov r9 r0
 localset 134 r9
 label nature_model_ready
@@ -9777,6 +9851,13 @@ label wheel_steer_neutral
 localset 3042 0
 localset 3043 16384
 label wheel_motion_ready
+localset 3070 0
+localget r0 11
+cmp r0 0
+jne car_selection_ready
+load8 r0 203
+localset 3070 r0
+label car_selection_ready
 localset 143 0
 label actor_vertex
 localget r8 132
@@ -9908,6 +9989,38 @@ localget r10 3045
 add r2 r10
 label wheel_rear_508
 label wheel_transform_done_497
+localget r9 3070
+cmp r9 1
+je garage_gt_509
+cmp r9 2
+je garage_track_510
+jmp garage_morph_done_511
+label garage_gt_509
+mul r0 96
+div r0 100
+mul r2 113
+div r2 100
+cmp r1 74
+jle garage_morph_done_511
+add r1 18
+jmp garage_morph_done_511
+label garage_track_510
+mul r0 114
+div r0 100
+mul r2 92
+div r2 100
+cmp r1 77
+jle garage_morph_done_511
+sub r1 14
+label garage_morph_done_511
+localget r9 11
+cmp r9 0
+jne vertex_no_pneumatic_rise_512
+cmp r8 1535
+jge vertex_no_pneumatic_rise_512
+load16 r9 384
+add r1 r9
+label vertex_no_pneumatic_rise_512
 localget r9 118
 sub r9 32768
 mul r9 r0
@@ -9986,16 +10099,34 @@ localget r0 134
 cmp r8 r0
 jlt actor_vertex
 localget r0 11
+cmp r0 0
+jne actor_shadow_stage
+localget r0 144
+cmp r0 1
+je actor_shadow_stage
+load8 r0 388
+cmp r0 0
+jle actor_shadow_stage
+localset 144 1
+set r0 1511
+mov r9 r0
+localset 132 r9
+set r0 1535
+mov r9 r0
+localset 134 r9
+jmp actor_vertex
+label actor_shadow_stage
+localget r0 11
 cmp r0 4
 jge actor_geometry_ready
 localget r0 143
 cmp r0 1
 je actor_geometry_ready
 localset 143 1
-set r0 1511
+set r0 1535
 mov r9 r0
 localset 132 r9
-set r0 1528
+set r0 1552
 mov r9 r0
 localset 134 r9
 jmp actor_vertex
@@ -10022,197 +10153,197 @@ je emit_high
 jmp emit_medium
 label emit_hood
 localget r12 126
-meshfacegradienttex 2183 2192 2193 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2183 2192 2193 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2183 2193 2184 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2183 2193 2184 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2184 2193 2194 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2184 2193 2194 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2184 2194 2185 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2184 2194 2185 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2185 2194 2195 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2185 2194 2195 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2185 2195 2186 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2185 2195 2186 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2186 2195 2196 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2186 2195 2196 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2186 2196 2187 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2186 2196 2187 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2187 2196 2197 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2187 2196 2197 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2187 2197 2188 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2187 2197 2188 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2188 2197 2198 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2188 2197 2198 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2188 2198 2189 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2188 2198 2189 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2192 2201 2202 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2192 2201 2202 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2192 2202 2193 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2192 2202 2193 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2193 2202 2203 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2193 2202 2203 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2193 2203 2194 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2193 2203 2194 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2194 2203 2204 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2194 2203 2204 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2194 2204 2195 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2194 2204 2195 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2195 2204 2205 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2195 2204 2205 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2195 2205 2196 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2195 2205 2196 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2196 2205 2206 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2196 2205 2206 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2196 2206 2197 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2196 2206 2197 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2197 2206 2207 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2197 2206 2207 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2197 2207 2198 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2197 2207 2198 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2201 2210 2211 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2201 2210 2211 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2201 2211 2202 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2201 2211 2202 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2202 2211 2212 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2202 2211 2212 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2202 2212 2203 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2202 2212 2203 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2203 2212 2213 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2203 2212 2213 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2203 2213 2204 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2203 2213 2204 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2204 2213 2214 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2204 2213 2214 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2204 2214 2205 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2204 2214 2205 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2205 2214 2215 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2205 2214 2215 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2205 2215 2206 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2205 2215 2206 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2206 2215 2216 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2206 2215 2216 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2206 2216 2207 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2206 2216 2207 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2210 2219 2220 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2210 2219 2220 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2210 2220 2211 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2210 2220 2211 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2211 2220 2221 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2211 2220 2221 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2211 2221 2212 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2211 2221 2212 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2212 2221 2222 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2212 2221 2222 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2212 2222 2213 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2212 2222 2213 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2213 2222 2223 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2213 2222 2223 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2213 2223 2214 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2213 2223 2214 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2214 2223 2224 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2214 2223 2224 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2214 2224 2215 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2214 2224 2215 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2215 2224 2225 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2215 2224 2225 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2215 2225 2216 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2215 2225 2216 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2219 2228 2229 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2219 2228 2229 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2219 2229 2220 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2219 2229 2220 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2220 2229 2230 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2220 2229 2230 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2220 2230 2221 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2220 2230 2221 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2221 2230 2231 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2221 2230 2231 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2221 2231 2222 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2221 2231 2222 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2222 2231 2232 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2222 2231 2232 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2222 2232 2223 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2222 2232 2223 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2223 2232 2233 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2223 2232 2233 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2223 2233 2224 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2223 2233 2224 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2224 2233 2234 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2224 2233 2234 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2224 2234 2225 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2224 2234 2225 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2228 2237 2238 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2228 2237 2238 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2228 2238 2229 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2228 2238 2229 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2229 2238 2239 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2229 2238 2239 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2229 2239 2230 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2229 2239 2230 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2230 2239 2240 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2230 2239 2240 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2230 2240 2231 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2230 2240 2231 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2231 2240 2241 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2231 2240 2241 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2231 2241 2232 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2231 2241 2232 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2232 2241 2242 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2232 2241 2242 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2232 2242 2233 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2232 2242 2233 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2233 2242 2243 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2233 2242 2243 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2233 2243 2234 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2233 2243 2234 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2237 2246 2247 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2237 2246 2247 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2237 2247 2238 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2237 2247 2238 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2238 2247 2248 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2238 2247 2248 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2238 2248 2239 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2238 2248 2239 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2239 2248 2249 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2239 2248 2249 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2239 2249 2240 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2239 2249 2240 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2240 2249 2250 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2240 2249 2250 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2240 2250 2241 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2240 2250 2241 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2241 2250 2251 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2241 2250 2251 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2241 2251 2242 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2241 2251 2242 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2242 2251 2252 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2242 2251 2252 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2242 2252 2243 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2242 2252 2243 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2246 2255 2256 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2246 2255 2256 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2246 2256 2247 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2246 2256 2247 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2247 2256 2257 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2247 2256 2257 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2247 2257 2248 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2247 2257 2248 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2248 2257 2258 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2248 2257 2258 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2248 2258 2249 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2248 2258 2249 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2249 2258 2259 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2249 2258 2259 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2249 2259 2250 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2249 2259 2250 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2250 2259 2260 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2250 2259 2260 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2250 2260 2251 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2250 2260 2251 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2251 2260 2261 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2251 2260 2261 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2251 2261 2252 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2251 2261 2252 r12 24 r9 r10 r11 60
 meshface 2935 2936 2937 226 r9 r10 r11 60
 meshface 2935 2937 2938 226 r9 r10 r11 60
 meshface 2939 2940 2941 226 r9 r10 r11 60
@@ -10220,1615 +10351,1615 @@ meshface 2939 2942 2940 226 r9 r10 r11 60
 jmp next_actor
 label emit_high
 localget r12 126
-meshfacegradienttex 2048 2049 2050 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2048 2049 2050 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2048 2051 2052 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2048 2051 2052 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2052 2051 2053 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2052 2051 2053 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2052 2054 2055 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2052 2054 2055 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2055 2054 2056 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2055 2054 2056 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2055 2056 2057 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2055 2056 2057 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2057 2056 2058 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2057 2056 2058 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2057 2058 2059 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2057 2058 2059 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2059 2058 2060 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2059 2058 2060 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2059 2060 2061 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2059 2060 2061 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2061 2060 2062 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2061 2060 2062 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2061 2062 2063 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2061 2062 2063 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2048 2064 2065 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2048 2064 2065 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2048 2066 2064 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2048 2066 2064 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2063 2067 2068 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2063 2067 2068 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2063 2068 2069 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2063 2068 2069 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2070 2071 2072 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2070 2071 2072 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2070 2072 2050 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2070 2072 2050 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2050 2072 2073 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2050 2072 2073 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2074 2073 2075 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2074 2073 2075 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2075 2073 2076 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2075 2073 2076 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2077 2076 2078 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2077 2076 2078 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2078 2076 2079 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2078 2076 2079 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2078 2079 2080 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2078 2079 2080 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2080 2079 2081 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2080 2079 2081 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2082 2081 2060 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2082 2081 2060 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2060 2081 2083 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2060 2081 2083 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2060 2083 2084 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2060 2083 2084 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2065 2085 2086 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2065 2085 2086 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2065 2064 2085 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2065 2064 2085 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2067 2087 2088 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2067 2087 2088 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2067 2088 2068 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2067 2088 2068 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2089 2090 2091 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2089 2090 2091 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2089 2091 2072 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2089 2091 2072 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2072 2091 2092 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2072 2091 2092 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2072 2092 2073 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2072 2092 2073 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2073 2092 2093 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2073 2092 2093 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2073 2093 2076 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2073 2093 2076 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2076 2093 2094 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2076 2093 2094 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2076 2094 2079 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2076 2094 2079 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2079 2094 2095 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2079 2094 2095 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2079 2095 2081 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2079 2095 2081 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2081 2095 2096 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2081 2095 2096 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2081 2097 2098 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2081 2097 2098 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2086 2099 2090 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2086 2099 2090 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2086 2085 2099 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2086 2085 2099 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2087 2096 2100 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2087 2096 2100 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2087 2100 2088 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2087 2100 2088 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2090 2101 2102 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2090 2101 2102 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2090 2102 2091 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2090 2102 2091 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2091 2102 2103 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2091 2102 2103 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2091 2103 2092 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2091 2103 2092 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2092 2103 2104 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2092 2103 2104 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2092 2104 2093 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2092 2104 2093 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2093 2104 2105 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2093 2104 2105 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2093 2105 2094 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2093 2105 2094 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2094 2105 2106 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2094 2105 2106 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2094 2106 2095 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2094 2106 2095 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2095 2106 2107 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2095 2106 2107 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2095 2107 2096 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2095 2107 2096 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2090 2108 2101 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2090 2108 2101 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2090 2099 2108 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2090 2099 2108 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2109 2107 2110 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2109 2107 2110 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2109 2110 2100 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2109 2110 2100 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2101 2111 2112 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2101 2111 2112 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2101 2112 2102 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2101 2112 2102 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2102 2112 2113 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2102 2112 2113 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2102 2113 2103 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2102 2113 2103 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2103 2113 2114 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2103 2113 2114 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2103 2114 2104 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2103 2114 2104 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2104 2114 2115 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2104 2114 2115 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2104 2115 2105 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2104 2115 2105 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2105 2115 2116 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2105 2115 2116 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2105 2116 2106 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2105 2116 2106 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2106 2116 2117 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2106 2116 2117 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2106 2117 2107 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2106 2117 2107 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2101 2118 2111 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2101 2118 2111 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2101 2108 2118 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2101 2108 2118 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2107 2117 2119 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2107 2117 2119 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2107 2119 2110 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2107 2119 2110 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2111 2120 2121 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2111 2120 2121 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2111 2121 2112 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2111 2121 2112 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2112 2121 2122 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2112 2121 2122 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2112 2122 2113 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2112 2122 2113 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2113 2122 2123 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2113 2122 2123 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2113 2123 2114 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2113 2123 2114 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2114 2123 2124 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2114 2123 2124 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2114 2124 2115 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2114 2124 2115 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2115 2124 2125 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2115 2124 2125 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2115 2125 2116 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2115 2125 2116 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2116 2125 2126 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2116 2125 2126 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2116 2126 2117 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2116 2126 2117 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2111 2127 2120 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2111 2127 2120 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2111 2118 2127 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2111 2118 2127 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2117 2126 2128 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2117 2126 2128 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2117 2128 2119 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2117 2128 2119 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2120 2129 2130 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2120 2129 2130 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2120 2130 2121 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2120 2130 2121 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2121 2130 2131 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2121 2130 2131 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2121 2131 2122 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2121 2131 2122 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2122 2131 2132 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2122 2131 2132 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2122 2132 2123 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2122 2132 2123 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2123 2132 2133 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2123 2132 2133 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2123 2133 2124 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2123 2133 2124 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2124 2133 2134 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2124 2133 2134 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2124 2134 2125 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2124 2134 2125 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2125 2134 2135 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2125 2134 2135 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2125 2135 2126 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2125 2135 2126 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2120 2136 2129 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2120 2136 2129 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2120 2127 2136 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2120 2127 2136 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2126 2135 2137 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2126 2135 2137 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2126 2137 2128 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2126 2137 2128 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2129 2138 2139 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2129 2138 2139 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2129 2139 2130 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2129 2139 2130 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2130 2139 2140 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2130 2139 2140 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2130 2140 2131 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2130 2140 2131 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2131 2140 2141 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2131 2140 2141 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2131 2141 2132 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2131 2141 2132 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2132 2141 2142 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2132 2141 2142 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2132 2142 2133 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2132 2142 2133 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2133 2142 2143 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2133 2142 2143 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2133 2143 2134 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2133 2143 2134 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2134 2143 2144 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2134 2143 2144 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2134 2144 2135 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2134 2144 2135 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2129 2145 2138 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2129 2145 2138 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2129 2136 2145 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2129 2136 2145 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2135 2144 2146 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2135 2144 2146 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2135 2146 2137 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2135 2146 2137 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2138 2147 2148 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2138 2147 2148 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2138 2148 2139 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2138 2148 2139 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2139 2148 2149 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2139 2148 2149 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2139 2149 2140 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2139 2149 2140 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2140 2149 2150 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2140 2149 2150 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2140 2150 2141 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2140 2150 2141 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2141 2150 2151 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2141 2150 2151 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2141 2151 2142 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2141 2151 2142 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2142 2151 2152 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2142 2151 2152 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2142 2152 2143 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2142 2152 2143 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2143 2152 2153 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2143 2152 2153 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2143 2153 2144 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2143 2153 2144 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2138 2154 2147 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2138 2154 2147 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2138 2145 2154 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2138 2145 2154 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2144 2153 2155 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2144 2153 2155 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2144 2155 2146 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2144 2155 2146 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2147 2156 2157 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2147 2156 2157 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2147 2157 2148 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2147 2157 2148 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2148 2157 2158 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2148 2157 2158 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2148 2158 2149 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2148 2158 2149 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2149 2158 2159 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2149 2158 2159 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2149 2159 2150 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2149 2159 2150 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2150 2159 2160 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2150 2159 2160 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2150 2160 2151 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2150 2160 2151 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2151 2160 2161 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2151 2160 2161 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2151 2161 2152 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2151 2161 2152 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2152 2161 2162 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2152 2161 2162 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2152 2162 2153 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2152 2162 2153 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2147 2163 2156 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2147 2163 2156 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2147 2154 2163 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2147 2154 2163 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2153 2162 2164 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2153 2162 2164 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2153 2164 2155 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2153 2164 2155 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2156 2165 2166 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2156 2165 2166 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2156 2166 2157 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2156 2166 2157 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2157 2166 2167 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2157 2166 2167 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2157 2167 2158 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2157 2167 2158 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2158 2167 2168 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2158 2167 2168 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2158 2168 2159 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2158 2168 2159 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2159 2168 2169 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2159 2168 2169 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2159 2169 2160 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2159 2169 2160 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2160 2169 2170 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2160 2169 2170 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2160 2170 2161 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2160 2170 2161 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2161 2170 2171 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2161 2170 2171 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2161 2171 2162 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2161 2171 2162 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2156 2172 2165 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2156 2172 2165 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2156 2163 2172 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2156 2163 2172 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2162 2171 2173 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2162 2171 2173 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2162 2173 2164 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2162 2173 2164 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2165 2174 2175 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2165 2174 2175 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2165 2175 2166 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2165 2175 2166 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2166 2175 2176 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2166 2175 2176 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2166 2176 2167 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2166 2176 2167 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2167 2176 2177 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2167 2176 2177 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2167 2177 2168 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2167 2177 2168 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2168 2177 2178 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2168 2177 2178 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2168 2178 2169 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2168 2178 2169 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2169 2178 2179 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2169 2178 2179 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2169 2179 2170 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2169 2179 2170 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2170 2179 2180 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2170 2179 2180 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2170 2180 2171 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2170 2180 2171 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2165 2181 2174 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2165 2181 2174 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2165 2172 2181 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2165 2172 2181 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2171 2180 2182 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2171 2180 2182 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2171 2182 2173 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2171 2182 2173 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2174 2183 2184 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2174 2183 2184 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2174 2184 2175 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2174 2184 2175 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2175 2184 2185 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2175 2184 2185 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2175 2185 2176 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2175 2185 2176 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2176 2185 2186 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2176 2185 2186 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2176 2186 2177 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2176 2186 2177 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2177 2186 2187 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2177 2186 2187 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2177 2187 2178 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2177 2187 2178 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2178 2187 2188 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2178 2187 2188 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2178 2188 2179 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2178 2188 2179 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2179 2188 2189 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2179 2188 2189 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2179 2189 2180 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2179 2189 2180 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2174 2190 2183 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2174 2190 2183 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2174 2181 2190 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2174 2181 2190 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2180 2189 2191 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2180 2189 2191 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2180 2191 2182 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2180 2191 2182 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2183 2192 2193 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2183 2192 2193 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2183 2193 2184 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2183 2193 2184 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2184 2193 2194 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2184 2193 2194 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2184 2194 2185 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2184 2194 2185 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2185 2194 2195 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2185 2194 2195 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2185 2195 2186 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2185 2195 2186 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2186 2195 2196 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2186 2195 2196 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2186 2196 2187 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2186 2196 2187 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2187 2196 2197 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2187 2196 2197 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2187 2197 2188 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2187 2197 2188 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2188 2197 2198 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2188 2197 2198 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2188 2198 2189 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2188 2198 2189 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2183 2199 2192 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2183 2199 2192 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2183 2190 2199 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2183 2190 2199 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2189 2198 2200 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2189 2198 2200 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2189 2200 2191 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2189 2200 2191 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2192 2201 2202 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2192 2201 2202 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2192 2202 2193 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2192 2202 2193 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2193 2202 2203 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2193 2202 2203 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2193 2203 2194 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2193 2203 2194 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2194 2203 2204 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2194 2203 2204 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2194 2204 2195 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2194 2204 2195 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2195 2204 2205 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2195 2204 2205 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2195 2205 2196 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2195 2205 2196 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2196 2205 2206 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2196 2205 2206 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2196 2206 2197 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2196 2206 2197 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2197 2206 2207 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2197 2206 2207 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2197 2207 2198 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2197 2207 2198 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2192 2208 2201 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2192 2208 2201 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2192 2199 2208 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2192 2199 2208 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2198 2207 2209 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2198 2207 2209 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2198 2209 2200 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2198 2209 2200 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2201 2210 2211 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2201 2210 2211 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2201 2211 2202 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2201 2211 2202 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2202 2211 2212 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2202 2211 2212 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2202 2212 2203 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2202 2212 2203 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2203 2212 2213 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2203 2212 2213 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2203 2213 2204 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2203 2213 2204 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2204 2213 2214 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2204 2213 2214 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2204 2214 2205 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2204 2214 2205 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2205 2214 2215 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2205 2214 2215 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2205 2215 2206 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2205 2215 2206 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2206 2215 2216 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2206 2215 2216 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2206 2216 2207 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2206 2216 2207 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2201 2217 2210 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2201 2217 2210 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2201 2208 2217 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2201 2208 2217 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2207 2216 2218 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2207 2216 2218 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2207 2218 2209 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2207 2218 2209 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2210 2219 2220 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2210 2219 2220 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2210 2220 2211 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2210 2220 2211 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2211 2220 2221 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2211 2220 2221 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2211 2221 2212 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2211 2221 2212 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2212 2221 2222 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2212 2221 2222 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2212 2222 2213 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2212 2222 2213 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2213 2222 2223 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2213 2222 2223 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2213 2223 2214 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2213 2223 2214 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2214 2223 2224 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2214 2223 2224 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2214 2224 2215 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2214 2224 2215 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2215 2224 2225 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2215 2224 2225 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2215 2225 2216 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2215 2225 2216 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2210 2226 2219 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2210 2226 2219 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2210 2217 2226 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2210 2217 2226 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2216 2225 2227 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2216 2225 2227 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2216 2227 2218 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2216 2227 2218 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2219 2228 2229 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2219 2228 2229 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2219 2229 2220 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2219 2229 2220 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2220 2229 2230 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2220 2229 2230 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2220 2230 2221 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2220 2230 2221 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2221 2230 2231 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2221 2230 2231 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2221 2231 2222 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2221 2231 2222 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2222 2231 2232 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2222 2231 2232 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2222 2232 2223 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2222 2232 2223 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2223 2232 2233 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2223 2232 2233 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2223 2233 2224 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2223 2233 2224 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2224 2233 2234 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2224 2233 2234 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2224 2234 2225 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2224 2234 2225 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2219 2235 2228 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2219 2235 2228 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2219 2226 2235 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2219 2226 2235 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2225 2234 2236 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2225 2234 2236 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2225 2236 2227 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2225 2236 2227 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2228 2237 2238 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2228 2237 2238 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2228 2238 2229 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2228 2238 2229 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2229 2238 2239 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2229 2238 2239 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2229 2239 2230 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2229 2239 2230 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2230 2239 2240 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2230 2239 2240 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2230 2240 2231 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2230 2240 2231 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2231 2240 2241 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2231 2240 2241 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2231 2241 2232 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2231 2241 2232 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2232 2241 2242 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2232 2241 2242 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2232 2242 2233 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2232 2242 2233 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2233 2242 2243 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2233 2242 2243 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2233 2243 2234 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2233 2243 2234 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2228 2244 2237 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2228 2244 2237 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2228 2235 2244 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2228 2235 2244 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2234 2243 2245 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2234 2243 2245 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2234 2245 2236 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2234 2245 2236 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2237 2246 2247 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2237 2246 2247 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2237 2247 2238 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2237 2247 2238 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2238 2247 2248 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2238 2247 2248 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2238 2248 2239 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2238 2248 2239 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2239 2248 2249 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2239 2248 2249 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2239 2249 2240 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2239 2249 2240 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2240 2249 2250 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2240 2249 2250 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2240 2250 2241 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2240 2250 2241 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2241 2250 2251 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2241 2250 2251 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2241 2251 2242 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2241 2251 2242 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2242 2251 2252 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2242 2251 2252 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2242 2252 2243 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2242 2252 2243 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2237 2253 2246 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2237 2253 2246 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2237 2244 2253 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2237 2244 2253 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2243 2252 2254 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2243 2252 2254 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2243 2254 2245 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2243 2254 2245 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2246 2255 2256 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2246 2255 2256 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2246 2256 2247 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2246 2256 2247 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2247 2256 2257 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2247 2256 2257 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2247 2257 2248 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2247 2257 2248 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2248 2257 2258 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2248 2257 2258 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2248 2258 2249 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2248 2258 2249 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2249 2258 2259 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2249 2258 2259 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2249 2259 2250 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2249 2259 2250 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2250 2259 2260 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2250 2259 2260 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2250 2260 2251 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2250 2260 2251 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2251 2260 2261 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2251 2260 2261 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2251 2261 2252 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2251 2261 2252 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2246 2262 2255 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2246 2262 2255 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2246 2253 2262 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2246 2253 2262 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2252 2261 2263 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2252 2261 2263 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2252 2263 2254 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2252 2263 2254 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2264 2066 2048 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2264 2066 2048 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2264 2048 2052 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2264 2048 2052 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2264 2052 2055 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2264 2052 2055 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2264 2055 2057 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2264 2055 2057 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2264 2057 2059 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2264 2057 2059 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2264 2059 2061 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2264 2059 2061 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2264 2061 2063 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2264 2061 2063 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2264 2063 2069 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2264 2063 2069 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2264 2069 2066 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2264 2069 2066 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2265 2255 2262 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2265 2255 2262 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2265 2256 2255 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2265 2256 2255 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2265 2257 2256 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2265 2257 2256 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2265 2258 2257 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2265 2258 2257 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2265 2259 2258 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2265 2259 2258 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2265 2260 2259 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2265 2260 2259 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2265 2261 2260 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2265 2261 2260 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2265 2263 2261 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2265 2263 2261 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2265 2262 2263 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2265 2262 2263 r12 24 r9 r10 r11 60
 meshface 2266 2267 2268 227 r9 r10 r11 60
 meshface 2266 2269 2267 227 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2270 2271 2272 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2270 2271 2272 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2270 2272 2273 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2270 2272 2273 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2273 2272 2274 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2273 2272 2274 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2273 2274 2275 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2273 2274 2275 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2275 2274 2276 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2275 2274 2276 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2275 2276 2277 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2275 2276 2277 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2277 2276 2278 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2277 2276 2278 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2277 2278 2279 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2277 2278 2279 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2271 2280 2281 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2271 2280 2281 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2271 2281 2272 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2271 2281 2272 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2272 2281 2282 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2272 2281 2282 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2272 2282 2274 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2272 2282 2274 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2274 2282 2283 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2274 2282 2283 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2274 2283 2276 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2274 2283 2276 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2276 2283 2284 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2276 2283 2284 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2276 2284 2278 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2276 2284 2278 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2280 2285 2286 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2280 2285 2286 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2280 2286 2281 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2280 2286 2281 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2281 2286 2287 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2281 2286 2287 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2281 2287 2282 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2281 2287 2282 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2282 2287 2288 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2282 2287 2288 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2282 2288 2283 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2282 2288 2283 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2283 2288 2289 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2283 2288 2289 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2283 2289 2284 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2283 2289 2284 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2285 2290 2291 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2285 2290 2291 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2285 2291 2286 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2285 2291 2286 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2286 2291 2292 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2286 2291 2292 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2286 2292 2287 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2286 2292 2287 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2287 2292 2293 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2287 2292 2293 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2287 2293 2288 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2287 2293 2288 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2288 2293 2294 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2288 2293 2294 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2288 2294 2289 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2288 2294 2289 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2290 2295 2296 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2290 2295 2296 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2290 2296 2291 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2290 2296 2291 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2291 2296 2297 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2291 2296 2297 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2291 2297 2292 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2291 2297 2292 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2292 2297 2298 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2292 2297 2298 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2292 2298 2293 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2292 2298 2293 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2293 2298 2299 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2293 2298 2299 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2293 2299 2294 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2293 2299 2294 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2295 2300 2301 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2295 2300 2301 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2295 2301 2296 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2295 2301 2296 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2296 2301 2302 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2296 2301 2302 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2296 2302 2297 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2296 2302 2297 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2297 2302 2303 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2297 2302 2303 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2297 2303 2298 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2297 2303 2298 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2298 2303 2304 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2298 2303 2304 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2298 2304 2299 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2298 2304 2299 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2305 2306 2307 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2305 2306 2307 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2305 2308 2306 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2305 2308 2306 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2305 2309 2308 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2305 2309 2308 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2310 2311 2312 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2310 2311 2312 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2313 2314 2315 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2313 2314 2315 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2316 2317 2318 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2316 2317 2318 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2316 2318 2319 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2316 2318 2319 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2316 2319 2320 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2316 2319 2320 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2321 2322 2323 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2321 2322 2323 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2324 2325 2326 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2324 2325 2326 r12 24 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2327 2328 2329 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2327 2328 2329 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2327 2330 2328 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2327 2330 2328 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2330 2331 2332 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2330 2331 2332 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2330 2333 2331 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2330 2333 2331 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2333 2334 2335 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2333 2334 2335 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2333 2336 2334 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2333 2336 2334 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2336 2337 2334 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2336 2337 2334 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2336 2338 2337 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2336 2338 2337 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2338 2339 2337 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2338 2339 2337 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2338 2340 2339 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2338 2340 2339 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2340 2341 2342 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2340 2341 2342 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2340 2343 2341 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2340 2343 2341 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2343 2344 2345 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2343 2344 2345 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2343 2346 2344 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2343 2346 2344 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2346 2347 2344 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2346 2347 2344 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2346 2348 2347 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2346 2348 2347 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2348 2349 2347 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2348 2349 2347 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2348 2350 2349 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2348 2350 2349 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2350 2351 2352 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2350 2351 2352 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2350 2353 2351 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2350 2353 2351 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2353 2354 2355 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2353 2354 2355 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2353 2356 2354 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2353 2356 2354 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2356 2357 2354 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2356 2357 2354 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2356 2358 2357 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2356 2358 2357 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2358 2359 2357 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2358 2359 2357 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2358 2360 2359 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2358 2360 2359 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2360 2361 2362 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2360 2361 2362 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2360 2363 2361 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2360 2363 2361 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2363 2364 2365 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2363 2364 2365 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2363 2366 2364 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2363 2366 2364 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2366 2329 2364 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2366 2329 2364 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2366 2327 2329 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2366 2327 2329 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2367 2368 2369 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2367 2368 2369 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2367 2370 2368 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2367 2370 2368 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2370 2371 2368 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2370 2371 2368 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2372 2373 2371 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2372 2373 2371 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2374 2375 2371 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2374 2375 2371 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2376 2377 2375 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2376 2377 2375 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2377 2378 2375 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2377 2378 2375 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2377 2379 2378 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2377 2379 2378 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2379 2380 2378 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2379 2380 2378 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2379 2381 2380 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2379 2381 2380 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2381 2382 2380 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2381 2382 2380 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2383 2384 2382 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2383 2384 2382 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2385 2386 2382 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2385 2386 2382 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2387 2388 2386 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2387 2388 2386 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2388 2389 2386 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2388 2389 2386 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2388 2390 2389 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2388 2390 2389 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2390 2391 2389 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2390 2391 2389 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2390 2392 2391 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2390 2392 2391 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2392 2393 2391 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2392 2393 2391 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2394 2395 2393 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2394 2395 2393 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2396 2397 2393 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2396 2397 2393 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2398 2399 2397 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2398 2399 2397 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2399 2400 2397 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2399 2400 2397 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2399 2401 2400 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2399 2401 2400 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2401 2402 2400 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2401 2402 2400 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2401 2403 2402 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2401 2403 2402 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2403 2404 2402 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2403 2404 2402 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2405 2406 2404 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2405 2406 2404 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2407 2408 2404 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2407 2408 2404 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2409 2410 2408 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2409 2410 2408 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2410 2369 2408 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2410 2369 2408 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2410 2367 2369 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2410 2367 2369 r12 4 3 5 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2411 2412 2413 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2411 2412 2413 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2411 2413 2414 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2411 2413 2414 r12 12 4 4 r9 r10 r11 60
 meshface 2415 2416 2417 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2412 2418 2419 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2412 2418 2419 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2412 2419 2413 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2412 2419 2413 r12 12 4 4 r9 r10 r11 60
 meshface 2415 2417 2420 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2418 2421 2422 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2418 2421 2422 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2418 2422 2419 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2418 2422 2419 r12 12 4 4 r9 r10 r11 60
 meshface 2415 2420 2423 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2421 2424 2425 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2421 2424 2425 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2421 2425 2422 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2421 2425 2422 r12 12 4 4 r9 r10 r11 60
 meshface 2415 2423 2426 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2424 2427 2428 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2424 2427 2428 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2424 2428 2425 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2424 2428 2425 r12 12 4 4 r9 r10 r11 60
 meshface 2415 2426 2429 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2427 2430 2431 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2427 2430 2431 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2427 2431 2428 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2427 2431 2428 r12 12 4 4 r9 r10 r11 60
 meshface 2415 2429 2432 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2430 2433 2434 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2430 2433 2434 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2430 2434 2431 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2430 2434 2431 r12 12 4 4 r9 r10 r11 60
 meshface 2415 2432 2435 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2433 2411 2414 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2433 2411 2414 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2433 2414 2434 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2433 2414 2434 r12 12 4 4 r9 r10 r11 60
 meshface 2415 2435 2416 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2436 2437 2438 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2436 2437 2438 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2436 2438 2439 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2436 2438 2439 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2440 2441 2442 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2440 2441 2442 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2440 2442 2443 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2440 2442 2443 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2444 2445 2446 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2444 2445 2446 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2444 2446 2447 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2444 2446 2447 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2448 2449 2450 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2448 2449 2450 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2448 2450 2451 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2448 2450 2451 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2452 2453 2454 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2452 2453 2454 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2452 2454 2455 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2452 2454 2455 r12 12 4 4 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2456 2457 2458 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2456 2457 2458 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2456 2458 2459 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2456 2458 2459 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2459 2460 2461 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2459 2460 2461 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2459 2461 2462 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2459 2461 2462 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2462 2463 2464 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2462 2463 2464 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2462 2464 2465 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2462 2464 2465 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2465 2464 2466 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2465 2464 2466 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2465 2466 2467 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2465 2466 2467 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2467 2466 2468 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2467 2466 2468 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2467 2468 2469 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2467 2468 2469 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2469 2470 2471 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2469 2470 2471 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2469 2471 2472 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2469 2471 2472 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2472 2473 2474 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2472 2473 2474 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2472 2474 2475 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2472 2474 2475 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2475 2474 2476 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2475 2474 2476 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2475 2476 2477 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2475 2476 2477 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2477 2476 2478 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2477 2476 2478 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2477 2478 2479 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2477 2478 2479 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2479 2480 2481 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2479 2480 2481 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2479 2481 2482 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2479 2481 2482 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2482 2483 2484 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2482 2483 2484 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2482 2484 2485 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2482 2484 2485 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2485 2484 2486 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2485 2484 2486 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2485 2486 2487 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2485 2486 2487 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2487 2486 2488 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2487 2486 2488 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2487 2488 2489 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2487 2488 2489 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2489 2490 2491 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2489 2490 2491 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2489 2491 2492 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2489 2491 2492 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2492 2493 2494 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2492 2493 2494 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2492 2494 2495 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2492 2494 2495 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2495 2494 2457 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2495 2494 2457 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2495 2457 2456 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2495 2457 2456 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2496 2497 2498 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2496 2497 2498 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2496 2498 2499 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2496 2498 2499 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2499 2498 2500 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2499 2498 2500 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2501 2500 2502 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2501 2500 2502 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2503 2500 2504 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2503 2500 2504 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2505 2504 2506 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2505 2504 2506 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2506 2504 2507 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2506 2504 2507 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2506 2507 2508 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2506 2507 2508 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2508 2507 2509 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2508 2507 2509 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2508 2509 2510 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2508 2509 2510 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2510 2509 2511 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2510 2509 2511 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2512 2511 2513 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2512 2511 2513 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2514 2511 2515 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2514 2511 2515 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2516 2515 2517 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2516 2515 2517 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2517 2515 2518 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2517 2515 2518 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2517 2518 2519 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2517 2518 2519 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2519 2518 2520 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2519 2518 2520 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2519 2520 2521 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2519 2520 2521 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2521 2520 2522 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2521 2520 2522 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2523 2522 2524 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2523 2522 2524 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2525 2522 2526 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2525 2522 2526 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2527 2526 2528 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2527 2526 2528 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2528 2526 2529 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2528 2526 2529 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2528 2529 2530 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2528 2529 2530 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2530 2529 2531 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2530 2529 2531 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2530 2531 2532 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2530 2531 2532 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2532 2531 2533 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2532 2531 2533 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2534 2533 2535 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2534 2533 2535 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2536 2533 2537 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2536 2533 2537 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2538 2537 2539 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2538 2537 2539 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2539 2537 2497 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2539 2537 2497 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2539 2497 2496 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2539 2497 2496 r12 4 3 5 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2540 2541 2542 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2540 2541 2542 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2540 2543 2541 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2540 2543 2541 r12 12 4 4 r9 r10 r11 60
 meshface 2544 2545 2546 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2542 2547 2548 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2542 2547 2548 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2542 2541 2547 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2542 2541 2547 r12 12 4 4 r9 r10 r11 60
 meshface 2544 2549 2545 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2548 2550 2551 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2548 2550 2551 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2548 2547 2550 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2548 2547 2550 r12 12 4 4 r9 r10 r11 60
 meshface 2544 2552 2549 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2551 2553 2554 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2551 2553 2554 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2551 2550 2553 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2551 2550 2553 r12 12 4 4 r9 r10 r11 60
 meshface 2544 2555 2552 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2554 2556 2557 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2554 2556 2557 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2554 2553 2556 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2554 2553 2556 r12 12 4 4 r9 r10 r11 60
 meshface 2544 2558 2555 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2557 2559 2560 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2557 2559 2560 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2557 2556 2559 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2557 2556 2559 r12 12 4 4 r9 r10 r11 60
 meshface 2544 2561 2558 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2560 2562 2563 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2560 2562 2563 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2560 2559 2562 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2560 2559 2562 r12 12 4 4 r9 r10 r11 60
 meshface 2544 2564 2561 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2563 2543 2540 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2563 2543 2540 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2563 2562 2543 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2563 2562 2543 r12 12 4 4 r9 r10 r11 60
 meshface 2544 2546 2564 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2565 2566 2567 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2565 2566 2567 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2565 2568 2566 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2565 2568 2566 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2569 2570 2571 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2569 2570 2571 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2569 2572 2570 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2569 2572 2570 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2573 2574 2575 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2573 2574 2575 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2573 2576 2574 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2573 2576 2574 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2577 2578 2579 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2577 2578 2579 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2577 2580 2578 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2577 2580 2578 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2581 2582 2583 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2581 2582 2583 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2581 2584 2582 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2581 2584 2582 r12 12 4 4 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2585 2586 2587 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2585 2586 2587 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2585 2588 2586 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2585 2588 2586 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2588 2589 2590 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2588 2589 2590 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2588 2591 2589 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2588 2591 2589 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2591 2592 2593 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2591 2592 2593 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2591 2594 2592 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2591 2594 2592 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2594 2595 2592 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2594 2595 2592 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2594 2596 2595 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2594 2596 2595 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2596 2597 2595 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2596 2597 2595 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2596 2598 2597 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2596 2598 2597 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2598 2599 2600 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2598 2599 2600 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2598 2601 2599 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2598 2601 2599 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2601 2602 2603 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2601 2602 2603 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2601 2604 2602 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2601 2604 2602 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2604 2605 2602 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2604 2605 2602 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2604 2606 2605 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2604 2606 2605 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2606 2607 2605 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2606 2607 2605 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2606 2608 2607 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2606 2608 2607 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2608 2609 2610 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2608 2609 2610 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2608 2611 2609 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2608 2611 2609 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2611 2612 2613 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2611 2612 2613 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2611 2614 2612 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2611 2614 2612 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2614 2615 2612 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2614 2615 2612 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2614 2616 2615 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2614 2616 2615 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2616 2617 2615 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2616 2617 2615 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2616 2618 2617 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2616 2618 2617 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2618 2619 2620 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2618 2619 2620 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2618 2621 2619 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2618 2621 2619 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2621 2622 2623 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2621 2622 2623 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2621 2624 2622 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2621 2624 2622 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2624 2587 2622 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2624 2587 2622 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2624 2585 2587 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2624 2585 2587 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2625 2626 2627 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2625 2626 2627 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2625 2628 2626 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2625 2628 2626 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2628 2629 2626 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2628 2629 2626 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2630 2631 2629 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2630 2631 2629 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2632 2633 2629 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2632 2633 2629 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2634 2635 2633 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2634 2635 2633 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2635 2636 2633 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2635 2636 2633 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2635 2637 2636 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2635 2637 2636 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2637 2638 2636 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2637 2638 2636 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2637 2639 2638 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2637 2639 2638 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2639 2640 2638 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2639 2640 2638 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2641 2642 2640 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2641 2642 2640 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2643 2644 2640 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2643 2644 2640 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2645 2646 2644 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2645 2646 2644 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2646 2647 2644 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2646 2647 2644 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2646 2648 2647 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2646 2648 2647 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2648 2649 2647 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2648 2649 2647 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2648 2650 2649 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2648 2650 2649 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2650 2651 2649 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2650 2651 2649 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2652 2653 2651 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2652 2653 2651 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2654 2655 2651 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2654 2655 2651 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2656 2657 2655 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2656 2657 2655 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2657 2658 2655 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2657 2658 2655 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2657 2659 2658 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2657 2659 2658 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2659 2660 2658 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2659 2660 2658 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2659 2661 2660 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2659 2661 2660 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2661 2662 2660 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2661 2662 2660 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2663 2664 2662 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2663 2664 2662 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2665 2666 2662 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2665 2666 2662 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2667 2668 2666 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2667 2668 2666 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2668 2627 2666 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2668 2627 2666 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2668 2625 2627 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2668 2625 2627 r12 4 3 5 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2669 2670 2671 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2669 2670 2671 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2669 2671 2672 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2669 2671 2672 r12 12 4 4 r9 r10 r11 60
 meshface 2673 2674 2675 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2670 2676 2677 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2670 2676 2677 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2670 2677 2671 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2670 2677 2671 r12 12 4 4 r9 r10 r11 60
 meshface 2673 2675 2678 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2676 2679 2680 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2676 2679 2680 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2676 2680 2677 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2676 2680 2677 r12 12 4 4 r9 r10 r11 60
 meshface 2673 2678 2681 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2679 2682 2683 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2679 2682 2683 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2679 2683 2680 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2679 2683 2680 r12 12 4 4 r9 r10 r11 60
 meshface 2673 2681 2684 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2682 2685 2686 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2682 2685 2686 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2682 2686 2683 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2682 2686 2683 r12 12 4 4 r9 r10 r11 60
 meshface 2673 2684 2687 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2685 2688 2689 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2685 2688 2689 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2685 2689 2686 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2685 2689 2686 r12 12 4 4 r9 r10 r11 60
 meshface 2673 2687 2690 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2688 2691 2692 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2688 2691 2692 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2688 2692 2689 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2688 2692 2689 r12 12 4 4 r9 r10 r11 60
 meshface 2673 2690 2693 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2691 2669 2672 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2691 2669 2672 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2691 2672 2692 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2691 2672 2692 r12 12 4 4 r9 r10 r11 60
 meshface 2673 2693 2674 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2694 2695 2696 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2694 2695 2696 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2694 2696 2697 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2694 2696 2697 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2698 2699 2700 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2698 2699 2700 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2698 2700 2701 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2698 2700 2701 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2702 2703 2704 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2702 2703 2704 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2702 2704 2705 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2702 2704 2705 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2706 2707 2708 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2706 2707 2708 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2706 2708 2709 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2706 2708 2709 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2710 2711 2712 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2710 2711 2712 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2710 2712 2713 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2710 2712 2713 r12 12 4 4 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2714 2715 2716 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2714 2715 2716 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2714 2716 2717 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2714 2716 2717 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2717 2718 2719 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2717 2718 2719 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2717 2719 2720 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2717 2719 2720 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2720 2721 2722 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2720 2721 2722 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2720 2722 2723 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2720 2722 2723 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2723 2722 2724 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2723 2722 2724 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2723 2724 2725 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2723 2724 2725 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2725 2724 2726 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2725 2724 2726 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2725 2726 2727 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2725 2726 2727 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2727 2728 2729 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2727 2728 2729 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2727 2729 2730 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2727 2729 2730 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2730 2731 2732 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2730 2731 2732 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2730 2732 2733 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2730 2732 2733 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2733 2732 2734 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2733 2732 2734 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2733 2734 2735 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2733 2734 2735 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2735 2734 2736 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2735 2734 2736 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2735 2736 2737 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2735 2736 2737 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2737 2738 2739 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2737 2738 2739 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2737 2739 2740 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2737 2739 2740 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2740 2741 2742 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2740 2741 2742 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2740 2742 2743 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2740 2742 2743 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2743 2742 2744 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2743 2742 2744 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2743 2744 2745 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2743 2744 2745 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2745 2744 2746 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2745 2744 2746 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2745 2746 2747 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2745 2746 2747 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2747 2748 2749 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2747 2748 2749 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2747 2749 2750 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2747 2749 2750 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2750 2751 2752 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2750 2751 2752 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2750 2752 2753 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2750 2752 2753 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2753 2752 2715 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2753 2752 2715 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2753 2715 2714 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2753 2715 2714 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2754 2755 2756 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2754 2755 2756 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2754 2756 2757 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2754 2756 2757 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2757 2756 2758 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2757 2756 2758 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2759 2758 2760 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2759 2758 2760 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2761 2758 2762 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2761 2758 2762 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2763 2762 2764 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2763 2762 2764 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2764 2762 2765 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2764 2762 2765 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2764 2765 2766 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2764 2765 2766 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2766 2765 2767 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2766 2765 2767 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2766 2767 2768 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2766 2767 2768 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2768 2767 2769 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2768 2767 2769 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2770 2769 2771 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2770 2769 2771 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2772 2769 2773 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2772 2769 2773 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2774 2773 2775 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2774 2773 2775 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2775 2773 2776 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2775 2773 2776 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2775 2776 2777 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2775 2776 2777 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2777 2776 2778 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2777 2776 2778 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2777 2778 2779 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2777 2778 2779 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2779 2778 2780 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2779 2778 2780 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2781 2780 2782 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2781 2780 2782 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2783 2780 2784 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2783 2780 2784 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2785 2784 2786 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2785 2784 2786 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2786 2784 2787 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2786 2784 2787 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2786 2787 2788 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2786 2787 2788 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2788 2787 2789 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2788 2787 2789 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2788 2789 2790 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2788 2789 2790 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2790 2789 2791 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2790 2789 2791 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2792 2791 2793 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2792 2791 2793 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2794 2791 2795 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2794 2791 2795 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2796 2795 2797 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2796 2795 2797 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2797 2795 2755 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2797 2795 2755 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 2797 2755 2754 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 2797 2755 2754 r12 4 3 5 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2798 2799 2800 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2798 2799 2800 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2798 2801 2799 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2798 2801 2799 r12 12 4 4 r9 r10 r11 60
 meshface 2802 2803 2804 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2800 2805 2806 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2800 2805 2806 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2800 2799 2805 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2800 2799 2805 r12 12 4 4 r9 r10 r11 60
 meshface 2802 2807 2803 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2806 2808 2809 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2806 2808 2809 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2806 2805 2808 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2806 2805 2808 r12 12 4 4 r9 r10 r11 60
 meshface 2802 2810 2807 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2809 2811 2812 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2809 2811 2812 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2809 2808 2811 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2809 2808 2811 r12 12 4 4 r9 r10 r11 60
 meshface 2802 2813 2810 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2812 2814 2815 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2812 2814 2815 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2812 2811 2814 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2812 2811 2814 r12 12 4 4 r9 r10 r11 60
 meshface 2802 2816 2813 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2815 2817 2818 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2815 2817 2818 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2815 2814 2817 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2815 2814 2817 r12 12 4 4 r9 r10 r11 60
 meshface 2802 2819 2816 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2818 2820 2821 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2818 2820 2821 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2818 2817 2820 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2818 2817 2820 r12 12 4 4 r9 r10 r11 60
 meshface 2802 2822 2819 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2821 2801 2798 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2821 2801 2798 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2821 2820 2801 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2821 2820 2801 r12 12 4 4 r9 r10 r11 60
 meshface 2802 2804 2822 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2823 2824 2825 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2823 2824 2825 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2823 2826 2824 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2823 2826 2824 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2827 2828 2829 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2827 2828 2829 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2827 2830 2828 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2827 2830 2828 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2831 2832 2833 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2831 2832 2833 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2831 2834 2832 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2831 2834 2832 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2835 2836 2837 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2835 2836 2837 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2835 2838 2836 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2835 2838 2836 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2839 2840 2841 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2839 2840 2841 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 2839 2842 2840 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 2839 2842 2840 r12 12 4 4 r9 r10 r11 60
 meshface 2843 2844 2845 226 r9 r10 r11 60
 meshface 2843 2846 2844 226 r9 r10 r11 60
 meshface 2847 2848 2849 226 r9 r10 r11 60
 meshface 2850 2851 2852 226 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2853 2854 2855 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2853 2854 2855 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2856 2857 2858 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2856 2857 2858 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2859 2860 2861 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2859 2860 2861 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2862 2863 2864 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2862 2863 2864 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2865 2866 2867 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2865 2866 2867 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2868 2869 2870 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2868 2869 2870 r12 24 r9 r10 r11 60
 meshface 2871 2872 2873 226 r9 r10 r11 60
 meshface 2871 2873 2874 226 r9 r10 r11 60
 meshface 2875 2876 2877 226 r9 r10 r11 60
 meshface 2878 2879 2880 226 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2881 2882 2883 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2881 2882 2883 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 2884 2885 2886 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 2884 2885 2886 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2887 2888 2889 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2887 2888 2889 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2890 2891 2892 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2890 2891 2892 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2893 2894 2895 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2893 2894 2895 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 2896 2897 2898 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 2896 2897 2898 r12 24 r9 r10 r11 60
 meshface 2899 2900 2901 225 r9 r10 r11 60
 meshface 2899 2901 2902 225 r9 r10 r11 60
 localget r0 11
@@ -11854,9 +11985,9 @@ label brake_dim_2903_2906_2904
 meshface 2903 2906 2904 242 r9 r10 r11 60
 label brake_done_2903_2906_2904
 set r12 228
-meshfacegradienttex 2907 2908 2909 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 2907 2908 2909 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 2907 2910 2908 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 2907 2910 2908 r12 12 1 3 r9 r10 r11 60
 meshface 2911 2912 2913 226 r9 r10 r11 60
 meshface 2911 2913 2914 226 r9 r10 r11 60
 meshface 2915 2916 2917 226 r9 r10 r11 60
@@ -11874,37 +12005,37 @@ meshface 2935 2937 2938 226 r9 r10 r11 60
 meshface 2939 2940 2941 226 r9 r10 r11 60
 meshface 2939 2942 2940 226 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 2943 2944 2945 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 2943 2944 2945 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 2943 2945 2946 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 2943 2945 2946 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 2944 2947 2948 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 2944 2947 2948 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 2944 2948 2945 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 2944 2948 2945 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 2947 2949 2950 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 2947 2949 2950 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 2947 2950 2948 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 2947 2950 2948 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 2949 2951 2952 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 2949 2951 2952 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 2949 2952 2950 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 2949 2952 2950 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 2953 2954 2955 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 2953 2954 2955 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 2953 2956 2954 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 2953 2956 2954 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 2955 2957 2958 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 2955 2957 2958 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 2955 2954 2957 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 2955 2954 2957 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 2958 2959 2960 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 2958 2959 2960 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 2958 2957 2959 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 2958 2957 2959 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 2960 2961 2962 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 2960 2961 2962 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 2960 2959 2961 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 2960 2959 2961 r12 12 1 3 r9 r10 r11 60
 meshface 2963 2964 2965 240 r9 r10 r11 60
 meshface 2963 2965 2966 240 r9 r10 r11 60
 meshface 2967 2968 2969 240 r9 r10 r11 60
@@ -11922,582 +12053,602 @@ meshface 2987 2990 2988 240 r9 r10 r11 60
 meshface 2991 2992 2993 241 r9 r10 r11 60
 meshface 2991 2994 2992 241 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 2995 2996 2997 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 2995 2996 2997 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 2995 2998 2996 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 2995 2998 2996 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 2999 3000 3001 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 2999 3000 3001 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 2999 3002 3000 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 2999 3002 3000 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 3003 3004 3005 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 3003 3004 3005 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 3003 3006 3004 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 3003 3006 3004 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 3007 3008 3009 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 3007 3008 3009 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 3007 3010 3008 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 3007 3010 3008 r12 12 1 3 r9 r10 r11 60
 meshface 3011 3012 3013 240 r9 r10 r11 60
 meshface 3011 3014 3012 240 r9 r10 r11 60
 meshface 3015 3016 3017 241 r9 r10 r11 60
 meshface 3015 3017 3018 241 r9 r10 r11 60
 meshface 3019 3020 3021 241 r9 r10 r11 60
 meshface 3019 3022 3020 241 r9 r10 r11 60
+load8 r0 388
+cmp r0 0
+jle air_jet_pulse_done_513
+meshfacegradient 3559 3561 3560 244 12 r9 r10 r11 60
+meshfacegradient 3559 3560 3562 244 12 r9 r10 r11 60
+meshfacegradient 3559 3563 3560 244 12 r9 r10 r11 60
+meshfacegradient 3559 3560 3564 244 12 r9 r10 r11 60
+meshfacegradient 3565 3567 3566 244 12 r9 r10 r11 60
+meshfacegradient 3565 3566 3568 244 12 r9 r10 r11 60
+meshfacegradient 3565 3569 3566 244 12 r9 r10 r11 60
+meshfacegradient 3565 3566 3570 244 12 r9 r10 r11 60
+meshfacegradient 3571 3573 3572 244 12 r9 r10 r11 60
+meshfacegradient 3571 3572 3574 244 12 r9 r10 r11 60
+meshfacegradient 3571 3575 3572 244 12 r9 r10 r11 60
+meshfacegradient 3571 3572 3576 244 12 r9 r10 r11 60
+meshfacegradient 3577 3579 3578 244 12 r9 r10 r11 60
+meshfacegradient 3577 3578 3580 244 12 r9 r10 r11 60
+meshfacegradient 3577 3581 3578 244 12 r9 r10 r11 60
+meshfacegradient 3577 3578 3582 244 12 r9 r10 r11 60
+label air_jet_pulse_done_513
 jmp emit_shadow
 label emit_medium
 localget r12 126
-meshfacegradienttex 3023 3024 3025 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3023 3024 3025 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3023 3025 3026 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3023 3025 3026 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3026 3025 3027 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3026 3025 3027 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3026 3027 3028 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3026 3027 3028 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3029 3030 3031 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3029 3030 3031 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3029 3032 3030 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3029 3032 3030 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3033 3034 3035 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3033 3034 3035 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3033 3035 3036 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3033 3035 3036 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3024 3037 3038 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3024 3037 3038 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3024 3038 3025 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3024 3038 3025 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3025 3038 3039 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3025 3038 3039 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3025 3039 3027 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3025 3039 3027 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3031 3040 3041 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3031 3040 3041 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3031 3030 3040 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3031 3030 3040 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3034 3042 3043 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3034 3042 3043 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3034 3043 3035 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3034 3043 3035 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3037 3044 3045 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3037 3044 3045 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3037 3045 3038 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3037 3045 3038 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3038 3045 3046 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3038 3045 3046 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3038 3046 3039 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3038 3046 3039 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3041 3047 3048 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3041 3047 3048 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3041 3040 3047 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3041 3040 3047 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3042 3049 3050 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3042 3049 3050 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3042 3050 3043 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3042 3050 3043 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3044 3051 3052 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3044 3051 3052 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3044 3052 3045 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3044 3052 3045 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3045 3052 3053 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3045 3052 3053 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3045 3053 3046 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3045 3053 3046 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3048 3054 3055 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3048 3054 3055 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3048 3047 3054 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3048 3047 3054 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3049 3056 3057 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3049 3056 3057 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3049 3057 3050 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3049 3057 3050 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3051 3058 3059 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3051 3058 3059 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3051 3059 3052 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3051 3059 3052 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3052 3059 3060 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3052 3059 3060 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3052 3060 3053 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3052 3060 3053 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3055 3061 3062 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3055 3061 3062 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3055 3054 3061 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3055 3054 3061 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3056 3063 3064 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3056 3063 3064 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3056 3064 3057 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3056 3064 3057 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3058 3065 3066 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3058 3065 3066 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3058 3066 3059 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3058 3066 3059 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3059 3066 3067 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3059 3066 3067 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3059 3067 3060 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3059 3067 3060 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3062 3068 3069 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3062 3068 3069 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3062 3061 3068 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3062 3061 3068 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3063 3070 3071 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3063 3070 3071 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3063 3071 3064 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3063 3071 3064 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3065 3072 3073 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3065 3072 3073 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3065 3073 3066 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3065 3073 3066 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3066 3073 3074 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3066 3073 3074 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3066 3074 3067 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3066 3074 3067 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3069 3075 3076 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3069 3075 3076 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3069 3068 3075 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3069 3068 3075 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3070 3077 3078 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3070 3077 3078 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3070 3078 3071 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3070 3078 3071 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3072 3079 3080 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3072 3079 3080 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3072 3080 3073 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3072 3080 3073 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3073 3080 3081 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3073 3080 3081 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3073 3081 3074 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3073 3081 3074 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3076 3082 3083 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3076 3082 3083 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3076 3075 3082 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3076 3075 3082 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3077 3084 3085 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3077 3084 3085 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3077 3085 3078 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3077 3085 3078 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3079 3086 3087 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3079 3086 3087 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3079 3087 3080 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3079 3087 3080 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3080 3087 3088 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3080 3087 3088 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3080 3088 3081 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3080 3088 3081 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3083 3089 3090 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3083 3089 3090 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3083 3082 3089 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3083 3082 3089 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3084 3091 3092 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3084 3091 3092 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3084 3092 3085 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3084 3092 3085 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3086 3093 3094 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3086 3093 3094 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3086 3094 3087 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3086 3094 3087 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3087 3094 3095 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3087 3094 3095 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3087 3095 3088 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3087 3095 3088 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3090 3096 3097 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3090 3096 3097 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3090 3089 3096 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3090 3089 3096 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3091 3098 3099 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3091 3098 3099 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3091 3099 3092 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3091 3099 3092 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3093 3100 3101 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3093 3100 3101 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3093 3101 3094 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3093 3101 3094 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3094 3101 3102 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3094 3101 3102 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3094 3102 3095 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3094 3102 3095 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3097 3103 3104 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3097 3103 3104 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3097 3096 3103 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3097 3096 3103 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3098 3105 3106 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3098 3105 3106 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3098 3106 3099 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3098 3106 3099 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3107 3108 3109 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3107 3108 3109 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3107 3109 3110 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3107 3109 3110 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3107 3110 3111 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3107 3110 3111 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3107 3111 3112 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3107 3111 3112 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3107 3112 3108 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3107 3112 3108 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3113 3114 3103 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3113 3114 3103 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3113 3101 3114 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3113 3101 3114 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3113 3115 3101 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3113 3115 3101 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3113 3106 3115 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3113 3106 3115 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3113 3103 3106 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3113 3103 3106 r12 24 r9 r10 r11 60
 meshface 3116 3117 3118 227 r9 r10 r11 60
 meshface 3116 3119 3117 227 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3120 3121 3122 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3120 3121 3122 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3120 3122 3123 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3120 3122 3123 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3123 3122 3124 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3123 3122 3124 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3123 3124 3125 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3123 3124 3125 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3121 3126 3127 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3121 3126 3127 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3121 3127 3122 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3121 3127 3122 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3122 3127 3128 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3122 3127 3128 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3122 3128 3124 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3122 3128 3124 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3126 3129 3130 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3126 3129 3130 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3126 3130 3127 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3126 3130 3127 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3127 3130 3131 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3127 3130 3131 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3127 3131 3128 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3127 3131 3128 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3129 3132 3133 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3129 3132 3133 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3129 3133 3130 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3129 3133 3130 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3130 3133 3134 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3130 3133 3134 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3130 3134 3131 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3130 3134 3131 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3135 3136 3137 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3135 3136 3137 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3135 3138 3136 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3135 3138 3136 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3135 3139 3138 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3135 3139 3138 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3140 3141 3142 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3140 3141 3142 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3143 3144 3145 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3143 3144 3145 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3146 3147 3148 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3146 3147 3148 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3146 3148 3149 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3146 3148 3149 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3146 3149 3150 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3146 3149 3150 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3151 3152 3153 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3151 3152 3153 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3154 3155 3156 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3154 3155 3156 r12 24 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3157 3158 3159 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3157 3158 3159 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3157 3160 3158 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3157 3160 3158 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3160 3161 3158 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3160 3161 3158 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3160 3162 3161 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3160 3162 3161 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3162 3163 3161 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3162 3163 3161 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3162 3164 3163 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3162 3164 3163 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3164 3165 3163 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3164 3165 3163 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3164 3166 3165 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3164 3166 3165 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3166 3167 3165 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3166 3167 3165 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3166 3168 3167 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3166 3168 3167 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3168 3169 3167 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3168 3169 3167 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3168 3170 3169 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3168 3170 3169 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3170 3171 3169 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3170 3171 3169 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3170 3172 3171 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3170 3172 3171 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3172 3159 3171 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3172 3159 3171 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3172 3157 3159 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3172 3157 3159 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3173 3174 3175 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3173 3174 3175 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3173 3176 3174 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3173 3176 3174 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3176 3177 3174 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3176 3177 3174 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3176 3178 3177 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3176 3178 3177 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3178 3179 3177 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3178 3179 3177 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3178 3180 3179 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3178 3180 3179 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3180 3181 3179 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3180 3181 3179 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3180 3182 3181 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3180 3182 3181 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3182 3183 3181 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3182 3183 3181 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3182 3184 3183 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3182 3184 3183 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3184 3185 3183 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3184 3185 3183 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3184 3186 3185 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3184 3186 3185 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3186 3187 3185 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3186 3187 3185 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3186 3188 3187 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3186 3188 3187 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3188 3175 3187 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3188 3175 3187 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3188 3173 3175 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3188 3173 3175 r12 4 3 5 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 3189 3190 3191 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 3189 3190 3191 r12 12 4 4 r9 r10 r11 60
 meshface 3192 3193 3194 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 3189 3195 3196 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 3189 3195 3196 r12 12 4 4 r9 r10 r11 60
 meshface 3192 3197 3198 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 3189 3199 3200 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 3189 3199 3200 r12 12 4 4 r9 r10 r11 60
 meshface 3192 3201 3202 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 3189 3203 3204 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 3189 3203 3204 r12 12 4 4 r9 r10 r11 60
 meshface 3192 3205 3206 226 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3207 3208 3209 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3207 3208 3209 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3207 3209 3210 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3207 3209 3210 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3210 3209 3211 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3210 3209 3211 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3210 3211 3212 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3210 3211 3212 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3212 3211 3213 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3212 3211 3213 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3212 3213 3214 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3212 3213 3214 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3214 3213 3215 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3214 3213 3215 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3214 3215 3216 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3214 3215 3216 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3216 3215 3217 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3216 3215 3217 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3216 3217 3218 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3216 3217 3218 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3218 3217 3219 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3218 3217 3219 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3218 3219 3220 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3218 3219 3220 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3220 3219 3221 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3220 3219 3221 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3220 3221 3222 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3220 3221 3222 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3222 3221 3208 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3222 3221 3208 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3222 3208 3207 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3222 3208 3207 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3223 3224 3225 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3223 3224 3225 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3223 3225 3226 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3223 3225 3226 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3226 3225 3227 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3226 3225 3227 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3226 3227 3228 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3226 3227 3228 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3228 3227 3229 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3228 3227 3229 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3228 3229 3230 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3228 3229 3230 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3230 3229 3231 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3230 3229 3231 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3230 3231 3232 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3230 3231 3232 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3232 3231 3233 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3232 3231 3233 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3232 3233 3234 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3232 3233 3234 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3234 3233 3235 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3234 3233 3235 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3234 3235 3236 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3234 3235 3236 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3236 3235 3237 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3236 3235 3237 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3236 3237 3238 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3236 3237 3238 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3238 3237 3224 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3238 3237 3224 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3238 3224 3223 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3238 3224 3223 r12 4 3 5 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 3239 3240 3241 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 3239 3240 3241 r12 12 4 4 r9 r10 r11 60
 meshface 3242 3243 3244 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 3239 3245 3246 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 3239 3245 3246 r12 12 4 4 r9 r10 r11 60
 meshface 3242 3247 3248 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 3239 3249 3250 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 3239 3249 3250 r12 12 4 4 r9 r10 r11 60
 meshface 3242 3251 3252 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 3239 3253 3254 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 3239 3253 3254 r12 12 4 4 r9 r10 r11 60
 meshface 3242 3255 3256 226 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3257 3258 3259 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3257 3258 3259 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3257 3260 3258 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3257 3260 3258 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3260 3261 3258 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3260 3261 3258 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3260 3262 3261 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3260 3262 3261 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3262 3263 3261 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3262 3263 3261 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3262 3264 3263 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3262 3264 3263 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3264 3265 3263 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3264 3265 3263 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3264 3266 3265 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3264 3266 3265 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3266 3267 3265 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3266 3267 3265 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3266 3268 3267 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3266 3268 3267 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3268 3269 3267 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3268 3269 3267 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3268 3270 3269 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3268 3270 3269 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3270 3271 3269 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3270 3271 3269 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3270 3272 3271 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3270 3272 3271 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3272 3259 3271 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3272 3259 3271 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3272 3257 3259 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3272 3257 3259 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3273 3274 3275 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3273 3274 3275 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3273 3276 3274 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3273 3276 3274 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3276 3277 3274 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3276 3277 3274 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3276 3278 3277 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3276 3278 3277 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3278 3279 3277 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3278 3279 3277 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3278 3280 3279 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3278 3280 3279 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3280 3281 3279 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3280 3281 3279 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3280 3282 3281 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3280 3282 3281 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3282 3283 3281 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3282 3283 3281 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3282 3284 3283 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3282 3284 3283 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3284 3285 3283 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3284 3285 3283 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3284 3286 3285 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3284 3286 3285 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3286 3287 3285 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3286 3287 3285 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3286 3288 3287 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3286 3288 3287 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3288 3275 3287 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3288 3275 3287 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3288 3273 3275 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3288 3273 3275 r12 4 3 5 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 3289 3290 3291 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 3289 3290 3291 r12 12 4 4 r9 r10 r11 60
 meshface 3292 3293 3294 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 3289 3295 3296 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 3289 3295 3296 r12 12 4 4 r9 r10 r11 60
 meshface 3292 3297 3298 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 3289 3299 3300 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 3289 3299 3300 r12 12 4 4 r9 r10 r11 60
 meshface 3292 3301 3302 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 3289 3303 3304 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 3289 3303 3304 r12 12 4 4 r9 r10 r11 60
 meshface 3292 3305 3306 226 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3307 3308 3309 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3307 3308 3309 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3307 3309 3310 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3307 3309 3310 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3310 3309 3311 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3310 3309 3311 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3310 3311 3312 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3310 3311 3312 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3312 3311 3313 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3312 3311 3313 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3312 3313 3314 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3312 3313 3314 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3314 3313 3315 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3314 3313 3315 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3314 3315 3316 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3314 3315 3316 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3316 3315 3317 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3316 3315 3317 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3316 3317 3318 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3316 3317 3318 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3318 3317 3319 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3318 3317 3319 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3318 3319 3320 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3318 3319 3320 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3320 3319 3321 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3320 3319 3321 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3320 3321 3322 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3320 3321 3322 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3322 3321 3308 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3322 3321 3308 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3322 3308 3307 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3322 3308 3307 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3323 3324 3325 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3323 3324 3325 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3323 3325 3326 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3323 3325 3326 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3326 3325 3327 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3326 3325 3327 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3326 3327 3328 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3326 3327 3328 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3328 3327 3329 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3328 3327 3329 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3328 3329 3330 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3328 3329 3330 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3330 3329 3331 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3330 3329 3331 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3330 3331 3332 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3330 3331 3332 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3332 3331 3333 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3332 3331 3333 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3332 3333 3334 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3332 3333 3334 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3334 3333 3335 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3334 3333 3335 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3334 3335 3336 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3334 3335 3336 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3336 3335 3337 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3336 3335 3337 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3336 3337 3338 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3336 3337 3338 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3338 3337 3324 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3338 3337 3324 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3338 3324 3323 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3338 3324 3323 r12 4 3 5 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 3339 3340 3341 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 3339 3340 3341 r12 12 4 4 r9 r10 r11 60
 meshface 3342 3343 3344 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 3339 3345 3346 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 3339 3345 3346 r12 12 4 4 r9 r10 r11 60
 meshface 3342 3347 3348 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 3339 3349 3350 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 3339 3349 3350 r12 12 4 4 r9 r10 r11 60
 meshface 3342 3351 3352 226 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 3339 3353 3354 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 3339 3353 3354 r12 12 4 4 r9 r10 r11 60
 meshface 3342 3355 3356 226 r9 r10 r11 60
 meshface 3357 3358 3359 226 r9 r10 r11 60
 meshface 3360 3361 3362 226 r9 r10 r11 60
@@ -12526,233 +12677,233 @@ label brake_dim_3367_3370_3368
 meshface 3367 3370 3368 242 r9 r10 r11 60
 label brake_done_3367_3370_3368
 set r12 228
-meshfacegradienttex 3371 3372 3373 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 3371 3372 3373 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 3371 3374 3372 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 3371 3374 3372 r12 12 1 3 r9 r10 r11 60
 meshface 3375 3376 3377 226 r9 r10 r11 60
 meshface 3375 3377 3378 226 r9 r10 r11 60
 meshface 3379 3380 3381 226 r9 r10 r11 60
 meshface 3379 3382 3380 226 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 3383 3384 3385 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 3383 3384 3385 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 3383 3385 3386 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 3383 3385 3386 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 3384 3387 3388 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 3384 3387 3388 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 3384 3388 3385 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 3384 3388 3385 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 3389 3390 3391 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 3389 3390 3391 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 3389 3392 3390 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 3389 3392 3390 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 3391 3393 3394 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 3391 3393 3394 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 3391 3390 3393 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 3391 3390 3393 r12 12 1 3 r9 r10 r11 60
 jmp emit_shadow
 label emit_far
 localget r12 126
-meshfacegradienttex 3395 3396 3397 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3395 3396 3397 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3395 3397 3398 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3395 3397 3398 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3398 3397 3399 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3398 3397 3399 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3398 3399 3400 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3398 3399 3400 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3401 3402 3403 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3401 3402 3403 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3401 3404 3402 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3401 3404 3402 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3405 3406 3407 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3405 3406 3407 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3405 3407 3408 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3405 3407 3408 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3396 3409 3410 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3396 3409 3410 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3396 3410 3397 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3396 3410 3397 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3397 3410 3411 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3397 3410 3411 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3397 3411 3399 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3397 3411 3399 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3403 3412 3413 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3403 3412 3413 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3403 3402 3412 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3403 3402 3412 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3406 3414 3415 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3406 3414 3415 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3406 3415 3407 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3406 3415 3407 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3409 3416 3417 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3409 3416 3417 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3409 3417 3410 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3409 3417 3410 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3410 3417 3418 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3410 3417 3418 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3410 3418 3411 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3410 3418 3411 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3413 3419 3420 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3413 3419 3420 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3413 3412 3419 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3413 3412 3419 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3414 3421 3422 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3414 3421 3422 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3414 3422 3415 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3414 3422 3415 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3416 3423 3424 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3416 3423 3424 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3416 3424 3417 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3416 3424 3417 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3417 3424 3425 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3417 3424 3425 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3417 3425 3418 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3417 3425 3418 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3420 3426 3427 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3420 3426 3427 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3420 3419 3426 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3420 3419 3426 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3421 3428 3429 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3421 3428 3429 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3421 3429 3422 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3421 3429 3422 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3423 3430 3431 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3423 3430 3431 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3423 3431 3424 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3423 3431 3424 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3424 3431 3432 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3424 3431 3432 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3424 3432 3425 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3424 3432 3425 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3427 3433 3434 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3427 3433 3434 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3427 3426 3433 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3427 3426 3433 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3428 3435 3436 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3428 3435 3436 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3428 3436 3429 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3428 3436 3429 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3437 3438 3439 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3437 3438 3439 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3437 3439 3440 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3437 3439 3440 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3433 3441 3442 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3433 3441 3442 r12 24 r9 r10 r11 60
 localget r12 126
-meshfacegradienttex 3433 3436 3441 r12 24 0 10 r9 r10 r11 60
+meshfacegradient 3433 3436 3441 r12 24 r9 r10 r11 60
 meshface 3443 3444 3445 227 r9 r10 r11 60
 meshface 3443 3446 3444 227 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3447 3448 3449 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3447 3448 3449 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3447 3449 3450 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3447 3449 3450 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3450 3449 3451 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3450 3449 3451 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3450 3451 3452 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3450 3451 3452 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3448 3453 3454 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3448 3453 3454 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3448 3454 3449 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3448 3454 3449 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3449 3454 3455 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3449 3454 3455 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3449 3455 3451 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3449 3455 3451 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3453 3456 3457 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3453 3456 3457 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3453 3457 3454 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3453 3457 3454 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3454 3457 3458 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3454 3457 3458 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3454 3458 3455 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3454 3458 3455 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3459 3460 3461 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3459 3460 3461 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3459 3462 3460 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3459 3462 3460 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3463 3464 3465 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3463 3464 3465 r12 24 r9 r10 r11 60
 set r12 184
-meshfacegradienttex 3463 3465 3466 r12 24 2 8 r9 r10 r11 60
+meshfacegradient 3463 3465 3466 r12 24 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3467 3468 3469 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3467 3468 3469 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3467 3470 3468 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3467 3470 3468 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3471 3472 3473 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3471 3472 3473 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3471 3474 3472 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3471 3474 3472 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3475 3476 3477 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3475 3476 3477 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3475 3478 3476 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3475 3478 3476 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3479 3480 3481 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3479 3480 3481 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3479 3482 3480 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3479 3482 3480 r12 4 3 5 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 3483 3484 3485 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 3483 3484 3485 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 3483 3485 3486 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 3483 3485 3486 r12 12 4 4 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3487 3488 3489 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3487 3488 3489 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3487 3489 3490 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3487 3489 3490 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3491 3492 3493 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3491 3492 3493 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3491 3493 3494 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3491 3493 3494 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3495 3496 3497 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3495 3496 3497 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3495 3497 3498 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3495 3497 3498 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3499 3500 3501 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3499 3500 3501 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3499 3501 3502 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3499 3501 3502 r12 4 3 5 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 3503 3504 3505 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 3503 3504 3505 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 3503 3506 3504 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 3503 3506 3504 r12 12 4 4 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3507 3508 3509 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3507 3508 3509 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3507 3510 3508 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3507 3510 3508 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3511 3512 3513 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3511 3512 3513 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3511 3514 3512 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3511 3514 3512 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3515 3516 3517 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3515 3516 3517 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3515 3518 3516 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3515 3518 3516 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3519 3520 3521 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3519 3520 3521 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3519 3522 3520 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3519 3522 3520 r12 4 3 5 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 3523 3524 3525 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 3523 3524 3525 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 3523 3525 3526 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 3523 3525 3526 r12 12 4 4 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3527 3528 3529 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3527 3528 3529 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3527 3529 3530 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3527 3529 3530 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3531 3532 3533 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3531 3532 3533 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3531 3533 3534 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3531 3533 3534 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3535 3536 3537 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3535 3536 3537 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3535 3537 3538 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3535 3537 3538 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3539 3540 3541 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3539 3540 3541 r12 4 3 5 r9 r10 r11 60
 set r12 208
-meshfacegradienttex 3539 3541 3542 r12 4 3 12 r9 r10 r11 60
+meshfacegradienttex 3539 3541 3542 r12 4 3 5 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 3543 3544 3545 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 3543 3544 3545 r12 12 4 4 r9 r10 r11 60
 set r12 212
-meshfacegradienttex 3543 3546 3544 r12 12 4 12 r9 r10 r11 60
+meshfacegradienttex 3543 3546 3544 r12 12 4 4 r9 r10 r11 60
 meshface 3547 3548 3549 225 r9 r10 r11 60
 meshface 3547 3549 3550 225 r9 r10 r11 60
 localget r0 11
@@ -12778,9 +12929,9 @@ label brake_dim_3551_3554_3552
 meshface 3551 3554 3552 242 r9 r10 r11 60
 label brake_done_3551_3554_3552
 set r12 228
-meshfacegradienttex 3555 3556 3557 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 3555 3556 3557 r12 12 1 3 r9 r10 r11 60
 set r12 228
-meshfacegradienttex 3555 3558 3556 r12 12 1 11 r9 r10 r11 60
+meshfacegradienttex 3555 3558 3556 r12 12 1 3 r9 r10 r11 60
 jmp emit_shadow
 label emit_shadow
 set r12 24
@@ -12792,30 +12943,30 @@ cmp r0 0
 je shadow_base_ready
 set r12 32
 label shadow_base_ready
-meshfacegradient 3559 3560 3561 r12 8 r9 r10 r11 60
-meshfacegradient 3560 3568 3569 r12 8 r9 r10 r11 60
-meshfacegradient 3560 3569 3561 r12 8 r9 r10 r11 60
-meshfacegradient 3559 3561 3562 r12 8 r9 r10 r11 60
-meshfacegradient 3561 3569 3570 r12 8 r9 r10 r11 60
-meshfacegradient 3561 3570 3562 r12 8 r9 r10 r11 60
-meshfacegradient 3559 3562 3563 r12 8 r9 r10 r11 60
-meshfacegradient 3562 3570 3571 r12 8 r9 r10 r11 60
-meshfacegradient 3562 3571 3563 r12 8 r9 r10 r11 60
-meshfacegradient 3559 3563 3564 r12 8 r9 r10 r11 60
-meshfacegradient 3563 3571 3572 r12 8 r9 r10 r11 60
-meshfacegradient 3563 3572 3564 r12 8 r9 r10 r11 60
-meshfacegradient 3559 3564 3565 r12 8 r9 r10 r11 60
-meshfacegradient 3564 3572 3573 r12 8 r9 r10 r11 60
-meshfacegradient 3564 3573 3565 r12 8 r9 r10 r11 60
-meshfacegradient 3559 3565 3566 r12 8 r9 r10 r11 60
-meshfacegradient 3565 3573 3574 r12 8 r9 r10 r11 60
-meshfacegradient 3565 3574 3566 r12 8 r9 r10 r11 60
-meshfacegradient 3559 3566 3567 r12 8 r9 r10 r11 60
-meshfacegradient 3566 3574 3575 r12 8 r9 r10 r11 60
-meshfacegradient 3566 3575 3567 r12 8 r9 r10 r11 60
-meshfacegradient 3559 3567 3560 r12 8 r9 r10 r11 60
-meshfacegradient 3567 3575 3568 r12 8 r9 r10 r11 60
-meshfacegradient 3567 3568 3560 r12 8 r9 r10 r11 60
+meshfacegradient 3583 3584 3585 r12 8 r9 r10 r11 60
+meshfacegradient 3584 3592 3593 r12 8 r9 r10 r11 60
+meshfacegradient 3584 3593 3585 r12 8 r9 r10 r11 60
+meshfacegradient 3583 3585 3586 r12 8 r9 r10 r11 60
+meshfacegradient 3585 3593 3594 r12 8 r9 r10 r11 60
+meshfacegradient 3585 3594 3586 r12 8 r9 r10 r11 60
+meshfacegradient 3583 3586 3587 r12 8 r9 r10 r11 60
+meshfacegradient 3586 3594 3595 r12 8 r9 r10 r11 60
+meshfacegradient 3586 3595 3587 r12 8 r9 r10 r11 60
+meshfacegradient 3583 3587 3588 r12 8 r9 r10 r11 60
+meshfacegradient 3587 3595 3596 r12 8 r9 r10 r11 60
+meshfacegradient 3587 3596 3588 r12 8 r9 r10 r11 60
+meshfacegradient 3583 3588 3589 r12 8 r9 r10 r11 60
+meshfacegradient 3588 3596 3597 r12 8 r9 r10 r11 60
+meshfacegradient 3588 3597 3589 r12 8 r9 r10 r11 60
+meshfacegradient 3583 3589 3590 r12 8 r9 r10 r11 60
+meshfacegradient 3589 3597 3598 r12 8 r9 r10 r11 60
+meshfacegradient 3589 3598 3590 r12 8 r9 r10 r11 60
+meshfacegradient 3583 3590 3591 r12 8 r9 r10 r11 60
+meshfacegradient 3590 3598 3599 r12 8 r9 r10 r11 60
+meshfacegradient 3590 3599 3591 r12 8 r9 r10 r11 60
+meshfacegradient 3583 3591 3584 r12 8 r9 r10 r11 60
+meshfacegradient 3591 3599 3592 r12 8 r9 r10 r11 60
+meshfacegradient 3591 3592 3584 r12 8 r9 r10 r11 60
 jmp next_actor
 label emit_tree
 localget r0 11
@@ -12824,40 +12975,39 @@ cmp r0 2
 je nature_emit_rock
 cmp r0 3
 je nature_emit_grass
-meshface 3576 3577 3578 14 r9 r10 r11 60
-meshface 3576 3578 3579 15 r9 r10 r11 60
-meshface 3576 3579 3580 16 r9 r10 r11 60
-meshface 3576 3580 3581 14 r9 r10 r11 60
-meshface 3576 3581 3582 15 r9 r10 r11 60
-meshface 3576 3582 3577 16 r9 r10 r11 60
-meshface 3583 3584 3585 9 r9 r10 r11 60
-meshface 3583 3585 3586 10 r9 r10 r11 60
-meshface 3587 3588 3589 9 r9 r10 r11 60
-meshface 3587 3589 3590 10 r9 r10 r11 60
+meshface 3600 3601 3602 14 r9 r10 r11 60
+meshface 3600 3602 3603 15 r9 r10 r11 60
+meshface 3600 3603 3604 16 r9 r10 r11 60
+meshface 3600 3604 3605 14 r9 r10 r11 60
+meshface 3600 3605 3601 15 r9 r10 r11 60
+meshface 3606 3607 3608 9 r9 r10 r11 60
+meshface 3606 3608 3609 10 r9 r10 r11 60
+meshface 3610 3611 3612 9 r9 r10 r11 60
+meshface 3610 3612 3613 10 r9 r10 r11 60
 jmp next_actor
 label nature_emit_rock
-meshface 3591 3592 3593 3 r9 r10 r11 60
-meshface 3592 3598 3593 4 r9 r10 r11 60
-meshface 3591 3593 3594 8 r9 r10 r11 60
-meshface 3593 3599 3594 3 r9 r10 r11 60
-meshface 3591 3594 3595 4 r9 r10 r11 60
-meshface 3594 3600 3595 8 r9 r10 r11 60
-meshface 3591 3595 3596 3 r9 r10 r11 60
-meshface 3595 3601 3596 4 r9 r10 r11 60
-meshface 3591 3596 3597 10 r9 r10 r11 60
-meshface 3596 3602 3597 3 r9 r10 r11 60
-meshface 3591 3597 3592 8 r9 r10 r11 60
-meshface 3597 3603 3592 8 r9 r10 r11 60
+meshface 3614 3615 3616 3 r9 r10 r11 60
+meshface 3615 3621 3616 4 r9 r10 r11 60
+meshface 3614 3616 3617 8 r9 r10 r11 60
+meshface 3616 3622 3617 3 r9 r10 r11 60
+meshface 3614 3617 3618 4 r9 r10 r11 60
+meshface 3617 3623 3618 8 r9 r10 r11 60
+meshface 3614 3618 3619 3 r9 r10 r11 60
+meshface 3618 3624 3619 4 r9 r10 r11 60
+meshface 3614 3619 3620 10 r9 r10 r11 60
+meshface 3619 3625 3620 3 r9 r10 r11 60
+meshface 3614 3620 3615 8 r9 r10 r11 60
+meshface 3620 3626 3615 8 r9 r10 r11 60
 jmp next_actor
 label nature_emit_grass
-meshface 3604 3605 3606 14 r9 r10 r11 60
-meshface 3606 3605 3604 12 r9 r10 r11 60
-meshface 3607 3608 3609 15 r9 r10 r11 60
-meshface 3609 3608 3607 13 r9 r10 r11 60
-meshface 3610 3611 3612 16 r9 r10 r11 60
-meshface 3612 3611 3610 14 r9 r10 r11 60
-meshface 3613 3614 3615 17 r9 r10 r11 60
-meshface 3615 3614 3613 15 r9 r10 r11 60
+meshface 3627 3628 3629 14 r9 r10 r11 60
+meshface 3629 3628 3627 12 r9 r10 r11 60
+meshface 3630 3631 3632 15 r9 r10 r11 60
+meshface 3632 3631 3630 13 r9 r10 r11 60
+meshface 3633 3634 3635 16 r9 r10 r11 60
+meshface 3635 3634 3633 14 r9 r10 r11 60
+meshface 3636 3637 3638 17 r9 r10 r11 60
+meshface 3638 3637 3636 15 r9 r10 r11 60
 label next_actor
 load32 r12 100
 sub r12 2000000

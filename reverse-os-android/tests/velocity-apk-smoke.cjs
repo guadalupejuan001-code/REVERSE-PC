@@ -249,9 +249,13 @@ try{
   check(ui.some(x=>/^VUELTA \d+ \/ 3$/.test(x.text||''))&&
     ui.some(x=>/^POSICIÓN \d+ \/ 4$/.test(x.text||'')),'minimal race lap and position HUD');
   check(!!findText(ui,'ACELERAR'),'accelerator physical control');
+   check(!!findText(ui,'NITRO')&&!!findText(ui,'SALTO'),
+     'physical boost and pneumatic jump buttons exist in the installed APK');
   check(!!findText(ui,'FRENO')&&!!findText(ui,'◀')&&!!findText(ui,'▶'),
     'real driving pedal/steering accessibility controls');
   check(!!findText(ui,'Marcha D'),'visible real-world transmission selector');
+  check(!!findText(ui,'Garaje')&&!!findText(ui,'HUD libre'),
+    'compact unobstructed HUD and actual selectable garage are present');
   tapNode(findText(ui,'Marcha D'));
   ui=waitText(/^Marcha R$/);
   check(!!findText(ui,'Marcha R'),'stationary gear selector engages reverse in the APK');
@@ -291,6 +295,21 @@ try{
   adbText(['shell','input','keyevent','KEYCODE_P']);
   ui=waitText(/EN PAUSA/);
   check(ticksFromTimer(timer(ui))>ticksFromTimer(pauseTime),'live race timer advanced before second physical pause');
+  stage='garage and clear view';
+  tapNode(findText(ui,'Garaje'));
+  ui=waitText(/GRAN TURISMO X-02/);
+  check(!!findText(ui,'GRAN TURISMO X-02 · más largo y estrecho'),
+    'garage exposes a second physical car silhouette');
+  tapNode(findText(ui,'GRAN TURISMO X-02 · más largo y estrecho'));
+  ui=waitText(/^Coche 2$/);
+  check(!!findText(ui,'Coche 2'),'selecting a car visibly changes the garage choice');
+  screenshot('garage-gt-car');
+  tapNode(findText(ui,'HUD libre'));
+  ui=waitText(/^HUD tablero$/);
+  check(!!findText(ui,'HUD tablero'),'dashboard can be enabled explicitly');
+  tapNode(findText(ui,'HUD tablero'));
+  ui=waitText(/^HUD libre$/);
+  check(!!findText(ui,'HUD libre'),'large animated dashboard can be hidden again');
   stage='camera and paint';tapNode(findText(ui,'Cámara'));
   ui=waitText(/^Cercana$/);check(!!findText(ui,'Cercana'),'physical camera changes to close chase');
   tapNode(findText(ui,'Color'));ui=waitText(/^Color 2$/);
@@ -336,9 +355,9 @@ try{
   check(true,'native REgraphics-only diagnostics close without modifying physical race');
   stage='true XI 4K native pixel mode';
   const beforeNativeFrameStats=frameRecords(logs()).length;
-  tapNode(findText(ui,'4K XI'));
-  ui=waitText(/^4K XI activo$/);
-  check(!!findText(ui,'4K XI activo'),'native XI 4K control enabled');
+  tapNode(findText(ui,'Foto 4K'));
+  ui=waitText(/^Salir 4K$/);
+  check(!!findText(ui,'Salir 4K'),'4K is explicitly photo-only and freezes XI physics');
   report.native4K=waitNative4KFrame();
   check(report.native4K.width===3840&&report.native4K.height===2160&&
     report.native4K.pixels===8294400,'actual XI raster computed 8.294.400 pixels');
@@ -349,9 +368,9 @@ try{
     '4K cached XI frame reuse while paused');
   check(report.frozen4KCache.cacheHits>=3&&report.frozen4KCache.xiRenders<=2,
     'native 4K must reuse frozen XI pixels instead of rendering continuously');
-  tapNode(findText(ui,'4K XI activo'));
-  ui=waitText(/^4K XI$/);
-  check(!!findText(ui,'4K XI'),'4K disabled and CPU low-res renderer resumed');
+  tapNode(findText(ui,'Salir 4K'));
+  ui=waitText(/^Foto 4K$/);
+  check(!!findText(ui,'Foto 4K'),'4K photo exited and fluid XI driving profile restored');
     stage='physical steering and driving video';
   const startState=fields(initialMarker);
   check(Number.isFinite(startState.xCm)&&Number.isFinite(startState.zCm)&&Number.isFinite(startState.yaw4096),

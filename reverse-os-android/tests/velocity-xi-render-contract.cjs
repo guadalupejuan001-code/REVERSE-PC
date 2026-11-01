@@ -83,9 +83,9 @@ function materialize(frame,ids=false){
   s.y*frame.width+s.x0,s.y*frame.width+s.x1+1);
  return pixels;
 }
-function render(state,stride,camera,paint){
+function render(state,stride,camera,paint,car=0){
  const id=serial++,source=path.join(temp,'render-'+id+'.xi');
- fs.writeFileSync(source,inject(renderer,'store8 200 '+stride+'\nstore8 201 '+camera+'\nstore8 202 '+paint+'\n'));
+ fs.writeFileSync(source,inject(renderer,'store8 200 '+stride+'\nstore8 201 '+camera+'\nstore8 202 '+paint+'\nstore8 203 '+car+'\n'));
  return execute(['run',source,state,path.join(temp,'candidate-'+id+'.rvp')],true);
 }
 function writeImage(label,frame,pixels,binary){
@@ -117,7 +117,7 @@ try{
  const reset=path.join(temp,'reset.xi');
  fs.writeFileSync(reset,inject(driving,'store8 128 0\nstore8 129 0\nstore8 130 1\nstore8 131 0\nstore8 132 1\n'));
  const started=registers(run('run',reset,world,state));
- assert.equal(started.length,16,'driving observation ABI');started.forEach((r,i)=>assert.equal(r.register,i));
+ assert.equal(started.length,22,'driving observation ABI');started.forEach((r,i)=>assert.equal(r.register,i%16));
  assert.deepEqual(started.slice(0,9).map(r=>r.value),[0,0,0,0,0,0,0,0,0],'race reset pose');
  assert.equal(started[9].value,4);assert.equal(started[10].value,0);assert.equal(started[13].value,150);
  const retainedHash=sha(fs.readFileSync(state)),measured=[],benchmarks=[],hashes=new Map();
@@ -191,13 +191,26 @@ try{
   wheelEvidence.push({name,distanceCm:distance,steering:steer,frameSha256:sha(first.bytes)});
  }
  assert.equal(sha(fs.readFileSync(state)),retainedHash,'wheel observation changed real race snapshot');
+ // Compare actual XI pixel hashes for all three garage configurations.
+ const garage=[];
+ for(let car=0;car<3;car++){
+  const first=render(state,1,0,0,car),repeat=render(state,1,0,0,car);
+  assert(first.bytes.equals(repeat.bytes),'deterministic XI car body '+car);
+  const frame=decode(first.bytes,1),pixels=materialize(frame);
+  garage.push({car,frameSha256:sha(first.bytes),pixelSha256:sha(Buffer.from(pixels.buffer))});
+ }
+ assert.equal(new Set(garage.map(v=>v.pixelSha256)).size,3,
+  'three garages must produce three different real 3D silhouettes');
+ assert.equal(sha(fs.readFileSync(state)),retainedHash,
+  'car switching must not mutate the authoritative XI race snapshot');
  assert.equal(sha(fs.readFileSync(state)),retainedHash,'scene campaign changed authoritative reset snapshot');
  const report={passed:true,result:'REVERSE_VELOCITY_REGRAPHICS_V3_SCENE_PASS',language:'XI Machine v1',
   output:'XFS1 revision2 from generic 3D mesh visibility',paletteEntries:256,worldVertexCount:81,
   trackLengthCm:rounded(length),stateRegisters:16,modeCases:45,inspectionPoses:4,
   deterministicCases:measured.length,inputStateUnchanged:true,sourceOnlyRenderer:true,
   androidDeviceMeasured:false,threeCamerasDistinct:true,fivePaintsPerCamera:true,
-  rendererSha256:sha(renderer),worldSha256:sha(worldSource),driveSha256:sha(driving),wheelEvidence,benchmarks,measured};
+  rendererSha256:sha(renderer),worldSha256:sha(worldSource),driveSha256:sha(driving),wheelEvidence,
+  selectableCars:3,garage,benchmarks,measured};
  fs.writeFileSync(path.join(output,'velocity-regraphics-results.json'),JSON.stringify(report,null,2)+'\n');
  console.log(JSON.stringify({...report,measured:undefined}));
 }catch(error){console.error(error.stack||error);process.exitCode=1;}
