@@ -330,6 +330,7 @@ try{
   ui=waitText(/EN PAUSA/);
   check(true,'native REgraphics-only diagnostics close without modifying physical race');
   stage='true XI 4K native pixel mode';
+  const beforeNativeFrameStats=frameRecords(logs()).length;
   tapNode(findText(ui,'4K XI'));
   ui=waitText(/^4K XI activo$/);
   check(!!findText(ui,'4K XI activo'),'native XI 4K control enabled');
@@ -337,6 +338,12 @@ try{
   check(report.native4K.width===3840&&report.native4K.height===2160&&
     report.native4K.pixels===8294400,'actual XI raster computed 8.294.400 pixels');
   screenshot('xi-native-4k-real-frame');
+  report.frozen4KCache=waitProfileFrame(beforeNativeFrameStats,
+    s=>s.paused===true&&s.width===3840&&s.height===2160&&
+      s.cacheHits>=3&&s.xiRenders<=2,
+    '4K cached XI frame reuse while paused');
+  check(report.frozen4KCache.cacheHits>=3&&report.frozen4KCache.xiRenders<=2,
+    'native 4K must reuse frozen XI pixels instead of rendering continuously');
   tapNode(findText(ui,'4K XI activo'));
   ui=waitText(/^4K XI$/);
   check(!!findText(ui,'4K XI'),'4K disabled and CPU low-res renderer resumed');
@@ -377,6 +384,7 @@ try{
   report.frameStats=finalLogs.split(/\r?\n/).filter(s=>/ReverseVelocity.*FRAME_STATS\b/.test(s)).map(fields);
   const active=report.frameStats.filter(s=>s.paused===false&&s.frames>0&&s.elapsedNanos>0&&Number.isFinite(s.fps)&&s.fps>0);
   check(active.length>0,'actual posted-frame FPS measurements recorded');
+  check(active.some(s=>s.xiRenders>0),'live race continues rendering updated XI snapshots');
   report.activeFps={samples:active.length,min:Math.min(...active.map(s=>s.fps)),max:Math.max(...active.map(s=>s.fps)),
     source:'FRAME_STATS posted Canvas frames / elapsed nanoseconds; emulator workload with recording'};
   screenshot('final-screen');

@@ -1,7 +1,7 @@
 name: REVERSE VELOCITY REgraphics
 on:
   push:
-    branches: [feature/xi-velocity-no-cpp-render-20261029, feature/velocity-regraphics-20261030, feature/velocity-cockpit-nature-20261031, feature/velocity-xi-renderer-only-20261031, feature/regraphics-tile-native-20261031]
+    branches: [feature/xi-velocity-no-cpp-render-20261029, feature/velocity-regraphics-20261030, feature/regraphics-frame-cache-20261101, feature/velocity-cockpit-nature-20261031, feature/velocity-xi-renderer-only-20261031, feature/regraphics-tile-native-20261031]
     paths:
       - 'reverse-os-android/app/src/main/assets/velocity/**'
       - 'reverse-os-android/tests/velocity-xi-render-contract.cjs'
@@ -111,15 +111,18 @@ jobs:
             reverse-os-android/app/src/main/java/com/reversepc/os/RegraphicsFrame.java \
             reverse-os-android/app/src/main/java/com/reversepc/os/NativeRuntime.java \
             reverse-os-android/app/src/main/java/com/reversepc/os/VelocityLoopLifecycle.java \
+            reverse-os-android/app/src/main/java/com/reversepc/os/VelocityFrameReuse.java \
             reverse-os-android/tests/RxePacketTest.java \
             reverse-os-android/tests/RegraphicsFrameTest.java \
             reverse-os-android/tests/RegraphicsNative4KTest.java \
             reverse-os-android/tests/VelocityLoopLifecycleTest.java \
+            reverse-os-android/tests/VelocityFrameReuseTest.java \
             reverse-os-android/tests/NativeRegraphicsTest.java
           java -cp build/velocity/java com.reversepc.os.RxePacketTest
           java -cp build/velocity/java com.reversepc.os.RegraphicsFrameTest
           java -Xmx512m -cp build/velocity/java com.reversepc.os.RegraphicsNative4KTest
           java -cp build/velocity/java com.reversepc.os.VelocityLoopLifecycleTest
+          java -cp build/velocity/java com.reversepc.os.VelocityFrameReuseTest
           g++ -std=c++17 -O2 -pthread -shared -fPIC \
             -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
             -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \

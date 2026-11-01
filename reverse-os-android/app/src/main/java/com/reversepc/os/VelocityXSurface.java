@@ -22,6 +22,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     private final Rect sourceRect=new Rect(),targetRect=new Rect();
     private final VelocityLoopLifecycle lifecycle,physicsLifecycle;
     private final AtomicBoolean resetRequested=new AtomicBoolean();
+    private final AtomicBoolean repaintRequested=new AtomicBoolean(true);
     private volatile int input=4,cameraMode,paintId;
     private final Object detailLock=new Object();
     private int quality=1;
@@ -31,7 +32,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     private volatile boolean reverseGear;
     private volatile boolean native4K;
     boolean is4KEnabled(){return native4K;}
-    boolean toggle4K(){native4K=!native4K;return native4K;}
+    boolean toggle4K(){native4K=!native4K;error="";return native4K;}
     private volatile String error="";
 
     VelocityXSurface(Context context,VelocityXiEngine game,Hud hud){
@@ -74,11 +75,15 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
         physicsLifecycle.awaitStopped(250);lifecycle.awaitStopped(250);
     }
     @Override public void surfaceCreated(SurfaceHolder holder){
+        repaintRequested.set(true);
         boolean ready=holder.getSurface().isValid();
         physicsLifecycle.setSurfaceReady(ready);lifecycle.setSurfaceReady(ready);
     }
-    @Override public void surfaceChanged(SurfaceHolder holder,int format,int w,int h){}
+    @Override public void surfaceChanged(SurfaceHolder holder,int format,int w,int h){
+        repaintRequested.set(true);
+    }
     @Override public void surfaceDestroyed(SurfaceHolder holder){
+        repaintRequested.set(true);
         physicsLifecycle.setSurfaceReady(false);lifecycle.setSurfaceReady(false);
         physicsLifecycle.awaitStopped(250);lifecycle.awaitStopped(250);
     }
@@ -128,6 +133,8 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
         int width=0,height=0,frames=0,fps=0,slowFrames=0;
         long lastHud=0,lastFps=SystemClock.elapsedRealtimeNanos();
         boolean firstFramePosted=false;
+        int cacheHits=0,xiRenders=0;
+        final VelocityFrameReuse frameReuse=new VelocityFrameReuse();
         try{
             while(lifecycle.shouldRun()){
                 long begin=SystemClock.elapsedRealtimeNanos();
@@ -138,6 +145,32 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 VelocityXiEngine.Snapshot state;
                 boolean presented=false;
                 boolean selected4K=native4K;
+                if(repaintRequested.getAndSet(false))frameReuse.invalidate();
+                VelocityXiEngine.Snapshot currentState=game.current();
+                if(frameReuse.canReuse(paused,currentState,selectedCamera,selectedPaint,stride,selected4K)){
+                    // Static XI snapshot: leave the already-posted SurfaceView pixels
+                    // untouched. In 4K this avoids all 8.3M fragments, packet copies,
+                    // Bitmap upload and heat while paused. The HUD remains responsive.
+                    cacheHits++;
+                    long now=SystemClock.elapsedRealtimeNanos();
+                    if(now-lastFps>=1_000_000_000L){
+                        long elapsed=now-lastFps;
+                        fps=(int)Math.round(frames*1_000_000_000.0/elapsed);
+                        Log.i("ReverseVelocity","FRAME_STATS frames="+frames+
+                            " elapsedNanos="+elapsed+" fps="+fps+" width="+width+
+                            " height="+height+" ticks="+currentState.ticks+
+                            " physicsHz="+physicsHz+" fixedDetail="+selectedFixed+
+                            " paused="+paused+
+                            " backend="+(selected4K?"REgraphics_XI_4K_NATIVE":"REgraphics_XI_CPU")+
+                            " cacheHits="+cacheHits+" xiRenders="+xiRenders);
+                        frames=0;cacheHits=0;xiRenders=0;lastFps=now;
+                    }
+                    if(now-lastHud>=100_000_000L){
+                        lastHud=now;hud.update(currentState,paused,fps,width,height,error);
+                    }
+                    Thread.sleep(70);
+                    continue;
+                }
                 // REgraphics rasteriza triángulos XI y emite XFS1. Android solo presenta píxeles.
                     VelocityXiEngine.Observation observation;
                     if(selected4K){
@@ -145,10 +178,26 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                         catch(Exception nativeFailure){
                             Log.w("ReverseVelocity","Native XI 4K unavailable on this device",nativeFailure);
                             native4K=false;
+                            frameReuse.invalidate();
                             error="4K XI no disponible: "+nativeFailure.getMessage();
                             continue;
                         }
                     }else observation=game.observeFrame(stride,selectedCamera,selectedPaint);
+                    xiRenders++;
+                    // If a camera, paint, resolution or 4K switch happened during
+                    // this expensive XI render, do not publish an obsolete frame.
+                    boolean stale=selectedCamera!=cameraMode||selectedPaint!=paintId||
+                        selected4K!=native4K;
+                    if(!selected4K){
+                        synchronized(detailLock){
+                            int active=fixedDetail?2:Math.max(0,Math.min(2,quality));
+                            stale|=stride!=(active==0?4:active==1?2:1);
+                        }
+                    }
+                    if(stale){
+                        Log.i("ReverseVelocity","FRAME_DROPPED obsolete XI camera/material/profile");
+                        continue;
+                    }
                     RegraphicsFrame frame=observation.frame;
                     if(!lifecycle.shouldRun())break;
                     if(frame.width!=width||frame.height!=height||pixels==null){
@@ -173,6 +222,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     }finally{if(canvas!=null)getHolder().unlockCanvasAndPost(canvas);}
                     state=observation.state;
                     presented=canvas!=null;
+                    if(presented)frameReuse.framePosted(state,selectedCamera,selectedPaint,stride,selected4K);
                     if(presented&&selected4K)
                         Log.i("ReverseVelocity","NATIVE_4K_FRAME_READY source=XI_XFB5 width="+
                             width+" height="+height+" pixels="+(width*height)+
@@ -192,8 +242,9 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     Log.i("ReverseVelocity","FRAME_STATS frames="+frames+" elapsedNanos="+elapsed+
                         " fps="+fps+" width="+width+" height="+height+" ticks="+state.ticks+
                         " physicsHz="+physicsHz+" fixedDetail="+selectedFixed+" paused="+paused+
-                        " backend="+(selected4K?"REgraphics_XI_4K_NATIVE":"REgraphics_XI_CPU"));
-                    frames=0;lastFps=now;
+                        " backend="+(selected4K?"REgraphics_XI_4K_NATIVE":"REgraphics_XI_CPU")+
+                        " cacheHits="+cacheHits+" xiRenders="+xiRenders);
+                    frames=0;cacheHits=0;xiRenders=0;lastFps=now;
                 }
                 if(now-lastHud>=100_000_000L){
                     lastHud=now;hud.update(state,paused,fps,width,height,error);
