@@ -6,7 +6,10 @@ name: Android odsign live property and Binder wait probe from C34
       - .github/workflows/android-odsign-live-probe.yml
       - tools/android_boot_property.mjs
       - tools/android_live_property.mjs
+      - tools/android_kernel_observer.mjs
+      - tools/android_binder_snapshot_probe.mjs
       - tests/android_odsign_property_probe.test.mjs
+      - tests/android_binder_snapshot_probe.test.mjs
       - docs/ANDROID_ODSIGN_LIVE_DIAGNOSIS.md
 permissions:
   contents: read
@@ -34,7 +37,8 @@ jobs:
           node --check tools/android_boot_property.mjs
           node --check tools/android_live_property.mjs
           node --check tools/android_kernel_observer.mjs
-          node --test tests/android_odsign_property_probe.test.mjs tests/android_boot_property.test.mjs tests/android_live_property.test.mjs tests/android_framework_evidence.test.mjs > evidence/odsign-probe/host-tests.tap
+          node --check tools/android_binder_snapshot_probe.mjs
+          node --test tests/android_binder_snapshot_probe.test.mjs tests/android_odsign_property_probe.test.mjs tests/android_boot_property.test.mjs tests/android_live_property.test.mjs tests/android_framework_evidence.test.mjs > evidence/odsign-probe/host-tests.tap
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: reverse-c34-authenticated-continuation
@@ -80,7 +84,7 @@ jobs:
             observed:p.boot_chain_property_observations??[],
             statuses:p.boot_chain_property_status_counts??{},
             process_count:k.task_count,tasks,
-            property_read_error:p.read_error??null,binder_layout_debug:k.binder_layout_debug??null,original_snapshot_unchanged:true};
+            property_read_error:p.read_error??null,binder_layout_debug:k.binder_layout_debug??null,binder_live_queues:k.binder_live_queues??null,original_snapshot_unchanged:true};
           writeFileSync('evidence/odsign-probe/summary.json',JSON.stringify(result,null,2)+'\n');
           console.log(JSON.stringify(result,null,2));
           assert.equal(result.pid1_mapping_verified,true);
