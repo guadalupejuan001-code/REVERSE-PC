@@ -46,13 +46,13 @@ MinimalGuest prepared(std::uint64_t low,std::uint64_t high){
 }
 void execute(MinimalGuest g,unsigned bits,bool q,bool uns,unsigned shift,unsigned rn,unsigned rd,bool restore){
  const auto op=opcode(bits,q,uns,shift,rn,rd);
- g.write(g.registers().pc,op,4);const auto f=g.floating(),cpu=g.registers();
+ g.write(g.registers().pc,op,4);const auto f=g.floating();const auto cpu=g.registers();
  const auto mem=g.runtime().memory_snapshot(),core=g.runtime().core_snapshot();
  if(restore){
   auto copy=MinimalGuest::from_snapshot(g.snapshot());g.run(1);copy.run(1);
   check(g.snapshot()==copy.snapshot(),"Snapshot restore changed SSRA/USRA result");
  }else g.run(1);
- const auto after=g.floating(),lanes=(q?128u:64u)/bits;
+ const auto after=g.floating();const auto lanes=(q?128u:64u)/bits;
  for(unsigned n=0;n<lanes;n++){
   const auto want=oracle(f.v[rd].lane(n,bits),f.v[rn].lane(n,bits),bits,shift,uns);
   check(after.v[rd].lane(n,bits)==want,"SSRA/USRA lane differs from independent bit-level oracle");
