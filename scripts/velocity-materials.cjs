@@ -12,7 +12,7 @@ function buildPalette(){
  const world=['4c98c5','b7d3e2','667356','8d9f9d','858c82','ce4843','4b535a','e4e6df','a5adae','65503b','736046','806c50','203d2c','294b32','34583a','3c6240','446b45','4d744a','567d50','608457'];
  world.forEach((v,i)=>p[i]=v);
  // Asfalto con 8 matices, recorrido espacial constante en la pista XI.
- ['242b31','2a3238','30373e','343c43','394149','3e474f','465058','4e5961'].forEach((v,i)=>p[40+i]=v);
+ for(let i=0;i<16;i++)p[40+i]=hex(mix(rgb('242b31'),rgb('56606a'),Math.pow(i/15,1.08)));
  for(let i=0;i<8;i++){p[24+i]=hex(mix(rgb('4b535a'),rgb('151e25'),i/7));p[32+i]=hex(mix(rgb('667356'),rgb('19271e'),i/7));}
  const paints=['e8edf3','b50920','135c9c','164c3b','d6a32b'];
  paints.forEach((paint,k)=>{const c=rgb(paint);for(let n=0;n<24;n++){
@@ -37,6 +37,8 @@ function buildPalette(){
  p[4]='4d7041'; // real grassy verge, not gray concrete
  p[240]='343d47';p[241]='596977';
  p[242]='69202b'; // tail light at idle; braking lights use hot-red 224
+  // Fine pneumatic exhaust ramps: pale physical vapor, not colored pixel blobs.
+  for(let i=0;i<12;i++)p[244+i]=hex(mix(rgb('1b2830'),rgb('c7e0e3'),Math.pow(i/11,.9)));
  return p;
 }
 module.exports={worldMaterial,RAMPS,FLAT,buildPalette};
