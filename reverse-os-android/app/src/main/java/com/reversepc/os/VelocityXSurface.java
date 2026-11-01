@@ -33,6 +33,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     private volatile boolean native4K;
     private boolean pausedBeforePhoto;
     boolean is4KEnabled(){return native4K;}
+    boolean isPaused(){return paused;}
     /**
      * A real XI 3840x2160 image is a photo mode, never a live racing preset.
      * Software raster takes hundreds of ms/frame on phones: pausing once means
