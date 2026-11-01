@@ -83,9 +83,10 @@ function materialize(frame,ids=false){
   s.y*frame.width+s.x0,s.y*frame.width+s.x1+1);
  return pixels;
 }
-function render(state,stride,camera,paint,car=0){
+function render(state,stride,camera,paint,car=0,yaw=0,pitch=0){
  const id=serial++,source=path.join(temp,'render-'+id+'.xi');
- fs.writeFileSync(source,inject(renderer,'store8 200 '+stride+'\nstore8 201 '+camera+'\nstore8 202 '+paint+'\nstore8 203 '+car+'\n'));
+ fs.writeFileSync(source,inject(renderer,'store8 200 '+stride+'\nstore8 201 '+camera+'\nstore8 202 '+paint+'\nstore8 203 '+car+
+    '\nstore16 204 '+yaw+'\nstore16 206 '+pitch+'\n'));
  return execute(['run',source,state,path.join(temp,'candidate-'+id+'.rvp')],true);
 }
 function writeImage(label,frame,pixels,binary){
@@ -203,6 +204,24 @@ try{
   'three garages must produce three different real 3D silhouettes');
  assert.equal(sha(fs.readFileSync(state)),retainedHash,
   'car switching must not mutate the authoritative XI race snapshot');
+ // A real orbit changes both car and world projection, never the drivetrain.
+ const orbit=[];
+ for(const [name,yaw,pitch] of [['rear',0,0],['quarter',512,0],
+                                ['side',1024,0],['front',2048,0],
+                                ['elevated',512,110],['lower',512,422]]){
+  const first=render(state,1,0,0,0,yaw,pitch);
+  const second=render(state,1,0,0,0,yaw,pitch);
+  assert(first.bytes.equals(second.bytes),'deterministic XI orbit '+name);
+  const frame=decode(first.bytes,1),pixels=materialize(frame);
+  orbit.push({name,yaw,pitch,pixelSha256:sha(Buffer.from(pixels.buffer)),
+      packetSha256:sha(first.bytes)});
+  if(name==='quarter'||name==='elevated')
+   writeImage('camera-orbit-'+name,frame,pixels,first.bytes);
+ }
+ assert.equal(new Set(orbit.map(o=>o.pixelSha256)).size,orbit.length,
+  'camera orbit and elevation must change real projected XI pixels in all poses');
+ assert.equal(sha(fs.readFileSync(state)),retainedHash,
+  'touch camera orbit must never mutate the physical XI race snapshot');
  assert.equal(sha(fs.readFileSync(state)),retainedHash,'scene campaign changed authoritative reset snapshot');
  const report={passed:true,result:'REVERSE_VELOCITY_REGRAPHICS_V3_SCENE_PASS',language:'XI Machine v1',
   output:'XFS1 revision2 from generic 3D mesh visibility',paletteEntries:256,worldVertexCount:81,
@@ -210,7 +229,7 @@ try{
   deterministicCases:measured.length,inputStateUnchanged:true,sourceOnlyRenderer:true,
   androidDeviceMeasured:false,threeCamerasDistinct:true,fivePaintsPerCamera:true,
   rendererSha256:sha(renderer),worldSha256:sha(worldSource),driveSha256:sha(driving),wheelEvidence,
-  selectableCars:3,garage,benchmarks,measured};
+  selectableCars:3,garage,orbitViews:6,orbit,benchmarks,measured};
  fs.writeFileSync(path.join(output,'velocity-regraphics-results.json'),JSON.stringify(report,null,2)+'\n');
  console.log(JSON.stringify({...report,measured:undefined}));
 }catch(error){console.error(error.stack||error);process.exitCode=1;}
