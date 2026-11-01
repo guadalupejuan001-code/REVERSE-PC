@@ -9853,6 +9853,13 @@ label wheel_steer_neutral
 localset 3042 0
 localset 3043 16384
 label wheel_motion_ready
+localset 3070 0
+localget r0 11
+cmp r0 0
+jne car_selection_ready
+load8 r0 203
+localset 3070 r0
+label car_selection_ready
 localset 143 0
 label actor_vertex
 localget r8 132
@@ -9984,14 +9991,38 @@ localget r10 3045
 add r2 r10
 label wheel_rear_508
 label wheel_transform_done_497
+localget r9 3070
+cmp r9 1
+je garage_gt_509
+cmp r9 2
+je garage_track_510
+jmp garage_morph_done_511
+label garage_gt_509
+mul r0 96
+div r0 100
+mul r2 113
+div r2 100
+cmp r1 74
+jle garage_morph_done_511
+add r1 18
+jmp garage_morph_done_511
+label garage_track_510
+mul r0 114
+div r0 100
+mul r2 92
+div r2 100
+cmp r1 77
+jle garage_morph_done_511
+sub r1 14
+label garage_morph_done_511
 localget r9 11
 cmp r9 0
-jne vertex_no_pneumatic_rise_509
+jne vertex_no_pneumatic_rise_512
 cmp r8 1535
-jge vertex_no_pneumatic_rise_509
+jge vertex_no_pneumatic_rise_512
 load16 r9 384
 add r1 r9
-label vertex_no_pneumatic_rise_509
+label vertex_no_pneumatic_rise_512
 localget r9 118
 sub r9 32768
 mul r9 r0
@@ -12047,7 +12078,7 @@ meshface 3019 3020 3021 241 r9 r10 r11 60
 meshface 3019 3022 3020 241 r9 r10 r11 60
 load8 r0 388
 cmp r0 0
-jle air_jet_pulse_done_510
+jle air_jet_pulse_done_513
 meshfacegradient 3559 3561 3560 244 12 r9 r10 r11 60
 meshfacegradient 3559 3560 3562 244 12 r9 r10 r11 60
 meshfacegradient 3559 3563 3560 244 12 r9 r10 r11 60
@@ -12064,7 +12095,7 @@ meshfacegradient 3577 3579 3578 244 12 r9 r10 r11 60
 meshfacegradient 3577 3578 3580 244 12 r9 r10 r11 60
 meshfacegradient 3577 3581 3578 244 12 r9 r10 r11 60
 meshfacegradient 3577 3578 3582 244 12 r9 r10 r11 60
-label air_jet_pulse_done_510
+label air_jet_pulse_done_513
 jmp emit_shadow
 label emit_medium
 localget r12 126
