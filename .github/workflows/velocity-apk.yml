@@ -1,7 +1,7 @@
 name: REVERSE VELOCITY installable APK
 on:
   push:
-    branches: [feature/velocity-regraphics-20261030, feature/velocity-cockpit-nature-20261031, feature/velocity-xi-renderer-only-20261031, feature/regraphics-tile-native-20261031]
+    branches: [feature/velocity-regraphics-20261030, feature/regraphics-frame-cache-20261101, feature/velocity-cockpit-nature-20261031, feature/velocity-xi-renderer-only-20261031, feature/regraphics-tile-native-20261031]
     paths:
       - '.github/workflows/velocity-apk.yml'
       - 'reverse-os-android/app/build.gradle'
