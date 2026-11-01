@@ -26,7 +26,7 @@ void write(const std::filesystem::path& p,const Bytes& b){std::ofstream f(p,std:
 std::string inject(const std::string& body,const std::string& prefix){check(body.compare(0,header.size(),header)==0,"XI header");return header+prefix+body.substr(header.size());}
 std::vector<std::int64_t> numbers(const std::string& text,bool world=false){
  std::istringstream lines(text);std::string row;std::vector<std::int64_t> out;
- while(std::getline(lines,row)){if(row.empty())continue;const auto idx=world?out.size()%2:out.size();
+ while(std::getline(lines,row)){if(row.empty())continue;const auto idx=world?out.size()%2:out.size()%16;
   const std::string prefix="{\"type\":\"register\",\"register\":\"r"+std::to_string(idx)+"\",\"value\":";
   check(row.compare(0,prefix.size(),prefix)==0&&row.back()=='}',"XI register ABI");
   std::size_t consumed=0;const auto value=std::stoll(row.substr(prefix.size(),row.size()-prefix.size()-1),&consumed);
