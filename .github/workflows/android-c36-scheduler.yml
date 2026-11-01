@@ -75,7 +75,7 @@ jobs:
           assert.equal(p.virtual_irq.daif&0x80,0);
           const summary={schema:'reverse-android-c36-scheduler-evidence-v1',
             checkpoint_sha256:k.checkpoint_sha256,instructions:k.instructions,
-            current:p.current,service_leaders:p.observed_service_leaders,
+            current:p.current,pc_mapping:p.current_pc_mapping??null,pc_mapping_error:p.current_pc_mapping_error??null,service_leaders:p.observed_service_leaders,
             timer:p.virtual_timer,interrupts:p.virtual_irq,read_only:true};
           writeFileSync('evidence/c36-scheduler/summary.json',JSON.stringify(summary,null,2)+'\n');
           console.log(JSON.stringify(summary,null,2));
