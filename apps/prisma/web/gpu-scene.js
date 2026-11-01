@@ -23,7 +23,7 @@ layout(location=3) in vec4 colorAlpha;
 layout(location=4) in vec4 rotationDirection;
 uniform vec4 view;
 out vec3 vLocal;out vec3 vNormal;out vec3 vColor;out float vAlpha;
-flat out float vDirection;flat out float vHot;
+flat out float vDirection;flat out float vHot;flat out float vMaterial;
 void main(){
  float a=rotationDirection.x,c=cos(a),s=sin(a),cx=cos(-.11),sx=sin(-.11);
  mat3 ry=mat3(c,0.,-s,0.,1.,0.,s,0.,c);
@@ -33,12 +33,12 @@ void main(){
  vec2 clip=(view.xy*2.-1.)*d+p.xy*view.zw*2.;clip.y=-clip.y;
  gl_Position=vec4(clip,(60.5/59.5)*d-60./59.5,d);
  vLocal=position;vNormal=normal;vColor=colorAlpha.rgb;vAlpha=colorAlpha.a;
- vDirection=rotationDirection.y;vHot=rotationDirection.z;
+ vDirection=rotationDirection.y;vHot=rotationDirection.z;vMaterial=rotationDirection.w;
 }`;
 const FRAGMENT=`#version 300 es
 precision highp float;
 in vec3 vLocal;in vec3 vNormal;in vec3 vColor;in float vAlpha;
-flat in float vDirection;flat in float vHot;out vec4 outColor;
+flat in float vDirection;flat in float vHot;flat in float vMaterial;out vec4 outColor;
 float segment(vec2 p,vec2 a,vec2 b){vec2 d=b-a;return length(p-a-d*clamp(dot(p-a,d)/dot(d,d),0.,1.));}
 void main(){
  vec2 uv=abs(vNormal.z)>.5?vLocal.xy:abs(vNormal.x)>.5?vLocal.zy:vLocal.xz;
@@ -49,6 +49,27 @@ void main(){
  float light=.12+max(dot(vNormal,normalize(vec3(-.4,-.6,-1.))),0.)*.20;
  vec3 base=vColor*(light+(.5-uv.y)*.09)+vec3(.003,.010,.006);
  vec3 color=mix(base,vColor*(.75+vHot*.38),max(edge,inset));
+ // Reference material approximation. Native Ether Render X resolves actual
+ // cube intersections and independently shades the corresponding materials.
+ if(vMaterial>.5){
+   vec3 n=normalize(vNormal);
+   float facing=abs(n.z);
+   float fresnel=pow(1.-facing,5.);
+   float shine=pow(max(dot(n,normalize(vec3(-.25,-.45,.86))),0.),18.);
+   if(vMaterial<1.5){ // faceted prismatic note
+     float facet=.5+.5*cos((uv.x*1.4+uv.y*.9)*10.);
+     color=vColor*(.16+.28*facet+.28*fresnel+.29*shine);
+     color=mix(color,vColor*1.05,max(edge,inset));
+   }else if(vMaterial<2.5){ // brushed metal stage support
+     float grain=.5+.5*cos(uv.x*45.);
+     color=vColor*(.24+.29*max(n.z,0.)+.36*shine*(.75+.25*grain)+.14*fresnel);
+     color=mix(color,vColor*.70,edge);
+   }else { // luminous concert lens
+     float core=exp(-dot(uv,uv)*8.);
+     color=vColor*(.13+.80*core+.12*shine+.10*fresnel);
+     color=mix(color,vColor*.33,edge);
+   }
+ }
  if(vNormal.z<-.5 && vDirection>=0.){
   float a=vDirection*1.570796327;mat2 r=mat2(cos(a),-sin(a),sin(a),cos(a));vec2 p=r*uv;
   float arrow=min(segment(p,vec2(0.,-.155),vec2(0.,.175)),min(segment(p,vec2(-.14,-.015),vec2(0.,-.155)),segment(p,vec2(.14,-.015),vec2(0.,-.155))));
@@ -77,6 +98,11 @@ void main(){
    color+=green*lines*fade;
    float rail=exp(-abs(abs(x)-2.8)*30.)*fade;
    color+=mix(green,coral,step(0.,x))*rail*(.24+energy*.09);
+   // Bounded floor specular bands / reflections; a stylized backdrop, not
+   // reflections traced against the native objects.
+   float sheen=exp(-abs(x)*.42)*exp(-z*.09);
+   float panels=pow(.5+.5*cos(x*3.14159+z*.46),18.)*fade;
+   color+=mix(green,coral,.5+.5*sin(z*.18))*(.014*panels+sheen*(.007+.011*energy));
   }
  }
  if(abs(ray.x)>.05){
@@ -113,7 +139,7 @@ export class CubeGPU {
   g.disable(g.DEPTH_TEST);g.disable(g.BLEND);g.depthMask(true);g.clearColor(0,0,0,1);g.clear(g.COLOR_BUFFER_BIT|g.DEPTH_BUFFER_BIT);
   g.useProgram(this.background);g.bindVertexArray(this.backgroundVao);g.uniform2f(u.resolution,this.canvas.width,this.canvas.height);g.uniform4fv(u.view,view);g.uniform3fv(u.green,colors[0]);g.uniform3fv(u.coral,colors[1]);g.uniform1f(u.time,time);g.uniform1f(u.energy,energy);g.uniform1f(u.quiet,quiet?1:0);g.drawArrays(g.TRIANGLES,0,3);
  }
- cube(x,y,z,size,color,alpha,rotation,direction,hot){if(this.count>=this.capacity)return;const i=this.count++*12,d=this.data;d[i]=x;d[i+1]=y;d[i+2]=z;d[i+3]=size;d[i+4]=color[0];d[i+5]=color[1];d[i+6]=color[2];d[i+7]=alpha;d[i+8]=rotation;d[i+9]=direction;d[i+10]=hot?1:0;d[i+11]=0;}
+ cube(x,y,z,size,color,alpha,rotation,direction,hot,material=0){if(this.count>=this.capacity)return;const i=this.count++*12,d=this.data;d[i]=x;d[i+1]=y;d[i+2]=z;d[i+3]=size;d[i+4]=color[0];d[i+5]=color[1];d[i+6]=color[2];d[i+7]=alpha;d[i+8]=rotation;d[i+9]=direction;d[i+10]=hot?1:0;d[i+11]=Number.isInteger(material)&&material>=0&&material<=3?material:0;}
  flush(){const g=this.gl;if(!this.count)return;g.useProgram(this.program);g.bindVertexArray(this.cubeVao);g.bindBuffer(g.ARRAY_BUFFER,this.instances);g.bufferSubData(g.ARRAY_BUFFER,0,this.data,0,this.count*12);g.uniform4fv(this.uniforms.view,this.view);g.enable(g.DEPTH_TEST);g.depthFunc(g.LEQUAL);g.disable(g.CULL_FACE);g.enable(g.BLEND);g.blendFunc(g.SRC_ALPHA,g.ONE_MINUS_SRC_ALPHA);g.drawElementsInstanced(g.TRIANGLES,36,g.UNSIGNED_SHORT,0,this.count);g.bindVertexArray(null);}
 }
 export const SHADERS={VERTEX,FRAGMENT,BACK_VERTEX,BACK_FRAGMENT};

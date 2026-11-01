@@ -116,6 +116,9 @@ public final class RxeGraphicsActivity extends Activity {
     public final class Bridge {
         @JavascriptInterface public boolean immersive(){return true;}
         @JavascriptInterface public String xRender(){return "ether-render-x-cuboids-v1";}
+        // Old RXE3 apps keep their original v1 packets. PRISMA 2.2 can opt
+        // into material descriptors without changing the existing graphics ABI.
+        @JavascriptInterface public String xRenderMaterials(){return "prisma-materials-v2";}
         @JavascriptInterface public void frame(float[] data){if(!closed&&foreground&&xrender!=null)xrender.submit(data);}
         @JavascriptInterface public String xRenderInfo(){return xrender==null?"{}":xrender.info();}
         @JavascriptInterface public void event(int serial,int run,int kind,int quality){

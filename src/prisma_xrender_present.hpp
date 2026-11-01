@@ -21,6 +21,11 @@ void main(){
    color+=green*lines*fade;
    float rail=exp(-abs(abs(x)-2.8)*30.)*fade;
    color+=mix(green,coral,step(0.,x))*rail*(.24+energy*.09);
+   // Bounded floor specular bands / reflections; a stylized backdrop, not
+   // reflections traced against the native objects.
+   float sheen=exp(-abs(x)*.42)*exp(-z*.09);
+   float panels=pow(.5+.5*cos(x*3.14159+z*.46),18.)*fade;
+   color+=mix(green,coral,.5+.5*sin(z*.18))*(.014*panels+sheen*(.007+.011*energy));
   }
  }
  if(abs(ray.x)>.05){

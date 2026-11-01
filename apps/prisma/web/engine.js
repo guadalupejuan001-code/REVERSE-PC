@@ -78,7 +78,9 @@ export class Scene {
     if (this.shards.length>50) this.shards.splice(0,this.shards.length-50);
   }
   cube(x,y,z,size,colorIndex,dir,rot=0,preview=false,hot=false,alpha=1) {
-    if(this.gpu){this.gpu.cube(x,y,z,size,this.rgb[colorIndex],alpha,rot,dir,hot);return this.projection(x,y,z,preview);}
+    if(this.gpu){const material=this.settings().quality==='battery'?0:1;
+      this.gpu.cube(x,y,z,size,this.rgb[colorIndex],alpha,rot,dir,hot,material);
+      return this.projection(x,y,z,preview);}
     const ctx=this.ctx,color=PALETTES[this.settings().palette][colorIndex], h=size/2, cy=Math.cos(rot),sy=Math.sin(rot),rx=-.11,cx=Math.cos(rx),sx=Math.sin(rx);
     const raw=[[-h,-h,-h],[h,-h,-h],[h,h,-h],[-h,h,-h],[-h,-h,h],[h,-h,h],[h,h,h],[-h,h,h]];
     const verts=raw.map(v=>{const xx=v[0]*cy+v[2]*sy,zz=-v[0]*sy+v[2]*cy,yy=v[1]*cx-zz*sx,zr=v[1]*sx+zz*cx;return {...this.projection(x+xx,y+yy,z+zr,preview),z:z+zr};});
@@ -122,7 +124,8 @@ export class Scene {
     const metal=[.24,.29,.34];
     for(const p of parts) {
       this.gpu.cube(p.x,p.y,p.z,p.size,p.color<0?metal:this.rgb[p.color],
-        p.alpha,p.rotation,p.direction,p.hot);
+        p.alpha,p.rotation,p.direction,p.hot,
+        pose.quality==='battery'?0:p.kind==='head'?3:2);
     }
     this.canvas.dataset.rigNativeCount=String(parts.length);
   }
