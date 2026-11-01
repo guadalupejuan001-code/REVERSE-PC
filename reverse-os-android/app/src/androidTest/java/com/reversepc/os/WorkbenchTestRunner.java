@@ -324,23 +324,24 @@ public final class WorkbenchTestRunner extends Instrumentation {
         WorkspaceFiles migration=new WorkspaceFiles(new File(getTargetContext().getCacheDir(),"prisma-upgrade-"+System.nanoTime()));
         android.content.SharedPreferences flags=getTargetContext().getSharedPreferences("prisma-upgrade-check",0);flags.edit().clear().commit();
         WorkbenchPrograms.seedGraphics(getTargetContext(),migration,flags);byte[] current=migration.read("Aplicaciones/PRISMA.rxe");
-        require(new JSONObject(new String(NativeRuntime.inspectRxe(current),StandardCharsets.UTF_8)).getString("app_version").equals("2.0.0"),"Fresh install did not seed PRISMA 2.0");
+        require(new JSONObject(new String(NativeRuntime.inspectRxe(current),StandardCharsets.UTF_8)).getString("app_version").equals("2.1.0"),"Fresh install did not seed PRISMA 2.1");
         byte[] prior;try(java.io.InputStream input=getContext().getAssets().open("prisma-1.1.rxe")){prior=WorkbenchPrograms.read(input);}
         require(digest(prior).equals(WorkbenchPrograms.PRISMA_11_SHA),"Wrong official PRISMA upgrade fixture");
         require(WorkbenchPrograms.trustedOldPrisma("8eab78b37f7d18365f26746e4ed30bf6433c36109f23c0ee92d6c42804b534f0"),"Official PRISMA 1.2 was not allowlisted");
         require(WorkbenchPrograms.trustedOldPrisma("c6bd13581a7a565cd9ea54b34dbefc3f92ca473d4bd5701478853a0205653fd9"),"Last official PRISMA 1.2 was not allowlisted");
         require(WorkbenchPrograms.trustedOldPrisma("3d4659559cf02e2f4509971afc84db56b84bc9a07faaf545d0064d44504399ce"),"Cycle 03 pre-release was not allowlisted");
+        require(WorkbenchPrograms.trustedOldPrisma("446bebd4c97cbd4807aea0624da0bd45e076541f5e491540f9bffd4b4797370e"),"Cycle 03 final release was not allowlisted");
         require(!WorkbenchPrograms.trustedOldPrisma(digest(current)),"New official release wrongly matches an old executable");
-        migration.write("Aplicaciones/PRISMA.rxe",prior,true);flags.edit().remove("prisma-ui-origin-sha").putBoolean("prisma-2.0-seeded",false).commit();
+        migration.write("Aplicaciones/PRISMA.rxe",prior,true);flags.edit().remove("prisma-ui-origin-sha").putBoolean("prisma-2.1-seeded",false).commit();
         WorkbenchPrograms.seedGraphics(getTargetContext(),migration,flags);
         require(Arrays.equals(current,migration.read("Aplicaciones/PRISMA.rxe")),"Official PRISMA 1.1 was not upgraded");
         require(digest(prior).equals(flags.getString("prisma-ui-origin-sha","")),"Official upgrade lost its WebView records origin");
         byte[] custom=NativeRuntime.compileRxe("#!reverse-pc-machine-v1\nset r0 42\nprint r0\nhalt\n".getBytes(StandardCharsets.UTF_8),"User app".getBytes(StandardCharsets.UTF_8));
-        migration.write("Aplicaciones/PRISMA.rxe",custom,true);flags.edit().putBoolean("prisma-2.0-seeded",false).commit();
+        migration.write("Aplicaciones/PRISMA.rxe",custom,true);flags.edit().putBoolean("prisma-2.1-seeded",false).commit();
         WorkbenchPrograms.seedGraphics(getTargetContext(),migration,flags);
         require(Arrays.equals(custom,migration.read("Aplicaciones/PRISMA.rxe")),"Upgrade overwrote a custom executable");
         require(!WorkbenchPrograms.trustedOldPrisma(digest(custom)),"Customized image was misclassified as official");
-        migration.trash("Aplicaciones/PRISMA.rxe");flags.edit().putBoolean("prisma-2.0-seeded",false).commit();
+        migration.trash("Aplicaciones/PRISMA.rxe");flags.edit().putBoolean("prisma-2.1-seeded",false).commit();
         WorkbenchPrograms.seedGraphics(getTargetContext(),migration,flags);WorkbenchPrograms.seedGraphics(getTargetContext(),migration,flags);
         require(migration.list("Aplicaciones").isEmpty(),"Upgrade restored a removed game");
         JSONObject catalog=op("listApps","","graphicsCatalog");JSONObject program=null;
