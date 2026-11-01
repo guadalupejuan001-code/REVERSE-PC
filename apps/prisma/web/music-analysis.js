@@ -147,14 +147,23 @@ export function tempoInWindow(peaks, start, end, previousBpm = 120) {
 
 export function estimateTempoSegments(peaks, duration, priorBpm = 120) {
   const fallback = Number.isFinite(priorBpm) ? clamp(priorBpm, 70, 185) : 120;
-  const qualified = (Array.isArray(peaks) ? peaks : []).filter(p => Number.isFinite(p.t) && Number.isFinite(p.strength));
+  const qualified = (Array.isArray(peaks) ? peaks : []).filter(p => Number.isFinite(p.t) && Number.isFinite(p.strength))
+    .sort((a,b)=>a.t-b.t);
   if (qualified.length < 6) return { bpm: fallback, segments: [{ t: 0, bpm: fallback, confidence: 0 }], variable: false };
   const whole = tempoInWindow(qualified, 0, Math.min(duration, 180), fallback);
   const globalBpm = whole?.bpm || fallback;
   if (duration < 16) return { bpm: globalBpm, segments: [{ t: 0, bpm: globalBpm, confidence: whole?.confidence || 0 }], variable: false };
+  // All onsets are ordered. Slide two indices through the song instead of
+  // rescanning EVERY onset for EACH overlapping 12-second tempo window.
+  // This preserves the exact periodicity calculation for each local window.
   const observations = [];
+  let left = 0, right = 0;
   for (let start = 0; start + 8 <= duration; start += 5) {
-    const local = tempoInWindow(qualified, start, Math.min(duration, start + 12), globalBpm);
+    const end = Math.min(duration, start + 12);
+    while (left < qualified.length && qualified[left].t < start) left++;
+    if (right < left) right = left;
+    while (right < qualified.length && qualified[right].t < end) right++;
+    const local = tempoInWindow(qualified.slice(left, right), start, end, globalBpm);
     if (local) observations.push({ ...local, t: start });
   }
   if (observations.length < 3) return { bpm: globalBpm, segments: [{ t: 0, bpm: globalBpm, confidence: whole?.confidence || 0 }], variable: false };
