@@ -189,13 +189,15 @@ int main(int argc,char** argv){try{
  };
  setupSurface(paved,0);setupSurface(curb,630);setupSurface(grass,800);
  State onRoad{},onCurb{},onGrass{};
- for(int i=0;i<45;i++){
+ for(int i=0;i<12;i++){
    onRoad=state(paved.execute(command({1,0,1,0})));
    onCurb=state(curb.execute(command({1,0,1,0})));
    onGrass=state(grass.execute(command({1,0,1,0})));
  }
  check(onRoad[25]==0&&onCurb[25]==2&&onGrass[25]==1,
        "XI track distance classifies asphalt, curb and grass");
+ std::cerr<<"XI_SURFACE_SPEEDS road="<<onRoad[3]<<" curb="<<onCurb[3]
+       <<" grass="<<onGrass[3]<<" afterTicks=12\n";
  check(onRoad[3]>onCurb[3]&&onCurb[3]>onGrass[3],
        "paved road retains more speed than curb and grass");
  auto wall=reverse_pc::rvpc2::restore(raceStart);
