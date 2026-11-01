@@ -3286,6 +3286,70 @@ meshvertex 1564 11 278 12
 meshtexuv 1564 2 2
 meshvertex 1565 -9 275 -21
 meshtexuv 1565 -1 -3
+meshvertex 1591 -125 30 -151
+meshtexuv 1591 -18 -22
+meshvertex 1592 -57 31 -154
+meshtexuv 1592 -8 -22
+meshvertex 1593 -33 132 -248
+meshtexuv 1593 -5 -35
+meshvertex 1594 -149 125 -238
+meshtexuv 1594 -21 -34
+meshvertex 1595 -91 26 -134
+meshtexuv 1595 -13 -19
+meshvertex 1596 -91 25 -180
+meshtexuv 1596 -13 -26
+meshvertex 1597 -91 153 -226
+meshtexuv 1597 -13 -32
+meshvertex 1598 -91 145 -116
+meshtexuv 1598 -13 -17
+meshvertex 1599 57 30 -151
+meshtexuv 1599 8 -22
+meshvertex 1600 125 31 -154
+meshtexuv 1600 18 -22
+meshvertex 1601 149 132 -248
+meshtexuv 1601 21 -35
+meshvertex 1602 33 125 -238
+meshtexuv 1602 5 -34
+meshvertex 1603 91 26 -134
+meshtexuv 1603 13 -19
+meshvertex 1604 91 25 -180
+meshtexuv 1604 13 -26
+meshvertex 1605 91 153 -226
+meshtexuv 1605 13 -32
+meshvertex 1606 91 145 -116
+meshtexuv 1606 13 -17
+meshvertex 1607 -62 21 -226
+meshtexuv 1607 -9 -32
+meshvertex 1608 -36 21 -226
+meshtexuv 1608 -5 -32
+meshvertex 1609 -24 12 -344
+meshtexuv 1609 -3 -49
+meshvertex 1610 -74 12 -344
+meshtexuv 1610 -11 -49
+meshvertex 1611 36 21 -226
+meshtexuv 1611 5 -32
+meshvertex 1612 62 21 -226
+meshtexuv 1612 9 -32
+meshvertex 1613 74 12 -344
+meshtexuv 1613 11 -49
+meshvertex 1614 24 12 -344
+meshtexuv 1614 3 -49
+meshvertex 1615 -101 3 -250
+meshtexuv 1615 -14 -36
+meshvertex 1616 -83 3 -250
+meshtexuv 1616 -12 -36
+meshvertex 1617 -83 3 -15
+meshtexuv 1617 -12 -2
+meshvertex 1618 -101 3 -15
+meshtexuv 1618 -14 -2
+meshvertex 1619 83 3 -250
+meshtexuv 1619 12 -36
+meshvertex 1620 101 3 -250
+meshtexuv 1620 14 -36
+meshvertex 1621 101 3 -15
+meshtexuv 1621 14 -2
+meshvertex 1622 83 3 -15
+meshtexuv 1622 12 -2
 meshvertex 1566 24 105 -8
 meshtexuv 1566 3 -1
 meshvertex 1567 -183 48 -93
@@ -4902,6 +4966,38 @@ localset 2074 800000
 localset 2075 800512
 localset 2076 801024
 localset 2077 801536
+localset 2103 814624
+localset 2104 815189
+localset 2105 815840
+localset 2106 816243
+localset 2107 816674
+localset 2108 817247
+localset 2109 817868
+localset 2110 818320
+localset 2111 818720
+localset 2112 819285
+localset 2113 819936
+localset 2114 820339
+localset 2115 820770
+localset 2116 821343
+localset 2117 821964
+localset 2118 822416
+localset 2119 822839
+localset 2120 823426
+localset 2121 824056
+localset 2122 824504
+localset 2123 824887
+localset 2124 825474
+localset 2125 826104
+localset 2126 826552
+localset 2127 827100
+localset 2128 827607
+localset 2129 828104
+localset 2130 828636
+localset 2131 829148
+localset 2132 829655
+localset 2133 830152
+localset 2134 830684
 localset 2078 801792
 localset 2079 802304
 localset 2080 802816
@@ -4931,7 +5027,11 @@ localset 11 0
 label actor
 localset 142 0
 localset 144 0
+localset 145 0
+localset 146 0
 localget r0 11
+cmp r0 44
+jge skid_actor
 cmp r0 4
 jge tree_actor
 cmp r0 0
@@ -5089,6 +5189,29 @@ load32 r2 $r8
 sub r2 65536
 sub r2 r3
 set r8 0
+jmp actor_ready
+label skid_actor
+set r0 1615
+mov r9 r0
+localset 132 r9
+set r0 1623
+mov r9 r0
+localset 134 r9
+localget r7 11
+sub r7 44
+mul r7 12
+add r7 410
+load8 r9 $r7
+cmp r9 0
+jle next_actor
+sub r7 10
+load32 r0 $r7
+sub r0 2000000
+add r7 4
+load32 r2 $r7
+sub r2 2000000
+add r7 4
+load16 r8 $r7
 label actor_ready
 mov r3 r8
 add r3 0
@@ -10057,12 +10180,71 @@ sub r1 14
 label garage_morph_done_515
 localget r9 11
 cmp r9 0
-jne vertex_no_pneumatic_rise_516
+jne suspension_done_516
 cmp r8 1535
-jge vertex_no_pneumatic_rise_516
+jge suspension_done_516
+cmp r8 279
+jlt suspension_body_517
+cmp r8 795
+jlt suspension_done_516
+label suspension_body_517
+load16 r9 112
+sub r9 32768
+mul r9 r0
+div r9 50000
+add r1 r9
+load8 r9 396
+div r9 3
+sub r1 r9
+load8 r9 129
+cmp r9 1
+jne suspension_brake_end_518
+mov r9 r2
+div r9 90
+sub r1 r9
+label suspension_brake_end_518
+load8 r9 382
+cmp r9 1
+jne suspension_boost_end_519
+mov r9 r2
+div r9 110
+add r1 r9
+label suspension_boost_end_519
+label suspension_done_516
+localget r9 11
+cmp r9 0
+jne fx_transform_done_520
+cmp r8 1591
+jlt smoke_transform_done_521
+cmp r8 1607
+jge smoke_transform_done_521
+load8 r9 395
+mul r1 r9
+div r1 16
+label smoke_transform_done_521
+cmp r8 1607
+jlt nitro_transform_done_522
+cmp r8 1615
+jge nitro_transform_done_522
+load32 r9 115
+mod r9 7
+sub r9 3
+add r2 r9
+label nitro_transform_done_522
+label fx_transform_done_520
+localget r9 11
+cmp r9 0
+jne vertex_no_pneumatic_rise_523
+cmp r8 1535
+jlt vertex_pneumatic_rise_524
+cmp r8 1607
+jlt vertex_no_pneumatic_rise_523
+cmp r8 1615
+jge vertex_no_pneumatic_rise_523
+label vertex_pneumatic_rise_524
 load16 r9 384
 add r1 r9
-label vertex_no_pneumatic_rise_516
+label vertex_no_pneumatic_rise_523
 localget r9 118
 sub r9 32768
 mul r9 r0
@@ -10143,6 +10325,36 @@ jlt actor_vertex
 localget r0 11
 cmp r0 0
 jne actor_shadow_stage
+localget r0 145
+cmp r0 1
+je actor_nitro_stage
+localset 145 1
+load8 r0 395
+cmp r0 0
+jle actor_nitro_stage
+set r0 1591
+mov r9 r0
+localset 132 r9
+set r0 1607
+mov r9 r0
+localset 134 r9
+jmp actor_vertex
+label actor_nitro_stage
+localget r0 146
+cmp r0 1
+je actor_air_stage
+localset 146 1
+load8 r0 382
+cmp r0 1
+jne actor_air_stage
+set r0 1607
+mov r9 r0
+localset 132 r9
+set r0 1615
+mov r9 r0
+localset 134 r9
+jmp actor_vertex
+label actor_air_stage
 localget r0 144
 cmp r0 1
 je actor_shadow_stage
@@ -10182,6 +10394,8 @@ div r11 16
 mul r9 85
 div r9 100
 localget r12 11
+cmp r12 44
+jge emit_skid
 cmp r12 4
 jge emit_tree
 localget r12 142
@@ -12118,7 +12332,7 @@ meshface 3019 3020 3021 241 r9 r10 r11 60
 meshface 3019 3022 3020 241 r9 r10 r11 60
 load8 r0 388
 cmp r0 0
-jle air_jet_pulse_done_517
+jle air_jet_pulse_done_525
 meshfacegradient 3559 3561 3560 244 12 r9 r10 r11 60
 meshfacegradient 3559 3560 3562 244 12 r9 r10 r11 60
 meshfacegradient 3559 3563 3560 244 12 r9 r10 r11 60
@@ -12135,7 +12349,30 @@ meshfacegradient 3577 3579 3578 244 12 r9 r10 r11 60
 meshfacegradient 3577 3578 3580 244 12 r9 r10 r11 60
 meshfacegradient 3577 3581 3578 244 12 r9 r10 r11 60
 meshfacegradient 3577 3578 3582 244 12 r9 r10 r11 60
-label air_jet_pulse_done_517
+label air_jet_pulse_done_525
+load8 r0 395
+cmp r0 0
+jle smoke_done_526
+load16 r0 384
+cmp r0 0
+jne smoke_done_526
+meshfacegradient 3639 3640 3641 244 12 r9 r10 r11 60
+meshfacegradient 3639 3641 3642 244 12 r9 r10 r11 60
+meshfacegradient 3643 3644 3645 244 12 r9 r10 r11 60
+meshfacegradient 3643 3645 3646 244 12 r9 r10 r11 60
+meshfacegradient 3647 3648 3649 244 12 r9 r10 r11 60
+meshfacegradient 3647 3649 3650 244 12 r9 r10 r11 60
+meshfacegradient 3651 3652 3653 244 12 r9 r10 r11 60
+meshfacegradient 3651 3653 3654 244 12 r9 r10 r11 60
+label smoke_done_526
+load8 r0 382
+cmp r0 1
+jne nitro_done_527
+meshfacegradient 3655 3656 3657 56 8 r9 r10 r11 60
+meshfacegradient 3655 3657 3658 56 8 r9 r10 r11 60
+meshfacegradient 3659 3660 3661 56 8 r9 r10 r11 60
+meshfacegradient 3659 3661 3662 56 8 r9 r10 r11 60
+label nitro_done_527
 jmp emit_shadow
 label emit_medium
 localget r12 126
@@ -12975,6 +13212,12 @@ meshfacegradienttex 3555 3556 3557 r12 12 1 3 r9 r10 r11 60
 set r12 228
 meshfacegradienttex 3555 3558 3556 r12 12 1 3 r9 r10 r11 60
 jmp emit_shadow
+label emit_skid
+meshfacegradient 3663 3664 3665 24 8 r9 r10 r11 60
+meshfacegradient 3663 3665 3666 24 8 r9 r10 r11 60
+meshfacegradient 3667 3668 3669 24 8 r9 r10 r11 60
+meshfacegradient 3667 3669 3670 24 8 r9 r10 r11 60
+jmp next_actor
 label emit_shadow
 set r12 24
 localget r0 11
@@ -13056,7 +13299,7 @@ sub r12 2000000
 localget r0 11
 add r0 1
 localset 11 r0
-cmp r0 44
+cmp r0 48
 jlt actor
 meshend
 halt
