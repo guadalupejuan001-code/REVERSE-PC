@@ -7,6 +7,7 @@ on:
       - 'scripts/emit-velocity-car-scene.cjs'
       - 'scripts/velocity-materials.cjs'
       - 'scripts/velocity-textures.cjs'
+      - 'scripts/velocity-textures-contract.cjs'
       - '.github/workflows/velocity-v04-author.yml'
 permissions:
   contents: write
