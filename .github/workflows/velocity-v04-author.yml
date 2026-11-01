@@ -1,7 +1,7 @@
 name: Reverse Velocity v1.7 — regenerate authored XI scenes
 on:
   push:
-    branches: [feature/velocity-v04-nitro-airjump-20261101]
+    branches: [feature/velocity-v04-nitro-airjump-20261101, feature/velocity-v18-garage-photo-hud-20261101]
     paths:
       - 'scripts/author-velocity-scene.cjs'
       - 'scripts/emit-velocity-car-scene.cjs'
@@ -13,7 +13,7 @@ on:
 permissions:
   contents: write
 concurrency:
-  group: velocity-v17-assets
+  group: velocity-authored-assets-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   authored-xi:
