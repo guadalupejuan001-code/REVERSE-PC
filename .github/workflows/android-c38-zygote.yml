@@ -47,6 +47,25 @@ jobs:
           assert.equal(p.original_image_unchanged,true);
           assert.equal(p.android_boot_claimed,false);
           NODE
+      - name: Require completed successful C36 run before downloading its checkpoint
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ready=0
+          for n in $(seq 1 40); do
+            payload=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/41352354242")
+            status=$(printf '%s' "$payload" | jq -r '.status')
+            conclusion=$(printf '%s' "$payload" | jq -r '.conclusion')
+            if [ "$status" = completed ]; then
+              test "$conclusion" = success || { echo "C36 did not complete successfully"; exit 1; }
+              ready=1
+              break
+            fi
+            sleep 30
+          done
+          test "$ready" -eq 1 || { echo "C36 artifact producer did not finish within this bounded CI run"; exit 1; }
+          echo "C36 completed successfully; the next step will authenticate all four checkpoint files."
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: reverse-c36-keymint-continuation
