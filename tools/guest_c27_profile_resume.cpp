@@ -35,7 +35,7 @@ int main(int argc,char** argv){try{
   limits.checkpoint_ms=override_budget("REVERSE_PC_C39_CHECKPOINT_MS",180000,60000);
   limits.checkpoint_instructions=override_budget("REVERSE_PC_C39_CHECKPOINT_INSTRUCTIONS",300000000,100000000);
   std::cerr<<"REVERSE_C39_HOST_POLICY {\"chunk\":"<<limits.chunk<<",\"checkpoint_ms\":"<<limits.checkpoint_ms
-    <<",\"checkpoint_instructions\":"<<limits.checkpoint_instructions<<"}\\n";
+    <<",\"checkpoint_instructions\":"<<limits.checkpoint_instructions<<"}\n";
   require(!std::filesystem::exists(argv[4]),"Output journal already exists");
   std::cerr<<"REVERSE_C27_PROFILE_HOST_PHASE {\"phase\":\"verify_original_checkpoint\"}\n";
   const auto input=guest_read_file(argv[1],MinimalGuest::max_explicit_adaptive_snapshot);
