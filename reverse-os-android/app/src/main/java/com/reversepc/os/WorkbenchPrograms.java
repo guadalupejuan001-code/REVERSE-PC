@@ -60,15 +60,15 @@ final class WorkbenchPrograms {
     static void seedGraphics(Context context,WorkspaceFiles files,android.content.SharedPreferences prefs)throws Exception{
         // Each release uses its own flag. A previous 1.2 seed must not prevent
         // PRISMA 2.0 from being published into an existing REVERSE installation.
-        if(prefs.getBoolean("prisma-2.2-seeded",false))return;
+        if(prefs.getBoolean("prisma-2.3-seeded",false))return;
         final byte[] image;
         try(InputStream in=context.getAssets().open("native-apps/PRISMA.rxe")){image=read(in);}
         catch(java.io.FileNotFoundException optional){return;}
         JSONObject metadata=info(image);
         if(!"graphics".equals(metadata.optString("ui"))||
             !"org.reverse.prisma".equals(metadata.optString("app_id"))||
-            !"2.2.0".equals(metadata.optString("app_version")))
-            throw new IOException("El paquete PRISMA 2.2 no coincide con el perfil esperado");
+            !"2.3.0".equals(metadata.optString("app_version")))
+            throw new IOException("El paquete PRISMA 2.3 no coincide con el perfil esperado");
         final String bundledHash=identity(image);
         boolean present=false;
         for(WorkspaceFiles.Entry entry:files.list("Aplicaciones"))
@@ -103,7 +103,8 @@ final class WorkbenchPrograms {
              .putBoolean("prisma-1.2-seeded",true)
              .putBoolean("prisma-2.0-seeded",true)
              .putBoolean("prisma-2.1-seeded",true)
-             .putBoolean("prisma-2.2-seeded",true).apply();
+             .putBoolean("prisma-2.2-seeded",true)
+             .putBoolean("prisma-2.3-seeded",true).apply();
     }
     JSONObject graphicsLaunch(JSONObject request)throws Exception{
         byte[] image=checked(request);JSONObject metadata=info(image);
