@@ -61,12 +61,13 @@ int main(){try{
   need(machineInfo.cubes==1&&machineInfo.surface_pixels>0,"arrowless body was not rendered");
   // ABI v2 adds material IDs in the formerly reserved 12th descriptor float.
   // ABI v1 retains its original strict validation and visual output.
+  const auto baselinePixels=render.render(P::Frame(packet)).surface_pixels;
   const auto baseline=render.rgba();
   for(unsigned material=0;material<=3;++material){
     auto improved=packet;improved[0]=2.f;improved[P::header+11]=static_cast<float>(material);
     const auto frame=P::Frame(improved);
     const auto& metrics=render.render(frame);
-    need(metrics.surface_pixels==machineInfo.surface_pixels,
+    need(metrics.surface_pixels==baselinePixels,
         "material changed conservative surface coverage");
     const auto rgba=render.rgba();
     need(rgba.size()==baseline.size(),"material changed framebuffer dimensions");
