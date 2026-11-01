@@ -8,6 +8,7 @@ import {pathToFileURL} from 'node:url';
 import {auditGkiRvg} from './audit_gki_rvg.mjs';
 import {rvgMemoryLines} from './rvg_memory_lines.mjs';
 import {observePid1BootProperty} from './android_live_property.mjs';
+import {inspectBinderQueues} from './android_binder_snapshot_probe.mjs';
 const KERNEL='f722bdd809bfd3485917a564b053b8a6d4938408734091f420c3297a8e3b20c8';
 const VBASE=0xffffffc080000000n, RAM=0x40000000n;
 const MASK=0xffffffffffffffffn, PA=0x0000fffffffff000n;
@@ -240,6 +241,12 @@ export function observeAndroidKernel(bytes,expectedCheckpointSha,options){
   Object.assign(capacity,{managed_pages:Number(total),reserved_pages:Number(reserve),global_free_pages:Number(available),managed_bytes:Number(total*4096n),global_free_bytes:Number(available*4096n),vmstat_per_cpu_batches_may_lag:true,android_framework_capacity_proven:false});
  }catch(e){capacity.read_error=e.message;}
  const liveProperty=options?.liveProperties?observePid1BootProperty({tasks,read,physicalByte:physical,physical64:phys64,translateKernel:translate,userAddressBits:64-Number(tcr&63n),layout:name=>Object.fromEntries(Object.entries(members(type(name))).map(([key,member])=>{const t=resolveType(types[member.type]);return [key,{offset:member.offset,count:t.kind===3?kernel.readUInt32LE(t.at+20):null}];}))}):undefined;
+ let binderQueues;
+ if(options?.binderDebug){
+  try{
+   binderQueues=inspectBinderQueues({read,globalAddress:symbol('binder_procs'),layouts:binderLayoutDebug.layouts,tasks});
+  }catch(e){binderQueues={schema:'reverse-binder-live-queues-v1',read_only:true,error:e.message};}
+ }
  let liveSecurity;
  if(options?.liveProperties){
   liveSecurity={read_only:true,btf_layout_verified:false,selinux_initialized:false,selinux_enforcing:false,policy_present:false};
@@ -252,7 +259,7 @@ export function observeAndroidKernel(bytes,expectedCheckpointSha,options){
   }catch(error){liveSecurity.read_error=error.message;liveSecurity.btf_layout_verified=false;}
  }
  check(createHash('sha256').update(bytes).digest('hex')===originalSha,'observation mutated input');
- return {...(binderLayoutDebug?{binder_layout_debug:binderLayoutDebug}:{}),...(liveProperty?{live_boot_property:liveProperty,live_kernel_security:liveSecurity}:{}),status:'read_only_kernel_observation',checkpoint_sha256:originalSha,kernel_sha256:KERNEL,instructions:provenance.instructions,pc:hex(u(2)),pc_symbol:nearest(u(2)),next_opcode:hex(read(u(2),4)),physical_pc:hex(translate(u(2))),ticks:m(27).toString(),exceptions:m(28).toString(),current_task:currentTask===null?null:hex(currentTask),current_task_source:currentTaskSource,current_task_lookup:currentLookup,current_task_read_error:currentTaskError,current_pid:currentDetails?.pid??null,current_task_details:currentDetails,capacity,task_layout:layout,task_count:tasks.length,process_leader_count:tasks.length,all_threads_enumerated:false,tasks,trace_event_sem:{address:hex(sem),count:hex(countValue),owner:hex(owner),owner_pid:ownerTask?.pid??null},initramfs:globals,rootfs_file:rootfsFile,android_init_observed:false,android_boot:false,input_unchanged:true};
+ return {...(binderQueues?{binder_live_queues:binderQueues}:{}),...(binderLayoutDebug?{binder_layout_debug:binderLayoutDebug}:{}),...(liveProperty?{live_boot_property:liveProperty,live_kernel_security:liveSecurity}:{}),status:'read_only_kernel_observation',checkpoint_sha256:originalSha,kernel_sha256:KERNEL,instructions:provenance.instructions,pc:hex(u(2)),pc_symbol:nearest(u(2)),next_opcode:hex(read(u(2),4)),physical_pc:hex(translate(u(2))),ticks:m(27).toString(),exceptions:m(28).toString(),current_task:currentTask===null?null:hex(currentTask),current_task_source:currentTaskSource,current_task_lookup:currentLookup,current_task_read_error:currentTaskError,current_pid:currentDetails?.pid??null,current_task_details:currentDetails,capacity,task_layout:layout,task_count:tasks.length,process_leader_count:tasks.length,all_threads_enumerated:false,tasks,trace_event_sem:{address:hex(sem),count:hex(countValue),owner:hex(owner),owner_pid:ownerTask?.pid??null},initramfs:globals,rootfs_file:rootfsFile,android_init_observed:false,android_boot:false,input_unchanged:true};
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  try{check(process.argv[2],'usage: node android_kernel_observer.mjs checkpoint.rvg [expected_sha256]');const maxSnapshotBytes=process.argv[4]===undefined?256*1024*1024:Number(process.argv[4]);check(Number.isSafeInteger(maxSnapshotBytes)&&maxSnapshotBytes>=360&&maxSnapshotBytes<=1024*1024*1024,'invalid host transport bound');check(statSync(process.argv[2]).size<=maxSnapshotBytes,'oversized checkpoint');console.log(JSON.stringify(observeAndroidKernel(readFileSync(process.argv[2]),process.argv[3],{maxSnapshotBytes,liveProperties:process.argv.includes('--live-properties'),binderDebug:process.argv.includes('--binder-probe')}),null,2));}catch(e){console.error(e.message);process.exitCode=1;}
