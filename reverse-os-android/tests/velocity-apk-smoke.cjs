@@ -180,7 +180,10 @@ function fullscreenHintControl(items){
 }
 function hierarchy(){
   let why='';
-  for(let attempt=0;attempt<2;attempt++){
+  // UiAutomator can temporarily return a null root immediately after
+  // immersive orientation changes or dismissing SystemUI education. Retry
+  // only a bounded number of actual hierarchy failures; keep crash checks.
+  for(let attempt=0;attempt<6;attempt++){
     const p=run(['shell','uiautomator','dump','--compressed','/sdcard/velocity-smoke.xml'],
       {timeout:12000,allowFailure:true});
     if(!p.error&&p.status===0&&!/ERROR|Exception|could not/i.test(String(p.stdout)+String(p.stderr))){
@@ -193,7 +196,7 @@ function hierarchy(){
           fs.writeFileSync(path.join(out,'fullscreen-education-ui.xml'),xml);
           tapNode(hint);report.fullscreenHintDismissed=true;
           check(true,'dismissed known SystemUI fullscreen education');
-          sleep(300);continue;
+          sleep(350);attempt--;continue; // Overlay is not a failed app hierarchy.
         }
         const app=all.filter(x=>x.package===pkg);
         if(app.length){
@@ -202,7 +205,9 @@ function hierarchy(){
         }
       }
     }
-    why=String(p.error||p.stdout||p.stderr).slice(-1200);sleep(250);
+    why=String(p.error||p.stdout||p.stderr).slice(-1200);
+    if(/null root node/i.test(why))checkNoFailure(logs());
+    sleep(350);
   }
   throw Error('Actual Android UI hierarchy unavailable: '+why);
 }
