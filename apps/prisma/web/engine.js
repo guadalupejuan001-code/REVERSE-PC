@@ -216,27 +216,54 @@ export class Scene {
       ctx.strokeStyle='rgba('+rgb+','+Math.min(.20,cue.beat*.13)+')';
       ctx.lineWidth=1.5;ctx.stroke();
     }
-    this.stageExplosions=this.stageExplosions.filter(event=>time>=event.t&&time-event.t<=.8);
-    for(const event of this.stageExplosions) {
-      const age=time-event.t,phase=age/.8;
+    // Charging is only visual anticipation for an earned scheduled event.
+    // It does not generate another beat or a random explosion.
+    if(cue.charge && !reduced){
+      const p=this.projection(0,0,2,preview),progress=cue.charge.progress;
+      const radius=Math.min(this.width,this.height)*(.035+.035*progress);
+      const rgb=hexRGB(colors[cue.charge.combo%20===0?1:0]);
+      ctx.beginPath();ctx.arc(p.x,p.y,radius,0,Math.PI*2);
+      ctx.strokeStyle='rgba('+rgb+','+(.045+progress*.11)+')';
+      ctx.lineWidth=1.4;ctx.stroke();
+    }
+    // The cut milestone prepares the event, but ONLY the decoded musical
+    // accent releases it. Geometry is a function of the exact audio time.
+    for(const event of this.stageExplosions){
+      const fx=spectacleGeometry(event,time,{
+        reduced,battery:pose.quality==='battery'
+      });
+      if(!fx)continue;
       const center=this.projection(0,0,2,preview);
-      const size=Math.min(this.width,this.height)*(.09+.45*phase);
+      const unit=Math.min(this.width,this.height)*.82;
       const rgb=hexRGB(colors[event.combo%20===0?1:0]);
-      const alpha=(1-phase)*(reduced?.16:Math.min(.64,.28+event.strength*.32));
-      ctx.beginPath();ctx.arc(center.x,center.y,size,0,Math.PI*2);
-      ctx.lineWidth=reduced?1.5:2.5+(1-phase)*3;
-      ctx.strokeStyle='rgba('+rgb+','+alpha+')';ctx.stroke();
-      if(!reduced) {
-        const count=Math.min(32,12+Math.floor(event.combo/10));
-        for(let i=0;i<count;i++) {
-          const angle=(i+(event.combo%11)*.09)*2.3999632297;
-          const distance=size*(.3+(i%5)*.14);
-          const px=center.x+Math.cos(angle)*distance,py=center.y+Math.sin(angle)*distance;
-          ctx.beginPath();ctx.moveTo(px,py);
-          ctx.lineTo(px+Math.cos(angle)*(9+phase*18),py+Math.sin(angle)*(9+phase*18));
-          ctx.strokeStyle='rgba('+rgb+','+(alpha*.68)+')';ctx.lineWidth=1.8;ctx.stroke();
+      ctx.save();ctx.globalCompositeOperation='lighter';
+      for(const ring of fx.rings){
+        ctx.beginPath();ctx.arc(center.x,center.y,Math.max(2,ring.radius*unit),0,Math.PI*2);
+        ctx.strokeStyle='rgba('+rgb+','+ring.alpha+')';
+        ctx.lineWidth=ring.width;ctx.stroke();
+      }
+      if(fx.drop && !reduced && fx.phase<.65){
+        for(const side of [-1,1]){
+          const span=unit*(.16+fx.phase*.34);
+          ctx.beginPath();ctx.moveTo(center.x+side*span*.28,center.y-unit*.14);
+          ctx.lineTo(center.x+side*span,center.y-unit*.45);
+          ctx.lineTo(center.x+side*span*.67,center.y+unit*.26);
+          ctx.closePath();
+          ctx.fillStyle='rgba('+rgb+','+(fx.opacity*.075)+')';ctx.fill();
         }
       }
+      for(const shard of fx.shards){
+        const cx=center.x+shard.x*unit,cy=center.y+shard.y*unit;
+        const dx=Math.cos(shard.angle),dy=Math.sin(shard.angle);
+        const reach=Math.max(2,shard.length*unit),width=Math.max(.7,shard.width*unit);
+        ctx.beginPath();
+        ctx.moveTo(cx+dx*reach,cy+dy*reach);
+        ctx.lineTo(cx-dx*reach*.55-dy*width,cy-dy*reach*.55+dx*width);
+        ctx.lineTo(cx-dx*reach*.55+dy*width,cy-dy*reach*.55-dx*width);
+        ctx.closePath();
+        ctx.fillStyle='rgba('+rgb+','+Math.min(.82,shard.alpha)+')';ctx.fill();
+      }
+      ctx.restore();
     }
     ctx.restore();
   }
