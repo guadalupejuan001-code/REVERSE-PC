@@ -4,6 +4,7 @@ import { seeded } from './audio.js';
 import { MusicStageDirector, makeIntelligentChart } from './music-stage.js';
 import { makeConcertProgram, concertPose, concertNativeParts, RIG_MAX_CUBOIDS } from './concert-rig.js';
 import { createSpectacleEvent, pruneSpectacles, spectacleEnvelope, spectacleGeometry, SPECTACLE_MAX_EVENTS } from './combo-spectacle.js';
+import { nextVisualQuality, visualBudget } from './performance-policy.js';
 export const PALETTES = { coral: ['#63ffb4','#ff5074'], violet: ['#63ffb4','#bd8bff'], ice: ['#7aeaff','#ff5074'] };
 export const DIRECTIONS = [{x:0,y:-1},{x:1,y:0},{x:0,y:1},{x:-1,y:0}];
 export function makeChart(peaks, level, seed = 7721, music = null) {
@@ -23,7 +24,7 @@ export class Scene {
     this.canvas = canvas; this.ctx = canvas.getContext('2d', { alpha:true, desynchronized:true }); this.settings = getSettings;
     this.width = 0; this.height = 0; this.particles = []; this.shards = []; this.trails = new Map(); this.pulse = 0; this.energy = 0; this.flash = 0; this.shake = 0; this.musicStage = null; this.stageExplosions = []; this.concertProgram = makeConcertProgram(null); this.rigPose = null; this.stageShow = null;
     const random = seeded(6631); this.stars = Array.from({length:100}, () => ({x:random(),y:random(),a:.15+random()*.5,s:random()>.9?1.4:.6}));
-    this.qualityScale=1;this.frameTotal=0;this.frameCount=0;this.cooldown=0;this.view=new Float32Array(4);this.paletteKey='';this.rgb=[];this.diagnostics=new URLSearchParams(location.search).has('diagnostics');this.cpuTimes=[];
+    this.qualityScale=1;this.frameTotal=0;this.frameCount=0;this.cooldown=0;this.visualState={quality:'balanced',slowFrames:0,fastFrames:0,cooldownUntil:0};this.view=new Float32Array(4);this.paletteKey='';this.rgb=[];this.diagnostics=new URLSearchParams(location.search).has('diagnostics');this.cpuTimes=[];
     this.gpu=NativeXRender.create()||(new URLSearchParams(location.search).get('renderer')==='canvas'?null:CubeGPU.create(canvas.parentElement));
     canvas.dataset.renderer=this.gpu?.native?'ether-render-x-cpu':this.gpu?'graphics-cosmic-webgl2':'canvas';
     if(this.gpu)this.gpu.onFailure=()=>{this.gpu.canvas.remove();this.gpu=null;canvas.dataset.renderer='canvas';this.resize();};
@@ -54,6 +55,7 @@ export class Scene {
     this.frameTotal+=frameSeconds;this.frameCount++;
     if(this.frameCount<90)return;
     const mean=this.frameTotal/this.frameCount;this.frameCount=0;this.frameTotal=0;
+    this.visualState=nextVisualQuality({...this.visualState,now,frameMs:mean*1000});
     if(now<this.cooldown)return;
     const next=mean>.022?Math.max(.6,this.qualityScale-.15):mean<.0174?Math.min(1,this.qualityScale+.1):this.qualityScale;
     if(next!==this.qualityScale){this.qualityScale=next;this.cooldown=now+8000;this.resize();}
@@ -78,7 +80,8 @@ export class Scene {
     const count=reduced?4:qualityMode==='battery'?6:
       qualityMode==='auto'&&this.qualityScale<.76?9:qualityMode==='high'?27:23;
     for (let i=0;i<count;i++) {const a=Math.random()*Math.PI*2,s=70+Math.random()*270;this.particles.push({x:p.x,y:p.y,vx:Math.cos(a)*s+nx*60,vy:Math.sin(a)*s+ny*40,life:.5+Math.random()*.4,size:1+Math.random()*2,color});}
-    const maxParticles=reduced||qualityMode==='battery'?90:qualityMode==='auto'&&this.qualityScale<.76?180:330;
+    const maxParticles=Math.min(reduced||qualityMode==='battery'?90:qualityMode==='auto'&&this.qualityScale<.76?180:330,
+      visualBudget(qualityMode==='auto'?this.visualState.quality:qualityMode,reduced).particles);
     if(this.particles.length>maxParticles)this.particles.splice(0,this.particles.length-maxParticles);
     if (this.shards.length>50) this.shards.splice(0,this.shards.length-50);
   }
@@ -295,7 +298,7 @@ export class Scene {
     this.stageShow={charge:stageCue.charge||null,
       release:stageCue.explosion?stageCue.explosion.combo:null,
       active:this.stageExplosions.length?this.stageExplosions[this.stageExplosions.length-1].tier:null};
-    const quality=this.settings().quality==='auto'&&this.qualityScale<.78?'battery':this.settings().quality;
+    const quality=this.settings().quality==='auto'?(this.qualityScale<.78?'battery':this.visualState.quality==='high'?'high':'auto'):this.settings().quality;
     const rigPose=concertPose(this.concertProgram,time,stageCue,{quality,reduced:this.settings().effects});
     this.rigPose=rigPose;
     if(preview){
