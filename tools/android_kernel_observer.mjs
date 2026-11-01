@@ -7,7 +7,7 @@ import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {auditGkiRvg} from './audit_gki_rvg.mjs';
 import {rvgMemoryLines} from './rvg_memory_lines.mjs';
-import {observePid1BootProperty} from './android_live_property.mjs';
+import {observePid1BootProperty,mountedFilePath} from './android_live_property.mjs';
 import {inspectBinderQueues} from './android_binder_snapshot_probe.mjs';
 const KERNEL='f722bdd809bfd3485917a564b053b8a6d4938408734091f420c3297a8e3b20c8';
 const VBASE=0xffffffc080000000n, RAM=0x40000000n;
@@ -166,6 +166,41 @@ export function observeAndroidKernel(bytes,expectedCheckpointSha,options){
    item.exit_state=Number(read(pointer+BigInt(task.exit_state.offset),4));
    const mm=read(pointer+BigInt(task.mm.offset));check(mm===0n||mm>=0xffff000000000000n,'invalid task mm');
    item.has_user_mm=mm!==0n;
+  }
+  // Read the saved userspace syscall frame of sleeping processes.
+  // A kernel call frame named ioctl alone does not establish Binder IPC.
+  if(options?.binderDebug&&item.has_user_mm&&!current&&/^(odsign|keystore2|android\.hardwar|servicemanager|hwservicemanage)$/.test(item.name)){
+   try{
+    check(task.stack&&ptregs.regs&&ptregs.syscallno&&ptregs.pc,'ARM64 syscall BTF layout incomplete');
+    const base=read(pointer+BigInt(task.stack.offset));
+    check(base>=0xffff000000000000n,'Invalid task stack base');
+    const size=type('pt_regs').type;
+    const layouts=[16384,32768,8192,65536],candidates=[];
+    for(const threadSize of layouts){
+     if(sp<base||sp>=base+BigInt(threadSize)||size>threadSize)continue;
+     try{
+      const at=base+BigInt(threadSize-size),syscall=Number(read(at+BigInt(ptregs.syscallno.offset),4));
+      const userPc=read(at+BigInt(ptregs.pc.offset));
+      const arg=i=>read(at+BigInt(ptregs.regs.offset+i*8));
+      candidates.push({thread_stack_bytes:threadSize,number:syscall,user_pc:hex(userPc),fd:Number(arg(0)),request:hex(arg(1)),third_argument:hex(arg(2))});
+     }catch(e){candidates.push({thread_stack_bytes:threadSize,error:e.message});}
+    }
+    const ioctl=candidates.find(x=>x.number===29&&x.fd>=0&&x.fd<65536);
+    item.guest_syscall=ioctl??{unverified:true,candidates};
+    if(ioctl&&task.files){
+     try{
+      const files=read(pointer+BigInt(task.files.offset)),filesLayout=members(type('files_struct')),
+       fdtableLayout=members(type('fdtable'));
+      const table=read(files+BigInt(filesLayout.fdt.offset)),max=Number(read(table+BigInt(fdtableLayout.max_fds.offset),4));
+      check(ioctl.fd<max&&max<=1048576,'IOCTL fd out of bounds');
+      const entries=read(table+BigInt(fdtableLayout.fd.offset));
+      const file=read(entries+BigInt(8*ioctl.fd));
+      check(file>=0xffff000000000000n,'IOCTL fd missing file');
+      item.guest_syscall.file=mountedFilePath(file,{read,layout:name=>Object.fromEntries(Object.entries(members(type(name))).map(([k,v])=>[k,{offset:v.offset}]))});
+      item.guest_syscall.file_pointer=hex(file);
+     }catch(e){item.guest_syscall.fd_path_error=e.message;}
+    }
+   }catch(e){item.guest_syscall={unverified:true,error:e.message};}
   }
   for(const name of ['on_rq','on_cpu'])if(task[name])item[name]=Number(read(pointer+BigInt(task[name].offset),4));
   item.accounting={};
