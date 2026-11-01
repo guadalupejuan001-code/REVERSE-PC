@@ -48,6 +48,11 @@ struct Input{int gas=0,brake=0,steer=1,drift=0,nitro=0,jump=0;};
 struct Point{double x,z;};
 double yaw(double dx,double dz){double value=std::atan2(dx,dz)*4096/(2*std::acos(-1.));if(value<0)value+=4096;return value;}
 double difference(double a,double b){double d=a-b;while(d>2048)d-=4096;while(d< -2048)d+=4096;return d;}
+unsigned observed8(const Runtime& runtime,unsigned address){
+ const auto a=runtime.memory().read(std::to_string(address),runtime.core());
+ check(a.deterministic,"XI effect memory must be classical and observable");
+ return unsigned(a.value);
+}
 std::uint16_t observed16(const Runtime& runtime,unsigned address){const auto a=runtime.memory().read(std::to_string(address),runtime.core()),b=runtime.memory().read(std::to_string(address+1),runtime.core());check(a.deterministic&&b.deterministic,"classical input observation");return unsigned(a.value)+256u*b.value;}
 int main(int argc,char** argv){try{
  const std::filesystem::path assets=argc>1?argv[1]:"reverse-os-android/app/src/main/assets/velocity";
@@ -81,6 +86,8 @@ int main(int argc,char** argv){try{
  }
  check(boosted[3]>normal[3]+500&&boosted[16]<1000&&boosted[17]==1,
        "nitro accelerates the real XI vehicle and consumes energy");
+ write(out/"fx-nitro.rvp",reverse_pc::rvpc2::save(turbo));
+ check(observed8(turbo,382)==1,"FX exhaust gate follows actual XI nitro pressure");
  for(int i=0;i<8;i++)boosted=state(turbo.execute(command({1,0,1,0,0,0})));
  check(boosted[17]==0&&boosted[16]>825,"nitro regenerates when released");
  auto pneumatic=reverse_pc::rvpc2::restore(raceStart);
@@ -92,6 +99,10 @@ int main(int argc,char** argv){try{
    airborne=state(pneumatic.execute(command({1,0,1,0,0,1})));
    apex=std::max(apex,int(airborne[18]));
    landed|=airborne[21]==1;
+   if(airborne[21]==1){
+     check(observed8(pneumatic,396)==18,"actual XI landing compresses transient suspension");
+     write(out/"fx-landing.rvp",reverse_pc::rvpc2::save(pneumatic));
+   }
  }
  check(apex>=100&&landed&&airborne[18]==0,
        "gravity brings chassis down; a held jump cannot auto-repeat");
@@ -119,6 +130,18 @@ int main(int argc,char** argv){try{
  for(int i=0;i<20;i++)brakingReverse=state(reverseRuntime.execute(reverseBrake));
  check(brakingReverse[3]<movingReverse,"reverse braking reduces actual world-space velocity");
  const auto movingSeed=reverse_pc::rvpc2::save(accelerated);
+ // Real driving histories: handbrake records tire tracks in Ether,
+ // and released drift preserves them briefly after smoke fades.
+ auto skid=reverse_pc::rvpc2::restore(movingSeed);
+ for(int i=0;i<7;i++)state(skid.execute(command({1,0,1,1})));
+ const auto plume=observed8(skid,395);
+ check(plume>0&&plume<=16&&observed8(skid,410)>0,
+       "road grip and drift create actual skid history and wheel smoke");
+ write(out/"fx-drift.rvp",reverse_pc::rvpc2::save(skid));
+ for(int i=0;i<20;i++)state(skid.execute(command({1,0,1,0})));
+ check(observed8(skid,395)==0&&observed8(skid,410)>0,
+       "smoke fades after releasing drift but marks remain world-anchored");
+ write(out/"fx-skids.rvp",reverse_pc::rvpc2::save(skid));
  auto brake=reverse_pc::rvpc2::restore(movingSeed),coast=reverse_pc::rvpc2::restore(movingSeed),
   powered=reverse_pc::rvpc2::restore(movingSeed),turn=reverse_pc::rvpc2::restore(movingSeed),
   drift=reverse_pc::rvpc2::restore(movingSeed);
