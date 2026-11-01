@@ -12,8 +12,9 @@ const NAME='sys.boot_completed',MAGIC=0x504f5250,VERSION=0xfc6ed0ab;
 export function inspectBootPropertyPage(page){
  assert.ok(Buffer.isBuffer(page)&&page.length===4096);return inspectBootPropertyArea(page);
 }
-export function inspectBootPropertyArea(page,{diagnostics=false}={}){
+export function inspectBootPropertyArea(page,{diagnostics=false,name=name}={}){
  assert.ok(Buffer.isBuffer(page)&&page.length>=4096&&page.length<=1048576&&page.length%4096===0);
+ assert.ok(typeof name==='string'&&name.length>=1&&name.length<=90&&/^[a-zA-Z0-9._-]+$/.test(name),'Invalid target property');
  if(page.readUInt32LE(8)!==MAGIC||page.readUInt32LE(12)!==VERSION)return null;
  const used=page.readUInt32LE(0);
  if(used<112||used>1048576-128||used%4||!page.subarray(16,128).every(b=>b===0))return null;
@@ -36,7 +37,7 @@ export function inspectBootPropertyArea(page,{diagnostics=false}={}){
  };
  try{
   let cur=node(0);if(cur.name!==''||cur.left||cur.right||cur.prop)throw Error('Invalid root');
-  for(const token of NAME.split('.')){
+  for(const token of name.split('.')){
    let off=cur.children;if(!off)return {status:'property_not_found'};
    for(;;){
     cur=node(off);const cmp=token.length-cur.name.length||(token<cur.name?-1:token>cur.name?1:0);
@@ -44,13 +45,13 @@ export function inspectBootPropertyArea(page,{diagnostics=false}={}){
    }
   }
   if(!cur.prop)return {status:'property_not_found'};
-  const at=extent(cur.prop,96+NAME.length+1),serial=page.readUInt32LE(at),length=serial>>>24;
+  const at=extent(cur.prop,96+name.length+1),serial=page.readUInt32LE(at),length=serial>>>24;
   if(serial&1)return {status:'property_update_in_progress'};
-  if(serial&0x10000||length>=92||page[at+4+length]!==0||page[at+96+NAME.length]!==0)return {status:'invalid_property'};
-  if(page.toString('latin1',at+96,at+96+NAME.length)!==NAME)return {status:'invalid_property_name'};
+  if(serial&0x10000||length>=92||page[at+4+length]!==0||page[at+96+name.length]!==0)return {status:'invalid_property'};
+  if(page.toString('latin1',at+96,at+96+name.length)!==name)return {status:'invalid_property_name'};
   const value=page.toString('latin1',at+4,at+4+length);
   if(!/^[\x20-\x7e]*$/.test(value))return {status:'invalid_property'};
-  return {status:'property_observed',name:NAME,value,serial,boot_completed_property_in_ram:value==='1'};
+  return {status:'property_observed',name,value,serial,boot_completed_property_in_ram:name===NAME&&value==='1'};
  }catch(e){return {status:incomplete?'needs_virtual_page_mapping':'invalid_property_area',...(diagnostics?{diagnostic_error:e.message}:{})};}
 }
 export function scanGuestBootProperty(state,expectedSha,options){
