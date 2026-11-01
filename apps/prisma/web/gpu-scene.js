@@ -49,7 +49,7 @@ void main(){
  float light=.12+max(dot(vNormal,normalize(vec3(-.4,-.6,-1.))),0.)*.20;
  vec3 base=vColor*(light+(.5-uv.y)*.09)+vec3(.003,.010,.006);
  vec3 color=mix(base,vColor*(.75+vHot*.38),max(edge,inset));
- if(vNormal.z<-.5){
+ if(vNormal.z<-.5 && vDirection>=0.){
   float a=vDirection*1.570796327;mat2 r=mat2(cos(a),-sin(a),sin(a),cos(a));vec2 p=r*uv;
   float arrow=min(segment(p,vec2(0.,-.155),vec2(0.,.175)),min(segment(p,vec2(-.14,-.015),vec2(0.,-.155)),segment(p,vec2(.14,-.015),vec2(0.,-.155))));
   float ink=1.-smoothstep(.009,.016+aa,arrow);
