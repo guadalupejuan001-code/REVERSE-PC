@@ -70,6 +70,8 @@ Siguiente: Ciclo 03 (mejorar brazos mecánicos, cinemática y visualización con
 - tests/prisma-concert-rig.mjs: prueba reproducible con sección calma/ascenso/pico/descanso, continuidad en BPM variable, seis articulaciones, congelación reducida, modo batería, validez ABI y prioridad de las notas en el límite de 64.
 - tests/prisma_xrender.cpp: cobertura nueva para los cuerpos escénicos con dirección -1 y rechazo de campos fuera de rango. Instrumentación Android valida la presencia de cuerpos nativos en la escena sin presuponer el mismo número para todos los ajustes.
 
+Los focos proyectan también conos translúcidos y pequeñas huellas de luz en el escenario. Son polígonos 2D con degradados derivados del movimiento musical, no un shader volumétrico oculto; su intensidad está acotada para no tapar las notas.
+
 **Pendientes de otros ciclos:** geometría 3D no cúbica, superficies metálicas PBR, niebla volumétrica real y benchmark de Android físico. El navegador WebGL no es Ether Render X. La apariencia de varillas y vigas del ciclo 03 se compone en el overlay, pero sus cuboides no se falsifican: provienen del renderizador nativo.
 
 
