@@ -1,7 +1,7 @@
 name: REVERSE VELOCITY installable APK
 on:
   push:
-    branches: [feature/velocity-v04-nitro-airjump-20261101, feature/velocity-regraphics-20261030, feature/regraphics-frame-cache-20261101, feature/regraphics-ether-spatial-kernel-20261101, feature/velocity-cockpit-nature-20261031, feature/velocity-xi-renderer-only-20261031, feature/regraphics-tile-native-20261031]
+    branches: [feature/velocity-regraphics-20261030, feature/regraphics-frame-cache-20261101, feature/regraphics-ether-spatial-kernel-20261101, feature/velocity-cockpit-nature-20261031, feature/velocity-xi-renderer-only-20261031, feature/regraphics-tile-native-20261031]
     paths:
       - '.github/workflows/velocity-apk.yml'
       - 'reverse-os-android/app/build.gradle'
@@ -26,6 +26,15 @@ on:
       - 'scripts/velocity-car-mesh.cjs'
       - 'scripts/velocity-materials.cjs'
       - 'scripts/velocity-car-contract.cjs'
+  # Pull request runs can restore the trusted release key scoped to the base
+  # branch. A feature-branch push cannot, and must never silently sign an
+  # incompatible update with an unrelated newly generated certificate.
+  pull_request:
+    branches: [feature/velocity-regraphics-20261030]
+    paths:
+      - '.github/workflows/velocity-apk.yml'
+      - 'reverse-os-android/**'
+      - 'scripts/**'
   workflow_dispatch:
 permissions: {contents: read}
 concurrency:
@@ -33,6 +42,8 @@ concurrency:
   cancel-in-progress: true
 jobs:
   apk:
+    # Never expose the base branch's cached signing identity to outside PRs.
+    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'feature/velocity-v04-nitro-airjump-20261101')
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
