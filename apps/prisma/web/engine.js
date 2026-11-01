@@ -139,84 +139,158 @@ export class Scene {
   }
   drawStageFX(ctx,time,preview,cue,pose) {
     if (!pose) return;
-    const reduced=pose.reduced,colors=PALETTES[this.settings().palette];
+    const reduced=pose.reduced, colors=PALETTES[this.settings().palette];
+    const galaxy=pose.style!=='classic', battery=pose.quality==='battery';
     const project=point=>this.projection(point.x,point.y,point.z,preview);
-    ctx.save();ctx.globalCompositeOperation='source-over';
-    // Metallic overhead trusses and anchored mechanical moving heads.
+    const radial=(x,y,r)=>typeof ctx.createRadialGradient==='function'
+      ? ctx.createRadialGradient(x,y,0,x,y,r)
+      : ctx.createLinearGradient(x-r,y-r,x+r,y+r);
+    const finiteTime=Number.isFinite(time)?Math.max(0,time):0;
+    ctx.save();
+    ctx.globalCompositeOperation='source-over';
+    // Cosmic haze is an intentionally bounded screen-space approximation.
+    // Only the stage perimeter is illuminated; the gameplay strike zone stays legible.
+    if(galaxy&&!reduced){
+      const layers=battery?1:pose.quality==='high'?4:3;
+      for(let i=0;i<layers;i++){
+        const side=i%2===0?-1:1;
+        const x=this.width*(.5+side*(.34+.025*Math.sin(finiteTime*.16+i)));
+        const y=this.height*(.17+.07*Math.cos(finiteTime*.12+i*2));
+        const spread=Math.max(65,Math.min(this.width*.37,this.height*.75));
+        const tint=['#6b78ff','#7d36db','#15afd4','#ff448e'][i];
+        const rgba=hexRGB(tint),strength=(battery?.075:.085)+pose.energy*.045;
+        const aura=radial(x,y,spread);
+        aura.addColorStop(0,'rgba('+rgba+','+strength.toFixed(3)+')');
+        aura.addColorStop(.44,'rgba('+rgba+','+(strength*.34).toFixed(3)+')');
+        aura.addColorStop(1,'rgba('+rgba+',0)');
+        ctx.fillStyle=aura;ctx.fillRect(0,0,this.width,this.height);
+      }
+      // Orbital halos are drawn behind the fixture beams and never timed as
+      // artificial beats. They rotate continuously with the song's beat phase.
+      ctx.globalCompositeOperation='lighter';
+      const loops=battery?0:pose.quality==='high'?3:2;
+      for(let i=0;i<loops;i++){
+        const center=this.projection(0,-1.55,15+i*7,preview);
+        const hue=hexRGB(['#6c7dff','#ed77ee','#53dafa'][i]);
+        const size=Math.max(16,center.s*(2.55+i*.7));
+        const angle=Math.sin(pose.beat*Math.PI/8+i)*.25;
+        ctx.beginPath();
+        ctx.ellipse(center.x,center.y,size,size*.31,angle,0,Math.PI*2);
+        ctx.lineWidth=i===0?1.3:.8;
+        ctx.strokeStyle='rgba('+hue+','+(.060+pose.energy*.055).toFixed(3)+')';
+        ctx.stroke();
+      }
+      // Stable star-dust particles with depth and slow parallax, never RNG per frame.
+      const count=battery?8:pose.quality==='high'?42:24;
+      for(let i=0;i<count;i++){
+        const hash=n=>{const v=Math.sin(n*127.1+37.719)*43758.5453;return v-Math.floor(v);};
+        const side=i%2===0?-1:1;
+        const x=this.width*(.5+side*(.21+hash(i+1)*.27));
+        const y=this.height*(.045+hash(i+61)*.80);
+        const drift=Math.sin(finiteTime*(.08+hash(i+5)*.16)+i)*1.9;
+        const a=.11+.15*hash(i+98)+pose.energy*.07;
+        ctx.fillStyle='rgba(160,212,255,'+Math.min(.38,a).toFixed(3)+')';
+        ctx.fillRect(x+drift,y,hash(i+7)>.82?2:1,hash(i+7)>.82?2:1);
+      }
+      ctx.globalCompositeOperation='source-over';
+    }
+    // The trusses, gimbals and lenses follow six distinct 3D fixture poses.
+    // Browser/WebView overlays do not pretend to be volumetric native light.
     const fixtures=pose.fixtures;
-    for(let depth=0;depth<3;depth++) {
+    for(let depth=0;depth<3;depth++){
       const left=fixtures.find(f=>f.id===depth),right=fixtures.find(f=>f.id===depth+3);
       if(!left||!right)continue;
       const a=project(left.base),b=project(right.base);
-      ctx.beginPath();ctx.moveTo(a.x,a.y-9);ctx.lineTo(b.x,b.y-9);
-      ctx.strokeStyle='rgba(112,140,153,.20)';ctx.lineWidth=1.5;ctx.stroke();
-      for(let k=1;k<5;k++) {
-        const x=a.x+(b.x-a.x)*k/5,y=a.y+(b.y-a.y)*k/5-9;
-        ctx.beginPath();ctx.moveTo(x-5,y-5);ctx.lineTo(x+5,y+5);
-        ctx.strokeStyle='rgba(108,129,142,.15)';ctx.lineWidth=1;ctx.stroke();
+      const rise=Math.max(3,a.s*.11);
+      for(let rail=0;rail<2;rail++){
+        const shift=rail?rise:-rise;
+        ctx.beginPath();ctx.moveTo(a.x,a.y+shift);ctx.lineTo(b.x,b.y+shift);
+        ctx.lineWidth=rail?1:2.2;ctx.strokeStyle=rail?'rgba(113,146,188,.19)':'rgba(126,160,193,.35)';
+        ctx.stroke();
+      }
+      for(let k=1;k<7;k++){
+        const x=a.x+(b.x-a.x)*k/7,y=a.y+(b.y-a.y)*k/7;
+        ctx.beginPath();ctx.moveTo(x-4,y-rise);ctx.lineTo(x+4,y+rise);
+        ctx.strokeStyle='rgba(145,174,203,.21)';ctx.lineWidth=1;ctx.stroke();
       }
     }
-    for(const f of fixtures) {
+    for(const f of fixtures){
       const base=project(f.base),elbow=project(f.elbow),head=project(f.head);
-      const target=project(f.focus),rgb=hexRGB(colors[f.color]);
+      const target=project(f.focus),shade=galaxy?f.lightColor:colors[f.color];
+      const rgb=hexRGB(shade),alpha=Math.min(reduced?.07:.29,f.intensity);
+      const rayX=target.x-head.x,rayY=target.y-head.y;
+      const length=Math.max(1,Math.hypot(rayX,rayY));
+      const nx=-rayY/length,ny=rayX/length;
       ctx.lineCap='round';ctx.lineJoin='round';
-      ctx.beginPath();ctx.moveTo(base.x,base.y);ctx.lineTo(elbow.x,elbow.y);
-      ctx.lineTo(head.x,head.y);
-      ctx.strokeStyle='rgba(8,15,24,.88)';
-      ctx.lineWidth=Math.max(3,base.s*.22);ctx.stroke();
-      ctx.strokeStyle='rgba(120,149,168,.52)';
-      ctx.lineWidth=Math.max(1,base.s*.055);ctx.stroke();
-      for(const p of [base,elbow]) {
-        ctx.beginPath();ctx.arc(p.x,p.y,Math.max(2,p.s*.11),0,Math.PI*2);
-        ctx.fillStyle='rgba(7,15,25,.93)';ctx.fill();
-        ctx.strokeStyle='rgba(157,183,193,.43)';
-        ctx.lineWidth=1;ctx.stroke();
+      // Articulated Y-bracket: dark chassis, two metallic guide rails, motor hubs.
+      ctx.beginPath();ctx.moveTo(base.x,base.y);ctx.lineTo(elbow.x,elbow.y);ctx.lineTo(head.x,head.y);
+      ctx.strokeStyle='rgba(5,11,22,.98)';ctx.lineWidth=Math.max(4,base.s*.29);ctx.stroke();
+      ctx.strokeStyle='rgba(118,148,179,.76)';ctx.lineWidth=Math.max(1.2,base.s*.078);ctx.stroke();
+      for(const joint of [base,elbow]){
+        const radius=Math.max(2.7,joint.s*.115);
+        ctx.beginPath();ctx.arc(joint.x,joint.y,radius,0,Math.PI*2);
+        ctx.fillStyle='#0a1520';ctx.fill();
+        ctx.lineWidth=1.4;ctx.strokeStyle='rgba(161,194,211,.66)';ctx.stroke();
+        ctx.beginPath();ctx.arc(joint.x,joint.y,radius*.39,0,Math.PI*2);
+        ctx.fillStyle='rgba(117,152,180,.85)';ctx.fill();
       }
-      if(!this.gpu) {
-        // Canvas fallback housing: distinct from a native 3D render.
-        const size=Math.max(6,head.s*.32);
-        ctx.fillStyle='rgba(16,27,33,.9)';
-        ctx.strokeStyle='rgba('+rgb+',.5)';ctx.lineWidth=1.2;
-        ctx.fillRect(head.x-size*.5,head.y-size*.5,size,size);
-        ctx.strokeRect(head.x-size*.5,head.y-size*.5,size,size);
+      const lensRadius=Math.max(4,head.s*.18);
+      ctx.beginPath();ctx.ellipse(head.x,head.y,lensRadius*1.32,lensRadius*.85,
+        f.pan*.45,0,Math.PI*2);
+      ctx.fillStyle='#0b1523';ctx.fill();ctx.lineWidth=2.3;
+      ctx.strokeStyle='rgba(157,177,212,.83)';ctx.stroke();
+      if(!this.gpu){
+        const housing=Math.max(6,head.s*.34);
+        ctx.fillStyle='rgba(13,25,39,.9)';
+        ctx.fillRect(head.x-housing*.5,head.y-housing*.5,housing,housing*.8);
+        ctx.strokeStyle='rgba('+rgb+',.65)';ctx.lineWidth=1.2;
+        ctx.strokeRect(head.x-housing*.5,head.y-housing*.5,housing,housing*.8);
       }
-      // Screen-space haze beam, not volumetric tracing or an opaque obstacle.
-      const alpha=Math.max(0,Math.min(f.intensity,reduced?.07:.27));
+      // The aperture rotates with pan / tilt; its light is independent of
+      // score and only pulses when decoded audio supplies actual beat energy.
+      ctx.beginPath();ctx.arc(head.x,head.y,lensRadius*.63,0,Math.PI*2);
+      ctx.fillStyle='rgba('+rgb+','+(reduced?.34:.66)+')';ctx.fill();
+      ctx.beginPath();ctx.arc(head.x,head.y,lensRadius*.88,0,Math.PI*2);
+      ctx.strokeStyle='rgba('+rgb+','+(reduced?.26:.64)+')';
+      ctx.lineWidth=1.5;ctx.stroke();
       ctx.save();ctx.globalCompositeOperation='lighter';
-      const beam=ctx.createLinearGradient(head.x,head.y,target.x,target.y);
-      beam.addColorStop(0,'rgba('+rgb+','+alpha+')');
-      beam.addColorStop(.66,'rgba('+rgb+','+(alpha*.38)+')');
-      beam.addColorStop(1,'rgba('+rgb+',0)');
-      if(!reduced) {
-        // A restrained conical wash makes the concert lighting visible.
-        // This is screen-space haze, NOT 3D volume sampling, and is transparent
-        // enough that incoming cut arrows remain readable.
-        const dx=target.x-head.x,dy=target.y-head.y;
-        const length=Math.max(1,Math.hypot(dx,dy));
-        const px=-dy/length,py=dx/length;
-        const spread=Math.max(7,Math.min(28,target.s*.35));
+      if(!reduced){
+        const spread=Math.max(7,Math.min(42,target.s*(f.beamWidth||.34)*2.2));
+        const beam=ctx.createLinearGradient(head.x,head.y,target.x,target.y);
+        beam.addColorStop(0,'rgba('+rgb+','+Math.min(.38,alpha*.92)+')');
+        beam.addColorStop(.54,'rgba('+rgb+','+(alpha*.45)+')');
+        beam.addColorStop(1,'rgba('+rgb+',0)');
+        // Wide haze silhouette, tapering into a mirrored floor footprint.
         ctx.beginPath();ctx.moveTo(head.x,head.y);
-        ctx.lineTo(target.x+px*spread,target.y+py*spread);
-        ctx.lineTo(target.x-px*spread,target.y-py*spread);
+        ctx.lineTo(target.x+nx*spread,target.y+ny*spread);
+        ctx.lineTo(target.x-nx*spread,target.y-ny*spread);
         ctx.closePath();ctx.fillStyle=beam;ctx.fill();
-      }
-      ctx.beginPath();ctx.moveTo(head.x,head.y);ctx.lineTo(target.x,target.y);
-      ctx.strokeStyle=beam;ctx.lineWidth=reduced?1.2:Math.max(5,head.s*.45);
-      ctx.stroke();
-      if(!reduced) {
+        // Twin optics and their soft beam cores. The side rays are weaker
+        // than the central ray, so incoming cut arrows remain visible.
+        for(const offset of [-1,0,1]){
+          const shift=offset*spread*.32;
+          ctx.beginPath();ctx.moveTo(head.x+nx*offset*2,head.y+ny*offset*2);
+          ctx.lineTo(target.x+nx*shift,target.y+ny*shift);
+          ctx.strokeStyle=beam;
+          ctx.lineWidth=offset===0?Math.max(3,head.s*.22):Math.max(1.3,head.s*.09);
+          ctx.stroke();
+        }
+      }else{
         ctx.beginPath();ctx.moveTo(head.x,head.y);ctx.lineTo(target.x,target.y);
-        ctx.strokeStyle='rgba('+rgb+','+(alpha*.75)+')';
-        ctx.lineWidth=Math.max(1,head.s*.05);ctx.stroke();
+        ctx.strokeStyle='rgba('+rgb+',.06)';ctx.lineWidth=1.2;ctx.stroke();
       }
-      if(!reduced && f.intensity>.09) {
-        // Grounded projected spot footprint; no full-scene flash.
-        ctx.beginPath();ctx.ellipse(target.x,target.y,
-          Math.max(3,target.s*.14),Math.max(2,target.s*.05),0,0,Math.PI*2);
-        ctx.strokeStyle='rgba('+rgb+','+(alpha*.30)+')';
-        ctx.lineWidth=1.3;ctx.stroke();
+      const spotRadius=Math.max(7,target.s*(battery?.14:.22));
+      if(!reduced){
+        const puddle=radial(target.x,target.y,spotRadius*2.5);
+        puddle.addColorStop(0,'rgba('+rgb+','+Math.min(.25,alpha*.68)+')');
+        puddle.addColorStop(1,'rgba('+rgb+',0)');
+        ctx.fillStyle=puddle;ctx.fillRect(target.x-spotRadius*2.5,target.y-spotRadius*2.5,
+          spotRadius*5,spotRadius*5);
+        ctx.beginPath();ctx.ellipse(target.x,target.y,spotRadius,Math.max(2,spotRadius*.26),
+          f.pan*.12,0,Math.PI*2);
+        ctx.strokeStyle='rgba('+rgb+','+Math.min(.42,alpha*.98)+')';
+        ctx.lineWidth=1.7;ctx.stroke();
       }
-      ctx.beginPath();ctx.arc(head.x,head.y,Math.max(2,head.s*.10),0,Math.PI*2);
-      ctx.fillStyle='rgba('+rgb+','+Math.min(.65,alpha*2.5)+')';ctx.fill();
       ctx.restore();
     }
     // Small beat response, not a rapid full-screen strobe.
@@ -299,7 +373,7 @@ export class Scene {
       release:stageCue.explosion?stageCue.explosion.combo:null,
       active:this.stageExplosions.length?this.stageExplosions[this.stageExplosions.length-1].tier:null};
     const quality=this.settings().quality==='auto'?(this.qualityScale<.78?'battery':this.visualState.quality==='high'?'high':'auto'):this.settings().quality;
-    const rigPose=concertPose(this.concertProgram,time,stageCue,{quality,reduced:this.settings().effects});
+    const rigPose=concertPose(this.concertProgram,time,stageCue,{quality,reduced:this.settings().effects,style:this.settings().stageStyle||'galaxy'});
     this.rigPose=rigPose;
     if(preview){
       const mobile=w<580,drift=this.settings().effects?0:Math.sin(time*.65)*.1;
