@@ -174,13 +174,33 @@ export class Scene {
       beam.addColorStop(0,'rgba('+rgb+','+alpha+')');
       beam.addColorStop(.66,'rgba('+rgb+','+(alpha*.38)+')');
       beam.addColorStop(1,'rgba('+rgb+',0)');
+      if(!reduced) {
+        // A restrained conical wash makes the concert lighting visible.
+        // This is screen-space haze, NOT 3D volume sampling, and is transparent
+        // enough that incoming cut arrows remain readable.
+        const dx=target.x-head.x,dy=target.y-head.y;
+        const length=Math.max(1,Math.hypot(dx,dy));
+        const px=-dy/length,py=dx/length;
+        const spread=Math.max(7,Math.min(28,target.s*.35));
+        ctx.beginPath();ctx.moveTo(head.x,head.y);
+        ctx.lineTo(target.x+px*spread,target.y+py*spread);
+        ctx.lineTo(target.x-px*spread,target.y-py*spread);
+        ctx.closePath();ctx.fillStyle=beam;ctx.fill();
+      }
       ctx.beginPath();ctx.moveTo(head.x,head.y);ctx.lineTo(target.x,target.y);
-      ctx.strokeStyle=beam;ctx.lineWidth=reduced?1.2:Math.max(4,head.s*.38);
+      ctx.strokeStyle=beam;ctx.lineWidth=reduced?1.2:Math.max(5,head.s*.45);
       ctx.stroke();
       if(!reduced) {
         ctx.beginPath();ctx.moveTo(head.x,head.y);ctx.lineTo(target.x,target.y);
         ctx.strokeStyle='rgba('+rgb+','+(alpha*.75)+')';
         ctx.lineWidth=Math.max(1,head.s*.05);ctx.stroke();
+      }
+      if(!reduced && f.intensity>.09) {
+        // Grounded projected spot footprint; no full-scene flash.
+        ctx.beginPath();ctx.ellipse(target.x,target.y,
+          Math.max(3,target.s*.14),Math.max(2,target.s*.05),0,0,Math.PI*2);
+        ctx.strokeStyle='rgba('+rgb+','+(alpha*.30)+')';
+        ctx.lineWidth=1.3;ctx.stroke();
       }
       ctx.beginPath();ctx.arc(head.x,head.y,Math.max(2,head.s*.10),0,Math.PI*2);
       ctx.fillStyle='rgba('+rgb+','+Math.min(.65,alpha*2.5)+')';ctx.fill();

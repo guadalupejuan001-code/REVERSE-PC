@@ -84,7 +84,7 @@ scene.gpu.count=5;scene.stageRig(auto);
 check(scene.gpu.count===17,'Preview should use five notes and twelve mechanical parts');
 const events=[],gradient={addColorStop:(...args)=>events.push(['gradient',...args])};
 const ctx={
-  save:()=>{},restore:()=>{},beginPath:()=>{},moveTo:()=>{},lineTo:()=>{},
+  save:()=>{},restore:()=>{},beginPath:()=>{},closePath:()=>{},moveTo:()=>{},lineTo:()=>{},
   arc:()=>{},ellipse:()=>{},fill:()=>events.push('fill'),stroke:()=>events.push('stroke'),
   fillRect:()=>events.push('fillRect'),strokeRect:()=>events.push('strokeRect'),
   createLinearGradient:()=>gradient
