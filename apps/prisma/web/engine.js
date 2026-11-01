@@ -239,7 +239,9 @@ export class Scene {
       for(const b of blocks)this.cube(b.x,b.y+drift,b.z,b.size,b.c,b.d,b.r+drift*.25,true,false,.96);
     }else{
       const [first,last]=visibleRange(chart,time,latency);
-      for(let i=last-1;i>=first;i--){const n=chart[i],delta=n.t+latency-time;if(n.hit||n.missed||delta>3.5||delta<-.35)continue;const z=delta*10.6;const alpha=Math.min(1,(3.5-delta)*1.5);this.cube((n.lane-1)*1.13,(n.row-.5)*1.33,z,.73,n.color,n.dir,Math.sin(n.t*4)*.065,false,Math.abs(delta)<.22,alpha);}
+      // Native packets have a strict 64-body cap: submit imminent notes first.
+      // Browser WebGL retains far-to-near ordering for alpha blending.
+      for(let slot=0;slot<last-first;slot++){const i=this.gpu?.native?first+slot:last-1-slot;const n=chart[i],delta=n.t+latency-time;if(n.hit||n.missed||delta>3.5||delta<-.35)continue;const z=delta*10.6;const alpha=Math.min(1,(3.5-delta)*1.5);this.cube((n.lane-1)*1.13,(n.row-.5)*1.33,z,.73,n.color,n.dir,Math.sin(n.t*4)*.065,false,Math.abs(delta)<.22,alpha);}
     }
     // Notes are added before decorations: decorative parts never reserve 3D slots.
     this.stageRig(rigPose);
