@@ -1,5 +1,6 @@
 import { RhythmAudio, DEMO_BPM, DEMO_DURATION, analyseRhythm, waveformOf, seeded } from './audio.js';
-import { Scene, makeChart, segmentDistance, DIRECTIONS, PALETTES, visibleRange } from './engine.js';
+import { Scene, makeChart, DIRECTIONS, PALETTES } from './engine.js';
+import { hitWindowFor, isEndOfSong, nearestSwipeNote, nearestKeyNote, timingLabel } from './rhythm-qa.js';
 import { makeMusicStage } from './music-stage.js';
 const $ = id => document.getElementById(id);
 const all = selector => [...document.querySelectorAll(selector)];
@@ -105,7 +106,7 @@ async function finishGame(){
   if(score>0){const r={track:track.name,level,score,accuracy,combo:maxCombo,date:Date.now()};records=records.filter(item=>!(item.track===r.track&&item.level===r.level&&item.score<=score));records.push(r);records.sort((a,b)=>b.score-a.score);records=records.slice(0,30);try{localStorage.setItem('prisma.records',JSON.stringify(records));}catch{}}
   $('elapsed').textContent=formatTime(Math.round(track.duration));drawWave(1);$('replayBtn').focus({preventScroll:true});
 }
-const hitWindow=()=>({flow:.32,pulse:.265,vertigo:.225}[level]);
+const hitWindow=()=>hitWindowFor(level);
 function cut(note,t,dx,dy,isTap=false,isKey=false){
   if(note.hit||note.missed)return false;
   const delta=note.t+settings.latency/1000-t;if(Math.abs(delta)>hitWindow())return false;
@@ -116,7 +117,7 @@ function cut(note,t,dx,dy,isTap=false,isKey=false){
   const perfect=Math.abs(delta)<.145&&(correct||isKey),base=perfect?150:correct?105:isTap?70:80,multiplier=Math.min(4,1+Math.floor(combo/12));
   score+=base*multiplier;if(nativeGraphics)nativeEvent(1,base);
   const p=scene.noteProjection(note,t,settings.latency/1000);scene.burst(note,p,dx||15,dy||-35,perfect?1:.6);
-  feedback(combo>0&&combo%12===0?`FLOW ×${multiplier}`:perfect?'PERFECTO':correct?'A RITMO':'FLUIDO',PALETTES[settings.palette][note.color]);
+  feedback(combo>0&&combo%12===0?`FLOW ×${multiplier}`:timingLabel(delta,perfect,correct||isKey,isTap),PALETTES[settings.palette][note.color]);
   if(navigator.vibrate&&!settings.effects&&!isKey)navigator.vibrate(8);
   updateScores();return true;
 }
@@ -124,11 +125,10 @@ function processSwipe(ax,ay,bx,by,isTap=false){
   if(status!=='playing')return;const t=audio.time();if(t<0)return;
   const dx=bx-ax,dy=by-ay;if(!isTap&&Math.hypot(dx,dy)<3)return;
   if(isTap&&(level!=='flow'||settings.precise))return;
-  const [first,last]=visibleRange(chart,t,settings.latency/1000);
-  for(let i=first;i<last;i++){const n=chart[i];if(n.hit||n.missed||Math.abs(n.t+settings.latency/1000-t)>hitWindow())continue;
-    const p=scene.noteProjection(n,t,settings.latency/1000),radius=p.s*.73*.62;
-    if(segmentDistance(p.x,p.y,ax,ay,bx,by)<=radius){if(cut(n,t,dx,dy,isTap))break;}
-  }
+  const note=nearestSwipeNote(chart,t,settings.latency/1000,level,ax,ay,bx,by,
+    (n,at,latency)=>scene.noteProjection(n,at,latency),
+    {precise:settings.precise,isTap});
+  if(note)cut(note,t,dx,dy,isTap);
 }
 const point=e=>{const rect=gameBounds||(gameBounds=$('game').getBoundingClientRect());return{x:e.clientX-rect.left,y:e.clientY-rect.top};};
 $('game').addEventListener('pointerdown',e=>{
@@ -148,17 +148,19 @@ document.addEventListener('keydown',e=>{
   if(e.code==='Space'||e.code==='Escape'){if(status==='playing'){e.preventDefault();pauseGame();}else if(status==='paused'){e.preventDefault();resumeGame();}return;}
   if(e.code==='Enter'&&status==='home'){e.preventDefault();startGame();return;}
   const keyIndex={ArrowUp:0,ArrowRight:1,ArrowDown:2,ArrowLeft:3}[e.code];if(keyIndex===undefined||status!=='playing')return;e.preventDefault();
-  const t=audio.time(),[first,last]=visibleRange(chart,t,settings.latency/1000);let note=null,error=Infinity;
-  for(let i=first;i<last;i++){const n=chart[i],delta=Math.abs(n.t+settings.latency/1000-t);if(!n.hit&&!n.missed&&n.dir===keyIndex&&delta<=hitWindow()&&delta<error){note=n;error=delta;}}
+  const t=audio.time();
+  const note=nearestKeyNote(chart,t,settings.latency/1000,level,keyIndex);
   if(note){const n=note,d=DIRECTIONS[keyIndex],p=scene.noteProjection(n,t,settings.latency/1000),id='key-'+performance.now();scene.addTrail(id,p.x-d.x*50,p.y-d.y*50,PALETTES[settings.palette][n.color]);scene.addTrail(id,p.x+d.x*50,p.y+d.y*50,PALETTES[settings.palette][n.color]);scene.endTrail(id);cut(n,t,d.x*100,d.y*100,false,true);}
 
 });
 async function loadFile(file){
   if(!file)return;if(file.size===0){toast('Este archivo está vacío. Elige una canción.');return;}
+  if(file.size>100*1024*1024){toast('El archivo supera 100 MB. Prueba con una versión más pequeña.');return;}
   if(booting){toast('Espera a que termine de prepararse la pista.');return;}
   goHome();booting=true;setLoading(true,'Leyendo tu canción…');
   try{
     const buffer=await audio.decode(file);if(buffer.duration<3)throw new Error('Elige un audio de al menos 3 segundos para crear una pista.');
+    if(buffer.duration>1800)throw new Error('Esta versión admite pistas de hasta 30 minutos.');
     setLoading(true,'Encontrando los golpes de tu música…');await new Promise(r=>setTimeout(r,30));
     const analysis=await analyseRhythm(buffer);
     track={name:file.name.replace(/\.[^/.]+$/,''),demo:false,bpm:analysis.bpm,duration:buffer.duration,peaks:analysis.peaks,energy:analysis.energy,tempoSegments:analysis.tempoSegments,variableTempo:analysis.variableTempo,wave:waveformOf(buffer),buffer,fallback:analysis.fallback};
@@ -174,7 +176,16 @@ $('pauseBtn').addEventListener('click',pauseGame);$('resumeBtn').addEventListene
 $('navPlay').addEventListener('click',()=>{if(status==='paused')resumeGame();else if(status==='home')$('startBtn').focus({preventScroll:true});else $('game').focus({preventScroll:true});});
 document.querySelector('.brand').addEventListener('click',e=>{e.preventDefault();if(!booting)goHome();});
 all('[data-level]').forEach(b=>b.addEventListener('click',()=>{level=b.dataset.level;all('[data-level]').forEach(x=>{const selected=x===b;x.classList.toggle('selected',selected);x.setAttribute('aria-pressed',String(selected));});if(status==='ended')goHome();toast({flow:'Flow · un golpe a la vez. También admite toques.',pulse:'Pulso · más notas y cortes más rápidos.',vertigo:'Vértigo · dobles cubos y máxima intensidad.'}[level]);}));
-function openDialog(id){if(status==='playing')pauseGame();if(id==='recordsDialog')renderRecords();$(id).showModal();}
+function updateRendererStatus(){
+  $('rendererStatus').textContent='Motor gráfico: '+(scene.gpu?.native?'Ether Render X nativo':
+    scene.gpu?'Graphics/COSMIC WebGL':'Canvas de reserva');
+}
+function openDialog(id){
+  if(status==='playing')pauseGame();
+  if(id==='recordsDialog')renderRecords();
+  if(id==='settingsDialog')updateRendererStatus();
+  $(id).showModal();
+}
 all('[data-dialog]').forEach(b=>b.addEventListener('click',()=>openDialog(b.dataset.dialog)));
 all('.close-dialog').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
 all('dialog').forEach(dialog=>dialog.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();}}));
@@ -186,6 +197,7 @@ $('palette').addEventListener('change',e=>{settings.palette=e.target.value;updat
 $('precise').addEventListener('change',e=>{settings.precise=e.target.checked;persistSettings();});
 $('effects').addEventListener('change',e=>{settings.effects=e.target.checked;persistSettings();});
 $('latency').addEventListener('input',e=>{settings.latency=Number(e.target.value);$('latencyValue').textContent=`${settings.latency>0?'+':''}${settings.latency} ms`;persistSettings();});
+$('latencyReset').addEventListener('click',()=>{settings.latency=0;$('latency').value='0';$('latencyValue').textContent='0 ms';persistSettings();});
 function updateMute(){const muted=audio.muted||settings.volume===0;$('muteBtn').querySelector('use').setAttribute('href',muted?'#i-mute':'#i-sound');$('muteBtn').setAttribute('aria-label',muted?'Activar música':'Silenciar música');}
 $('volume').addEventListener('input',e=>{settings.volume=Number(e.target.value);audio.setVolume(settings.volume/100,false);updateMute();persistSettings();});
 $('muteBtn').addEventListener('click',()=>{audio.setVolume(settings.volume/100,!audio.muted);updateMute();});
@@ -230,7 +242,7 @@ function frame(now){
     $('countdown').hidden=t>=0;
     if(t<0){const count=Math.ceil(-t);if($('countdown').dataset.count!==String(count)){$('countdown').dataset.count=count;$('countdown').replaceChildren();$('countdown').append(String(count));const small=document.createElement('small');small.textContent='ENCUENTRA EL RITMO';$('countdown').append(small);}}
     if(t>7)$('hitHelp').style.opacity='0';
-    if(t>=track.duration+.05){finishGame();t=track.duration;}
+    if(isEndOfSong(t,track.duration,level,settings.latency/1000)){finishGame();t=track.duration;}
   }
   if(now>feedbackUntil)$('feedback').classList.remove('show');
   const preview=!['playing','paused','ended','finishing'].includes(status);

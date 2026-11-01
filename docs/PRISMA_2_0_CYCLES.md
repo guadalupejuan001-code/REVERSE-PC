@@ -20,9 +20,9 @@ Trabajo incremental: codex/prisma-2-musical-stage-20261101.
 | 01. Dirección musical | Clasificar acentos fuertes con datos de audio, energía por ventanas, reloj de canción, reinicio/pausa/seek | Implementación inicial terminada |
 | 02. Beatmap inteligente | Densidad y direcciones por bandas grave/medio/agudo, tempo local, validación con pistas sintéticas | Implementado; CI Android aprobó el 2026-11-01 |
 | 03. Maquinaria de concierto | Seis focos articulados, bases/cabezales nativos, juntas y vigas de metal, programa escénico por compases, guardarraíl de 64 cuboides, luces adaptativas | Validado en emulador Android 15 (workflow 41288455075) |
-| 04. Combos musicales | Cinco niveles de explosiones prismáticas, carga y liberación por acento, sincronía del concierto, control de intensidad y coste | Implementado; requiere validar el nuevo CI Android |
-| 05. Materiales y escenarios | ABI material v2 (vidrio facetado, aleación, lentes), sombreado dentro de Ether Render X, suelo especular, oráculos de exactitud y fallback v1 | Implementado; pendientes pruebas completas del CI del ciclo 05 |
-| 06. Android/QA/optimización | Compilar RXE3/APK, verificar WebView y XI, rendimiento, protección contra mareo, pruebas en móvil físico | Pendiente |
+| 04. Combos musicales | Cinco niveles de explosiones prismáticas, carga y liberación por acento, sincronía del concierto, control de intensidad y coste | Validado en emulador Android 15 (workflow 41290171414) |
+| 05. Materiales y escenarios | ABI material v2 (vidrio facetado, aleación, lentes), sombreado dentro de Ether Render X, suelo especular, oráculos de exactitud y fallback v1 | Validado en emulador Android 15 (workflow 41320011018) |
+| 06. Android/QA/optimización | Selección precisa de notas, cola final, audio de prueba limitado, control de partículas, bench CPU nativo, emulador Android, diagnóstico y calibración | Implementado; falta cerrar validación de este commit y prueba en móvil físico |
 
 ## Ciclos iniciales — director musical y escenario
 
@@ -126,3 +126,29 @@ Implementación: music-stage.js, combo-spectacle.js, concert-rig.js y engine.js.
 - La versión oficial 2.2.0 recibe un flag propio de publicación y actualiza únicamente los SHA-256 oficiales conocidos, incluido el RXE final 2.1.0 del ciclo 04. Se conserva el origen local WebView de récords/ajustes reconocidos; el estado XI RVPC2 no se intercambia con otros ejecutables.
 
 **Límites todavía existentes:** cubos y articulaciones cúbicas, sin mallas generales; sin refracción física, reflejo geométrico perfecto, geometría de partículas nativa ni niebla volumétrica. Las afirmaciones sobre FPS deberán compararse en teléfono físico durante el ciclo 06, no extrapolarse a partir de la emulación.
+
+
+## Ciclo 06 — jugabilidad, calibración, eficiencia y QA integral (PRISMA 2.3.0)
+
+### Cambios auditados
+
+- rhythm-qa.js: selección del cubo con mejor coincidencia temporal y espacial cuando varios eventos comparten la ventana de corte. Las notas ya completadas o perdidas no vuelven a elegirse. En modo «Corte preciso» se filtra correctamente por sentido del gesto. Se mantienen Flow táctil, teclado, multilocalidad y la tolerancia por dificultad.
+- El final de la canción espera a que concluya la ventana de impacto de las últimas notas, incluida la calibración de latencia positiva, antes de cerrar resultados. Se evita perder notas válidas que llegan al límite del audio.
+- El feedback de cortes no perfectos indica «ANTICIPADO» o «TARDE» según la diferencia real entre el reloj WebAudio y la marca de la nota. No hay cambios en la autoridad XI de puntos, combo o fallos. Una pulsación perfecta conserva su puntuación y feedback previos.
+- El selector de pistas acepta audios decodificables de 3 segundos a 30 minutos y hasta 100 MiB de archivo. Estos límites protegen la memoria y evitan analizar archivos desmesurados accidentalmente; no representan una limitación arquitectónica inamovible.
+- music-analysis.js: ahora procesa ventanas de tempo ordenadas mediante índices deslizantes; evita recorrer todos los transitorios de la canción en cada segmento local. La estimación de BPM, las etiquetas acústicas y las ventanas de 12 s se conservan.
+- engine.js: conserva la adaptación automática de la resolución y el orden de prioridad de las notas nativas. Reduce partículas no esenciales en Ahorro (6 y máximo 90 activas), auto con calidad degradada (9 y máximo 180), Efectos suaves (4) y hasta 27 en «Máximo detalle»; no modifica la cantidad de cubos necesarios para jugar.
+- Ajustes: se muestra el motor realmente seleccionado (Ether Render X nativo, Graphics/COSMIC WebGL de navegador o Canvas de reserva), y se incluye un botón «Restablecer 0 ms» para la calibración de latencia. La interfaz conserva las preferencias previas.
+
+### Verificación reproducible
+
+- tests/prisma-gameplay-qa.mjs: gestos simultáneos, dirección de corte, tap en Flow, teclado, corrección positiva/negativa, error temprano/tardío, cola de canción, continuidad reloj audio en pausa/reanudación, escalado de partículas y análisis sintético de tres minutos.
+- tests/prisma_performance.cpp: prueba aislada en máquina CI del observador Ether Render X con 18 cuerpos mixtos en 960×540; documenta mediana y percentil 95 de duración CPU por fotograma de render, fracción de superficies y candidatos y presupuesto de píxeles en calidad auto/alta/ahorro. Sus resultados NO son FPS del teléfono ni del compositor Android.
+- Instrumentación Android 15: valida que Ajustes muestre el motor nativo, que el botón de calibración restablezca y persista 0 ms, y registra el total de trabajos de render nativos observados durante una ventana real de reproducción, la duración de esa ventana y el último tiempo CPU del motor. Se guarda en evidence/prisma-ui/prisma-emulator-performance.json; el número de trabajos por segundo en el emulador NO equivale a la frecuencia de pantalla real.
+- El CI sigue exigiendo el test de id/profundidad/color nativo, el RXE3 con XI, controles táctiles, migración del juego y aislamiento de otras aplicaciones. Nunca se asegura que la GPU renderiza miles de cuadros ni se atribuye coste cero a las capas WebView/GLES.
+
+### Versionado, límites y siguiente tarea externa
+
+- La versión candidata PRISMA 2.3.0 conserva las actualizaciones de 1.1, 1.2, 2.0, 2.1 y 2.2 oficiales por huellas exactas SHA-256 y mantiene la protección de ejecutables personalizados y el origen de los récords de WebView. Las memorias XI se mantienen separadas por identidad.
+- El resultado de la CI de ciclo 06 y los archivos APK/RXE deben proceder del mismo commit SHA y aprobar la comprobación de hash; todavía no constituyen una medida del funcionamiento de la APK en el dispositivo físico del propietario.
+- **Prueba física necesaria después de instalar:** contraste en pantalla táctil, latencia real con auriculares Bluetooth, ausencia de pérdida de notas y consumo/temperatura en sesiones prolongadas. Los costes reales de CPU/GPU y fotogramas por segundo se obtienen con perfilado sobre el Samsung real, no extrapolados del emulador.

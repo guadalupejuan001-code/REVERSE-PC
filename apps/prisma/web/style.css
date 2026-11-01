@@ -13,3 +13,12 @@ html,body{width:100%;height:100%;overflow:hidden;overscroll-behavior:none}body{h
 @media (max-height:460px) and (orientation:landscape){.header{height:49px}.stage-top{top:50px}.stage-top>span{display:none}.intro{top:45%;left:6%;max-width:380px}.intro-kicker{font-size:6px;letter-spacing:1.5px}h1{font-size:34px;margin:14px 0 13px;line-height:1.08}.intro>p{display:none}.intro-actions .primary,.intro-actions .secondary{height:36px;font-size:9px}.input-hint{font-size:7px;margin-top:12px}.stage-bottom{display:none}.music-dock{height:55px;min-height:55px;bottom:10px;left:16px;right:16px;padding:7px 12px}.track-art{width:30px;height:30px}.track-meta{min-width:125px}.track-meta strong{font-size:9px}.track-meta>span{font-size:5px;margin-top:4px}.track-progress canvas{height:13px}.track-progress>div{margin-top:3px}.field-label{display:none}.preview-note{display:none}.volume-control{display:none}.segments button{padding:6px 12px}.game-overlay{padding:12px}.overlay-panel h2{font-size:26px;margin:14px 0 8px}.overlay-panel p{margin-bottom:15px}.result-stats{padding:8px 0}.result-rank{font-size:33px;margin-top:6px}.result-score{margin:6px;font-size:24px}.results h2{font-size:20px;margin:5px}.result-stats strong{font-size:15px}.result-stats span{font-size:6px}.results #recordNotice{font-size:8px;min-height:10px;margin:7px}.overlay-panel .primary,.overlay-panel .secondary{height:34px;margin-bottom:6px}.text-button{padding:8px;font-size:10px}.overlay-panel{max-width:330px}dialog{max-height:calc(100dvh - 20px);padding:20px}}
 /* Native Ether Render X is composed below the transparent controls/effects. */
 html.native-xrender,html.native-xrender body,.native-xrender .app,.native-xrender .stage{background:transparent}
+
+/* Cycle 06: native-renderer disclosure and tactile audio calibration reset. */
+.calibration-actions{display:flex;align-items:center;justify-content:space-between;
+  gap:12px;flex-wrap:wrap;margin:8px 0 10px}
+.calibration-reset{border:1px solid #48604f;background:#14251b;
+  border-radius:6px;padding:9px 12px;font-size:11px;color:#c7e8d4}
+.calibration-reset:hover{border-color:var(--green);background:#1c3828}
+#rendererStatus{font-size:10px;letter-spacing:.15px;color:#a4b7ac}
+@media(max-width:600px){.calibration-actions{justify-content:flex-start}}
