@@ -88,7 +88,7 @@ jobs:
           const read=p=>JSON.parse(readFileSync(p,'utf8'));
           const source=read('source-c36/output-contract.json');
           const report=read('source-c36/current.json'),b=read('source-c36/boundary-summary.json');
-          const proof=read('source-c36-diagnostics/actual-stage.json');
+          const proof=read('source-c36-diagnostics/c36-diagnostics/actual-stage.json');
           assert.equal(source.schema,'reverse-c27-profile-resume-contract-v1');
           assert.equal(source.source_commit,'e4b62afcf3cdf9588a7ccb56b2b2228734d1c811');
           assert.equal(proof.schema,'reverse-android-c36-keymint-genuine-v1');
