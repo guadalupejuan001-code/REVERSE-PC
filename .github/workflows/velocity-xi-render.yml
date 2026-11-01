@@ -1,7 +1,7 @@
 name: REVERSE VELOCITY REgraphics
 on:
   push:
-    branches: [feature/xi-velocity-no-cpp-render-20261029, feature/velocity-regraphics-20261030, feature/regraphics-frame-cache-20261101, feature/regraphics-ether-spatial-kernel-20261101, feature/velocity-cockpit-nature-20261031, feature/velocity-xi-renderer-only-20261031, feature/regraphics-tile-native-20261031]
+    branches: [feature/xi-velocity-no-cpp-render-20261029, feature/velocity-regraphics-20261030, feature/regraphics-frame-cache-20261101, feature/regraphics-ether-spatial-kernel-20261101, feature/regraphics-pipeline-cycle1-20261101, feature/velocity-cockpit-nature-20261031, feature/velocity-xi-renderer-only-20261031, feature/regraphics-tile-native-20261031]
     paths:
       - 'reverse-os-android/app/src/main/assets/velocity/**'
       - 'reverse-os-android/tests/velocity-xi-render-contract.cjs'
@@ -11,6 +11,10 @@ on:
       - 'scripts/velocity-spatial-ab.cjs'
       - 'reverse-os-android/tests/*Regraphics*'
       - 'reverse-os-android/tests/VelocityLoopLifecycleTest.java'
+      - 'reverse-os-android/tests/NativeXiDirectFrameTest.java'
+      - 'reverse-os-android/tests/VelocityFrameProfilerTest.java'
+      - 'reverse-os-android/app/src/main/cpp/reverse_os_jni.cpp'
+      - 'reverse-os-android/app/src/main/java/com/reversepc/os/NativeRuntime.java'
       - 'reverse-os-android/tests/velocity-xi-contract.cjs'
       - 'reverse-os-android/tests/velocity-gameplay-contract.cpp'
       - 'reverse-os-android/tests/fixtures/**'
@@ -123,17 +127,21 @@ jobs:
             reverse-os-android/app/src/main/java/com/reversepc/os/NativeRuntime.java \
             reverse-os-android/app/src/main/java/com/reversepc/os/VelocityLoopLifecycle.java \
             reverse-os-android/app/src/main/java/com/reversepc/os/VelocityFrameReuse.java \
+            reverse-os-android/app/src/main/java/com/reversepc/os/VelocityFrameProfiler.java \
             reverse-os-android/tests/RxePacketTest.java \
             reverse-os-android/tests/RegraphicsFrameTest.java \
             reverse-os-android/tests/RegraphicsNative4KTest.java \
             reverse-os-android/tests/VelocityLoopLifecycleTest.java \
             reverse-os-android/tests/VelocityFrameReuseTest.java \
+            reverse-os-android/tests/VelocityFrameProfilerTest.java \
+            reverse-os-android/tests/NativeXiDirectFrameTest.java \
             reverse-os-android/tests/NativeRegraphicsTest.java
           java -cp build/velocity/java com.reversepc.os.RxePacketTest
           java -cp build/velocity/java com.reversepc.os.RegraphicsFrameTest
           java -Xmx512m -cp build/velocity/java com.reversepc.os.RegraphicsNative4KTest
           java -cp build/velocity/java com.reversepc.os.VelocityLoopLifecycleTest
           java -cp build/velocity/java com.reversepc.os.VelocityFrameReuseTest
+          java -cp build/velocity/java com.reversepc.os.VelocityFrameProfilerTest
           g++ -std=c++17 -O2 -pthread -shared -fPIC \
             -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
             -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
@@ -142,6 +150,8 @@ jobs:
             -o build/velocity/libreverse_os.so
           java -Djava.library.path=build/velocity -cp build/velocity/java \
             com.reversepc.os.NativeRegraphicsTest reverse-os-android/app/src/main/assets/velocity build/velocity/native-evidence
+          java -Xmx512m -Djava.library.path=build/velocity -cp build/velocity/java \
+            com.reversepc.os.NativeXiDirectFrameTest reverse-os-android/app/src/main/assets/velocity build/velocity/direct-frame-parity.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
