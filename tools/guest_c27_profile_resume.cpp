@@ -3,6 +3,7 @@
 #include "guest_budget_cycles.hpp"
 #include "guest_file_session.hpp"
 #include <csignal>
+#include <cstdlib>
 #include <iostream>
 using namespace reverse_pc::guest;
 static volatile std::sig_atomic_t stopping=0;
@@ -23,7 +24,18 @@ int main(int argc,char** argv){try{
   const auto initial=number(argv[10],UINT64_MAX),pc=std::uint64_t(std::stoull(pc_text.substr(2),nullptr,16)),phase=number(argv[12],63,true);
   const auto cycle_limit=unsigned(number(argv[7],4));
   BootCycleLimits limits;limits.wall_ms=number(argv[5],900000);limits.instructions=number(argv[6],2000000000);
-  limits.chunk=50000;limits.checkpoint_ms=60000;limits.checkpoint_instructions=100000000;
+  // C39 host-only, opt-in scheduling. Does not change the guest CPU, machine
+  // timer, quantum memory authority, snapshot format or instruction budget.
+  // Larger transactions reduce host commit/copy overhead; checkpoints trade
+  // recovery granularity for lower repeated snapshot serialization cost.
+  const auto override_budget=[&](const char* key,std::uint64_t maximum,std::uint64_t baseline){
+    const auto* value=std::getenv(key);return value?number(value,maximum):baseline;
+  };
+  limits.chunk=override_budget("REVERSE_PC_C39_CHUNK",200000,50000);
+  limits.checkpoint_ms=override_budget("REVERSE_PC_C39_CHECKPOINT_MS",180000,60000);
+  limits.checkpoint_instructions=override_budget("REVERSE_PC_C39_CHECKPOINT_INSTRUCTIONS",300000000,100000000);
+  std::cerr<<"REVERSE_C39_HOST_POLICY {\"chunk\":"<<limits.chunk<<",\"checkpoint_ms\":"<<limits.checkpoint_ms
+    <<",\"checkpoint_instructions\":"<<limits.checkpoint_instructions<<"}\\n";
   require(!std::filesystem::exists(argv[4]),"Output journal already exists");
   std::cerr<<"REVERSE_C27_PROFILE_HOST_PHASE {\"phase\":\"verify_original_checkpoint\"}\n";
   const auto input=guest_read_file(argv[1],MinimalGuest::max_explicit_adaptive_snapshot);
