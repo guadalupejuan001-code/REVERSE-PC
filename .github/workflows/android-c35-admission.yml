@@ -5,7 +5,9 @@ name: Android C35 trusted C34 checkpoint admission
     paths:
       - .github/workflows/android-c35-admission.yml
       - tools/android_c35_source_gate.mjs
+      - tools/android_c35_stage.mjs
       - tests/android_c35_source_gate.test.mjs
+      - tests/android_c35_stage.test.mjs
       - docs/ANDROID_C35_SOURCE_GATE.md
 permissions:
   contents: read
@@ -25,4 +27,4 @@ jobs:
       - name: Reject wrong C34 provenance and unsupported Android completion claims
         run: |
           set -euo pipefail
-          node --test tests/android_c35_source_gate.test.mjs tests/android_c34_stage.test.mjs tests/android_c33_stage.test.mjs tests/android_framework_evidence.test.mjs
+          node --test tests/android_c35_source_gate.test.mjs tests/android_c35_stage.test.mjs tests/android_c34_stage.test.mjs tests/android_c33_stage.test.mjs tests/android_framework_evidence.test.mjs
