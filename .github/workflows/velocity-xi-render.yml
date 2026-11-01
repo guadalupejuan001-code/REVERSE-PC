@@ -1,7 +1,7 @@
 name: REVERSE VELOCITY REgraphics
 on:
   push:
-    branches: [feature/velocity-v04-nitro-airjump-20261101, feature/xi-velocity-no-cpp-render-20261029, feature/velocity-regraphics-20261030, feature/regraphics-frame-cache-20261101, feature/regraphics-ether-spatial-kernel-20261101, feature/regraphics-pipeline-cycle1-20261101, feature/regraphics-calc-cycle2-20261101, feature/regraphics-xi-prep-cycle3-20261101, feature/velocity-cockpit-nature-20261031, feature/velocity-xi-renderer-only-20261031, feature/regraphics-tile-native-20261031]
+    branches: [feature/velocity-v18-garage-photo-hud-20261101, feature/velocity-v04-nitro-airjump-20261101, feature/xi-velocity-no-cpp-render-20261029, feature/velocity-regraphics-20261030, feature/regraphics-frame-cache-20261101, feature/regraphics-ether-spatial-kernel-20261101, feature/regraphics-pipeline-cycle1-20261101, feature/regraphics-calc-cycle2-20261101, feature/regraphics-xi-prep-cycle3-20261101, feature/velocity-cockpit-nature-20261031, feature/velocity-xi-renderer-only-20261031, feature/regraphics-tile-native-20261031]
     paths:
       - 'reverse-os-android/app/src/main/assets/velocity/**'
       - 'reverse-os-android/tests/velocity-xi-render-contract.cjs'
@@ -41,7 +41,7 @@ on:
       - 'experiments/xi-render/direct-binary-test.cjs'
       - '.github/workflows/velocity-xi-render.yml'
   pull_request:
-    branches: [main, feature/xi-direct-frame-binary-20261030, feature/velocity-regraphics-20261030]
+    branches: [main, feature/velocity-v04-nitro-airjump-20261101, feature/xi-direct-frame-binary-20261030, feature/velocity-regraphics-20261030]
     paths: ['reverse-os-android/**', 'src/integration/xi_machine_extension.inc', 'src/integration/xi_mesh_raster.inc', 'experiments/xi-render/**', '.github/workflows/velocity-xi-render.yml']
 permissions: {contents: read}
 concurrency:
