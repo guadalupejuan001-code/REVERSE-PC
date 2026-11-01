@@ -385,6 +385,18 @@ try{
   const active=report.frameStats.filter(s=>s.paused===false&&s.frames>0&&s.elapsedNanos>0&&Number.isFinite(s.fps)&&s.fps>0);
   check(active.length>0,'actual posted-frame FPS measurements recorded');
   check(active.some(s=>s.xiRenders>0),'live race continues rendering updated XI snapshots');
+  report.framePipeline=finalLogs.split(/\\r?\\n/)
+    .filter(s=>/ReverseVelocity.*FRAME_PIPELINE\\b/.test(s))
+    .map(line=>({mode:/mode=(XI_4K|XI_STANDARD)/.exec(line)?.[1],...fields(line)}));
+  check(report.framePipeline.length>0,'real frame stage timings are emitted');
+  check(report.framePipeline.some(s=>s.mode==='XI_STANDARD'&&s.samples>0),
+    'ordinary XI render stage timings are measured');
+  check(report.framePipeline.some(s=>s.mode==='XI_4K'&&s.samples>0&&s.payloadBytes===8294416),
+    'native 4K stage timings identify exact 8294416-byte frame');
+  check(report.framePipeline.every(s=>Number.isFinite(s.xiP50Ms)&&
+      Number.isFinite(s.xiP95Ms)&&Number.isFinite(s.totalP95Ms)&&
+      Number.isFinite(s.presentP50Ms)&&s.totalP95Ms>=0),
+    'pipeline p50/p95 measurements are finite and nonnegative');
   report.activeFps={samples:active.length,min:Math.min(...active.map(s=>s.fps)),max:Math.max(...active.map(s=>s.fps)),
     source:'FRAME_STATS posted Canvas frames / elapsed nanoseconds; emulator workload with recording'};
   screenshot('final-screen');
