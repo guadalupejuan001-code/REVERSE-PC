@@ -135,6 +135,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
         boolean firstFramePosted=false;
         int cacheHits=0,xiRenders=0;
         final VelocityFrameReuse frameReuse=new VelocityFrameReuse();
+        final VelocityFrameProfiler profiler=new VelocityFrameProfiler();
         try{
             while(lifecycle.shouldRun()){
                 long begin=SystemClock.elapsedRealtimeNanos();
@@ -163,6 +164,9 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                             " paused="+paused+
                             " backend="+(selected4K?"REgraphics_XI_4K_NATIVE":"REgraphics_XI_CPU")+
                             " cacheHits="+cacheHits+" xiRenders="+xiRenders);
+                        String normal=profiler.drain(false),nativeTimes=profiler.drain(true);
+                        if(!normal.isEmpty())Log.i("ReverseVelocity","FRAME_PIPELINE "+normal);
+                        if(!nativeTimes.isEmpty())Log.i("ReverseVelocity","FRAME_PIPELINE "+nativeTimes);
                         frames=0;cacheHits=0;xiRenders=0;lastFps=now;
                     }
                     if(now-lastHud>=100_000_000L){
@@ -206,8 +210,13 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                         image=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
                         sourceRect.set(0,0,width,height);
                     }
+                    final long expandStart=System.nanoTime();
                     frame.present(pixels,width,height);
+                    final long expandNanos=System.nanoTime()-expandStart;
+                    final long bitmapStart=System.nanoTime();
                     image.setPixels(pixels,0,width,0,0,width,height);
+                    final long bitmapNanos=System.nanoTime()-bitmapStart;
+                    final long presentStart=System.nanoTime();
                     Canvas canvas=null;
                     try{
                         canvas=getHolder().lockCanvas();
@@ -220,6 +229,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                             canvas.drawBitmap(image,sourceRect,targetRect,paint);
                         }
                     }finally{if(canvas!=null)getHolder().unlockCanvasAndPost(canvas);}
+                    final long presentNanos=System.nanoTime()-presentStart;
                     state=observation.state;
                     presented=canvas!=null;
                     if(presented)frameReuse.framePosted(state,selectedCamera,selectedPaint,stride,selected4K);
@@ -236,6 +246,10 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 }
                 if(presented)frames++;
                 long now=SystemClock.elapsedRealtimeNanos();
+                if(presented)profiler.record(selected4K,
+                    observation.executeNanos,observation.decodeNanos,
+                    expandNanos,bitmapNanos,presentNanos,now-begin,
+                    observation.payloadBytes);
                 if(now-lastFps>=1_000_000_000L){
                     long elapsed=now-lastFps;
                     fps=(int)Math.round(frames*1_000_000_000.0/elapsed);
@@ -244,6 +258,9 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                         " physicsHz="+physicsHz+" fixedDetail="+selectedFixed+" paused="+paused+
                         " backend="+(selected4K?"REgraphics_XI_4K_NATIVE":"REgraphics_XI_CPU")+
                         " cacheHits="+cacheHits+" xiRenders="+xiRenders);
+                    String normal=profiler.drain(false),nativeTimes=profiler.drain(true);
+                    if(!normal.isEmpty())Log.i("ReverseVelocity","FRAME_PIPELINE "+normal);
+                    if(!nativeTimes.isEmpty())Log.i("ReverseVelocity","FRAME_PIPELINE "+nativeTimes);
                     frames=0;cacheHits=0;xiRenders=0;lastFps=now;
                 }
                 if(now-lastHud>=100_000_000L){

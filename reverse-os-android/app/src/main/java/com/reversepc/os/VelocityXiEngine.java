@@ -61,7 +61,17 @@ final class VelocityXiEngine {
     static final class Observation {
         final RegraphicsFrame frame;
         final Snapshot state;
-        Observation(RegraphicsFrame frame,Snapshot state){this.frame=frame;this.state=state;}
+        // Measured using the same monotonic Java clock as the display worker.
+        // executeNanos includes JNI, RVPC2 restore, XI runtime and returned
+        // pixels; decodeNanos covers validation and ownership transfer only.
+        final long executeNanos,decodeNanos;
+        final int payloadBytes;
+        Observation(RegraphicsFrame frame,Snapshot state,long executeNanos,
+                    long decodeNanos,int payloadBytes){
+            this.frame=frame;this.state=state;
+            this.executeNanos=executeNanos;this.decodeNanos=decodeNanos;
+            this.payloadBytes=payloadBytes;
+        }
     }
 
     VelocityXiEngine(Context context)throws Exception{
@@ -186,8 +196,13 @@ final class VelocityXiEngine {
         synchronized(this){observation=privateState.clone();observedState=snapshot;}
         // Native observations execute on a private immutable copy. The physics
         // transaction can advance independently while this image is produced.
-        ResultPacket packet=ResultPacket.parseBinary(NativeRuntime.execute(observation,source));
-        return new Observation(RegraphicsFrame.decode(packet.outputBytes,stride,palette),observedState);
+        final long executeStart=System.nanoTime();
+        final byte[] frameBytes=NativeRuntime.observeFrame(observation,source);
+        final long executeElapsed=System.nanoTime()-executeStart;
+        final long decodeStart=System.nanoTime();
+        final RegraphicsFrame frame=RegraphicsFrame.decodeOwned(frameBytes,stride,palette);
+        final long decodeElapsed=System.nanoTime()-decodeStart;
+        return new Observation(frame,observedState,executeElapsed,decodeElapsed,frameBytes.length);
     }
     /** XI performs all native 4K rasterization; Android consumes only XFB5 pixels. */
     Observation observeNative4KFrame(int camera,int paint)throws Exception{
@@ -207,8 +222,13 @@ final class VelocityXiEngine {
         final byte[] observedState;
         final Snapshot observed;
         synchronized(this){observedState=privateState.clone();observed=snapshot;}
-        ResultPacket packet=ResultPacket.parseBinary(NativeRuntime.execute(observedState,program));
-        return new Observation(RegraphicsFrame.decodeNative4K(packet.outputBytes,palette),observed);
+        final long executeStart=System.nanoTime();
+        final byte[] frameBytes=NativeRuntime.observeFrame(observedState,program);
+        final long executeElapsed=System.nanoTime()-executeStart;
+        final long decodeStart=System.nanoTime();
+        final RegraphicsFrame frame=RegraphicsFrame.decodeNative4KOwned(frameBytes,palette);
+        final long decodeElapsed=System.nanoTime()-decodeStart;
+        return new Observation(frame,observed,executeElapsed,decodeElapsed,frameBytes.length);
     }
     private static int[] parsePalette(String source){
         String[] entries=source.trim().split("\n");
