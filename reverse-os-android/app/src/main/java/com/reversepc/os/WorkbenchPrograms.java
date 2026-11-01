@@ -27,7 +27,10 @@ final class WorkbenchPrograms {
         "3d4659559cf02e2f4509971afc84db56b84bc9a07faaf545d0064d44504399ce",
         "446bebd4c97cbd4807aea0624da0bd45e076541f5e491540f9bffd4b4797370e",
         "3eaac57ab33904349381ed1e9ea3e4695cb5550d2fce9f6f1fae6eeb50fa3baa",
-        "9bfad000b33e33a861e45d4bdcc24fc943a71f743f600d08ef06f9e28ec65300"
+        "9bfad000b33e33a861e45d4bdcc24fc943a71f743f600d08ef06f9e28ec65300",
+        // Official CI cycle 06 pre-final and final PRISMA 2.3.0 RXE hashes.
+        "f23edc879196988ede8d54dd982a90523b7ff6857cc27ed6ef366f5f794848a0",
+        "6386c60ca4b3aefdb84ac956fa59dae2c51e8fb78f8f6fefed56ff604bc48c37"
     };
     static boolean trustedOldPrisma(String hash){
         if(hash==null)return false;
@@ -60,7 +63,9 @@ final class WorkbenchPrograms {
     static void seedGraphics(Context context,WorkspaceFiles files,android.content.SharedPreferences prefs)throws Exception{
         // Each release uses its own flag. A previous 1.2 seed must not prevent
         // PRISMA 2.0 from being published into an existing REVERSE installation.
-        if(prefs.getBoolean("prisma-2.3-seeded",false))return;
+        // An integration build has a different content hash even if PRISMA remains 2.3.0.
+        // Prior cycle-6 flags cannot suppress the one-time official upgrade.
+        if(prefs.getBoolean("prisma-2.3-main-seeded",false))return;
         final byte[] image;
         try(InputStream in=context.getAssets().open("native-apps/PRISMA.rxe")){image=read(in);}
         catch(java.io.FileNotFoundException optional){return;}
@@ -104,7 +109,8 @@ final class WorkbenchPrograms {
              .putBoolean("prisma-2.0-seeded",true)
              .putBoolean("prisma-2.1-seeded",true)
              .putBoolean("prisma-2.2-seeded",true)
-             .putBoolean("prisma-2.3-seeded",true).apply();
+             .putBoolean("prisma-2.3-seeded",true)
+             .putBoolean("prisma-2.3-main-seeded",true).apply();
     }
     JSONObject graphicsLaunch(JSONObject request)throws Exception{
         byte[] image=checked(request);JSONObject metadata=info(image);
