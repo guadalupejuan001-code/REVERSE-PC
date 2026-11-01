@@ -1,7 +1,7 @@
 name: REVERSE VELOCITY installable APK
 on:
   push:
-    branches: [feature/velocity-regraphics-20261030, feature/regraphics-frame-cache-20261101, feature/velocity-cockpit-nature-20261031, feature/velocity-xi-renderer-only-20261031, feature/regraphics-tile-native-20261031]
+    branches: [feature/velocity-regraphics-20261030, feature/regraphics-frame-cache-20261101, feature/regraphics-ether-spatial-kernel-20261101, feature/velocity-cockpit-nature-20261031, feature/velocity-xi-renderer-only-20261031, feature/regraphics-tile-native-20261031]
     paths:
       - '.github/workflows/velocity-apk.yml'
       - 'reverse-os-android/app/build.gradle'
@@ -19,6 +19,8 @@ on:
       - 'scripts/check-velocity-native-only.cjs'
       - 'reverse-os-android/tests/velocity-native4k-contract.cjs'
       - 'tests/xi_native_tile_raster.cpp'
+      - 'tests/xi_spatial_candidates.cpp'
+      - 'scripts/velocity-spatial-ab.cjs'
       - 'scripts/velocity-landscape-post.cjs'
       - 'scripts/emit-velocity-car-scene.cjs'
       - 'scripts/velocity-car-mesh.cjs'
@@ -90,7 +92,7 @@ jobs:
               exit 1
             }
           cp reverse-os-android/app/build/outputs/apk/velocity/debug/app-velocity-debug.apk \
-            dist/REVERSE-VELOCITY-1.2.0-REgraphics-XI-Optimizado.apk
+            dist/REVERSE-VELOCITY-1.3.0-EtherSpatial-XI.apk
       - uses: actions/cache/save@v4
         if: steps.velocity-signing.outputs.cache-hit != 'true'
         with:
@@ -99,7 +101,7 @@ jobs:
       - name: Verify native-XI APK identity, signature, alignment and source assets
         run: |
           set -euo pipefail
-          APK=dist/REVERSE-VELOCITY-1.2.0-REgraphics-XI-Optimizado.apk
+          APK=dist/REVERSE-VELOCITY-1.3.0-EtherSpatial-XI.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" \
             > build/velocity-apk/signature.txt
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 4 "$APK" \
@@ -141,14 +143,14 @@ jobs:
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
           adb shell input keyevent 82
-          adb install -r dist/REVERSE-VELOCITY-1.2.0-REgraphics-XI-Optimizado.apk \
+          adb install -r dist/REVERSE-VELOCITY-1.3.0-EtherSpatial-XI.apk \
             > build/velocity-apk/install.txt
           node reverse-os-android/tests/velocity-apk-smoke.cjs adb build/velocity-apk/smoke
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: reverse-velocity-apk
-          path: dist/REVERSE-VELOCITY-1.2.0-REgraphics-XI-Optimizado.apk
+          path: dist/REVERSE-VELOCITY-1.3.0-EtherSpatial-XI.apk
           if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         if: always()

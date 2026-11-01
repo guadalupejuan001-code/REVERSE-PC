@@ -204,6 +204,8 @@ public final class VelocityActivity extends Activity {
                 "Resolución habitual: hasta 640 × 360; 4K XI nativo experimental.\n"+
                 "XFS1 anterior: 8.000.000 pruebas; XFB5 escala el trabajo por resolución.\n"+
                 "El modo 4K XI calcula 3840 × 2160 píxeles por franjas de 32 filas. "+
+                "Ether Spatial descarta regiones 32×32 fuera de los triángulos, "+
+                "conservando la profundidad, colores y texturas de XI. "+
                 "El rendimiento depende del dispositivo; 60/120 FPS no están certificados. "+
                 "No hay OpenGL ni escalado presentado como 4K.")
             .setPositiveButton("Entendido",(dialog,which)->dialog.dismiss())
