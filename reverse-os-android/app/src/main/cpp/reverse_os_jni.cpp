@@ -74,6 +74,11 @@ Java_com_reversepc_os_NativeRuntime_observeFrame(JNIEnv* e,jclass,
   try{
     auto runtime=reverse_os::restore(bytes(e,state));
     const auto frame=runtime.execute(source(e,text));
+    // Reject text/unknown opcodes on this high-throughput binary-only path.
+    // Frame headers are fully checked by RegraphicsFrame after JNI transfer.
+    if(frame.size()<4 || (frame.compare(0,4,"XFS1")!=0 &&
+                          frame.compare(0,4,"XFB5")!=0))
+      throw std::invalid_argument("Read-only XI observation requires XFS1/XFB5 output");
     return output_frame(e,frame);
   }catch(const std::exception& x){throw_java(e,x);return nullptr;}
 }
