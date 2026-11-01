@@ -90,56 +90,81 @@ export function concertSection(program, time) {
   return program.bars[lowerBound(program.bars, Math.max(0, time))] ||
     { t: 0, end: 60, kind: 'groove', energy: .3, delta: 0 };
 }
-const sectionAmplitude = { quiet: .045, groove: .23, build: .40, impact: .55, peak: .49, release: .13 };
-const sectionFan = { quiet: 0, groove: .25, build: .52, impact: .76, peak: .60, release: .08 };
-
-export function concertPose(program, time, cue = {}, { quality = 'auto', reduced = false } = {}) {
+// Six individually addressed, physically anchored moving-head fixtures.
+// These are optical stage colors, independent of the two gameplay note colors.
+export const GALACTIC_HUES = Object.freeze([
+  '#58dcff', '#c58bff', '#ff6ea9', '#67ffe0', '#ffba70', '#8aabff'
+]);
+const sectionAmplitude = { quiet: .03, groove: .51, build: .72, impact: .89, peak: .79, release: .18 };
+const sectionFan = { quiet: 0, groove: .18, build: .37, impact: .80, peak: .60, release: .12 };
+const showPatterns = Object.freeze({
+  quiet: 'idle', groove: 'orbit', build: 'chase',
+  impact: 'fan', peak: 'cross', release: 'sweep'
+});
+// Beat-space poses, not per-frame physics or random sweeps: pause, seek, replay
+// and tempo changes produce the exact same mechanical head directions.
+export function concertPose(program, time, cue = {}, { quality = 'auto', reduced = false, style = 'galaxy' } = {}) {
   const t = finite(time) ? Math.max(0, time) : 0;
   const section = concertSection(program, t);
+  const sectionType = program.map?.fallback ? 'quiet' : section.kind;
   const beat = clamp(finite(cue.beat) ? cue.beat : 0, 0, 1);
   const energy = clamp(finite(cue.energy) ? cue.energy : section.energy, 0, 1);
   const phase = concertBeat(program, t);
-  const sectionType = program.map?.fallback ? 'quiet' : section.kind;
-  // Only a musically released combo accent supplies show energy. The safety
-  // clamp prevents a gameplay milestone from creating a blinding stage wash.
+  const barIndex = lowerBound(program.bars, t);
+  const mode = ['classic', 'club', 'galaxy'].includes(style) ? style : 'galaxy';
   const show = reduced ? 0 : clamp(finite(cue.show) ? cue.show : 0, 0, 1);
-  const amplitude = reduced ? 0 : sectionAmplitude[sectionType] + show * .09;
-  const fan = reduced ? 0 : Math.min(.80, sectionFan[sectionType] + show * .15);
-  const intensity = reduced ? .07 : clamp(.06 + energy * .12 + beat * .095 + show * .085, .04, .29);
-  // Two fixtures remain in battery mode, one on each side. Other modes
-  // retain the entire six-head stage; high quality adds a third body per arm.
-  const stations = quality === 'battery' ? RIG_STATIONS.filter(s => s.depth === 1) : RIG_STATIONS;
+  const pattern = showPatterns[sectionType] || 'orbit';
+  const motion = reduced ? 0 : mode === 'classic' ? .38 : mode === 'club' ? 1.13 : 1;
+  const amplitude = sectionAmplitude[sectionType] * motion;
+  const fan = sectionFan[sectionType] * motion;
+  const intensity = reduced ? .07 :
+    clamp(.065 + energy * .135 + beat * .055 + show * .09, .045, .29);
+  const stations = quality === 'battery'
+    ? RIG_STATIONS.filter(station => station.depth === 1) : RIG_STATIONS;
   const fixtures = stations.map(station => {
-    const side = station.side;
-    const offset = station.depth * 1.1 + (side > 0 ? 1.1 : 0);
+    const side = station.side, depth = station.depth;
+    const offset = depth * 1.08 + (side > 0 ? 1.27 : 0);
     const wave = Math.sin(phase * Math.PI / 4 + offset);
-    const opening = (sectionType === 'impact' || sectionType === 'peak') ? side * fan : -side * fan * .34;
-    const horizontal = clamp(wave * amplitude + opening, -.88, .88);
-    const vertical = Math.cos(phase * Math.PI / 8 + offset * .7) * amplitude * .25;
+    const chase = Math.sin(phase * Math.PI / 2 - depth * Math.PI / 3 + side * .35);
+    const sweep = Math.sin(phase * Math.PI / 4 + (side > 0 ? -.32 : .32));
+    const cross = Math.sin(phase * Math.PI / 4 + depth * Math.PI / 2);
+    const patternWave = pattern === 'chase' ? chase : pattern === 'sweep' ? sweep :
+      pattern === 'cross' ? cross : wave;
+    const opening = pattern === 'fan' || pattern === 'cross'
+      ? side * fan : pattern === 'idle' ? 0 : -side * fan * .22;
+    const pan = reduced ? 0 : clamp(
+      patternWave * amplitude + opening + show * side * .09, -1.12, 1.12);
+    const tilt = reduced ? 0 : clamp(
+      Math.cos(phase * Math.PI / 8 + offset * .82) * amplitude * .60 +
+      show * .16 + beat * .065, -.62, .62);
     const base = { x: station.x, y: station.y, z: station.z };
     const elbow = {
-      x: station.x - side * .15 + horizontal * .16,
-      y: station.y + .32,
-      z: station.z - .10
+      x: station.x - side * .15 + pan * .09,
+      y: station.y + .31, z: station.z - .10
     };
     const head = {
-      x: station.x - side * .28 + horizontal * .39,
-      y: station.y + .60 + vertical,
+      x: station.x - side * .28 + pan * .42,
+      y: station.y + .64 + tilt * .32,
       z: station.z - .25
     };
+    // Optical endpoints remain outside the central gameplay strike zone.
     const focus = {
-      x: side * (1.55 + .27 * station.depth) - horizontal * 1.14,
-      y: 1.30 + vertical * 1.35,
-      z: Math.max(2.0, station.z - 4.0)
+      x: side * Math.max(.67, 1.46 + depth * .19 - pan * side * 1.02),
+      y: 1.42 + tilt * .47,
+      z: Math.max(2.0, station.z - (4.20 + tilt))
     };
     return {
-      id: station.id, color: station.color, base, elbow, head, focus,
-      angle: horizontal * .86, intensity: intensity * (1 - station.depth * .12),
-      pulse: beat, section: sectionType
+      id: station.id, color: station.color,
+      lightColor: GALACTIC_HUES[station.id], base, elbow, head, focus,
+      pan, tilt, angle: pan * .86, beamWidth: .28 + (1 + tilt) * .12,
+      intensity: intensity * (1 - depth * .09),
+      pulse: beat, section: sectionType, pattern
     };
   });
-  return { time: t, beat: phase, energy, section: sectionType,
-    quality, reduced, intensity, fixtures };
+  return {
+    time: t, beat: phase, barIndex, energy, section: sectionType,
+    pattern, style: mode, quality, reduced, intensity, fixtures
+  };
 }
 
 export function concertNativeParts(pose, available = RIG_MAX_CUBOIDS) {
