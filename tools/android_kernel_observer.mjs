@@ -7,7 +7,7 @@ import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {auditGkiRvg} from './audit_gki_rvg.mjs';
 import {rvgMemoryLines} from './rvg_memory_lines.mjs';
-import {observePid1BootProperty,mountedFilePath} from './android_live_property.mjs';
+import {observePid1BootProperty,mountedFilePath,enumerateMapleVmas} from './android_live_property.mjs';
 import {inspectBinderQueues} from './android_binder_snapshot_probe.mjs';
 const KERNEL='f722bdd809bfd3485917a564b053b8a6d4938408734091f420c3297a8e3b20c8';
 const VBASE=0xffffffc080000000n, RAM=0x40000000n;
@@ -312,6 +312,28 @@ export function observeAndroidKernel(bytes,expectedCheckpointSha,options){
     enabled_irq0:hex(m(44)),pending_irq0:hex(m(46)),active_irq0:hex(m(48))},
    current:currentTask?schedPeek(currentTask):null,
    observed_service_leaders:selected.map(t=>schedPeek(BigInt(t.task))),read_only:true};
+  if(currentTask&&Number(m(4))===0){
+   // The current EL0 address is not a kernel symbol: identify its actual
+   // file-backed executable VMA before claiming any hot library or function.
+   try{
+    const mm=read(currentTask+BigInt(task.mm.offset));
+    check(mm>=0xffff000000000000n,'Current process has no valid mm');
+    const layoutOf=name=>Object.fromEntries(Object.entries(members(type(name))).map(([k,v])=>{
+     const t=resolveType(types[v.type]);return [k,{offset:v.offset,count:t.kind===3?kernel.readUInt32LE(t.at+20):null}];
+    }));
+    const areas=enumerateMapleVmas({mm,read,layout:layoutOf,maxVmas:8192});
+    const currentPc=u(2),vma=areas.find(x=>currentPc>=x.start&&currentPc<x.end);
+    check(vma,'Current EL0 PC not mapped in process VMA tree');
+    const mapped={start:hex(vma.start),end:hex(vma.end),pc:hex(currentPc),
+     file_page_offset:vma.filePageOffset.toString(),
+     offset_in_vma:(currentPc-vma.start).toString(),is_file_backed:vma.file!==0n};
+    if(vma.file){
+     mapped.file=mountedFilePath(vma.file,{read,layout:layoutOf});
+     mapped.offset_in_file=(vma.filePageOffset*4096n+currentPc-vma.start).toString();
+    }
+    schedulerProbe.current_pc_mapping=mapped;
+   }catch(e){schedulerProbe.current_pc_mapping_error=e.message;}
+  }
  }
  const rwsem=members(type('rw_semaphore')),sem=symbol('trace_event_sem');
  const countValue=read(sem+BigInt(rwsem.count.offset)),owner=read(sem+BigInt(rwsem.owner.offset)),ownerTask=tasks.find(t=>t.task===hex(owner&~7n));
