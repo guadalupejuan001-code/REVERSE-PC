@@ -77,9 +77,10 @@ function finishScene(content){
   const id=ROCK_START+j;
   return 'localset '+(512+id)+' '+id*512;
  }).join('\n');
- const lastTree='localset '+(512+ROCK_START-1)+' '+((ROCK_START-1)*512+256);
- source=change(source,lastTree+'\nlocalset 11 0',
-   lastTree+'\n'+newMetadata+'\nlocalset 11 0',
+ // Landscape vertices are inserted between the author's preallocated
+ // vehicle-effect IDs. The actor marker is unique across both render sources.
+ source=change(source,'localset 11 0',
+   newMetadata+'\nlocalset 11 0',
    'XI vertex metadata extension');
  // Select actual 3D templates per roadside object: 20 trees, 10 rocks, 10 grass clumps.
  const choose=['localget r0 11','mod r0 4','cmp r0 2','je nature_rock_model',
