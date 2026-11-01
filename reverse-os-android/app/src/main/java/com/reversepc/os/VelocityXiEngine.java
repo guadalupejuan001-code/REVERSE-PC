@@ -190,18 +190,25 @@ final class VelocityXiEngine {
         return observeFrame(stride,camera,paint,0);
     }
     Observation observeFrame(int stride,int camera,int paint,int car)throws Exception{
+        return observeFrame(stride,camera,paint,car,0,0);
+    }
+    Observation observeFrame(int stride,int camera,int paint,int car,int yaw,int pitch)throws Exception{
+        if(yaw<0||yaw>=4096||pitch<0||pitch>=512)
+            throw new IllegalArgumentException("XI camera orbit outside 4096-step circle");
         if(car<0||car>=3)throw new IllegalArgumentException("Unknown XI car silhouette");
         if(stride!=1&&stride!=2&&stride!=4)throw new IllegalArgumentException("XI frame stride must be 1,2 or 4");
         if(camera<0||camera>2||paint<0||paint>4)throw new IllegalArgumentException("XI visual input out of range");
         final String source;
-        final int programKey=((stride*3+camera)*5+paint)*3+car;
+        final int programKey=(((stride*3+camera)*5+paint)*3+car)*2097152+
+            yaw*512+pitch;
         // Cache one authored program, independently of the physics monitor.
         // Observations and state remain fresh on every execution.
         synchronized(renderSourceLock){
             if(programKey!=renderProgramKey){
                 renderProgramCache=XI_HEADER+"store8 200 "+stride+
                     "\nstore8 201 "+camera+"\nstore8 202 "+paint+
-                    "\nstore8 203 "+car+"\n"+
+                    "\nstore8 203 "+car+"\nstore16 204 "+yaw+
+                    "\nstore16 206 "+pitch+"\n"+
                     xiRenderer.substring(XI_HEADER.length());
                 renderProgramKey=programKey;
             }
@@ -227,15 +234,21 @@ final class VelocityXiEngine {
         return observeNative4KFrame(camera,paint,0);
     }
     Observation observeNative4KFrame(int camera,int paint,int car)throws Exception{
+        return observeNative4KFrame(camera,paint,car,0,0);
+    }
+    Observation observeNative4KFrame(int camera,int paint,int car,int yaw,int pitch)throws Exception{
+        if(yaw<0||yaw>=4096||pitch<0||pitch>=512)
+            throw new IllegalArgumentException("Invalid XI 4K camera orbit");
         if(car<0||car>=3)throw new IllegalArgumentException("Unknown XI native 4K car");
         if(camera<0||camera>2||paint<0||paint>4)
             throw new IllegalArgumentException("Invalid XI native 4K visual input");
         final String program;
-        final int key=(camera*5+paint)*3+car;
+        final int key=((camera*5+paint)*3+car)*2097152+yaw*512+pitch;
         synchronized(renderSourceLock){
             if(key!=native4KProgramKey){
                 native4KProgramCache=XI_HEADER+"store8 200 1\nstore8 201 "+camera+
-                    "\nstore8 202 "+paint+"\nstore8 203 "+car+"\n"+
+                    "\nstore8 202 "+paint+"\nstore8 203 "+car+
+                    "\nstore16 204 "+yaw+"\nstore16 206 "+pitch+"\n"+
                     xiNative4KRenderer.substring(XI_HEADER.length());
                 native4KProgramKey=key;
             }
