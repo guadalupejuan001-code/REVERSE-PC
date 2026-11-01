@@ -63,7 +63,7 @@ inline void MinimalGuest::pci_write(std::uint64_t address,std::uint64_t value,un
   }
 }
 inline void MinimalGuest::dma_write(std::uint64_t address,std::uint64_t value,unsigned size){
-  range(address,size);invalidate_translation_hints();machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;
+  range(address,size);invalidate_translation_hints();invalidate_dma_code(address,size);machine_.exclusive_address=UINT64_MAX;machine_.exclusive_size=0;
   for(unsigned i=0;i<size;i++)logical_device_store(address+i,std::uint8_t(value>>(8*i))^backing(address+i));
 }
 inline void MinimalGuest::pci_notify(unsigned device,unsigned queue){
