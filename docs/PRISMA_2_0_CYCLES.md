@@ -152,3 +152,11 @@ Implementación: music-stage.js, combo-spectacle.js, concert-rig.js y engine.js.
 - La versión candidata PRISMA 2.3.0 conserva las actualizaciones de 1.1, 1.2, 2.0, 2.1 y 2.2 oficiales por huellas exactas SHA-256 y mantiene la protección de ejecutables personalizados y el origen de los récords de WebView. Las memorias XI se mantienen separadas por identidad.
 - El resultado de la CI de ciclo 06 y los archivos APK/RXE deben proceder del mismo commit SHA y aprobar la comprobación de hash; todavía no constituyen una medida del funcionamiento de la APK en el dispositivo físico del propietario.
 - **Prueba física necesaria después de instalar:** contraste en pantalla táctil, latencia real con auriculares Bluetooth, ausencia de pérdida de notas y consumo/temperatura en sesiones prolongadas. Los costes reales de CPU/GPU y fotogramas por segundo se obtienen con perfilado sobre el Samsung real, no extrapolados del emulador.
+
+
+## Ciclo 06 — pulido y verificación final
+
+- Política de adaptación visual aislada de la lógica XI: degradación por 20 frames lentos, recuperación tras 120 frames rápidos y 8 segundos de histéresis para evitar oscilaciones. Se preserva la resolución adaptativa anterior.
+- Presupuesto explícito de partículas por calidad; el ahorro y los efectos suaves limitan material y partículas. La puntuación, temporización de las notas, beatmaps y combos no se alteran.
+- Test repetible: node tests/prisma-quality.mjs. Se ejecuta junto con suites anteriores y el pipeline Android 15.
+- Versión 2.3.0 para distinguir el último ciclo. Las mediciones de FPS en un teléfono físico siguen pendientes: una emulación no es un benchmark de hardware real.
