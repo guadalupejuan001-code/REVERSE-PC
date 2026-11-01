@@ -38,4 +38,4 @@ assert.equal(new MusicStageDirector(ambient).armCombo(10, 1.2), false, 'syntheti
 const empty = makeMusicStage([{ t: Number.NaN, strength: 1 }], { duration: 4 });
 assert.equal(empty.accents.length, 0, 'ignore invalid onsets');
 assert.equal(new MusicStageDirector(empty).armCombo(10, 1), false, 'no arbitrary effects without accents');
-console.log(JSON.stringify({ passed: 14, accents: map.accents.length, musicStage: 'ok' }));
+console.log(JSON.stringify({ passed: 17, accents: map.accents.length, musicStage: 'ok' }));
