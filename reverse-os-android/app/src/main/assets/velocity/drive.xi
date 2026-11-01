@@ -110,6 +110,15 @@ store8 388 0
 store8 389 0
 store8 390 0
 store8 391 0
+# XI effect history is durable Ether state (not host-generated graphics).
+store8 393 0
+store8 394 0
+store8 395 0
+store8 396 0
+store8 410 0
+store8 422 0
+store8 434 0
+store8 446 0
 store8 121 1
 store8 258 0
 set r0 450
@@ -1256,6 +1265,85 @@ label race_distance_finished
 set r1 480000
 label distance_ready
 store32 278 r1
+# Cycle 2: physical event history for visible tire marks, wheel smoke
+# and spring settling. Four world-space skid samples, each X/Z/Yaw/TTL.
+# Slots 400..447 are unused by world, opponents and gameplay ABI.
+label effect_history
+load8 r0 395
+cmp r0 0
+jle effect_smoke_faded
+sub r0 1
+store8 395 r0
+label effect_smoke_faded
+load8 r0 396
+cmp r0 0
+jle effect_suspension_rest
+sub r0 1
+store8 396 r0
+label effect_suspension_rest
+load8 r0 391
+cmp r0 1
+jne effect_after_landing
+store8 396 18
+label effect_after_landing
+load8 r0 394
+cmp r0 0
+jle effect_cooldown_ready
+sub r0 1
+store8 394 r0
+label effect_cooldown_ready
+load8 r0 131
+cmp r0 1
+jne effect_drift_done
+load16 r0 110
+cmp r0 900
+jlt effect_drift_done
+load8 r0 120
+cmp r0 0
+jne effect_drift_done
+load16 r0 384
+cmp r0 0
+jne effect_drift_done
+load8 r0 133
+cmp r0 0
+jne effect_drift_done
+store8 395 16
+load8 r0 394
+cmp r0 0
+jne effect_drift_done
+load8 r0 393
+mov r12 r0
+mul r12 12
+add r12 400
+load32 r1 100
+store32 $r12 r1
+add r12 4
+load32 r1 104
+store32 $r12 r1
+add r12 4
+load16 r1 108
+store16 $r12 r1
+add r12 2
+store8 $r12 120
+add r0 1
+mod r0 4
+store8 393 r0
+store8 394 7
+label effect_drift_done
+set r7 0
+label effect_expire_loop
+mov r12 r7
+mul r12 12
+add r12 410
+load8 r0 $r12
+cmp r0 0
+jle effect_expire_next
+sub r0 1
+store8 $r12 r0
+label effect_expire_next
+add r7 1
+cmp r7 4
+jlt effect_expire_loop
 label rank
 set r0 1
 store8 282 r0
