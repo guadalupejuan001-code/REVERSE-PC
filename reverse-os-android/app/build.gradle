@@ -23,7 +23,7 @@ android {
   }
  }
  productFlavors {
-  velocity { dimension 'edition'; applicationId 'com.reversepc.velocity'; versionCode 11; versionName '1.1.0-regraphics-native4k'; manifestPlaceholders = [appLabel:'REVERSE VELOCITY'] }
+  velocity { dimension 'edition'; applicationId 'com.reversepc.velocity'; versionCode 12; versionName '1.2.0-regraphics-xi'; manifestPlaceholders = [appLabel:'REVERSE VELOCITY'] }
   classic { dimension 'edition'; applicationId 'com.reversepc.os'; manifestPlaceholders = [appLabel:'REVERSE OS'] }
   desktop { dimension 'edition'; applicationId 'com.reversepc.desktop'; manifestPlaceholders = [appLabel:'REVERSE Desktop'] }
   workbench { dimension 'edition'; versionCode 251; versionName '2.5.1'; applicationId 'com.reversepc.workbench'; manifestPlaceholders = [appLabel:'REVERSE Workbench'] }
