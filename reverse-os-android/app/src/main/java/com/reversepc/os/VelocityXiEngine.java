@@ -145,7 +145,7 @@ final class VelocityXiEngine {
             if(n>=22)throw new IllegalArgumentException("XI game published too many registers");
             JSONObject row=new JSONObject(line);
             if(!"register".equals(row.getString("type"))||
-               !("r"+n).equals(row.getString("register")))
+               !("r"+(n%16)).equals(row.getString("register")))
                 throw new IllegalArgumentException("XI game register order mismatch");
             observed[n++]=row.getLong("value");
         }
