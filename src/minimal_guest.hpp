@@ -200,7 +200,7 @@ class MinimalGuest {
                           prefix+kernel.size()+tree.size(),initrd.size(),4});
     std::sort(segments.begin(),segments.end(),
               [](const Segment& a,const Segment& b){return a.address<b.address;});
-    image_=std::move(immutable);segments_=std::move(segments);invalidate_translation_hints();
+    image_=std::move(immutable);segments_=std::move(segments);invalidate_translation_hints();clear_code_cache();
     runtime_=std::move(empty);machine_=MachineState{};
     machine_.enabled=true;machine_.image_kind=2;floating_=FloatingState{};
     block_image_=std::move(disk);machine_.pci.enabled=pci;machine_.pci.disk_bytes=block_image_?block_image_->size():0;
