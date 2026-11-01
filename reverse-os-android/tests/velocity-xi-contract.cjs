@@ -27,7 +27,7 @@ Object.assign(report,inputs,{upstreamPin:pin,harnessSha256:digest(harness),
 const finalObservation=path.join(evidence,'final-observation.json');
 if(fs.existsSync(finalObservation)){
  report.finalObservation=JSON.parse(fs.readFileSync(finalObservation,'utf8'));
- assert.equal(report.finalObservation.length,22,'final physical observation ABI');
+ assert.equal(report.finalObservation.length,26,'final physical observation ABI');
  report.raceClockTicks=report.finalObservation[6];
  report.controlTicksAfterCountdown=report.raceInputTicks;
 }
