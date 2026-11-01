@@ -174,8 +174,8 @@ public final class VelocityActivity extends Activity {
         warning.setVisibility(photo?View.GONE:View.VISIBLE);
         if(pauseButton!=null)pauseButton.setEnabled(!photo);
         if(renderInfo!=null){String backend=w==3840?"REgraphics XI · FOTO 4K":"REgraphics XI";
-            changedText(renderInfo,backend+"  "+w+" × "+h+(photo?"  |  FOTO":
-                paused?"  |  PAUSA":"  |  "+fps+" FPS"));}
+            changedText(renderInfo,photo?"XI FOTO "+w+"×"+h:
+                "XI "+w+"×"+h+" · "+fps+" FPS");}
         map.setCar(s.xCm/100f,s.zCm/100f);
     }
     @Override public void onCreate(Bundle saved){
@@ -215,7 +215,7 @@ public final class VelocityActivity extends Activity {
         add(root,speed,116,28,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,116,0,0);
         warning=text("",12);add(root,warning,-2,-2,Gravity.TOP|Gravity.RIGHT,0,133,18,0);
         renderInfo=text("REgraphics XI",10);renderInfo.setTextColor(0xffb4d5e7);
-        add(root,renderInfo,-2,-2,Gravity.TOP|Gravity.LEFT,16,171,0,0);
+        add(root,renderInfo,144,24,Gravity.TOP|Gravity.LEFT,132,10,0,0);
         status=text("ACELERA PARA SALIR",14);status.setGravity(Gravity.CENTER);
         status.setBackground(background(0xb322374b));
         status.setPadding(dp(12),dp(2),dp(12),dp(2));
