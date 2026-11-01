@@ -228,10 +228,40 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
       '\nmul r0 114\ndiv r0 100\nmul r2 92\ndiv r2 100'+
       '\ncmp r1 77\njle '+morphDone+'\nsub r1 14'+
       '\nlabel '+morphDone);
+  // Damped XI suspension from brake, boost, lateral slip and landing pulse.
+  // Wheel hubs stay attached to the road; only the car body tilts.
+  const suspensionDone=label('suspension_done'),suspensionBody=label('suspension_body');
+  out('load8 r9 8203\ncmp r9 0\njne '+suspensionDone+
+      '\ncmp r8 '+shadowStart+'\njge '+suspensionDone+
+      '\ncmp r8 '+wheelBands[0].first+'\njlt '+suspensionBody+
+      '\ncmp r8 '+wheelBands[0].last+'\njlt '+suspensionDone+
+      '\nlabel '+suspensionBody+
+      '\nload16 r9 112\nsub r9 32768\nmul r9 r0\ndiv r9 50000\nadd r1 r9'+
+      '\nload8 r9 396\ndiv r9 3\nsub r1 r9');
+  const brakeDone=label('suspension_brake_end'),boostDone=label('suspension_boost_end');
+  out('load8 r9 129\ncmp r9 1\njne '+brakeDone+
+      '\nmov r9 r2\ndiv r9 90\nsub r1 r9\nlabel '+brakeDone+
+      '\nload8 r9 382\ncmp r9 1\njne '+boostDone+
+      '\nmov r9 r2\ndiv r9 110\nadd r1 r9\nlabel '+boostDone+
+      '\nlabel '+suspensionDone);
+  // FX ribbons change shape with the real XI fade clock, never screen motion.
+  const effectsDone=label('fx_transform_done'),smokeDone=label('smoke_transform_done'),
+    nitroDone=label('nitro_transform_done');
+  out('load8 r9 8203\ncmp r9 0\njne '+effectsDone+
+      '\ncmp r8 '+smokeStart+'\njlt '+smokeDone+
+      '\ncmp r8 '+smokeEnd+'\njge '+smokeDone+
+      '\nload8 r9 395\nmul r1 r9\ndiv r1 16\nlabel '+smokeDone+
+      '\ncmp r8 '+nitroStart+'\njlt '+nitroDone+
+      '\ncmp r8 '+nitroEnd+'\njge '+nitroDone+
+      '\nload32 r9 115\nmod r9 7\nsub r9 3\nadd r2 r9\nlabel '+nitroDone+
+      '\nlabel '+effectsDone);
   // XI chassis altitude; ground shadow remains at road height.
-  const noRise=label('vertex_no_pneumatic_rise');
-  out('load8 r9 8203\ncmp r9 0\njne '+noRise+'\ncmp r8 '+shadowStart+'\njge '+noRise+
-     '\nload16 r9 384\nadd r1 r9\nlabel '+noRise);
+  const noRise=label('vertex_no_pneumatic_rise'),rise=label('vertex_pneumatic_rise');
+  out('load8 r9 8203\ncmp r9 0\njne '+noRise+
+      '\ncmp r8 '+shadowStart+'\njlt '+rise+
+      '\ncmp r8 '+nitroStart+'\njlt '+noRise+
+      '\ncmp r8 '+nitroEnd+'\njge '+noRise+
+      '\nlabel '+rise+'\nload16 r9 384\nadd r1 r9\nlabel '+noRise);
   load('r9',8310,2,32768);out('mul r9 r0');load('r10',8308,2,32768);out('mul r10 r2\nadd r9 r10\ndiv r9 16384');store('r9',8320,4,1000000,'r10','r11');
   load('r9',8310,2,32768);out('mul r9 r2');load('r10',8308,2,32768);out('mul r10 r0\nsub r9 r10\ndiv r9 16384');load('r10',8304);out('add r10 r9');load('r0',8320);load('r11',8300);out('add r0 r11');
   load('r11',8192,2,0);out('add r10 r11');load('r11',8194,2,0);out('sub r1 r11');pitch('r0','r1','r2');
