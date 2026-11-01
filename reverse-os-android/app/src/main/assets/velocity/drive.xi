@@ -1339,16 +1339,16 @@ print r15
 # Observation ABI v0.4: legacy 16 registers untouched.
 load16 r0 380
 print r0
-load8 r0 382
-print r0
-load16 r0 384
-print r0
-load8 r0 388
-print r0
-load8 r0 389
-print r0
-load8 r0 391
-print r0
+load8 r1 382
+print r1
+load16 r2 384
+print r2
+load8 r3 388
+print r3
+load8 r4 389
+print r4
+load8 r5 391
+print r5
 halt
 label missing_world
 set r0 0
