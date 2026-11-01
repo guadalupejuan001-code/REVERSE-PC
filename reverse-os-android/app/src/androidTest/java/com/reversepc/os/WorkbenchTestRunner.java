@@ -324,7 +324,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
         WorkspaceFiles migration=new WorkspaceFiles(new File(getTargetContext().getCacheDir(),"prisma-upgrade-"+System.nanoTime()));
         android.content.SharedPreferences flags=getTargetContext().getSharedPreferences("prisma-upgrade-check",0);flags.edit().clear().commit();
         WorkbenchPrograms.seedGraphics(getTargetContext(),migration,flags);byte[] current=migration.read("Aplicaciones/PRISMA.rxe");
-        require(new JSONObject(new String(NativeRuntime.inspectRxe(current),StandardCharsets.UTF_8)).getString("app_version").equals("2.2.0"),"Fresh install did not seed PRISMA 2.2");
+        require(new JSONObject(new String(NativeRuntime.inspectRxe(current),StandardCharsets.UTF_8)).getString("app_version").equals("2.3.0"),"Fresh install did not seed PRISMA 2.3");
         byte[] prior;try(java.io.InputStream input=getContext().getAssets().open("prisma-1.1.rxe")){prior=WorkbenchPrograms.read(input);}
         require(digest(prior).equals(WorkbenchPrograms.PRISMA_11_SHA),"Wrong official PRISMA upgrade fixture");
         require(WorkbenchPrograms.trustedOldPrisma("8eab78b37f7d18365f26746e4ed30bf6433c36109f23c0ee92d6c42804b534f0"),"Official PRISMA 1.2 was not allowlisted");
@@ -332,17 +332,18 @@ public final class WorkbenchTestRunner extends Instrumentation {
         require(WorkbenchPrograms.trustedOldPrisma("3d4659559cf02e2f4509971afc84db56b84bc9a07faaf545d0064d44504399ce"),"Cycle 03 pre-release was not allowlisted");
         require(WorkbenchPrograms.trustedOldPrisma("446bebd4c97cbd4807aea0624da0bd45e076541f5e491540f9bffd4b4797370e"),"Cycle 03 final release was not allowlisted");
         require(WorkbenchPrograms.trustedOldPrisma("3eaac57ab33904349381ed1e9ea3e4695cb5550d2fce9f6f1fae6eeb50fa3baa"),"Cycle 04 final release was not allowlisted");
+        require(WorkbenchPrograms.trustedOldPrisma("9bfad000b33e33a861e45d4bdcc24fc943a71f743f600d08ef06f9e28ec65300"),"Cycle 05 official release was not allowlisted");
         require(!WorkbenchPrograms.trustedOldPrisma(digest(current)),"New official release wrongly matches an old executable");
-        migration.write("Aplicaciones/PRISMA.rxe",prior,true);flags.edit().remove("prisma-ui-origin-sha").putBoolean("prisma-2.2-seeded",false).commit();
+        migration.write("Aplicaciones/PRISMA.rxe",prior,true);flags.edit().remove("prisma-ui-origin-sha").putBoolean("prisma-2.3-seeded",false).commit();
         WorkbenchPrograms.seedGraphics(getTargetContext(),migration,flags);
         require(Arrays.equals(current,migration.read("Aplicaciones/PRISMA.rxe")),"Official PRISMA 1.1 was not upgraded");
         require(digest(prior).equals(flags.getString("prisma-ui-origin-sha","")),"Official upgrade lost its WebView records origin");
         byte[] custom=NativeRuntime.compileRxe("#!reverse-pc-machine-v1\nset r0 42\nprint r0\nhalt\n".getBytes(StandardCharsets.UTF_8),"User app".getBytes(StandardCharsets.UTF_8));
-        migration.write("Aplicaciones/PRISMA.rxe",custom,true);flags.edit().putBoolean("prisma-2.2-seeded",false).commit();
+        migration.write("Aplicaciones/PRISMA.rxe",custom,true);flags.edit().putBoolean("prisma-2.3-seeded",false).commit();
         WorkbenchPrograms.seedGraphics(getTargetContext(),migration,flags);
         require(Arrays.equals(custom,migration.read("Aplicaciones/PRISMA.rxe")),"Upgrade overwrote a custom executable");
         require(!WorkbenchPrograms.trustedOldPrisma(digest(custom)),"Customized image was misclassified as official");
-        migration.trash("Aplicaciones/PRISMA.rxe");flags.edit().putBoolean("prisma-2.2-seeded",false).commit();
+        migration.trash("Aplicaciones/PRISMA.rxe");flags.edit().putBoolean("prisma-2.3-seeded",false).commit();
         WorkbenchPrograms.seedGraphics(getTargetContext(),migration,flags);WorkbenchPrograms.seedGraphics(getTargetContext(),migration,flags);
         require(migration.list("Aplicaciones").isEmpty(),"Upgrade restored a removed game");
         JSONObject catalog=op("listApps","","graphicsCatalog");JSONObject program=null;
@@ -367,6 +368,18 @@ public final class WorkbenchTestRunner extends Instrumentation {
         long firstFrame=SystemClock.uptimeMillis()+15000;boolean nativeFrame=false;
         while(SystemClock.uptimeMillis()<firstFrame){if("true".equals(graphicsJs(game,"(()=>{const r=JSON.parse(ReverseGraphics.xRenderInfo());return r.frames>0&&r.cubes>=7&&r.cubes<=23&&r.faceted>=5&&r.surface_pixels>0&&r.candidate_queries<r.width*r.height&&Number(document.getElementById('game').dataset.rigNativeCount)>0;})()"))){nativeFrame=true;break;}SystemClock.sleep(60);}
         require(nativeFrame,"Ether Render X must present playable preview cubes and native moving-head parts; stats="+graphicsJs(game,"ReverseGraphics.xRenderInfo()"));
+        // Actual UX tests: renderer identity is disclosed, and a calibration
+        // can be restored to zero without losing the user's other settings.
+        graphicsJs(game,"document.querySelector('button[data-dialog=\"settingsDialog\"]').click();true");
+        require("true".equals(graphicsJs(game,
+            "document.getElementById('settingsDialog').open&&document.getElementById('rendererStatus').textContent.includes('Ether Render X nativo')")),
+            "The real native graphics engine was not disclosed in settings");
+        graphicsJs(game,"(()=>{const slider=document.getElementById('latency');slider.value='100';slider.dispatchEvent(new Event('input',{bubbles:true}));document.getElementById('latencyReset').click();return true})()");
+        require("true".equals(graphicsJs(game,
+            "document.getElementById('latency').value==='0'&&document.getElementById('latencyValue').textContent==='0 ms'&&JSON.parse(localStorage.getItem('prisma.settings')).latency===0")),
+            "The touch calibration could not be reset and persisted");
+        graphicsJs(game,"document.getElementById('settingsDialog').close();true");
+
         require("true".equals(graphicsJs(game,"document.documentElement.classList.contains('native-xrender')&&!document.querySelector('.gpu-canvas')")),"Legacy GPU cube renderer remained active");
         graphicsJs(game,"window.graphicReplies=[];window.addEventListener('reverse-score',e=>graphicReplies.push(e.detail));ReverseGraphics.event(1,1,0,0);true");
         for(int serial=1;serial<=3;serial++){
@@ -383,7 +396,25 @@ public final class WorkbenchTestRunner extends Instrumentation {
         graphicsTap(game,"#startBtn");long playDeadline=SystemClock.uptimeMillis()+20000;
         while(SystemClock.uptimeMillis()<playDeadline&&!"true".equals(graphicsJs(game,"document.body.classList.contains('is-playing')")))SystemClock.sleep(60);
         require("true".equals(graphicsJs(game,"document.body.classList.contains('is-playing')")),"Native game did not start after touch");
-        SystemClock.sleep(3600);require("true".equals(graphicsJs(game,"JSON.parse(ReverseGraphics.xRenderInfo()).frames>10")),"X Render stopped during playback");
+        JSONObject initialRender=new JSONObject(new JSONArray("["+graphicsJs(game,"ReverseGraphics.xRenderInfo()")+"]").getString(0));
+        long playStart=SystemClock.uptimeMillis();
+        SystemClock.sleep(3600);
+        long elapsedMs=SystemClock.uptimeMillis()-playStart;
+        JSONObject finalRender=new JSONObject(new JSONArray("["+graphicsJs(game,"ReverseGraphics.xRenderInfo()")+"]").getString(0));
+        require(finalRender.getLong("frames")-initialRender.getLong("frames")>=10,"X Render stopped during playback");
+        require(finalRender.getDouble("cpu_ms")>=0&&finalRender.getLong("surface_pixels")>0,
+            "Native render performance metrics are invalid");
+        JSONObject performanceReport=new JSONObject()
+            .put("environment","Android 15 x86_64 emulator with SwiftShader")
+            .put("measurement","Native render jobs per elapsed wall second, NOT real phone FPS")
+            .put("elapsed_wall_ms",elapsedMs)
+            .put("native_frames_initial",initialRender.getLong("frames"))
+            .put("native_frames_final",finalRender.getLong("frames"))
+            .put("native_jobs_per_second",
+                (finalRender.getLong("frames")-initialRender.getLong("frames"))*1000.0/Math.max(1,elapsedMs))
+            .put("native_final_frame",finalRender);
+        Files.write(new File(folder,"prisma-emulator-performance.json").toPath(),
+            performanceReport.toString(2).getBytes(StandardCharsets.UTF_8));
         graphicsTap(game,"#pauseBtn");SystemClock.sleep(200);
         require("true".equals(graphicsJs(game,"!document.getElementById('pauseOverlay').hidden")),"Native game did not pause");
         graphicsTap(game,"#resumeBtn");SystemClock.sleep(200);
