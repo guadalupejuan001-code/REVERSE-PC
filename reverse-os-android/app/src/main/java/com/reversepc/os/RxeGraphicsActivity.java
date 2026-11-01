@@ -20,6 +20,7 @@ import android.widget.FrameLayout;
 import org.json.JSONObject;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.HashMap;
@@ -54,7 +55,24 @@ public final class RxeGraphicsActivity extends Activity {
                 if(expected==null||!identity(candidate).equals(expected))throw new IOException("El ejecutable cambió. Vuelve a abrirlo.");
                 JSONObject metadata=new JSONObject(new String(NativeRuntime.inspectRxe(candidate),StandardCharsets.UTF_8));
                 if(!"graphics".equals(metadata.optString("ui")))throw new IOException("El archivo no es una aplicación gráfica RXE");
-                image=candidate;originHost=expected.substring(0,32)+"."+expected.substring(32)+".rxe.reverse.local";session=new GraphicsSessionStore(getApplicationContext(),image);
+                // Only the exact PRISMA executable bundled with this trusted
+                // host may reuse an official predecessor's WebView origin. All
+                // custom/imported RXE3 images keep hash-isolated browser data.
+                String originIdentity=expected;
+                if("org.reverse.prisma".equals(metadata.optString("app_id"))){
+                    try(InputStream in=getAssets().open("native-apps/PRISMA.rxe")){
+                        String official=identity(WorkbenchPrograms.read(in));
+                        if(official.equals(expected)){
+                            String savedOrigin=getSharedPreferences("workbench-programs",0)
+                                .getString("prisma-ui-origin-sha",expected);
+                            if(savedOrigin!=null&&savedOrigin.matches("[0-9a-f]{64}"))
+                                originIdentity=savedOrigin;
+                        }
+                    }catch(Exception unavailable){/* Remain isolated by current SHA. */}
+                }
+                image=candidate;
+                originHost=originIdentity.substring(0,32)+"."+originIdentity.substring(32)+".rxe.reverse.local";
+                session=new GraphicsSessionStore(getApplicationContext(),image);
                 ui.post(()->{if(!closed)openWeb();});
             }catch(Exception error){ui.post(()->showFailure(error.getMessage()));}
         });

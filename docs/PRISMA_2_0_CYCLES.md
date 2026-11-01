@@ -71,3 +71,16 @@ Siguiente: Ciclo 03 (mejorar brazos mecánicos, cinemática y visualización con
 - tests/prisma_xrender.cpp: cobertura nueva para los cuerpos escénicos con dirección -1 y rechazo de campos fuera de rango. Instrumentación Android valida la presencia de cuerpos nativos en la escena sin presuponer el mismo número para todos los ajustes.
 
 **Pendientes de otros ciclos:** geometría 3D no cúbica, superficies metálicas PBR, niebla volumétrica real y benchmark de Android físico. El navegador WebGL no es Ether Render X. La apariencia de varillas y vigas del ciclo 03 se compone en el overlay, pero sus cuboides no se falsifican: provienen del renderizador nativo.
+
+
+## Publicación segura y actualización de instalaciones
+
+La compilación del juego se etiqueta ahora como PRISMA 2.0.0 (RXE3). Antes, el paquete seguía identificándose como 1.2.0 incluso después de los ciclos 01–03: una instalación antigua podía conservar el ejecutable anterior debido a la preferencia de inicialización 1.2.
+
+El host REVERSE introduce el estado prisma-2.0-seeded, independiente del estado 1.2. El instalador identifica el binario incluido y solo reemplaza imágenes de PRISMA que coincidan exactamente con una lista de hashes SHA-256 publicados en artefactos previos de GitHub Actions. Un ejecutable personalizado/desconocido nunca se sustituye por solo coincidir en nombre, app_id o versión. Una app eliminada no se restaura. La lista incluye las imágenes oficiales RXE 1.1, RXE3 2.5.3, 2.5.4, ciclo 01 y ciclo 02.
+
+Para conservar los registros y ajustes de la WebView, el nuevo PRISMA oficial reutiliza el origen HTTPS local del ejecutable oficial instalado previamente. El host compara la identidad SHA-256 del ejecutable abierto con la imagen oficial incluida antes de permitir esa reutilización; los RXE personalizados siguen aislados por hash propio. No se reintroduce navegación, red, acceso a archivos arbitrarios ni se relaja CSP.
+
+El estado RVPC2 de XI permanece individual por identidad del ejecutable; los récords locales de la UI se guardan en la WebView y usan el origen conservado. La validación Android debe incluir la conservación de ese origen y las rutas de actualización oficial, personalizada y eliminada. No confundir los registros UI preservados con una migración completa del estado RVPC2 entre ejecutables.
+
+Se verifican las firmas SHA de artefactos oficiales descargados del proyecto. El mecanismo preserva datos para versiones reconocidas; las compilaciones oficiales no incluidas en la lista solo podrán instalarse mediante importación explícita, evitando reemplazos inseguros.
