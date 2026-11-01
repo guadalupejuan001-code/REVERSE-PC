@@ -252,6 +252,12 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
     }
     if(q)floating_.v[rd].high=result.low;else floating_.v[rd]={result.low,0};return true;
   }
+  if((i&0xbf3ffc00u)==0x2e20b800u){ // NEG Vd.<T>, Vn.<T>: modular vector integer negate.
+    if(element==64&&!q)return false; // 1D is unallocated; reject before FP access.
+    fp_access();const auto source=floating_.v[rn];Vector128 value;
+    for(unsigned n=0;n<width/element;n++)value.lane(n,element,UINT64_C(0)-source.lane(n,element));
+    commit(value);return true; // 64-bit vectors zero their high half; Rd==Rn supported.
+  }
   const auto compare_zero=i&0xbf3ffc00u;
   if(compare_zero==0x0e208800u||compare_zero==0x2e208800u||compare_zero==0x0e209800u||compare_zero==0x2e209800u||compare_zero==0x0e20a800u){ // CMGT/CMGE/CMEQ/CMLE/CMLT, signed comparisons with zero.
     if(size==3&&!q)return false;fp_access();const auto source=floating_.v[rn];Vector128 value;
