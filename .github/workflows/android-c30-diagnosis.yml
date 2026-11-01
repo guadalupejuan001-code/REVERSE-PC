@@ -51,6 +51,17 @@ jobs:
           assert.equal(r.read_only_observation_available,true,'C29 runtime observer output unavailable');
           console.log(JSON.stringify(r,null,2));
           NODE
+      - name: Inspect authenticated guest console and storage-related counters
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {readFileSync} from 'node:fs';
+          const r=JSON.parse(readFileSync('source-c29/current.json','utf8'));
+          const interesting=/(init:|mke2fs|late-fs|\/data|vold|zygote|keystore|mount|userdata|fs_mgr|surfaceflinger|system_server)/i;
+          const lines=r.console.split(/\r?\n/).filter(line=>interesting.test(line)).slice(-70).map(line=>line.slice(0,300));
+          const guest=Object.fromEntries(Object.entries(r.guest).filter(([k])=>/(block|disk|data|write|pci|display|frame|instruction|virtual_tick)/i.test(k)));
+          console.log(JSON.stringify({console_event_lines:lines,guest_counters:guest},null,2));
+          NODE
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
