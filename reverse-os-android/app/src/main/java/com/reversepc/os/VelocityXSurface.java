@@ -23,7 +23,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     private final VelocityLoopLifecycle lifecycle,physicsLifecycle;
     private final AtomicBoolean resetRequested=new AtomicBoolean();
     private final AtomicBoolean repaintRequested=new AtomicBoolean(true);
-    private volatile int input=4,cameraMode,paintId;
+    private volatile int input=4,cameraMode,paintId,carId;
     private final Object detailLock=new Object();
     private int quality=1;
     private boolean fixedDetail;
@@ -31,8 +31,29 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     private volatile boolean paused;
     private volatile boolean reverseGear;
     private volatile boolean native4K;
+    private boolean pausedBeforePhoto;
     boolean is4KEnabled(){return native4K;}
-    boolean toggle4K(){native4K=!native4K;error="";return native4K;}
+    /**
+     * A real XI 3840x2160 image is a photo mode, never a live racing preset.
+     * Software raster takes hundreds of ms/frame on phones: pausing once means
+     * we preserve the true native pixels without reducing driving to ~2 FPS.
+     */
+    synchronized boolean toggle4K(){
+        if(!native4K){
+            pausedBeforePhoto=paused;
+            input=4;
+            paused=true;
+            physicsHz=0;
+            native4K=true;
+        }else {
+            native4K=false;
+            paused=pausedBeforePhoto;
+            pausedBeforePhoto=false;
+        }
+        error="";
+        repaintRequested.set(true);
+        return native4K;
+    }
     private volatile String error="";
 
     VelocityXSurface(Context context,VelocityXiEngine game,Hud hud){
@@ -49,7 +70,13 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
             throw new IllegalArgumentException("Control fuera del protocolo XI");
         input=gas|(brake<<1)|(steer<<2)|(handbrake?16:0)|(nitro?32:0)|(jump?64:0);
     }
-    void reset(){resetRequested.set(true);paused=false;reverseGear=false;}
+    void reset(){
+        native4K=false;
+        pausedBeforePhoto=false;
+        input=4;
+        resetRequested.set(true);paused=false;reverseGear=false;
+        repaintRequested.set(true);
+    }
     boolean isReverseGear(){return reverseGear;}
     boolean isBrakePressed(){return (input&2)!=0;}
     boolean isAccelerating(){return (input&1)!=0;}
@@ -60,9 +87,21 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
         reverseGear=reverse;
         return true;
     }
-    boolean togglePause(){paused=!paused;if(paused){physicsHz=0;controls(0,0,1,false);}return paused;}
+    boolean togglePause(){
+        if(native4K)return paused; // Photo stays frozen until leaving 4K.
+        paused=!paused;
+        if(paused){physicsHz=0;controls(0,0,1,false);}
+        return paused;
+    }
     int cycleCamera(){cameraMode=(cameraMode+1)%3;return cameraMode;}
     int cyclePaint(){paintId=(paintId+1)%5;return paintId;}
+    int selectedCar(){return carId;}
+    void selectCar(int selection){
+        if(selection<0||selection>2)throw new IllegalArgumentException("Vehículo XI desconocido");
+        carId=selection;
+        // Even a frozen 4K capture must update to the newly authored silhouette.
+        repaintRequested.set(true);
+    }
     boolean toggleSharpness(){
         synchronized(detailLock){
             fixedDetail=!fixedDetail;quality=fixedDetail?2:1;return fixedDetail;
@@ -146,7 +185,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 final int selected;final boolean selectedFixed;
                 synchronized(detailLock){selected=fixedDetail?2:Math.max(0,Math.min(2,quality));selectedFixed=fixedDetail;}
                 int stride=selected==0?4:selected==1?2:1;
-                int selectedCamera=cameraMode,selectedPaint=paintId;
+                int selectedCamera=cameraMode,selectedPaint=paintId,selectedCar=carId;
                 VelocityXiEngine.Snapshot state;
                 boolean presented=false;
                 boolean selected4K=native4K;
@@ -182,20 +221,21 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 // REgraphics rasteriza triángulos XI y emite XFS1. Android solo presenta píxeles.
                     VelocityXiEngine.Observation observation;
                     if(selected4K){
-                        try{observation=game.observeNative4KFrame(selectedCamera,selectedPaint);}
+                        try{observation=game.observeNative4KFrame(selectedCamera,selectedPaint,selectedCar);}
                         catch(Exception nativeFailure){
                             Log.w("ReverseVelocity","Native XI 4K unavailable on this device",nativeFailure);
                             native4K=false;
+                            paused=pausedBeforePhoto;pausedBeforePhoto=false;
                             frameReuse.invalidate();
-                            error="4K XI no disponible: "+nativeFailure.getMessage();
+                            error="Foto 4K no disponible: "+nativeFailure.getMessage();
                             continue;
                         }
-                    }else observation=game.observeFrame(stride,selectedCamera,selectedPaint);
+                    }else observation=game.observeFrame(stride,selectedCamera,selectedPaint,selectedCar);
                     xiRenders++;
                     // If a camera, paint, resolution or 4K switch happened during
                     // this expensive XI render, do not publish an obsolete frame.
                     boolean stale=selectedCamera!=cameraMode||selectedPaint!=paintId||
-                        selected4K!=native4K;
+                        selectedCar!=carId||selected4K!=native4K;
                     if(!selected4K){
                         synchronized(detailLock){
                             int active=fixedDetail?2:Math.max(0,Math.min(2,quality));
@@ -246,7 +286,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     Log.i("ReverseVelocity","FRAME_READY "+width+"x"+height+
                         " speed="+state.speedKmh()+" ticks="+state.ticks+
                         " xCm="+state.xCm+" zCm="+state.zCm+" yaw4096="+state.yaw4096+
-                        " camera="+selectedCamera+" paint="+selectedPaint);
+                        " camera="+selectedCamera+" paint="+selectedPaint+" car="+selectedCar);
                 }
                 if(presented)frames++;
                 long now=SystemClock.elapsedRealtimeNanos();
