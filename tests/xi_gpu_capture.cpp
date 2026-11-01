@@ -1,5 +1,9 @@
 #include <algorithm>
 #include <array>
+#include <atomic>
+#include <thread>
+#include <exception>
+#include <cstring>
 #include <vector>
 #include <limits>
 #include <cstdint>

@@ -54,7 +54,7 @@ replacements['inverse_memory.hpp'].append((
 # a first-line marker. Historical XI keeps the original interpreter byte-for-byte.
 replacements['infinite_program.hpp'] += [
     ('#include <array>',
-     '#include <array>\n#include <map>\n#include <limits>'),
+     '#include <array>\n#include <map>\n#include <limits>\n#include <atomic>\n#include <thread>\n#include <exception>\n#include <cstring>\n#include <system_error>'),
     ('// This function acts on a private candidate owned by InfiniteSession.',
      '#include "integration/xi_machine_extension.inc"\n\n'
      '// This function acts on a private candidate owned by InfiniteSession.'),
