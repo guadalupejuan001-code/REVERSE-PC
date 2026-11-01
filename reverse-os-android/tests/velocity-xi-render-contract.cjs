@@ -192,6 +192,35 @@ try{
   wheelEvidence.push({name,distanceCm:distance,steering:steer,frameSha256:sha(first.bytes)});
  }
  assert.equal(sha(fs.readFileSync(state)),retainedHash,'wheel observation changed real race snapshot');
+ // Causal A/B comparisons from real XI physics saved by gameplay-contract:
+ // disable only the visual event, preserve identical x/z/velocity/Ether.
+ const visualCases=[
+  {name:'nitro',file:'fx-nitro.rvp',disable:['store8 382 0']},
+  {name:'smoke',file:'fx-drift.rvp',disable:['store8 395 0']},
+  {name:'rubber',file:'fx-skids.rvp',disable:[410,422,434,446].map(n=>'store8 '+n+' 0')},
+  {name:'landing',file:'fx-landing.rvp',disable:['store8 396 0']}
+ ];
+ const physicsEvidence=path.resolve(output,'gameplay');
+ const effects=[];
+ for(const item of visualCases){
+  const original=path.join(physicsEvidence,item.file);
+  assert(fs.existsSync(original),'XI gameplay must produce real FX snapshot '+item.file);
+  const retained=sha(fs.readFileSync(original));
+  const program=path.join(temp,'without-'+item.name+'.xi'),
+      disabled=path.join(temp,'without-'+item.name+'.rvp');
+  fs.writeFileSync(program,HEADER+item.disable.join('\n')+'\nhalt\n');
+  run('run',program,original,disabled);
+  const withFX=render(original,1,0,0),withoutFX=render(disabled,1,0,0);
+  const actual=decode(withFX.bytes,1),clean=decode(withoutFX.bytes,1);
+  const pixels=materialize(actual),cleanPixels=materialize(clean);
+  const hash=sha(Buffer.from(pixels.buffer)),base=sha(Buffer.from(cleanPixels.buffer));
+  assert.notEqual(hash,base,'physical XI '+item.name+' must change real car/track pixels');
+  assert.equal(sha(fs.readFileSync(original)),retained,'effect render changed authoritative XI state');
+  effects.push({name:item.name,actualHash:hash,withoutEffectHash:base,pixelWidth:actual.width});
+  writeImage('fx-'+item.name,actual,pixels,withFX.bytes);
+ }
+ console.log('VELOCITY_XI_FX_CAUSAL_PASS',JSON.stringify(effects));
+
  // Compare actual XI pixel hashes for all three garage configurations.
  const garage=[];
  for(let car=0;car<3;car++){
@@ -229,7 +258,7 @@ try{
   deterministicCases:measured.length,inputStateUnchanged:true,sourceOnlyRenderer:true,
   androidDeviceMeasured:false,threeCamerasDistinct:true,fivePaintsPerCamera:true,
   rendererSha256:sha(renderer),worldSha256:sha(worldSource),driveSha256:sha(driving),wheelEvidence,
-  selectableCars:3,garage,orbitViews:6,orbit,benchmarks,measured};
+  selectableCars:3,garage,orbitViews:6,orbit,effects,benchmarks,measured};
  fs.writeFileSync(path.join(output,'velocity-regraphics-results.json'),JSON.stringify(report,null,2)+'\n');
  console.log(JSON.stringify({...report,measured:undefined}));
 }catch(error){console.error(error.stack||error);process.exitCode=1;}
