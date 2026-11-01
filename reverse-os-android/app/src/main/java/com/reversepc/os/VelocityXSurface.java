@@ -31,7 +31,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     private volatile boolean reverseGear;
     private volatile boolean native4K;
     boolean is4KEnabled(){return native4K;}
-    boolean toggle4K(){native4K=!native4K;return native4K;}
+    boolean toggle4K(){native4K=!native4K;error="";return native4K;}
     private volatile String error="";
 
     VelocityXSurface(Context context,VelocityXiEngine game,Hud hud){
@@ -178,6 +178,20 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                         }
                     }else observation=game.observeFrame(stride,selectedCamera,selectedPaint);
                     xiRenders++;
+                    // If a camera, paint, resolution or 4K switch happened during
+                    // this expensive XI render, do not publish an obsolete frame.
+                    boolean stale=selectedCamera!=cameraMode||selectedPaint!=paintId||
+                        selected4K!=native4K;
+                    if(!selected4K){
+                        synchronized(detailLock){
+                            int active=fixedDetail?2:Math.max(0,Math.min(2,quality));
+                            stale|=stride!=(active==0?4:active==1?2:1);
+                        }
+                    }
+                    if(stale){
+                        Log.i("ReverseVelocity","FRAME_DROPPED obsolete XI camera/material/profile");
+                        continue;
+                    }
                     RegraphicsFrame frame=observation.frame;
                     if(!lifecycle.shouldRun())break;
                     if(frame.width!=width||frame.height!=height||pixels==null){
