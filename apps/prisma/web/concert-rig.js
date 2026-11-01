@@ -178,6 +178,7 @@ export function concertNativeParts(pose, available = RIG_MAX_CUBOIDS) {
       kind: part, id: f.id, x: point.x, y: point.y, z: point.z,
       size: part === 'base' ? .28 : part === 'elbow' ? .23 : .38,
       color: part === 'head' ? f.color : -1,
+       lightColor: isHead ? f.lightColor : null,
       alpha: isHead ? clamp(.50 + f.intensity * 1.5, 0, .95) : .88,
       rotation: isHead ? f.angle : 0,
       direction: -1, hot: isHead && !pose.reduced && f.pulse > .56
