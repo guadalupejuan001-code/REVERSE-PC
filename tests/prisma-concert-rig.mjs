@@ -9,6 +9,7 @@ async function source(path) {
   return import('data:text/javascript;base64,'+bytes.toString('base64'));
 }
 const stage=await source('../apps/prisma/web/concert-rig.js');
+const combo=await source('../apps/prisma/web/combo-spectacle.js');
 const {makeConcertProgram, concertSection, concertPose, concertBeat, concertNativeParts,
   RIG_STATIONS, RIG_MAX_CUBOIDS}=stage;
 
@@ -68,8 +69,11 @@ const text=readFileSync(new URL('../apps/prisma/web/engine.js',import.meta.url),
   .replace(/^import .*;$/gm,'').replace(/^export /gm,'');
 const Scene=new Function('makeConcertProgram','concertPose','concertNativeParts',
   'RIG_MAX_CUBOIDS','MusicStageDirector','makeIntelligentChart','seeded','CubeGPU','NativeXRender',
+  'createSpectacleEvent','pruneSpectacles','spectacleEnvelope','spectacleGeometry','SPECTACLE_MAX_EVENTS',
   text+';return Scene;')(makeConcertProgram,concertPose,concertNativeParts,RIG_MAX_CUBOIDS,
-  class{},()=>[],()=>()=>.5,{},{}); // Constructor intentionally bypassed.
+  class{},()=>[],()=>()=>.5,{},{},
+  combo.createSpectacleEvent,combo.pruneSpectacles,combo.spectacleEnvelope,
+  combo.spectacleGeometry,combo.SPECTACLE_MAX_EVENTS); // Constructor intentionally bypassed.
 const scene=Object.create(Scene.prototype);
 const drawn=[],canvas={dataset:{}};
 scene.gpu={native:true,count:63,cube:(...p)=>{drawn.push(p);scene.gpu.count++;}};
@@ -90,7 +94,7 @@ const ctx={
   createLinearGradient:()=>gradient
 };
 scene.settings=()=>({palette:'coral'});scene.width=880;scene.height=440;
-scene.stageExplosions=[{t:13,combo:20,strength:.9}];
+scene.stageExplosions=[combo.createSpectacleEvent({t:13,combo:20,strength:.9,drop:false})];
 scene.drawStageFX(ctx,13.1,false,cue,auto);
 check(events.includes('stroke')&&events.some(e=>Array.isArray(e)&&e[0]==='gradient'),'Mechanical arm/beams not drawn');
 check(events.every(e=>!Array.isArray(e)||e[0]!=='gradient'||e[2]!==undefined),'Invalid beam gradient');
