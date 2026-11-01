@@ -58,7 +58,7 @@ function setStatus(next){
 }
 function updateTrack(){
   $('trackName').textContent=track.name;
-  $('trackInfo').textContent=`${track.demo?'PRISMA ORIGINAL':'TU MÚSICA'} · ${track.demo?'':'≈ '}${track.bpm} BPM`;
+  $('trackInfo').textContent=`${track.demo?'PRISMA ORIGINAL':'TU MÚSICA'} · ${track.demo?'':'≈ '}${track.bpm} BPM${track.variableTempo?' · TEMPO VARIABLE (APROX.)':''}`;
   $('duration').textContent=formatTime(Math.round(track.duration));$('elapsed').textContent='0:00';drawWave(0);
 }
 function updateScores(){
@@ -76,10 +76,12 @@ async function startGame(){
     if(thisRun!==runId)return;
     setLoading(false);audio.buffer=track.buffer;
     const peaks=track.demo&&level==='flow'?track.peaks.filter((_,i)=>i%2===0):track.peaks;
-    chart=makeChart(peaks,level,track.demo?7721:Math.round(track.duration*173));
+    const musicMap=makeMusicStage(track.peaks,{bpm:track.bpm,duration:track.duration,
+       energy:track.energy,tempoSegments:track.tempoSegments,fallback:track.fallback});
+    chart=makeChart(peaks,level,track.demo?7721:Math.round(track.duration*173),musicMap);
     if(!chart.length)throw new Error('No hay suficientes golpes para una partida. Prueba con una canción más larga.');
     score=combo=maxCombo=hits=misses=missIndex=0;activePointers.clear();scene.clearEffects();
-     scene.setMusicStage(makeMusicStage(track.peaks,{bpm:track.bpm,duration:track.duration,energy:track.energy,fallback:track.fallback}));frozenTime=0;
+     scene.setMusicStage(musicMap);frozenTime=0;
     $('bestInGame').textContent=`RÉCORD ${bestForTrack().toLocaleString('es')}`;updateScores();
     $('hitHelp').style.opacity='1';$('feedback').classList.remove('show');
     nativeFailure=false;if(nativeGraphics&&!await nativeEvent(0,0,thisRun))throw new Error('No se pudo iniciar la sesión XI.');
@@ -159,7 +161,7 @@ async function loadFile(file){
     const buffer=await audio.decode(file);if(buffer.duration<3)throw new Error('Elige un audio de al menos 3 segundos para crear una pista.');
     setLoading(true,'Encontrando los golpes de tu música…');await new Promise(r=>setTimeout(r,30));
     const analysis=await analyseRhythm(buffer);
-    track={name:file.name.replace(/\.[^/.]+$/,''),demo:false,bpm:analysis.bpm,duration:buffer.duration,peaks:analysis.peaks,energy:analysis.energy,wave:waveformOf(buffer),buffer,fallback:analysis.fallback};
+    track={name:file.name.replace(/\.[^/.]+$/,''),demo:false,bpm:analysis.bpm,duration:buffer.duration,peaks:analysis.peaks,energy:analysis.energy,tempoSegments:analysis.tempoSegments,variableTempo:analysis.variableTempo,wave:waveformOf(buffer),buffer,fallback:analysis.fallback};
     updateTrack();toast(analysis.fallback?'Pista lista. Esta canción tiene un pulso suave: creamos una secuencia regular.':'Tu música, tu pista. Lista para entrar en flow.');
   }catch(error){toast(error.message||'No se pudo analizar esta canción. Prueba con otro archivo.');}
   finally{setLoading(false);booting=false;$('audioFile').value='';}

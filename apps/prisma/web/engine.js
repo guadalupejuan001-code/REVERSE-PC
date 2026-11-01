@@ -1,21 +1,11 @@
 import { CubeGPU } from './gpu-scene.js';
 import { NativeXRender } from './native-xrender.js';
 import { seeded } from './audio.js';
-import { MusicStageDirector } from './music-stage.js';
+import { MusicStageDirector, makeIntelligentChart } from './music-stage.js';
 export const PALETTES = { coral: ['#63ffb4','#ff5074'], violet: ['#63ffb4','#bd8bff'], ice: ['#7aeaff','#ff5074'] };
 export const DIRECTIONS = [{x:0,y:-1},{x:1,y:0},{x:0,y:1},{x:-1,y:0}];
-export function makeChart(peaks, level, seed = 7721) {
-  const random = seeded(seed), chart = []; let last = -10, prevLane = -1;
-  const spacing = {flow:.36, pulse:.235, vertigo:.16}[level] || .36;
-  for (let i = 0; i < peaks.length; i++) {
-    const p = peaks[i]; if (p.t - last < spacing) continue;
-    let lane = Math.floor(random() * 3); if (lane === prevLane && random() < .75) lane = (lane + 1 + Math.floor(random() * 2)) % 3;
-    const row = random() > .52 ? 1 : 0, color = (chart.length + Math.floor(random() * 2)) % 2;
-    chart.push({t:p.t,lane,row,color,dir:Math.floor(random() * 4),hit:false,missed:false});
-    if (level === 'vertigo' && i % 7 === 4 && p.strength > .25) chart.push({t:p.t,lane:(lane + 2) % 3,row:1-row,color:1-color,dir:Math.floor(random() * 4),hit:false,missed:false});
-    last = p.t; prevLane = lane;
-  }
-  return chart.sort((a,b) => a.t-b.t);
+export function makeChart(peaks, level, seed = 7721, music = null) {
+  return makeIntelligentChart(peaks, level, seed, music);
 }
 export function segmentDistance(px, py, ax, ay, bx, by) {
   const dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy;
@@ -124,7 +114,7 @@ export class Scene {
   stageRig(time, preview, cue) {
     if (!this.gpu) return;
     const reduced = this.settings().effects;
-    const swing = reduced ? 0 : Math.sin(time * (this.musicStage ? Math.PI / this.musicStage.map.period : 2)) * 0.28;
+    const swing = reduced ? 0 : Math.sin(time * (Math.PI / (cue.period || (60 / 122)))) * 0.28;
     const energy = Math.min(1, cue.beat * 0.65 + cue.energy * 0.35);
     for (let side = 0; side < 2; side++) {
       for (let index = 0; index < 3; index++) {
@@ -149,7 +139,7 @@ export class Scene {
         const z = 7 + index * 7.5;
         const x = side ? 3.18 : -3.18;
         const source = this.projection(x, -1.85 + (index % 2) * 0.15, z, preview);
-        const swing = Math.sin(time * (this.musicStage ? Math.PI * 0.5 / this.musicStage.map.period : 1.5) + index * 1.2 + side * 1.8);
+        const swing = Math.sin(time * (Math.PI * 0.5 / (cue.period || (60 / 122))) + index * 1.2 + side * 1.8);
         const target = this.projection(x * 0.14 + swing * spread, 1.65, Math.max(2, z - 3.2), preview);
         const rgb = hexRGB(colors[side]);
         const alpha = brightness * (index ? 0.85 : 1);

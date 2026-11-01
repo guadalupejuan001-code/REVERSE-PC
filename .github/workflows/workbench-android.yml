@@ -21,8 +21,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: {persist-credentials: false}
-      - name: Verify PRISMA musical timing and cancellation
-        run: node tests/prisma-stage.mjs
+      - name: Verify PRISMA musical timing, spectral cues and beatmaps
+        run: |
+          node tests/prisma-stage.mjs
+          node tests/prisma-music-analysis.mjs
       - uses: actions/checkout@v4
         with:
           repository: guadalupejuan001-code/REVERSE-PC
