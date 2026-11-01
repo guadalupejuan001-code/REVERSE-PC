@@ -126,6 +126,14 @@ jobs:
             build/velocity-apk/badging.txt build/velocity-apk/package-results.json \
             build/velocity-apk/signature.txt build/velocity-apk/expected-signer.der
           sha256sum "$APK" > build/velocity-apk/apk-sha256.txt
+      # The user can install immediately once the package/signature/source hashes
+      # pass, while the slower emulator smoke continues in the same job.
+      - name: Publish cryptographically verified upgrade APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: reverse-velocity-apk
+          path: dist/REVERSE-VELOCITY-1.7.0-Pneumatic-XI.apk
+          if-no-files-found: error
       - name: Install and exercise the game on Android 35
         timeout-minutes: 12
         run: |
@@ -157,12 +165,6 @@ jobs:
           adb install -r dist/REVERSE-VELOCITY-1.7.0-Pneumatic-XI.apk \
             > build/velocity-apk/install.txt
           node reverse-os-android/tests/velocity-apk-smoke.cjs adb build/velocity-apk/smoke
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: reverse-velocity-apk
-          path: dist/REVERSE-VELOCITY-1.7.0-Pneumatic-XI.apk
-          if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         if: always()
         with:
