@@ -329,6 +329,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
         require(digest(prior).equals(WorkbenchPrograms.PRISMA_11_SHA),"Wrong official PRISMA upgrade fixture");
         require(WorkbenchPrograms.trustedOldPrisma("8eab78b37f7d18365f26746e4ed30bf6433c36109f23c0ee92d6c42804b534f0"),"Official PRISMA 1.2 was not allowlisted");
         require(WorkbenchPrograms.trustedOldPrisma("c6bd13581a7a565cd9ea54b34dbefc3f92ca473d4bd5701478853a0205653fd9"),"Last official PRISMA 1.2 was not allowlisted");
+        require(WorkbenchPrograms.trustedOldPrisma("3d4659559cf02e2f4509971afc84db56b84bc9a07faaf545d0064d44504399ce"),"Cycle 03 pre-release was not allowlisted");
         require(!WorkbenchPrograms.trustedOldPrisma(digest(current)),"New official release wrongly matches an old executable");
         migration.write("Aplicaciones/PRISMA.rxe",prior,true);flags.edit().remove("prisma-ui-origin-sha").putBoolean("prisma-2.0-seeded",false).commit();
         WorkbenchPrograms.seedGraphics(getTargetContext(),migration,flags);
