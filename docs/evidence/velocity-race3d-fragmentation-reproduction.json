@@ -1,0 +1,31 @@
+{
+  "reproduced": true,
+  "inputTick": 487,
+  "raceClockTick": 338,
+  "observation": [
+    0,
+    19727,
+    0,
+    4458,
+    0,
+    0,
+    338,
+    0,
+    0,
+    3,
+    0,
+    19727,
+    9,
+    0,
+    0,
+    19727
+  ],
+  "camera": 1,
+  "paint": 1,
+  "stride": 4,
+  "nativeError": "REVERSE_PC_FAIL line 1625: XI mesh foreground-run budget exceeded",
+  "publishedBytes": 0,
+  "cliSha256": "7d95aae8f8a1bcf1571d0a3abdaaa313d1511ff6149a19e29ee3e5bf45fe98a0",
+  "renderSha256": "63eaca203746c83d9b2552a9f007f3ddab0ca22d87ad422bc8ec3886080dab49",
+  "poseSha256": "894c42bf93de6725b2f9edbead6ddd7ce1a711c1e9385351442336050f02aed9"
+}

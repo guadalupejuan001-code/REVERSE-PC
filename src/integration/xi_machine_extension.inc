@@ -1,14 +1,93 @@
 // REVERSE-PC machine profile: interpreted by the original XI candidate owner.
 // Included inside mundo_x::infinite_program_detail, after execute_line().
 // The explicit shebang opt-in keeps legacy XI semantics byte-identical.
+#include "integration/xi_mesh_raster.inc"
 inline constexpr const char machine_header[] = "#!reverse-pc-machine-v1";
 inline constexpr std::size_t machine_max_steps = 1000000;
 inline constexpr std::size_t machine_register_count = 16;
 
+// Immutable decoded operands are scene instructions, never authoritative game state.
+// Unknown/invalid tokens retain the original dynamic interpreter error path.
+enum class MachineOpcode : std::uint8_t {
+background, begin, end, label, set, mov, add, sub, mul, div, mod, cmp, jmp, je, jne, jlt, jle, jgt, jge, localget, localset, load8, load16, load32, store8, store16, store32, meshbegin, meshvertex, meshshade, meshtexrow, meshtexuv, meshtexcopy, meshfacegradienttex, meshfacegradient, meshread, meshface, meshtri, meshtri3, meshend, framebegin, framespan, frameend, print, halt, other
+};
+inline MachineOpcode machine_opcode(const std::string& token) {
+  if(token=="background")return MachineOpcode::background;
+  if(token=="begin")return MachineOpcode::begin;
+  if(token=="end")return MachineOpcode::end;
+  if(token=="label")return MachineOpcode::label;
+  if(token=="set")return MachineOpcode::set;
+  if(token=="mov")return MachineOpcode::mov;
+  if(token=="add")return MachineOpcode::add;
+  if(token=="sub")return MachineOpcode::sub;
+  if(token=="mul")return MachineOpcode::mul;
+  if(token=="div")return MachineOpcode::div;
+  if(token=="mod")return MachineOpcode::mod;
+  if(token=="cmp")return MachineOpcode::cmp;
+  if(token=="jmp")return MachineOpcode::jmp;
+  if(token=="je")return MachineOpcode::je;
+  if(token=="jne")return MachineOpcode::jne;
+  if(token=="jlt")return MachineOpcode::jlt;
+  if(token=="jle")return MachineOpcode::jle;
+  if(token=="jgt")return MachineOpcode::jgt;
+  if(token=="jge")return MachineOpcode::jge;
+  if(token=="localget")return MachineOpcode::localget;
+  if(token=="localset")return MachineOpcode::localset;
+  if(token=="load8")return MachineOpcode::load8;
+  if(token=="load16")return MachineOpcode::load16;
+  if(token=="load32")return MachineOpcode::load32;
+  if(token=="store8")return MachineOpcode::store8;
+  if(token=="store16")return MachineOpcode::store16;
+  if(token=="store32")return MachineOpcode::store32;
+  if(token=="meshbegin")return MachineOpcode::meshbegin;
+  if(token=="meshvertex")return MachineOpcode::meshvertex;
+  if(token=="meshshade")return MachineOpcode::meshshade;
+  if(token=="meshtexrow")return MachineOpcode::meshtexrow;
+  if(token=="meshtexuv")return MachineOpcode::meshtexuv;
+  if(token=="meshtexcopy")return MachineOpcode::meshtexcopy;
+  if(token=="meshfacegradienttex")return MachineOpcode::meshfacegradienttex;
+  if(token=="meshfacegradient")return MachineOpcode::meshfacegradient;
+  if(token=="meshread")return MachineOpcode::meshread;
+  if(token=="meshface")return MachineOpcode::meshface;
+  if(token=="meshtri")return MachineOpcode::meshtri;
+  if(token=="meshtri3")return MachineOpcode::meshtri3;
+  if(token=="meshend")return MachineOpcode::meshend;
+  if(token=="framebegin")return MachineOpcode::framebegin;
+  if(token=="framespan")return MachineOpcode::framespan;
+  if(token=="frameend")return MachineOpcode::frameend;
+  if(token=="print")return MachineOpcode::print;
+  if(token=="halt")return MachineOpcode::halt;
+  return MachineOpcode::other;
+}
 struct MachineInstruction {
   std::vector<std::string> words;
-  std::size_t line = 0;
+  std::size_t line=0;
+  std::string opcode;
+  MachineOpcode kind=MachineOpcode::other;
+  // Each immediate keeps its full signed 64-bit range. Two 14-bit masks
+  // distinguish register operands from immediate values and deferred tokens.
+  // This uses ~half the storage of a separate tagged struct per operand.
+  std::array<std::int64_t,14> decoded_values{};
+  std::uint16_t decoded_mask=0,register_mask=0;
+  std::size_t jump_target=0;
 };
+
+// One immutable, exact-source parse per worker thread. No register, local,
+// mesh, quantum state or InverseMemory object is retained by this cache.
+inline constexpr std::size_t machine_parse_cache_max_source_bytes=512U*1024U;
+struct MachineParsedProgram {
+  std::string source;
+  std::vector<MachineInstruction> code;
+  std::map<std::string,std::size_t> labels;
+};
+struct MachineParseCacheState {
+  std::shared_ptr<const MachineParsedProgram> program;
+  std::uint64_t hits=0,misses=0;
+};
+inline MachineParseCacheState& machine_parse_cache_state() {
+  static thread_local MachineParseCacheState cache;
+  return cache;
+}
 
 inline unsigned machine_register(const std::string& name) {
   if (name.size() < 2 || (name.front() != 'r' && name.front() != 'R'))
@@ -46,6 +125,64 @@ inline std::int64_t machine_value(const std::string& token,
   if (!token.empty() && (token.front() == 'r' || token.front() == 'R'))
     return registers[machine_register(token)];
   return machine_integer(token);
+}
+
+inline std::int64_t machine_decoded_value(const MachineInstruction& instruction,
+                                          std::size_t index,
+                                          const std::array<std::int64_t,machine_register_count>& registers) {
+  if(index>0 && index<=instruction.decoded_values.size()){
+    const auto bit=static_cast<std::uint16_t>(1U<<(index-1));
+    if(instruction.decoded_mask & bit){
+      const auto value=instruction.decoded_values[index-1];
+      return (instruction.register_mask & bit)?registers[static_cast<unsigned>(value)]:value;
+    }
+  }
+  return machine_value(instruction.words[index],registers);
+}
+
+inline void machine_decode_operands(MachineInstruction& instruction){
+  const auto& words=instruction.words;
+  for(std::size_t i=1;i<words.size() && i<=instruction.decoded_values.size();++i){
+    const auto& token=words[i];
+    const auto bit=static_cast<std::uint16_t>(1U<<(i-1));
+    // Keep all unsupported/invalid tokens on the interpreter's legacy
+    // lazy-error path; unreachable commands must not fail compilation.
+    if(token.size()>1 && (token[0]=='r'||token[0]=='R')){
+      try {
+        instruction.decoded_values[i-1]=machine_register(token);
+        instruction.decoded_mask|=bit;instruction.register_mask|=bit;
+      }catch(const std::exception&){}
+    }else if(!token.empty() && (token[0]=='-'||token[0]=='+'||
+                                (token[0]>='0'&&token[0]<='9'))){
+      try {
+        instruction.decoded_values[i-1]=machine_integer(token);
+        instruction.decoded_mask|=bit;
+      }catch(const std::exception&){}
+    }
+  }
+}
+
+inline std::int64_t machine_arithmetic_fast(MachineOpcode kind, std::int64_t a,
+                                            std::int64_t b) {
+  std::int64_t out=0;
+  switch(kind){
+    case MachineOpcode::add:
+      if(__builtin_add_overflow(a,b,&out))throw std::overflow_error("signed addition overflow");
+      return out;
+    case MachineOpcode::sub:
+      if(__builtin_sub_overflow(a,b,&out))throw std::overflow_error("signed subtraction overflow");
+      return out;
+    case MachineOpcode::mul:
+      if(__builtin_mul_overflow(a,b,&out))throw std::overflow_error("signed multiplication overflow");
+      return out;
+    case MachineOpcode::div:
+    case MachineOpcode::mod:
+      if(!b)throw std::domain_error("division or remainder by zero");
+      if(a==std::numeric_limits<std::int64_t>::min() && b==-1)
+        throw std::overflow_error("signed division overflow");
+      return kind==MachineOpcode::div?a/b:a%b;
+    default:throw std::invalid_argument("unsupported arithmetic opcode");
+  }
 }
 
 inline std::int64_t machine_arithmetic(const std::string& op, std::int64_t a,
@@ -119,39 +256,64 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
   if (program.size() > max_program_bytes)
     throw std::length_error("program exceeds 16 MiB transport budget");
   if (!max_steps) throw std::invalid_argument("machine step budget must be positive");
-  std::vector<MachineInstruction> code;
-  std::map<std::string, std::size_t> labels;
-  std::size_t cursor = 0, source_line = 0;
-  while (cursor < program.size()) {
-    ++source_line;
-    const auto newline = program.find('\n', cursor);
-    const auto end = newline == std::string::npos ? program.size() : newline;
-    if (end - cursor > max_line_bytes)
-      throw std::length_error("line " + std::to_string(source_line) + ": over 1 MiB");
-    auto words = tokens(program.substr(cursor, end - cursor));
-    cursor = newline == std::string::npos ? program.size() : newline + 1;
-    if (words.empty()) continue;
-    if (code.size() >= max_commands)
-      throw std::length_error("program exceeds 131072 commands");
-    const auto cmd = lower_ascii(words.front());
-    if (cmd == "label") {
-      require_count(words, 2);
-      const auto name = machine_label(words[1]);
-      if (!labels.emplace(name, code.size()).second)
-        throw std::invalid_argument("line " + std::to_string(source_line) + ": duplicate label " + name);
+  auto& parse_cache=machine_parse_cache_state();
+  const bool cacheable=program.size()<=machine_parse_cache_max_source_bytes;
+  std::shared_ptr<const MachineParsedProgram> parsed;
+  if(cacheable&&parse_cache.program&&parse_cache.program->source==program) {
+    ++parse_cache.hits;parsed=parse_cache.program;
+  }else{
+    ++parse_cache.misses;
+    auto candidate=std::make_shared<MachineParsedProgram>();
+    auto& code=candidate->code;
+    auto& labels=candidate->labels;
+    std::size_t cursor = 0, source_line = 0;
+    while (cursor < program.size()) {
+      ++source_line;
+      const auto newline = program.find('\n', cursor);
+      const auto end = newline == std::string::npos ? program.size() : newline;
+      if (end - cursor > max_line_bytes)
+        throw std::length_error("line " + std::to_string(source_line) + ": over 1 MiB");
+      auto words = tokens(program.substr(cursor, end - cursor));
+      cursor = newline == std::string::npos ? program.size() : newline + 1;
+      if (words.empty()) continue;
+      if (code.size() >= max_commands)
+        throw std::length_error("program exceeds 131072 commands");
+      const auto cmd = lower_ascii(words.front());
+      if (cmd == "label") {
+        require_count(words, 2);
+        const auto name = machine_label(words[1]);
+        if (!labels.emplace(name, code.size()).second)
+          throw std::invalid_argument("line " + std::to_string(source_line) + ": duplicate label " + name);
+      }
+      MachineInstruction instruction;
+      instruction.words=std::move(words);
+      instruction.line=source_line;
+      instruction.opcode=cmd;
+      instruction.kind=machine_opcode(cmd);
+      machine_decode_operands(instruction);
+      code.push_back(std::move(instruction));
     }
-    code.push_back({std::move(words), source_line});
-  }
-  for (const auto& inst : code) {
-    const auto op = lower_ascii(inst.words.front());
-    if (machine_is_jump(op)) {
-      require_count(inst.words, 2);
-      if (!labels.count(machine_label(inst.words[1])))
-        throw std::invalid_argument("line " + std::to_string(inst.line) + ": unknown jump label");
+    for (auto& inst : code) {
+      if (machine_is_jump(inst.opcode)) {
+        require_count(inst.words, 2);
+        const auto it=labels.find(machine_label(inst.words[1]));
+        if(it==labels.end())
+          throw std::invalid_argument("line " + std::to_string(inst.line) + ": unknown jump label");
+        inst.jump_target=it->second;
+      }
     }
+    // Only fully parsed and jump-validated candidates can replace the entry.
+    // Large programs execute normally without retaining another source copy.
+    if(cacheable) { candidate->source=program;parse_cache.program=candidate; }
+    parsed=std::move(candidate);
   }
+  const auto& code=parsed->code;
+  const auto& labels=parsed->labels;
 
   std::array<std::int64_t, machine_register_count> registers{};
+  // Zeroed CPU scratch belongs to this execution only. It never becomes an
+  // InverseMemory override, a quantum binding or part of a saved snapshot.
+  std::array<std::int64_t,4096> locals{};
   ProgramResult result;
   bool first_command = true, in_batch = false, comparison_valid = false;
   int comparison = 0;
@@ -163,6 +325,8 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
   bool frame_active = false;
   std::uint32_t frame_revision = 0;
   std::uint16_t frame_width = 0, frame_height = 0;
+  MachineMeshRaster mesh;
+  bool mesh_active = false;
   auto append16 = [&](std::uint16_t n) {
     frame.push_back(static_cast<char>(n & 255));
     frame.push_back(static_cast<char>((n >> 8) & 255));
@@ -177,13 +341,15 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
       if (++steps > max_steps)
         throw std::length_error("XI machine instruction-step budget exceeded");
       const auto& words = inst.words;
-      const auto op = lower_ascii(words.front());
+      const auto& op = inst.opcode;
+      const auto kind=inst.kind;
       auto output_line = [&](const std::string& output) {
+        if (mesh_active) throw std::invalid_argument("text output inside XI mesh");
         if (output.size() > max_response_bytes - result.output.size())
           throw std::length_error("machine output exceeds 16 MiB");
         result.output += output;
       };
-      if (op == "background") {
+      if (kind == MachineOpcode::background) {
         require_count(words, 2);
         if (!first_command || in_batch)
           throw std::invalid_argument("background must be the first command");
@@ -192,11 +358,11 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
           throw std::invalid_argument("program background conflicts with --background");
         core = InfiniteCore(background, core.limits());
         result.explicit_mutation = true;
-      } else if (op == "begin") {
+      } else if (kind == MachineOpcode::begin) {
         require_count(words, 1);
         if (in_batch) throw std::invalid_argument("nested batches are not supported");
         in_batch = true; batch.clear(); address_bytes = 0;
-      } else if (op == "end") {
+      } else if (kind == MachineOpcode::end) {
         require_count(words, 1);
         if (!in_batch) throw std::invalid_argument("end has no matching begin");
         core.apply(batch); batch.clear(); in_batch = false;
@@ -214,37 +380,51 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
         if (bytes > max_batch_address_bytes - address_bytes)
           throw std::length_error("batch address text exceeds 16 MiB");
         batch.push_back(std::move(gate)); address_bytes += bytes;
-      } else if (op == "label") {
+      } else if (kind == MachineOpcode::label) {
         require_count(words, 2);
-      } else if (op == "set" || op == "mov") {
+      } else if (kind == MachineOpcode::set || kind == MachineOpcode::mov) {
         require_count(words, 3);
-        registers[machine_register(words[1])] = machine_value(words[2], registers);
-      } else if (op == "add" || op == "sub" || op == "mul" ||
-                 op == "div" || op == "mod") {
+        registers[machine_register(words[1])] = machine_decoded_value(inst,2,registers);
+      } else if (kind == MachineOpcode::add || kind == MachineOpcode::sub || kind == MachineOpcode::mul ||
+                 kind == MachineOpcode::div || kind == MachineOpcode::mod) {
         require_count(words, 3);
         const auto index = machine_register(words[1]);
-        const auto new_value = machine_arithmetic(op, registers[index],
-                                                  machine_value(words[2], registers));
+        const auto new_value = machine_arithmetic_fast(kind, registers[index],
+                                                  machine_decoded_value(inst,2,registers));
         registers[index] = new_value;
-      } else if (op == "cmp") {
+      } else if (kind == MachineOpcode::cmp) {
         require_count(words, 3);
-        const auto a = machine_value(words[1], registers);
-        const auto b = machine_value(words[2], registers);
+        const auto a = machine_decoded_value(inst,1,registers);
+        const auto b = machine_decoded_value(inst,2,registers);
         comparison = a < b ? -1 : (a > b ? 1 : 0);
         comparison_valid = true;
       } else if (machine_is_jump(op)) {
         require_count(words, 2);
         if (op != "jmp" && !comparison_valid)
           throw std::invalid_argument("conditional jump without cmp");
-        const bool take = op == "jmp" ||
-          (op == "je" && comparison == 0) ||
-          (op == "jne" && comparison != 0) ||
-          (op == "jlt" && comparison < 0) ||
-          (op == "jle" && comparison <= 0) ||
-          (op == "jgt" && comparison > 0) ||
-          (op == "jge" && comparison >= 0);
-        if (take) { pc = labels.at(machine_label(words[1])); first_command = false; continue; }
-      } else if (op == "load8") {
+        const bool take = kind == MachineOpcode::jmp ||
+          (kind == MachineOpcode::je && comparison == 0) ||
+          (kind == MachineOpcode::jne && comparison != 0) ||
+          (kind == MachineOpcode::jlt && comparison < 0) ||
+          (kind == MachineOpcode::jle && comparison <= 0) ||
+          (kind == MachineOpcode::jgt && comparison > 0) ||
+          (kind == MachineOpcode::jge && comparison >= 0);
+        if (take) { pc = inst.jump_target; first_command = false; continue; }
+      } else if (kind == MachineOpcode::localget) {
+        require_count(words, 3);
+        const auto destination=machine_register(words[1]);
+        const auto address=machine_decoded_value(inst,2,registers);
+        if(address<0 || address>=static_cast<std::int64_t>(locals.size()))
+          throw std::out_of_range("local scratch index must be in 0..4095");
+        registers[destination]=locals[static_cast<std::size_t>(address)];
+      } else if (kind == MachineOpcode::localset) {
+        require_count(words, 3);
+        const auto address=machine_decoded_value(inst,1,registers);
+        if(address<0 || address>=static_cast<std::int64_t>(locals.size()))
+          throw std::out_of_range("local scratch index must be in 0..4095");
+        const auto value=machine_decoded_value(inst,2,registers);
+        locals[static_cast<std::size_t>(address)]=value;
+      } else if (kind == MachineOpcode::load8) {
         require_count(words, 3);
         if (!memory) throw std::invalid_argument("Inverse Memory is not enabled");
         const auto index = machine_register(words[1]);
@@ -252,21 +432,131 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
         if (!read.deterministic)
           throw std::runtime_error("load8 requires a deterministic byte; quantum handle " + read.handle);
         registers[index] = read.value;
-      } else if (op == "store8") {
+      } else if (kind == MachineOpcode::load16 || kind == MachineOpcode::load32) {
+        require_count(words, 3);
+        if (!memory) throw std::invalid_argument("Inverse Memory is not enabled");
+        const auto index = machine_register(words[1]);
+        const unsigned count = kind == MachineOpcode::load16 ? 2U : 4U;
+        const auto address = decimal<std::uint64_t>(machine_substitute(words[2],registers),"bulk memory address");
+        if (address > std::numeric_limits<std::uint64_t>::max()-(count-1))
+          throw std::out_of_range("bulk memory address range exceeds uint64");
+        std::uint64_t value=0;
+        for (unsigned i=0;i<count;++i) {
+          const auto read=memory->read(std::to_string(address+i),core);
+          if (!read.deterministic)
+            throw std::runtime_error(op+" requires deterministic bytes; quantum handle "+read.handle);
+          value |= std::uint64_t(read.value)<<(8*i);
+        }
+        registers[index]=static_cast<std::int64_t>(value);
+      } else if (kind == MachineOpcode::store16 || kind == MachineOpcode::store32) {
+        require_count(words, 3);
+        if (!memory) throw std::invalid_argument("Inverse Memory is not enabled");
+        const unsigned count = kind == MachineOpcode::store16 ? 2U : 4U;
+        const auto address = decimal<std::uint64_t>(machine_substitute(words[1],registers),"bulk memory address");
+        if (address > std::numeric_limits<std::uint64_t>::max()-(count-1))
+          throw std::out_of_range("bulk memory address range exceeds uint64");
+        const auto value=machine_decoded_value(inst,2,registers);
+        const std::int64_t maximum=count==2 ? INT64_C(65535) : INT64_C(4294967295);
+        if (value<0 || value>maximum)
+          throw std::out_of_range(op+" value exceeds unsigned "+std::to_string(count*8)+"-bit range");
+        for (unsigned i=0;i<count;++i)
+          memory->store(std::to_string(address+i),static_cast<std::uint8_t>((std::uint64_t(value)>>(8*i))&255),core);
+      } else if (kind == MachineOpcode::store8) {
         require_count(words, 3);
         if (!memory) throw std::invalid_argument("Inverse Memory is not enabled");
         const auto address = machine_substitute(words[1], registers);
-        const auto value = machine_value(words[2], registers);
+        const auto value = machine_decoded_value(inst,2,registers);
         if (value < 0 || value > 255)
           throw std::out_of_range("store8 value must be in 0..255");
         memory->store(address, static_cast<std::uint8_t>(value), core);
-      } else if (op == "framebegin") {
+      } else if (kind == MachineOpcode::meshbegin) {
+        require_count(words, 5);
+        if (mesh_active || frame_active || !result.output.empty())
+          throw std::invalid_argument("meshbegin requires a fresh output");
+        mesh.begin(machine_decoded_value(inst,1,registers),machine_decoded_value(inst,2,registers),
+                   machine_decoded_value(inst,3,registers),machine_decoded_value(inst,4,registers));
+        mesh_active=true;
+      } else if (kind == MachineOpcode::meshvertex) {
+        require_count(words, 5);
+        if (!mesh_active) throw std::invalid_argument("meshvertex without meshbegin");
+        mesh.vertex(machine_decoded_value(inst,1,registers),
+                    {machine_decoded_value(inst,2,registers),machine_decoded_value(inst,3,registers),machine_decoded_value(inst,4,registers)});
+      } else if (kind == MachineOpcode::meshshade) {
+        require_count(words, 3);
+        if (!mesh_active) throw std::invalid_argument("meshshade without meshbegin");
+        mesh.shade(machine_decoded_value(inst,1,registers),machine_decoded_value(inst,2,registers));
+      } else if (kind == MachineOpcode::meshtexrow) {
         require_count(words, 4);
-        if (frame_active || !result.output.empty())
+        if (!mesh_active)throw std::invalid_argument("meshtexrow without meshbegin");
+        mesh.texture_row(machine_decoded_value(inst,1,registers),machine_decoded_value(inst,2,registers),words[3]);
+      } else if (kind == MachineOpcode::meshtexuv) {
+        require_count(words, 4);
+        if (!mesh_active)throw std::invalid_argument("meshtexuv without meshbegin");
+        mesh.texcoord(machine_decoded_value(inst,1,registers),machine_decoded_value(inst,2,registers),
+                      machine_decoded_value(inst,3,registers));
+      } else if (kind == MachineOpcode::meshtexcopy) {
+        require_count(words, 3);
+        if (!mesh_active)throw std::invalid_argument("meshtexcopy without meshbegin");
+        mesh.copy_texcoord(machine_decoded_value(inst,1,registers),machine_decoded_value(inst,2,registers));
+      } else if (kind == MachineOpcode::meshfacegradienttex) {
+        require_count(words, 12);
+        if (!mesh_active)throw std::invalid_argument("meshfacegradienttex without meshbegin");
+        mesh.textured_gradient_face(machine_decoded_value(inst,1,registers),
+          machine_decoded_value(inst,2,registers),machine_decoded_value(inst,3,registers),
+          machine_decoded_value(inst,4,registers),machine_decoded_value(inst,5,registers),
+          machine_decoded_value(inst,6,registers),machine_decoded_value(inst,7,registers),
+          machine_decoded_value(inst,8,registers),machine_decoded_value(inst,9,registers),
+          machine_decoded_value(inst,10,registers),machine_decoded_value(inst,11,registers));
+      } else if (kind == MachineOpcode::meshfacegradient) {
+        require_count(words, 10);
+        if (!mesh_active) throw std::invalid_argument("meshfacegradient without meshbegin");
+        mesh.gradient_face(machine_decoded_value(inst,1,registers),machine_decoded_value(inst,2,registers),machine_decoded_value(inst,3,registers),
+                           machine_decoded_value(inst,4,registers),machine_decoded_value(inst,5,registers),machine_decoded_value(inst,6,registers),
+                           machine_decoded_value(inst,7,registers),machine_decoded_value(inst,8,registers),machine_decoded_value(inst,9,registers));
+      } else if (kind == MachineOpcode::meshread) {
+        require_count(words, 5);
+        if (!mesh_active) throw std::invalid_argument("meshread without meshbegin");
+        const auto x=machine_register(words[1]),y=machine_register(words[2]),z=machine_register(words[3]);
+        if (x==y || y==z || x==z)
+          throw std::invalid_argument("meshread requires three distinct destination registers");
+        // Resolve and validate the source before assigning any destination;
+        // the vertex-id operand may itself be one of these input registers.
+        const auto vertex=mesh.read(machine_decoded_value(inst,4,registers));
+        registers[x]=vertex.x;registers[y]=vertex.y;registers[z]=vertex.z;
+      } else if (kind == MachineOpcode::meshface) {
+        require_count(words, 9);
+        if (!mesh_active) throw std::invalid_argument("meshface without meshbegin");
+        mesh.face(machine_decoded_value(inst,1,registers),machine_decoded_value(inst,2,registers),machine_decoded_value(inst,3,registers),
+                  machine_decoded_value(inst,4,registers),machine_decoded_value(inst,5,registers),machine_decoded_value(inst,6,registers),
+                  machine_decoded_value(inst,7,registers),machine_decoded_value(inst,8,registers));
+      } else if (kind == MachineOpcode::meshtri) {
+        require_count(words, 11);
+        if (!mesh_active) throw std::invalid_argument("meshtri without meshbegin");
+        mesh.triangle({machine_decoded_value(inst,1,registers),machine_decoded_value(inst,2,registers),machine_decoded_value(inst,3,registers)},
+                      {machine_decoded_value(inst,4,registers),machine_decoded_value(inst,5,registers),machine_decoded_value(inst,6,registers)},
+                      {machine_decoded_value(inst,7,registers),machine_decoded_value(inst,8,registers),machine_decoded_value(inst,9,registers)},
+                      machine_decoded_value(inst,10,registers));
+      } else if (kind == MachineOpcode::meshtri3) {
+        require_count(words, 15);
+        if (!mesh_active) throw std::invalid_argument("meshtri3 without meshbegin");
+        mesh.triangle3({machine_decoded_value(inst,1,registers),machine_decoded_value(inst,2,registers),machine_decoded_value(inst,3,registers)},
+                       {machine_decoded_value(inst,4,registers),machine_decoded_value(inst,5,registers),machine_decoded_value(inst,6,registers)},
+                       {machine_decoded_value(inst,7,registers),machine_decoded_value(inst,8,registers),machine_decoded_value(inst,9,registers)},
+                       machine_decoded_value(inst,10,registers),machine_decoded_value(inst,11,registers),
+                       machine_decoded_value(inst,12,registers),machine_decoded_value(inst,13,registers),machine_decoded_value(inst,14,registers));
+      } else if (kind == MachineOpcode::meshend) {
+        require_count(words, 1);
+        if (!mesh_active) throw std::invalid_argument("meshend without meshbegin");
+        auto visible=mesh.finish();
+        if (visible.size()>max_response_bytes) throw std::length_error("XI mesh output exceeds transport budget");
+        result.output=std::move(visible);mesh_active=false;
+      } else if (kind == MachineOpcode::framebegin) {
+        require_count(words, 4);
+        if (frame_active || mesh_active || !result.output.empty())
           throw std::invalid_argument("framebegin requires a fresh output");
-        const auto width = machine_value(words[1], registers);
-        const auto height = machine_value(words[2], registers);
-        const auto revision = machine_value(words[3], registers);
+        const auto width = machine_decoded_value(inst,1,registers);
+        const auto height = machine_decoded_value(inst,2,registers);
+        const auto revision = machine_decoded_value(inst,3,registers);
         if (width < 1 || width > 8192 || height < 1 || height > 8192 ||
             width * height > 16777216 || revision < 0 ||
             revision > std::numeric_limits<std::uint32_t>::max())
@@ -279,16 +569,16 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
         append16(frame_width); append16(frame_height);
         append32(frame_revision); append16(0);
         frame_active = true;
-      } else if (op == "framespan") {
+      } else if (kind == MachineOpcode::framespan) {
         require_count(words, 6);
         if (!frame_active) throw std::invalid_argument("framespan without framebegin");
-        const auto y = machine_value(words[1], registers);
-        const auto x0 = machine_value(words[2], registers);
-        const auto x1 = machine_value(words[3], registers);
-        const auto material = machine_value(words[4], registers);
-        const auto depth = machine_value(words[5], registers);
+        const auto y = machine_decoded_value(inst,1,registers);
+        const auto x0 = machine_decoded_value(inst,2,registers);
+        const auto x1 = machine_decoded_value(inst,3,registers);
+        const auto material = machine_decoded_value(inst,4,registers);
+        const auto depth = machine_decoded_value(inst,5,registers);
         if (y < 0 || y >= frame_height || x0 < 0 || x1 < x0 ||
-            x1 >= frame_width || (material != 2 && material != 3) ||
+            x1 >= frame_width || material < 0 || material > 255 ||
             depth < 1 || depth > 65535)
           throw std::out_of_range("invalid XFS1 span");
         if (frame.size() > max_response_bytes - 14 - 8)
@@ -299,7 +589,7 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
         append16(static_cast<std::uint16_t>(x1));
         append16(static_cast<std::uint16_t>(depth));
         append32(frame_revision);
-      } else if (op == "frameend") {
+      } else if (kind == MachineOpcode::frameend) {
         require_count(words, 1);
         if (!frame_active) throw std::invalid_argument("frameend without framebegin");
         if (frame.size() > max_response_bytes - 8)
@@ -308,14 +598,14 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
         append32(frame_revision);
         result.output = std::move(frame);
         frame_active = false;
-      } else if (op == "print") {
+      } else if (kind == MachineOpcode::print) {
         require_count(words, 2);
         const auto index = machine_register(words[1]);
         output_line("{\"type\":\"register\",\"register\":\"r" + std::to_string(index) +
                     "\",\"value\":" + std::to_string(registers[index]) + "}\n");
-      } else if (op == "halt") {
+      } else if (kind == MachineOpcode::halt) {
         require_count(words, 1);
-        if (frame_active) throw std::invalid_argument("unterminated XFS1 frame");
+        if (frame_active || mesh_active) throw std::invalid_argument("unterminated XFS1 frame or mesh");
         break;
       } else {
         auto expanded = words;
@@ -335,6 +625,6 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
     }
   }
   if (in_batch) throw std::invalid_argument("unterminated batch: expected end");
-  if (frame_active) throw std::invalid_argument("unterminated XFS1 frame");
+  if (frame_active || mesh_active) throw std::invalid_argument("unterminated XFS1 frame or mesh");
   return result;
 }

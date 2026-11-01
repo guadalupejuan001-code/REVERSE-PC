@@ -1,0 +1,127 @@
+{
+  "passed": true,
+  "scope": "paired separate-process host CLI execution on the identical XI game state",
+  "timingIncludes": "process startup, source parse, XI execution, observation and snapshot write",
+  "optimization": "inline XI span emission instead of shared 46-way layer dispatch",
+  "beforeSourceSha256": "78e1460e09396d359ad8a23d292dcd127b2e57ec4ff243009c29582b3ca2cf01",
+  "afterSourceSha256": "bf6ed6bb8b3a0154425894576c0453b94030377ba137070c44cdb966ea75ae70",
+  "interpreterSha256": "da777d4ba85d0099aa05a670a162721a5c06a42ff6e0aca2762d67cac61b3f93",
+  "snapshotSha256": "9b130ff94e0d43310e27c640f809e43a13446076635e1fbdb32b78a1be78ff39",
+  "warmupPerSourcePerStride": 1,
+  "inputStateUnchanged": true,
+  "androidDeviceMeasured": false,
+  "cases": [
+    {
+      "stride": 4,
+      "camera": 0,
+      "paint": 0,
+      "width": 1280,
+      "height": 720,
+      "samplesPerSource": 5,
+      "observationBytes": 23950,
+      "xfs1Sha256": "98aa4b9e34e2263a30bcebaf3f926cbb72dc4465129c4e1e1a2db3d65bd50cc7",
+      "byteExactAllPairs": true,
+      "beforeMedianMs": 34.847,
+      "afterMedianMs": 18.736,
+      "hostMedianSpeedup": 1.86,
+      "pairs": [
+        {
+          "order": [
+            "before",
+            "after"
+          ],
+          "beforeMs": 34.847,
+          "afterMs": 18.447
+        },
+        {
+          "order": [
+            "after",
+            "before"
+          ],
+          "beforeMs": 25.046,
+          "afterMs": 18.079
+        },
+        {
+          "order": [
+            "before",
+            "after"
+          ],
+          "beforeMs": 35.538,
+          "afterMs": 18.736
+        },
+        {
+          "order": [
+            "after",
+            "before"
+          ],
+          "beforeMs": 30.134,
+          "afterMs": 20.638
+        },
+        {
+          "order": [
+            "before",
+            "after"
+          ],
+          "beforeMs": 37.15,
+          "afterMs": 19.32
+        }
+      ]
+    },
+    {
+      "stride": 1,
+      "camera": 0,
+      "paint": 0,
+      "width": 1280,
+      "height": 720,
+      "samplesPerSource": 5,
+      "observationBytes": 96064,
+      "xfs1Sha256": "04e37f5f51e76ecb9b181fadcc52b2737fe1d9619cdfdcc277099b2c290c58f4",
+      "byteExactAllPairs": true,
+      "beforeMedianMs": 111.337,
+      "afterMedianMs": 71.231,
+      "hostMedianSpeedup": 1.563,
+      "pairs": [
+        {
+          "order": [
+            "before",
+            "after"
+          ],
+          "beforeMs": 107.673,
+          "afterMs": 70.816
+        },
+        {
+          "order": [
+            "after",
+            "before"
+          ],
+          "beforeMs": 111.337,
+          "afterMs": 69.468
+        },
+        {
+          "order": [
+            "before",
+            "after"
+          ],
+          "beforeMs": 121.307,
+          "afterMs": 94.25
+        },
+        {
+          "order": [
+            "after",
+            "before"
+          ],
+          "beforeMs": 100.111,
+          "afterMs": 71.231
+        },
+        {
+          "order": [
+            "before",
+            "after"
+          ],
+          "beforeMs": 122.275,
+          "afterMs": 83.197
+        }
+      ]
+    }
+  ]
+}

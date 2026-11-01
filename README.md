@@ -194,54 +194,32 @@ El runtime, el formato RVPC2 y la dependencia fijada de Mundo X se conservan.
 [Uso, compilación y límites de REVERSE Desktop](reverse-os-android/README.md).
 
 
-## REVERSE VELOCITY — prototipo X Render nativo (rama experimental)
+## REVERSE VELOCITY — juego de carreras con REgraphics
 
-El juego original de carreras está en desarrollo en
-`feature/reverse-velocity-native-20261029`.
-Su primer corte usa **EtherRenderEngine/EtherSurfaceBuffer nativos de Mundo X**
-(`1f925786522aba91f72707ad1638a8edcdd31a8f`) para
-generar cada píxel de una escena con esferas y elipsoides orientados. Android Canvas
-**solo presenta** el framebuffer nativo; no hay un segundo renderizador GLES
-del juego. El estado de conducción tiene actualización fija de 20 ms,
-representación compacta de posición/orientación/velocidad y controles
-por teclado o táctiles. El juego se lanza desde el menú Aplicaciones
-de REVERSE y se presenta a pantalla completa.
+La versión 0.3 rehace los coches con carrocería curva, normales por esquina y
+sombreado interpolado. Añade cristales tintados, reflejos aproximados, ruedas
+de dieciséis segmentos y tres niveles de malla. `Nitidez` permite seleccionar
+640×360 o volver al perfil adaptativo.
 
-La API fijada de X Render **aún no soporta triángulos, mallas, texturas
-PBR, sombras, reflejos realistas, ni un backend GPU de producción**. Por
-tanto, la escena actual es una prueba de integración, no un equivalente
-visual de Forza Horizon, y la imagen se calcula por CPU. Las resoluciones internas seleccionables tienen anchos de 320, 400 y 480
-píxeles y la relación de aspecto se adapta al dispositivo. El HUD mide FPS,
-pero falta validar el rendimiento sostenido del dispositivo físico y la escala del mundo no implica que todos los
-objetos se carguen simultáneamente. No se adjudican capacidades a XI/RXE
-que no existen: el loop de la demostración se implementa como puente Android
-hasta tener una ABI de juegos XI/Ether.
+[Modelo, materiales y ejecución de los coches 0.3](docs/REVERSE_VELOCITY_CARS_V03.md).
 
-Pruebas del proyecto:
-```sh
-javac -d build/velocity-tests \
- reverse-os-android/app/src/main/java/com/reversepc/os/VelocityPhysics.java \
- reverse-os-android/tests/VelocityPhysicsTest.java
-java -cp build/velocity-tests com.reversepc.os.VelocityPhysicsTest
-c++ -std=c++17 -O2 -Ideps/mundo-x/native/include \
- reverse-os-android/tests/velocity_xrender_smoke.cpp -o build/velocity-xrender-smoke
-./build/velocity-xrender-smoke
-```
+La versión 0.2 sustituye la carretera deformada en pantalla por un circuito cerrado
+con posiciones de mundo compartidas entre física, cámara y malla. `drive.xi`
+ejecuta inercia, dirección progresiva, agarre lateral, frenado, barreras,
+contactos con tres rivales y una carrera de tres vueltas con doce sectores.
+`world.xi` genera los 81 vértices del estadio y `render.xi` transforma la escena.
 
-Para compilar APK se utiliza el workflow Android original de REVERSE
-con la misma revisión de Mundo X. La ruta GLES de la versión inicial
-se retiró antes de integrar el juego.
+REgraphics incorpora primitivas genéricas de triángulos, clipping cercano,
+z-buffer y vértices temporales; conserva XFS1 como transporte al presentador.
+Los temporales de render son locales a la ejecución y no se guardan en Ether.
+La física y la presentación tienen trabajadores independientes. Android aporta
+controles multitáctiles, HUD y mapa, sin ecuaciones de conducción.
 
+La prueba de conducción recorre tres vueltas con entradas normales, sin escribir
+progreso: 7.151 ticks, doce sectores y llegada congelada. Se verifica también
+persistencia, frenado, volante, derrape y contacto con una pared. La escena es un
+**prototipo 3D de acabado sencillo**; no reproduce los materiales, modelos ni
+entornos de Forza. La prueba en el teléfono físico sigue pendiente.
 
-### Ciclo X Render de geometría y conducción
-
-Ether Render X incorpora elipsoides rotados en la ruta nativa original (Mundo X PR #75, fusionado).
-La carretera, el coche y varios elementos del mundo usan esos cuerpos con un observador de píxeles único.
-La conducción suma deslizamiento lateral, cruces barridos de seis puntos, tiempo final, cámaras y pinturas.
-Android presenta la imagen; no tiene otro renderizador de escena, y el ciclo de 20 ms
-se mantiene bajo la plataforma anfitriona, no dentro de XI/RXE.
-El escenario actual no tiene mallas triangulares, texturas PBR ni backend GPU de X Render.
-El workflow de validación incluye la escena X Render real y una prueba de arranque Android
-con captura de pantalla. No declarar APK jugable hasta tener resultado de esa CI.
-
-**Ciclo siguiente:** X Render incorpora triángulos analíticos en su observador original (Mundo X PR #76). REVERSE VELOCITY usa segmentos de carretera, líneas y carrocería con esos triángulos, conserva elipsoides para ruedas/objetos y no añade otro rasterizador. La compilación Android de esta revisión debe validarse antes de distribuir una APK.
+[Diseño y pruebas de la carrera 3D](docs/REVERSE_VELOCITY_RACE3D.md) ·
+[APK de prueba](docs/REVERSE_VELOCITY_APK.md).

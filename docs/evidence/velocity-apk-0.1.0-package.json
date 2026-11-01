@@ -1,0 +1,48 @@
+{
+  "passed": true,
+  "applicationId": "com.reversepc.velocity",
+  "launcher": "com.reversepc.os.VelocityActivity",
+  "minSdk": 29,
+  "abis": [
+    "arm64-v8a",
+    "x86_64"
+  ],
+  "nativeElf": {
+    "arm64-v8a": {
+      "bytes": 1569960,
+      "loadSegmentAlignments": [
+        16384,
+        16384,
+        16384
+      ]
+    },
+    "x86_64": {
+      "bytes": 1597984,
+      "loadSegmentAlignments": [
+        16384,
+        16384,
+        16384
+      ]
+    }
+  },
+  "assets": {
+    "drive.xi": {
+      "bytes": 5981,
+      "sha256": "cbf635ae22675f74ab26b28adfe15ad88af5bfc567a6fcc11d648e91090c3423"
+    },
+    "world.xi": {
+      "bytes": 1064,
+      "sha256": "2c276c0c1a2e47f343cf9196470a993f41bf082c723c2030b17459afb4be09a7"
+    },
+    "render.xi": {
+      "bytes": 30490,
+      "sha256": "bf6ed6bb8b3a0154425894576c0453b94030377ba137070c44cdb966ea75ae70"
+    },
+    "palette.txt": {
+      "bytes": 1792,
+      "sha256": "b552ac1c9a6876dfbafce85395bbdcdfac3f844561e232cfb87631be3d26fa99"
+    }
+  },
+  "apkBytes": 3761831,
+  "apkSha256": "df6dedceae3b52315bca8b0a4a5d9c16cfd4488acbd5192ce47a638ff014ee37"
+}

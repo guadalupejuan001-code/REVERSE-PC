@@ -1,0 +1,53 @@
+{
+  "passed": true,
+  "applicationId": "com.reversepc.velocity",
+  "launcher": "com.reversepc.os.VelocityActivity",
+  "minSdk": 29,
+  "versionCode": 3,
+  "versionName": "0.3.0-cars",
+  "sourceCommit": "236513fc0870e5e07a5ff0eb2f1d2609e29328ce",
+  "signerCertificateSha256": "061c28614fffecdc9a53a5661c4acf8c4d1173b631095aaaee8a98070abdf0d7",
+  "signerMatchesCachedIdentity": true,
+  "abis": [
+    "arm64-v8a",
+    "x86_64"
+  ],
+  "nativeElf": {
+    "arm64-v8a": {
+      "bytes": 1597392,
+      "loadSegmentAlignments": [
+        16384,
+        16384,
+        16384
+      ]
+    },
+    "x86_64": {
+      "bytes": 1628696,
+      "loadSegmentAlignments": [
+        16384,
+        16384,
+        16384
+      ]
+    }
+  },
+  "assets": {
+    "drive.xi": {
+      "bytes": 15663,
+      "sha256": "e81c0b7ff8c0ddcaed12c5a65538159582894286896783258eb71c71985ea027"
+    },
+    "palette.txt": {
+      "bytes": 1792,
+      "sha256": "1dad9755f27de06cd2e973cb9481b16b4dd91d09d2b2d3b81e43a89b3e45ae4e"
+    },
+    "render.xi": {
+      "bytes": 232224,
+      "sha256": "1853d9ea71aeb91e3554acb1cfbc55e2e5e3626757bf4dc515337b448f6ea484"
+    },
+    "world.xi": {
+      "bytes": 2993,
+      "sha256": "cfebe725e1efc0354dbfa484d20db805d7f9d9a7808b30130ad43b65b75d64f1"
+    }
+  },
+  "apkBytes": 3862959,
+  "apkSha256": "beee163435aea85db6d5c55c1a9e16a0071ef1e14e5ca784c389c00e095e4bff"
+}

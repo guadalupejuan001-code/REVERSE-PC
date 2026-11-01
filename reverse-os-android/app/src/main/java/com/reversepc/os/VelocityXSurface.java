@@ -6,145 +6,281 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Rect;
 import android.os.SystemClock;
+import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-/**
- * X Render is the only scene renderer. This class merely schedules fixed ticks,
- * copies its packed ARGB output and presents it with Android Canvas.
- */
+/** Independent XI driving transactions and REgraphics observations. */
 final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callback,Runnable {
     interface Hud {
-        void update(int speedKmh,int checkpoints,int total,long seconds,
-                    boolean offRoad,int slideMmps,boolean finished,int fps,
-                    int renderWidth,int renderHeight,String error);
+        void update(VelocityXiEngine.Snapshot state,boolean paused,int fps,int width,int height,String error);
     }
-    static { System.loadLibrary("reverse_os"); }
-    private static native void renderNative(int[] argb,int width,int height,
-                     long xMm,long zMm,int yaw16,int checkpoint,int camera,int paint,
-                     float[] xiTrack);
-
     private final VelocityXiEngine game;
     private final Hud hud;
     private final Paint paint=new Paint(Paint.FILTER_BITMAP_FLAG);
-    private final Rect sourceRect=new Rect();
-    private final Rect targetRect=new Rect();
-    private volatile boolean running;
-    private Thread worker;
-    private volatile int gas,brake,steer=1;
-    private volatile boolean handbrake,resetRequested;
-    private volatile int cameraMode,paintId,quality;
-    private volatile int surfaceWidth=16,surfaceHeight=9;
+    private final Rect sourceRect=new Rect(),targetRect=new Rect();
+    private final VelocityLoopLifecycle lifecycle,physicsLifecycle;
+    private final AtomicBoolean resetRequested=new AtomicBoolean();
+    private final AtomicBoolean repaintRequested=new AtomicBoolean(true);
+    private volatile int input=4,cameraMode,paintId;
+    private final Object detailLock=new Object();
+    private int quality=1;
+    private boolean fixedDetail;
+    private volatile int physicsHz;
+    private volatile boolean paused;
+    private volatile boolean reverseGear;
+    private volatile boolean native4K;
+    boolean is4KEnabled(){return native4K;}
+    boolean toggle4K(){native4K=!native4K;error="";return native4K;}
     private volatile String error="";
+
     VelocityXSurface(Context context,VelocityXiEngine game,Hud hud){
         super(context);this.game=game;this.hud=hud;
-        getHolder().addCallback(this);
-        setKeepScreenOn(true);
+        lifecycle=new VelocityLoopLifecycle(this);
+        physicsLifecycle=new VelocityLoopLifecycle(this::runPhysics);
+        getHolder().addCallback(this);setKeepScreenOn(true);
     }
     void controls(int gas,int brake,int steer,boolean handbrake){
         if(gas<0||gas>1||brake<0||brake>1||steer<0||steer>2)
             throw new IllegalArgumentException("Control fuera del protocolo XI");
-        this.gas=gas;this.brake=brake;this.steer=steer;this.handbrake=handbrake;
+        input=gas|(brake<<1)|(steer<<2)|(handbrake?16:0);
     }
-    void reset(){resetRequested=true;}
+    void reset(){resetRequested.set(true);paused=false;reverseGear=false;}
+    boolean isReverseGear(){return reverseGear;}
+    boolean isBrakePressed(){return (input&2)!=0;}
+    boolean isAccelerating(){return (input&1)!=0;}
+    boolean setReverseGear(boolean reverse){
+        VelocityXiEngine.Snapshot s=game.current();
+        // A stationary-only gear selector avoids reversing a moving drivetrain.
+        if(s!=null&&s.speedCmps>25)return false;
+        reverseGear=reverse;
+        return true;
+    }
+    boolean togglePause(){paused=!paused;if(paused){physicsHz=0;controls(0,0,1,false);}return paused;}
     int cycleCamera(){cameraMode=(cameraMode+1)%3;return cameraMode;}
     int cyclePaint(){paintId=(paintId+1)%5;return paintId;}
-    int cycleQuality(){quality=(quality+1)%3;return quality;}
-
-    synchronized void startLoop(){
-        if(worker!=null||!getHolder().getSurface().isValid())return;
-        running=true;worker=new Thread(this,"REVERSE-VELOCITY-XRENDER");
-        worker.start();
-    }
-    void stopLoop(){
-        Thread thread;
-        synchronized(this){running=false;thread=worker;}
-        if(thread!=null&&thread!=Thread.currentThread()){
-            try{thread.join(2500);}catch(InterruptedException ex){Thread.currentThread().interrupt();}
+    boolean toggleSharpness(){
+        synchronized(detailLock){
+            fixedDetail=!fixedDetail;quality=fixedDetail?2:1;return fixedDetail;
         }
     }
-    @Override public void surfaceCreated(SurfaceHolder holder){startLoop();}
-    @Override public void surfaceChanged(SurfaceHolder holder,int format,int w,int h){
-        surfaceWidth=Math.max(1,w);surfaceHeight=Math.max(1,h);
+    void resumeLoop(){error="";physicsHz=0;physicsLifecycle.resume();lifecycle.resume();}
+    void pauseLoop(){
+        physicsLifecycle.pause();lifecycle.pause();
+        physicsLifecycle.awaitStopped(250);lifecycle.awaitStopped(250);
     }
-    @Override public void surfaceDestroyed(SurfaceHolder holder){stopLoop();}
-
-    @Override public void run(){
-        long previous=SystemClock.elapsedRealtimeNanos(),lastHud=0,lastFps=previous;
-        int accumulator=0,frames=0,fps=0,currentQuality=-1;
-        int width=0,height=0;
-        int[] pixels=null;
-        Bitmap image=null;
+    void closeLoop(){
+        physicsLifecycle.close();lifecycle.close();
+        physicsLifecycle.awaitStopped(250);lifecycle.awaitStopped(250);
+    }
+    @Override public void surfaceCreated(SurfaceHolder holder){
+        repaintRequested.set(true);
+        boolean ready=holder.getSurface().isValid();
+        physicsLifecycle.setSurfaceReady(ready);lifecycle.setSurfaceReady(ready);
+    }
+    @Override public void surfaceChanged(SurfaceHolder holder,int format,int w,int h){
+        repaintRequested.set(true);
+    }
+    @Override public void surfaceDestroyed(SurfaceHolder holder){
+        repaintRequested.set(true);
+        physicsLifecycle.setSurfaceReady(false);lifecycle.setSurfaceReady(false);
+        physicsLifecycle.awaitStopped(250);lifecycle.awaitStopped(250);
+    }
+    private void failed(Throwable thrown){
+        physicsHz=0;
+        error="No se pudo continuar la carrera: "+thrown.getMessage();
+        physicsLifecycle.fail();lifecycle.fail();
+        hud.update(game.current(),paused,0,0,0,error);
+        Log.e("ReverseVelocity","Race worker failed",thrown);
+    }
+    private void runPhysics(){
+        long next=SystemClock.elapsedRealtimeNanos();
+        long measuredFrom=next;int measuredSteps=0;
         try{
-            while(running){
-                final long begin=SystemClock.elapsedRealtimeNanos();
-                final long delta=Math.min(100L,Math.max(0L,(begin-previous)/1_000_000L));
-                previous=begin;accumulator+=(int)delta;
-                if(resetRequested){
-                    game.step(0,0,1,0,true);
-                    resetRequested=false;accumulator=0;
+            while(physicsLifecycle.shouldRun()){
+                if(resetRequested.getAndSet(false)){
+                    game.step(0,0,1,0,false,true);next=SystemClock.elapsedRealtimeNanos();
+                    measuredFrom=next;measuredSteps=0;
                 }
-                int ticks=0;
-                while(accumulator>=20&&ticks++<5){
-                    game.step(gas,brake,steer,handbrake?1:0,false);
-                    accumulator-=20;
+                if(paused){
+                    physicsHz=0;measuredFrom=SystemClock.elapsedRealtimeNanos();measuredSteps=0;
+                    next=measuredFrom+20_000_000L;Thread.sleep(10);continue;
                 }
-                if(accumulator>=20)accumulator=0;
-                final VelocityXiEngine.Snapshot frame=game.current();
-                int selected=Math.max(0,Math.min(2,quality));
-                int targetWidth=selected==0?320:selected==1?640:1280;
-                double ratio=Math.min(2.7,Math.max(1.2,(double)surfaceWidth/surfaceHeight));
-                int targetHeight=Math.max(72,Math.min(720,(int)Math.round(targetWidth/ratio)));
-                if(selected!=currentQuality||targetHeight!=height){
-                    currentQuality=selected;
-                    width=targetWidth;height=targetHeight;
-                    pixels=new int[width*height];
-                    if(image!=null)image.recycle();
-                    image=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
-                    sourceRect.set(0,0,width,height);
+                long now=SystemClock.elapsedRealtimeNanos(),wait=next-now;
+                if(wait>0){Thread.sleep(Math.max(1L,wait/1_000_000L));continue;}
+                int current=input;
+                game.step(current&1,(current>>>1)&1,(current>>>2)&3,(current>>>4)&1,reverseGear,false);
+                measuredSteps++;
+                next+=20_000_000L;
+                // Keep fixed XI steps; a slow host does not invent simulation ticks.
+                now=SystemClock.elapsedRealtimeNanos();
+                if(now-next>100_000_000L)next=now;
+                if(now-measuredFrom>=1_000_000_000L){
+                    physicsHz=(int)Math.round(measuredSteps*1_000_000_000.0/(now-measuredFrom));
+                    Log.i("ReverseVelocity","PHYSICS_STATS steps="+measuredSteps+
+                        " elapsedNanos="+(now-measuredFrom)+" physicsHz="+physicsHz);
+                    measuredFrom=now;measuredSteps=0;
                 }
-                renderNative(pixels,width,height,frame.xCm*10L,frame.zCm*10L,
-                             frame.yaw4096*16,frame.checkpoint,cameraMode,paintId,
-                             game.track());
-                image.setPixels(pixels,0,width,0,0,width,height);
-                Canvas canvas=null;
-                try{
-                    canvas=getHolder().lockCanvas();
-                    if(canvas!=null){
-                        canvas.drawColor(0xff0a1018);
-                        targetRect.set(0,0,canvas.getWidth(),canvas.getHeight());
-                        canvas.drawBitmap(image,sourceRect,targetRect,paint);
+            }
+        }catch(InterruptedException interrupted){
+            physicsLifecycle.fail();lifecycle.fail();Thread.currentThread().interrupt();
+        }
+        catch(Throwable failure){if(physicsLifecycle.shouldRun())failed(failure);}
+    }
+    @Override public void run(){
+        Bitmap image=null;int[] pixels=null;
+        int width=0,height=0,frames=0,fps=0,slowFrames=0;
+        long lastHud=0,lastFps=SystemClock.elapsedRealtimeNanos();
+        boolean firstFramePosted=false;
+        int cacheHits=0,xiRenders=0;
+        final VelocityFrameReuse frameReuse=new VelocityFrameReuse();
+        final VelocityFrameProfiler profiler=new VelocityFrameProfiler();
+        try{
+            while(lifecycle.shouldRun()){
+                long begin=SystemClock.elapsedRealtimeNanos();
+                final int selected;final boolean selectedFixed;
+                synchronized(detailLock){selected=fixedDetail?2:Math.max(0,Math.min(2,quality));selectedFixed=fixedDetail;}
+                int stride=selected==0?4:selected==1?2:1;
+                int selectedCamera=cameraMode,selectedPaint=paintId;
+                VelocityXiEngine.Snapshot state;
+                boolean presented=false;
+                boolean selected4K=native4K;
+                if(repaintRequested.getAndSet(false))frameReuse.invalidate();
+                VelocityXiEngine.Snapshot currentState=game.current();
+                if(frameReuse.canReuse(paused,currentState,selectedCamera,selectedPaint,stride,selected4K)){
+                    // Static XI snapshot: leave the already-posted SurfaceView pixels
+                    // untouched. In 4K this avoids all 8.3M fragments, packet copies,
+                    // Bitmap upload and heat while paused. The HUD remains responsive.
+                    cacheHits++;
+                    long now=SystemClock.elapsedRealtimeNanos();
+                    if(now-lastFps>=1_000_000_000L){
+                        long elapsed=now-lastFps;
+                        fps=(int)Math.round(frames*1_000_000_000.0/elapsed);
+                        Log.i("ReverseVelocity","FRAME_STATS frames="+frames+
+                            " elapsedNanos="+elapsed+" fps="+fps+" width="+width+
+                            " height="+height+" ticks="+currentState.ticks+
+                            " physicsHz="+physicsHz+" fixedDetail="+selectedFixed+
+                            " paused="+paused+
+                            " backend="+(selected4K?"REgraphics_XI_4K_NATIVE":"REgraphics_XI_CPU")+
+                            " cacheHits="+cacheHits+" xiRenders="+xiRenders);
+                        String normal=profiler.drain(false),nativeTimes=profiler.drain(true);
+                        if(!normal.isEmpty())Log.i("ReverseVelocity","FRAME_PIPELINE "+normal);
+                        if(!nativeTimes.isEmpty())Log.i("ReverseVelocity","FRAME_PIPELINE "+nativeTimes);
+                        frames=0;cacheHits=0;xiRenders=0;lastFps=now;
                     }
-                }finally{
-                    if(canvas!=null)getHolder().unlockCanvasAndPost(canvas);
+                    if(now-lastHud>=100_000_000L){
+                        lastHud=now;hud.update(currentState,paused,fps,width,height,error);
+                    }
+                    Thread.sleep(70);
+                    continue;
                 }
-                frames++;
-                if(begin-lastFps>=1_000_000_000L){
-                    fps=(int)Math.round(frames*1_000_000_000.0/(begin-lastFps));
-                    frames=0;lastFps=begin;
+                // REgraphics rasteriza triángulos XI y emite XFS1. Android solo presenta píxeles.
+                    VelocityXiEngine.Observation observation;
+                    if(selected4K){
+                        try{observation=game.observeNative4KFrame(selectedCamera,selectedPaint);}
+                        catch(Exception nativeFailure){
+                            Log.w("ReverseVelocity","Native XI 4K unavailable on this device",nativeFailure);
+                            native4K=false;
+                            frameReuse.invalidate();
+                            error="4K XI no disponible: "+nativeFailure.getMessage();
+                            continue;
+                        }
+                    }else observation=game.observeFrame(stride,selectedCamera,selectedPaint);
+                    xiRenders++;
+                    // If a camera, paint, resolution or 4K switch happened during
+                    // this expensive XI render, do not publish an obsolete frame.
+                    boolean stale=selectedCamera!=cameraMode||selectedPaint!=paintId||
+                        selected4K!=native4K;
+                    if(!selected4K){
+                        synchronized(detailLock){
+                            int active=fixedDetail?2:Math.max(0,Math.min(2,quality));
+                            stale|=stride!=(active==0?4:active==1?2:1);
+                        }
+                    }
+                    if(stale){
+                        Log.i("ReverseVelocity","FRAME_DROPPED obsolete XI camera/material/profile");
+                        continue;
+                    }
+                    RegraphicsFrame frame=observation.frame;
+                    if(!lifecycle.shouldRun())break;
+                    if(frame.width!=width||frame.height!=height||pixels==null){
+                        width=frame.width;height=frame.height;pixels=new int[width*height];
+                        if(image!=null)image.recycle();
+                        image=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
+                        sourceRect.set(0,0,width,height);
+                    }
+                    final long expandStart=System.nanoTime();
+                    frame.present(pixels,width,height);
+                    final long expandNanos=System.nanoTime()-expandStart;
+                    final long bitmapStart=System.nanoTime();
+                    image.setPixels(pixels,0,width,0,0,width,height);
+                    final long bitmapNanos=System.nanoTime()-bitmapStart;
+                    final long presentStart=System.nanoTime();
+                    Canvas canvas=null;
+                    try{
+                        canvas=getHolder().lockCanvas();
+                        if(canvas!=null){
+                            canvas.drawColor(0xff101a24);
+                            float fit=Math.min((float)canvas.getWidth()/width,(float)canvas.getHeight()/height);
+                            int shownWidth=Math.round(width*fit),shownHeight=Math.round(height*fit);
+                            int left=(canvas.getWidth()-shownWidth)/2,top=(canvas.getHeight()-shownHeight)/2;
+                            targetRect.set(left,top,left+shownWidth,top+shownHeight);
+                            canvas.drawBitmap(image,sourceRect,targetRect,paint);
+                        }
+                    }finally{if(canvas!=null)getHolder().unlockCanvasAndPost(canvas);}
+                    final long presentNanos=System.nanoTime()-presentStart;
+                    state=observation.state;
+                    presented=canvas!=null;
+                    if(presented)frameReuse.framePosted(state,selectedCamera,selectedPaint,stride,selected4K);
+                    if(presented&&selected4K)
+                        Log.i("ReverseVelocity","NATIVE_4K_FRAME_READY source=XI_XFB5 width="+
+                            width+" height="+height+" pixels="+(width*height)+
+                            " speed="+state.speedKmh()+" ticks="+state.ticks);
+                if(presented&&!firstFramePosted){
+                    firstFramePosted=true;
+                    Log.i("ReverseVelocity","FRAME_READY "+width+"x"+height+
+                        " speed="+state.speedKmh()+" ticks="+state.ticks+
+                        " xCm="+state.xCm+" zCm="+state.zCm+" yaw4096="+state.yaw4096+
+                        " camera="+selectedCamera+" paint="+selectedPaint);
                 }
-                if(begin-lastHud>=250_000_000L){
-                    lastHud=begin;
-                    hud.update(frame.speedKmh(),frame.checkpoint,
-                         6,frame.seconds(),frame.offRoad,frame.slideCmps*10,
-                         frame.finished,fps,width,height,error);
+                if(presented)frames++;
+                long now=SystemClock.elapsedRealtimeNanos();
+                if(presented)profiler.record(selected4K,
+                    observation.executeNanos,observation.decodeNanos,
+                    expandNanos,bitmapNanos,presentNanos,now-begin,
+                    observation.payloadBytes);
+                if(now-lastFps>=1_000_000_000L){
+                    long elapsed=now-lastFps;
+                    fps=(int)Math.round(frames*1_000_000_000.0/elapsed);
+                    Log.i("ReverseVelocity","FRAME_STATS frames="+frames+" elapsedNanos="+elapsed+
+                        " fps="+fps+" width="+width+" height="+height+" ticks="+state.ticks+
+                        " physicsHz="+physicsHz+" fixedDetail="+selectedFixed+" paused="+paused+
+                        " backend="+(selected4K?"REgraphics_XI_4K_NATIVE":"REgraphics_XI_CPU")+
+                        " cacheHits="+cacheHits+" xiRenders="+xiRenders);
+                    String normal=profiler.drain(false),nativeTimes=profiler.drain(true);
+                    if(!normal.isEmpty())Log.i("ReverseVelocity","FRAME_PIPELINE "+normal);
+                    if(!nativeTimes.isEmpty())Log.i("ReverseVelocity","FRAME_PIPELINE "+nativeTimes);
+                    frames=0;cacheHits=0;xiRenders=0;lastFps=now;
                 }
-                final long cost=SystemClock.elapsedRealtimeNanos()-begin;
-                final long remaining=16_666_667L-cost; // up to 60 FPS; actual FPS remains measured
+                if(now-lastHud>=100_000_000L){
+                    lastHud=now;hud.update(state,paused,fps,width,height,error);
+                }
+                long cost=now-begin;
+                synchronized(detailLock){
+                    if(!native4K&&!fixedDetail&&!selectedFixed&&quality==selected&&cost>45_000_000L&&selected>0){
+                        if(++slowFrames>=5){quality=selected-1;slowFrames=0;}
+                    }else slowFrames=0;
+                }
+                long remaining=(paused?100_000_000L:33_333_333L)-cost;
                 if(remaining>1_000_000L)Thread.sleep(remaining/1_000_000L);
             }
-        }catch(Throwable thrown){
-            error="XI / X Render: "+thrown.getClass().getSimpleName()+" — "+thrown.getMessage();
-            final VelocityXiEngine.Snapshot last=game.current();
-            hud.update(last==null?0:last.speedKmh(),last==null?0:last.checkpoint,6,
-                last==null?0:last.seconds(),last!=null&&last.offRoad,
-                last==null?0:last.slideCmps*10,last!=null&&last.finished,0,width,height,error);
-        }finally{
+        }catch(InterruptedException interrupted){
+            physicsLifecycle.fail();lifecycle.fail();Thread.currentThread().interrupt();
+        }
+        catch(Throwable failure){if(lifecycle.shouldRun())failed(failure);}
+        finally{
             if(image!=null&&!image.isRecycled())image.recycle();
-            synchronized(this){
-                running=false;
-                if(Thread.currentThread()==worker)worker=null;
-            }
         }
     }
 }

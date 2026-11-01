@@ -1,0 +1,42 @@
+{
+  "passed": true,
+  "package": "com.reversepc.velocity",
+  "androidDeviceExecution": true,
+  "physicalPhoneVerified": false,
+  "renderer": "XI / REgraphics",
+  "checks": [
+    "connected Android device",
+    "standalone game package installed",
+    "standalone Velocity launcher starts",
+    "real Canvas frame posted",
+    "valid screenshot initial-screen",
+    "dismissed known SystemUI fullscreen education",
+    "REgraphics live HUD",
+    "accelerator physical control",
+    "physical accelerator advances XI speed",
+    "pause freezes game scheduler and shows HUD",
+    "race timer remains fixed while paused",
+    "continue resumes race",
+    "physical camera changes to close chase",
+    "physical paint selection changes",
+    "valid screenshot changed-camera-paint",
+    "new actual Canvas frame after Activity resume",
+    "Activity resume retains started race state",
+    "game remains usable after resume",
+    "no fatal Java/native or renderer error",
+    "valid screenshot final-screen"
+  ],
+  "warnings": [],
+  "apiLevel": "35",
+  "abi": "x86_64",
+  "fullscreenHintDismissed": true,
+  "observedSpeedKmh": 63,
+  "resumedTicks": 757,
+  "initialFrame": "I/ReverseVelocity( 2168): FRAME_READY 320x160 speed=0 ticks=0 camera=0 paint=0",
+  "resumedFrame": "I/ReverseVelocity( 2168): FRAME_READY 320x160 speed=0 ticks=757 camera=1 paint=1",
+  "elapsedMs": 34118,
+  "checkCount": 20,
+  "appPids": [
+    2168
+  ]
+}
