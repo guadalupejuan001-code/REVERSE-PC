@@ -50,7 +50,8 @@ export function admitC34Source({
   assert.ok(['odsign_running','odsign_exited_clean','odsign_exit_nonzero',
     'zygote_start_requested','framework_processes_running',
     'framework_verified','post_odsign_unresolved'].includes(stage.stage));
-  assert.equal(typeof stage.selinux_enforcing_live,'boolean');
+  assert.notEqual(stage.stage,'odsign_exit_nonzero','Service failure requires diagnosis before C35 continuation');
+  assert.equal(stage.selinux_enforcing_live,true,'Live SELinux enforcement required');
   assert.equal(typeof stage.live_framework_verified,'boolean');
   assert.equal(typeof stage.sys_boot_completed_live,'boolean');
   assert.equal(typeof stage.scanout_exported,'boolean');
