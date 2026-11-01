@@ -212,8 +212,8 @@ public final class VelocityActivity extends Activity {
         cockpit.setVisibility(View.GONE); // Full vehicle silhouette by default.
         speed=text("0 km/h",20);
         speed.setGravity(Gravity.CENTER);
-        add(root,speed,116,32,Gravity.TOP|Gravity.RIGHT,0,142,14,0);
-        warning=text("",12);add(root,warning,-2,-2,Gravity.TOP|Gravity.RIGHT,0,184,18,0);
+        add(root,speed,116,28,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,116,0,0);
+        warning=text("",12);add(root,warning,-2,-2,Gravity.TOP|Gravity.RIGHT,0,133,18,0);
         renderInfo=text("REgraphics XI",10);renderInfo.setTextColor(0xffb4d5e7);
         add(root,renderInfo,-2,-2,Gravity.TOP|Gravity.LEFT,16,171,0,0);
         status=text("ACELERA PARA SALIR",14);status.setGravity(Gravity.CENTER);
@@ -266,16 +266,15 @@ public final class VelocityActivity extends Activity {
         Button exit=button("Salir");exit.setOnClickListener(v->finish());
         garageButton=button("Garaje");
         garageButton.setOnClickListener(v->showGarage());
-        add(root,garageButton,86,38,Gravity.TOP|Gravity.LEFT,16,202,0,0);
         hudButton=button("HUD libre");
         hudButton.setOnClickListener(v->{
             dashboardVisible=!dashboardVisible;
             hudButton.setText(dashboardVisible?"HUD tablero":"HUD libre");
             cockpit.setVisibility(dashboardVisible&&!surface.is4KEnabled()?View.VISIBLE:View.GONE);
         });
-        add(root,hudButton,86,36,Gravity.TOP|Gravity.LEFT,16,244,0,0);
-        for(Button b:new Button[]{camera,colors,sharpness,native4k,engine,pauseButton,restart,exit}){
-            LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(80),dp(40));p.setMargins(dp(2),0,dp(2),0);menu.addView(b,p);
+        for(Button b:new Button[]{camera,colors,sharpness,native4k,pauseButton,
+                garageButton,hudButton,engine,restart,exit}){
+            LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(76),dp(40));p.setMargins(dp(2),0,dp(2),0);menu.addView(b,p);
         }
         HorizontalScrollView tools=new HorizontalScrollView(this);
         tools.setHorizontalScrollBarEnabled(false);
