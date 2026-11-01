@@ -36,6 +36,7 @@ test('ART and odsign next-stage evidence requires process exit plus live process
  assert.equal(r.art_boot_service_exit_zero_verified,true);
  assert.equal(r.odsign_live_userspace_verified,true);
  assert.equal(r.stage,'odsign_running_after_art_boot');
+ assert.equal(r.last_new_console_lines.length,2,'UART CRLF must produce two independent new log lines');
 });
 test('nonzero exit remains failure and cannot be confused with zero',()=>{
  const r=evaluateC32(fixture("init: Service 'derive_classpath' (pid 552) exited with status 3\n"));
