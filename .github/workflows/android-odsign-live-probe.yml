@@ -74,7 +74,7 @@ jobs:
           const tasks=k.tasks.filter(t=>names.some(n=>t.name===n||t.name.startsWith(n))).map(t=>({
             pid:t.pid,name:t.name,state:t.state,exit_state:t.exit_state,
             has_user_mm:t.has_user_mm,running_on_cpu:t.running_on_cpu,
-            context_pc:t.context_pc,accounting:t.accounting,
+            context_pc:t.context_pc,accounting:t.accounting,guest_syscall:t.guest_syscall??null,
             stack:t.stack.map(s=>s.symbol).filter(Boolean)
           }));
           const result={schema:'reverse-odsign-live-probe-v1',
