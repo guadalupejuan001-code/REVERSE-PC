@@ -1,7 +1,7 @@
 name: Reverse Velocity — regenerate authored XI scenes
 on:
   push:
-    branches: [feature/velocity-v04-nitro-airjump-20261101, feature/velocity-v18-garage-photo-hud-20261101, feature/velocity-v19-orbit-textures-20261101]
+    branches: [feature/velocity-v04-nitro-airjump-20261101, feature/velocity-v18-garage-photo-hud-20261101, feature/velocity-v19-orbit-textures-20261101, feature/velocity-v20-effects-drift-20261101]
     paths:
       - 'scripts/author-velocity-scene.cjs'
       - 'scripts/emit-velocity-car-scene.cjs'
