@@ -74,6 +74,7 @@ export function detectMusicalOnsets(bands, duration) {
   for (let i = 10000; i < n; i++) peakMax = Math.max(peakMax, aggregate[i]);
   const rmsReference = Math.max(0.000001, percentile(bands.energy, 0.90));
   const percentileFlux = percentile(aggregate, 0.90);
+  const peakStrengthReference = Math.max(0.03, percentile(aggregate, 0.975));
   const rollingWindow = Math.max(3, Math.round(0.60 / hop));
   const minGap = Math.max(2, Math.round(0.115 / hop));
   const candidates = [];
@@ -94,7 +95,7 @@ export function detectMusicalOnsets(bands, duration) {
       weighted[1] / total > 0.38 ? 'melody' : 'mixed';
     const p = {
       t: time,
-      strength: clamp(aggregate[i] / Math.max(0.03, percentile(aggregate, 0.975)), 0.03, 1),
+      strength: clamp(aggregate[i] / peakStrengthReference, 0.03, 1),
       source,
       bands: [weighted[0] / total, weighted[1] / total, weighted[2] / total]
     };
