@@ -119,7 +119,7 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
  vertices.forEach((p,i)=>{if(canonical[i]===i){const uv=carUV(p,normalKinds[i]);out(`meshvertex ${i} ${p.join(' ')}\nmeshtexuv ${i} ${uv.join(' ')}`);}});
  normalIds.forEach((g,i)=>{if(canonical[i]<0)return;const code=g>=0?g+256:-g-1;if(code<0||code>511)throw Error('Scalar metadata range');out(`localset ${512+i} ${canonical[i]*512+code}`);});
  function range(start,end){out(`set r0 ${start}`);store('r0',8324,2,0);out(`set r0 ${end}`);store('r0',8326,2,0);}
- out('store8 8203 0\nlabel actor\nstore8 8334 0\nstore8 8336 0\nload8 r0 8203\ncmp r0 4\njge tree_actor\ncmp r0 0\njne rival_actor');
+ out('store8 8203 0\nlabel actor\nstore8 8334 0\nstore8 8336 0\nload8 r0 8203\ncmp r0 44\njge skid_actor\ncmp r0 4\njge tree_actor\ncmp r0 0\njne rival_actor');
  range(models.high.start,models.high.end);
  load('r0',100,4,2000000);load('r2',104,4,2000000);load('r8',108,2,0);
  out('load8 r9 202\nmul r9 24\nadd r9 64\nstore8 8318 r9\nload8 r9 201\ncmp r9 2\njne player_mesh_ready\nstore8 8334 1\nlabel player_mesh_ready\njmp actor_ready\nlabel rival_actor');
@@ -128,7 +128,14 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
  out('load8 r9 8203\nmul r9 24\nadd r9 64\nstore8 8318 r9\njmp actor_ready\nlabel tree_actor');
  range(treeStart,treeEnd);
  out('load8 r8 8203\nsub r8 4\ndiv r8 2\nmul r8 4\nmov r7 r8\nmul r7 2\nadd r7 5000');load('r6','r7',2,0);trig('r6','r3','r4','r1','r2');
- out('load8 r0 8203\nmod r0 2\nmul r0 2\nsub r0 1\nmul r0 1650\nmul r4 r0\ndiv r4 16384\nmul r3 r0\ndiv r3 16384\nmul r8 8\nadd r8 4096');load('r0','r8',4,65536);out('add r0 r4\nadd r8 4');load('r2','r8',4,65536);out('sub r2 r3\nset r8 0\nlabel actor_ready');
+ out('load8 r0 8203\nmod r0 2\nmul r0 2\nsub r0 1\nmul r0 1650\nmul r4 r0\ndiv r4 16384\nmul r3 r0\ndiv r3 16384\nmul r8 8\nadd r8 4096');load('r0','r8',4,65536);out('add r0 r4\nadd r8 4');load('r2','r8',4,65536);
+ out('sub r2 r3\nset r8 0\njmp actor_ready\nlabel skid_actor');
+ range(skidStart,skidEnd);
+ out('load8 r7 8203\nsub r7 44\nmul r7 12\nadd r7 410\nload8 r9 $r7\ncmp r9 0\njle next_actor\nsub r7 10');
+ load('r0','r7',4,2000000);out('add r7 4');
+ load('r2','r7',4,2000000);out('add r7 4');
+ load('r8','r7',2,0);
+ out('label actor_ready');
  trig('r8','r3','r4','r5','r6');
  // Object-local sun and half vector. Values use Q14; the source supplies the
  // material intensity, while the generic engine only interpolates it.
@@ -235,7 +242,7 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
  range(airJetStart,airJetEnd);out('jmp actor_vertex\nlabel actor_shadow_stage');
  out('load8 r0 8203\ncmp r0 4\njge actor_geometry_ready\nload8 r0 8335\ncmp r0 1\nje actor_geometry_ready\nstore8 8335 1');
  range(shadowStart,shadowEnd);out('jmp actor_vertex\nlabel actor_geometry_ready');
- focus();out('load8 r12 8203\ncmp r12 4\njge emit_tree\nload8 r12 8334\ncmp r12 1\nje emit_hood\ncmp r12 2\nje emit_far\nload8 r12 8203\ncmp r12 0\nje emit_high\njmp emit_medium');
+ focus();out('load8 r12 8203\ncmp r12 44\njge emit_skid\ncmp r12 4\njge emit_tree\nload8 r12 8334\ncmp r12 1\nje emit_hood\ncmp r12 2\nje emit_far\nload8 r12 8203\ncmp r12 0\nje emit_high\njmp emit_medium');
  function face(f){
   const [a,b,c]=f.indices.map(i=>i+CAMERA),ramp=RAMPS[f.material];
   if(ramp){if(f.material==='paint')out('load8 r12 8318');else out(`set r12 ${ramp.base}`);const t=TEXTURED_MATERIALS[f.material];out(t?`meshfacegradienttex ${a} ${b} ${c} r12 ${ramp.count} ${t.id} ${t.strength} r9 r10 r11 60`:`meshfacegradient ${a} ${b} ${c} r12 ${ramp.count} r9 r10 r11 60`);}
@@ -262,6 +269,6 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
  out('label emit_shadow\nset r12 24\nload8 r0 8203\ncmp r0 0\njne shadow_base_ready\nload8 r0 120\ncmp r0 0\nje shadow_base_ready\nset r12 32\nlabel shadow_base_ready');
  shadowFaces.forEach(f=>out(`meshfacegradient ${f.map(i=>i+CAMERA).join(' ')} r12 8 r9 r10 r11 60`));out('jmp next_actor\nlabel emit_tree');
  treeFaces.forEach(f=>out(`meshface ${f.indices.map(i=>i+CAMERA).join(' ')} ${f.material} r9 r10 r11 60`));
- out('label next_actor');load('r12',100,4,2000000);out('load8 r0 8203\nadd r0 1\nstore8 8203 r0\ncmp r0 44\njlt actor\nmeshend\nhalt');
+ out('label next_actor');load('r12',100,4,2000000);out('load8 r0 8203\nadd r0 1\nstore8 8203 r0\ncmp r0 48\njlt actor\nmeshend\nhalt');
  return {modelStats,normalGroups:groups.length,bodyLightingGroups:bodyMasks.size,glassLightingGroups:glassMasks.size,vertices:vertices.length,maxTriangles,airJetTriangles:airJetFaces.length,smokeTriangles:smokeFaces.length,nitroTriangles:nitroFaces.length,skidTriangles:4*skidFaces.length,trianglesPerTree:treeFaces.length,shadowTrianglesPerCar:shadowFaces.length};
 };
