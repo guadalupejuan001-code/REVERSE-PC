@@ -9,6 +9,7 @@ import android.graphics.Path;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
@@ -28,7 +29,8 @@ import java.util.Set;
 /** Physical controls and compact race HUD; all game rules remain in XI. */
 public final class VelocityActivity extends Activity {
     private VelocityXSurface surface;
-    private TextView speed,lap,position,timer,status,warning,renderInfo;
+    private TextView speed,lap,position,timer,status,countdown,warning,renderInfo;
+    private long gearWarningUntil;
     private VelocityCockpitView cockpit;
     private Button gearButton;
     private Button pauseButton,native4KButton;
@@ -96,7 +98,8 @@ public final class VelocityActivity extends Activity {
         if(surface.setReverseGear(toReverse)){
             gearButton.setText(toReverse?"Marcha R":"Marcha D");
             gearButton.setContentDescription(toReverse?"Cambiar a marcha adelante":"Cambiar a reversa");
-        }else changedText(warning,"DETÉNTE PARA CAMBIAR");
+        }else {gearWarningUntil=SystemClock.elapsedRealtime()+1600;
+            changedText(warning,"DETENTE PARA CAMBIAR");}
     }
     private void togglePause(){
         if(surface==null)return;releaseControls();
@@ -111,18 +114,22 @@ public final class VelocityActivity extends Activity {
         long hundredths=s.ticks*2;
         changedText(timer,String.format(Locale.ROOT,"%02d:%02d.%02d",hundredths/6000,(hundredths/100)%60,hundredths%100));
         String center=error;
+        boolean isCounting=error.isEmpty()&&!paused&&!s.finished&&
+            s.countdown>0&&s.countdown<150;
         if(center.isEmpty())center=paused?"EN PAUSA":s.finished?"META · "+s.position+".º":
-            s.countdown==150?"ACELERA PARA SALIR":s.countdown>0?""+((s.countdown+49)/50):"";
+            s.countdown==150?"ACELERA PARA SALIR":"";
         changedText(status,center);
-        int statusSp=s.countdown>0&&s.countdown<150&&!paused?64:18;
-        if(Math.abs(status.getTextSize()-statusSp*getResources().getDisplayMetrics().scaledDensity)>.5f)
-            status.setTextSize(statusSp);
-        changedText(warning,s.wallContact?"CONTACTO":s.offRoad?"FUERA DE PISTA":"");
+        status.setVisibility(center.isEmpty()?View.GONE:View.VISIBLE);
+        countdown.setVisibility(isCounting?View.VISIBLE:View.GONE);
+        if(isCounting)changedText(countdown,Integer.toString((s.countdown+49)/50));
+        String roadWarning=s.wallContact?"CONTACTO":s.offRoad?"FUERA DE PISTA":"";
+        if(SystemClock.elapsedRealtime()<gearWarningUntil)roadWarning="DETENTE PARA CAMBIAR";
+        changedText(warning,roadWarning);
         if(native4KButton!=null&&!surface.is4KEnabled()&&
                 "4K XI activo".contentEquals(native4KButton.getText()))
             native4KButton.setText("4K XI");
         if(renderInfo!=null){String backend=w==3840?"REgraphics XI 4K nativo":"REgraphics XI";
-            changedText(renderInfo,backend+"  "+w+" × "+h+"  |  "+fps+" FPS");}
+            changedText(renderInfo,backend+"  "+w+" × "+h+(paused?"  |  PAUSA":"  |  "+fps+" FPS"));}
         map.setCar(s.xCm/100f,s.zCm/100f);
     }
     @Override public void onCreate(Bundle saved){
@@ -166,6 +173,11 @@ public final class VelocityActivity extends Activity {
         status.setBackground(background(0xb322374b));
         status.setPadding(dp(12),dp(2),dp(12),dp(2));
         add(root,status,-2,26,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,89,0,0);
+        // Countdown is separate from the 26dp status badge: 64sp was previously
+        // clipped by the status view during the three-second start sequence.
+        countdown=text("",64);countdown.setGravity(Gravity.CENTER);
+        add(root,countdown,104,100,Gravity.CENTER,0,0,0,0);
+        countdown.setVisibility(View.GONE);
         map=new RaceMap(game.track());add(root,map,86,86,Gravity.TOP|Gravity.LEFT,16,92,0,0);
         LinearLayout menu=new LinearLayout(this);menu.setOrientation(LinearLayout.HORIZONTAL);
         Button camera=button("Cámara");camera.setOnClickListener(v->{int m=surface.cycleCamera();camera.setText(m==0?"Cámara":m==1?"Cercana":"Capó");});
