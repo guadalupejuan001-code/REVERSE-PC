@@ -21,7 +21,7 @@ Trabajo incremental: codex/prisma-2-musical-stage-20261101.
 | 02. Beatmap inteligente | Densidad y direcciones por bandas grave/medio/agudo, tempo local, validación con pistas sintéticas | Implementado; CI Android aprobó el 2026-11-01 |
 | 03. Maquinaria de concierto | Seis focos articulados, bases/cabezales nativos, juntas y vigas de metal, programa escénico por compases, guardarraíl de 64 cuboides, luces adaptativas | Validado en emulador Android 15 (workflow 41288455075) |
 | 04. Combos musicales | Cinco niveles de explosiones prismáticas, carga y liberación por acento, sincronía del concierto, control de intensidad y coste | Implementado; requiere validar el nuevo CI Android |
-| 05. Materiales y escenarios | Mejoras del renderizador, refracción/materiales XI y geometría escénica con oráculos de exactitud | Pendiente |
+| 05. Materiales y escenarios | ABI material v2 (vidrio facetado, aleación, lentes), sombreado dentro de Ether Render X, suelo especular, oráculos de exactitud y fallback v1 | Implementado; pendientes pruebas completas del CI del ciclo 05 |
 | 06. Android/QA/optimización | Compilar RXE3/APK, verificar WebView y XI, rendimiento, protección contra mareo, pruebas en móvil físico | Pendiente |
 
 ## Ciclos iniciales — director musical y escenario
@@ -103,3 +103,26 @@ Implementación: music-stage.js, combo-spectacle.js, concert-rig.js y engine.js.
 **Versionado e instalación:** el nuevo empaquetado anuncia PRISMA 2.1.0 (Ciclo 04). REVERSE reconoce el hash SHA-256 del ejecutable oficial de PRISMA 2.0.0 del Ciclo 03 como predecesor verificado; crea el flag específico prisma-2.1-seeded y preserva el origen de récords/ajustes de WebView sin sobrescribir ejecutables personalizados. La memoria XI RVPC2 continúa aislada por identidad de ejecutable; los récords de la UI sí conservan su origen cuando la actualización es oficial reconocida.
 
 **Estado de validación al registrar este documento:** el código ha superado pruebas funcionales sintéticas del director, pero las pruebas de integración completas de este commit y sus artefactos Android quedan condicionadas a la ejecución de GitHub Actions.
+
+
+## Ciclo 05 — materiales y profundidad (2026-11-01)
+
+**Objetivo:** mejorar superficies REALES del observador nativo, sin crear la ilusión de que una capa CSS es un material 3D. Esta versión se etiqueta PRISMA 2.2.0.
+
+### Extensión verificable de Ether Render X
+
+- El paquete de escena conserva cabecera de 16 floats y 12 floats por cuerpo, máximo 64 cuerpos y la misma cámara/intersección exacta. La versión 1 mantiene estrictamente el campo reservado a cero. La versión 2 reutiliza SOLO ese campo como ID entero de material: 0 = legado, 1 = prisma facetado, 2 = aleación cepillada, 3 = lente luminosa. No hay cabecera/cuerpos de tamaño ampliado.
+- El host Android añade ReverseGraphics.xRenderMaterials() que anuncia la compatibilidad prisma-materials-v2 mientras xRender() sigue devolviendo el contrato v1. La nueva app pregunta por capacidad; en hosts antiguos envía de forma segura escenas v1, sin pedir materiales inexistentes. Ejecutables previos emiten v1 y continúan funcionando.
+- scripts/xrender_extension.py incorpora el material directamente al mundo_x::EtherRenderSpatial::Body original, conservando el mismo planificador por regiones y rayo/caja exactos. No se sustituye Ether Render X por WebGL. La selección del material solo actúa en shade_cube, después de resolver el cuerpo más próximo. El material 0 conserva la lógica anterior sin cambio. El vidrio muestra facetas y resaltado angular, la aleación tiene reflejo especular direccional y la lente una contribución radial. Son materiales **estilizados**, no trazado físico completo de refracción, mapas de entorno ni PBR calibrado.
+- El rasterizador WebGL de navegador, que NO es Ether Render X, incorpora aproximaciones GLSL a estos tres acabados para conservar la intención visual fuera de Android. Se añade un brillo de suelo procedimental tenue tanto al shader de fondo de GLES del presentador nativo como a la ruta WebGL de navegador; NO se afirma que refleje exactamente objetos de la escena.
+- Scene.cube entrega material facetado a las notas (salvo ahorro) y Scene.stageRig envía aleación para los soportes y lentes para las cabezas. En calidad «Ahorro» se utiliza material 0 para limitar trabajo adicional.
+- Las reglas de puntuación apps/prisma/game.xi, los acentos musicales, combos, aislamiento RXE3, id/profundidad y el orden de nota-antes-decoración NO se modifican.
+
+### Gates de exactitud y compatibilidad
+
+- tests/prisma_xrender.cpp compara pixels del protocolo 2 material 0 con el protocolo 1 original, comprueba que materiales 1/2/3 generan superficies diferentes conservando cobertura y alfa, valida los tres contadores de material y rechaza materiales no enteros/fuera de rango y datos v1 no reservados.
+- tests/prisma-materials.mjs prueba negociación de capacidad y fallback en Android antiguo, las posiciones del campo material, la distribución de materiales por notas/focos y la reducción de efectos en batería. El CI mantiene oráculos geométricos de millones de puntos, pruebas anteriores de XI/RXE y emulador Android.
+- Instrumentación Android: pide la capacidad v2 y comprueba que existen cuerpos facetados nativos en una pantalla de PRISMA antes de ejecutar la interacción.
+- La versión oficial 2.2.0 recibe un flag propio de publicación y actualiza únicamente los SHA-256 oficiales conocidos, incluido el RXE final 2.1.0 del ciclo 04. Se conserva el origen local WebView de récords/ajustes reconocidos; el estado XI RVPC2 no se intercambia con otros ejecutables.
+
+**Límites todavía existentes:** cubos y articulaciones cúbicas, sin mallas generales; sin refracción física, reflejo geométrico perfecto, geometría de partículas nativa ni niebla volumétrica. Las afirmaciones sobre FPS deberán compararse en teléfono físico durante el ciclo 06, no extrapolarse a partir de la emulación.
