@@ -1,6 +1,6 @@
 import { RhythmAudio, DEMO_BPM, DEMO_DURATION, analyseRhythm, waveformOf, seeded } from './audio.js';
 import { Scene, makeChart, segmentDistance, DIRECTIONS, PALETTES, visibleRange } from './engine.js';
-import { makeMusicStage } from './music-stage.mjs';
+import { makeMusicStage } from './music-stage.js';
 const $ = id => document.getElementById(id);
 const all = selector => [...document.querySelectorAll(selector)];
 const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
