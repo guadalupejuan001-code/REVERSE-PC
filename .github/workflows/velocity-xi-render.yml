@@ -1,12 +1,14 @@
 name: REVERSE VELOCITY REgraphics
 on:
   push:
-    branches: [feature/xi-velocity-no-cpp-render-20261029, feature/velocity-regraphics-20261030, feature/regraphics-frame-cache-20261101, feature/velocity-cockpit-nature-20261031, feature/velocity-xi-renderer-only-20261031, feature/regraphics-tile-native-20261031]
+    branches: [feature/xi-velocity-no-cpp-render-20261029, feature/velocity-regraphics-20261030, feature/regraphics-frame-cache-20261101, feature/regraphics-ether-spatial-kernel-20261101, feature/velocity-cockpit-nature-20261031, feature/velocity-xi-renderer-only-20261031, feature/regraphics-tile-native-20261031]
     paths:
       - 'reverse-os-android/app/src/main/assets/velocity/**'
       - 'reverse-os-android/tests/velocity-xi-render-contract.cjs'
       - 'reverse-os-android/tests/velocity-native4k-contract.cjs'
       - 'tests/xi_native_tile_raster.cpp'
+      - 'tests/xi_spatial_candidates.cpp'
+      - 'scripts/velocity-spatial-ab.cjs'
       - 'reverse-os-android/tests/*Regraphics*'
       - 'reverse-os-android/tests/VelocityLoopLifecycleTest.java'
       - 'reverse-os-android/tests/velocity-xi-contract.cjs'
@@ -71,6 +73,11 @@ jobs:
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
             -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
             src/reverse_pc.cpp -o build/velocity/reverse_pc
+          # Bit-exact previous XI kernel: only region candidates are disabled.
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
+            -DREGRAPHICS_DISABLE_SPATIAL_CANDIDATES=1 \
+            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
+            src/reverse_pc.cpp -o build/velocity/reverse_pc_baseline
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
             -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
             reverse-os-android/tests/velocity-gameplay-contract.cpp \
@@ -89,6 +96,9 @@ jobs:
             tests/xi_native_tile_raster.cpp -o build/velocity/xi-native-tile-test
           build/velocity/xi-native-tile-test
           g++ -std=c++17 -O2 -fsanitize=undefined -fno-sanitize-recover=all \
+            tests/xi_spatial_candidates.cpp -o build/velocity/xi-spatial-test
+          build/velocity/xi-spatial-test
+          g++ -std=c++17 -O2 -fsanitize=undefined -fno-sanitize-recover=all \
             tests/xi_texture_raster.cpp -o build/velocity/xi-texture-test
           build/velocity/xi-texture-test
           g++ -std=c++17 -O2 -fsanitize=undefined -fno-sanitize-recover=all \
@@ -101,6 +111,7 @@ jobs:
           node reverse-os-android/tests/velocity-xi-render-contract.cjs build/velocity/reverse_pc build/velocity
           node reverse-os-android/tests/velocity-4k-contract.cjs build/velocity/reverse_pc build/velocity/4k-geometry.json
           node reverse-os-android/tests/velocity-native4k-contract.cjs build/velocity/reverse_pc build/velocity/4k-native-pixels.json
+          node scripts/velocity-spatial-ab.cjs build/velocity/reverse_pc_baseline build/velocity/reverse_pc build/velocity/spatial-ab.json
           node experiments/xi-render/direct-binary-test.cjs build/velocity/reverse_pc build/velocity/direct-regression
       - name: Validate binary packets and Android presenter without a device
         run: |
