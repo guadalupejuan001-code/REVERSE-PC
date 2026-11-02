@@ -23,11 +23,19 @@ function trig(angle,sin,cos,t0,t1){
 }
 // The camera's reference point remains the actual vehicle, in centimeters.
 load('r12',100,4,2000000);load('r13',104,4,2000000);
-load('r0',108,2,0);trig('r0','r14','r15','r1','r2');
+load('r0',108,2,0);
+out('load16 r1 204\nadd r0 r1\nmod r0 4096');
+trig('r0','r14','r15','r1','r2');
 out(`load8 r0 200\ncmp r0 1\nje size_high\ncmp r0 2\nje size_medium\nset r0 320\nset r1 180\njmp size_done\nlabel size_medium\nset r0 480\nset r1 270\njmp size_done\nlabel size_high\nset r0 640\nset r1 360\nlabel size_done`);
 store('r0',8210,2,0);store('r1',8212,2,0);
 out(`meshbegin r0 r1 2 12\nload8 r0 201\ncmp r0 1\nje camera_close\ncmp r0 2\nje camera_hood\nset r0 750\nset r1 250\nset r2 160\nset r3 987\njmp camera_ready\nlabel camera_close\nset r0 650\nset r1 230\nset r2 150\nset r3 989\njmp camera_ready\nlabel camera_hood\nset r0 0\nset r1 115\nset r2 100\nset r3 995\nlabel camera_ready`);
-store('r0',8192,2,0);store('r1',8194,2,0);store('r2',8196,2,0);store('r3',8198,2,0);
+ // Orbit elevation is an ephemeral XI input: a vertical finger drag adjusts
+ // height and pitch simultaneously without altering the moving vehicle.
+ // Signed tilt uses a wrapped 9-bit integer; zero preserves old views.
+ out('load16 r6 206\ncmp r6 256\njlt orbit_elevation_decoded\nsub r6 512\nlabel orbit_elevation_decoded\nadd r1 r6\nadd r2 r6');
+ // Chase camera rises with the XI-controlled chassis; no artificial screen shake.
+ out('load16 r4 384\nmul r4 3\ndiv r4 5\nadd r1 r4');
+ store('r0',8192,2,0);store('r1',8194,2,0);store('r2',8196,2,0);store('r3',8198,2,0);
 require('./velocity-textures.cjs').emitXiTextures(out);
 function focus(){
  load('r9',8210,2,0,'r11');
@@ -37,9 +45,22 @@ function focus(){
 load('r0',8210,2,0);load('r1',8212,2,0);
 out('mov r2 r1\ndiv r2 2\nmov r3 r0\nmul r3 85\ndiv r3 100');load('r4',8196,2,0);out('mul r3 r4');load('r4',8198,2,0);out('div r3 r4\nsub r2 r3');
 store('r2',8238,2,0,'r9','r10');
-out('mov r3 r2\ndiv r3 2\nmeshtri 0 0 999999 r0 0 999999 r0 r3 999999 8\nmeshtri 0 0 999999 r0 r3 999999 0 r3 999999 8\nmeshtri 0 r3 999999 r0 r3 999999 r0 r2 999999 38\nmeshtri 0 r3 999999 r0 r2 999999 0 r2 999999 38\nmeshtri 0 r2 999998 r0 r2 999998 r0 r1 999998 72\nmeshtri 0 r2 999998 r0 r1 999998 0 r1 999998 72');
+// True XI rasterized multi-band sky and terrain, with fixed costs: four
+// extra triangles per frame, independent of native render resolution.
+out('mov r3 r2\ndiv r3 2\nmov r4 r3\ndiv r4 2'+
+ '\nmeshtri 0 0 999999 r0 0 999999 r0 r4 999999 210'+
+ '\nmeshtri 0 0 999999 r0 r4 999999 0 r4 999999 210'+
+ '\nmeshtri 0 r4 999999 r0 r4 999999 r0 r3 999999 8'+
+ '\nmeshtri 0 r4 999999 r0 r3 999999 0 r3 999999 8'+
+ '\nmeshtri 0 r3 999999 r0 r3 999999 r0 r2 999999 38'+
+ '\nmeshtri 0 r3 999999 r0 r2 999999 0 r2 999999 38'+
+ '\nmov r4 r1\nsub r4 r2\ndiv r4 2\nadd r4 r2'+
+ '\nmeshtri 0 r2 999998 r0 r2 999998 r0 r4 999998 72'+
+ '\nmeshtri 0 r2 999998 r0 r4 999998 0 r4 999998 72'+
+ '\nmeshtri 0 r4 999998 r0 r4 999998 r0 r1 999998 211'+
+ '\nmeshtri 0 r4 999998 r0 r1 999998 0 r1 999998 211');
 // Distant hills rotate as a panoramic skyline with the actual yaw.
-out('load8 r6 108\nload8 r7 109\nmul r7 256\nadd r6 r7\nmul r6 5\ndiv r6 16\nmod r6 160\nstore8 8236 r6\nset r7 0\nlabel hills');
+out('load8 r6 108\nload8 r7 109\nmul r7 256\nadd r6 r7\nload16 r7 204\nadd r6 r7\nmul r6 5\ndiv r6 16\nmod r6 160\nstore8 8236 r6\nset r7 0\nlabel hills');
 load('r0',8210,2,0);out('mov r1 r0\nmul r1 r7\ndiv r1 5\nmov r2 r0\ndiv r2 160\nload8 r6 8236\nmul r6 r2\nsub r1 r6\nmov r2 r0\ndiv r2 3\nadd r2 r1\nmov r4 r1\nadd r4 r2\ndiv r4 2');load('r3',8238,2,0);out('mov r5 r0\ndiv r5 20\nmul r5 -1\nadd r5 r3\nmeshtri r1 r3 999990 r4 r5 999990 r2 r3 999990 189\nadd r7 1\ncmp r7 8\njlt hills');
 // Transform a ground point to camera: x/y/z in registers; r9..11 temporary.
 function cameraPoint(x,y,z){out(`sub ${x} r12\nsub ${z} r13\nmov r9 ${x}\nmul r9 r15\nmov r10 ${z}\nmul r10 r14\nsub r9 r10\ndiv r9 16384\nmov r10 ${x}\nmul r10 r14\nmov r11 ${z}\nmul r11 r15\nadd r10 r11\ndiv r10 16384\nmov ${x} r9`);load('r11',8192,2,0,'r9');out('add r10 r11');load('r11',8194,2,0,'r9');out(`sub ${y} r11`);pitch(x,y,z);}
@@ -81,7 +102,13 @@ for(const tri of [[[0,0],[1,0],[1,1]],[[0,0],[1,1],[0,1]]]){
   out('div r1 12\nmeshtexuv '+id+' r1 r0\nmeshshade '+id+' 128');
  }
  focus();
- out('meshfacegradienttex 1770 1771 1772 40 8 5 12 r9 r10 r11 60\njmp '+done+'\nlabel '+plain);
+ // Road wear shader. A 7-segment material cadence preserves the same XI
+ // texture phase on both triangles of one physical segment.
+ const darker=label('asphalt_darker'),toneDone=label('asphalt_tone_done');
+ out('load8 r12 8200\nmod r12 7\ncmp r12 3\njle '+darker+
+   '\nset r12 42\njmp '+toneDone+
+   '\nlabel '+darker+'\nset r12 40\nlabel '+toneDone);
+ out('meshfacegradienttex 1770 1771 1772 r12 12 5 3 r9 r10 r11 60\njmp '+done+'\nlabel '+plain);
  focus();
  out('load8 r7 8220\nmeshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 r7 r9 r10 r11 60');
  out('label '+done);

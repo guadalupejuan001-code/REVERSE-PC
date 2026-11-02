@@ -1,11 +1,26 @@
 #!reverse-pc-machine-v1
 # REVERSE VELOCITY world-space bicycle/tire physics; XI owns every race state.
-# cm, cm/s, 50Hz. yaw4096:0=+z,1024=+x. Controls 128..132, 133=reverse gear.
+# cm, cm/s, 50Hz. yaw4096:0=+z,1024=+x. Inputs 128..135; 134=nitro, 135=pneumatic jump. Persistent energy/altitude at 380..391.
 # World4096+:81(x,z) vertices; tangent5000+. Rivals6000+32*i.
+# XI Cycle 3 Ether 480..489: score, combo, grace, rebufo and current surface.
+# Forest assistance: input 136 (0=manual,1=lane/brake,2=autopilot).
+# Explicit player steering (input130) and braking (input129) always override.
 # No screen projection participates in driving, collision or race progress.
 load8 r0 1002
 cmp r0 2
 jne missing_world
+# The pilot advances the start countdown without synthetic screen taps.
+load8 r0 136
+cmp r0 2
+jne pilot_throttle_ready
+load8 r1 133
+cmp r1 1
+je pilot_throttle_ready
+load8 r1 129
+cmp r1 1
+je pilot_throttle_ready
+store8 128 1
+label pilot_throttle_ready
 load8 r0 132
 cmp r0 1
 je initialize
@@ -101,6 +116,31 @@ set r0 0
 mov r14 r0
 add r14 1000
 store16 314 r14
+# Nitro/air suspension lives in durable XI state; not in the Android view.
+store16 380 1000
+store8 382 0
+store16 384 0
+store16 386 10000
+store8 388 0
+store8 389 0
+store8 390 0
+store8 391 0
+# XI effect history is durable Ether state (not host-generated graphics).
+store8 393 0
+store8 394 0
+store8 395 0
+store8 396 0
+# Driving skills state; HUD reads snapshots only.
+store32 480 0
+store16 484 100
+store8 486 0
+store8 487 0
+store8 488 0
+store8 489 0
+store8 410 0
+store8 422 0
+store8 434 0
+store8 446 0
 store8 121 1
 store8 258 0
 set r0 450
@@ -489,7 +529,187 @@ jlt rival_loop
 load8 r0 258
 cmp r0 2
 jne rank
+# Assisted controls are sensor-driven XI commands, never Java driving math.
+# Steering tracks a point 40m ahead; the road tangents govern corner speed.
+load8 r0 136
+cmp r0 0
+je assisted_input_done
+load8 r0 133
+cmp r0 1
+je assisted_input_done
+load8 r0 131
+cmp r0 1
+je assisted_input_done
+load8 r0 130
+cmp r0 1
+jne assisted_corner_brake
+load8 r0 273
+add r0 2
+mod r0 80
+mov r12 r0
+mul r12 8
+add r12 4096
+load32 r3 $r12
+sub r3 65536
+add r12 4
+load32 r4 $r12
+sub r4 65536
+load32 r5 100
+sub r5 2000000
+sub r3 r5
+load32 r5 104
+sub r5 2000000
+sub r4 r5
+load16 r5 306
+sub r5 32768
+load16 r6 304
+sub r6 32768
+mul r3 r5
+mul r4 r6
+sub r3 r4
+div r3 16384
+cmp r3 80
+jle assisted_check_left
+store8 130 2
+jmp assisted_corner_brake
+label assisted_check_left
+cmp r3 -80
+jge assisted_corner_brake
+store8 130 0
+label assisted_corner_brake
+load8 r0 129
+cmp r0 1
+je assisted_input_done
+load8 r0 273
+add r0 3
+mod r0 80
+mul r0 2
+add r0 5000
+mov r12 r0
+load16 r3 $r12
+load16 r4 108
+sub r3 r4
+cmp r3 2048
+jle assisted_yaw_low
+sub r3 4096
+label assisted_yaw_low
+cmp r3 -2048
+jge assisted_yaw_ready
+add r3 4096
+label assisted_yaw_ready
+cmp r3 0
+jge assisted_yaw_abs
+mul r3 -1
+label assisted_yaw_abs
+load16 r4 110
+cmp r3 280
+jlt assisted_medium_corner
+cmp r4 2200
+jle assisted_input_done
+store8 129 1
+store8 128 0
+jmp assisted_input_done
+label assisted_medium_corner
+cmp r3 140
+jlt assisted_wide_corner
+cmp r4 3000
+jle assisted_input_done
+store8 129 1
+store8 128 0
+jmp assisted_input_done
+label assisted_wide_corner
+cmp r3 75
+jlt assisted_input_done
+cmp r4 3900
+jle assisted_input_done
+store8 129 1
+store8 128 0
+label assisted_input_done
 store8 283 0
+# Nitro reservoir: 4 seconds of boost, 10 seconds of normal recharge.
+load16 r0 380
+load8 r1 134
+cmp r1 1
+jne nitro_recover
+load8 r1 128
+cmp r1 1
+jne nitro_recover
+load8 r1 129
+cmp r1 1
+je nitro_recover
+load8 r1 133
+cmp r1 1
+je nitro_recover
+cmp r0 5
+jlt nitro_recover
+sub r0 5
+store8 382 1
+jmp nitro_store
+label nitro_recover
+store8 382 0
+add r0 2
+cmp r0 1000
+jle nitro_store
+set r0 1000
+label nitro_store
+store16 380 r0
+# Debounced single-jump impulse, four compressors and 50Hz ballistic gravity.
+load8 r0 389
+cmp r0 0
+jle jump_cooldown_done
+sub r0 1
+store8 389 r0
+label jump_cooldown_done
+load8 r0 388
+cmp r0 0
+jle air_pulse_done
+sub r0 1
+store8 388 r0
+label air_pulse_done
+store8 391 0
+load8 r0 135
+cmp r0 0
+jne jump_button_down
+store8 390 0
+jmp jump_integrator
+label jump_button_down
+load8 r0 390
+cmp r0 0
+jne jump_integrator
+store8 390 1
+load16 r0 384
+cmp r0 0
+jne jump_integrator
+load8 r0 389
+cmp r0 0
+jne jump_integrator
+store16 386 10700
+store8 389 90
+store8 388 22
+label jump_integrator
+load16 r0 386
+sub r0 10000
+load16 r1 384
+cmp r0 0
+jne jump_in_flight
+cmp r1 0
+je jump_complete
+label jump_in_flight
+sub r0 30
+mov r2 r0
+div r2 50
+add r1 r2
+cmp r1 0
+jgt jump_still_flying
+set r1 0
+set r0 0
+store8 388 10
+store8 391 1
+label jump_still_flying
+store16 384 r1
+add r0 10000
+store16 386 r0
+label jump_complete
 load16 r0 256
 sub r0 1000
 load8 r1 130
@@ -513,6 +733,13 @@ add r14 1000
 store16 256 r14
 load16 r1 110
 mul r0 r1
+# Reduced steering response while airborne.
+load16 r6 384
+cmp r6 0
+je ground_steering
+mul r0 35
+div r0 100
+label ground_steering
 load8 r6 133
 cmp r6 1
 jne reverse_steering_ready
@@ -619,6 +846,11 @@ set r4 0
 label forward_nonnegative
 load8 r0 128
 mul r0 1100
+load8 r6 382
+cmp r6 1
+jne turbo_acceleration_done
+add r0 2500
+label turbo_acceleration_done
 load8 r1 129
 mul r1 2400
 sub r0 r1
@@ -627,10 +859,17 @@ mov r6 r4
 mul r6 r4
 div r6 180000
 add r1 r6
-load8 r6 120
+# Contact material is projected from the nearest XI circuit boundary.
+# 0=tarmac, 1=grass, 2=curb. The stored surface is last tick's footprint.
+load8 r6 489
 cmp r6 1
-jne paved_drag
+jne curb_drag
 add r1 900
+jmp paved_drag
+label curb_drag
+cmp r6 2
+jne paved_drag
+add r1 280
 label paved_drag
 load8 r6 131
 cmp r6 1
@@ -665,10 +904,15 @@ jle reverse_speed_limit_ready
 set r4 800
 label reverse_speed_limit_ready
 set r6 24
-load8 r0 120
+load8 r0 489
 cmp r0 1
-jne paved_grip
+jne curb_grip
 set r6 10
+jmp paved_grip
+label curb_grip
+cmp r0 2
+jne paved_grip
+set r6 17
 label paved_grip
 load8 r0 131
 cmp r0 1
@@ -756,6 +1000,10 @@ add r1 r0
 mov r14 r1
 add r14 2000000
 store32 104 r14
+# Collisions with ground-based opponents only while grounded.
+load16 r0 384
+cmp r0 0
+jgt skip_ground_contacts
 store8 328 0
 label contact_loop
 load8 r12 328
@@ -847,6 +1095,7 @@ add r0 1
 store8 328 r0
 cmp r0 3
 jlt contact_loop
+label skip_ground_contacts
 load32 r0 274
 store32 300 r0
 set r0 4294967295
@@ -950,12 +1199,20 @@ mod r0 160000
 store32 274 r0
 load32 r0 342
 store8 120 0
+store8 489 0
 cmp r0 360000
 jle inside_road
 store8 120 1
+store8 489 2
+cmp r0 448900
+jle inside_road
+store8 489 1
 label inside_road
 cmp r0 819025
 jle after_wall
+load16 r3 384
+cmp r3 0
+jgt after_wall
 store8 283 1
 load32 r1 100
 sub r1 2000000
@@ -1143,6 +1400,229 @@ label race_distance_finished
 set r1 480000
 label distance_ready
 store32 278 r1
+# Cycle 2: physical event history for visible tire marks, wheel smoke
+# and spring settling. Four world-space skid samples, each X/Z/Yaw/TTL.
+# Slots 400..447 are unused by world, opponents and gameplay ABI.
+label effect_history
+load8 r0 395
+cmp r0 0
+jle effect_smoke_faded
+sub r0 1
+store8 395 r0
+label effect_smoke_faded
+load8 r0 396
+cmp r0 0
+jle effect_suspension_rest
+sub r0 1
+store8 396 r0
+label effect_suspension_rest
+load8 r0 391
+cmp r0 1
+jne effect_after_landing
+store8 396 18
+label effect_after_landing
+load8 r0 394
+cmp r0 0
+jle effect_cooldown_ready
+sub r0 1
+store8 394 r0
+label effect_cooldown_ready
+load8 r0 131
+cmp r0 1
+jne effect_drift_done
+load16 r0 110
+cmp r0 900
+jlt effect_drift_done
+load8 r0 120
+cmp r0 0
+jne effect_drift_done
+load16 r0 384
+cmp r0 0
+jne effect_drift_done
+load8 r0 133
+cmp r0 0
+jne effect_drift_done
+store8 395 16
+load8 r0 394
+cmp r0 0
+jne effect_drift_done
+load8 r0 393
+mov r12 r0
+mul r12 12
+add r12 400
+load32 r1 100
+store32 $r12 r1
+add r12 4
+load32 r1 104
+store32 $r12 r1
+add r12 4
+load16 r1 108
+store16 $r12 r1
+add r12 2
+store8 $r12 120
+add r0 1
+mod r0 4
+store8 393 r0
+store8 394 7
+label effect_drift_done
+set r7 0
+label effect_expire_loop
+mov r12 r7
+mul r12 12
+add r12 410
+load8 r0 $r12
+cmp r0 0
+jle effect_expire_next
+sub r0 1
+store8 $r12 r0
+label effect_expire_next
+add r7 1
+cmp r7 4
+jlt effect_expire_loop
+# Cycle 3: rebufo takes the actual relative positions from the XI rivals.
+# +/-220cm side corridor, 250..1400cm directly ahead, only on paved track.
+store8 488 0
+load16 r0 110
+cmp r0 1600
+jlt draft_done
+load8 r0 489
+cmp r0 0
+jne draft_done
+load16 r0 384
+cmp r0 0
+jne draft_done
+load8 r0 133
+cmp r0 0
+jne draft_done
+set r7 0
+label draft_loop
+mov r12 r7
+mul r12 32
+add r12 6023
+load8 r0 $r12
+cmp r0 1
+je draft_next
+mov r12 r7
+mul r12 32
+add r12 6004
+load32 r0 $r12
+sub r0 65536
+load32 r1 100
+sub r1 2000000
+sub r0 r1
+add r12 4
+load32 r1 $r12
+sub r1 65536
+load32 r2 104
+sub r2 2000000
+sub r1 r2
+load16 r3 304
+sub r3 32768
+load16 r4 306
+sub r4 32768
+mov r5 r0
+mul r5 r3
+mov r6 r1
+mul r6 r4
+add r5 r6
+div r5 16384
+cmp r5 250
+jlt draft_next
+cmp r5 1400
+jgt draft_next
+mul r0 r4
+mul r1 r3
+sub r0 r1
+div r0 16384
+cmp r0 0
+jge draft_lateral_abs
+mul r0 -1
+label draft_lateral_abs
+cmp r0 220
+jgt draft_next
+store8 488 1
+load16 r0 380
+add r0 4
+cmp r0 1000
+jle draft_charge_stored
+set r0 1000
+label draft_charge_stored
+store16 380 r0
+jmp draft_done
+label draft_next
+add r7 1
+cmp r7 3
+jlt draft_loop
+label draft_done
+# Score requires a real sideslip, speed, handbrake and wheels on asphalt.
+store8 487 0
+load8 r0 131
+cmp r0 1
+jne skill_combo_decay
+load8 r0 489
+cmp r0 0
+jne skill_combo_decay
+load8 r0 133
+cmp r0 0
+jne skill_combo_decay
+load16 r0 384
+cmp r0 0
+jne skill_combo_decay
+load16 r0 110
+cmp r0 900
+jlt skill_combo_decay
+load16 r0 112
+sub r0 32768
+cmp r0 0
+jge skill_slide_abs
+mul r0 -1
+label skill_slide_abs
+cmp r0 120
+jlt skill_combo_decay
+store8 487 1
+mov r2 r0
+div r2 110
+add r2 3
+cmp r2 55
+jle skill_tick_bounded
+set r2 55
+label skill_tick_bounded
+load16 r3 484
+add r3 2
+cmp r3 400
+jle skill_combo_bounded
+set r3 400
+label skill_combo_bounded
+store16 484 r3
+mul r2 r3
+div r2 100
+load32 r1 480
+add r1 r2
+cmp r1 9999999
+jle skill_score_bounded
+set r1 9999999
+label skill_score_bounded
+store32 480 r1
+store8 486 80
+load16 r0 380
+add r0 3
+cmp r0 1000
+jle skill_charge_bounded
+set r0 1000
+label skill_charge_bounded
+store16 380 r0
+jmp skill_done
+label skill_combo_decay
+load8 r0 486
+cmp r0 0
+jle skill_combo_reset
+sub r0 1
+store8 486 r0
+cmp r0 0
+jgt skill_done
+label skill_combo_reset
+store16 484 100
+label skill_done
 label rank
 set r0 1
 store8 282 r0
@@ -1223,6 +1703,28 @@ print r14
 load32 r0 278
 mov r15 r0
 print r15
+# Observation ABI v0.4: legacy 16 registers untouched.
+load16 r0 380
+print r0
+load8 r1 382
+print r1
+load16 r2 384
+print r2
+load8 r3 388
+print r3
+load8 r4 389
+print r4
+load8 r5 391
+print r5
+# Cycle 3: the original 22 ABI observations remain ordered and unchanged.
+load32 r6 480
+print r6
+load16 r7 484
+print r7
+load8 r8 488
+print r8
+load8 r9 489
+print r9
 halt
 label missing_world
 set r0 0

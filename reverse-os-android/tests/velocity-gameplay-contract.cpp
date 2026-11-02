@@ -16,7 +16,7 @@
 #include <vector>
 using Runtime=reverse_pc::rvpc2::Runtime;
 using Bytes=std::vector<std::uint8_t>;
-using State=std::array<std::int64_t,16>;
+using State=std::array<std::int64_t,26>;
 using Clock=std::chrono::steady_clock;
 const std::string header="#!reverse-pc-machine-v1\n";
 static std::size_t checks=0;
@@ -26,25 +26,36 @@ void write(const std::filesystem::path& p,const Bytes& b){std::ofstream f(p,std:
 std::string inject(const std::string& body,const std::string& prefix){check(body.compare(0,header.size(),header)==0,"XI header");return header+prefix+body.substr(header.size());}
 std::vector<std::int64_t> numbers(const std::string& text,bool world=false){
  std::istringstream lines(text);std::string row;std::vector<std::int64_t> out;
- while(std::getline(lines,row)){if(row.empty())continue;const auto idx=world?out.size()%2:out.size();
+ while(std::getline(lines,row)){if(row.empty())continue;const auto idx=world?out.size()%2:out.size()%16;
   const std::string prefix="{\"type\":\"register\",\"register\":\"r"+std::to_string(idx)+"\",\"value\":";
   check(row.compare(0,prefix.size(),prefix)==0&&row.back()=='}',"XI register ABI");
   std::size_t consumed=0;const auto value=std::stoll(row.substr(prefix.size(),row.size()-prefix.size()-1),&consumed);
   check(consumed==row.size()-prefix.size()-1,"integer observation");out.push_back(value);
  }return out;
 }
-State state(const std::string& text){const auto n=numbers(text);check(n.size()==16,"16 authoritative game registers");State s{};std::copy(n.begin(),n.end(),s.begin());
+State state(const std::string& text){const auto n=numbers(text);check(n.size()==26,"26 authoritative game registers");State s{};std::copy(n.begin(),n.end(),s.begin());
  check(s[0]>=-100000&&s[0]<=150000&&s[1]>=-100000&&s[1]<=150000,"bounded world position");
  check(s[2]>=0&&s[2]<4096&&s[3]>=0&&s[3]<=10000,"bounded heading/speed");
  check(s[5]>=0&&s[5]<=12&&s[6]>=0&&s[7]>=0&&s[7]<=1&&s[8]>=0&&s[8]<=1,"progress/clock flags");
  check(s[9]>=1&&s[9]<=4&&s[10]>=0&&s[10]<=3&&s[11]>=0&&s[11]<160000,"race observations");
  check(s[12]>=0&&s[12]<80&&s[13]>=0&&s[13]<=150&&s[14]>=0&&s[14]<=1,"segment/countdown/wall flags");
- check(s[15]>=0&&s[15]<=480000,"unwrapped progress");return s;
+ check(s[15]>=0&&s[15]<=480000,"unwrapped progress");
+ check(s[16]>=0&&s[16]<=1000&&s[17]>=0&&s[17]<=1&&s[18]>=0&&s[18]<=300&&
+       s[19]>=0&&s[19]<=30&&s[20]>=0&&s[20]<=90&&s[21]>=0&&s[21]<=1,
+       "bounded XI turbo/compressor telemetry");
+ check(s[22]>=0&&s[22]<=9999999&&s[23]>=100&&s[23]<=400&&
+       s[24]>=0&&s[24]<=1&&s[25]>=0&&s[25]<=2,
+       "bounded XI score, drift multiplier, slipstream and contact surface");return s;
 }
-struct Input{int gas=0,brake=0,steer=1,drift=0;};
+struct Input{int gas=0,brake=0,steer=1,drift=0,nitro=0,jump=0,assist=0;};
 struct Point{double x,z;};
 double yaw(double dx,double dz){double value=std::atan2(dx,dz)*4096/(2*std::acos(-1.));if(value<0)value+=4096;return value;}
 double difference(double a,double b){double d=a-b;while(d>2048)d-=4096;while(d< -2048)d+=4096;return d;}
+unsigned observed8(const Runtime& runtime,unsigned address){
+ const auto a=runtime.memory().read(std::to_string(address),runtime.core());
+ check(a.deterministic,"XI effect memory must be classical and observable");
+ return unsigned(a.value);
+}
 std::uint16_t observed16(const Runtime& runtime,unsigned address){const auto a=runtime.memory().read(std::to_string(address),runtime.core()),b=runtime.memory().read(std::to_string(address+1),runtime.core());check(a.deterministic&&b.deterministic,"classical input observation");return unsigned(a.value)+256u*b.value;}
 int main(int argc,char** argv){try{
  const std::filesystem::path assets=argc>1?argv[1]:"reverse-os-android/app/src/main/assets/velocity";
@@ -56,11 +67,17 @@ int main(int argc,char** argv){try{
  std::filesystem::create_directories(out);
  const auto drive=read(assets/"drive.xi"),world=read(assets/"world.xi");
  std::map<int,std::string> programs;
- auto command=[&](Input i)->const std::string&{const int key=i.gas+2*i.brake+4*i.steer+16*i.drift;auto found=programs.find(key);if(found!=programs.end())return found->second;
-  return programs.emplace(key,inject(drive,"store8 128 "+std::to_string(i.gas)+"\nstore8 129 "+std::to_string(i.brake)+"\nstore8 130 "+std::to_string(i.steer)+"\nstore8 131 "+std::to_string(i.drift)+"\nstore8 132 0\n")).first->second;};
+ auto command=[&](Input i)->const std::string&{const int key=i.gas+2*i.brake+4*i.steer+16*i.drift+128*i.nitro+256*i.jump+512*i.assist;auto found=programs.find(key);if(found!=programs.end())return found->second;
+  return programs.emplace(key,inject(drive,"store8 128 "+std::to_string(i.gas)+"\nstore8 129 "+std::to_string(i.brake)+"\nstore8 130 "+std::to_string(i.steer)+"\nstore8 131 "+std::to_string(i.drift)+"\nstore8 132 0\nstore8 134 "+std::to_string(i.nitro)+"\nstore8 135 "+std::to_string(i.jump)+"\nstore8 136 "+std::to_string(i.assist)+"\n")).first->second;};
  Runtime runtime;const auto coords=numbers(runtime.execute(world),true);check(coords.size()==162,"81 observed XI vertices");
  std::vector<Point> points;for(std::size_t i=0;i<coords.size();i+=2)points.push_back({double(coords[i]),double(coords[i+1])});
- check(points.front().x==points.back().x&&points.front().z==points.back().z,"closed XI world");
+ check(points.front().x==points.back().x&&points.front().z==points.back().z,"closed XI forest world");
+ double forestLength=0;for(std::size_t i=1;i<points.size();i++)
+  forestLength+=std::hypot(points[i].x-points[i-1].x,points[i].z-points[i-1].z);
+ check(forestLength>159500&&forestLength<160500,"XI forest route preserves 1600m lap progression");
+ const auto forestX=std::max_element(points.begin(),points.end(),
+   [](const Point& a,const Point& b){return a.x<b.x;})->x;
+ check(forestX>35000,"new forest road winds substantially beyond the former oval");
  auto reset=inject(drive,"store8 128 0\nstore8 129 0\nstore8 130 1\nstore8 131 0\nstore8 132 1\n");
  State s=state(runtime.execute(reset));check(s[0]==0&&s[1]==0&&s[2]==0&&s[13]==150&&s[5]==0,"new race reset");
  const State ready=s;const auto seed=reverse_pc::rvpc2::save(runtime);write(out/"seed.rvp",seed);
@@ -69,6 +86,65 @@ int main(int argc,char** argv){try{
   if(s[13]>0)check(s[0]==old[0]&&s[1]==old[1]&&s[3]==0,"countdown must not move car");}
  check(s[13]==0&&countdown==150,"exact 150-tick countdown");
  const auto raceStart=reverse_pc::rvpc2::save(runtime);
+ // Assistance only consumes authenticated XI world/heading sensors.
+ auto assisted=reverse_pc::rvpc2::restore(raceStart),
+      steeringLeft=reverse_pc::rvpc2::restore(raceStart),
+      steeringRight=reverse_pc::rvpc2::restore(raceStart);
+ State assistedMoving{};
+ int assistedOffroad=0,assistedWall=0;
+ for(int i=0;i<240;i++){
+  assistedMoving=state(assisted.execute(command({0,0,1,0,0,0,2})));
+  assistedOffroad+=int(assistedMoving[8]);assistedWall+=int(assistedMoving[14]);
+ }
+ check(assistedMoving[3]>500&&assistedMoving[1]>1000&&assistedMoving[6]>=240,
+       "pilot XI autonomously accelerates along the forest road without player gas");
+ check(assistedOffroad<15&&assistedWall<8,
+       "forest pilot follows the road instead of grinding the guardrail");
+ State leftAssist{},rightAssist{};
+ for(int i=0;i<30;i++){
+  leftAssist=state(steeringLeft.execute(command({1,0,0,0,0,0,1})));
+  rightAssist=state(steeringRight.execute(command({1,0,2,0,0,0,1})));
+ }
+ check(leftAssist[2]!=rightAssist[2],
+       "human left/right inputs override assisted steering without an extra button");
+ auto laneOnly=reverse_pc::rvpc2::restore(raceStart);
+ State laneIdle{};
+ for(int i=0;i<25;i++)laneIdle=state(laneOnly.execute(command({0,0,1,0,0,0,1})));
+ check(laneIdle[3]==0,
+       "assisted steering never accelerates without throttle; pilot is explicitly separate");
+ // XI authority: nitro consumes energy and makes the same physical car accelerate.
+ auto turbo=reverse_pc::rvpc2::restore(raceStart),cruise=reverse_pc::rvpc2::restore(raceStart);
+ State boosted{},normal{};
+ for(int i=0;i<35;i++){
+   boosted=state(turbo.execute(command({1,0,1,0,1,0})));
+   normal=state(cruise.execute(command({1,0,1,0,0,0})));
+ }
+ check(boosted[3]>normal[3]+500&&boosted[16]<1000&&boosted[17]==1,
+       "nitro accelerates the real XI vehicle and consumes energy");
+ write(out/"fx-nitro.rvp",reverse_pc::rvpc2::save(turbo));
+ check(observed8(turbo,382)==1,"FX exhaust gate follows actual XI nitro pressure");
+ for(int i=0;i<8;i++)boosted=state(turbo.execute(command({1,0,1,0,0,0})));
+ check(boosted[17]==0&&boosted[16]>825,"nitro regenerates when released");
+ auto pneumatic=reverse_pc::rvpc2::restore(raceStart);
+ State airborne=state(pneumatic.execute(command({1,0,1,0,0,1})));
+ check(airborne[18]>0&&airborne[19]>0&&airborne[20]>0,
+       "four-wheel pressure impulse starts a real vertical trajectory");
+ bool landed=false;int apex=int(airborne[18]);
+ for(int i=0;i<110;i++){
+   airborne=state(pneumatic.execute(command({1,0,1,0,0,1})));
+   apex=std::max(apex,int(airborne[18]));
+   landed|=airborne[21]==1;
+   if(airborne[21]==1){
+     check(observed8(pneumatic,396)==18,"actual XI landing compresses transient suspension");
+     write(out/"fx-landing.rvp",reverse_pc::rvpc2::save(pneumatic));
+   }
+ }
+ check(apex>=100&&landed&&airborne[18]==0,
+       "gravity brings chassis down; a held jump cannot auto-repeat");
+ state(pneumatic.execute(command({1,0,1,0,0,0})));
+ airborne=state(pneumatic.execute(command({1,0,1,0,0,1})));
+ check(airborne[18]>0&&airborne[19]>0,
+       "jump can fire again only after release and cooldown");
  // Causal branches from an identical authoritative snapshot: no host
  // integration of movement, acceleration, tire grip or collision rules.
  auto accelerated=reverse_pc::rvpc2::restore(raceStart);State moving{};
@@ -89,6 +165,18 @@ int main(int argc,char** argv){try{
  for(int i=0;i<20;i++)brakingReverse=state(reverseRuntime.execute(reverseBrake));
  check(brakingReverse[3]<movingReverse,"reverse braking reduces actual world-space velocity");
  const auto movingSeed=reverse_pc::rvpc2::save(accelerated);
+ // Real driving histories: handbrake records tire tracks in Ether,
+ // and released drift preserves them briefly after smoke fades.
+ auto skid=reverse_pc::rvpc2::restore(movingSeed);
+ for(int i=0;i<7;i++)state(skid.execute(command({1,0,1,1})));
+ const auto plume=observed8(skid,395);
+ check(plume>0&&plume<=16&&observed8(skid,410)>0,
+       "road grip and drift create actual skid history and wheel smoke");
+ write(out/"fx-drift.rvp",reverse_pc::rvpc2::save(skid));
+ for(int i=0;i<20;i++)state(skid.execute(command({1,0,1,0})));
+ check(observed8(skid,395)==0&&observed8(skid,410)>0,
+       "smoke fades after releasing drift but marks remain world-anchored");
+ write(out/"fx-skids.rvp",reverse_pc::rvpc2::save(skid));
  auto brake=reverse_pc::rvpc2::restore(movingSeed),coast=reverse_pc::rvpc2::restore(movingSeed),
   powered=reverse_pc::rvpc2::restore(movingSeed),turn=reverse_pc::rvpc2::restore(movingSeed),
   drift=reverse_pc::rvpc2::restore(movingSeed);
@@ -102,12 +190,70 @@ int main(int argc,char** argv){try{
  check(co[6]==moving[6]+30,"race clock continues during coasting");
  check(tu[2]!=po[2]&&tu[0]!=po[0],"steering changes actual heading and world position");
  check(std::abs(dr[4])>std::abs(tu[4]),"handbrake reduces grip and increases actual lateral motion");
+ // Real drift earns score and nitro; leaving it preserves score but expires combo.
+ auto skilled=reverse_pc::rvpc2::restore(raceStart);
+ // A clean starting lane isolates skill scoring from a full-lock, off-road
+ // recovery on the new forest geometry. Drift still needs real lateral slip.
+ skilled.execute(header+"store16 110 1800\nstore16 261 32768\n"+
+    "store16 263 34568\nhalt\n");
+ State scoring{};int peakCombo=100;
+ for(int i=0;i<45;i++){
+  scoring=state(skilled.execute(command({1,0,2,1})));
+  peakCombo=std::max(peakCombo,int(scoring[23]));
+  if(scoring[22]>0&&scoring[23]>100)break;
+ }
+ std::cerr<<"XI_FOREST_DRIFT score="<<scoring[22]<<" combo="<<scoring[23]
+          <<" speed="<<scoring[3]<<" slide="<<scoring[4]
+          <<" surface="<<scoring[25]<<"\n";
+ check(scoring[22]>0&&peakCombo>100,
+  "controlled XI forest drift earns points before leaving paved asphalt");
+ const auto scoreEarned=scoring[22];
+ for(int i=0;i<100;i++)scoring=state(skilled.execute(command({0,0,1,0})));
+ check(scoring[22]==scoreEarned&&scoring[23]==100,
+  "combo grace resets without deleting scored points");
+ // Actual rival world positions determine slipstream, not the HUD angle.
+ auto slip=reverse_pc::rvpc2::restore(raceStart),
+      crawl=reverse_pc::rvpc2::restore(raceStart);
+ slip.execute(header+"store16 110 2000\nstore16 261 32768\n"+
+    "store16 263 34768\nstore16 380 500\nhalt\n");
+ crawl.execute(header+"store16 110 900\nstore16 261 32768\n"+
+    "store16 263 33668\nstore16 380 500\nhalt\n");
+ const auto streamed=state(slip.execute(command({1,0,1,0})));
+ const auto unstreamed=state(crawl.execute(command({1,0,1,0})));
+ check(streamed[24]==1&&unstreamed[24]==0&&streamed[16]>unstreamed[16],
+       "driving behind an actual XI rival rewards nitro only at sufficient speed");
+ // Terrain classification is calculated from the real track centerline.
+ auto paved=reverse_pc::rvpc2::restore(raceStart),
+      curb=reverse_pc::rvpc2::restore(raceStart),
+      grass=reverse_pc::rvpc2::restore(raceStart);
+ auto setupSurface=[&](Runtime& rt,int x){
+  rt.execute(header+"store32 100 "+std::to_string(2000000+x)+
+   "\nstore16 110 1200\nstore16 261 32768\nstore16 263 33968\nhalt\n");
+ };
+ setupSurface(paved,0);setupSurface(curb,630);setupSurface(grass,800);
+ State onRoad{},onCurb{},onGrass{};
+ for(int i=0;i<12;i++){
+   onRoad=state(paved.execute(command({1,0,1,0})));
+   onCurb=state(curb.execute(command({1,0,1,0})));
+   onGrass=state(grass.execute(command({1,0,1,0})));
+ }
+ check(onRoad[25]==0&&onCurb[25]==2&&onGrass[25]==1,
+       "XI track distance classifies asphalt, curb and grass");
+ std::cerr<<"XI_SURFACE_SPEEDS road="<<onRoad[3]<<" curb="<<onCurb[3]
+       <<" grass="<<onGrass[3]<<" afterTicks=12\n";
+ check(onRoad[3]>onCurb[3]&&onCurb[3]>onGrass[3],
+       "paved road retains more speed than curb and grass");
  auto wall=reverse_pc::rvpc2::restore(raceStart);
- std::string wallSetup=header+"store32 100 2002000\nstore32 104 2010000\nstore16 108 0\n"+
-  "store16 110 1800\nstore16 261 32768\nstore16 263 34568\nstore8 273 5\n"+
-  "store32 274 10000\nstore32 278 10000\nhalt\n";
+ const int forestWallX=int(std::round(points[5].x))-1800;
+ const int forestWallZ=int(std::round(points[5].z));
+ std::string wallSetup=header+"store32 100 "+std::to_string(2000000+forestWallX)+
+   "\nstore32 104 "+std::to_string(2000000+forestWallZ)+
+   "\nstore16 108 0\nstore16 110 1800\nstore16 261 32768\n"+
+   "store16 263 34568\nstore8 273 5\nstore32 274 10000\n"+
+   "store32 278 10000\nhalt\n";
  wall.execute(wallSetup);const auto contacted=state(wall.execute(command({1,0,1,0})));
- check(contacted[14]==1&&std::abs(contacted[0])<=1000,"real wall response constrains the car center");
+ check(contacted[14]==1&&std::abs(contacted[0]-points[5].x)<1400,
+       "forest wall contact constrains the car relative to actual local road center");
  std::vector<Input> tape;std::vector<State> observations;
  double executeMs=0;int offRoad=0,walls=0,lastLap=0,maxSpeed=0;std::int64_t lastTicks=s[6],lastProgress=s[5];
  int ticks=0;const auto raceBegin=Clock::now();
@@ -151,6 +297,6 @@ int main(int argc,char** argv){try{
  {std::ofstream observation(out/"final-observation.json");observation<<'[';
   for(std::size_t i=0;i<s.size();i++){if(i)observation<<',';observation<<s[i];}
   observation<<"]\n";}
- std::ostringstream report;report<<"{\"passed\":"<<(s[7]?"true":"false")<<",\"checks\":"<<checks<<",\"worldPoints\":81,\"gameRegisters\":16,\"countdownTicks\":"<<countdown<<",\"raceInputTicks\":"<<ticks<<",\"raceVirtualSeconds\":"<<lastTicks/50.<<",\"raceWallMs\":"<<raceMs<<",\"raceExecuteMs\":"<<executeMs<<",\"maxSpeedCmps\":"<<maxSpeed<<",\"offRoadTicks\":"<<offRoad<<",\"wallTicks\":"<<walls<<",\"finished\":"<<(s[7]?"true":"false")<<",\"completedLaps\":"<<s[10]<<",\"sectors\":"<<s[5]<<",\"finishFrozen\":"<<(frozen?"true":"false")<<",\"persistenceSampleTicks\":"<<sample<<",\"residentMsPerTick\":"<<(sample?liveMs/sample:0)<<",\"serializedMsPerTick\":"<<(sample?persistMs/sample:0)<<",\"exactSerializedState\":true,\"seedBytes\":"<<seed.size()<<",\"finalBytes\":"<<final.size()<<",\"pilotGain\":"<<gain<<",\"pilotLookaheadSegments\":"<<lookahead<<",\"curveTargetCmps\":"<<curveSpeed<<",\"androidDeviceMeasured\":false}\n";
+ std::ostringstream report;report<<"{\"passed\":"<<(s[7]?"true":"false")<<",\"checks\":"<<checks<<",\"worldPoints\":81,\"gameRegisters\":26,\"countdownTicks\":"<<countdown<<",\"raceInputTicks\":"<<ticks<<",\"raceVirtualSeconds\":"<<lastTicks/50.<<",\"raceWallMs\":"<<raceMs<<",\"raceExecuteMs\":"<<executeMs<<",\"maxSpeedCmps\":"<<maxSpeed<<",\"offRoadTicks\":"<<offRoad<<",\"wallTicks\":"<<walls<<",\"finished\":"<<(s[7]?"true":"false")<<",\"completedLaps\":"<<s[10]<<",\"sectors\":"<<s[5]<<",\"finishFrozen\":"<<(frozen?"true":"false")<<",\"persistenceSampleTicks\":"<<sample<<",\"residentMsPerTick\":"<<(sample?liveMs/sample:0)<<",\"serializedMsPerTick\":"<<(sample?persistMs/sample:0)<<",\"exactSerializedState\":true,\"seedBytes\":"<<seed.size()<<",\"finalBytes\":"<<final.size()<<",\"pilotGain\":"<<gain<<",\"pilotLookaheadSegments\":"<<lookahead<<",\"curveTargetCmps\":"<<curveSpeed<<",\"androidDeviceMeasured\":false}\n";
  std::ofstream(out/"gameplay-results.json")<<report.str();std::cout<<report.str();return s[7]?0:2;
 }catch(const std::exception& e){std::cerr<<"VELOCITY_GAMEPLAY_FAIL "<<e.what()<<"\n";return 1;}}

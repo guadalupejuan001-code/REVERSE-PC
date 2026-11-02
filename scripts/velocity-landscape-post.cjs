@@ -6,12 +6,17 @@
  */
 const fs=require('node:fs'),path=require('node:path');
 const ROOT=path.resolve(__dirname,'../reverse-os-android/app/src/main/assets/velocity');
-const CAMERA=2048,TREE_START=1528,ROCK_START=1543,GRASS_START=1556,END=1568;
+// Jet rig precedes shadows and vegetation; audit ID mapping each time the rig changes.
+const CAMERA=2048,TREE_START=1552,ROCK_START=1566,GRASS_START=1579,END=1591;
+// Each of 32 Cedar actors depicts a 3-tree grove at a fixed 9-face cost.
+// Main tree uses the 5-face volumetric canopy. The 4 old trunk faces become
+// paired low-poly pine silhouettes, keeping shader IDs and triangle budget.
 const treeShape=[
- [31,846,-25],[223,245,22],[99,287,168],[-122,228,201],
- [-239,275,-13],[-97,210,-192],[127,314,-161],
- [-23,0,-12],[14,0,0],[15,290,-8],[-16,276,-18],
- [0,0,-23],[0,0,20],[11,278,12],[-9,275,-21]
+ [14,1150,-16],[246,315,33],[100,364,209],[-161,288,205],
+ [-258,330,-61],[-101,292,-217],
+ [-350,835,-110],[-500,0,-130],[-200,0,-130],
+ [380,990,150],[240,0,160],[520,0,160],
+ [0,0,-25],[0,0,21]
 ];
 const rock=[
  [24,105,-8],[-183,48,-93],[-72,85,-153],[126,64,-142],
@@ -56,7 +61,7 @@ function tailLamps(source){
 function finishScene(content){
  let source=tailLamps(content);
  if(source.includes('label nature_model_ready'))return source; // deterministic rerun
- // Shape the six-sided tree canopy and its crossed real trunk with asymmetry.
+ // Shape the five-sided tree canopy and its crossed real trunk with asymmetry.
  for(let i=0;i<treeShape.length;i++){
   const id=TREE_START+i;
   source=source.replace(new RegExp('^meshvertex '+id+' -?\\d+ -?\\d+ -?\\d+$','m'),
@@ -76,12 +81,14 @@ function finishScene(content){
   const id=ROCK_START+j;
   return 'localset '+(512+id)+' '+id*512;
  }).join('\n');
- source=change(source,'localset 2054 789760\nlocalset 11 0',
-   'localset 2054 789760\n'+newMetadata+'\nlocalset 11 0',
+ // Landscape vertices are inserted between the author's preallocated
+ // vehicle-effect IDs. The actor marker is unique across both render sources.
+ source=change(source,'localset 11 0',
+   newMetadata+'\nlocalset 11 0',
    'XI vertex metadata extension');
- // Select actual 3D templates per roadside object: 20 trees, 10 rocks, 10 grass clumps.
- const choose=['localget r0 11','mod r0 4','cmp r0 2','je nature_rock_model',
-   'cmp r0 3','je nature_grass_model',
+ // Dense roadside grove: 32 cedars, 4 boulders and 4 underbrush clusters.
+ const choose=['localget r0 11','mod r0 10','cmp r0 8','je nature_rock_model',
+   'cmp r0 9','je nature_grass_model',
    'set r0 '+TREE_START,'mov r9 r0','localset 132 r9',
    'set r0 '+ROCK_START,'mov r9 r0','localset 134 r9','jmp nature_model_ready',
    'label nature_rock_model',
@@ -92,13 +99,22 @@ function finishScene(content){
    'set r0 '+END,'mov r9 r0','localset 134 r9',
    'label nature_model_ready'].join('\n');
  source=change(source,
-   'label tree_actor\nset r0 1528\nmov r9 r0\nlocalset 132 r9\nset r0 1543\nmov r9 r0\nlocalset 134 r9',
+   'label tree_actor\nset r0 '+TREE_START+'\nmov r9 r0\nlocalset 132 r9\nset r0 '+ROCK_START+'\nmov r9 r0\nlocalset 134 r9',
    'label tree_actor\n'+choose,'roadside model dispatch');
  const treeStart=source.indexOf('label emit_tree\n');
  const next=source.indexOf('\nlabel next_actor',treeStart);
  if(treeStart<0||next<0)throw Error('Existing tree face emission not located');
  const original=source.slice(treeStart+'label emit_tree\n'.length,next);
- if(original.split('\n').length!==10)throw Error('Tree triangle count changed');
+ const originalFaces=original.split('\n');
+ if(originalFaces.length!==9)throw Error('Tree triangle count changed');
+ const groveFaces=[
+   ...originalFaces.slice(0,5),
+   face(TREE_START+6,TREE_START+7,TREE_START+8,15),
+   face(TREE_START+8,TREE_START+7,TREE_START+6,14),
+   face(TREE_START+9,TREE_START+10,TREE_START+11,16),
+   face(TREE_START+11,TREE_START+10,TREE_START+9,15)
+ ];
+ if(groveFaces.length!==9)throw Error('Forest grove must cost nine faces');
  const rockFaces=[],grassFaces=[];
  for(let k=0;k<6;k++){
   const n=(k+1)%6;
@@ -110,11 +126,11 @@ function finishScene(content){
   grassFaces.push(face(a,b,c,14+k));
   grassFaces.push(face(c,b,a,12+k));
  }
- if(20*10+10*rockFaces.length+10*grassFaces.length!==400)
-  throw Error('Terrain budget would exceed original renderer face count');
- const full=['label emit_tree','localget r0 11','mod r0 4','cmp r0 2',
-   'je nature_emit_rock','cmp r0 3','je nature_emit_grass',
-   original,'jmp next_actor','label nature_emit_rock',
+ if(32*9+4*rockFaces.length+4*grassFaces.length!==368)
+  throw Error('Forest triangle budget is not bounded');
+ const full=['label emit_tree','localget r0 11','mod r0 10','cmp r0 8',
+   'je nature_emit_rock','cmp r0 9','je nature_emit_grass',
+   ...groveFaces,'jmp next_actor','label nature_emit_rock',
    ...rockFaces,'jmp next_actor','label nature_emit_grass',
    ...grassFaces].join('\n');
  source=source.slice(0,treeStart)+full+source.slice(next);
@@ -143,7 +159,7 @@ function run(){
   const before=fs.readFileSync(filename,'utf8'),after=finishScene(before);
   if(before!==after)fs.writeFileSync(filename,after);
   changed.push({name,bytes:Buffer.byteLength(after),updated:before!==after,
-    trees:20,rocks:10,grassClumps:10,faces:400});
+    trees:32,rocks:4,grassClumps:4,faces:368});
  }
  return changed;
 }

@@ -83,9 +83,10 @@ function materialize(frame,ids=false){
   s.y*frame.width+s.x0,s.y*frame.width+s.x1+1);
  return pixels;
 }
-function render(state,stride,camera,paint){
+function render(state,stride,camera,paint,car=0,yaw=0,pitch=0){
  const id=serial++,source=path.join(temp,'render-'+id+'.xi');
- fs.writeFileSync(source,inject(renderer,'store8 200 '+stride+'\nstore8 201 '+camera+'\nstore8 202 '+paint+'\n'));
+ fs.writeFileSync(source,inject(renderer,'store8 200 '+stride+'\nstore8 201 '+camera+'\nstore8 202 '+paint+'\nstore8 203 '+car+
+    '\nstore16 204 '+yaw+'\nstore16 206 '+pitch+'\n'));
  return execute(['run',source,state,path.join(temp,'candidate-'+id+'.rvp')],true);
 }
 function writeImage(label,frame,pixels,binary){
@@ -113,11 +114,17 @@ try{
  assert.deepEqual(points[0],[0,0],'track start');assert.deepEqual(points[80],points[0],'closed centerline');
  assert.equal(new Set(points.slice(0,80).map(p=>p.join(','))).size,80,'distinct track vertices');
  const length=points.slice(1).reduce((sum,p,i)=>sum+Math.hypot(p[0]-points[i][0],p[1]-points[i][1]),0);
- assert(length>150000&&length<170000,'stadium course length');
+ assert(length>159500&&length<160500,'original forest course stays 1.6km');
+ const minX=Math.min(...points.map(p=>p[0])),maxX=Math.max(...points.map(p=>p[0]));
+ const minZ=Math.min(...points.map(p=>p[1])),maxZ=Math.max(...points.map(p=>p[1]));
+ assert(maxX-minX>35000&&maxZ-minZ>55000,
+   'forest winding circuit spans its actual wooded valley');
+ assert(points[10][0]>2500,
+   'forest route is not the old stadium straight with only a green sky');
  const reset=path.join(temp,'reset.xi');
  fs.writeFileSync(reset,inject(driving,'store8 128 0\nstore8 129 0\nstore8 130 1\nstore8 131 0\nstore8 132 1\n'));
  const started=registers(run('run',reset,world,state));
- assert.equal(started.length,16,'driving observation ABI');started.forEach((r,i)=>assert.equal(r.register,i));
+ assert.equal(started.length,26,'driving observation ABI');started.forEach((r,i)=>assert.equal(r.register,i%16));
  assert.deepEqual(started.slice(0,9).map(r=>r.value),[0,0,0,0,0,0,0,0,0],'race reset pose');
  assert.equal(started[9].value,4);assert.equal(started[10].value,0);assert.equal(started[13].value,150);
  const retainedHash=sha(fs.readFileSync(state)),measured=[],benchmarks=[],hashes=new Map();
@@ -191,13 +198,85 @@ try{
   wheelEvidence.push({name,distanceCm:distance,steering:steer,frameSha256:sha(first.bytes)});
  }
  assert.equal(sha(fs.readFileSync(state)),retainedHash,'wheel observation changed real race snapshot');
+ // Causal A/B comparisons from real XI physics saved by gameplay-contract:
+ // disable only the visual event, preserve identical x/z/velocity/Ether.
+ const checkFxPixels=(kind,count)=>assert(count>=(kind==='landing'?2:15),
+   'XI '+kind+' must visibly affect multiple actual pixels, found '+count);
+ const visualCases=[
+  {name:'nitro',file:'fx-nitro.rvp',disable:['store8 382 0']},
+  {name:'smoke',file:'fx-drift.rvp',disable:['store8 395 0']},
+  {name:'rubber',file:'fx-skids.rvp',disable:[410,422,434,446].map(n=>'store8 '+n+' 0')},
+  {name:'landing',file:'fx-landing.rvp',disable:['store8 396 0']}
+ ];
+ const physicsEvidence=path.resolve(output,'gameplay');
+ const effects=[];
+ for(const item of visualCases){
+  const original=path.join(physicsEvidence,item.file);
+  assert(fs.existsSync(original),'XI gameplay must produce real FX snapshot '+item.file);
+  const retained=sha(fs.readFileSync(original));
+  const program=path.join(temp,'without-'+item.name+'.xi'),
+      disabled=path.join(temp,'without-'+item.name+'.rvp');
+  fs.writeFileSync(program,HEADER+item.disable.join('\n')+'\nhalt\n');
+  run('run',program,original,disabled);
+  // Historic tire marks move behind a fast car. Inspect the back-facing
+  // XI orbit for rubber so the camera actually looks toward that world-space
+  // location; the forward camera must not fabricate visible marks.
+  const rearLook=item.name==='rubber'?2048:0;
+  const withFX=render(original,1,0,0,0,rearLook,0),
+    withoutFX=render(disabled,1,0,0,0,rearLook,0);
+  const actual=decode(withFX.bytes,1),clean=decode(withoutFX.bytes,1);
+  const pixels=materialize(actual),cleanPixels=materialize(clean);
+  const hash=sha(Buffer.from(pixels.buffer)),base=sha(Buffer.from(cleanPixels.buffer));
+  assert.notEqual(hash,base,'physical XI '+item.name+' must change real car/track pixels');
+  let changedPixels=0;
+  for(let pixel=0;pixel<pixels.length;pixel++)
+   if(pixels[pixel]!==cleanPixels[pixel])changedPixels++;
+  checkFxPixels(item.name,changedPixels);
+  assert.equal(sha(fs.readFileSync(original)),retained,'effect render changed authoritative XI state');
+  effects.push({name:item.name,actualHash:hash,withoutEffectHash:base,
+    changedPixels,orbitYaw:rearLook,pixelWidth:actual.width});
+  writeImage('fx-'+item.name,actual,pixels,withFX.bytes);
+ }
+ console.log('VELOCITY_XI_FX_CAUSAL_PASS',JSON.stringify(effects));
+
+ // Compare actual XI pixel hashes for all three garage configurations.
+ const garage=[];
+ for(let car=0;car<3;car++){
+  const first=render(state,1,0,0,car),repeat=render(state,1,0,0,car);
+  assert(first.bytes.equals(repeat.bytes),'deterministic XI car body '+car);
+  const frame=decode(first.bytes,1),pixels=materialize(frame);
+  garage.push({car,frameSha256:sha(first.bytes),pixelSha256:sha(Buffer.from(pixels.buffer))});
+ }
+ assert.equal(new Set(garage.map(v=>v.pixelSha256)).size,3,
+  'three garages must produce three different real 3D silhouettes');
+ assert.equal(sha(fs.readFileSync(state)),retainedHash,
+  'car switching must not mutate the authoritative XI race snapshot');
+ // A real orbit changes both car and world projection, never the drivetrain.
+ const orbit=[];
+ for(const [name,yaw,pitch] of [['rear',0,0],['quarter',512,0],
+                                ['side',1024,0],['front',2048,0],
+                                ['elevated',512,110],['lower',512,422]]){
+  const first=render(state,1,0,0,0,yaw,pitch);
+  const second=render(state,1,0,0,0,yaw,pitch);
+  assert(first.bytes.equals(second.bytes),'deterministic XI orbit '+name);
+  const frame=decode(first.bytes,1),pixels=materialize(frame);
+  orbit.push({name,yaw,pitch,pixelSha256:sha(Buffer.from(pixels.buffer)),
+      packetSha256:sha(first.bytes)});
+  if(name==='quarter'||name==='elevated')
+   writeImage('camera-orbit-'+name,frame,pixels,first.bytes);
+ }
+ assert.equal(new Set(orbit.map(o=>o.pixelSha256)).size,orbit.length,
+  'camera orbit and elevation must change real projected XI pixels in all poses');
+ assert.equal(sha(fs.readFileSync(state)),retainedHash,
+  'touch camera orbit must never mutate the physical XI race snapshot');
  assert.equal(sha(fs.readFileSync(state)),retainedHash,'scene campaign changed authoritative reset snapshot');
  const report={passed:true,result:'REVERSE_VELOCITY_REGRAPHICS_V3_SCENE_PASS',language:'XI Machine v1',
   output:'XFS1 revision2 from generic 3D mesh visibility',paletteEntries:256,worldVertexCount:81,
   trackLengthCm:rounded(length),stateRegisters:16,modeCases:45,inspectionPoses:4,
   deterministicCases:measured.length,inputStateUnchanged:true,sourceOnlyRenderer:true,
   androidDeviceMeasured:false,threeCamerasDistinct:true,fivePaintsPerCamera:true,
-  rendererSha256:sha(renderer),worldSha256:sha(worldSource),driveSha256:sha(driving),wheelEvidence,benchmarks,measured};
+  rendererSha256:sha(renderer),worldSha256:sha(worldSource),driveSha256:sha(driving),wheelEvidence,
+  selectableCars:3,garage,orbitViews:6,orbit,effects,benchmarks,measured};
  fs.writeFileSync(path.join(output,'velocity-regraphics-results.json'),JSON.stringify(report,null,2)+'\n');
  console.log(JSON.stringify({...report,measured:undefined}));
 }catch(error){console.error(error.stack||error);process.exitCode=1;}

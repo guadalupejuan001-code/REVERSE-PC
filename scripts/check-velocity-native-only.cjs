@@ -9,7 +9,7 @@ const src=Object.fromEntries(files.map(n=>[n,fs.readFileSync(path.join(java,n),'
 const game=Object.values(src).join('\n');
 assert(!/\bandroid\.opengl\b|EGL14|GLES30|GLSurfaceView|VelocityGpuPresenter|VelocityGpuFrame|VelocityMaterialShader|attachGpuSurface/.test(game),
  'REVERSE VELOCITY must not invoke an external GPU rasterizer');
-assert(src['VelocityXSurface.java'].includes('game.observeFrame(stride,selectedCamera,selectedPaint)'),
+assert(src['VelocityXSurface.java'].includes('game.observeFrame(stride,selectedCamera,selectedPaint,selectedCar,'),
  'REgraphics XI source must own scene rendering');
 assert(src['VelocityXSurface.java'].includes('frame.present(pixels,width,height)'),
  'Only XI XFS1/XFB5 pixels may be handed to Android');
@@ -23,6 +23,13 @@ assert(fs.existsSync('reverse-os-android/app/src/main/assets/velocity/render.xi'
 // graphics API. The playable Android renderer never consumes XFG4.
 assert(src['VelocityXiEngine.java'].includes('render-native4k.xi'),
  'Native 4K must execute its own XI raster program');
+assert(src['VelocityXSurface.java'].includes('observeNative4KFrame(') &&
+  src['VelocityXSurface.java'].includes('selectedCamera,selectedPaint,selectedCar') &&
+  src['VelocityXSurface.java'].includes('selectedYaw,selectedPitch') &&
+  src['VelocityXSurface.java'].includes('onTouchEvent(MotionEvent event)') &&
+  src['VelocityXiEngine.java'].includes('store16 204 ') &&
+  src['VelocityXiEngine.java'].includes('store16 206 '),
+  'Touchscreen orbit must be rendered by native REgraphics/XI, not a Java overlay');
 assert(src['VelocityXSurface.java'].includes('observeNative4KFrame('),
  'Native 4K frame request must go through XI, not GPU');
 assert(!src['VelocityXiEngine.java'].includes('render4k.xi'),
