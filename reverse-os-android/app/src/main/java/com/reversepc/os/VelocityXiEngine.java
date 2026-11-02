@@ -164,17 +164,22 @@ final class VelocityXiEngine {
         return step(gas,brake,steer,drift,false,false,reverse,reset);
     }
     synchronized Snapshot step(int gas,int brake,int steer,int drift,boolean nitro,boolean jump,boolean reverse,boolean reset)throws Exception{
+        return step(gas,brake,steer,drift,nitro,jump,reverse,reset,0);
+    }
+    synchronized Snapshot step(int gas,int brake,int steer,int drift,boolean nitro,boolean jump,boolean reverse,boolean reset,int assistMode)throws Exception{
+        if(assistMode<0||assistMode>2)throw new IllegalArgumentException("XI assistant mode outside 0..2");
         if(gas<0||gas>1||brake<0||brake>1||steer<0||steer>2||
            drift<0||drift>1)throw new IllegalArgumentException("XI physical control out of range");
         // Execute the XI source through the *existing* generic runtime.
         // There is no game-specific JNI/C++ renderer, physics or instruction API.
-        final int programKey=gas|(brake<<1)|(steer<<2)|(drift<<4)|(reset?32:0)|(reverse?64:0)|(nitro?128:0)|(jump?256:0);
+        final int programKey=gas|(brake<<1)|(steer<<2)|(drift<<4)|(reset?32:0)|(reverse?64:0)|(nitro?128:0)|(jump?256:0)|(assistMode<<10);
         if(programKey!=driveProgramKey){
             driveProgramCache=XI_HEADER+
                 "store8 128 "+gas+"\nstore8 129 "+brake+
                 "\nstore8 130 "+steer+"\nstore8 131 "+drift+
                 "\nstore8 132 "+(reset?1:0)+"\nstore8 133 "+(reverse?1:0)+
-                 "\nstore8 134 "+(nitro?1:0)+"\nstore8 135 "+(jump?1:0)+"\n"+
+                 "\nstore8 134 "+(nitro?1:0)+"\nstore8 135 "+(jump?1:0)+
+                 "\nstore8 136 "+assistMode+"\n"+
                 driveXi.substring(XI_HEADER.length());
             driveProgramKey=programKey;
         }
