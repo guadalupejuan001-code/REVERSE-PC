@@ -3,10 +3,24 @@
 # cm, cm/s, 50Hz. yaw4096:0=+z,1024=+x. Inputs 128..135; 134=nitro, 135=pneumatic jump. Persistent energy/altitude at 380..391.
 # World4096+:81(x,z) vertices; tangent5000+. Rivals6000+32*i.
 # XI Cycle 3 Ether 480..489: score, combo, grace, rebufo and current surface.
+# Forest assistance: input 136 (0=manual,1=lane/brake,2=autopilot).
+# Explicit player steering (input130) and braking (input129) always override.
 # No screen projection participates in driving, collision or race progress.
 load8 r0 1002
 cmp r0 2
 jne missing_world
+# The pilot advances the start countdown without synthetic screen taps.
+load8 r0 136
+cmp r0 2
+jne pilot_throttle_ready
+load8 r1 133
+cmp r1 1
+je pilot_throttle_ready
+load8 r1 129
+cmp r1 1
+je pilot_throttle_ready
+store8 128 1
+label pilot_throttle_ready
 load8 r0 132
 cmp r0 1
 je initialize
@@ -515,6 +529,102 @@ jlt rival_loop
 load8 r0 258
 cmp r0 2
 jne rank
+# Assisted controls are sensor-driven XI commands, never Java driving math.
+# Steering tracks a point 40m ahead; the road tangents govern corner speed.
+load8 r0 136
+cmp r0 0
+je assisted_input_done
+load8 r0 133
+cmp r0 1
+je assisted_input_done
+load8 r0 131
+cmp r0 1
+je assisted_input_done
+load8 r0 130
+cmp r0 1
+jne assisted_corner_brake
+load8 r0 273
+add r0 2
+mod r0 80
+mov r12 r0
+mul r12 8
+add r12 4096
+load32 r3 $r12
+sub r3 65536
+add r12 4
+load32 r4 $r12
+sub r4 65536
+load32 r5 100
+sub r5 2000000
+sub r3 r5
+load32 r5 104
+sub r5 2000000
+sub r4 r5
+load16 r5 306
+sub r5 32768
+load16 r6 304
+sub r6 32768
+mul r3 r5
+mul r4 r6
+sub r3 r4
+div r3 16384
+cmp r3 80
+jle assisted_check_left
+store8 130 2
+jmp assisted_corner_brake
+label assisted_check_left
+cmp r3 -80
+jge assisted_corner_brake
+store8 130 0
+label assisted_corner_brake
+load8 r0 129
+cmp r0 1
+je assisted_input_done
+load8 r0 273
+add r0 3
+mod r0 80
+mul r0 2
+add r0 5000
+mov r12 r0
+load16 r3 $r12
+load16 r4 108
+sub r3 r4
+cmp r3 2048
+jle assisted_yaw_low
+sub r3 4096
+label assisted_yaw_low
+cmp r3 -2048
+jge assisted_yaw_ready
+add r3 4096
+label assisted_yaw_ready
+cmp r3 0
+jge assisted_yaw_abs
+mul r3 -1
+label assisted_yaw_abs
+load16 r4 110
+cmp r3 280
+jlt assisted_medium_corner
+cmp r4 2200
+jle assisted_input_done
+store8 129 1
+store8 128 0
+jmp assisted_input_done
+label assisted_medium_corner
+cmp r3 140
+jlt assisted_wide_corner
+cmp r4 3000
+jle assisted_input_done
+store8 129 1
+store8 128 0
+jmp assisted_input_done
+label assisted_wide_corner
+cmp r3 75
+jlt assisted_input_done
+cmp r4 3900
+jle assisted_input_done
+store8 129 1
+store8 128 0
+label assisted_input_done
 store8 283 0
 # Nitro reservoir: 4 seconds of boost, 10 seconds of normal recharge.
 load16 r0 380
