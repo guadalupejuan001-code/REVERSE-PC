@@ -3256,34 +3256,34 @@ meshvertex 1550 12 2 -255
 meshtexuv 1550 2 -36
 meshvertex 1551 113 2 -177
 meshtexuv 1551 16 -25
-meshvertex 1552 31 846 -25
-meshtexuv 1552 4 -4
-meshvertex 1553 223 245 22
-meshtexuv 1553 32 3
-meshvertex 1554 99 287 168
-meshtexuv 1554 14 24
-meshvertex 1555 -122 228 201
-meshtexuv 1555 -17 29
-meshvertex 1556 -239 275 -13
-meshtexuv 1556 -34 -2
-meshvertex 1557 -97 210 -192
-meshtexuv 1557 -14 -27
-meshvertex 1558 -23 0 -12
+meshvertex 1552 14 1150 -16
+meshtexuv 1552 2 -2
+meshvertex 1553 246 315 33
+meshtexuv 1553 35 5
+meshvertex 1554 100 364 209
+meshtexuv 1554 14 30
+meshvertex 1555 -161 288 205
+meshtexuv 1555 -23 29
+meshvertex 1556 -258 330 -61
+meshtexuv 1556 -37 -9
+meshvertex 1557 -101 292 -217
+meshtexuv 1557 -14 -31
+meshvertex 1558 -23 0 -17
 meshtexuv 1558 -3 -2
-meshvertex 1559 14 0 0
+meshvertex 1559 16 0 0
 meshtexuv 1559 2 0
-meshvertex 1560 15 290 -8
-meshtexuv 1560 2 -1
-meshvertex 1561 -16 276 -18
-meshtexuv 1561 -2 -3
-meshvertex 1562 0 0 -23
-meshtexuv 1562 0 -3
-meshvertex 1563 0 0 20
+meshvertex 1560 21 340 -14
+meshtexuv 1560 3 -2
+meshvertex 1561 -16 342 -25
+meshtexuv 1561 -2 -4
+meshvertex 1562 0 0 -25
+meshtexuv 1562 0 -4
+meshvertex 1563 0 0 21
 meshtexuv 1563 0 3
-meshvertex 1564 11 278 12
+meshvertex 1564 15 347 14
 meshtexuv 1564 2 2
-meshvertex 1565 -9 275 -21
-meshtexuv 1565 -1 -3
+meshvertex 1565 -12 341 -24
+meshtexuv 1565 -2 -3
 meshvertex 1591 -109 26 -151
 meshtexuv 1591 -16 -22
 meshvertex 1592 -73 27 -154
@@ -5080,10 +5080,10 @@ localset 126 r9
 jmp actor_ready
 label tree_actor
 localget r0 11
-mod r0 4
-cmp r0 2
+mod r0 10
+cmp r0 8
 je nature_rock_model
-cmp r0 3
+cmp r0 9
 je nature_grass_model
 set r0 1552
 mov r9 r0
@@ -13253,10 +13253,10 @@ meshfacegradient 3591 3592 3584 r12 8 r9 r10 r11 60
 jmp next_actor
 label emit_tree
 localget r0 11
-mod r0 4
-cmp r0 2
+mod r0 10
+cmp r0 8
 je nature_emit_rock
-cmp r0 3
+cmp r0 9
 je nature_emit_grass
 meshface 3600 3601 3602 14 r9 r10 r11 60
 meshface 3600 3602 3603 15 r9 r10 r11 60
