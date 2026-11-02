@@ -101,6 +101,20 @@ class QuantumBlock {
       value_ = AdaptiveReduced::from_dense(
           qubits(), R::stabilizer_amplitudes(std::get<Compact>(value_)), cap_);
     if (is_adaptive()) {
+#ifndef REVERSE_PC_REFERENCE_ROTATIONS
+      // The ordinary XI single-wire case has exactly one Pauli support site.
+      const auto support = p.x[0] | p.z[0];
+      if (support && !(support & (support-1))) {
+        const auto q = static_cast<std::size_t>(__builtin_ctzll(support));
+        const bool x = p.x[0] != 0, z = p.z[0] != 0;
+        const unsigned canonical_phase = x && z ? 1 : 0;
+        if ((p.phase & 1) == canonical_phase) {
+          const double sign = ((p.phase-canonical_phase)&2) ? -1. : 1.;
+          std::get<AdaptiveReduced>(value_).rotate_local(q, x ? (z ? 'Y' : 'X') : 'Z', angle*sign);
+          return;
+        }
+      }
+#endif
       const auto v = std::get<AdaptiveReduced>(value_).dense();
       std::vector<Complex> next(v.size());
       const double c = std::cos(angle * .5), s = std::sin(angle * .5);
@@ -163,6 +177,14 @@ class QuantumBlock {
       return mundo_x_bridge::PauliObserver(std::get<Compact>(value_))
           .expectation(p);
     if (is_adaptive()) {
+#ifndef REVERSE_PC_REFERENCE_ROTATIONS
+      const auto support = p.x[0] | p.z[0];
+      if (support && !(support & (support-1)) && !(p.x[0] && p.z[0]) && !(p.phase & 1)) {
+        const auto& a = std::get<AdaptiveReduced>(value_);
+        return ((p.phase & 2) ? -1. : 1.) *
+            a.expectation(p.x[0] ? 'X' : 'Z', __builtin_ctzll(support)) / a.norm();
+      }
+#endif
       auto v = std::get<AdaptiveReduced>(value_).dense();
       Complex out{};
       for (std::size_t i = 0; i < v.size(); ++i)

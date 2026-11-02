@@ -182,6 +182,13 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
           throw std::invalid_argument("program background conflicts with --background");
         core = InfiniteCore(background, core.limits());
         result.explicit_mutation = true;
+      } else if (op == "budget") {
+        require_count(words, 2);
+        if (!first_command || in_batch) throw std::invalid_argument("budget must be the first command");
+        const auto requested = machine_value(words[1], registers);
+        if (requested < 1 || requested > 100000000)
+          throw std::out_of_range("explicit XI budget must be 1..100000000 steps");
+        max_steps = static_cast<std::size_t>(requested);
       } else if (op == "begin") {
         require_count(words, 1);
         if (in_batch) throw std::invalid_argument("nested batches are not supported");

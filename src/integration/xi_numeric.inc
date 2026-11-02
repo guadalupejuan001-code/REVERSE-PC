@@ -9,10 +9,17 @@ inline unsigned machine_float(const std::string& name) {
 }
 inline double machine_real(const std::string& word, const std::array<double, machine_float_count>& f) {
   if (!word.empty() && word[0] == 'f') return f[machine_float(word)];
-  std::istringstream stream(word); stream.imbue(std::locale::classic());
-  double value; char trailing;
+  double value = 0.;
+#if defined(__GLIBCXX__)
+  const auto parsed = std::from_chars(word.data(), word.data()+word.size(), value, std::chars_format::general);
+  if (parsed.ec != std::errc{} || parsed.ptr != word.data()+word.size() || !std::isfinite(value))
+    throw std::invalid_argument("expected finite binary64 number");
+#else
+  // Android NDK's older libc++ has no floating-point from_chars overload.
+  std::istringstream stream(word); stream.imbue(std::locale::classic()); char trailing;
   if (!(stream >> value) || (stream >> trailing) || !std::isfinite(value))
     throw std::invalid_argument("expected finite binary64 number");
+#endif
   return value;
 }
 inline std::string machine_next_address(std::string address) {

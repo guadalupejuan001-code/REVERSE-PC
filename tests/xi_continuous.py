@@ -106,7 +106,8 @@ with XiSession(native, seed) as session:
         assert 'division by zero' in str(error)
     after = run(session, ['fexpect f0 Z:5000', 'femit v f0'])[-1]['value']
     close(before, after, 1e-15)
-    for invalid in [['qprepare 5001 4'], ['fset f0 nan'], ['ret'], ['fexpect'], ['ftoi r0 9223372036854775808']]:
+    for invalid in [['qprepare 5001 4'], ['fset f0 nan'], ['ret'], ['fexpect'], ['ftoi r0 9223372036854775808'],
+                    ['fset f0 1', 'budget 2000000'], ['budget 100000001']]:
         try:
             run(session, invalid)
             raise AssertionError(invalid)

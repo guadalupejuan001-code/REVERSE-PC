@@ -15,7 +15,7 @@ and InverseMemory together, only after an entire XI program succeeds.
   `fcmp`, `itof`, `ftoi`: checked finite binary64 numeric operations.
 - `fload/fstore`, `load64/store64`: eight little-endian bytes in the existing
   InverseMemory, not a second parameter store. Integer values are signed.
-- `call label`, `ret`: bounded subroutines; original instruction budget retained.
+- `call label`, `ret`: bounded subroutines. Original one-million-step budget remains the default; an explicit first command `budget n` can request up to 100 million steps for a long numerical experiment.
 - `clock f0`: monotonic milliseconds; `femit metric_name f0`: JSON metric.
 - `qtrace reset/report`: counts actual rotations, observations and distinct
   addresses encountered by the current XI execution.
