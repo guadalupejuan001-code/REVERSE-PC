@@ -9,14 +9,15 @@ const rgb=h=>[0,2,4].map(i=>parseInt(h.slice(i,i+2),16));
 const hex=c=>c.map(n=>Math.max(0,Math.min(255,n)).toString(16).padStart(2,'0')).join('');
 function buildPalette(){
  const p=Array(256).fill('485259');
- const world=['4c98c5','b7d3e2','667356','8d9f9d','858c82','ce4843','4b535a','e4e6df','a5adae','65503b','736046','806c50','203d2c','294b32','34583a','3c6240','446b45','4d744a','567d50','608457'];
+ // Soft overcast forest daylight, deep cedars, moss, damp stone and fine haze.
+ const world=['446b74','a3b9ad','344c38','335846','526956','b35c48','454f4b','e4e5d9','899f91','534d3b','655943','73624b','193324','24432e','2d5035','315e3b','386a42','407249','4b7851','59845a'];
  world.forEach((v,i)=>p[i]=v);
  // Additional XI material strips for atmospheric depth and terrain shading.
  // They are not full-screen Android color effects: XI owns these triangles.
- p[20]='254a64'; // Deep overhead sky
- p[21]='566c4b'; // Foreground grassy soil
+ p[20]='244c58'; // Cloud-dark forest sky, material 20
+ p[21]='45634a'; // Foreground forest floor, material 21
  // Asfalto con 8 matices, recorrido espacial constante en la pista XI.
- for(let i=0;i<16;i++)p[40+i]=hex(mix(rgb('242b31'),rgb('56606a'),Math.pow(i/15,1.08)));
+ for(let i=0;i<16;i++)p[40+i]=hex(mix(rgb('242e2c'),rgb('58605b'),Math.pow(i/15,1.08)));
  // XI exhaust nitro: deep electric blue core through pale cyan. No screen-space bloom.
  for(let i=0;i<8;i++){
   const t=i/7;
@@ -42,8 +43,8 @@ function buildPalette(){
   p[228+n]=hex(t<.72?mix(rgb('0b1016'),rgb('303b47'),Math.pow(t/.72,.85)):
     mix(rgb('303b47'),rgb('677787'),Math.pow((t-.72)/.28,1.9)));
  }
- p[3]='89958b'; // distant mountain slate
- p[4]='4d7041'; // real grassy verge, not gray concrete
+ p[3]='355846'; // layered tree-covered hills
+ p[4]='385e40'; // mossy raised forest verge
  p[240]='343d47';p[241]='596977';
  p[242]='69202b'; // tail light at idle; braking lights use hot-red 224
   // Fine pneumatic exhaust ramps: pale physical vapor, not colored pixel blobs.
