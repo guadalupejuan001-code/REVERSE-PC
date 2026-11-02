@@ -43,9 +43,11 @@ export function classifyRecovery({sourceCheckpointSha,sourceInstructions,process
   if(!clean){
     if(report?.console&&analyzeGuestConsole(report.console).guest_boot_failure)failure='guest_boot_failure';
     else if(processOutcome?.trigger)failure='host_supervisor_'+processOutcome.trigger;
-    else if(['process_failed','spawn_failed'].includes(processStatus))failure='native_process_'+processStatus;
+    // The native runner deliberately exits 2 on guest/ISA stops. Preserve
+    // the structured cause instead of masking it with that expected exit.
     else if(report?.error)failure='guest_or_interpreter_error';
-    else if(report?.stop_reason&&!['host_wall_budget','instruction_budget'].includes(report.stop_reason))failure='guest_stop_'+report.stop_reason;
+    else if(report?.stop_reason&&!['running','host_wall_budget','instruction_budget'].includes(report.stop_reason))failure='guest_stop_'+report.stop_reason;
+    else if(['process_failed','spawn_failed'].includes(processStatus))failure='native_process_'+processStatus;
     else if(!journalStatus?.verified)failure='no_verified_recoverable_journal';
     else failure='unclean_continuation_unclassified';
   }
