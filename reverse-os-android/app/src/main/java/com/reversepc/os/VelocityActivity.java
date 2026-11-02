@@ -294,6 +294,7 @@ public final class VelocityActivity extends Activity {
         HorizontalScrollView tools=new HorizontalScrollView(this);
         tools.setHorizontalScrollBarEnabled(false);
         tools.setFillViewport(false);
+        tools.setContentDescription("Opciones de la carrera. Desliza esta barra horizontalmente para encontrar Motor XI, Reiniciar, Salir y otros controles.");
         tools.addView(menu,new HorizontalScrollView.LayoutParams(-2,dp(40)));
         add(root,tools,-1,44,Gravity.TOP,8,48,8,0);
         // Native Button descendants keep the accessibility and adb touch contract.
