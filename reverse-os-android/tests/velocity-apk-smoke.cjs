@@ -212,6 +212,26 @@ function hierarchy(){
   throw Error('Actual Android UI hierarchy unavailable: '+why);
 }
 function findText(items,text){return items.find(x=>x.text===text);}
+function revealToolbar(label,forward){
+  // A landscape phone is narrower than the eleven real controls. Navigate
+  // the Android HorizontalScrollView instead of assuming everything fits.
+  let ui=hierarchy();
+  if(findText(ui,label))return ui;
+  for(let attempt=0;attempt<2;attempt++){
+    const scroller=ui.find(n=>n.class==='android.widget.HorizontalScrollView'&&n.bounds);
+    assert(scroller,'physical game options are not in a horizontal scroll view');
+    const b=/^\[(\d+),(\d+)\]\[(\d+),(\d+)\]$/.exec(scroller.bounds);
+    assert(b,'invalid toolbar screen bounds');
+    const xLeft=Number(b[1])+30,xRight=Number(b[3])-30;
+    const y=Math.round((Number(b[2])+Number(b[4]))/2);
+    adbText(['shell','input','swipe',
+       String(forward?xRight:xLeft),String(y),
+       String(forward?xLeft:xRight),String(y),'380']);
+    ui=hierarchy();
+    if(findText(ui,label))return ui;
+  }
+  throw Error('Toolbar did not reveal physical control '+label);
+}
 function tapNode(item,holdMs=0){
   assert(item,'visible physical control is missing');
   const b=/^\[(\d+),(\d+)\]\[(\d+),(\d+)\]$/.exec(item.bounds||'');
@@ -384,6 +404,7 @@ try{
   ui=waitText(/^Auto$/);check(!!findText(ui,'Auto'),'automatic detail physical control shows Auto');
   check(timer(ui)===detailPauseTime,'automatic detail leaves paused race timer unchanged');
   stage='REgraphics XI renderer ownership';
+  ui=revealToolbar('Motor XI',true);
   tapNode(findText(ui,'Motor XI'));
   ui=waitText(/Resolución habitual: hasta 640/);
   check(ui.some(x=>/XFB5 escala el trabajo por resolución/.test(x.text||'')),
@@ -397,6 +418,7 @@ try{
   ui=waitText(/EN PAUSA/);
   check(true,'native REgraphics-only diagnostics close without modifying physical race');
   stage='true XI 4K native pixel mode';
+  ui=revealToolbar('Foto 4K',false);
   const beforeNativeFrameStats=frameRecords(logs()).length;
   tapNode(findText(ui,'Foto 4K'));
   ui=waitText(/^Salir 4K$/);
