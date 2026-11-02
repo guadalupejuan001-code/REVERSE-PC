@@ -3268,22 +3268,22 @@ meshvertex 1556 -258 330 -61
 meshtexuv 1556 -37 -9
 meshvertex 1557 -101 292 -217
 meshtexuv 1557 -14 -31
-meshvertex 1558 -23 0 -17
-meshtexuv 1558 -3 -2
-meshvertex 1559 16 0 0
-meshtexuv 1559 2 0
-meshvertex 1560 21 340 -14
-meshtexuv 1560 3 -2
-meshvertex 1561 -16 342 -25
-meshtexuv 1561 -2 -4
-meshvertex 1562 0 0 -25
-meshtexuv 1562 0 -4
-meshvertex 1563 0 0 21
-meshtexuv 1563 0 3
-meshvertex 1564 15 347 14
-meshtexuv 1564 2 2
-meshvertex 1565 -12 341 -24
-meshtexuv 1565 -2 -3
+meshvertex 1558 -350 835 -110
+meshtexuv 1558 -50 -16
+meshvertex 1559 -500 0 -130
+meshtexuv 1559 -71 -19
+meshvertex 1560 -200 0 -130
+meshtexuv 1560 -29 -19
+meshvertex 1561 380 990 150
+meshtexuv 1561 54 21
+meshvertex 1562 240 0 160
+meshtexuv 1562 34 23
+meshvertex 1563 520 0 160
+meshtexuv 1563 74 23
+meshvertex 1564 0 0 -25
+meshtexuv 1564 0 -4
+meshvertex 1565 0 0 21
+meshtexuv 1565 0 3
 meshvertex 1591 -109 26 -151
 meshtexuv 1591 -16 -22
 meshvertex 1592 -73 27 -154
@@ -13263,10 +13263,10 @@ meshface 3600 3602 3603 15 r9 r10 r11 60
 meshface 3600 3603 3604 16 r9 r10 r11 60
 meshface 3600 3604 3605 14 r9 r10 r11 60
 meshface 3600 3605 3601 15 r9 r10 r11 60
-meshface 3606 3607 3608 9 r9 r10 r11 60
-meshface 3606 3608 3609 10 r9 r10 r11 60
-meshface 3610 3611 3612 9 r9 r10 r11 60
-meshface 3610 3612 3613 10 r9 r10 r11 60
+meshface 3606 3607 3608 15 r9 r10 r11 60
+meshface 3608 3607 3606 14 r9 r10 r11 60
+meshface 3609 3610 3611 16 r9 r10 r11 60
+meshface 3611 3610 3609 15 r9 r10 r11 60
 jmp next_actor
 label nature_emit_rock
 meshface 3614 3615 3616 3 r9 r10 r11 60
