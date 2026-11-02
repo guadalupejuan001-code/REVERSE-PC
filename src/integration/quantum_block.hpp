@@ -92,6 +92,33 @@ class QuantumBlock {
   void controlled_z(std::size_t a, std::size_t b) {
     cliff(Op::CZ, Operation::CZ, a, b);
   }
+  // exp(-i angle P/2), for any Hermitian Pauli. Small blocks keep their
+  // existing dense authority; wider blocks use the existing exact reduced
+  // representation. No truncation or change of circuit width is performed.
+  void rotate_pauli(const Pauli& p, double angle) {
+    if (!std::isfinite(angle)) throw std::invalid_argument("nonfinite rotation");
+    if (is_clifford() && qubits() <= dense_)
+      value_ = AdaptiveReduced::from_dense(
+          qubits(), R::stabilizer_amplitudes(std::get<Compact>(value_)), cap_);
+    if (is_adaptive()) {
+      const auto v = std::get<AdaptiveReduced>(value_).dense();
+      std::vector<Complex> next(v.size());
+      const double c = std::cos(angle * .5), s = std::sin(angle * .5);
+      for (std::size_t i = 0; i < v.size(); ++i) {
+        const auto source = i ^ p.x[0];
+        const auto acted = unit(p.phase) *
+            (__builtin_parityll(p.z[0] & source) ? -1. : 1.) * v[source];
+        next[i] = c * v[i] - Complex(0., s) * acted;
+      }
+      value_ = AdaptiveReduced::from_dense(qubits(), next, cap_);
+    } else {
+      if (is_clifford()) value_ = R::from_stabilizer(std::get<Compact>(value_), cap_);
+      R::WordArray x{}, z{};
+      for (std::size_t w = 0; w < p.x.size(); ++w) { x[w] = p.x[w]; z[w] = p.z[w]; }
+      // Existing phase primitive differs only by an unobservable global phase.
+      std::get<R>(value_).pauli_phase_current(x, z, p.phase, angle);
+    }
+  }
   void phase_t(std::size_t q, bool dagger = false) {
     if (t_count_ == std::numeric_limits<std::size_t>::max())
       throw std::overflow_error("T counter overflow");

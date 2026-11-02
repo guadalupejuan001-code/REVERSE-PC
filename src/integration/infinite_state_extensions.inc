@@ -1,4 +1,5 @@
 public:
+#include "integration/continuous_state.inc"
 static constexpr std::size_t max_integrated_snapshot_bytes = 64 * 1024 * 1024;
 struct QuantumStats {
   std::size_t clifford = 0, adaptive = 0, reduced = 0, coefficients = 0,
