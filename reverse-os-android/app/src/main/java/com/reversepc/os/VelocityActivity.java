@@ -34,7 +34,7 @@ public final class VelocityActivity extends Activity {
     private long gearWarningUntil;
     private VelocityCockpitView cockpit;
     private Button gearButton;
-    private Button pauseButton,native4KButton,hudButton,garageButton;
+    private Button pauseButton,native4KButton,hudButton,garageButton,assistButton;
     private boolean dashboardVisible;
     private static final String[] CARS={
         "AERO X-01 · carrocería original",
@@ -167,6 +167,8 @@ public final class VelocityActivity extends Activity {
             s.driftComboPct>100?
                 "DERRAPE "+s.driftScore+" PTS · x"+String.format(Locale.ROOT,"%.1f",s.driftComboPct/100f):"";
         if(SystemClock.elapsedRealtime()<gearWarningUntil)roadWarning="DETENTE PARA CAMBIAR";
+        else if(roadWarning.isEmpty()&&surface.assistMode()>0)
+            roadWarning=surface.assistMode()==2?"PILOTO XI":"ASISTIDA XI";
         changedText(warning,roadWarning);
         if(native4KButton!=null)
             changedText(native4KButton,photo?"Salir 4K":"Foto 4K");
@@ -231,6 +233,12 @@ public final class VelocityActivity extends Activity {
         countdown.setVisibility(View.GONE);
         map=new RaceMap(game.track());add(root,map,68,68,Gravity.TOP|Gravity.LEFT,16,96,0,0);
         LinearLayout menu=new LinearLayout(this);menu.setOrientation(LinearLayout.HORIZONTAL);
+        assistButton=button("Manual");
+        assistButton.setContentDescription("Cambiar conducción: Manual, Asistida o Piloto automático. Dirección y freno manual siempre tienen prioridad");
+        assistButton.setOnClickListener(v->{
+            int mode=surface.cycleAssistMode();
+            assistButton.setText(mode==0?"Manual":mode==1?"Asistida":"Piloto");
+        });
         Button camera=button("Cámara");
         camera.setContentDescription("Cámara: toque para cambiar de vista; arrastra la pantalla para orbitar 360 grados o cambiar altura; doble toque o pulsación larga aquí para centrar");
         camera.setOnClickListener(v->{int m=surface.cycleCamera();camera.setText(m==0?"Cámara":m==1?"Cercana":"Capó");});
@@ -279,7 +287,7 @@ public final class VelocityActivity extends Activity {
             hudButton.setText(dashboardVisible?"HUD tablero":"HUD libre");
             cockpit.setVisibility(dashboardVisible&&!surface.is4KEnabled()?View.VISIBLE:View.GONE);
         });
-        for(Button b:new Button[]{camera,colors,sharpness,native4k,pauseButton,
+        for(Button b:new Button[]{assistButton,camera,colors,sharpness,native4k,pauseButton,
                 garageButton,hudButton,engine,restart,exit}){
             LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(76),dp(40));p.setMargins(dp(2),0,dp(2),0);menu.addView(b,p);
         }
