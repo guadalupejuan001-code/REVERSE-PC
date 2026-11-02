@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import {readFileSync as read,writeFileSync as write,mkdirSync,existsSync,linkSync,copyFileSync as copy,openSync,closeSync,appendFileSync} from 'node:fs';
 import {join,resolve} from 'node:path';import {pathToFileURL} from 'node:url';import {spawnSync} from 'node:child_process';
 import {run,contractForCompletedSource} from './android_c27_profile_resume.mjs';
+import {inspectNativeRecovery} from './android_c40_recovery_evidence.mjs';
 import {DISK_SHA,DISK_BYTES} from './android_c28_state.mjs';
 import {sha} from './android_c13_avb.mjs';import {evaluateFrameworkEvidence} from './android_framework_evidence.mjs';
 const json=p=>JSON.parse(read(p,'utf8'));
@@ -24,7 +25,15 @@ export async function continueAndObserve({contract,source,native,disk,frameNativ
   const p=json(join(inner,'journal/latest.json'));assert.match(p.generation,/^generation-[1-9][0-9]*$/);const generation=join(inner,'journal',p.generation);
   linkSync(join(generation,'checkpoint.rvg'),join(output,'recovery-prefix.rvg'));copy(join(generation,'report.json'),join(output,'recovery-prefix.json'));
  }
+ let recoveryEvidence;
+ try{
+  recoveryEvidence=await inspectNativeRecovery({sourceContract:contract,source,nativeDirectory:inner});
+  write(join(output,'recovery-evidence.json'),JSON.stringify(recoveryEvidence,null,2)+'\n');
+ }catch(recoveryDiagnosticFailure){
+  write(join(output,'recovery-evidence-error.txt'),recoveryDiagnosticFailure.stack+'\n');
+ }
  const summary={schema:'reverse-c27-sequence-boundary-v1',clean_completed:false,ready_for_visual_review:false,android_display_content_verified:false,continuation_error:error??null};
+ if(recoveryEvidence){summary.native_process_status=recoveryEvidence.supervisor_status;summary.native_stop_reason=recoveryEvidence.guest_stop_reason;summary.failure_class=recoveryEvidence.failure_class;summary.journal_sha_verified=recoveryEvidence.journal_sha_verified;summary.recovery_candidate_is_promotion_authority=false;}
  if(existsSync(join(output,'current.rvg'))&&existsSync(join(output,'current.json'))){
   const report=json(join(output,'current.json')),digest=sha(read(join(output,'current.rvg')));assert.equal(digest,report.checkpoint_sha256);summary.checkpoint_sha256=digest;summary.instructions=report.guest.instructions;
   const frame=observe(frameNative,[join(output,'current.rvg'),disk,digest,DISK_SHA,String(DISK_BYTES),join(output,'checkpoint-frame.ppm')],join(output,'checkpoint-frame.json'),600000);
