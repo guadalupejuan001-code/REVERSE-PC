@@ -47,7 +47,7 @@ State state(const std::string& text){const auto n=numbers(text);check(n.size()==
        s[24]>=0&&s[24]<=1&&s[25]>=0&&s[25]<=2,
        "bounded XI score, drift multiplier, slipstream and contact surface");return s;
 }
-struct Input{int gas=0,brake=0,steer=1,drift=0,nitro=0,jump=0;};
+struct Input{int gas=0,brake=0,steer=1,drift=0,nitro=0,jump=0,assist=0;};
 struct Point{double x,z;};
 double yaw(double dx,double dz){double value=std::atan2(dx,dz)*4096/(2*std::acos(-1.));if(value<0)value+=4096;return value;}
 double difference(double a,double b){double d=a-b;while(d>2048)d-=4096;while(d< -2048)d+=4096;return d;}
@@ -67,11 +67,17 @@ int main(int argc,char** argv){try{
  std::filesystem::create_directories(out);
  const auto drive=read(assets/"drive.xi"),world=read(assets/"world.xi");
  std::map<int,std::string> programs;
- auto command=[&](Input i)->const std::string&{const int key=i.gas+2*i.brake+4*i.steer+16*i.drift+128*i.nitro+256*i.jump;auto found=programs.find(key);if(found!=programs.end())return found->second;
-  return programs.emplace(key,inject(drive,"store8 128 "+std::to_string(i.gas)+"\nstore8 129 "+std::to_string(i.brake)+"\nstore8 130 "+std::to_string(i.steer)+"\nstore8 131 "+std::to_string(i.drift)+"\nstore8 132 0\nstore8 134 "+std::to_string(i.nitro)+"\nstore8 135 "+std::to_string(i.jump)+"\n")).first->second;};
+ auto command=[&](Input i)->const std::string&{const int key=i.gas+2*i.brake+4*i.steer+16*i.drift+128*i.nitro+256*i.jump+512*i.assist;auto found=programs.find(key);if(found!=programs.end())return found->second;
+  return programs.emplace(key,inject(drive,"store8 128 "+std::to_string(i.gas)+"\nstore8 129 "+std::to_string(i.brake)+"\nstore8 130 "+std::to_string(i.steer)+"\nstore8 131 "+std::to_string(i.drift)+"\nstore8 132 0\nstore8 134 "+std::to_string(i.nitro)+"\nstore8 135 "+std::to_string(i.jump)+"\nstore8 136 "+std::to_string(i.assist)+"\n")).first->second;};
  Runtime runtime;const auto coords=numbers(runtime.execute(world),true);check(coords.size()==162,"81 observed XI vertices");
  std::vector<Point> points;for(std::size_t i=0;i<coords.size();i+=2)points.push_back({double(coords[i]),double(coords[i+1])});
- check(points.front().x==points.back().x&&points.front().z==points.back().z,"closed XI world");
+ check(points.front().x==points.back().x&&points.front().z==points.back().z,"closed XI forest world");
+ double forestLength=0;for(std::size_t i=1;i<points.size();i++)
+  forestLength+=std::hypot(points[i].x-points[i-1].x,points[i].z-points[i-1].z);
+ check(forestLength>159500&&forestLength<160500,"XI forest route preserves 1600m lap progression");
+ const auto forestX=std::max_element(points.begin(),points.end(),
+   [](const Point& a,const Point& b){return a.x<b.x;})->x;
+ check(forestX>35000,"new forest road winds substantially beyond the former oval");
  auto reset=inject(drive,"store8 128 0\nstore8 129 0\nstore8 130 1\nstore8 131 0\nstore8 132 1\n");
  State s=state(runtime.execute(reset));check(s[0]==0&&s[1]==0&&s[2]==0&&s[13]==150&&s[5]==0,"new race reset");
  const State ready=s;const auto seed=reverse_pc::rvpc2::save(runtime);write(out/"seed.rvp",seed);
@@ -80,6 +86,32 @@ int main(int argc,char** argv){try{
   if(s[13]>0)check(s[0]==old[0]&&s[1]==old[1]&&s[3]==0,"countdown must not move car");}
  check(s[13]==0&&countdown==150,"exact 150-tick countdown");
  const auto raceStart=reverse_pc::rvpc2::save(runtime);
+ // Assistance only consumes authenticated XI world/heading sensors.
+ auto assisted=reverse_pc::rvpc2::restore(raceStart),
+      steeringLeft=reverse_pc::rvpc2::restore(raceStart),
+      steeringRight=reverse_pc::rvpc2::restore(raceStart);
+ State assistedMoving{};
+ int assistedOffroad=0,assistedWall=0;
+ for(int i=0;i<240;i++){
+  assistedMoving=state(assisted.execute(command({0,0,1,0,0,0,2})));
+  assistedOffroad+=int(assistedMoving[8]);assistedWall+=int(assistedMoving[14]);
+ }
+ check(assistedMoving[3]>500&&assistedMoving[1]>1000&&assistedMoving[6]>=240,
+       "pilot XI autonomously accelerates along the forest road without player gas");
+ check(assistedOffroad<15&&assistedWall<8,
+       "forest pilot follows the road instead of grinding the guardrail");
+ State leftAssist{},rightAssist{};
+ for(int i=0;i<30;i++){
+  leftAssist=state(steeringLeft.execute(command({1,0,0,0,0,0,1})));
+  rightAssist=state(steeringRight.execute(command({1,0,2,0,0,0,1})));
+ }
+ check(leftAssist[2]!=rightAssist[2],
+       "human left/right inputs override assisted steering without an extra button");
+ auto laneOnly=reverse_pc::rvpc2::restore(raceStart);
+ State laneIdle{};
+ for(int i=0;i<25;i++)laneIdle=state(laneOnly.execute(command({0,0,1,0,0,0,1})));
+ check(laneIdle[3]==0,
+       "assisted steering never accelerates without throttle; pilot is explicitly separate");
  // XI authority: nitro consumes energy and makes the same physical car accelerate.
  auto turbo=reverse_pc::rvpc2::restore(raceStart),cruise=reverse_pc::rvpc2::restore(raceStart);
  State boosted{},normal{};
@@ -201,11 +233,16 @@ int main(int argc,char** argv){try{
  check(onRoad[3]>onCurb[3]&&onCurb[3]>onGrass[3],
        "paved road retains more speed than curb and grass");
  auto wall=reverse_pc::rvpc2::restore(raceStart);
- std::string wallSetup=header+"store32 100 2002000\nstore32 104 2010000\nstore16 108 0\n"+
-  "store16 110 1800\nstore16 261 32768\nstore16 263 34568\nstore8 273 5\n"+
-  "store32 274 10000\nstore32 278 10000\nhalt\n";
+ const int forestWallX=int(std::round(points[5].x))-1800;
+ const int forestWallZ=int(std::round(points[5].z));
+ std::string wallSetup=header+"store32 100 "+std::to_string(2000000+forestWallX)+
+   "\nstore32 104 "+std::to_string(2000000+forestWallZ)+
+   "\nstore16 108 0\nstore16 110 1800\nstore16 261 32768\n"+
+   "store16 263 34568\nstore8 273 5\nstore32 274 10000\n"+
+   "store32 278 10000\nhalt\n";
  wall.execute(wallSetup);const auto contacted=state(wall.execute(command({1,0,1,0})));
- check(contacted[14]==1&&std::abs(contacted[0])<=1000,"real wall response constrains the car center");
+ check(contacted[14]==1&&std::abs(contacted[0]-points[5].x)<1400,
+       "forest wall contact constrains the car relative to actual local road center");
  std::vector<Input> tape;std::vector<State> observations;
  double executeMs=0;int offRoad=0,walls=0,lastLap=0,maxSpeed=0;std::int64_t lastTicks=s[6],lastProgress=s[5];
  int ticks=0;const auto raceBegin=Clock::now();
