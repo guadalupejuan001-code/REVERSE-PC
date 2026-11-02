@@ -112,9 +112,12 @@ if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).hr
   if(mode==='inspect'){
    const [root,previous]=args;assert.ok(root);failureRoot=root;progress=inspectProgress(root,previous??null);
   }else{
-   assert.equal(mode,'run');const [source,output,native,disk,frame,commit,previous]=args;
+   assert.equal(mode,'run');const [source,output,native,disk,frame,commit,previous,instructionText='500000000']=args;
    assert.ok(source&&output&&native&&disk&&frame&&commit&&previous);failureRoot=output;
-   progress=await runStage({source,output,native,disk,frame,commit,previousFile:previous});
+   assert.match(instructionText,/^[1-9][0-9]{0,9}$/,'Expected a positive decimal instruction budget');
+   const instructions=Number(instructionText);
+   assert.ok(instructions<=2000000000,'Instruction budget exceeds the native 2-billion ceiling');
+   progress=await runStage({source,output,native,disk,frame,commit,previousFile:previous,instructions});
   }
   if(process.env.GITHUB_OUTPUT)appendFileSync(process.env.GITHUB_OUTPUT,`server=${progress.system_server_alive_verified}\ninstructions=${progress.instructions}\n`);
   console.log(JSON.stringify(progress,null,2));
