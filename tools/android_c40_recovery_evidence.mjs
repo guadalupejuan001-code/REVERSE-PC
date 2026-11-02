@@ -41,7 +41,8 @@ export function classifyRecovery({sourceCheckpointSha,sourceInstructions,process
     acceptsProgress(report,analyzeGuestConsole(report.console??'')));
   let failure='none';
   if(!clean){
-    if(processOutcome?.trigger)failure='host_supervisor_'+processOutcome.trigger;
+    if(report?.console&&analyzeGuestConsole(report.console).guest_boot_failure)failure='guest_boot_failure';
+    else if(processOutcome?.trigger)failure='host_supervisor_'+processOutcome.trigger;
     else if(['process_failed','spawn_failed'].includes(processStatus))failure='native_process_'+processStatus;
     else if(report?.error)failure='guest_or_interpreter_error';
     else if(report?.stop_reason&&!['host_wall_budget','instruction_budget'].includes(report.stop_reason))failure='guest_stop_'+report.stop_reason;
