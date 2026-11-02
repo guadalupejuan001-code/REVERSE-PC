@@ -48,7 +48,7 @@ persistente y los 80 ángulos de tangente. El trazado conserva 3 vueltas y
 **Dimensiones medidas del autor:**
 - Longitud: aproximadamente **159.904 cm**, equivalente a **1.599 m**;
 - 80 tramos de aproximadamente 20 m;
-- Radio mínimo aproximado de las curvas: **43 m**;
+- Radio mínimo aproximado de las curvas: **100 m**;
 - Pista cerrada: el vértice 81 repite exactamente el primero;
 - Coordenadas físicas aproximadas: X 0–412 m, Z -302–302 m.
 
