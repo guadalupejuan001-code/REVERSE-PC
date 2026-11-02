@@ -112,6 +112,18 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
     if(mode==1||mode==3)set(rn,updated,64,true);return true;
   }
   ArmFloat fp(floating_);
+  if((i&0xdfbffc00u)==0x5ea1b800u){ // FCVTZS/FCVTZU Sd,Sn or Dd,Dn (AdvSIMD scalar).
+    const unsigned scalar_bits=(i&0x00400000u)?64u:32u;
+    fp_access();const auto value=floating_.v[rn].lane(0,scalar_bits);
+    fp_set(rd,fp.to_int(scalar_bits,value,!(i&0x20000000u),scalar_bits,softfloat_round_minMag),scalar_bits);
+    return true;
+  }
+  if((i&0xdfbffc00u)==0x5e21d800u){ // SCVTF/UCVTF Sd,Sn or Dd,Dn (AdvSIMD scalar).
+    const unsigned scalar_bits=(i&0x00400000u)?64u:32u;
+    fp_access();const auto value=floating_.v[rn].lane(0,scalar_bits);
+    fp_set(rd,fp.from_int(scalar_bits,value,!(i&0x20000000u),scalar_bits),scalar_bits);
+    return true;
+  }
   if((i&0xff201fe0)==0x1e201000){ // FMOV immediate
     if(!valid_float())return false;fp_access();const unsigned imm=(i>>13)&255,e=bits==32?8:11,f=bits-e-1;
     const unsigned repeat=(imm>>6)&1;
