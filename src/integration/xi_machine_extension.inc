@@ -112,6 +112,7 @@ inline std::string machine_substitute(const std::string& token,
 
 // CPU instructions operate on 16 ephemeral signed registers. InverseMemory
 // retains durable bytes. Quantum gates retain the sole InfiniteCore authority.
+#include "integration/xi_numeric.inc"
 inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
                                  const std::string& program,
                                  bool require_matching_background = false,
@@ -144,7 +145,7 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
   }
   for (const auto& inst : code) {
     const auto op = lower_ascii(inst.words.front());
-    if (machine_is_jump(op)) {
+    if (machine_is_jump(op) || op == "call") {
       require_count(inst.words, 2);
       if (!labels.count(machine_label(inst.words[1])))
         throw std::invalid_argument("line " + std::to_string(inst.line) + ": unknown jump label");
@@ -152,6 +153,9 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
   }
 
   std::array<std::int64_t, machine_register_count> registers{};
+  std::array<double, machine_float_count> floats{};
+  std::vector<std::size_t> returns;
+  MachineQuantumTrace trace;
   ProgramResult result;
   bool first_command = true, in_batch = false, comparison_valid = false;
   int comparison = 0;
@@ -178,6 +182,13 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
           throw std::invalid_argument("program background conflicts with --background");
         core = InfiniteCore(background, core.limits());
         result.explicit_mutation = true;
+      } else if (op == "budget") {
+        require_count(words, 2);
+        if (!first_command || in_batch) throw std::invalid_argument("budget must be the first command");
+        const auto requested = machine_value(words[1], registers);
+        if (requested < 1 || requested > 100000000)
+          throw std::out_of_range("explicit XI budget must be 1..100000000 steps");
+        max_steps = static_cast<std::size_t>(requested);
       } else if (op == "begin") {
         require_count(words, 1);
         if (in_batch) throw std::invalid_argument("nested batches are not supported");
@@ -200,6 +211,17 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
         if (bytes > max_batch_address_bytes - address_bytes)
           throw std::length_error("batch address text exceeds 16 MiB");
         batch.push_back(std::move(gate)); address_bytes += bytes;
+      } else if (machine_numeric(op, words, registers, floats, core, memory,
+                                result, trace, comparison, comparison_valid)) {
+      } else if (op == "call") {
+        require_count(words, 2);
+        if (returns.size() >= 128) throw std::length_error("XI call depth exceeds 128");
+        returns.push_back(pc + 1); pc = labels.at(machine_label(words[1]));
+        first_command = false; continue;
+      } else if (op == "ret") {
+        require_count(words, 1);
+        if (returns.empty()) throw std::invalid_argument("ret without call");
+        pc = returns.back(); returns.pop_back(); first_command = false; continue;
       } else if (op == "label") {
         require_count(words, 2);
       } else if (op == "set" || op == "mov") {
@@ -258,6 +280,7 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
         auto expanded = words;
         for (std::size_t i = 1; i < expanded.size(); ++i)
           expanded[i] = machine_substitute(expanded[i], registers);
+        if (trace.enabled && is_gate(op)) ++trace.gates;
         std::ostringstream line;
         line.imbue(std::locale::classic());
         line.exceptions(std::ios::badbit | std::ios::failbit);

@@ -92,6 +92,47 @@ class QuantumBlock {
   void controlled_z(std::size_t a, std::size_t b) {
     cliff(Op::CZ, Operation::CZ, a, b);
   }
+  // exp(-i angle P/2), for any Hermitian Pauli. Small blocks keep their
+  // existing dense authority; wider blocks use the existing exact reduced
+  // representation. No truncation or change of circuit width is performed.
+  void rotate_pauli(const Pauli& p, double angle) {
+    if (!std::isfinite(angle)) throw std::invalid_argument("nonfinite rotation");
+    if (is_clifford() && qubits() <= dense_)
+      value_ = AdaptiveReduced::from_dense(
+          qubits(), R::stabilizer_amplitudes(std::get<Compact>(value_)), cap_);
+    if (is_adaptive()) {
+#ifndef REVERSE_PC_REFERENCE_ROTATIONS
+      // The ordinary XI single-wire case has exactly one Pauli support site.
+      const auto support = p.x[0] | p.z[0];
+      if (support && !(support & (support-1))) {
+        const auto q = static_cast<std::size_t>(__builtin_ctzll(support));
+        const bool x = p.x[0] != 0, z = p.z[0] != 0;
+        const unsigned canonical_phase = x && z ? 1 : 0;
+        if ((p.phase & 1) == canonical_phase) {
+          const double sign = ((p.phase-canonical_phase)&2) ? -1. : 1.;
+          std::get<AdaptiveReduced>(value_).rotate_local(q, x ? (z ? 'Y' : 'X') : 'Z', angle*sign);
+          return;
+        }
+      }
+#endif
+      const auto v = std::get<AdaptiveReduced>(value_).dense();
+      std::vector<Complex> next(v.size());
+      const double c = std::cos(angle * .5), s = std::sin(angle * .5);
+      for (std::size_t i = 0; i < v.size(); ++i) {
+        const auto source = i ^ p.x[0];
+        const auto acted = unit(p.phase) *
+            (__builtin_parityll(p.z[0] & source) ? -1. : 1.) * v[source];
+        next[i] = c * v[i] - Complex(0., s) * acted;
+      }
+      value_ = AdaptiveReduced::from_dense(qubits(), next, cap_);
+    } else {
+      if (is_clifford()) value_ = R::from_stabilizer(std::get<Compact>(value_), cap_);
+      R::WordArray x{}, z{};
+      for (std::size_t w = 0; w < p.x.size(); ++w) { x[w] = p.x[w]; z[w] = p.z[w]; }
+      // Existing phase primitive differs only by an unobservable global phase.
+      std::get<R>(value_).pauli_phase_current(x, z, p.phase, angle);
+    }
+  }
   void phase_t(std::size_t q, bool dagger = false) {
     if (t_count_ == std::numeric_limits<std::size_t>::max())
       throw std::overflow_error("T counter overflow");
@@ -136,6 +177,14 @@ class QuantumBlock {
       return mundo_x_bridge::PauliObserver(std::get<Compact>(value_))
           .expectation(p);
     if (is_adaptive()) {
+#ifndef REVERSE_PC_REFERENCE_ROTATIONS
+      const auto support = p.x[0] | p.z[0];
+      if (support && !(support & (support-1)) && !(p.x[0] && p.z[0]) && !(p.phase & 1)) {
+        const auto& a = std::get<AdaptiveReduced>(value_);
+        return ((p.phase & 2) ? -1. : 1.) *
+            a.expectation(p.x[0] ? 'X' : 'Z', __builtin_ctzll(support)) / a.norm();
+      }
+#endif
       auto v = std::get<AdaptiveReduced>(value_).dense();
       Complex out{};
       for (std::size_t i = 0; i < v.size(); ++i)

@@ -188,6 +188,29 @@ class AdaptiveReduced {
     std::vector<Gate>().swap(history_);
   }
 
+  // A single-wire unitary preserves the current product partition. Apply it
+  // directly to its owning factor; no dense tensor expansion or refactor is
+  // necessary. Restricted to local authorities which require no replay log.
+  void rotate_local(std::size_t q, char axis, double angle) {
+    check(q);
+    if (reduced_ || max_block_ < n_ || !std::isfinite(angle) ||
+        (axis != 'X' && axis != 'Y' && axis != 'Z'))
+      throw std::invalid_argument("local rotation authority/axis");
+    if (gates_ == std::numeric_limits<std::size_t>::max())
+      throw std::overflow_error("adaptive rotation counter overflow");
+    auto& block = blocks_[owner_[q]];
+    const auto bit = std::size_t{1} << local(owner_[q], q);
+    const double c = std::cos(angle*.5), s = std::sin(angle*.5);
+    for (std::size_t i = 0; i < block.psi.size(); ++i) {
+      if (i & bit) continue;
+      const auto a = block.psi[i], b = block.psi[i | bit];
+      if (axis == 'X') { block.psi[i] = c*a-Complex(0,s)*b; block.psi[i|bit] = c*b-Complex(0,s)*a; }
+      else if (axis == 'Y') { block.psi[i] = c*a-s*b; block.psi[i|bit] = s*a+c*b; }
+      else { block.psi[i] = Complex(c,-s)*a; block.psi[i|bit] = Complex(c,s)*b; }
+    }
+    history_.clear(); ++gates_;
+  }
+
   void apply(Operation op, std::size_t a, std::size_t b = 0) {
     if(gates_==std::numeric_limits<std::size_t>::max())throw std::overflow_error("adaptive gate counter overflow");
     if (static_cast<unsigned>(op) > static_cast<unsigned>(Operation::CZ))
