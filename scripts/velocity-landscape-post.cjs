@@ -8,12 +8,15 @@ const fs=require('node:fs'),path=require('node:path');
 const ROOT=path.resolve(__dirname,'../reverse-os-android/app/src/main/assets/velocity');
 // Jet rig precedes shadows and vegetation; audit ID mapping each time the rig changes.
 const CAMERA=2048,TREE_START=1552,ROCK_START=1566,GRASS_START=1579,END=1591;
-// Forest cedar, asymmetric evergreen spire and crossed trunk; 14 vertices.
+// Each of 32 Cedar actors depicts a 3-tree grove at a fixed 9-face cost.
+// Main tree uses the 5-face volumetric canopy. The 4 old trunk faces become
+// paired low-poly pine silhouettes, keeping shader IDs and triangle budget.
 const treeShape=[
  [14,1150,-16],[246,315,33],[100,364,209],[-161,288,205],
  [-258,330,-61],[-101,292,-217],
- [-23,0,-17],[16,0,0],[21,340,-14],[-16,342,-25],
- [0,0,-25],[0,0,21],[15,347,14],[-12,341,-24]
+ [-350,835,-110],[-500,0,-130],[-200,0,-130],
+ [380,990,150],[240,0,160],[520,0,160],
+ [0,0,-25],[0,0,21]
 ];
 const rock=[
  [24,105,-8],[-183,48,-93],[-72,85,-153],[126,64,-142],
@@ -102,7 +105,16 @@ function finishScene(content){
  const next=source.indexOf('\nlabel next_actor',treeStart);
  if(treeStart<0||next<0)throw Error('Existing tree face emission not located');
  const original=source.slice(treeStart+'label emit_tree\n'.length,next);
- if(original.split('\n').length!==9)throw Error('Tree triangle count changed');
+ const originalFaces=original.split('\n');
+ if(originalFaces.length!==9)throw Error('Tree triangle count changed');
+ const groveFaces=[
+   ...originalFaces.slice(0,5),
+   face(TREE_START+6,TREE_START+7,TREE_START+8,15),
+   face(TREE_START+8,TREE_START+7,TREE_START+6,14),
+   face(TREE_START+9,TREE_START+10,TREE_START+11,16),
+   face(TREE_START+11,TREE_START+10,TREE_START+9,15)
+ ];
+ if(groveFaces.length!==9)throw Error('Forest grove must cost nine faces');
  const rockFaces=[],grassFaces=[];
  for(let k=0;k<6;k++){
   const n=(k+1)%6;
@@ -118,7 +130,7 @@ function finishScene(content){
   throw Error('Forest triangle budget is not bounded');
  const full=['label emit_tree','localget r0 11','mod r0 10','cmp r0 8',
    'je nature_emit_rock','cmp r0 9','je nature_emit_grass',
-   original,'jmp next_actor','label nature_emit_rock',
+   ...groveFaces,'jmp next_actor','label nature_emit_rock',
    ...rockFaces,'jmp next_actor','label nature_emit_grass',
    ...grassFaces].join('\n');
  source=source.slice(0,treeStart)+full+source.slice(next);
