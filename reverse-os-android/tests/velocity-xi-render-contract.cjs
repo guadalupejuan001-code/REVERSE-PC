@@ -114,7 +114,13 @@ try{
  assert.deepEqual(points[0],[0,0],'track start');assert.deepEqual(points[80],points[0],'closed centerline');
  assert.equal(new Set(points.slice(0,80).map(p=>p.join(','))).size,80,'distinct track vertices');
  const length=points.slice(1).reduce((sum,p,i)=>sum+Math.hypot(p[0]-points[i][0],p[1]-points[i][1]),0);
- assert(length>150000&&length<170000,'stadium course length');
+ assert(length>159500&&length<160500,'original forest course stays 1.6km');
+ const minX=Math.min(...points.map(p=>p[0])),maxX=Math.max(...points.map(p=>p[0]));
+ const minZ=Math.min(...points.map(p=>p[1])),maxZ=Math.max(...points.map(p=>p[1]));
+ assert(maxX-minX>35000&&maxZ-minZ>55000,
+   'forest winding circuit spans its actual wooded valley');
+ assert(points[10][0]>2500,
+   'forest route is not the old stadium straight with only a green sky');
  const reset=path.join(temp,'reset.xi');
  fs.writeFileSync(reset,inject(driving,'store8 128 0\nstore8 129 0\nstore8 130 1\nstore8 131 0\nstore8 132 1\n'));
  const started=registers(run('run',reset,world,state));
