@@ -8,11 +8,12 @@ const fs=require('node:fs'),path=require('node:path');
 const ROOT=path.resolve(__dirname,'../reverse-os-android/app/src/main/assets/velocity');
 // Jet rig precedes shadows and vegetation; audit ID mapping each time the rig changes.
 const CAMERA=2048,TREE_START=1552,ROCK_START=1566,GRASS_START=1579,END=1591;
+// Forest cedar, asymmetric evergreen spire and crossed trunk; 14 vertices.
 const treeShape=[
- [31,846,-25],[223,245,22],[99,287,168],[-122,228,201],
- [-239,275,-13],[-97,210,-192],
- [-23,0,-12],[14,0,0],[15,290,-8],[-16,276,-18],
- [0,0,-23],[0,0,20],[11,278,12],[-9,275,-21]
+ [14,1150,-16],[246,315,33],[100,364,209],[-161,288,205],
+ [-258,330,-61],[-101,292,-217],
+ [-23,0,-17],[16,0,0],[21,340,-14],[-16,342,-25],
+ [0,0,-25],[0,0,21],[15,347,14],[-12,341,-24]
 ];
 const rock=[
  [24,105,-8],[-183,48,-93],[-72,85,-153],[126,64,-142],
@@ -82,9 +83,9 @@ function finishScene(content){
  source=change(source,'localset 11 0',
    newMetadata+'\nlocalset 11 0',
    'XI vertex metadata extension');
- // Select actual 3D templates per roadside object: 20 trees, 10 rocks, 10 grass clumps.
- const choose=['localget r0 11','mod r0 4','cmp r0 2','je nature_rock_model',
-   'cmp r0 3','je nature_grass_model',
+ // Dense roadside grove: 32 cedars, 4 boulders and 4 underbrush clusters.
+ const choose=['localget r0 11','mod r0 10','cmp r0 8','je nature_rock_model',
+   'cmp r0 9','je nature_grass_model',
    'set r0 '+TREE_START,'mov r9 r0','localset 132 r9',
    'set r0 '+ROCK_START,'mov r9 r0','localset 134 r9','jmp nature_model_ready',
    'label nature_rock_model',
@@ -113,10 +114,10 @@ function finishScene(content){
   grassFaces.push(face(a,b,c,14+k));
   grassFaces.push(face(c,b,a,12+k));
  }
- if(20*9+10*rockFaces.length+10*grassFaces.length!==380)
-  throw Error('Terrain budget would exceed original renderer face count');
- const full=['label emit_tree','localget r0 11','mod r0 4','cmp r0 2',
-   'je nature_emit_rock','cmp r0 3','je nature_emit_grass',
+ if(32*9+4*rockFaces.length+4*grassFaces.length!==368)
+  throw Error('Forest triangle budget is not bounded');
+ const full=['label emit_tree','localget r0 11','mod r0 10','cmp r0 8',
+   'je nature_emit_rock','cmp r0 9','je nature_emit_grass',
    original,'jmp next_actor','label nature_emit_rock',
    ...rockFaces,'jmp next_actor','label nature_emit_grass',
    ...grassFaces].join('\n');
@@ -146,7 +147,7 @@ function run(){
   const before=fs.readFileSync(filename,'utf8'),after=finishScene(before);
   if(before!==after)fs.writeFileSync(filename,after);
   changed.push({name,bytes:Buffer.byteLength(after),updated:before!==after,
-    trees:20,rocks:10,grassClumps:10,faces:380});
+    trees:32,rocks:4,grassClumps:4,faces:368});
  }
  return changed;
 }
