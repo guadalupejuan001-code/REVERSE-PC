@@ -6,8 +6,8 @@ const fs=require('node:fs'),path=require('node:path');
 const SAMPLES=12000,COUNT=80;
 function curve(t){
  const s=Math.sin(t),c=Math.cos(t);
- return [22000*(1-c)+3400*s*s*Math.sin(3*t)+900*s*s*Math.sin(5*t),
-         31000*s+2800*s*s*Math.sin(4*t)];
+ return [22000*(1-c)+1200*s*s*Math.sin(3*t)+300*s*s*Math.sin(5*t),
+         31000*s+700*s*s*Math.sin(4*t)];
 }
 const dense=Array.from({length:SAMPLES+1},(_,i)=>curve(i*2*Math.PI/SAMPLES));
 const arc=[0];
@@ -32,7 +32,7 @@ for(let i=0;i<COUNT;i++){
  if(angle>Math.PI)angle=2*Math.PI-angle;
  if(angle>1e-6)minRadius=Math.min(minRadius,seg/angle);
 }
-if(Math.abs(distance-160000)>300||minSegment<1950||maxSegment>2050||minRadius<4000)
+if(Math.abs(distance-160000)>300||minSegment<1950||maxSegment>2050||minRadius<9000)
  throw Error('Forest trail fails road length/curvature contract: '+JSON.stringify({distance,minSegment,maxSegment,minRadius}));
 if(points[0][0]!==0||points[0][1]!==0||points[80].join()!==points[0].join())
  throw Error('Forest has no exact closed physical start');
