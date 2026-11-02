@@ -1,4 +1,4 @@
-name: Android C41 scalar FCVTZS repair and genuine R2 continuation
+name: Android C41 scalar conversion repair and genuine R2 continuation
 'on':
   pull_request:
     types: [opened, reopened, synchronize]
@@ -85,12 +85,12 @@ jobs:
           test -n "$ORIGINAL"
           node tools/android_c27_media.mjs "$ORIGINAL" new-media > evidence/c41-proof/media.json
           rm -rf disk-input
-      - name: Execute 250 million real Android instructions from authenticated R2
+      - name: Execute through both observed conversion stops from authenticated R2
         id: continuation
         run: |
           set -euo pipefail
           SHA=$(git rev-parse HEAD)
-          node tools/android_c27_sequence.mjs source-r2/output-contract.json source-r2 build/c41-native new-media/android-c27.raw build/c41-frame evidence/c41 "$SHA" 540000 250000000 1 > evidence/c41-proof/sequence.json
+          node tools/android_c27_sequence.mjs source-r2/output-contract.json source-r2 build/c41-native new-media/android-c27.raw build/c41-frame evidence/c41 "$SHA" 540000 172893892 1 > evidence/c41-proof/sequence.json
       - name: Independently verify that Android passed the original FCVTZS stop
         run: |
           set -euo pipefail
@@ -99,10 +99,10 @@ jobs:
           import assert from 'node:assert/strict';import {readFileSync,writeFileSync} from 'node:fs';
           const read=p=>JSON.parse(readFileSync(p,'utf8')),c=read('evidence/c41/output-contract.json'),r=read('evidence/c41/current.json');
           const b=read('evidence/c41/boundary-summary.json'),recovery=read('evidence/c41/recovery-evidence.json');
-          assert.equal(r.initial_instructions,18893448839);assert.ok(r.guest.instructions>19066342718,'Original FCVTZS stop was not crossed');
+          assert.equal(r.initial_instructions,18893448839);assert.equal(r.guest.instructions,19066342731,'Both observed conversion stops must be crossed exactly');
           assert.equal(r.provenance.input_checkpoint_sha256,'56821dfcec37af1031221247d8dd42f894e176c67fbf8ea3e87b3e14894d36a8');
           assert.equal(b.clean_completed,true);assert.equal(recovery.clean_native_budget,true);assert.equal(recovery.failure_class,'none');
-          writeFileSync('evidence/c41-proof/verified-crossing.json',JSON.stringify({source_instructions:18893448839,original_stop_instructions:19066342718,instructions:r.guest.instructions,checkpoint_sha256:c.checkpoint_sha256,original_stop_crossed:true},null,2)+'\n');
+          writeFileSync('evidence/c41-proof/verified-crossing.json',JSON.stringify({source_instructions:18893448839,original_stop_instructions:19066342718,second_stop_instructions:19066342730,instructions:r.guest.instructions,checkpoint_sha256:c.checkpoint_sha256,both_stops_crossed:true},null,2)+'\n');
           NODE
           SHA=$(node -p "require('./evidence/c41/output-contract.json').checkpoint_sha256")
           node --max-old-space-size=5000 tools/android_kernel_observer.mjs evidence/c41/current.rvg "$SHA" 1073741824 --live-properties --zygote-probe --scheduler-probe > evidence/c41-proof/kernel.json
@@ -125,6 +125,38 @@ jobs:
             !evidence/c41/native/frame.pending.ppm
           if-no-files-found: error
           retention-days: 90
+      - name: Continue 250 million instructions only after publishing the repaired clean checkpoint
+        run: |
+          set -euo pipefail
+          SHA=$(git rev-parse HEAD)
+          node tools/android_c27_sequence.mjs evidence/c41/output-contract.json evidence/c41 build/c41-native new-media/android-c27.raw build/c41-frame evidence/c41-next "$SHA" 540000 250000000 1 > evidence/c41-proof/next-sequence.json
+      - name: Authenticate the next continuation and observe Zygote from guest memory
+        run: |
+          set -euo pipefail
+          node tools/android_c27_profile_resume.mjs preflight evidence/c41-next/output-contract.json evidence/c41-next > evidence/c41-proof/next-preflight.json
+          SHA=$(node -p "require('./evidence/c41-next/output-contract.json').checkpoint_sha256")
+          node --max-old-space-size=5000 tools/android_kernel_observer.mjs evidence/c41-next/current.rvg "$SHA" 1073741824 --live-properties --zygote-probe --scheduler-probe > evidence/c41-proof/next-kernel.json
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';import {readFileSync,writeFileSync} from 'node:fs';import {classifyZygoteStage} from './tools/android_c40_zygote_stage.mjs';
+          const read=p=>JSON.parse(readFileSync(p,'utf8')),source=read('evidence/c41/output-contract.json'),r=read('evidence/c41-next/current.json'),k=read('evidence/c41-proof/next-kernel.json');
+          assert.equal(r.initial_instructions,19066342731);assert.equal(r.provenance.input_checkpoint_sha256,source.checkpoint_sha256);
+          assert.ok(r.guest.instructions>r.initial_instructions);assert.equal(read('evidence/c41-next/boundary-summary.json').clean_completed,true);
+          for(const name of ['odsign.key.done','odsign.verification.done'])assert.ok(k.live_boot_property.boot_chain_property_observations.some(x=>x.name===name&&x.status==='property_observed'&&x.value==='1'));
+          assert.equal(k.live_kernel_security.selinux_enforcing,true);
+          writeFileSync('evidence/c41-proof/next-zygote.json',JSON.stringify(classifyZygoteStage(k),null,2)+'\n');
+          NODE
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: success()
+        with:
+          name: reverse-c41-next-verified-android-checkpoint
+          path: |-
+            evidence/c41-next/
+            !evidence/c41-next/native/journal/**
+            !evidence/c41-next/native/current.rvg
+            !evidence/c41-next/native/frame.ppm
+            !evidence/c41-next/native/frame.pending.ppm
+          if-no-files-found: error
+          retention-days: 90
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
@@ -136,6 +168,11 @@ jobs:
             evidence/c41/native/*.json
             evidence/c41/native/*.log
             evidence/c41/native/journal/latest.json
+            evidence/c41-next/*.json
+            evidence/c41-next/*.txt
+            evidence/c41-next/native/*.json
+            evidence/c41-next/native/*.log
+            evidence/c41-next/native/journal/latest.json
           if-no-files-found: warn
           retention-days: 90
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -148,5 +185,10 @@ jobs:
             evidence/c41/recovery-evidence.json
             evidence/c41/recovery-prefix.rvg
             evidence/c41/recovery-prefix.json
+            evidence/c41-next/current.rvg
+            evidence/c41-next/current.json
+            evidence/c41-next/recovery-evidence.json
+            evidence/c41-next/recovery-prefix.rvg
+            evidence/c41-next/recovery-prefix.json
           if-no-files-found: ignore
           retention-days: 90

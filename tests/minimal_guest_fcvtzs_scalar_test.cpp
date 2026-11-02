@@ -30,8 +30,8 @@ MinimalGuest prepared(unsigned bits,std::uint64_t value,unsigned fpcr=0){
  }
  g.run(code.size()-1);return g;
 }
-void execute(MinimalGuest g,unsigned bits,bool uns,unsigned rn,unsigned rd,std::uint64_t expected,unsigned flags,bool restore){
- const auto op=0x5ea1b800u|(bits==64?0x00400000u:0)|(uns?0x20000000u:0)|(rn<<5)|rd;
+void execute(MinimalGuest g,unsigned bits,bool uns,unsigned rn,unsigned rd,std::uint64_t expected,unsigned flags,bool restore,bool from_integer=false){
+ const auto op=(from_integer?0x5e21d800u:0x5ea1b800u)|(bits==64?0x00400000u:0)|(uns?0x20000000u:0)|(rn<<5)|rd;
  g.write(g.registers().pc,op,4);const auto cpu=g.registers();const auto fp=g.floating();
  const auto memory=g.runtime().memory_snapshot(),core=g.runtime().core_snapshot();
  if(restore){auto resumed=MinimalGuest::from_snapshot(g.snapshot());g.run(1);resumed.run(1);check(g.snapshot()==resumed.snapshot(),"FCVTZS differs after checkpoint restore");}
@@ -70,7 +70,29 @@ void suite(){
  for(const auto& e:examples)for(unsigned rounding=0;rounding<4;rounding++)for(bool uns:{false,true})
   for(unsigned rd:{0u,1u,31u})execute(prepared(e.bits,e.raw,rounding<<22),e.bits,uns,0,rd,uns?e.unsigned_result:e.signed_result,uns?e.unsigned_flags:e.signed_flags,true);
  for(unsigned bits:{32u,64u})for(bool uns:{false,true})execute(prepared(bits,1,1u<<24),bits,uns,0,0,0,128,true);
- for(const auto op:{0x5ee1b801u,0x5ea1b801u,0x7ee1b801u,0x7ea1b801u}){
+ // Exact second Android stop, twelve instructions later: SCVTF D1,D1.
+ execute(prepared(64,2),64,false,1,1,UINT64_C(0x4000000000000000),0,true,true);
+ for(unsigned bits:{32u,64u})for(bool uns:{false,true}){
+  const auto g=prepared(bits,2);
+  for(unsigned rn=0;rn<32;rn++)for(unsigned rd=0;rd<32;rd++)execute(g,bits,uns,rn,rd,bits==32?UINT64_C(0x40000000):UINT64_C(0x4000000000000000),0,rn==rd,true);
+ }
+ struct IntegerExample{unsigned bits;bool uns;std::uint64_t raw;std::array<std::uint64_t,4> result;unsigned flags;};
+ const IntegerExample integers[]{
+  {32,false,0xffffffff,{0xbf800000,0xbf800000,0xbf800000,0xbf800000},0},
+  {64,false,UINT64_MAX,{UINT64_C(0xbff0000000000000),UINT64_C(0xbff0000000000000),UINT64_C(0xbff0000000000000),UINT64_C(0xbff0000000000000)},0},
+  {32,true,0xffffffff,{0x4f800000,0x4f800000,0x4f7fffff,0x4f7fffff},16},
+  {64,true,UINT64_MAX,{UINT64_C(0x43f0000000000000),UINT64_C(0x43f0000000000000),UINT64_C(0x43efffffffffffff),UINT64_C(0x43efffffffffffff)},16},
+  {32,false,0x7fffffff,{0x4f000000,0x4f000000,0x4effffff,0x4effffff},16},
+  {64,false,UINT64_C(0x7fffffffffffffff),{UINT64_C(0x43e0000000000000),UINT64_C(0x43e0000000000000),UINT64_C(0x43dfffffffffffff),UINT64_C(0x43dfffffffffffff)},16},
+  {32,false,0x80000000,{0xcf000000,0xcf000000,0xcf000000,0xcf000000},0},
+  {64,false,UINT64_C(0x8000000000000000),{UINT64_C(0xc3e0000000000000),UINT64_C(0xc3e0000000000000),UINT64_C(0xc3e0000000000000),UINT64_C(0xc3e0000000000000)},0},
+  {32,false,0x01000001,{0x4b800000,0x4b800001,0x4b800000,0x4b800000},16},
+  {32,false,0xfeffffff,{0xcb800000,0xcb800000,0xcb800001,0xcb800000},16},
+  {64,false,UINT64_C(0x0020000000000001),{UINT64_C(0x4340000000000000),UINT64_C(0x4340000000000001),UINT64_C(0x4340000000000000),UINT64_C(0x4340000000000000)},16}
+ };
+ for(const auto& e:integers)for(unsigned mode=0;mode<4;mode++)for(unsigned rd:{0u,1u,31u})
+  execute(prepared(e.bits,e.raw,mode<<22),e.bits,e.uns,1,rd,e.result[mode],e.flags,true,true);
+ for(const auto op:{0x5ee1b801u,0x5ea1b801u,0x7ee1b801u,0x7ea1b801u,0x5e61d821u,0x5e21d821u,0x7e61d821u,0x7e21d821u}){
   MinimalGuest g(128*1024*1024);g.load_elf(elf({op},true),true);g.run(1);
   check(g.machine().exceptions==1&&(g.machine().esr>>26)==7&&!g.floating().nonzero(),"FCVTZS bypassed the architectural FP access trap");
  }
@@ -80,4 +102,4 @@ void suite(){
  check(rejected&&bad.snapshot()==before,"Reserved 1D conversion was accepted or modified state");
 }
 }
-int main(){try{suite();std::cout<<"{\"checks\":"<<checks<<",\"cases\":"<<cases<<",\"exact_c40_opcode\":\"0x5ee1b801\",\"android_boot\":false}\n";}catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
+int main(){try{suite();std::cout<<"{\"checks\":"<<checks<<",\"cases\":"<<cases<<",\"exact_c40_opcode\":\"0x5ee1b801\",\"exact_c41_opcode\":\"0x5e61d821\",\"android_boot\":false}\n";}catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
