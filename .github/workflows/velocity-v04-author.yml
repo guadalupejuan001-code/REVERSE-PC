@@ -1,9 +1,10 @@
 name: Reverse Velocity — regenerate authored XI scenes
 on:
   push:
-    branches: [feature/velocity-v04-nitro-airjump-20261101, feature/velocity-v18-garage-photo-hud-20261101, feature/velocity-v19-orbit-textures-20261101, feature/velocity-v20-effects-drift-20261101]
+    branches: [feature/velocity-v04-nitro-airjump-20261101, feature/velocity-v18-garage-photo-hud-20261101, feature/velocity-v19-orbit-textures-20261101, feature/velocity-v20-effects-drift-20261101, feature/velocity-v22-forest-assist-20261101]
     paths:
       - 'scripts/author-velocity-scene.cjs'
+      - 'scripts/author-velocity-forest.cjs'
       - 'scripts/emit-velocity-car-scene.cjs'
       - 'scripts/velocity-materials.cjs'
       - 'scripts/velocity-textures.cjs'
@@ -33,10 +34,12 @@ jobs:
           node scripts/check-velocity-native-only.cjs
       - name: Generate real XI graphics source from canonical JavaScript authoring
         run: |
+          node scripts/author-velocity-forest.cjs
           node scripts/author-velocity-scene.cjs
           git diff --check
       - name: Commit reproducible XI scene and 256-entry material palette
         run: |
+          git add reverse-os-android/app/src/main/assets/velocity/world.xi
           git add reverse-os-android/app/src/main/assets/velocity/render.xi
           git add reverse-os-android/app/src/main/assets/velocity/render4k.xi
           git add reverse-os-android/app/src/main/assets/velocity/render-native4k.xi
@@ -47,5 +50,5 @@ jobs:
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'build(velocity): regenerate XI 1.7 pneumatic/photometric scene assets'
+          git commit -m 'build(velocity forest): regenerate 1.6km road, cedars and original XI lighting'
           git push origin "HEAD:${GITHUB_REF_NAME}"
