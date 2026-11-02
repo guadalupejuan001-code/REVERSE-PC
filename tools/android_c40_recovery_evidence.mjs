@@ -34,7 +34,7 @@ export function classifyRecovery({sourceCheckpointSha,sourceInstructions,process
   const stopReason=report?.stop_reason??journalStatus?.report_stop_reason??'unavailable';
   const reported=report?.guest?.instructions??journalStatus?.instructions??sourceInstructions;
   const progressed=Number.isSafeInteger(reported)&&reported>sourceInstructions;
-  const clean=!!(processOutcome?.status==='process_completed'&&processOutcome.exit_code===0&&
+  const clean=!!(journalStatus?.verified===true&&processOutcome?.status==='process_completed'&&processOutcome.exit_code===0&&
     processOutcome.trigger===null&&processOutcome.forced_kill===false&&
     report&&['host_wall_budget','instruction_budget'].includes(report.stop_reason)&&
     report.error===''&&report.guest?.halted===false&&report.guest?.waiting===false&&
