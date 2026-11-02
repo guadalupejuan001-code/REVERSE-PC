@@ -38,6 +38,35 @@ test('an architectural ISA stop is evidence, not a resumable successful stop',()
  assert.equal(p.failure_class,'guest_or_interpreter_error');
  assert.equal(p.clean_native_budget,false);
 });
+test('the real native exit 2 preserves an architectural stop as the primary cause',()=>{
+ const error='Unsupported AArch64 instruction 0x00000000 at 0x400000';
+ const p=classify({process:{...host(),status:'process_failed',exit_code:2},
+  report:{...report(),stop_reason:'architectural_stop',error}});
+ assert.equal(p.failure_class,'guest_or_interpreter_error');
+ assert.equal(p.guest_error,error);
+ assert.equal(p.supervisor_exit_code,2);
+ assert.equal(p.clean_native_budget,false);
+ assert.equal(p.recovery_candidate_is_promotion_authority,false);
+});
+test('a native exit 2 with a guest device wait reports that wait instead of a generic process failure',()=>{
+ const r=report();r.stop_reason='waiting_for_device_or_interrupt';r.guest.waiting=true;
+ const p=classify({process:{...host(),status:'process_failed',exit_code:2},report:r});
+ assert.equal(p.failure_class,'guest_stop_waiting_for_device_or_interrupt');
+ assert.equal(p.supervisor_exit_code,2);
+ assert.equal(p.clean_native_budget,false);
+});
+test('a supervisor termination remains primary even if the guest records an interrupted stop',()=>{
+ const p=classify({process:{...host(),status:'host_stopped',trigger:'host_watchdog_no_progress',exit_code:2},
+  report:{...report(),stop_reason:'host_interrupted',error:''}});
+ assert.equal(p.failure_class,'host_supervisor_host_watchdog_no_progress');
+ assert.equal(p.clean_native_budget,false);
+});
+test('an unfinished running report cannot invent a guest stop when the process fails',()=>{
+ const p=classify({process:{...host(),status:'process_failed',exit_code:1},
+  report:{...report(),stop_reason:'running',error:''}});
+ assert.equal(p.failure_class,'native_process_process_failed');
+ assert.equal(p.clean_native_budget,false);
+});
 test('a journal with no verified hash cannot be trusted, even when the host reports success',()=>{
  const p=classify({journal:{verified:false,available:true,error:'SHA mismatch'}});
  assert.equal(p.clean_native_budget,false);
