@@ -5,6 +5,7 @@
 #include "minimal_guest_system_demo.hpp"
 #include "minimal_guest_fp_demo.hpp"
 #include "guest_file_session.hpp"
+#include "guest_resident_session.hpp"
 #include "minimal_guest_pci_demo.hpp"
 #include "minimal_guest_counter_demo.hpp"
 #include <jni.h>
@@ -15,6 +16,14 @@
 #include <string>
 #include <vector>
 namespace {
+reverse_pc::guest::GuestResidentRegistry& guest_sessions(){static reverse_pc::guest::GuestResidentRegistry registry;return registry;}
+std::shared_ptr<const reverse_pc::guest::GuestBlockImage> guest_disk(const std::string& path){
+  static std::mutex mutex;static std::string cached_path;
+  static std::shared_ptr<const reverse_pc::guest::GuestBlockImage> cached;
+  std::lock_guard<std::mutex> guard(mutex);
+  if(path!=cached_path){auto next=path.empty()?nullptr:reverse_pc::guest::GuestBlockImage::open(path);cached=std::move(next);cached_path=path;}
+  return cached;
+}
 std::vector<std::uint8_t> bytes(JNIEnv* e,jbyteArray value) {
   if(!value)return {};
   const jsize n=e->GetArrayLength(value);
@@ -176,15 +185,32 @@ Java_com_reversepc_os_NativeRuntime_guestFileDevices(JNIEnv* e,jclass,jstring in
                                                    jint operation,jint steps,jstring text,jstring disk_path){
   try{
     reverse_pc::guest::require(operation>=0&&operation<=6&&steps>=0,"Invalid device file request");
-    static std::mutex cache_mutex;static std::string cached_path;
-    static std::shared_ptr<const reverse_pc::guest::GuestBlockImage> cached_disk;
     const auto path=disk_path?source(e,disk_path):std::string{};
-    std::shared_ptr<const reverse_pc::guest::GuestBlockImage> disk;
-    {std::lock_guard<std::mutex> lock(cache_mutex);if(path!=cached_path){auto next=path.empty()?nullptr:reverse_pc::guest::GuestBlockImage::open(path);cached_disk=std::move(next);cached_path=path;}disk=cached_disk;}
+    const auto disk=guest_disk(path);
     std::string report;
     if(operation==6){reverse_pc::guest::require(bool(disk),"No disk selected");report="{\"ok\":true,\"disk_bytes\":"+std::to_string(disk->size())+",\"disk_sha256\":"+reverse_pc::guest::quote(disk->sha256())+"}";}
     else report=reverse_pc::guest::guest_file_operation(source(e,input),candidate?source(e,candidate):std::string{},unsigned(operation),unsigned(steps),text?source(e,text):std::string{},disk);
     return output(e,std::vector<std::uint8_t>(report.begin(),report.end()));
   }catch(const std::exception& x){throw_java(e,x);return nullptr;}
 }
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_reversepc_os_NativeRuntime_guestSessionOpen(JNIEnv* e,jclass,jstring input,jstring disk_path){
+  try{return jlong(guest_sessions().open(source(e,input),guest_disk(disk_path?source(e,disk_path):std::string{})));}
+  catch(const std::exception& x){throw_java(e,x);return 0;}
+}
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_guestSessionOperation(JNIEnv* e,jclass,jlong handle,jint operation,jint steps,jstring text,jstring candidate,jlong revision){
+  try{
+    reverse_pc::guest::require(handle>0&&operation>=0&&operation<=6&&steps>=0&&revision>=0,"Invalid resident guest request");
+    const auto result=guest_sessions().operation(std::uint64_t(handle),unsigned(operation),std::uint64_t(steps),text?source(e,text):std::string{},candidate?source(e,candidate):std::string{},std::uint64_t(revision));
+    return output(e,std::vector<std::uint8_t>(result.begin(),result.end()));
+  }catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+extern "C" JNIEXPORT void JNICALL
+Java_com_reversepc_os_NativeRuntime_guestSessionClose(JNIEnv* e,jclass,jlong handle){
+  try{reverse_pc::guest::require(handle>0,"Invalid resident guest handle");guest_sessions().close(std::uint64_t(handle));}
+  catch(const std::exception& x){throw_java(e,x);}
+}
+
 
