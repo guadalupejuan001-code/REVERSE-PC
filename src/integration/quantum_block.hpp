@@ -3,6 +3,7 @@
 
 #include "adaptive_reduced.hpp"
 #include "integration/state_io.hpp"
+#include "integration/mps_state.hpp"
 #include "mundo_x/pauli_observer.hpp"
 namespace reverse_pc {
 // Exactly one alternative owns the current finite component. Tableau imports
@@ -22,6 +23,13 @@ class QuantumBlock {
   bool is_adaptive() const {
     return std::holds_alternative<AdaptiveReduced>(value_);
   }
+  bool is_mps() const { return std::holds_alternative<MpsState>(value_); }
+  static QuantumBlock mps_zero(std::size_t n,std::size_t cap=65536,
+                               std::size_t dense=8,bool fast=true) {
+    QuantumBlock out(Compact(1),cap,dense,fast);out.value_=MpsState(n);return out;
+  }
+  std::size_t mps_max_bond() const { return is_mps()?std::get<MpsState>(value_).max_bond():0; }
+  double mps_purity(std::size_t cut) const { return std::get<MpsState>(value_).purity(cut); }
   operator const Compact&() const { return std::get<Compact>(value_); }
   Compact::PackedState packed_state() const {
     return std::get<Compact>(value_).packed_state();
@@ -30,6 +38,7 @@ class QuantumBlock {
     return std::visit([](const auto& v) { return v.qubits(); }, value_);
   }
   std::size_t state_bytes() const {
+    if (is_mps()) return std::get<MpsState>(value_).state_bytes();
     if (is_clifford()) return std::get<Compact>(value_).state_bytes();
     if (is_adaptive())
       return std::get<AdaptiveReduced>(value_).estimated_payload_bytes();
@@ -41,16 +50,19 @@ class QuantumBlock {
                : 0;
   }
   std::size_t amplitudes() const {
+    if (is_mps()) return std::get<MpsState>(value_).amplitudes();
     return is_adaptive() ? std::get<AdaptiveReduced>(value_).factor_amplitudes()
                          : 0;
   }
   std::size_t t_count() const { return t_count_; }
   double norm() const {
+    if (is_mps()) return std::get<MpsState>(value_).norm();
     return is_clifford()   ? 1.
            : is_adaptive() ? std::get<AdaptiveReduced>(value_).norm()
                            : std::get<R>(value_).norm_current();
   }
   R as_reduced() const {
+    if (is_mps()) throw std::length_error("MPS-to-reduced expansion is not implicit");
     if (is_clifford())
       return R::from_stabilizer(std::get<Compact>(value_), cap_);
     if (is_adaptive()) {
@@ -64,7 +76,14 @@ class QuantumBlock {
   static QuantumBlock tensor_product(const QuantumBlock& a,
                                      const QuantumBlock& b) {
     QuantumBlock out(Compact(1), a.cap_, a.dense_, a.fast_);
-    if (a.is_clifford() && b.is_clifford())
+    if (a.is_mps() || b.is_mps()) {
+      const auto convert=[](const QuantumBlock& v) {
+        if(v.is_mps())return std::get<MpsState>(v.value_);
+        if(v.qubits()>8)throw std::length_error("joining MPS to a large legacy representation requires explicit conversion");
+        return MpsState::from_dense(v.local_dense(),v.qubits(),64);
+      };
+      out.value_=MpsState::tensor_product(convert(a),convert(b));
+    } else if (a.is_clifford() && b.is_clifford())
       out.value_ = Compact::tensor_product(std::get<Compact>(a.value_),
                                            std::get<Compact>(b.value_));
     else if (a.qubits() + b.qubits() <= a.dense_) {
@@ -97,6 +116,19 @@ class QuantumBlock {
   // representation. No truncation or change of circuit width is performed.
   void rotate_pauli(const Pauli& p, double angle) {
     if (!std::isfinite(angle)) throw std::invalid_argument("nonfinite rotation");
+    if(is_mps()) {
+      std::size_t support=0,q=0;bool x=false,z=false;
+      for(std::size_t i=0;i<qubits();++i){
+        const bool a=(p.x[i/64]>>(i%64))&1,b=(p.z[i/64]>>(i%64))&1;
+        if(a||b){++support;q=i;x=a;z=b;}
+      }
+      if(!support)return;
+      if(support!=1)throw std::invalid_argument("MPS rotation requires one physical Pauli site in the current Ether frame");
+      const unsigned canonical=x&&z?1:0;
+      if((p.phase&1)!=canonical)throw std::invalid_argument("non-Hermitian MPS rotation");
+      std::get<MpsState>(value_).rotate(q,x?(z?'Y':'X'):'Z',((p.phase-canonical)&2)?-angle:angle);
+      return;
+    }
     if (is_clifford() && qubits() <= dense_)
       value_ = AdaptiveReduced::from_dense(
           qubits(), R::stabilizer_amplitudes(std::get<Compact>(value_)), cap_);
@@ -136,6 +168,10 @@ class QuantumBlock {
   void phase_t(std::size_t q, bool dagger = false) {
     if (t_count_ == std::numeric_limits<std::size_t>::max())
       throw std::overflow_error("T counter overflow");
+    if(is_mps()){
+      const auto phase=std::polar(1.,(dagger?-1.:1.)*std::acos(-1.)/4);
+      std::get<MpsState>(value_).local(q,{1.,0.,0.,phase});++t_count_;return;
+    }
     if (is_clifford()) {
       if (qubits() <= dense_)
         value_ = AdaptiveReduced::from_dense(
@@ -157,6 +193,7 @@ class QuantumBlock {
     ++t_count_;
   }
   bool phase_pauli(const Pauli& p, bool dagger) {
+    if(is_mps()) return false;
     if (is_adaptive() || (is_clifford() && qubits() <= dense_)) return false;
     if (t_count_ == std::numeric_limits<std::size_t>::max())
       throw std::overflow_error("T counter overflow");
@@ -173,6 +210,7 @@ class QuantumBlock {
     return true;
   }
   double expectation(const Pauli& p) const {
+    if(is_mps())return std::get<MpsState>(value_).expectation(p.x,p.z,p.phase);
     if (is_clifford())
       return mundo_x_bridge::PauliObserver(std::get<Compact>(value_))
           .expectation(p);
@@ -201,6 +239,9 @@ class QuantumBlock {
            norm();
   }
   int eigen(const Pauli& p) const {
+    if(is_mps()) {
+      const auto v=expectation(p);return v==1?1:v==-1?-1:0;
+    }
     if (is_clifford()) {
       auto v = expectation(p);
       return v == 1 ? 1 : v == -1 ? -1 : 0;
@@ -224,6 +265,15 @@ class QuantumBlock {
     return std::get<R>(value_).eigen_current(x, z, p.phase);
   }
   std::array<long double, 2> born_pair(const Pauli& p) const {
+    if(is_mps()) {
+      std::size_t count=0,q=0;
+      for(std::size_t i=0;i<qubits();++i)if((p.x[i/64]|p.z[i/64])&(std::uint64_t(1)<<(i%64))){++count;q=i;}
+      if(count==1 && !(p.x[q/64]&(std::uint64_t(1)<<(q%64))) && !(p.phase&1)) {
+        const auto& m=std::get<MpsState>(value_);auto a=m.probability_z(q,false),b=m.probability_z(q,true);
+        return (p.phase&2)?std::array<long double,2>{b,a}:std::array<long double,2>{a,b};
+      }
+      const auto v=expectation(p);return {{(1+v)*.5L,(1-v)*.5L}};
+    }
     if (is_clifford()) {
       auto e = expectation(p);
       return {{(1 + e) * .5L, (1 - e) * .5L}};
@@ -261,7 +311,10 @@ class QuantumBlock {
     p.z[q / 64] |= std::uint64_t{1} << (q % 64);
     return p;
   }
-  int z_eigen(std::size_t q) const { return eigen(z_pauli(q)); }
+  int z_eigen(std::size_t q) const {
+    if(is_mps()){const auto& m=std::get<MpsState>(value_);return m.probability_z(q,true)==0?1:m.probability_z(q,false)==0?-1:0;}
+    return eigen(z_pauli(q));
+  }
   double probability_outcome_z(std::size_t q, bool one) const {
     return represent_probability(born_pair(z_pauli(q))[one ? 1 : 0]);
   }
@@ -275,6 +328,10 @@ class QuantumBlock {
     return out;
   }
   bool measure_z_forced(std::size_t q, bool one) {
+    if(is_mps()){
+      const auto sign=z_eigen(q);if(sign){if((sign<0)!=one)throw std::invalid_argument("impossible measurement");return false;}
+      std::get<MpsState>(value_).project_z(q,one);return true;
+    }
     if (is_clifford())
       return std::get<Compact>(value_).measure_z_forced(q, one);
     auto sign = z_eigen(q);
@@ -309,7 +366,7 @@ class QuantumBlock {
   std::string snapshot() const {
     state_io::Writer w;
     w.data = "QBL1";
-    w.byte(is_clifford() ? 0 : is_adaptive() ? 1 : 2);
+    w.byte(is_clifford() ? 0 : is_adaptive() ? 1 : is_mps()?3:2);
     w.u64(qubits());
     w.u64(t_count_);
     if (is_clifford()) {
@@ -317,7 +374,9 @@ class QuantumBlock {
       for (auto v : p.signs) w.byte(v);
       for (auto v : p.x) w.u64(v);
       for (auto v : p.z) w.u64(v);
-    } else if (is_adaptive())
+    } else if(is_mps())
+      w.string(std::get<MpsState>(value_).snapshot());
+    else if (is_adaptive())
       w.string(std::get<AdaptiveReduced>(value_).local_snapshot());
     else
       w.string(std::get<R>(value_).current_snapshot());
@@ -332,7 +391,7 @@ class QuantumBlock {
     r.at = 4;
     auto tag = r.byte();
     auto n = r.u64(), count = r.u64();
-    if (n == 0 || n > 4096 || (tag != 0 && n > 1000))
+    if (n == 0 || n > 4096 || ((tag == 1 || tag == 2) && n > 1000))
       throw std::length_error("quantum block width");
     QuantumBlock out(Compact(1), cap, dense, fast);
     if (tag == 0) {
@@ -358,6 +417,9 @@ class QuantumBlock {
       out.value_ = R::from_current_snapshot(r.string(64 * 1024 * 1024), cap);
       if (out.qubits() != n)
         throw std::invalid_argument("restored quantum width mismatch");
+    } else if(tag==3) {
+      out.value_=MpsState::from_snapshot(r.string(64*1024*1024));
+      if(out.qubits()!=n)throw std::invalid_argument("restored MPS width mismatch");
     } else
       throw std::invalid_argument("unknown quantum representation");
     r.done();
@@ -366,7 +428,7 @@ class QuantumBlock {
   }
 
  private:
-  std::variant<Compact, AdaptiveReduced, R> value_;
+  std::variant<Compact, AdaptiveReduced, R, MpsState> value_;
   std::size_t cap_, dense_, t_count_ = 0;
   bool fast_;
   static Complex unit(unsigned p) {
@@ -382,11 +444,25 @@ class QuantumBlock {
     }
   }
   std::vector<Complex> local_dense() const {
+    if(is_mps())return std::get<MpsState>(value_).dense();
     return is_clifford()   ? R::stabilizer_amplitudes(std::get<Compact>(value_))
            : is_adaptive() ? std::get<AdaptiveReduced>(value_).dense()
                            : std::get<R>(value_).dense_current();
   }
   void cliff(Op op, Operation adaptive, std::size_t a, std::size_t b = 0) {
+    if(is_mps()){
+      auto& m=std::get<MpsState>(value_);
+      switch(op){
+        case Op::H:{const auto s=std::sqrt(.5);m.local(a,{s,s,s,-s});break;}
+        case Op::X:m.local(a,{0.,1.,1.,0.});break;
+        case Op::Z:m.local(a,{1.,0.,0.,-1.});break;
+        case Op::S:m.local(a,{1.,0.,0.,Complex(0,1)});break;
+        case Op::CX:m.cnot(a,b);break;
+        case Op::CZ:m.cz(a,b);break;
+        default:throw std::invalid_argument("MPS Clifford gate");
+      }
+      return;
+    }
     if (is_clifford()) {
       auto& c = std::get<Compact>(value_);
       switch (op) {

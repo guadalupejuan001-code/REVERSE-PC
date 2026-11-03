@@ -28,9 +28,18 @@ int main(int argc, char** argv) {
       in >> command;
       if (command == "METRICS" && !(in >> extra)) {
         struct rusage usage{}; if (getrusage(RUSAGE_SELF, &usage)) throw std::runtime_error("getrusage failed");
+        // getrusage can inherit a pre-exec high-water mark from the launcher.
+        // Linux VmHWM measures this executable; retain the raw value as well.
+        long peak=usage.ru_maxrss;bool linux_hwm=false;
+        std::ifstream status("/proc/self/status");std::string line;
+        while(std::getline(status,line))if(line.compare(0,6,"VmHWM:")==0){
+          peak=std::stol(line.substr(6));linux_hwm=true;break;
+        }
         const auto stats = current.core().stats();
         std::ostringstream o; o << std::setprecision(17)
-          << "{\"peak_rss_kib\":" << usage.ru_maxrss
+          << "{\"peak_rss_kib\":" << peak
+          << ",\"rusage_peak_rss_kib\":" << usage.ru_maxrss
+          << ",\"rss_measurement\":\"" << (linux_hwm?"Linux VmHWM after exec":"getrusage") << "\""
           << ",\"cpu_ms\":" << (usage.ru_utime.tv_sec + usage.ru_stime.tv_sec)*1000. +
                (usage.ru_utime.tv_usec + usage.ru_stime.tv_usec)/1000.
           << ",\"active_qubits\":" << stats.active_qubits
