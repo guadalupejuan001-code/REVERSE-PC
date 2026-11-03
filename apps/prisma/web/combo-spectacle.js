@@ -85,6 +85,20 @@ export function spectacleGeometry(event, time, { reduced = false, battery = fals
       width: .008 + (i % 3) * .004
     });
   }
+  // Extra nova rays only exist during a musically released combo event.
+  // All rays are determined by (accent timestamp, combo, tier, track time).
+  const spokes = [];
+  if(!reduced&&!battery){
+    const rays={spark:4,surge:6,prism:8,cascade:10,finale:12}[event.tier]||0;
+    for(let i=0;i<rays;i++){
+      const angle=i*Math.PI*2/rays+event.combo*.033+phase*.37;
+      spokes.push({
+        angle,from:.13+phase*.16,to:(.21+phase*(event.drop?.62:.43))*event.size,
+        alpha:clamp(opacity*(.58-(i%3)*.07),0,1),
+        width:i%3===0?2.1:1.3
+      });
+    }
+  }
   return { tier: event.tier, combo: event.combo, drop: event.drop,
-    age, phase, opacity, rings, shards, size: event.size };
+    age, phase, opacity, rings, shards, spokes, size: event.size };
 }
