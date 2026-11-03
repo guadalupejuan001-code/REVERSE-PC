@@ -22,6 +22,34 @@
     });
     return out.str();
   }
+  // C43: the very same MXIM2/MXIM3 bytes, emitted one page at a time.
+  // Keep adaptive_snapshot() as the independent legacy byte oracle.
+  template<class Emit> void persistent_snapshot_to(Emit&& emit) const {
+    if(limits_.max_overrides){const auto saved=persistent_snapshot();emit(saved.data(),saved.size());return;}
+    auto text=[&](const std::string& value){emit(value.data(),value.size());};
+    auto hex=[](const std::string& bytes){
+      constexpr char digits[]="0123456789abcdef";std::string result;result.reserve(bytes.size()*2);
+      for(unsigned char value:bytes){result.push_back(digits[value>>4]);result.push_back(digits[value&15]);}
+      return result;
+    };
+    text("MXIM2 "+std::to_string(revision_)+"\nMXIM3 "+std::to_string(unsigned(background_))+"\n");
+    overrides_->for_each_page_record([&](std::uint64_t page,const std::string& bitmap,const std::string& values){
+      text("P "+std::to_string(page)+" "+hex(bitmap)+" "+hex(values)+"\n");
+    });
+    overrides_->for_each_large_address([&](const auto& item){text("O "+item.first+" "+std::to_string(unsigned(item.second))+"\n");});
+    bindings_->for_each_sorted([&](const auto& item){text("Q "+item.first+" "+item.second+"\n");});
+  }
+  std::size_t persistent_snapshot_size() const {
+    if(limits_.max_overrides)return persistent_snapshot().size();
+    std::size_t size=std::string("MXIM2 "+std::to_string(revision_)+"\nMXIM3 "+std::to_string(unsigned(background_))+"\n").size();
+    auto add=[&](std::size_t count){if(count>std::numeric_limits<std::size_t>::max()-size)throw std::length_error("Ether snapshot size overflow");size+=count;};
+    overrides_->for_each_page_record([&](std::uint64_t page,const std::string& bitmap,const std::string& values){
+      add(5+std::to_string(page).size()+bitmap.size()*2+values.size()*2);
+    });
+    overrides_->for_each_large_address([&](const auto& item){add(4+item.first.size()+std::to_string(unsigned(item.second)).size());});
+    bindings_->for_each_sorted([&](const auto& item){add(4+item.first.size()+item.second.size());});
+    return size;
+  }
   static InverseMemory from_adaptive_snapshot(const std::string& saved,Limits limits){
     const auto unhex=[](const std::string& hex,std::size_t maximum){
       if((hex.size()&1)||hex.size()>maximum*2)

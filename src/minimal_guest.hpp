@@ -346,6 +346,42 @@ class MinimalGuest {
             "Guest snapshot exceeds configured host transport capacity");
     put(result,digest(result,result.size())); return result;
   }
+  // Emit the original RVG bytes without materializing the complete memory text
+  // and RVG together. This is a transport operation; no guest state is changed.
+  template<class Sink> std::size_t snapshot_to(Sink&& sink) const {
+    const auto core=runtime_.core_snapshot();
+    const auto memory_size=runtime_.memory().persistent_snapshot_size();
+    const auto system=machine_.enabled?machine_.save():Bytes{};const auto fp=floating_.save();
+    Bytes header{'R','V','G',std::uint8_t(!fp.empty()?'3':machine_.enabled?'2':'1'),13,10,26,10};
+    put(header,ram_);put(header,override_limit_);put(header,registers_.pc);put(header,registers_.sp);
+    put(header,registers_.instructions);put(header,registers_.nzcv);put(header,registers_.halted?1:0);put(header,registers_.exit_code);
+    for(auto value:registers_.x)put(header,value);
+    put(header,image_bytes());put(header,core.size());put(header,memory_size);
+    if(machine_.enabled||!fp.empty())put(header,system.size());if(!fp.empty())put(header,fp.size());
+    const auto capacity=override_limit_?max_snapshot:adaptive_snapshot_capacity_;
+    std::size_t expected=8; // Final RVG checksum.
+    for(const auto bytes:{header.size(),image_bytes(),core.size(),memory_size,system.size(),fp.size()}){
+      require(expected<=capacity&&bytes<=capacity-expected,"Guest snapshot exceeds configured host transport capacity");expected+=bytes;
+    }
+    std::uint64_t checksum=UINT64_C(14695981039346656037);std::size_t emitted=0;
+    auto write=[&](const void* source,std::size_t length){
+      const auto* bytes=static_cast<const std::uint8_t*>(source);
+      require(emitted<=expected-8&&length<=expected-8-emitted,"Guest stream extent changed");
+      for(std::size_t at=0;at<length;){
+        const auto count=std::min<std::size_t>(65536,length-at);
+        for(std::size_t i=0;i<count;++i){checksum^=bytes[at+i];checksum*=UINT64_C(1099511628211);}
+        sink(bytes+at,count);at+=count;emitted+=count;
+      }
+    };
+    write(header.data(),header.size());if(image_)write(image_->data(),image_->size());write(core.data(),core.size());
+    runtime_.memory().persistent_snapshot_to([&](const char* data,std::size_t size){write(data,size);});
+    write(system.data(),system.size());write(fp.data(),fp.size());
+    require(emitted==expected-8,"Guest stream memory extent differs");Bytes tail;put(tail,checksum);sink(tail.data(),tail.size());
+    return expected;
+  }
+  std::string snapshot_sha256() const {
+    GuestSha256 hash;snapshot_to([&](const std::uint8_t* data,std::size_t length){hash.update(data,length);});return hash.finish();
+  }
   static MinimalGuest from_snapshot(const Bytes& bytes,std::shared_ptr<const GuestBlockImage> disk={},
                                     std::size_t adaptive_capacity=max_adaptive_snapshot) {
     require(adaptive_capacity>=4096 && adaptive_capacity<=max_explicit_adaptive_snapshot,"Invalid explicit host snapshot transport capacity");
@@ -1129,3 +1165,4 @@ inline void MinimalGuest::step(RunResult& result) {
   cpu.pc=next;advance();
 }
 } // namespace reverse_pc::guest
+

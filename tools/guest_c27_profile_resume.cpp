@@ -44,7 +44,12 @@ int main(int argc,char** argv){try{
   std::cerr<<"REVERSE_C27_PROFILE_HOST_PHASE {\"phase\":\"verify_full_original_disk\",\"bytes\":10888413184}\n";
   const auto disk=GuestBlockImage::open(argv[3]);require(disk->size()==UINT64_C(10888413184)&&disk->sha256()==disk_sha,"Wrong original disk");
   std::cerr<<"REVERSE_C27_PROFILE_HOST_PHASE {\"phase\":\"restore_original_machine\"}\n";
-  auto guest=MinimalGuest::from_snapshot(input,disk,MinimalGuest::max_explicit_adaptive_snapshot);require(guest.snapshot()==input,"Restore modified the pinned guest state");
+  auto guest=MinimalGuest::from_snapshot(input,disk,MinimalGuest::max_explicit_adaptive_snapshot);
+  std::size_t compared=0;
+  guest.snapshot_to([&](const std::uint8_t* data,std::size_t length){
+    require(compared<=input.size()&&length<=input.size()-compared&&std::equal(data,data+length,input.begin()+compared),"Restore modified the pinned guest state");compared+=length;
+  });
+  require(compared==input.size(),"Restore changed pinned guest state length");
   require(guest.registers().instructions==initial&&guest.registers().pc==pc,"Wrong pinned instruction boundary");
   require(guest.machine().enabled&&guest.machine().image_kind==2&&guest.machine().pci.enabled&&guest.machine().el<=1&&!guest.registers().halted&&!guest.machine().waiting,"Wrong fixed board state");
   require(guest.logical_ram()==2147483648,"RAM profile changed");
@@ -77,6 +82,7 @@ int main(int argc,char** argv){try{
   unsigned cycles=0;auto result=run_boot_budget_cycles(guest,limits,cycle_limit,save,progress,[&]{return stopping!=0||failure;},&cycles);
   std::cerr<<"REVERSE_C27_PROFILE_CYCLES_COMPLETED "<<cycles<<'\n';
   if(failure){result.reason="guest_boot_failure";result.error="Android reported a fatal mount/reboot failure";save(guest,result);}
-  std::cout<<boot_cycle_json(guest,result,GuestSha256::hash(guest.snapshot()),provenance)<<'\n';
+  std::cout<<boot_cycle_json(guest,result,guest.snapshot_sha256(),provenance)<<'\n';
   return result.reason=="instruction_budget"||result.reason=="host_wall_budget"?0:2;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
+
