@@ -61,8 +61,12 @@ public final class WorkbenchTestRunner extends Instrumentation {
         // state-changing op() calls must never replay an uncertain transaction.
         for(int navigation=0;navigation<4;navigation++){
             waitDesktopReady();
-            String document=js("String(performance.timeOrigin)");
-            js("window.testSnapshot=null;nativeRequest('inspect').then(r=>window.testSnapshot=r).catch(e=>window.testSnapshot={ok:false,error:String(e)});true");
+            // A navigation can occur after waitDesktopReady. Capture the
+            // document and submit its read-only request in one JavaScript turn.
+            String document=js("(()=>{if(document.readyState!=='complete'||typeof nativeRequest!=='function')return null;"+
+                "window.testSnapshot=null;const origin=String(performance.timeOrigin);"+
+                "nativeRequest('inspect').then(r=>window.testSnapshot=r).catch(e=>window.testSnapshot={ok:false,error:String(e)});return origin;})()");
+            if(document.equals("null"))continue;
             boolean changed=false;
             for(int i=0;i<120;i++){
                 JSONObject probe=new JSONObject(js("JSON.stringify({document:String(performance.timeOrigin),snapshot:window.testSnapshot||null})"));
