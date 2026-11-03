@@ -320,3 +320,14 @@ if(BUILD_TESTING)
   set_tests_properties(reverse_pc_os_transport PROPERTIES TIMEOUT 180)
 endif()
 
+if(UNIX)
+  add_executable(reverse_pc_checkpoint_stream tests/guest_checkpoint_stream_test.cpp)
+  target_include_directories(reverse_pc_checkpoint_stream PRIVATE "${ETHER_SOURCE_DIR}/native/include")
+  target_link_libraries(reverse_pc_checkpoint_stream PRIVATE reverse_softfloat)
+  if(BUILD_TESTING)
+    add_test(NAME reverse_pc_checkpoint_stream COMMAND reverse_pc_checkpoint_stream "${CMAKE_CURRENT_BINARY_DIR}/checkpoint-stream-test")
+    set_tests_properties(reverse_pc_checkpoint_stream PROPERTIES TIMEOUT 180)
+  endif()
+endif()
+
+

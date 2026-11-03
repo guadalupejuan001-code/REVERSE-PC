@@ -174,9 +174,8 @@ class BootCycleJournal {
     const auto number=sequence_+1;const auto name="generation-"+std::to_string(number);
     const auto pending=root_/(".pending-"+std::to_string(number)),target=root_/name;
     require(std::filesystem::create_directory(pending),"Cannot stage cycle generation");
-    const auto state=guest.snapshot();const auto sha=GuestSha256::hash(state);
+    const auto sha=write_snapshot(pending/"checkpoint.rvg",guest);
     const auto evidence=boot_cycle_json(guest,report,sha,provenance);
-    write(pending/"checkpoint.rvg",state.data(),state.size());
     write(pending/"report.json",evidence.data(),evidence.size());sync_directory(pending);
     std::filesystem::rename(pending,target);sync_directory(root_);
     const std::string pointer="{\"generation\":"+quote(name)+",\"checkpoint_sha256\":"+quote(sha)+"}\n";
@@ -195,6 +194,20 @@ class BootCycleJournal {
   std::size_t pending_cleanup()const{return cleanup_pending_.size();}
   const std::error_code& cleanup_error()const{return cleanup_error_;}
  private:
+  static std::string write_snapshot(const std::filesystem::path& path,const MinimalGuest& guest){
+    const int fd=::open(path.c_str(),O_WRONLY|O_CREAT|O_EXCL,0600);require(fd>=0,"Cannot create checkpoint component");
+    bool open=true;GuestSha256 sha;
+    try{
+      guest.snapshot_to([&](const std::uint8_t* bytes,std::size_t length){
+        std::size_t done=0;
+        while(done<length){const auto n=::write(fd,bytes+done,length-done);if(n<0&&errno==EINTR)continue;
+          require(n>0,"Incomplete checkpoint component");done+=std::size_t(n);}
+        sha.update(bytes,length);
+      });
+      const int synced=::fsync(fd),closed=::close(fd);open=false;
+      require(synced==0&&closed==0,"Cannot persist checkpoint component");return sha.finish();
+    }catch(...){if(open)::close(fd);throw;}
+  }
   static void sync_directory(const std::filesystem::path& path){
     const int fd=::open(path.c_str(),O_RDONLY|O_DIRECTORY);require(fd>=0,"Cannot open checkpoint directory");
     const int result=::fsync(fd);::close(fd);require(result==0,"Cannot sync checkpoint directory");
@@ -210,3 +223,4 @@ class BootCycleJournal {
   CleanupAction cleanup_;std::vector<std::filesystem::path> cleanup_pending_;std::error_code cleanup_error_;
 };
 } // namespace reverse_pc::guest
+

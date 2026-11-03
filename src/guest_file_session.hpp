@@ -5,8 +5,26 @@
 #include <chrono>
 #include <fstream>
 #include <sstream>
+#include <cerrno>
+#include <cstdio>
+#include <cstdlib>
+#include <unistd.h>
 
 namespace reverse_pc::guest {
+inline std::size_t guest_write_snapshot_candidate(const MinimalGuest& guest,const std::string& path){
+  require(!path.empty(),"Missing guest candidate path");
+  const auto pattern=path+".pending-XXXXXX";std::vector<char> pending(pattern.begin(),pattern.end());pending.push_back(0);
+  const int fd=::mkstemp(pending.data());require(fd>=0,"Cannot stage guest candidate");bool opened=true;
+  try{
+    const auto size=guest.snapshot_to([&](const std::uint8_t* data,std::size_t length){
+      std::size_t done=0;while(done<length){const auto n=::write(fd,data+done,length-done);if(n<0&&errno==EINTR)continue;
+        require(n>0,"Cannot write complete guest candidate");done+=std::size_t(n);}
+    });
+    const int synced=::fsync(fd),closed=::close(fd);opened=false;
+    require(synced==0&&closed==0,"Cannot persist complete guest candidate");
+    require(std::rename(pending.data(),path.c_str())==0,"Cannot publish guest candidate");return size;
+  }catch(...){if(opened)::close(fd);::unlink(pending.data());throw;}
+}
 inline Bytes guest_read_file(const std::string& path,std::size_t limit){
   std::ifstream input(path,std::ios::binary|std::ios::ate);
   require(bool(input),"Cannot open guest file");const auto length=input.tellg();
@@ -37,11 +55,7 @@ inline std::string guest_file_operation(const std::string& input,const std::stri
   if(operation==3)guest.console_input(text);
   std::size_t size=0;
   if(operation){
-    const auto saved=guest.snapshot();size=saved.size();
-    std::ofstream output(candidate,std::ios::binary|std::ios::trunc);
-    require(bool(output),"Cannot open guest candidate");
-    output.write(reinterpret_cast<const char*>(saved.data()),std::streamsize(saved.size()));
-    output.close();require(bool(output),"Cannot write complete guest candidate");
+    size=guest_write_snapshot_candidate(guest,candidate);
   }else{std::ifstream original(input,std::ios::binary|std::ios::ate);size=std::size_t(original.tellg());}
   std::ostringstream report;report<<"{\"guest\":"<<guest.statistics()<<",\"snapshot_bytes\":"<<size;
   if(operation==1)report<<",\"executed_this_run\":"<<run.executed
@@ -52,3 +66,4 @@ inline std::string guest_file_operation(const std::string& input,const std::stri
     std::chrono::steady_clock::now()-begin).count()<<"}";return report.str();
 }
 } // namespace reverse_pc::guest
+
