@@ -29,8 +29,9 @@ import android.view.inputmethod.InputMethodManager;
 public final class WorkbenchTestRunner extends Instrumentation {
     private Bundle arguments;
     private volatile WorkbenchActivity activity;
-    private volatile Activity resumed;
-    @Override public void callActivityOnResume(Activity current){super.callActivityOnResume(current);resumed=current;if(current instanceof WorkbenchActivity)activity=(WorkbenchActivity)current;}
+    private volatile Activity resumed,paused;
+    @Override public void callActivityOnResume(Activity current){super.callActivityOnResume(current);paused=null;resumed=current;if(current instanceof WorkbenchActivity)activity=(WorkbenchActivity)current;}
+    @Override public void callActivityOnPause(Activity current){super.callActivityOnPause(current);paused=current;}
     @Override public void onCreate(Bundle args){arguments=args;start();}
     private static void require(boolean ok,String message){if(!ok)throw new AssertionError(message);}
     private String js(String script)throws Exception{
@@ -496,7 +497,12 @@ public final class WorkbenchTestRunner extends Instrumentation {
         require(paused.getBoolean("paused")&&!paused.getBoolean("resident")&&!paused.getBoolean("checkpoint_dirty"),"Pause did not publish and release the session");
         require(streamHash(dataFile("guest-aarch64.rvg")).equals(arguments.getString("resident_expected_sha256")),"Paused RVG differs from independent host execution");
         JSONObject next=op("guestRunContinuous","","residentBeforeBackground");require(next.getJSONObject("guest").getLong("instructions")==1250000,"Resume did not use the committed state");
+        Activity backgrounded=activity;
         try(java.io.InputStream shell=new android.os.ParcelFileDescriptor.AutoCloseInputStream(getUiAutomation().executeShellCommand("input keyevent KEYCODE_HOME"))){while(shell.read()!=-1){}}
+        // Input delivery does not wait for Activity.onPause or its queued save.
+        // Observe onPause returning, then drain the native queue it submitted to.
+        for(int i=0;i<150&&paused!=backgrounded;i++)Thread.sleep(100);
+        require(paused==backgrounded,"HOME did not pause the resident Activity");
         RuntimeExecutor.INSTANCE.submit(()->true).get(90,TimeUnit.SECONDS);
         require(streamHash(dataFile("guest-aarch64.rvg")).equals(arguments.getString("resident_background_sha256")),"Activity pause did not flush accepted progress");
         runOnMainSync(()->getTargetContext().startActivity(new Intent(getTargetContext(),WorkbenchActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)));
