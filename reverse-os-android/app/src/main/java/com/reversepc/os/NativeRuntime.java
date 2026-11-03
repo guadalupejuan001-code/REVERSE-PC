@@ -18,5 +18,9 @@ public final class NativeRuntime {
     public static native byte[] guestInput(byte[] state,String text);
     public static native byte[] guestFileOperation(String input,String candidate,int operation,int steps,String text);
     public static native byte[] guestFileDevices(String input,String candidate,int operation,int steps,String text,String diskPath);
+    public static native long guestSessionOpen(String input,String diskPath);
+    public static native byte[] guestSessionOperation(long handle,int operation,int steps,String text,String candidate,long revision);
+    public static native void guestSessionClose(long handle);
 }
+
 

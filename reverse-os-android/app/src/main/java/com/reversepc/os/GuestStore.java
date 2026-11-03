@@ -10,6 +10,7 @@ import java.io.FileInputStream;
 import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import android.graphics.Bitmap;
 import android.util.Base64;
 import org.json.JSONObject;
@@ -20,22 +21,27 @@ public final class GuestStore {
     private final File cache;
     private final File disks;
     private static final long MAX_CHECKPOINT=256L*1024*1024;
+    // All access is serialized by RuntimeExecutor. Activities share one guest;
+    // an old Activity's delayed lifecycle callback cannot close a newer owner.
+    private static long resident;
+    private static String residentPath;
+    private static GuestStore residentOwner;
     public GuestStore(Context context){file=new AtomicFile(new File(context.getFilesDir(),"guest-aarch64.rvg"));cache=context.getCacheDir();disks=new File(context.getFilesDir(),"guest-disks");}
     private byte[] state()throws Exception{
         if(file.getBaseFile().length()>MAX_CHECKPOINT)throw new IllegalStateException("Checkpoint del invitado demasiado grande");
         return file.readFully();
     }
     private JSONObject commit(byte[] packet)throws Exception{
+        releaseForReplacement();
         ResultPacket result=ResultPacket.parse(packet);
         JSONObject report=new JSONObject(result.output);
-        FileOutputStream output=null;
-        try{output=file.startWrite();output.write(result.state);file.finishWrite(output);}
-        catch(Exception error){if(output!=null)file.failWrite(output);throw error;}
-        return report.put("ok",true).put("loaded",true);
+        File candidate=File.createTempFile("reverse-initial-",".rvg",cache);
+        try{try(OutputStream output=new FileOutputStream(candidate)){output.write(result.state);}return publish(candidate,report);}
+        finally{candidate.delete();}
     }
     public JSONObject inspect()throws Exception{
         if(!file.getBaseFile().exists()&&!new File(file.getBaseFile()+".bak").exists())return new JSONObject().put("ok",true).put("loaded",false);
-        return report(current(),null,0,0,"").put("ok",true).put("loaded",true);
+        return residentReport(0,0,"",null,0);
     }
     private File current()throws Exception{
         try(InputStream ignored=file.openRead()){} // Recover an interrupted AtomicFile publication.
@@ -64,6 +70,53 @@ public final class GuestStore {
         return new JSONObject(new String(NativeRuntime.guestFileDevices(input.getAbsolutePath(),
             output==null?null:output.getAbsolutePath(),operation,steps,text,disk==null?null:disk.getAbsolutePath()),StandardCharsets.UTF_8));
     }
+    private long session()throws Exception{
+        String path=file.getBaseFile().getAbsolutePath();
+        if(resident==0){File input=current(),disk=diskFor(input);long opened=NativeRuntime.guestSessionOpen(path,disk==null?null:disk.getAbsolutePath());
+            if(opened<=0)throw new IllegalStateException("No se pudo cargar la sesión del invitado");resident=opened;residentPath=path;}
+        if(!path.equals(residentPath))throw new IllegalStateException("La sesión pertenece a otro archivo");
+        residentOwner=this;return resident;
+    }
+    private JSONObject residentReport(int operation,int steps,String text,File candidate,long revision)throws Exception{
+        return new JSONObject(new String(NativeRuntime.guestSessionOperation(session(),operation,steps,text,
+            candidate==null?null:candidate.getAbsolutePath(),revision),StandardCharsets.UTF_8)).put("ok",true).put("loaded",true);
+    }
+    private JSONObject flushResident()throws Exception{
+        JSONObject state=residentReport(0,0,"",null,0);if(!state.getBoolean("checkpoint_dirty"))return state;
+        File candidate=File.createTempFile("reverse-resident-",".rvg",cache);
+        try{
+            JSONObject staged=residentReport(4,0,"",candidate,0);
+            publish(candidate,staged);
+            return residentReport(6,0,"",null,staged.getLong("staged_revision"));
+        }finally{candidate.delete();}
+    }
+    private JSONObject mutateResident(int operation,int steps,String text,boolean durable)throws Exception{
+        boolean persistenceAttempted=false;
+        try{
+            JSONObject result=residentReport(operation,steps,text,null,0),g=result.getJSONObject("guest");
+            if(durable||result.optBoolean("checkpoint_due")||g.optBoolean("halted")||g.optBoolean("waiting")){
+                persistenceAttempted=true;
+                JSONObject saved=flushResident();
+                for(String key:new String[]{"checkpoint_dirty","checkpoint_due","last_checkpoint_bytes","snapshot_bytes"})
+                    if(saved.has(key))result.put(key,saved.get(key));
+            }
+            return result;
+        }catch(Exception failure){
+            // Preserve all earlier accepted blocks before reporting an ISA or
+            // storage failure; a failed run itself is rolled back by the VM.
+            if(!persistenceAttempted&&resident!=0&&residentOwner==this)try{flushResident();}catch(Exception save){failure.addSuppressed(save);}
+            throw failure;
+        }
+    }
+    public JSONObject pause()throws Exception{
+        if(resident==0||residentOwner!=this)return new JSONObject().put("ok",true).put("paused",true);
+        JSONObject result=flushResident();NativeRuntime.guestSessionClose(resident);
+        resident=0;residentPath=null;residentOwner=null;
+        return result.put("resident",false).put("paused",true);
+    }
+    private void releaseForReplacement()throws Exception{
+        if(resident!=0){if(!file.getBaseFile().getAbsolutePath().equals(residentPath))throw new IllegalStateException("La sesión pertenece a otro archivo");residentOwner=this;pause();}
+    }
     public JSONObject importDisk(InputStream input)throws Exception{
         if(!disks.isDirectory()&&!disks.mkdirs())throw new IllegalStateException("No se pudo preparar el disco");
         File candidate=File.createTempFile("disk-",".raw",disks);
@@ -78,7 +131,7 @@ public final class GuestStore {
     public JSONObject display()throws Exception{
         File frame=File.createTempFile("reverse-frame-",".rgb",cache);
         try{
-            JSONObject result=report(current(),frame,5,0,"").put("ok",true);
+            JSONObject result=residentReport(5,0,"",frame,0);
             if(!result.optBoolean("display_ready"))return result;
             JSONObject state=result.getJSONObject("guest");int w=state.getInt("display_width"),h=state.getInt("display_height");
             if(w<1||h<1||w>1280||h>1024||frame.length()!=3L*w*h)throw new IllegalStateException("Dimensiones de pantalla no válidas");
@@ -105,18 +158,25 @@ public final class GuestStore {
         try(RandomAccessFile file=new RandomAccessFile(target,"rw")){file.setLength(total);}
     }
     private JSONObject publish(File candidate,JSONObject result)throws Exception{
+        if(file.getBaseFile().exists()&&!file.getBaseFile().isFile())throw new IllegalStateException("El destino del checkpoint no es un archivo");
+        long expectedBytes=candidate.length();MessageDigest expected=MessageDigest.getInstance("SHA-256");
         FileOutputStream output=null;
         try(InputStream input=new FileInputStream(candidate)){
-            output=file.startWrite();copy(input,output,MAX_CHECKPOINT);file.finishWrite(output);output=null;
+            output=file.startWrite();byte[] part=new byte[8192];long total=0;int count;
+            while((count=input.read(part))!=-1){if(total>MAX_CHECKPOINT-count)throw new IllegalArgumentException("Archivo del invitado demasiado grande");output.write(part,0,count);expected.update(part,0,count);total+=count;}
+            if(total!=expectedBytes)throw new IllegalStateException("El candidato cambió durante el guardado");
+            output.getFD().sync();file.finishWrite(output);output=null;
         }catch(Exception error){if(output!=null)file.failWrite(output);throw error;}
+        // AtomicFile can log a failed rename without throwing. Acknowledge the
+        // resident state only after verifying what was actually published.
+        if(!file.getBaseFile().isFile()||file.getBaseFile().length()!=expectedBytes)throw new IllegalStateException("No se publicó el checkpoint completo");
+        MessageDigest actual=MessageDigest.getInstance("SHA-256");byte[] part=new byte[8192];int count;
+        try(InputStream input=new FileInputStream(file.getBaseFile())){while((count=input.read(part))!=-1)actual.update(part,0,count);}
+        if(!MessageDigest.isEqual(expected.digest(),actual.digest()))throw new IllegalStateException("El checkpoint publicado no coincide con el candidato");
         return result.put("ok",true).put("loaded",true);
     }
-    private JSONObject fileOperation(int operation,int steps,String text)throws Exception{
-        File candidate=File.createTempFile("reverse-guest-",".candidate",cache);
-        try{return publish(candidate,report(current(),candidate,operation,steps,text));}
-        finally{candidate.delete();}
-    }
     public JSONObject importCheckpoint(InputStream input)throws Exception{
+        releaseForReplacement();
         File candidate=File.createTempFile("reverse-guest-import-",".rvg",cache);
         try{
             try(OutputStream output=new FileOutputStream(candidate)){copy(input,output,MAX_CHECKPOINT);}
@@ -124,6 +184,7 @@ public final class GuestStore {
         }finally{candidate.delete();}
     }
     public JSONObject importLinuxImage(InputStream input)throws Exception{
+        releaseForReplacement();
         File image=File.createTempFile("reverse-linux-",".image",cache),candidate=null;
         try{
             try(OutputStream output=new FileOutputStream(image)){copy(input,output,64L*1024*1024);}
@@ -135,20 +196,21 @@ public final class GuestStore {
     public JSONObject createSystem(byte[] image,int kind)throws Exception{return commit(NativeRuntime.guestInitializeSystem(image,kind));}
     public JSONObject input(String text)throws Exception{
         if(text==null||text.getBytes(java.nio.charset.StandardCharsets.UTF_8).length>4096)throw new IllegalArgumentException("Entrada de consola supera 4096 bytes");
-        return fileOperation(3,0,text);
+        return mutateResident(3,0,text,true);
     }
     public JSONObject run(int steps)throws Exception{
         if(steps<1||steps>10000)throw new IllegalArgumentException("Pasos: 1..10000");
-        return fileOperation(1,steps,"");
+        return mutateResident(1,steps,"",true);
     }
-    public JSONObject runContinuous()throws Exception{return fileOperation(1,250000,"");}
+    public JSONObject runContinuous()throws Exception{return mutateResident(1,250000,"",false);}
     public JSONObject xi(String source)throws Exception{
         if(source==null||source.getBytes(java.nio.charset.StandardCharsets.UTF_8).length>65536)
             throw new IllegalArgumentException("Programa XI del delta supera 64 KiB");
-        return fileOperation(2,0,source);
+        return mutateResident(2,0,source,true);
     }
-    public byte[] export()throws Exception{return state();}
+    public byte[] export()throws Exception{if(resident!=0){session();flushResident();}return state();}
     public void exportTo(OutputStream output)throws Exception{
+        if(resident!=0){session();flushResident();}
         try(InputStream input=file.openRead()){copy(input,output,MAX_CHECKPOINT);}
     }
     public static byte[] readElf(InputStream input)throws Exception{
@@ -158,4 +220,5 @@ public final class GuestStore {
         return bytes.toByteArray();
     }
 }
+
 

@@ -330,4 +330,15 @@ if(UNIX)
   endif()
 endif()
 
+if(UNIX)
+  find_package(Threads REQUIRED)
+  add_executable(reverse_pc_guest_resident tests/guest_resident_session_test.cpp)
+  target_include_directories(reverse_pc_guest_resident PRIVATE "${ETHER_SOURCE_DIR}/native/include")
+  target_link_libraries(reverse_pc_guest_resident PRIVATE reverse_softfloat Threads::Threads)
+  if(BUILD_TESTING)
+    add_test(NAME reverse_pc_guest_resident COMMAND reverse_pc_guest_resident "${CMAKE_CURRENT_BINARY_DIR}/guest-resident-test")
+    set_tests_properties(reverse_pc_guest_resident PROPERTIES TIMEOUT 180)
+  endif()
+endif()
+
 

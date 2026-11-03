@@ -451,6 +451,8 @@ public final class WorkbenchTestRunner extends Instrumentation {
         require(ran.getBoolean("ok")&&ran.getLong("executed_this_run")==250000&&
             ran.getJSONObject("guest").getLong("instructions")==180576448,"Real Android checkpoint did not advance through UI/JNI/file persistence");
         js("window.ReverseGuest.imported("+ran+");true");
+        JSONObject saved=op("guestPause","","largeGuestPause");
+        require(saved.getBoolean("ok")&&!saved.getBoolean("checkpoint_dirty"),"Large guest pause did not publish the accepted block");
         String expected=arguments.getString("expected_guest_sha256");
         require(expected!=null&&expected.matches("[0-9a-f]{64}"),"Missing independent native checkpoint digest");
         require(streamHash(dataFile("guest-aarch64.rvg")).equals(expected),"Android file execution differs from independent host execution");
@@ -477,6 +479,56 @@ public final class WorkbenchTestRunner extends Instrumentation {
         Files.write(dataFile("large-guest-proof.json").toPath(),new JSONObject().put("input_instructions",180326448)
             .put("instructions",180576448).put("checkpoint_bytes",exported.length()).put("sha256",expected)
             .put("host_state_identical",true).put("continuous_pause_saved",true).put("corrupt_import_preserved",true).put("android_boot",false).toString().getBytes(StandardCharsets.UTF_8));
+    }
+    private void residentGuestWorkflow()throws Exception{
+        String desktopBefore=hash("session.rvp");File input=dataFile("resident-input.rvg");
+        require(input.length()>32L*1024*1024,"Resident fixture does not exercise file transport");
+        JSONObject imported=RuntimeExecutor.INSTANCE.submit(()->{try(java.io.InputStream stream=new java.io.FileInputStream(input)){return new GuestStore(getTargetContext()).importCheckpoint(stream);}}).get(90,TimeUnit.SECONDS);
+        openGuestView();js("window.ReverseGuest.imported("+imported+");true");
+        op("guestPause","","residentReset");String initial=streamHash(dataFile("guest-aarch64.rvg"));
+        for(int i=1;i<=4;i++){
+            JSONObject block=op("guestRunContinuous","","residentBlock"+i);
+            require(block.getBoolean("ok")&&block.getBoolean("resident")&&block.getBoolean("checkpoint_dirty"),"Continuous block was not retained live");
+            require(block.getJSONObject("guest").getLong("instructions")==250000L*i,"Resident block reloaded or lost progress");
+            require(streamHash(dataFile("guest-aarch64.rvg")).equals(initial),"Continuous request rewrote the checkpoint before its deadline");
+        }
+        JSONObject paused=op("guestPause","","residentPaused");
+        require(paused.getBoolean("paused")&&!paused.getBoolean("resident")&&!paused.getBoolean("checkpoint_dirty"),"Pause did not publish and release the session");
+        require(streamHash(dataFile("guest-aarch64.rvg")).equals(arguments.getString("resident_expected_sha256")),"Paused RVG differs from independent host execution");
+        JSONObject next=op("guestRunContinuous","","residentBeforeBackground");require(next.getJSONObject("guest").getLong("instructions")==1250000,"Resume did not use the committed state");
+        try(java.io.InputStream shell=new android.os.ParcelFileDescriptor.AutoCloseInputStream(getUiAutomation().executeShellCommand("input keyevent KEYCODE_HOME"))){while(shell.read()!=-1){}}
+        RuntimeExecutor.INSTANCE.submit(()->true).get(90,TimeUnit.SECONDS);
+        require(streamHash(dataFile("guest-aarch64.rvg")).equals(arguments.getString("resident_background_sha256")),"Activity pause did not flush accepted progress");
+        runOnMainSync(()->getTargetContext().startActivity(new Intent(getTargetContext(),WorkbenchActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK|Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)));
+        waitDesktopReady();JSONObject resumed=op("guestInspect","","residentResumed");
+        require(resumed.getJSONObject("guest").getLong("instructions")==1250000,"Foreground restore changed the paused count");
+        RuntimeExecutor.INSTANCE.submit(()->{
+            GuestStore older=new GuestStore(getTargetContext()),newer=new GuestStore(getTargetContext());older.inspect();
+            JSONObject live=newer.runContinuous();String durable=streamHash(dataFile("guest-aarch64.rvg"));older.pause();
+            require(newer.inspect().getBoolean("checkpoint_dirty"),"Old Activity owner closed a newer live session");
+            require(streamHash(dataFile("guest-aarch64.rvg")).equals(durable),"Stale owner published another session's state");
+            newer.pause();newer.inspect();
+            File current=dataFile("guest-aarch64.rvg"),backup=dataFile("resident-durable-backup.rvg");String before=streamHash(current);
+            require(current.renameTo(backup),"Cannot stage publication failure test");require(current.mkdir(),"Cannot block publication target");
+            Files.write(new File(current,"blocker").toPath(),new byte[]{1});boolean failed=false;
+            long accepted;
+            try{
+                try{newer.run(1);}catch(Exception expected){failed=true;}
+                JSONObject pending=newer.inspect();accepted=pending.getJSONObject("guest").getLong("instructions");
+                require(failed&&pending.getBoolean("checkpoint_dirty"),"Publication failure acknowledged volatile state");
+                require(streamHash(backup).equals(before),"Publication failure changed the last durable copy");
+            }finally{new File(current,"blocker").delete();current.delete();require(backup.renameTo(current),"Cannot restore publication target");}
+            MessageDigest exported=MessageDigest.getInstance("SHA-256");
+            newer.exportTo(new OutputStream(){public void write(int value){exported.update((byte)value);}public void write(byte[] bytes,int at,int length){exported.update(bytes,at,length);}});
+            byte[] raw=exported.digest();StringBuilder digest=new StringBuilder();for(byte value:raw)digest.append(String.format(java.util.Locale.ROOT,"%02x",value&255));
+            require(streamHash(current).equals(digest.toString()),"Export omitted accepted resident state");
+            JSONObject clean=newer.inspect();require(!clean.getBoolean("checkpoint_dirty")&&clean.getJSONObject("guest").getLong("instructions")==accepted,"Save retry re-executed or lost an accepted block");
+            newer.pause();return true;
+        }).get(120,TimeUnit.SECONDS);
+        require(desktopBefore.equals(hash("session.rvp")),"Resident guest modified the desktop authority");
+        Files.write(dataFile("resident-proof.json").toPath(),new JSONObject().put("batch_requests",4).put("batch_instructions",1000000)
+            .put("activity_pause_instructions",1250000).put("host_rvg_identical",true).put("failed_publication_retry",true)
+            .put("stale_owner_protected",true).put("android_boot",false).toString().getBytes(StandardCharsets.UTF_8));
     }
     private void systemWorkflow(boolean restore)throws Exception{
         String desktopBefore=hash("session.rvp");
@@ -540,6 +592,10 @@ public final class WorkbenchTestRunner extends Instrumentation {
             require(snapshot.getJSONObject("android").getLong("ram_total_bytes")>0,"No native RAM reading");
             require(snapshot.getJSONObject("core").getString("state_format").equals("RVPC2"),"Wrong checkpoint format");
             require(snapshot.getJSONObject("build").getString("source_commit").matches("[a-f0-9]{40}"),"Missing build provenance");
+            if(requested.equals("guestResident")){
+                residentGuestWorkflow();visualCheck(requested);
+                result.putString("stream","WORKBENCH_TESTS_OK mode=guestResident native=XI/Ether resident=true original-rvg=true\n");result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
+            }
             if(requested.equals("guestContinuous")||requested.equals("guestLarge")){
                 if(requested.equals("guestLarge"))largeGuestWorkflow();else continuousGuestWorkflow();
                 visualCheck(requested);
@@ -617,4 +673,5 @@ public final class WorkbenchTestRunner extends Instrumentation {
         }
     }
 }
+
 

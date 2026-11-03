@@ -217,6 +217,7 @@ public final class WorkbenchActivity extends Activity {
                     else if("execute".equals(operation))result=executeNative(payload);
                     else if("experiment".equals(operation))result=experimentNative(payload);
                     else if("guestInspect".equals(operation))result=guest().inspect();
+                    else if("guestPause".equals(operation))result=guest().pause();
                     else if("guestDemo".equals(operation))result=guest().create(null);
                     else if("guestSystem".equals(operation))result=guest().createSystem(null,0);
                     else if("guestFloat".equals(operation))result=guest().createSystem(null,3);
@@ -378,10 +379,12 @@ public final class WorkbenchActivity extends Activity {
         if(request==EXPORT){byte[] bytes=pendingExport;boolean guestExport=pendingGuestExport;pendingExport=null;pendingGuestExport=false;if(result==RESULT_OK&&(bytes!=null||guestExport)&&data!=null&&data.getData()!=null){Uri target=data.getData();RuntimeExecutor.INSTANCE.execute(()->{try(OutputStream stream=getContentResolver().openOutputStream(target,"wt")){if(stream==null)throw new IllegalStateException("Destino no disponible");if(guestExport)guest().exportTo(stream);else stream.write(bytes);message("Archivo exportado.");}catch(Exception error){message("No se pudo escribir el archivo.");}});}}
     }
     @Override public void onWindowFocusChanged(boolean focused){super.onWindowFocusChanged(focused);if(focused)immersive(this);}
-    @Override protected void onPause(){activityActive=false;activityEpoch++;if(web!=null){web.evaluateJavascript("document.body&&(document.body.dataset.appPaused='true');window.ReverseGuest&&window.ReverseGuest.pause()",null);web.onPause();}super.onPause();}
-    @Override protected void onResume(){super.onResume();activityActive=true;immersive(this);if(web!=null){web.onResume();web.evaluateJavascript("document.body&&(document.body.dataset.appPaused='false')",null);}}
-    @Override protected void onDestroy(){closed=true;if(chooser!=null){chooser.onReceiveValue(null);chooser=null;}if(web!=null){web.removeJavascriptInterface("ReverseNative");web.destroy();}super.onDestroy();}
+    private void pauseGuestSession(){RuntimeExecutor.INSTANCE.execute(()->{try{if(guest!=null)guest.pause();}catch(Exception error){android.util.Log.e("ReverseGuest","Could not persist paused guest; resident state retained",error);}});}
+    @Override protected void onPause(){activityActive=false;activityEpoch++;if(web!=null){web.evaluateJavascript("document.body&&(document.body.dataset.appPaused='true');window.ReverseGuest&&window.ReverseGuest.pause()",null);web.onPause();}pauseGuestSession();super.onPause();}
+    @Override protected void onResume(){super.onResume();activityActive=true;immersive(this);if(web!=null){web.onResume();web.evaluateJavascript("document.body&&(document.body.dataset.appPaused='false');window.ReverseGuest&&window.ReverseGuest.resume()",null);}}
+    @Override protected void onDestroy(){closed=true;pauseGuestSession();if(chooser!=null){chooser.onReceiveValue(null);chooser=null;}if(web!=null){web.removeJavascriptInterface("ReverseNative");web.destroy();}super.onDestroy();}
     // Used only by the in-repository Android instrumentation tests.
     public WebView testingWebView(){return web;}
 }
+
 
