@@ -280,7 +280,14 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
         auto expanded = words;
         for (std::size_t i = 1; i < expanded.size(); ++i)
           expanded[i] = machine_substitute(expanded[i], registers);
-        if (trace.enabled && is_gate(op)) ++trace.gates;
+        if (trace.enabled && is_gate(op)) {
+          ++trace.gates;
+          if((op=="cx"||op=="cz")&&expanded.size()==3){
+            auto a=canonical(core,expanded[1]),b=canonical(core,expanded[2]);
+            if(b<a)std::swap(a,b);
+            trace.two_qubit_edges.emplace(a,b);
+          }
+        }
         std::ostringstream line;
         line.imbue(std::locale::classic());
         line.exceptions(std::ios::badbit | std::ios::failbit);

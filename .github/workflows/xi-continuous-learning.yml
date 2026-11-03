@@ -8,6 +8,9 @@ on:
       - 'scripts/build-xi-session.sh'
       - 'scripts/xi_session_client.py'
       - 'tests/xi_continuous.py'
+      - 'tests/mps_connected.cpp'
+      - 'tests/xi_mps.py'
+      - 'CMakeLists.txt'
       - '.github/workflows/xi-continuous-learning.yml'
   push:
     branches: [main]
@@ -34,6 +37,11 @@ jobs:
           bash scripts/build-xi-session.sh deps/mundo-x build/xi-learning
       - name: Dense oracle, all 2000 causal derivatives, checkpoint and rollback
         run: python tests/xi_continuous.py build/xi-learning/reverse_pc build/xi-learning/xi_session build/xi-validation
+      - name: Connected 1000-qubit MPS, dense oracle and all 999 entangled cuts
+        run: |
+          g++ -std=c++17 -O2 -Wall -Wextra -Wpedantic -Isrc tests/mps_connected.cpp -o build/mps-connected
+          build/mps-connected > build/xi-validation/mps-connected.json
+          python tests/xi_mps.py build/xi-learning/reverse_pc build/xi-learning/xi_session build/xi-validation/mps
       - uses: actions/upload-artifact@v4
         if: always()
         with:

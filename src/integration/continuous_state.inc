@@ -1,6 +1,6 @@
 // Included in InfiniteCore. State preparation and rotations use the same
 // candidate/commit boundary, component authority and limits as historical XI.
-void prepare_zero_block(const std::string& raw, std::size_t width) {
+void prepare_zero_block(const std::string& raw, std::size_t width, bool mps=false) {
   if (!width || width > limits_.max_component_qubits)
     throw std::length_error("zero-block width exceeds component budget");
   if (background_ != Background::Zero || state_->ether.rule_count())
@@ -39,7 +39,9 @@ void prepare_zero_block(const std::string& raw, std::size_t width) {
     erase_slot(*next, slot);
   }
   auto component = std::make_shared<Component>(ids,
-      reverse_pc::QuantumBlock(CompactCore(width), limits_.max_reduced_components,
+      mps ? reverse_pc::QuantumBlock::mps_zero(width,limits_.max_reduced_components,
+                             limits_.max_dense_block,limits_.fast_reduced_clifford)
+          : reverse_pc::QuantumBlock(CompactCore(width), limits_.max_reduced_components,
                              limits_.max_dense_block, limits_.fast_reduced_clifford));
   const auto bytes = checked_add(next->tableau_bytes, component->core.state_bytes(), "reset payload overflow");
   check_resources(checked_add(next->locations.size(), width, "reset width overflow"), width, bytes);
@@ -50,6 +52,23 @@ void prepare_zero_block(const std::string& raw, std::size_t width) {
   }
   next->components.push_back(std::move(component)); next->tableau_bytes = bytes;
   ++next->revision; state_.swap(next);
+}
+
+std::string mps_report(const std::string& raw) const {
+  const auto found=state_->locations.find(canonical(raw));
+  if(found==state_->locations.end())throw std::invalid_argument("unprepared MPS register");
+  const auto& block=state_->components[found->second.component]->core;
+  if(!block.is_mps())throw std::invalid_argument("not an MPS register");
+  double lo=1,hi=0;std::size_t entangled=0;
+  for(std::size_t cut=1;cut<block.qubits();++cut){
+    const auto p=block.mps_purity(cut);lo=std::min(lo,p);hi=std::max(hi,p);
+    if(p<1-1e-10)++entangled;
+  }
+  std::ostringstream o;o<<std::setprecision(17)<<"{\"type\":\"mps_register\",\"qubits\":"<<block.qubits()
+    <<",\"max_bond_dimension\":"<<block.mps_max_bond()<<",\"bipartitions\":"<<(block.qubits()-1)
+    <<",\"nonproduct_bipartitions\":"<<entangled<<",\"minimum_purity\":"<<lo
+    <<",\"maximum_purity\":"<<hi<<",\"norm\":"<<block.norm()<<",\"state_payload_bytes\":"<<block.state_bytes()<<"}\n";
+  return o.str();
 }
 
 void rotate(const std::string& raw, char axis, double angle) {

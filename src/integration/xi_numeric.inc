@@ -33,13 +33,15 @@ struct MachineQuantumTrace {
   bool enabled = false;
   std::size_t rotations = 0, observations = 0, preparations = 0, gates = 0, max_prepared_block = 0;
   std::set<std::string> rotated, observed;
+  std::set<std::pair<std::string,std::string>> two_qubit_edges;
   std::string report(const InfiniteCore& core) const {
     std::ostringstream o; o << "{\"type\":\"quantum_trace\",\"active_qubits\":" << core.stats().active_qubits
       << ",\"rotations\":" << rotations << ",\"observations\":" << observations
       << ",\"gates\":" << gates << ",\"preparations\":" << preparations
       << ",\"max_prepared_block\":" << max_prepared_block
       << ",\"distinct_rotated_qubits\":" << rotated.size()
-      << ",\"distinct_observed_qubits\":" << observed.size() << "}\n";
+      << ",\"distinct_observed_qubits\":" << observed.size()
+      << ",\"distinct_two_qubit_edges\":" << two_qubit_edges.size() << "}\n";
     return o.str();
   }
 };
@@ -125,10 +127,13 @@ inline bool machine_numeric(const std::string& op, const std::vector<std::string
     if (trace.enabled) { ++trace.rotations; trace.rotated.insert(address); }
     result.explicit_mutation = true; return true;
   }
-  if (op == "qprepare") {
+  if (op == "qmpsinfo") {
+    require_count(words,2);emit(core.mps_report(machine_substitute(words[1],r)));return true;
+  }
+  if (op == "qprepare" || op == "qmps") {
     require_count(words, 3); const auto width = machine_value(words[2], r);
     if (width <= 0) throw std::out_of_range("positive block width required");
-    core.prepare_zero_block(machine_substitute(words[1], r), static_cast<std::size_t>(width));
+    core.prepare_zero_block(machine_substitute(words[1], r), static_cast<std::size_t>(width),op=="qmps");
     if (trace.enabled) { ++trace.preparations; trace.max_prepared_block = std::max(trace.max_prepared_block, static_cast<std::size_t>(width)); }
     result.explicit_mutation = true; return true;
   }

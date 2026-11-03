@@ -3,7 +3,7 @@ public:
 static constexpr std::size_t max_integrated_snapshot_bytes = 64 * 1024 * 1024;
 struct QuantumStats {
   std::size_t clifford = 0, adaptive = 0, reduced = 0, coefficients = 0,
-              amplitudes = 0, t_gates = 0, payload_bytes = 0;
+              amplitudes = 0, t_gates = 0, payload_bytes = 0, mps = 0;
   double norm = 1.;
 };
 QuantumStats quantum_stats() const {
@@ -13,6 +13,8 @@ QuantumStats quantum_stats() const {
       ++out.clifford;
     else if (c->core.is_adaptive())
       ++out.adaptive;
+    else if(c->core.is_mps())
+      ++out.mps;
     else
       ++out.reduced;
     out.coefficients += c->core.reduced_components();
@@ -32,7 +34,7 @@ bool try_direct_phase(State& state, const EtherCore::Observable& pulled,
   if (first == state.locations.end()) return false;
   const auto slot = first->second.component;
   const auto& before = state.components[slot]->core;
-  if (before.is_adaptive() ||
+  if (before.is_adaptive() || before.is_mps() ||
       (before.is_clifford() && before.qubits() <= limits_.max_dense_block))
     return false;
   auto p = identity_pauli(before.qubits());
