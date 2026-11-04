@@ -66,14 +66,14 @@ export function verifyProgressBinding(progress,contract,sourceProof,previous){
  return true;
 }
 
-export function inspectProgress(root,previousFile=null){
- const contract=json(join(root,'output-contract.json')),proof=preflight(contract,root);
+export function inspectProgress(root,previousFile=null,{maxTransportBytes=1073741824}={}){
+ const contract=json(join(root,'output-contract.json')),proof=preflight(contract,root,{maxTransportBytes});
  const target=join(root,'c42-kernel.json'),log=target+'.log';
  assert.ok(!existsSync(target),'C42 observation already exists');
  const out=openSync(target,'wx'),err=openSync(log,'wx');let result;
  try{result=spawnSync(process.execPath,['--max-old-space-size=5000',
    new URL('./android_kernel_observer.mjs',import.meta.url).pathname,
-   join(root,'current.rvg'),contract.checkpoint_sha256,'1073741824','--live-properties','--zygote-probe','--scheduler-probe'],
+   join(root,'current.rvg'),contract.checkpoint_sha256,String(maxTransportBytes),'--live-properties','--zygote-probe','--scheduler-probe'],
    {stdio:['ignore',out,err],timeout:300000});}
  finally{closeSync(out);closeSync(err);}
  assert.ifError(result.error);assert.equal(result.status,0,'C42 kernel observer failed; inspect its log');
@@ -92,17 +92,17 @@ export function inspectProgress(root,previousFile=null){
  save(join(root,'c42-progress.json'),progress);return progress;
 }
 
-export async function runStage({source,output,native,disk,frame,commit,previousFile,instructions=500000000,wallMs=900000}){
- const contract=json(join(source,'output-contract.json')),before=preflight(contract,source);
+export async function runStage({source,output,native,disk,frame,commit,previousFile,instructions=500000000,wallMs=900000,maxTransportBytes=1073741824}){
+ const contract=json(join(source,'output-contract.json')),before=preflight(contract,source,{maxTransportBytes});
  const boundary=await continueAndObserve({contract,source,native,disk,frameNative:frame,output,
-   sourceCommit:commit,wallMs,instructions,cycles:1});
+   sourceCommit:commit,wallMs,instructions,cycles:1,maxTransportBytes});
  assert.equal(boundary.clean_completed,true,'C42 continuation is not a safe source');
- const after=preflight(json(join(output,'output-contract.json')),output);
+ const after=preflight(json(join(output,'output-contract.json')),output,{maxTransportBytes});
  assert.equal(after.report.initial_instructions,before.report.guest.instructions);
  assert.equal(after.report.provenance.input_checkpoint_sha256,contract.checkpoint_sha256);
  assert.equal(after.report.provenance.input_report_sha256,contract.report_sha256);
  assert.ok(after.report.advanced_instructions>0&&after.report.advanced_instructions<=instructions);
- return inspectProgress(output,previousFile);
+ return inspectProgress(output,previousFile,{maxTransportBytes});
 }
 
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){

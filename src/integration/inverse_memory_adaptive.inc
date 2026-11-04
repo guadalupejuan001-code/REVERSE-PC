@@ -121,3 +121,71 @@
     if(!input.eof())throw std::invalid_argument("Malformed adaptive Ether record stream");
     return result;
   }
+
+  // Same grammar and authority, without a complete memory-text copy.
+  static InverseMemory from_snapshot_view(std::string_view saved,Limits limits){
+    if(saved.compare(0,6,"MXIM2 ")==0){
+      const auto end=saved.find('\n');
+      if(end==std::string_view::npos||end<7||end>27)throw std::invalid_argument("memory revision envelope");
+      std::uint64_t revision=0;
+      for(std::size_t i=6;i<end;++i){const auto c=saved[i];
+        if(c<'0'||c>'9'||revision>(std::numeric_limits<std::uint64_t>::max()-unsigned(c-'0'))/10)
+          throw std::invalid_argument("memory revision range");
+        revision=revision*10+unsigned(c-'0');
+      }
+      auto result=from_snapshot_view(saved.substr(end+1),limits);result.revision_=revision;return result;
+    }
+    if(saved.compare(0,6,"MXIM3 ")==0)return from_adaptive_snapshot_view(saved,limits);
+    // Historical bounded MXIM1 input is small and retains its original decoder.
+    return from_snapshot(std::string(saved),limits);
+  }
+  static InverseMemory from_adaptive_snapshot_view(std::string_view saved,Limits limits){
+    const auto unhex=[](const std::string& hex,std::size_t maximum){
+      if((hex.size()&1)||hex.size()>maximum*2)
+        throw std::invalid_argument("Invalid adaptive Ether hex extent");
+      auto nibble=[](char ch)->unsigned{
+        if(ch>='0'&&ch<='9')return unsigned(ch-'0');
+        if(ch>='a'&&ch<='f')return unsigned(ch-'a'+10);
+        throw std::invalid_argument("Invalid adaptive Ether hex digit");
+      };
+      std::string bytes;bytes.reserve(hex.size()/2);
+      for(std::size_t i=0;i<hex.size();i+=2)
+        bytes.push_back(char((nibble(hex[i])<<4)|nibble(hex[i+1])));
+      return bytes;
+    };
+    memory_detail::SnapshotViewStream input(saved);input.imbue(std::locale::classic());
+    std::string magic,background;
+    if(!(input>>magic>>background)||magic!="MXIM3")
+      throw std::invalid_argument("Malformed adaptive Ether snapshot");
+    InverseMemory result(byte_value(background,"Inverse Memory background"),limits);
+    std::string kind,address,payload,extra;
+    while(input>>kind>>address>>payload){
+      if(kind=="P"){
+        if(!(input>>extra))throw std::invalid_argument("Truncated adaptive Ether page");
+        std::uint64_t page=0;
+        const auto parsed=std::from_chars(address.data(),address.data()+address.size(),page);
+        if(parsed.ec!=std::errc()||parsed.ptr!=address.data()+address.size()||
+           (address.size()>1&&address[0]=='0'))
+          throw std::invalid_argument("Invalid adaptive Ether page number");
+        result.overrides_->load_page_record(page,unhex(payload,512),unhex(extra,4096));
+        if(limits.max_overrides&&result.overrides_->size()>limits.max_overrides)
+          throw std::length_error("Adaptive Ether snapshot override budget exceeded");
+      }else if(kind=="O"){
+        const auto canonical=result.canonical(address);
+        if(!result.overrides_->insert(canonical,byte_value(payload,"Inverse Memory byte")))
+          throw std::invalid_argument("Duplicate adaptive Ether override");
+        if(limits.max_overrides&&result.overrides_->size()>limits.max_overrides)
+          throw std::length_error("Adaptive Ether snapshot override budget exceeded");
+      }else if(kind=="Q"){
+        const auto canonical=result.canonical(address);
+        const auto base=infinite_detail::canonical_address(payload,limits.max_address_digits);
+        (void)add_small(base,7,limits.max_address_digits);
+        if(result.bindings_->size()==limits.max_quantum_bindings)
+          throw std::length_error("Adaptive Ether snapshot quantum binding budget exceeded");
+        if(!result.bindings_->insert(canonical,base))
+          throw std::invalid_argument("Duplicate adaptive Ether quantum binding");
+      }else throw std::invalid_argument("Unknown adaptive Ether snapshot record");
+    }
+    if(!input.eof())throw std::invalid_argument("Malformed adaptive Ether record stream");
+    return result;
+  }

@@ -1,6 +1,6 @@
 // Metadata-policy fixtures only; actual state acceptance has a separate native integration check.
 import test from 'node:test';import assert from 'node:assert/strict';
-import {ROOT,validateContract,verifyNativePins,verifyCleanBoundary} from '../tools/android_c27_profile_resume.mjs';
+import {ROOT,validateContract,verifyNativePins,verifyCleanBoundary,hostTransportBound,contractTransportBound} from '../tools/android_c27_profile_resume.mjs';
 import {DISK_SHA,SEED_SHA} from '../tools/android_c28_state.mjs';
 const pins=()=>({schema:'reverse-c27-profile-native-pins-v1',root_checkpoint_sha256:ROOT.checkpoint_sha256,disk_sha256:DISK_SHA,counter_seed_sha256:SEED_SHA,logical_ram_bytes:2147483648,counter_instructions_per_tick:64,host_snapshot_transport_bytes:1073741824});
 const contract=()=>({schema:'reverse-c27-profile-resume-contract-v1',checkpoint_sha256:ROOT.checkpoint_sha256,report_sha256:ROOT.report_sha256,result_sha256:ROOT.result_sha256,process_sha256:ROOT.process_sha256,source_commit:ROOT.source_commit,root_checkpoint_sha256:ROOT.checkpoint_sha256});
@@ -29,3 +29,28 @@ for(const key of ['source_c27_original_init_verified','source_c27_second_stage_v
 const badChild=[['new entry claim',x=>x.r.first_user_instruction_verified=true],['entry claim reused',x=>x.r.prior_user_instruction_verified=true],['mutated state',x=>x.r.provenance.original_state_modified=true],['RAM change',x=>x.r.provenance.ram_profile_changed=true],['wrong clock seed',x=>x.r.provenance.timing_seed_sha256='0'.repeat(64)],['wrong disk',x=>x.r.provenance.disk_sha256='0'.repeat(64)],['no round trip',x=>x.r.provenance.snapshot_round_trip_verified=false],['serialized host policy',x=>x.r.provenance.host_transport_policy_serialized=true],['different input binding',x=>x.p.input_checkpoint_sha256='0'.repeat(64)]];
 for(const[name,mutate]of badChild)test('altered continuation rejected: '+name,()=>{for(const generic of [false,true]){const x=child(generic);mutate(x);assert.throws(()=>verify(x));}});
 test('unsupported result schemas and disconnected generic roots are rejected',()=>{let x=child();x.p.schema='other';assert.throws(()=>verify(x));x=child(true);x.r.provenance.root_checkpoint_sha256='0'.repeat(64);assert.throws(()=>verify(x));x=child(true);x.p.root_checkpoint_sha256='0'.repeat(64);assert.throws(()=>verify(x));x=child();x.c.source_commit='0'.repeat(40);assert.throws(()=>verify(x));});
+
+const largeHost={maxTransportBytes:2147483648};
+function largeChild(){const x=child(true);x.c.host_snapshot_transport_bytes=2147483648;x.r.provenance.host_snapshot_transport_bytes=2147483648;x.p.host_snapshot_transport_bytes=2147483648;x.p.host_transport_policy_serialized=false;return x;}
+test('the larger host bound is explicit in contract, report, result and compiled native pins',()=>{
+ const x=largeChild();assert.throws(()=>validateContract(x.c));assert.throws(()=>verifyCleanBoundary(x.r,x.p,x.h,x.c));
+ assert.equal(validateContract(x.c,largeHost),x.c);assert.equal(verifyCleanBoundary(x.r,x.p,x.h,x.c,largeHost).clean_source_boundary_verified,true);
+ const p={...pins(),host_snapshot_transport_bytes:2147483648};assert.throws(()=>verifyNativePins(p));assert.equal(verifyNativePins(p,largeHost).compiled_native_profile_verified,true);
+ assert.throws(()=>verifyNativePins(pins(),largeHost));
+});
+test('old sources retain their exact original bound when opened by the larger host reader',()=>{
+ const x=child(true);assert.equal(contractTransportBound(x.c,2147483648),1073741824);assert.equal(verifyCleanBoundary(x.r,x.p,x.h,x.c,largeHost).clean_source_boundary_verified,true);
+});
+for(const [name,change]of[
+ ['report bound',x=>x.r.provenance.host_snapshot_transport_bytes=1073741824],
+ ['result bound',x=>x.p.host_snapshot_transport_bytes=1073741824],
+ ['missing declaration',x=>delete x.c.host_snapshot_transport_bytes],
+ ['serialized policy',x=>x.p.host_transport_policy_serialized=true],
+ ['architectural stop',x=>x.r.stop_reason='architectural_stop'],
+ ['unclean native',x=>x.h.status='process_failed'],
+ ['guest clock',x=>x.r.provenance.timing_seed_sha256='0'.repeat(64)],
+ ['guest RAM',x=>x.r.provenance.ram_profile_changed=true],
+ ['guest disk',x=>x.r.provenance.disk_sha256='0'.repeat(64)]
+])test('larger transport does not bypass '+name,()=>{const x=largeChild();change(x);assert.throws(()=>verifyCleanBoundary(x.r,x.p,x.h,x.c,largeHost));});
+test('the original fresh root cannot be relabeled as a new transport policy',()=>{const x=fresh();x.c.host_snapshot_transport_bytes=2147483648;assert.throws(()=>verifyCleanBoundary(x.r,x.p,x.h,x.c,largeHost));});
+test('arbitrary, nonnumeric and unbounded host capacities are rejected',()=>{for(const n of [0,-1,256*1024*1024,1073741825,2147483649,Infinity,NaN,'2147483648'])assert.throws(()=>hostTransportBound(n));});

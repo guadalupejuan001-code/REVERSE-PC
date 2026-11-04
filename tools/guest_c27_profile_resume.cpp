@@ -6,6 +6,11 @@
 #include <cstdlib>
 #include <iostream>
 using namespace reverse_pc::guest;
+#ifdef REVERSE_PC_COMPACT_RESTORE_VIEW
+static constexpr auto host_capacity=MinimalGuest::max_view_snapshot;
+#else
+static constexpr auto host_capacity=MinimalGuest::max_explicit_adaptive_snapshot;
+#endif
 static volatile std::sig_atomic_t stopping=0;
 static void stop(int){stopping=1;}
 static const std::string disk_sha="4c2eaf3fa7d81e9649072fc81f0651f4129bd9f41d4a9f9964cc627741a7b92e";
@@ -14,7 +19,7 @@ static const std::string seed_sha="699e17ffab1ef3618567ee928b25cdc0b6c7feed3d520
 static std::uint64_t number(const char* text,std::uint64_t maximum,bool zero=false){const std::string s(text);require(!s.empty()&&s.find_first_not_of("0123456789")==std::string::npos,"Expected decimal budget");const auto n=std::stoull(s);require((n||zero)&&n<=maximum,"Budget out of range");return n;}
 int main(int argc,char** argv){try{
   if(argc==2&&std::string(argv[1])=="--pins"){
-    std::cout<<"{\"schema\":\"reverse-c27-profile-native-pins-v1\",\"disk_sha256\":"<<quote(disk_sha)<<",\"root_checkpoint_sha256\":"<<quote(root_sha)<<",\"counter_seed_sha256\":"<<quote(seed_sha)<<",\"logical_ram_bytes\":2147483648,\"counter_instructions_per_tick\":64,\"host_snapshot_transport_bytes\":"<<MinimalGuest::max_explicit_adaptive_snapshot<<"}\n";return 0;
+    std::cout<<"{\"schema\":\"reverse-c27-profile-native-pins-v1\",\"disk_sha256\":"<<quote(disk_sha)<<",\"root_checkpoint_sha256\":"<<quote(root_sha)<<",\"counter_seed_sha256\":"<<quote(seed_sha)<<",\"logical_ram_bytes\":2147483648,\"counter_instructions_per_tick\":64,\"host_snapshot_transport_bytes\":"<<host_capacity<<"}\n";return 0;
   }
   require(argc==13,"Expected state report disk journal wall-ms instructions cycles state-sha report-sha initial-instructions pc counter-subtick; use android_c27_profile_resume.mjs");
   const std::string state_sha=argv[8],report_sha=argv[9],pc_text=argv[11];
@@ -38,26 +43,31 @@ int main(int argc,char** argv){try{
     <<",\"checkpoint_instructions\":"<<limits.checkpoint_instructions<<"}\n";
   require(!std::filesystem::exists(argv[4]),"Output journal already exists");
   std::cerr<<"REVERSE_C27_PROFILE_HOST_PHASE {\"phase\":\"verify_original_checkpoint\"}\n";
-  const auto input=guest_read_file(argv[1],MinimalGuest::max_explicit_adaptive_snapshot);
+  auto input=guest_read_file(argv[1],host_capacity);
   require(GuestSha256::hash(input)==state_sha,"Wrong pinned checkpoint");
   require(GuestSha256::hash(guest_read_file(argv[2],8*1024*1024))==report_sha,"Wrong pinned report");
   std::cerr<<"REVERSE_C27_PROFILE_HOST_PHASE {\"phase\":\"verify_full_original_disk\",\"bytes\":10888413184}\n";
   const auto disk=GuestBlockImage::open(argv[3]);require(disk->size()==UINT64_C(10888413184)&&disk->sha256()==disk_sha,"Wrong original disk");
   std::cerr<<"REVERSE_C27_PROFILE_HOST_PHASE {\"phase\":\"restore_original_machine\"}\n";
-  auto guest=MinimalGuest::from_snapshot(input,disk,MinimalGuest::max_explicit_adaptive_snapshot);
+#ifdef REVERSE_PC_COMPACT_RESTORE_VIEW
+  auto guest=MinimalGuest::from_snapshot_view(input,disk,host_capacity);
+#else
+  auto guest=MinimalGuest::from_snapshot(input,disk,host_capacity);
+#endif
   std::size_t compared=0;
   guest.snapshot_to([&](const std::uint8_t* data,std::size_t length){
     require(compared<=input.size()&&length<=input.size()-compared&&std::equal(data,data+length,input.begin()+compared),"Restore modified the pinned guest state");compared+=length;
   });
   require(compared==input.size(),"Restore changed pinned guest state length");
+  Bytes().swap(input); // Release transport; the original compact state owns all restored data.
   require(guest.registers().instructions==initial&&guest.registers().pc==pc,"Wrong pinned instruction boundary");
   require(guest.machine().enabled&&guest.machine().image_kind==2&&guest.machine().pci.enabled&&guest.machine().el<=1&&!guest.registers().halted&&!guest.machine().waiting,"Wrong fixed board state");
   require(guest.logical_ram()==2147483648,"RAM profile changed");
   const auto& clock=guest.machine().counter_latency;
   require(clock.enabled&&clock.instructions_per_tick==64&&clock.subtick==phase,"Counter cadence changed");
   require(GuestSha256::hash(Bytes(clock.seed.begin(),clock.seed.end()))==seed_sha,"Counter seed changed");
-  require(guest.host_snapshot_transport_capacity()==MinimalGuest::max_explicit_adaptive_snapshot,"Explicit host bound lost");
-  const std::string provenance="{\"experiment\":\"c27-profile-budget-continuation\",\"root_checkpoint_sha256\":"+quote(root_sha)+",\"input_checkpoint_sha256\":"+quote(state_sha)+",\"input_report_sha256\":"+quote(report_sha)+",\"snapshot_round_trip_verified\":true,\"source_profile_verified\":true,\"host_snapshot_transport_bytes\":1073741824,\"host_transport_policy_serialized\":false,\"cycle_limit\":"+std::to_string(cycle_limit)+",\"timing_seed_origin\":\"checkpoint\",\"timing_seed_sha256\":"+quote(seed_sha)+",\"disk_sha256\":"+quote(disk_sha)+",\"ram_profile_changed\":false,\"original_state_modified\":false}";
+  require(guest.host_snapshot_transport_capacity()==host_capacity,"Explicit host bound lost");
+  const std::string provenance="{\"experiment\":\"c27-profile-budget-continuation\",\"root_checkpoint_sha256\":"+quote(root_sha)+",\"input_checkpoint_sha256\":"+quote(state_sha)+",\"input_report_sha256\":"+quote(report_sha)+",\"snapshot_round_trip_verified\":true,\"source_profile_verified\":true,\"host_snapshot_transport_bytes\":"+std::to_string(host_capacity)+",\"host_transport_policy_serialized\":false,\"cycle_limit\":"+std::to_string(cycle_limit)+",\"timing_seed_origin\":\"checkpoint\",\"timing_seed_sha256\":"+quote(seed_sha)+",\"disk_sha256\":"+quote(disk_sha)+",\"ram_profile_changed\":false,\"original_state_modified\":false}";
   BootCycleJournal journal(argv[4]);std::signal(SIGTERM,stop);std::signal(SIGINT,stop);
   bool failure=false;std::size_t uart=0;auto last=std::chrono::steady_clock::now(),frame_time=last;
   std::uint64_t captured_frame=UINT64_MAX;

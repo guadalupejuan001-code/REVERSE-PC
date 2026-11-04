@@ -101,5 +101,5 @@ test('explicit audit bounds are finite, reject oversized data, and preserve exac
  const {bytes,kernel}=fixture();const digest=sha(bytes);
  assert.equal(auditGkiRvg(bytes,sha(kernel),digest,{maxSnapshotBytes:bytes.length}).checkpoint_sha256,digest);
  assert.throws(()=>auditGkiRvg(bytes,sha(kernel),digest,{maxSnapshotBytes:bytes.length-1}),/snapshot size invalid/);
- for(const maxSnapshotBytes of [0,1.5,1024*1024*1024+1,Infinity])assert.throws(()=>auditGkiRvg(bytes,undefined,undefined,{maxSnapshotBytes}),/invalid explicit transport audit bound/);
+ for(const maxSnapshotBytes of [0,1.5,2*1024*1024*1024+1,Infinity])assert.throws(()=>auditGkiRvg(bytes,undefined,undefined,{maxSnapshotBytes}),/invalid explicit transport audit bound/);
 });

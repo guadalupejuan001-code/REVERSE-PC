@@ -111,7 +111,7 @@ replacements['infinite_program.hpp'] += [
 # snapshots remain byte-identical for every bounded legacy profile.
 replacements['inverse_memory.hpp'] += [
     ('#include "mundo_x/cow_sharded_map.hpp"',
-     '#include "mundo_x/cow_sharded_map.hpp"\n#include "integration/adaptive_override_map.hpp"'),
+     '#include "mundo_x/cow_sharded_map.hpp"\n#include "integration/adaptive_override_map.hpp"\n#include "integration/snapshot_view_stream.hpp"'),
     ('    if (overrides_->size() == limits_.max_overrides)',
      '    if (limits_.max_overrides && overrides_->size() == limits_.max_overrides)'),
     ('        if (result.overrides_->size() == limits.max_overrides)',

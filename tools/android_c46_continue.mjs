@@ -5,6 +5,7 @@ import {readFileSync,writeFileSync,appendFileSync} from 'node:fs';
 import {join,resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 import {runStage} from './android_c42_zygote_progress.mjs';
+import {hostTransportBound} from './android_c27_profile_resume.mjs';
 const json=p=>JSON.parse(readFileSync(p,'utf8'));
 export function milestone(progress,runtime,boundary,contract){
  assert.equal(boundary.clean_completed,true,'Only a clean verified budget may become a continuation source');
@@ -24,10 +25,11 @@ export function milestone(progress,runtime,boundary,contract){
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  try{
-  const [source,output,native,disk,frame,commit,previous,budget='500000000']=process.argv.slice(2);
+  const [source,output,native,disk,frame,commit,previous,budget='500000000',transport='1073741824']=process.argv.slice(2);
   assert.ok(source&&output&&native&&disk&&frame&&commit&&previous);
   assert.match(budget,/^[1-9][0-9]{0,9}$/);const instructions=Number(budget);assert.ok(instructions<=2000000000);
-  const progress=await runStage({source,output,native,disk,frame,commit,previousFile:previous,instructions});
+  const maxTransportBytes=hostTransportBound(Number(transport));
+  const progress=await runStage({source,output,native,disk,frame,commit,previousFile:previous,instructions,maxTransportBytes});
   const result=milestone(progress,json(join(output,'runtime-evidence.json')),json(join(output,'boundary-summary.json')),json(join(output,'output-contract.json')));
   writeFileSync(join(output,'c46-progress.json'),JSON.stringify(result,null,2)+'\n');
   if(process.env.GITHUB_OUTPUT)appendFileSync(process.env.GITHUB_OUTPUT,`boot=${result.android_boot_completed_verified}\nserver=${result.system_server_alive_verified}\nvisual=${result.ready_for_visual_review}\ninstructions=${result.instructions}\n`);
