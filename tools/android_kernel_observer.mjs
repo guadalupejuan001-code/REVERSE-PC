@@ -111,13 +111,20 @@ export function observeAndroidKernel(bytes,expectedCheckpointSha,options){
   types.push({name:str(kernel.readUInt32LE(p)),kind,vlen,info,type:kernel.readUInt32LE(p+8),at:p});
   p+=length;
  }
- const type=name=>{
+ const typeReference=name=>{
   const list=types.filter(t=>t?.kind===4&&t.name===name);
   const layout=t=>JSON.stringify([t.type,Array.from({length:t.vlen},(_,i)=>{
    const p=t.at+12+i*12;return [str(kernel.readUInt32LE(p)),kernel.readUInt32LE(p+8)];
   })]);
   check(list.length>0&&list.every(t=>layout(t)===layout(list[0])),'inconsistent BTF struct '+name);
   return list[0];
+ };
+ // Cache only validated immutable BTF metadata within this observation.
+ const typeCache=new Map();
+ const type=name=>{
+  const cached=process.env.REVERSE_PC_FAST_OBSERVER==='1';
+  if(cached&&typeCache.has(name))return typeCache.get(name);
+  const value=typeReference(name);if(cached)typeCache.set(name,value);return value;
  };
  const resolveType=t=>{let n=0;while([8,9,10,11,18].includes(t.kind)){check(n++<16,'BTF alias cycle');t=types[t.type];}return t;};
  const members=(input,base=0,depth=0)=>{
