@@ -296,10 +296,14 @@ try{
   const moving=waitProfileFrame(statsBefore,s=>s.paused===false&&s.ticks>pausedTicks&&s.frames>0&&s.physicsHz>0,'finite road traversal');
   check(moving.physicsHz>0&&moving.ticks>pausedTicks,'XI physics actually advances in the open world');
   report.movingFrame=moving;
+  // A paused scene deliberately reuses its Surface pixels. Android's encoder
+  // then receives no fresh buffers and can finalize a shorter MP4 timeline.
+  // Record the full requested interval while the physical car is moving.
+  finishVideo();
   adbText(['shell','input','keyevent','KEYCODE_P']);ui=waitText(/EN PAUSA/);
   check(ui.some(n=>/^[1-9]\d* km\/h$/.test(n.text||'')),'pilot accelerates the physical car without a race countdown');
   report.observedSpeedKmh=Number(ui.find(n=>/^[1-9]\d* km\/h$/.test(n.text||'')).text.split(' ')[0]);
-  finishVideo();screenshot('driving-open-road');
+  screenshot('driving-open-road');
   const timeOf=items=>(items.find(n=>/^\d{2}:\d{2} · /.test(n.text||''))||{}).text;
   const frozen=timeOf(ui);sleep(700);ui=waitText(/EN PAUSA/);check(frozen&&frozen===timeOf(ui),'paused world clock and distance remain stable');
   stage='touch camera';
