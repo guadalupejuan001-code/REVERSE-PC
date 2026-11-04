@@ -112,6 +112,17 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
     if(mode==1||mode==3)set(rn,updated,64,true);return true;
   }
   ArmFloat fp(floating_);
+  if((i&0x9f80fc00u)==0x0f00fc00u||(i&0xdf80fc00u)==0x5f00fc00u){ // FCVTZS/FCVTZU SIMD scalar/vector, fixed-point.
+    const bool scalar=(i&0xdf80fc00u)==0x5f00fc00u,wide=i&0x40000000u;
+    const unsigned encoded=(i>>16)&127u,lane_bits=encoded>=64?64u:32u;
+    if(encoded<32||(!scalar&&!wide&&lane_bits==64))return false;
+    const unsigned fracbits=2*lane_bits-encoded;
+    fp_access();const auto source=floating_.v[rn];Vector128 output;
+    const unsigned lanes=scalar?1u:(wide?128u:64u)/lane_bits;
+    for(unsigned lane=0;lane<lanes;++lane)
+      output.lane(lane,lane_bits,fp.to_fixed(lane_bits,source.lane(lane,lane_bits),!(i&0x20000000u),fracbits));
+    floating_.v[rd]=output;return true;
+  }
   if((i&0x9fbffc00u)==0x0ea1b800u){ // FCVTZS/FCVTZU Vd.2S/4S/2D,Vn.2S/4S/2D, round toward zero.
     const bool wide=i&0x40000000u;const unsigned lane_bits=i&0x00400000u?64u:32u;
     if(!wide&&lane_bits==64)return false;
