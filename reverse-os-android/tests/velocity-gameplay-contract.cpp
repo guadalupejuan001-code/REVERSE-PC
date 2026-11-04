@@ -86,6 +86,66 @@ int main(int argc,char** argv){try{
   if(s[13]>0)check(s[0]==old[0]&&s[1]==old[1]&&s[3]==0,"countdown must not move car");}
  check(s[13]==0&&countdown==150,"exact 150-tick countdown");
  const auto raceStart=reverse_pc::rvpc2::save(runtime);
+ // V2.3: secondary motion executes in the real XI physics transaction.
+ // This branch does not alter the original 26-register observation protocol.
+ auto rig=reverse_pc::rvpc2::restore(raceStart);
+ auto signedRig=[&](const Runtime& r,unsigned a){return int(observed16(r,a))-32768;};
+ unsigned expectedPhase=observed16(rig,498);
+ std::int64_t phaseRemainder=int(observed16(rig,500))-16384;
+ State rigState{};
+ for(int i=0;i<80;i++){
+  rigState=state(rig.execute(command({1,0,1,0})));
+  const auto numerator=phaseRemainder+rigState[3]*4096;
+  expectedPhase=(expectedPhase+unsigned(numerator/10700))%4096;
+  phaseRemainder=numerator%10700;
+  check(observed16(rig,498)==expectedPhase,"wheel phase integrates actual XI speed at 50Hz");
+ }
+ check(signedRig(rig,504)>200,"acceleration lifts front gradually through XI spring");
+ write(out/"rig-accelerating.rvp",reverse_pc::rvpc2::save(rig));
+ const auto rigMoving=reverse_pc::rvpc2::save(rig);
+ for(int i=0;i<16;i++)rigState=state(rig.execute(command({0,1,1,0})));
+ check(signedRig(rig,504)<-400,"braking transfers body load to front");
+ write(out/"rig-braking.rvp",reverse_pc::rvpc2::save(rig));
+ auto rigLeft=reverse_pc::rvpc2::restore(rigMoving),rigRight=reverse_pc::rvpc2::restore(rigMoving);
+ for(int i=0;i<18;i++){
+  state(rigLeft.execute(command({1,0,0,0})));
+  state(rigRight.execute(command({1,0,2,0})));
+ }
+ check(signedRig(rigLeft,508)<0&&signedRig(rigRight,508)>0,
+       "opposite real steering produces opposite damped body roll");
+ write(out/"rig-corner.rvp",reverse_pc::rvpc2::save(rigRight));
+ auto rigIdle=reverse_pc::rvpc2::restore(seed);
+ rigIdle.execute(header+"store8 258 2\nstore16 259 0\nhalt\n");
+ for(int i=0;i<20;i++)state(rigIdle.execute(command({0,1,2,0})));
+ check(observed16(rigIdle,498)==0&&signedRig(rigIdle,504)==0&&signedRig(rigIdle,508)==0,
+       "steering/braking a stationary car creates neither roll nor wheel travel");
+ auto rigReverse=reverse_pc::rvpc2::restore(reverse_pc::rvpc2::save(rigIdle));
+ rigReverse.execute(header+"store8 133 1\nhalt\n");
+ expectedPhase=0;phaseRemainder=0;
+ for(int i=0;i<35;i++){
+  const auto reversing=state(rigReverse.execute(command({1,0,1,0})));
+  const auto numerator=phaseRemainder-reversing[3]*4096;
+  expectedPhase=unsigned((std::int64_t(expectedPhase)+numerator/10700+4096)%4096);
+  phaseRemainder=numerator%10700;
+  check(observed16(rigReverse,498)==expectedPhase,"reverse rolls wheels backwards, independent of lap progress");
+ }
+ auto rigJump=reverse_pc::rvpc2::restore(raceStart);
+ bool rigLanded=false,rigRebounded=false;int lowestHeave=0;
+ for(int i=0;i<150;i++){
+  const auto jumpState=state(rigJump.execute(command({0,0,1,0,0,i==0?1:0})));
+  if(jumpState[21]){rigLanded=true;write(out/"rig-landing.rvp",reverse_pc::rvpc2::save(rigJump));}
+  if(rigLanded){const int h=signedRig(rigJump,512);lowestHeave=std::min(lowestHeave,h);rigRebounded|=lowestHeave<-300&&h>0;}
+  for(unsigned address:{504u,508u,512u,516u})
+   check(std::abs(signedRig(rigJump,address))<=3072,"secondary spring stays bounded");
+ }
+ check(rigLanded&&lowestHeave<-300&&rigRebounded,"landing compresses then rebounds through a retained damped spring");
+ check(std::abs(signedRig(rigJump,512))<20,"landing oscillation settles without permanent vibration");
+ const auto rigSerial=reverse_pc::rvpc2::save(rigRight);
+ auto rigRestored=reverse_pc::rvpc2::restore(rigSerial);
+ check(state(rigRight.execute(command({1,0,1,0})))==state(rigRestored.execute(command({1,0,1,0}))),
+       "RVPC2 resumes race and secondary motion deterministically");
+ for(unsigned address:{498u,500u,504u,506u,508u,510u,512u,514u,516u,518u})
+  check(observed16(rigRight,address)==observed16(rigRestored,address),"spring and wheel RVPC2 replay");
  // Assistance only consumes authenticated XI world/heading sensors.
  auto assisted=reverse_pc::rvpc2::restore(raceStart),
       steeringLeft=reverse_pc::rvpc2::restore(raceStart),

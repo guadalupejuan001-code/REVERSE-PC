@@ -117,7 +117,9 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
  const groupNormals=groups.map(g=>norm(g.sum).map(x=>Math.round(x*16384)));
  out('# Original detailed car meshes; all world transforms and lighting execute in XI.');
  vertices.forEach((p,i)=>{if(canonical[i]===i){const uv=carUV(p,normalKinds[i]);out(`meshvertex ${i} ${p.join(' ')}\nmeshtexuv ${i} ${uv.join(' ')}`);}});
- normalIds.forEach((g,i)=>{if(canonical[i]<0)return;const code=g>=0?g+256:-g-1;if(code<0||code>511)throw Error('Scalar metadata range');out(`localset ${512+i} ${canonical[i]*512+code}`);});
+ // Material lighting indices share the existing local descriptor. No new vertices,
+ // persistent memory or per-pixel lighting is introduced.
+ normalIds.forEach((g,i)=>{if(canonical[i]<0)return;const n=g-(normalKinds[i]==='glass'?128:0),base={glass:384,tire:512,rim:640,aero:768}[normalKinds[i]]||256;const code=g>=0?base+n:-g-1;if(code<0||code>=896)throw Error('Scalar metadata range');out(`localset ${512+i} ${canonical[i]*2048+code}`);});
  function range(start,end){out(`set r0 ${start}`);store('r0',8324,2,0);out(`set r0 ${end}`);store('r0',8326,2,0);}
  out('store8 8203 0\nlabel actor\nstore8 8334 0\nstore8 8336 0\nstore8 8337 0\nstore8 8338 0\nload8 r0 8203\ncmp r0 44\njge skid_actor\ncmp r0 4\njge tree_actor\ncmp r0 0\njne rival_actor');
  range(models.high.start,models.high.end);
@@ -128,7 +130,7 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
  out('load8 r9 8203\nmul r9 24\nadd r9 64\nstore8 8318 r9\njmp actor_ready\nlabel tree_actor');
  range(treeStart,treeEnd);
  out('load8 r8 8203\nsub r8 4\ndiv r8 2\nmul r8 4\nmov r7 r8\nmul r7 2\nadd r7 5000');load('r6','r7',2,0);trig('r6','r3','r4','r1','r2');
- out('load8 r0 8203\nmod r0 2\nmul r0 2\nsub r0 1\nmul r0 1650\nmul r4 r0\ndiv r4 16384\nmul r3 r0\ndiv r3 16384\nmul r8 8\nadd r8 4096');load('r0','r8',4,65536);out('add r0 r4\nadd r8 4');load('r2','r8',4,65536);
+ out('load8 r0 8203\nmod r0 2\nmul r0 2\nsub r0 1\nload8 r1 8203\nmul r1 73\nmod r1 540\nadd r1 1460\nmul r0 r1\nmul r4 r0\ndiv r4 16384\nmul r3 r0\ndiv r3 16384\nmul r8 8\nadd r8 4096');load('r0','r8',4,65536);out('add r0 r4\nadd r8 4');load('r2','r8',4,65536);
  out('sub r2 r3\nset r8 0\njmp actor_ready\nlabel skid_actor');
  range(skidStart,skidEnd);
  out('load8 r7 8203\nsub r7 44\nmul r7 12\nadd r7 410\nload8 r9 $r7\ncmp r9 0\njle next_actor\nsub r7 10');
@@ -151,10 +153,17 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
   for(const r of ['r5','r6','r7'])out(`mul ${r} 16384\ndiv ${r} r9`);
  }
  normalize567();out('localset 3006 r5\nlocalset 3007 r6\nlocalset 3008 r7\nlocalget r8 3000\nadd r5 r8\nlocalget r8 3001\nadd r6 r8\nlocalget r8 3002\nadd r7 r8');normalize567();out('localset 3003 r5\nlocalset 3004 r6\nlocalset 3005 r7\nlabel lighting_basis_ready');
+ // Observe the same retained pitch/roll for lighting; camera orbit remains
+ // independent. Inverse small-angle basis costs nine vector transforms/frame.
+ out('load8 r5 8203\ncmp r5 0\njne rig_lighting_ready\nload16 r5 512\nsub r5 32768\ndiv r5 256\nlocalset 3100 r5\nload16 r5 508\nsub r5 32768\nlocalset 3101 r5\nload16 r5 504\nsub r5 32768\nlocalset 3102 r5\nload16 r5 516\nsub r5 32768\ndiv r5 256\nlocalset 3103 r5');
+ for(const base of [3000,3003,3006]){
+  out(`localget r5 ${base}\nlocalget r6 ${base+1}\nlocalget r7 ${base+2}\nload16 r8 508\nsub r8 32768\nlocalget r9 3102\nmov r10 r8\nmul r10 r6\ndiv r10 22528\nadd r10 r5\nmov r11 r9\nmul r11 r6\ndiv r11 35840\nadd r11 r7\nmul r8 r5\ndiv r8 22528\nsub r6 r8\nmul r9 r7\ndiv r9 35840\nsub r6 r9\nlocalset ${base} r10\nlocalset ${base+1} r6\nlocalset ${base+2} r11`);
+ }
+ out('label rig_lighting_ready');
  // Preserve the physical camera orientation, then cull before shading/transform.
  out('mov r1 r3\nmul r1 r15\nmov r5 r4\nmul r5 r14\nsub r1 r5\ndiv r1 16384\nmov r5 r3\nmul r5 r14\nmul r4 r15\nadd r5 r4\ndiv r5 16384');store('r1',8308,2,32768);store('r5',8310,2,32768);
  out('sub r0 r12\nsub r2 r13\nmov r1 r0\nmul r1 r15\nmov r3 r2\nmul r3 r14\nsub r1 r3\ndiv r1 16384\nmul r0 r14\nmul r2 r15\nadd r0 r2\ndiv r0 16384');store('r1',8300);store('r0',8304);
- out('cmp r0 -1200\njlt next_actor\ncmp r0 30000\njgt next_actor\nmov r2 r0\nmul r2 2\nadd r2 3500');load('r1',8300);out('cmp r1 0\njge actor_side_absolute\nmul r1 -1\nlabel actor_side_absolute\ncmp r1 r2\njgt next_actor\nload8 r1 8203\ncmp r1 0\nje actor_lod_ready\ncmp r1 4\njge actor_lod_ready\ncmp r0 4000\njle actor_lod_ready\nstore8 8334 2');range(models.far.start,models.far.end);out('label actor_lod_ready\nload8 r0 8203\ncmp r0 4\njge lighting_table_ready\ncmp r0 0\nje lighting_lod_high\nload8 r0 8334\ncmp r0 2\nje lighting_lod_far\nlocalset 3030 1\njmp lighting_lod_ready\nlabel lighting_lod_far\nlocalset 3030 2\njmp lighting_lod_ready\nlabel lighting_lod_high\nlocalset 3030 0\nlabel lighting_lod_ready');
+ out('cmp r0 -1200\njlt next_actor\ncmp r0 30000\njgt next_actor\nmov r2 r0\nmul r2 2\nadd r2 3500');load('r1',8300);out('cmp r1 0\njge actor_side_absolute\nmul r1 -1\nlabel actor_side_absolute\ncmp r1 r2\njgt next_actor\nload8 r1 8203\ncmp r1 0\nje actor_lod_ready\ncmp r1 4\njge actor_lod_ready\ncmp r0 4000\njle actor_lod_ready\nstore8 8334 2');range(models.far.start,models.far.end);out('label actor_lod_ready\nload8 r0 8203\ncmp r0 4\njlt nature_fog_ready\nload32 r0 8304\nsub r0 1000000\ndiv r0 160\nadd r0 56\ncmp r0 56\njge nature_fog_min\nset r0 56\nlabel nature_fog_min\ncmp r0 224\njle nature_fog_max\nset r0 224\nlabel nature_fog_max\nlocalset 3090 r0\nlabel nature_fog_ready\nload8 r0 8203\ncmp r0 4\njge lighting_table_ready\ncmp r0 0\nje lighting_lod_high\nload8 r0 8334\ncmp r0 2\nje lighting_lod_far\nlocalset 3030 1\njmp lighting_lod_ready\nlabel lighting_lod_far\nlocalset 3030 2\njmp lighting_lod_ready\nlabel lighting_lod_high\nlocalset 3030 0\nlabel lighting_lod_ready');
  function requireLod(mask,skip){
   if(mask===7)return;
   out('localget r3 3030');
@@ -166,23 +175,24 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
   const bodyDone=label('body_lighting_done'),glassDone=label('glass_lighting_done');
   if(bodyMask){requireLod(bodyMask,bodyDone);
   const diffuse=label('diffuse_positive'),highlight=label('highlight_positive'),bounded=label('intensity_bounded');
-  out(`localget r0 3000\nmul r0 ${nx}\nlocalget r1 3001\nmul r1 ${ny}\nadd r0 r1\nlocalget r1 3002\nmul r1 ${nz}\nadd r0 r1\ndiv r0 16384\ncmp r0 0\njge ${diffuse}\nset r0 0\nlabel ${diffuse}\nmul r0 128\ndiv r0 16384\nadd r0 ${64+Math.round(ny*16/16384)}\nlocalget r1 3003\nmul r1 ${nx}\nlocalget r2 3004\nmul r2 ${ny}\nadd r1 r2\nlocalget r2 3005\nmul r2 ${nz}\nadd r1 r2\ndiv r1 16384\ncmp r1 0\njge ${highlight}\nset r1 0\nlabel ${highlight}`);
-  for(let k=0;k<4;k++)out('mul r1 r1\ndiv r1 16384');
-  out(`mul r1 104\ndiv r1 16384\nadd r0 r1\ncmp r0 255\njle ${bounded}\nset r0 255\nlabel ${bounded}\nlocalset ${2400+g} r0`);
+  out(`localget r0 3000\nmul r0 ${nx}\nlocalget r1 3001\nmul r1 ${ny}\nadd r0 r1\nlocalget r1 3002\nmul r1 ${nz}\nadd r0 r1\ndiv r0 16384\ncmp r0 0\njge ${diffuse}\nset r0 0\nlabel ${diffuse}\nmul r0 128\ndiv r0 16384\nadd r0 ${66+Math.round(ny*22/16384)}\nlocalset ${2816+g} r0\nmov r2 r0\nmul r2 4\ndiv r2 5\nlocalset ${2560+g} r2\nlocalget r1 3003\nmul r1 ${nx}\nlocalget r2 3004\nmul r2 ${ny}\nadd r1 r2\nlocalget r2 3005\nmul r2 ${nz}\nadd r1 r2\ndiv r1 16384\ncmp r1 0\njge ${highlight}\nset r1 0\nlabel ${highlight}`);
+  for(let k=0;k<4;k++){out('mul r1 r1\ndiv r1 16384');if(k===1)out(`localset ${2688+g} r1`);}
+  // View-angle rim reflection is a bounded Fresnel approximation.
+  out(`mul r1 104\ndiv r1 16384\nadd r0 r1\nlocalget r1 3006\nmul r1 ${nx}\nlocalget r2 3007\nmul r2 ${ny}\nadd r1 r2\nlocalget r2 3008\nmul r2 ${nz}\nadd r1 r2\ndiv r1 16384\ncmp r1 0\njge fresnel_positive_${g}\nset r1 0\nlabel fresnel_positive_${g}\ncmp r1 16384\njle fresnel_bounded_${g}\nset r1 16384\nlabel fresnel_bounded_${g}\nset r2 16384\nsub r2 r1\nmov r1 r2\nmul r1 r2\ndiv r1 16384\nmul r1 r2\ndiv r1 16384\nmul r1 36\ndiv r1 16384\nadd r0 r1\nlocalget r2 ${2688+g}\nmul r2 168\ndiv r2 16384\nlocalget r1 ${2816+g}\nadd r2 r1\ncmp r2 255\njle metal_bounded_${g}\nset r2 255\nlabel metal_bounded_${g}\nlocalset ${2688+g} r2\ncmp r0 255\njle ${bounded}\nset r0 255\nlabel ${bounded}\nlocalset ${2304+g} r0\nlocalget r1 ${2816+g}\nmul r1 3\nadd r1 r0\ndiv r1 4\nlocalset ${2816+g} r1`);
   out('label '+bodyDone);}
   if(glassMask){requireLod(glassMask,glassDone);
   const glassLow=label('glass_low'),glassHigh=label('glass_high');
-  out(`localget r0 3006\nmul r0 ${nx}\nlocalget r1 3007\nmul r1 ${ny}\nadd r0 r1\nlocalget r1 3008\nmul r1 ${nz}\nadd r0 r1\ndiv r0 16384\nmul r0 2\nmul r0 ${ny}\ndiv r0 16384\nlocalget r1 3007\nsub r0 r1\nmul r0 100\ndiv r0 16384\nadd r0 128\ncmp r0 0\njge ${glassLow}\nset r0 0\nlabel ${glassLow}\ncmp r0 255\njle ${glassHigh}\nset r0 255\nlabel ${glassHigh}\nlocalset ${2600+g} r0`);
+  out(`localget r0 3006\nmul r0 ${nx}\nlocalget r1 3007\nmul r1 ${ny}\nadd r0 r1\nlocalget r1 3008\nmul r1 ${nz}\nadd r0 r1\ndiv r0 16384\nmul r0 2\nmul r0 ${ny}\ndiv r0 16384\nlocalget r1 3007\nsub r0 r1\nmul r0 100\ndiv r0 16384\nadd r0 128\ncmp r0 0\njge ${glassLow}\nset r0 0\nlabel ${glassLow}\ncmp r0 255\njle ${glassHigh}\nset r0 255\nlabel ${glassHigh}\nlocalset ${2432+g} r0`);
   out('label '+glassDone);}
  });
 
  // XI physics controls the actual steering and road progress. The rig only reads them.
  out('label lighting_table_ready\nload8 r0 8203\ncmp r0 4\njge wheel_motion_ready\nload8 r0 8334\ncmp r0 2\nje wheel_motion_ready\nload8 r0 8203\ncmp r0 0\njne wheel_rival_distance');
- load('r0',278,4,0);
- out('jmp wheel_distance_ready\nlabel wheel_rival_distance\nload8 r7 8203\nsub r7 1\nmul r7 32\nadd r7 6016');
+ load('r0',498,2,0);
+ out('jmp wheel_phase_ready\nlabel wheel_rival_distance\nload8 r7 8203\nsub r7 1\nmul r7 32\nadd r7 6016');
  load('r0','r7',4,0);
  // 34 cm wheel radius, circumference approximated by 214 cm.
- out('label wheel_distance_ready\nmod r0 214\nmul r0 4096\ndiv r0 214');
+ out('label wheel_distance_ready\nmod r0 214\nmul r0 4096\ndiv r0 214\nlabel wheel_phase_ready');
  trig('r0','r5','r6','r7','r8');
  out('localset 3040 r5\nlocalset 3041 r6\nload8 r0 8203\ncmp r0 0\njne wheel_steer_neutral');
  load('r0',256,2,0);
@@ -190,8 +200,15 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
  trig('r0','r5','r6','r7','r8');
  out('localset 3042 r5\nlocalset 3043 r6\njmp wheel_motion_ready\nlabel wheel_steer_neutral\nlocalset 3042 0\nlocalset 3043 16384\nlabel wheel_motion_ready\nlocalset 3070 0\nload8 r0 8203\ncmp r0 0\njne car_selection_ready\nload8 r0 203\nlocalset 3070 r0\nlabel car_selection_ready\nstore8 8335 0\nlabel actor_vertex');
  function transformVertex(){
-  load('r8',8324,2,0);out(`mov r9 r8\nadd r9 512\nlocalget r9 r9\ndiv r9 512\ncmp r9 r8\nje vertex_transform_position\nadd r9 ${CAMERA}\nmeshread r0 r1 r2 r9\njmp vertex_publish_position\nlabel vertex_transform_position\nmeshread r0 r1 r2 r8`);
+  load('r8',8324,2,0);out(`mov r9 r8\nadd r9 512\nlocalget r9 r9\ndiv r9 2048\ncmp r9 r8\nje vertex_transform_position\nadd r9 ${CAMERA}\nmeshread r0 r1 r2 r9\njmp vertex_publish_position\nlabel vertex_transform_position\nmeshread r0 r1 r2 r8`);
 
+  const naturePoseDone=label('nature_pose_done');
+  out('load8 r9 8203\ncmp r9 4\njlt '+naturePoseDone+
+      '\ncmp r9 44\njge '+naturePoseDone+
+      '\nlocalset 3091 r1\nmov r5 r9\nmul r5 73\nmod r5 41\nadd r5 82\nmul r0 r5\ndiv r0 100'+
+      '\nmov r5 r9\nmul r5 47\nmod r5 39\nadd r5 88\nmul r1 r5\ndiv r1 100'+
+      '\nmov r5 r9\nmul r5 29\nmod r5 31\nadd r5 86\nmul r2 r5\ndiv r2 100'+
+      '\nmod r9 7\nsub r9 3\nmul r9 r1\ndiv r9 70\nadd r0 r9\nlabel '+naturePoseDone);
   // Split-normal vertices reuse the original deformed canonical position.
   const wheelTransform=label('wheel_transform'),wheelDone=label('wheel_transform_done');
   for(const band of wheelBands.filter(b=>b.detail!=='far')){
@@ -228,21 +245,23 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
       '\nmul r0 114\ndiv r0 100\nmul r2 92\ndiv r2 100'+
       '\ncmp r1 77\njle '+morphDone+'\nsub r1 14'+
       '\nlabel '+morphDone);
-  // Damped XI suspension from brake, boost, lateral slip and landing pulse.
-  // Wheel hubs stay attached to the road; only the car body tilts.
+  // Centimetre Q8 spring pose from drive.xi. Hubs stay on the road while
+  // the body rotates about the axles; chassis rise follows ballistic XI state.
   const suspensionDone=label('suspension_done'),suspensionBody=label('suspension_body');
   out('load8 r9 8203\ncmp r9 0\njne '+suspensionDone+
       '\ncmp r8 '+shadowStart+'\njge '+suspensionDone+
+      '\nlocalget r9 3103\nadd r0 r9'+
       '\ncmp r8 '+wheelBands[0].first+'\njlt '+suspensionBody+
-      '\ncmp r8 '+wheelBands[0].last+'\njlt '+suspensionDone+
+      '\ncmp r8 '+wheelBands[0].last+'\njge '+suspensionBody+
+      '\nload16 r9 384\ncmp r9 0\nje '+suspensionDone+
+      '\nsub r1 4\njmp '+suspensionDone+
       '\nlabel '+suspensionBody+
-      '\nload16 r9 112\nsub r9 32768\nmul r9 r0\ndiv r9 50000\nadd r1 r9'+
-      '\nload8 r9 396\ndiv r9 3\nsub r1 r9');
-  const brakeDone=label('suspension_brake_end'),boostDone=label('suspension_boost_end');
-  out('load8 r9 129\ncmp r9 1\njne '+brakeDone+
-      '\nmov r9 r2\ndiv r9 90\nsub r1 r9\nlabel '+brakeDone+
-      '\nload8 r9 382\ncmp r9 1\njne '+boostDone+
-      '\nmov r9 r2\ndiv r9 110\nadd r1 r9\nlabel '+boostDone+
+      '\nmov r5 r1\nsub r5 34'+
+      '\nlocalget r6 3101\nmov r7 r6\nmul r7 r0\ndiv r7 22528\nadd r1 r7'+
+      '\nlocalget r9 3102\nmov r7 r9\nmul r7 r2\ndiv r7 35840\nadd r1 r7'+
+      '\nmul r6 r5\ndiv r6 22528\nsub r0 r6'+
+      '\nmul r9 r5\ndiv r9 35840\nsub r2 r9'+
+      '\nlocalget r9 3100\nadd r1 r9'+
       '\nlabel '+suspensionDone);
   // FX ribbons change shape with the real XI fade clock, never screen motion.
   const effectsDone=label('fx_transform_done'),smokeDone=label('smoke_transform_done'),
@@ -265,7 +284,7 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label}){
   load('r9',8310,2,32768);out('mul r9 r0');load('r10',8308,2,32768);out('mul r10 r2\nadd r9 r10\ndiv r9 16384');store('r9',8320,4,1000000,'r10','r11');
   load('r9',8310,2,32768);out('mul r9 r2');load('r10',8308,2,32768);out('mul r10 r0\nsub r9 r10\ndiv r9 16384');load('r10',8304);out('add r10 r9');load('r0',8320);load('r11',8300);out('add r0 r11');
   load('r11',8192,2,0);out('add r10 r11');load('r11',8194,2,0);out('sub r1 r11');pitch('r0','r1','r2');
-  out('label vertex_publish_position');load('r8',8324,2,0);out(`add r8 ${CAMERA}\nmeshvertex r8 r0 r1 r2\nmov r9 r8\nsub r9 ${CAMERA}\nadd r9 512\nlocalget r9 r9\ndiv r9 512\nmeshtexcopy r8 r9\nmov r9 r8\nsub r9 ${CAMERA-512}\nlocalget r9 r9\nmod r9 512\ncmp r9 384\njge vertex_glass_lookup\ncmp r9 256\njge vertex_lighting_lookup\njmp vertex_shade_ready\nlabel vertex_glass_lookup\nadd r9 2216\nlocalget r9 r9\njmp vertex_shade_ready\nlabel vertex_lighting_lookup\nadd r9 2144\nlocalget r9 r9\nlabel vertex_shade_ready\nmeshshade r8 r9\nsub r8 ${CAMERA-1}`);store('r8',8324,2,0);load('r0',8326,2,0);out('cmp r8 r0\njlt actor_vertex');
+  out('label vertex_publish_position');load('r8',8324,2,0);out(`add r8 ${CAMERA}\nmeshvertex r8 r0 r1 r2\nmov r9 r8\nsub r9 ${CAMERA}\nadd r9 512\nlocalget r9 r9\ndiv r9 2048\nmeshtexcopy r8 r9\nmov r9 r8\nsub r9 ${CAMERA-512}\nlocalget r9 r9\nmod r9 2048\ncmp r9 256\njlt vertex_shade_ready\nadd r9 2048\nlocalget r9 r9\nlabel vertex_shade_ready\nload8 r6 8203\ncmp r6 4\njlt nature_vertex_shade_done\ncmp r6 44\njge nature_vertex_shade_done\nlocalget r9 3090\nlocalget r6 3091\ndiv r6 30\nadd r9 r6\ncmp r9 255\njle nature_vertex_shade_done\nset r9 255\nlabel nature_vertex_shade_done\nmeshshade r8 r9\nsub r8 ${CAMERA-1}`);store('r8',8324,2,0);load('r0',8326,2,0);out('cmp r8 r0\njlt actor_vertex');
  }
  transformVertex();
  // Expand the ephemeral smoke and nitro meshes once per frame, only when

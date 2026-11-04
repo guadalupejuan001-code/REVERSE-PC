@@ -40,8 +40,9 @@ function change(source,from,to,label){
  requireOnce(source,from,label);return source.replace(from,to);
 }
 function face(a,b,c,mat){
- return 'meshface '+(a+CAMERA)+' '+(b+CAMERA)+' '+(c+CAMERA)+
-  ' '+mat+' r9 r10 r11 60';
+ const rock=mat===3||mat===4||mat===8||mat===10;
+ return 'meshfacegradienttex '+(a+CAMERA)+' '+(b+CAMERA)+' '+(c+CAMERA)+
+  (rock?' 22 2 7 3':' 12 8 6 2')+' r9 r10 r11 60';
 }
 function tailLamps(source){
  if(source.includes('label brake_dim_'))return source;
@@ -79,7 +80,7 @@ function finishScene(content){
    additions+'\nlocalset 512 256','new rock and grass geometry');
  const newMetadata=newPositions.map((_,j)=>{
   const id=ROCK_START+j;
-  return 'localset '+(512+id)+' '+id*512;
+  return 'localset '+(512+id)+' '+id*2048;
  }).join('\n');
  // Landscape vertices are inserted between the author's preallocated
  // vehicle-effect IDs. The actor marker is unique across both render sources.
@@ -108,7 +109,7 @@ function finishScene(content){
  const originalFaces=original.split('\n');
  if(originalFaces.length!==9)throw Error('Tree triangle count changed');
  const groveFaces=[
-   ...originalFaces.slice(0,5),
+   ...originalFaces.slice(0,5).map(s=>s.replace(/^meshface (\d+) (\d+) (\d+) \d+/, 'meshfacegradienttex $1 $2 $3 12 8 6 2')),
    face(TREE_START+6,TREE_START+7,TREE_START+8,15),
    face(TREE_START+8,TREE_START+7,TREE_START+6,14),
    face(TREE_START+9,TREE_START+10,TREE_START+11,16),

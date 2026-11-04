@@ -10,12 +10,12 @@ const hex=c=>c.map(n=>Math.max(0,Math.min(255,n)).toString(16).padStart(2,'0')).
 function buildPalette(){
  const p=Array(256).fill('485259');
  // Soft overcast forest daylight, deep cedars, moss, damp stone and fine haze.
- const world=['446b74','a3b9ad','344c38','335846','526956','b35c48','454f4b','e4e5d9','899f91','534d3b','655943','73624b','193324','24432e','2d5035','315e3b','386a42','407249','4b7851','59845a'];
+ const world=['829a9f','b4c4b7','304936','335846','526956','b35c48','454f4b','e4e5d9','899f91','534d3b','655943','73624b','193324','24432e','2d5035','315e3b','386a42','407249','4b7851','59845a'];
  world.forEach((v,i)=>p[i]=v);
  // Additional XI material strips for atmospheric depth and terrain shading.
  // They are not full-screen Android color effects: XI owns these triangles.
- p[20]='244c58'; // Cloud-dark forest sky, material 20
- p[21]='45634a'; // Foreground forest floor, material 21
+ p[20]='506e7b'; // Cloud-dark forest sky, material 20
+ p[21]='425c42'; // Foreground forest floor, material 21
  // Asfalto con 8 matices, recorrido espacial constante en la pista XI.
  for(let i=0;i<16;i++)p[40+i]=hex(mix(rgb('242e2c'),rgb('58605b'),Math.pow(i/15,1.08)));
  // XI exhaust nitro: deep electric blue core through pale cyan. No screen-space bloom.
@@ -23,7 +23,7 @@ function buildPalette(){
   const t=i/7;
   p[56+i]=hex(mix(rgb('0b3474'),rgb('a2f8ff'),Math.pow(t,.67)));
  }
- for(let i=0;i<8;i++){p[24+i]=hex(mix(rgb('4b535a'),rgb('151e25'),i/7));p[32+i]=hex(mix(rgb('667356'),rgb('19271e'),i/7));}
+ for(let i=0;i<8;i++){p[24+i]=hex(mix(rgb('45504b'),rgb('101b1c'),i/7));p[32+i]=hex(mix(rgb('667356'),rgb('19271e'),i/7));}
  const paints=['e8edf3','b50920','135c9c','164c3b','d6a32b'];
  paints.forEach((paint,k)=>{const c=rgb(paint);for(let n=0;n<24;n++){
   const t=n/23;let v;
@@ -35,16 +35,18 @@ function buildPalette(){
   p[64+k*24+n]=hex(v);
  }});
  for(let n=0;n<24;n++){let v;if(n<=8)v=mix(rgb('070c12'),rgb('182936'),n/8);else if(n<=12)v=mix(rgb('253744'),rgb('82959c'),(n-9)/3);else v=mix(rgb('526877'),rgb('203545'),(n-13)/10);p[184+n]=hex(v);}
- ['10151a','1a2026','262d33','38414a'].forEach((v,i)=>p[208+i]=v);
- for(let n=0;n<12;n++)p[212+n]=hex(mix(rgb('273039'),rgb('f0f6f7'),Math.pow(n/11,.85)));
+ ['0b1012','141b1d','20282a','2c3536'].forEach((v,i)=>p[208+i]=v);
+ for(let n=0;n<12;n++)p[212+n]=hex(mix(rgb('303b40'),rgb('f4f5ed'),Math.pow(n/11,.85)));
  p[224]='ff2437';p[225]='f0f9ff';p[226]='111a22';p[227]='151e25';
  for(let n=0;n<12;n++){
   const t=n/11;
   p[228+n]=hex(t<.72?mix(rgb('0b1016'),rgb('303b47'),Math.pow(t/.72,.85)):
     mix(rgb('303b47'),rgb('677787'),Math.pow((t-.72)/.28,1.9)));
  }
- p[3]='355846'; // layered tree-covered hills
- p[4]='385e40'; // mossy raised forest verge
+ p[3]='718b7a'; // layered tree-covered hills
+ p[4]='385e40';
+ p[22]='46554a';p[23]='96a393'; // damp stone through distance haze
+ p[18]='789384';p[19]='a3b4a5'; // bounded canopy fog ramp // mossy raised forest verge
  p[240]='343d47';p[241]='596977';
  p[242]='69202b'; // tail light at idle; braking lights use hot-red 224
   // Fine pneumatic exhaust ramps: pale physical vapor, not colored pixel blobs.

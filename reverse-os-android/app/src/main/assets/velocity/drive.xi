@@ -130,6 +130,21 @@ store8 393 0
 store8 394 0
 store8 395 0
 store8 396 0
+# BEGIN V23 RIG INITIALIZE
+# V2.3 secondary-motion state, centimetres in Q8.
+store8 496 35
+store16 498 0
+store16 500 16384
+store16 502 0
+store16 504 32768
+store16 506 32768
+store16 508 32768
+store16 510 32768
+store16 512 32768
+store16 514 32768
+store16 516 32768
+store16 518 32768
+# END V23 RIG INITIALIZE
 # Driving skills state; HUD reads snapshots only.
 store32 480 0
 store16 484 100
@@ -1400,6 +1415,249 @@ label race_distance_finished
 set r1 480000
 label distance_ready
 store32 278 r1
+# BEGIN V23 RIG UPDATE
+# V2.3 distance-independent wheel phase and damped body motion.
+load8 r0 496
+cmp r0 35
+je rig_initialized
+# V2.3 secondary-motion state, centimetres in Q8.
+store8 496 35
+store16 498 0
+store16 500 16384
+store16 502 0
+store16 504 32768
+store16 506 32768
+store16 508 32768
+store16 510 32768
+store16 512 32768
+store16 514 32768
+store16 516 32768
+store16 518 32768
+label rig_initialized
+load16 r0 110
+load8 r1 133
+cmp r1 1
+jne rig_forward
+mul r0 -1
+label rig_forward
+mul r0 4096
+load16 r1 500
+sub r1 16384
+add r0 r1
+mov r1 r0
+mod r1 10700
+add r1 16384
+store16 500 r1
+div r0 10700
+load16 r1 498
+add r0 r1
+add r0 4096
+mod r0 4096
+store16 498 r0
+load16 r0 110
+load16 r1 502
+store16 502 r0
+sub r0 r1
+mul r0 48
+cmp r0 -2560
+jge rig_pitch_target_lo
+set r0 -2560
+label rig_pitch_target_lo
+cmp r0 2048
+jle rig_pitch_target_hi
+set r0 2048
+label rig_pitch_target_hi
+load16 r1 504
+sub r1 32768
+load16 r2 506
+sub r2 32768
+mov r3 r0
+sub r3 r1
+mul r3 3
+mul r2 11
+add r2 r3
+div r2 16
+cmp r2 -2048
+jge rig_pitch_velocity_lo
+set r2 -2048
+label rig_pitch_velocity_lo
+cmp r2 2048
+jle rig_pitch_velocity_hi
+set r2 2048
+label rig_pitch_velocity_hi
+add r1 r2
+cmp r1 -3072
+jge rig_pitch_position_lo
+set r1 -3072
+label rig_pitch_position_lo
+cmp r1 3072
+jle rig_pitch_position_hi
+set r1 3072
+label rig_pitch_position_hi
+add r1 32768
+store16 504 r1
+add r2 32768
+store16 506 r2
+load16 r0 256
+sub r0 1000
+load16 r1 110
+mul r0 r1
+mul r0 r1
+div r0 12000000
+load16 r1 112
+sub r1 32768
+div r1 2
+add r0 r1
+cmp r0 -2560
+jge rig_roll_target_lo
+set r0 -2560
+label rig_roll_target_lo
+cmp r0 2560
+jle rig_roll_target_hi
+set r0 2560
+label rig_roll_target_hi
+load16 r1 508
+sub r1 32768
+load16 r2 510
+sub r2 32768
+mov r3 r0
+sub r3 r1
+mul r3 3
+mul r2 11
+add r2 r3
+div r2 16
+cmp r2 -2048
+jge rig_roll_velocity_lo
+set r2 -2048
+label rig_roll_velocity_lo
+cmp r2 2048
+jle rig_roll_velocity_hi
+set r2 2048
+label rig_roll_velocity_hi
+add r1 r2
+cmp r1 -3072
+jge rig_roll_position_lo
+set r1 -3072
+label rig_roll_position_lo
+cmp r1 3072
+jle rig_roll_position_hi
+set r1 3072
+label rig_roll_position_hi
+add r1 32768
+store16 508 r1
+add r2 32768
+store16 510 r2
+set r0 0
+load16 r1 110
+cmp r1 100
+jlt rig_heave_target
+load16 r0 498
+mod r0 1024
+cmp r0 512
+jle rig_rough_fold
+set r1 1024
+sub r1 r0
+mov r0 r1
+label rig_rough_fold
+sub r0 256
+load8 r1 489
+cmp r1 1
+je rig_rough_grass
+cmp r1 2
+je rig_rough_curb
+div r0 8
+jmp rig_heave_target
+label rig_rough_grass
+div r0 2
+jmp rig_heave_target
+label rig_rough_curb
+mul r0 3
+div r0 4
+label rig_heave_target
+load16 r1 384
+cmp r1 0
+je rig_grounded
+set r0 768
+label rig_grounded
+load8 r1 391
+cmp r1 1
+jne rig_no_impact
+store16 514 30968
+label rig_no_impact
+load16 r1 512
+sub r1 32768
+load16 r2 514
+sub r2 32768
+mov r3 r0
+sub r3 r1
+mul r3 3
+mul r2 11
+add r2 r3
+div r2 16
+cmp r2 -2048
+jge rig_heave_velocity_lo
+set r2 -2048
+label rig_heave_velocity_lo
+cmp r2 2048
+jle rig_heave_velocity_hi
+set r2 2048
+label rig_heave_velocity_hi
+add r1 r2
+cmp r1 -2560
+jge rig_heave_position_lo
+set r1 -2560
+label rig_heave_position_lo
+cmp r1 2560
+jle rig_heave_position_hi
+set r1 2560
+label rig_heave_position_hi
+add r1 32768
+store16 512 r1
+add r2 32768
+store16 514 r2
+load16 r0 112
+sub r0 32768
+div r0 -2
+cmp r0 -768
+jge rig_sway_target_lo
+set r0 -768
+label rig_sway_target_lo
+cmp r0 768
+jle rig_sway_target_hi
+set r0 768
+label rig_sway_target_hi
+load16 r1 516
+sub r1 32768
+load16 r2 518
+sub r2 32768
+mov r3 r0
+sub r3 r1
+mul r3 3
+mul r2 11
+add r2 r3
+div r2 16
+cmp r2 -2048
+jge rig_sway_velocity_lo
+set r2 -2048
+label rig_sway_velocity_lo
+cmp r2 2048
+jle rig_sway_velocity_hi
+set r2 2048
+label rig_sway_velocity_hi
+add r1 r2
+cmp r1 -896
+jge rig_sway_position_lo
+set r1 -896
+label rig_sway_position_lo
+cmp r1 896
+jle rig_sway_position_hi
+set r1 896
+label rig_sway_position_hi
+add r1 32768
+store16 516 r1
+add r2 32768
+store16 518 r2
+# END V23 RIG UPDATE
 # Cycle 2: physical event history for visible tire marks, wheel smoke
 # and spring settling. Four world-space skid samples, each X/Z/Yaw/TTL.
 # Slots 400..447 are unused by world, opponents and gameplay ABI.

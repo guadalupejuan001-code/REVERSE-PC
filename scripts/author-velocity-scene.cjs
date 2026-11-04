@@ -93,7 +93,8 @@ function roadVertex(tuple,endpoint,side){const[x,y,z]=tuple;
 for(const tri of [[[0,0],[1,0],[1,1]],[[0,0],[1,1],[0,1]]]){
  tri.forEach(([e,s],i)=>roadVertex(['r'+(i*3),'r'+(i*3+1),'r'+(i*3+2)],e,s));
  const plain=label('road_plain'),done=label('road_done');
- out('load8 r9 8220\ncmp r9 108\njne '+plain);
+ const verge=label('road_verge'),vergePlain=label('road_verge_plain');
+ out('load8 r9 8220\ncmp r9 78\nje '+verge+'\ncmp r9 108\njne '+plain);
  for(let i=0;i<3;++i)out('meshvertex '+(1770+i)+' r'+(3*i)+' r'+(3*i+1)+' r'+(3*i+2));
  for(let i=0;i<3;++i){
   const [endpoint,side]=tri[i],id=1770+i;
@@ -108,7 +109,18 @@ for(const tri of [[[0,0],[1,0],[1,1]],[[0,0],[1,1],[0,1]]]){
  out('load8 r12 8200\nmod r12 7\ncmp r12 3\njle '+darker+
    '\nset r12 42\njmp '+toneDone+
    '\nlabel '+darker+'\nset r12 40\nlabel '+toneDone);
- out('meshfacegradienttex 1770 1771 1772 r12 12 5 3 r9 r10 r11 60\njmp '+done+'\nlabel '+plain);
+ out('meshfacegradienttex 1770 1771 1772 r12 12 5 3 r9 r10 r11 60\njmp '+done+'\nlabel '+verge);
+ for(let i=0;i<3;++i)out('meshvertex '+(1770+i)+' r'+(3*i)+' r'+(3*i+1)+' r'+(3*i+2));
+ for(let i=0;i<3;++i){
+  const [endpoint,side]=tri[i],id=1770+i;
+  out('load8 r0 8200\nadd r0 '+endpoint+'\nmul r0 91');
+  load('r1',side?8216:8214,2,32768);
+  out('div r1 9\nmeshtexuv '+id+' r1 r0\nmeshread r0 r1 r2 '+id+
+   '\ndiv r2 350\nadd r2 90\ncmp r2 220\njle '+vergePlain+'_'+id+
+   '\nset r2 220\nlabel '+vergePlain+'_'+id+'\nmeshshade '+id+' r2');
+ }
+ focus();
+ out('meshfacegradienttex 1770 1771 1772 12 8 6 3 r9 r10 r11 60\njmp '+done+'\nlabel '+plain);
  focus();
  out('load8 r7 8220\nmeshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 r7 r9 r10 r11 60');
  out('label '+done);

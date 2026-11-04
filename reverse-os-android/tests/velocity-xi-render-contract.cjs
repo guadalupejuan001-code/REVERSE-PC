@@ -190,13 +190,14 @@ try{
  const wheelEvidence=[];
  for(const [name,distance,steer] of [['neutral',0,1000],['rolling',54,1000],['left',54,350],['right',54,1650]]){
   const program=path.join(temp,'wheel-'+name+'.xi'),snapshot=path.join(temp,'wheel-'+name+'.rvp');
-  fs.writeFileSync(program,HEADER+'store32 278 '+distance+'\nstore16 256 '+steer+'\nhalt\n');
+  fs.writeFileSync(program,HEADER+'store16 498 '+Math.round(distance*4096/214)+'\nstore16 256 '+steer+'\nhalt\n');
   run('run',program,state,snapshot);
   const first=render(snapshot,1,1,0),again=render(snapshot,1,1,0);
   assert(first.bytes.equals(again.bytes),'wheel scene deterministic: '+name);
   decode(first.bytes,1);
   wheelEvidence.push({name,distanceCm:distance,steering:steer,frameSha256:sha(first.bytes)});
  }
+ assert.equal(new Set(wheelEvidence.map(x=>x.frameSha256)).size,4,'rolling and steering must each change visible pixels');
  assert.equal(sha(fs.readFileSync(state)),retainedHash,'wheel observation changed real race snapshot');
  // Causal A/B comparisons from real XI physics saved by gameplay-contract:
  // disable only the visual event, preserve identical x/z/velocity/Ether.
@@ -206,9 +207,25 @@ try{
   {name:'nitro',file:'fx-nitro.rvp',disable:['store8 382 0']},
   {name:'smoke',file:'fx-drift.rvp',disable:['store8 395 0']},
   {name:'rubber',file:'fx-skids.rvp',disable:[410,422,434,446].map(n=>'store8 '+n+' 0')},
-  {name:'landing',file:'fx-landing.rvp',disable:['store8 396 0']}
+  {name:'landing',file:'fx-landing.rvp',disable:['store16 512 32768','store16 514 32768']}
  ];
  const physicsEvidence=path.resolve(output,'gameplay');
+ const bodyEvidence=[];
+ for(const [name,filename] of [['acceleration','rig-accelerating.rvp'],['braking','rig-braking.rvp'],['corner','rig-corner.rvp'],['landing','rig-landing.rvp']]){
+  const original=path.join(physicsEvidence,filename),retained=sha(fs.readFileSync(original));
+  const program=path.join(temp,'rig-flat-'+name+'.xi'),neutral=path.join(temp,'rig-flat-'+name+'.rvp');
+  fs.writeFileSync(program,HEADER+[504,508,512,516].map(a=>'store16 '+a+' 32768').join('\n')+'\nhalt\n');
+  run('run',program,original,neutral);
+  for(let car=0;car<3;car++){
+   const on=render(original,1,1,0,car,512),off=render(neutral,1,1,0,car,512);
+   const frame=decode(on.bytes,1),a=materialize(frame,true),b=materialize(decode(off.bytes,1),true);
+   const changed=a.reduce((n,m,i)=>n+(m!==b[i]?1:0),0);
+   assert(changed>=8,'real XI '+name+' spring must visibly deform garage car '+car+', changed='+changed);
+   bodyEvidence.push({name,car,changedPixels:changed,frameSha256:sha(on.bytes)});
+   if(car===0&&name==='corner')writeImage('v23-corner',frame,materialize(frame),on.bytes);
+  }
+  assert.equal(sha(fs.readFileSync(original)),retained,'body rendering changed retained XI state');
+ }
  const effects=[];
  for(const item of visualCases){
   const original=path.join(physicsEvidence,item.file);
@@ -275,7 +292,7 @@ try{
   trackLengthCm:rounded(length),stateRegisters:16,modeCases:45,inspectionPoses:4,
   deterministicCases:measured.length,inputStateUnchanged:true,sourceOnlyRenderer:true,
   androidDeviceMeasured:false,threeCamerasDistinct:true,fivePaintsPerCamera:true,
-  rendererSha256:sha(renderer),worldSha256:sha(worldSource),driveSha256:sha(driving),wheelEvidence,
+  rendererSha256:sha(renderer),worldSha256:sha(worldSource),driveSha256:sha(driving),wheelEvidence,bodyEvidence,
   selectableCars:3,garage,orbitViews:6,orbit,effects,benchmarks,measured};
  fs.writeFileSync(path.join(output,'velocity-regraphics-results.json'),JSON.stringify(report,null,2)+'\n');
  console.log(JSON.stringify({...report,measured:undefined}));
