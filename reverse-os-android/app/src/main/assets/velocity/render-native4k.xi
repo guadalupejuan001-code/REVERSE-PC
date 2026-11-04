@@ -474,6 +474,12 @@ label sin_done_7
 mov r2 r3
 localget r1 58
 sub r1 32768
+localget r5 8
+mul r5 2
+add r5 3600
+localset r5 r1
+add r5 1
+localset r5 r2
 mov r0 r2
 mul r0 r15
 mov r3 r1
@@ -7260,59 +7266,10 @@ label open_tree_bank_ready
 mov r7 r8
 mul r7 2
 add r7 5000
-load16 r6 $r7
-mov r3 r6
-add r3 0
-mod r3 4096
-cmp r3 0
-jge sin_negative_195
-add r3 4096
-label sin_negative_195
-mov r1 r3
-mod r1 2048
-set r2 2048
-sub r2 r1
-mul r1 r2
-mov r2 r1
-mul r2 4
-set r4 20971520
-sub r4 r2
-mul r1 262144
-div r1 r4
-cmp r3 2048
-jlt sin_done_196
-mul r1 -1
-label sin_done_196
-mov r3 r1
-mov r2 r3
-mov r9 r2
-add r9 32768
-localset 58 r9
-mov r4 r6
-add r4 1024
-mod r4 4096
-cmp r4 0
-jge sin_negative_197
-add r4 4096
-label sin_negative_197
-mov r1 r4
-mod r1 2048
-set r2 2048
-sub r2 r1
-mul r1 r2
-mov r2 r1
-mul r2 4
-set r3 20971520
-sub r3 r2
-mul r1 262144
-div r1 r3
-cmp r4 2048
-jlt sin_done_198
-mul r1 -1
-label sin_done_198
-mov r4 r1
-localget r3 58
-sub r3 32768
+sub r7 1400
+localget r3 r7
+add r7 1
+localget r4 r7
 localget r0 11
 mod r0 2
 mul r0 2
@@ -7368,14 +7325,26 @@ load32 r2 $r7
 sub r2 2000000
 add r7 4
 load16 r8 $r7
+add r7 3
+load8 r5 $r7
+localset 3104 r5
 label actor_ready
+localget r5 11
+cmp r5 4
+jlt open_actor_heading
+cmp r5 124
+jge open_actor_heading
+set r3 0
+set r4 16384
+jmp open_actor_heading_ready
+label open_actor_heading
 mov r3 r8
 add r3 0
 mod r3 4096
 cmp r3 0
-jge sin_negative_199
+jge sin_negative_195
 add r3 4096
-label sin_negative_199
+label sin_negative_195
 mov r5 r3
 mod r5 2048
 set r6 2048
@@ -7388,9 +7357,9 @@ sub r4 r6
 mul r5 262144
 div r5 r4
 cmp r3 2048
-jlt sin_done_200
+jlt sin_done_196
 mul r5 -1
-label sin_done_200
+label sin_done_196
 mov r3 r5
 mov r6 r3
 mov r9 r6
@@ -7400,9 +7369,9 @@ mov r4 r8
 add r4 1024
 mod r4 4096
 cmp r4 0
-jge sin_negative_201
+jge sin_negative_197
 add r4 4096
-label sin_negative_201
+label sin_negative_197
 mov r5 r4
 mod r5 2048
 set r6 2048
@@ -7415,12 +7384,13 @@ sub r3 r6
 mul r5 262144
 div r5 r3
 cmp r4 2048
-jlt sin_done_202
+jlt sin_done_198
 mul r5 -1
-label sin_done_202
+label sin_done_198
 mov r4 r5
 localget r3 58
 sub r3 32768
+label open_actor_heading_ready
 localset 3320 -8390
 localset 3321 12815
 localset 3322 -5796
@@ -7504,38 +7474,38 @@ add r8 r9
 set r9 0
 mov r10 r5
 cmp r10 0
-jge norm_component_207
+jge norm_component_203
 mul r10 -1
-label norm_component_207
+label norm_component_203
 add r9 r10
 mov r10 r6
 cmp r10 0
-jge norm_component_208
+jge norm_component_204
 mul r10 -1
-label norm_component_208
+label norm_component_204
 add r9 r10
 mov r10 r7
 cmp r10 0
-jge norm_component_209
+jge norm_component_205
 mul r10 -1
-label norm_component_209
+label norm_component_205
 add r9 r10
 cmp r9 0
-jgt norm_nonzero_206
+jgt norm_nonzero_202
 set r9 1
-label norm_nonzero_206
-label norm_sqrt_204
+label norm_nonzero_202
+label norm_sqrt_200
 mov r10 r8
 div r10 r9
 add r10 r9
 div r10 2
 cmp r10 r9
-jge norm_done_205
+jge norm_done_201
 mov r9 r10
 cmp r9 0
-jgt norm_sqrt_204
+jgt norm_sqrt_200
 set r9 1
-label norm_done_205
+label norm_done_201
 mul r5 16384
 div r5 r9
 mul r6 16384
@@ -7562,38 +7532,38 @@ add r8 r9
 set r9 0
 mov r10 r5
 cmp r10 0
-jge norm_component_214
+jge norm_component_210
 mul r10 -1
-label norm_component_214
+label norm_component_210
 add r9 r10
 mov r10 r6
 cmp r10 0
-jge norm_component_215
+jge norm_component_211
 mul r10 -1
-label norm_component_215
+label norm_component_211
 add r9 r10
 mov r10 r7
 cmp r10 0
-jge norm_component_216
+jge norm_component_212
 mul r10 -1
-label norm_component_216
+label norm_component_212
 add r9 r10
 cmp r9 0
-jgt norm_nonzero_213
+jgt norm_nonzero_209
 set r9 1
-label norm_nonzero_213
-label norm_sqrt_211
+label norm_nonzero_209
+label norm_sqrt_207
 mov r10 r8
 div r10 r9
 add r10 r9
 div r10 2
 cmp r10 r9
-jge norm_done_212
+jge norm_done_208
 mov r9 r10
 cmp r9 0
-jgt norm_sqrt_211
+jgt norm_sqrt_207
 set r9 1
-label norm_done_212
+label norm_done_208
 mul r5 16384
 div r5 r9
 mul r6 16384
@@ -7799,9 +7769,9 @@ mul r1 -16380
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_219
+jge diffuse_positive_215
 set r0 0
-label diffuse_positive_219
+label diffuse_positive_215
 mul r0 128
 div r0 16384
 add r0 66
@@ -7820,9 +7790,9 @@ mul r2 -16380
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_220
+jge highlight_positive_216
 set r1 0
-label highlight_positive_220
+label highlight_positive_216
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -7873,19 +7843,19 @@ set r2 255
 label metal_bounded_0
 localset 2688 r2
 cmp r0 255
-jle intensity_bounded_221
+jle intensity_bounded_217
 set r0 255
-label intensity_bounded_221
+label intensity_bounded_217
 localset 2304 r0
 localget r1 2816
 mul r1 3
 add r1 r0
 div r1 4
 localset 2816 r1
-label body_lighting_done_217
+label body_lighting_done_213
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_222
+jne body_lighting_done_218
 localget r0 3000
 mul r0 -15205
 localget r1 3001
@@ -7896,9 +7866,9 @@ mul r1 -4574
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_224
+jge diffuse_positive_220
 set r0 0
-label diffuse_positive_224
+label diffuse_positive_220
 mul r0 128
 div r0 16384
 add r0 71
@@ -7917,9 +7887,9 @@ mul r2 -4574
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_225
+jge highlight_positive_221
 set r1 0
-label highlight_positive_225
+label highlight_positive_221
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -7970,19 +7940,19 @@ set r2 255
 label metal_bounded_1
 localset 2689 r2
 cmp r0 255
-jle intensity_bounded_226
+jle intensity_bounded_222
 set r0 255
-label intensity_bounded_226
+label intensity_bounded_222
 localset 2305 r0
 localget r1 2817
 mul r1 3
 add r1 r0
 div r1 4
 localset 2817 r1
-label body_lighting_done_222
+label body_lighting_done_218
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_227
+jne body_lighting_done_223
 localget r0 3000
 mul r0 79
 localget r1 3001
@@ -7993,9 +7963,9 @@ mul r1 -6156
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_229
+jge diffuse_positive_225
 set r0 0
-label diffuse_positive_229
+label diffuse_positive_225
 mul r0 128
 div r0 16384
 add r0 86
@@ -8014,9 +7984,9 @@ mul r2 -6156
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_230
+jge highlight_positive_226
 set r1 0
-label highlight_positive_230
+label highlight_positive_226
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -8067,16 +8037,16 @@ set r2 255
 label metal_bounded_2
 localset 2690 r2
 cmp r0 255
-jle intensity_bounded_231
+jle intensity_bounded_227
 set r0 255
-label intensity_bounded_231
+label intensity_bounded_227
 localset 2306 r0
 localget r1 2818
 mul r1 3
 add r1 r0
 div r1 4
 localset 2818 r1
-label body_lighting_done_227
+label body_lighting_done_223
 localget r0 3006
 mul r0 79
 localget r1 3007
@@ -8095,18 +8065,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_232
+jge glass_low_228
 set r0 0
-label glass_low_232
+label glass_low_228
 cmp r0 255
-jle glass_high_233
+jle glass_high_229
 set r0 255
-label glass_high_233
+label glass_high_229
 localset 2434 r0
-label glass_lighting_done_228
+label glass_lighting_done_224
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_234
+jne body_lighting_done_230
 localget r0 3000
 mul r0 4
 localget r1 3001
@@ -8117,9 +8087,9 @@ mul r1 -15524
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_236
+jge diffuse_positive_232
 set r0 0
-label diffuse_positive_236
+label diffuse_positive_232
 mul r0 128
 div r0 16384
 add r0 73
@@ -8138,9 +8108,9 @@ mul r2 -15524
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_237
+jge highlight_positive_233
 set r1 0
-label highlight_positive_237
+label highlight_positive_233
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -8191,19 +8161,19 @@ set r2 255
 label metal_bounded_3
 localset 2691 r2
 cmp r0 255
-jle intensity_bounded_238
+jle intensity_bounded_234
 set r0 255
-label intensity_bounded_238
+label intensity_bounded_234
 localset 2307 r0
 localget r1 2819
 mul r1 3
 add r1 r0
 div r1 4
 localset 2819 r1
-label body_lighting_done_234
+label body_lighting_done_230
 localget r3 3030
 cmp r3 0
-jne glass_lighting_done_235
+jne glass_lighting_done_231
 localget r0 3006
 mul r0 4
 localget r1 3007
@@ -8222,15 +8192,15 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_239
+jge glass_low_235
 set r0 0
-label glass_low_239
+label glass_low_235
 cmp r0 255
-jle glass_high_240
+jle glass_high_236
 set r0 255
-label glass_high_240
+label glass_high_236
 localset 2435 r0
-label glass_lighting_done_235
+label glass_lighting_done_231
 localget r0 3000
 mul r0 20
 localget r1 3001
@@ -8241,9 +8211,9 @@ mul r1 -12166
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_243
+jge diffuse_positive_239
 set r0 0
-label diffuse_positive_243
+label diffuse_positive_239
 mul r0 128
 div r0 16384
 add r0 81
@@ -8262,9 +8232,9 @@ mul r2 -12166
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_244
+jge highlight_positive_240
 set r1 0
-label highlight_positive_244
+label highlight_positive_240
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -8315,19 +8285,19 @@ set r2 255
 label metal_bounded_4
 localset 2692 r2
 cmp r0 255
-jle intensity_bounded_245
+jle intensity_bounded_241
 set r0 255
-label intensity_bounded_245
+label intensity_bounded_241
 localset 2308 r0
 localget r1 2820
 mul r1 3
 add r1 r0
 div r1 4
 localset 2820 r1
-label body_lighting_done_241
+label body_lighting_done_237
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_246
+jne body_lighting_done_242
 localget r0 3000
 mul r0 14114
 localget r1 3001
@@ -8338,9 +8308,9 @@ mul r1 -6211
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_248
+jge diffuse_positive_244
 set r0 0
-label diffuse_positive_248
+label diffuse_positive_244
 mul r0 128
 div r0 16384
 add r0 73
@@ -8359,9 +8329,9 @@ mul r2 -6211
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_249
+jge highlight_positive_245
 set r1 0
-label highlight_positive_249
+label highlight_positive_245
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -8412,19 +8382,19 @@ set r2 255
 label metal_bounded_5
 localset 2693 r2
 cmp r0 255
-jle intensity_bounded_250
+jle intensity_bounded_246
 set r0 255
-label intensity_bounded_250
+label intensity_bounded_246
 localset 2309 r0
 localget r1 2821
 mul r1 3
 add r1 r0
 div r1 4
 localset 2821 r1
-label body_lighting_done_246
+label body_lighting_done_242
 localget r3 3030
 cmp r3 2
-je body_lighting_done_251
+je body_lighting_done_247
 localget r0 3000
 mul r0 -15872
 localget r1 3001
@@ -8435,9 +8405,9 @@ mul r1 -4061
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_253
+jge diffuse_positive_249
 set r0 0
-label diffuse_positive_253
+label diffuse_positive_249
 mul r0 128
 div r0 16384
 add r0 66
@@ -8456,9 +8426,9 @@ mul r2 -4061
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_254
+jge highlight_positive_250
 set r1 0
-label highlight_positive_254
+label highlight_positive_250
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -8509,19 +8479,19 @@ set r2 255
 label metal_bounded_6
 localset 2694 r2
 cmp r0 255
-jle intensity_bounded_255
+jle intensity_bounded_251
 set r0 255
-label intensity_bounded_255
+label intensity_bounded_251
 localset 2310 r0
 localget r1 2822
 mul r1 3
 add r1 r0
 div r1 4
 localset 2822 r1
-label body_lighting_done_251
+label body_lighting_done_247
 localget r3 3030
 cmp r3 2
-je body_lighting_done_256
+je body_lighting_done_252
 localget r0 3000
 mul r0 15915
 localget r1 3001
@@ -8532,9 +8502,9 @@ mul r1 -3891
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_258
+jge diffuse_positive_254
 set r0 0
-label diffuse_positive_258
+label diffuse_positive_254
 mul r0 128
 div r0 16384
 add r0 66
@@ -8553,9 +8523,9 @@ mul r2 -3891
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_259
+jge highlight_positive_255
 set r1 0
-label highlight_positive_259
+label highlight_positive_255
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -8606,19 +8576,19 @@ set r2 255
 label metal_bounded_7
 localset 2695 r2
 cmp r0 255
-jle intensity_bounded_260
+jle intensity_bounded_256
 set r0 255
-label intensity_bounded_260
+label intensity_bounded_256
 localset 2311 r0
 localget r1 2823
 mul r1 3
 add r1 r0
 div r1 4
 localset 2823 r1
-label body_lighting_done_256
+label body_lighting_done_252
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_261
+jne body_lighting_done_257
 localget r0 3000
 mul r0 -3216
 localget r1 3001
@@ -8629,9 +8599,9 @@ mul r1 -3305
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_263
+jge diffuse_positive_259
 set r0 0
-label diffuse_positive_263
+label diffuse_positive_259
 mul r0 128
 div r0 16384
 add r0 87
@@ -8650,9 +8620,9 @@ mul r2 -3305
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_264
+jge highlight_positive_260
 set r1 0
-label highlight_positive_264
+label highlight_positive_260
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -8703,19 +8673,19 @@ set r2 255
 label metal_bounded_8
 localset 2696 r2
 cmp r0 255
-jle intensity_bounded_265
+jle intensity_bounded_261
 set r0 255
-label intensity_bounded_265
+label intensity_bounded_261
 localset 2312 r0
 localget r1 2824
 mul r1 3
 add r1 r0
 div r1 4
 localset 2824 r1
-label body_lighting_done_261
+label body_lighting_done_257
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_266
+jne body_lighting_done_262
 localget r0 3000
 mul r0 -5031
 localget r1 3001
@@ -8726,9 +8696,9 @@ mul r1 -1850
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_268
+jge diffuse_positive_264
 set r0 0
-label diffuse_positive_268
+label diffuse_positive_264
 mul r0 128
 div r0 16384
 add r0 87
@@ -8747,9 +8717,9 @@ mul r2 -1850
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_269
+jge highlight_positive_265
 set r1 0
-label highlight_positive_269
+label highlight_positive_265
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -8800,16 +8770,16 @@ set r2 255
 label metal_bounded_9
 localset 2697 r2
 cmp r0 255
-jle intensity_bounded_270
+jle intensity_bounded_266
 set r0 255
-label intensity_bounded_270
+label intensity_bounded_266
 localset 2313 r0
 localget r1 2825
 mul r1 3
 add r1 r0
 div r1 4
 localset 2825 r1
-label body_lighting_done_266
+label body_lighting_done_262
 localget r0 3000
 mul r0 10
 localget r1 3001
@@ -8820,9 +8790,9 @@ mul r1 247
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_273
+jge diffuse_positive_269
 set r0 0
-label diffuse_positive_273
+label diffuse_positive_269
 mul r0 128
 div r0 16384
 add r0 88
@@ -8841,9 +8811,9 @@ mul r2 247
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_274
+jge highlight_positive_270
 set r1 0
-label highlight_positive_274
+label highlight_positive_270
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -8894,16 +8864,16 @@ set r2 255
 label metal_bounded_10
 localset 2698 r2
 cmp r0 255
-jle intensity_bounded_275
+jle intensity_bounded_271
 set r0 255
-label intensity_bounded_275
+label intensity_bounded_271
 localset 2314 r0
 localget r1 2826
 mul r1 3
 add r1 r0
 div r1 4
 localset 2826 r1
-label body_lighting_done_271
+label body_lighting_done_267
 localget r0 3006
 mul r0 10
 localget r1 3007
@@ -8922,15 +8892,15 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_276
+jge glass_low_272
 set r0 0
-label glass_low_276
+label glass_low_272
 cmp r0 255
-jle glass_high_277
+jle glass_high_273
 set r0 255
-label glass_high_277
+label glass_high_273
 localset 2442 r0
-label glass_lighting_done_272
+label glass_lighting_done_268
 localget r0 3000
 mul r0 54
 localget r1 3001
@@ -8941,9 +8911,9 @@ mul r1 11434
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_280
+jge diffuse_positive_276
 set r0 0
-label diffuse_positive_280
+label diffuse_positive_276
 mul r0 128
 div r0 16384
 add r0 82
@@ -8962,9 +8932,9 @@ mul r2 11434
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_281
+jge highlight_positive_277
 set r1 0
-label highlight_positive_281
+label highlight_positive_277
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -9015,16 +8985,16 @@ set r2 255
 label metal_bounded_11
 localset 2699 r2
 cmp r0 255
-jle intensity_bounded_282
+jle intensity_bounded_278
 set r0 255
-label intensity_bounded_282
+label intensity_bounded_278
 localset 2315 r0
 localget r1 2827
 mul r1 3
 add r1 r0
 div r1 4
 localset 2827 r1
-label body_lighting_done_278
+label body_lighting_done_274
 localget r0 3000
 mul r0 -120
 localget r1 3001
@@ -9035,9 +9005,9 @@ mul r1 6373
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_285
+jge diffuse_positive_281
 set r0 0
-label diffuse_positive_285
+label diffuse_positive_281
 mul r0 128
 div r0 16384
 add r0 86
@@ -9056,9 +9026,9 @@ mul r2 6373
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_286
+jge highlight_positive_282
 set r1 0
-label highlight_positive_286
+label highlight_positive_282
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -9109,16 +9079,16 @@ set r2 255
 label metal_bounded_12
 localset 2700 r2
 cmp r0 255
-jle intensity_bounded_287
+jle intensity_bounded_283
 set r0 255
-label intensity_bounded_287
+label intensity_bounded_283
 localset 2316 r0
 localget r1 2828
 mul r1 3
 add r1 r0
 div r1 4
 localset 2828 r1
-label body_lighting_done_283
+label body_lighting_done_279
 localget r0 3006
 mul r0 -120
 localget r1 3007
@@ -9137,18 +9107,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_288
+jge glass_low_284
 set r0 0
-label glass_low_288
+label glass_low_284
 cmp r0 255
-jle glass_high_289
+jle glass_high_285
 set r0 255
-label glass_high_289
+label glass_high_285
 localset 2444 r0
-label glass_lighting_done_284
+label glass_lighting_done_280
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_290
+jne body_lighting_done_286
 localget r0 3000
 mul r0 5537
 localget r1 3001
@@ -9159,9 +9129,9 @@ mul r1 277
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_292
+jge diffuse_positive_288
 set r0 0
-label diffuse_positive_292
+label diffuse_positive_288
 mul r0 128
 div r0 16384
 add r0 87
@@ -9180,9 +9150,9 @@ mul r2 277
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_293
+jge highlight_positive_289
 set r1 0
-label highlight_positive_293
+label highlight_positive_289
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -9233,19 +9203,19 @@ set r2 255
 label metal_bounded_13
 localset 2701 r2
 cmp r0 255
-jle intensity_bounded_294
+jle intensity_bounded_290
 set r0 255
-label intensity_bounded_294
+label intensity_bounded_290
 localset 2317 r0
 localget r1 2829
 mul r1 3
 add r1 r0
 div r1 4
 localset 2829 r1
-label body_lighting_done_290
+label body_lighting_done_286
 localget r3 3030
 cmp r3 2
-je glass_lighting_done_291
+je glass_lighting_done_287
 localget r0 3006
 mul r0 5537
 localget r1 3007
@@ -9264,18 +9234,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_295
+jge glass_low_291
 set r0 0
-label glass_low_295
+label glass_low_291
 cmp r0 255
-jle glass_high_296
+jle glass_high_292
 set r0 255
-label glass_high_296
+label glass_high_292
 localset 2445 r0
-label glass_lighting_done_291
+label glass_lighting_done_287
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_297
+jne body_lighting_done_293
 localget r0 3000
 mul r0 2016
 localget r1 3001
@@ -9286,9 +9256,9 @@ mul r1 -5748
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_299
+jge diffuse_positive_295
 set r0 0
-label diffuse_positive_299
+label diffuse_positive_295
 mul r0 128
 div r0 16384
 add r0 86
@@ -9307,9 +9277,9 @@ mul r2 -5748
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_300
+jge highlight_positive_296
 set r1 0
-label highlight_positive_300
+label highlight_positive_296
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -9360,16 +9330,16 @@ set r2 255
 label metal_bounded_14
 localset 2702 r2
 cmp r0 255
-jle intensity_bounded_301
+jle intensity_bounded_297
 set r0 255
-label intensity_bounded_301
+label intensity_bounded_297
 localset 2318 r0
 localget r1 2830
 mul r1 3
 add r1 r0
 div r1 4
 localset 2830 r1
-label body_lighting_done_297
+label body_lighting_done_293
 localget r0 3006
 mul r0 2016
 localget r1 3007
@@ -9388,15 +9358,15 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_302
+jge glass_low_298
 set r0 0
-label glass_low_302
+label glass_low_298
 cmp r0 255
-jle glass_high_303
+jle glass_high_299
 set r0 255
-label glass_high_303
+label glass_high_299
 localset 2446 r0
-label glass_lighting_done_298
+label glass_lighting_done_294
 localget r0 3000
 mul r0 16384
 localget r1 3001
@@ -9407,9 +9377,9 @@ mul r1 18
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_306
+jge diffuse_positive_302
 set r0 0
-label diffuse_positive_306
+label diffuse_positive_302
 mul r0 128
 div r0 16384
 add r0 66
@@ -9428,9 +9398,9 @@ mul r2 18
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_307
+jge highlight_positive_303
 set r1 0
-label highlight_positive_307
+label highlight_positive_303
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -9481,19 +9451,19 @@ set r2 255
 label metal_bounded_15
 localset 2703 r2
 cmp r0 255
-jle intensity_bounded_308
+jle intensity_bounded_304
 set r0 255
-label intensity_bounded_308
+label intensity_bounded_304
 localset 2319 r0
 localget r1 2831
 mul r1 3
 add r1 r0
 div r1 4
 localset 2831 r1
-label body_lighting_done_304
+label body_lighting_done_300
 localget r3 3030
 cmp r3 2
-je body_lighting_done_309
+je body_lighting_done_305
 localget r0 3000
 mul r0 -15542
 localget r1 3001
@@ -9504,9 +9474,9 @@ mul r1 152
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_311
+jge diffuse_positive_307
 set r0 0
-label diffuse_positive_311
+label diffuse_positive_307
 mul r0 128
 div r0 16384
 add r0 73
@@ -9525,9 +9495,9 @@ mul r2 152
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_312
+jge highlight_positive_308
 set r1 0
-label highlight_positive_312
+label highlight_positive_308
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -9578,16 +9548,16 @@ set r2 255
 label metal_bounded_16
 localset 2704 r2
 cmp r0 255
-jle intensity_bounded_313
+jle intensity_bounded_309
 set r0 255
-label intensity_bounded_313
+label intensity_bounded_309
 localset 2320 r0
 localget r1 2832
 mul r1 3
 add r1 r0
 div r1 4
 localset 2832 r1
-label body_lighting_done_309
+label body_lighting_done_305
 localget r0 3006
 mul r0 -15542
 localget r1 3007
@@ -9606,18 +9576,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_314
+jge glass_low_310
 set r0 0
-label glass_low_314
+label glass_low_310
 cmp r0 255
-jle glass_high_315
+jle glass_high_311
 set r0 255
-label glass_high_315
+label glass_high_311
 localset 2448 r0
-label glass_lighting_done_310
+label glass_lighting_done_306
 localget r3 3030
 cmp r3 2
-je body_lighting_done_316
+je body_lighting_done_312
 localget r0 3000
 mul r0 15486
 localget r1 3001
@@ -9628,9 +9598,9 @@ mul r1 111
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_318
+jge diffuse_positive_314
 set r0 0
-label diffuse_positive_318
+label diffuse_positive_314
 mul r0 128
 div r0 16384
 add r0 73
@@ -9649,9 +9619,9 @@ mul r2 111
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_319
+jge highlight_positive_315
 set r1 0
-label highlight_positive_319
+label highlight_positive_315
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -9702,16 +9672,16 @@ set r2 255
 label metal_bounded_17
 localset 2705 r2
 cmp r0 255
-jle intensity_bounded_320
+jle intensity_bounded_316
 set r0 255
-label intensity_bounded_320
+label intensity_bounded_316
 localset 2321 r0
 localget r1 2833
 mul r1 3
 add r1 r0
 div r1 4
 localset 2833 r1
-label body_lighting_done_316
+label body_lighting_done_312
 localget r0 3006
 mul r0 15486
 localget r1 3007
@@ -9730,15 +9700,15 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_321
+jge glass_low_317
 set r0 0
-label glass_low_321
+label glass_low_317
 cmp r0 255
-jle glass_high_322
+jle glass_high_318
 set r0 255
-label glass_high_322
+label glass_high_318
 localset 2449 r0
-label glass_lighting_done_317
+label glass_lighting_done_313
 localget r0 3000
 mul r0 -16384
 localget r1 3001
@@ -9749,9 +9719,9 @@ mul r1 40
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_325
+jge diffuse_positive_321
 set r0 0
-label diffuse_positive_325
+label diffuse_positive_321
 mul r0 128
 div r0 16384
 add r0 66
@@ -9770,9 +9740,9 @@ mul r2 40
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_326
+jge highlight_positive_322
 set r1 0
-label highlight_positive_326
+label highlight_positive_322
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -9823,19 +9793,19 @@ set r2 255
 label metal_bounded_18
 localset 2706 r2
 cmp r0 255
-jle intensity_bounded_327
+jle intensity_bounded_323
 set r0 255
-label intensity_bounded_327
+label intensity_bounded_323
 localset 2322 r0
 localget r1 2834
 mul r1 3
 add r1 r0
 div r1 4
 localset 2834 r1
-label body_lighting_done_323
+label body_lighting_done_319
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_328
+jne body_lighting_done_324
 localget r0 3000
 mul r0 -12536
 localget r1 3001
@@ -9846,9 +9816,9 @@ mul r1 109
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_330
+jge diffuse_positive_326
 set r0 0
-label diffuse_positive_330
+label diffuse_positive_326
 mul r0 128
 div r0 16384
 add r0 80
@@ -9867,9 +9837,9 @@ mul r2 109
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_331
+jge highlight_positive_327
 set r1 0
-label highlight_positive_331
+label highlight_positive_327
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -9920,16 +9890,16 @@ set r2 255
 label metal_bounded_19
 localset 2707 r2
 cmp r0 255
-jle intensity_bounded_332
+jle intensity_bounded_328
 set r0 255
-label intensity_bounded_332
+label intensity_bounded_328
 localset 2323 r0
 localget r1 2835
 mul r1 3
 add r1 r0
 div r1 4
 localset 2835 r1
-label body_lighting_done_328
+label body_lighting_done_324
 localget r0 3006
 mul r0 -12536
 localget r1 3007
@@ -9948,18 +9918,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_333
+jge glass_low_329
 set r0 0
-label glass_low_333
+label glass_low_329
 cmp r0 255
-jle glass_high_334
+jle glass_high_330
 set r0 255
-label glass_high_334
+label glass_high_330
 localset 2451 r0
-label glass_lighting_done_329
+label glass_lighting_done_325
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_335
+jne body_lighting_done_331
 localget r0 3000
 mul r0 12291
 localget r1 3001
@@ -9970,9 +9940,9 @@ mul r1 168
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_337
+jge diffuse_positive_333
 set r0 0
-label diffuse_positive_337
+label diffuse_positive_333
 mul r0 128
 div r0 16384
 add r0 81
@@ -9991,9 +9961,9 @@ mul r2 168
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_338
+jge highlight_positive_334
 set r1 0
-label highlight_positive_338
+label highlight_positive_334
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -10044,16 +10014,16 @@ set r2 255
 label metal_bounded_20
 localset 2708 r2
 cmp r0 255
-jle intensity_bounded_339
+jle intensity_bounded_335
 set r0 255
-label intensity_bounded_339
+label intensity_bounded_335
 localset 2324 r0
 localget r1 2836
 mul r1 3
 add r1 r0
 div r1 4
 localset 2836 r1
-label body_lighting_done_335
+label body_lighting_done_331
 localget r0 3006
 mul r0 12291
 localget r1 3007
@@ -10072,18 +10042,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_340
+jge glass_low_336
 set r0 0
-label glass_low_340
+label glass_low_336
 cmp r0 255
-jle glass_high_341
+jle glass_high_337
 set r0 255
-label glass_high_341
+label glass_high_337
 localset 2452 r0
-label glass_lighting_done_336
+label glass_lighting_done_332
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_342
+jne body_lighting_done_338
 localget r0 3000
 mul r0 -11041
 localget r1 3001
@@ -10094,9 +10064,9 @@ mul r1 4856
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_344
+jge diffuse_positive_340
 set r0 0
-label diffuse_positive_344
+label diffuse_positive_340
 mul r0 128
 div r0 16384
 add r0 81
@@ -10115,9 +10085,9 @@ mul r2 4856
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_345
+jge highlight_positive_341
 set r1 0
-label highlight_positive_345
+label highlight_positive_341
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -10168,19 +10138,19 @@ set r2 255
 label metal_bounded_21
 localset 2709 r2
 cmp r0 255
-jle intensity_bounded_346
+jle intensity_bounded_342
 set r0 255
-label intensity_bounded_346
+label intensity_bounded_342
 localset 2325 r0
 localget r1 2837
 mul r1 3
 add r1 r0
 div r1 4
 localset 2837 r1
-label body_lighting_done_342
+label body_lighting_done_338
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_347
+jne body_lighting_done_343
 localget r0 3000
 mul r0 11383
 localget r1 3001
@@ -10191,9 +10161,9 @@ mul r1 5082
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_349
+jge diffuse_positive_345
 set r0 0
-label diffuse_positive_349
+label diffuse_positive_345
 mul r0 128
 div r0 16384
 add r0 80
@@ -10212,9 +10182,9 @@ mul r2 5082
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_350
+jge highlight_positive_346
 set r1 0
-label highlight_positive_350
+label highlight_positive_346
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -10265,19 +10235,19 @@ set r2 255
 label metal_bounded_22
 localset 2710 r2
 cmp r0 255
-jle intensity_bounded_351
+jle intensity_bounded_347
 set r0 255
-label intensity_bounded_351
+label intensity_bounded_347
 localset 2326 r0
 localget r1 2838
 mul r1 3
 add r1 r0
 div r1 4
 localset 2838 r1
-label body_lighting_done_347
+label body_lighting_done_343
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_352
+jne body_lighting_done_348
 localget r0 3000
 mul r0 -14031
 localget r1 3001
@@ -10288,9 +10258,9 @@ mul r1 5443
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_354
+jge diffuse_positive_350
 set r0 0
-label diffuse_positive_354
+label diffuse_positive_350
 mul r0 128
 div r0 16384
 add r0 75
@@ -10309,9 +10279,9 @@ mul r2 5443
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_355
+jge highlight_positive_351
 set r1 0
-label highlight_positive_355
+label highlight_positive_351
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -10362,19 +10332,19 @@ set r2 255
 label metal_bounded_23
 localset 2711 r2
 cmp r0 255
-jle intensity_bounded_356
+jle intensity_bounded_352
 set r0 255
-label intensity_bounded_356
+label intensity_bounded_352
 localset 2327 r0
 localget r1 2839
 mul r1 3
 add r1 r0
 div r1 4
 localset 2839 r1
-label body_lighting_done_352
+label body_lighting_done_348
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_357
+jne body_lighting_done_353
 localget r0 3000
 mul r0 14057
 localget r1 3001
@@ -10385,9 +10355,9 @@ mul r1 5819
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_359
+jge diffuse_positive_355
 set r0 0
-label diffuse_positive_359
+label diffuse_positive_355
 mul r0 128
 div r0 16384
 add r0 74
@@ -10406,9 +10376,9 @@ mul r2 5819
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_360
+jge highlight_positive_356
 set r1 0
-label highlight_positive_360
+label highlight_positive_356
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -10459,19 +10429,19 @@ set r2 255
 label metal_bounded_24
 localset 2712 r2
 cmp r0 255
-jle intensity_bounded_361
+jle intensity_bounded_357
 set r0 255
-label intensity_bounded_361
+label intensity_bounded_357
 localset 2328 r0
 localget r1 2840
 mul r1 3
 add r1 r0
 div r1 4
 localset 2840 r1
-label body_lighting_done_357
+label body_lighting_done_353
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_362
+jne body_lighting_done_358
 localget r0 3000
 mul r0 -3668
 localget r1 3001
@@ -10482,9 +10452,9 @@ mul r1 1457
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_364
+jge diffuse_positive_360
 set r0 0
-label diffuse_positive_364
+label diffuse_positive_360
 mul r0 128
 div r0 16384
 add r0 87
@@ -10503,9 +10473,9 @@ mul r2 1457
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_365
+jge highlight_positive_361
 set r1 0
-label highlight_positive_365
+label highlight_positive_361
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -10556,19 +10526,19 @@ set r2 255
 label metal_bounded_25
 localset 2713 r2
 cmp r0 255
-jle intensity_bounded_366
+jle intensity_bounded_362
 set r0 255
-label intensity_bounded_366
+label intensity_bounded_362
 localset 2329 r0
 localget r1 2841
 mul r1 3
 add r1 r0
 div r1 4
 localset 2841 r1
-label body_lighting_done_362
+label body_lighting_done_358
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_367
+jne body_lighting_done_363
 localget r0 3000
 mul r0 3588
 localget r1 3001
@@ -10579,9 +10549,9 @@ mul r1 1526
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_369
+jge diffuse_positive_365
 set r0 0
-label diffuse_positive_369
+label diffuse_positive_365
 mul r0 128
 div r0 16384
 add r0 87
@@ -10600,9 +10570,9 @@ mul r2 1526
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_370
+jge highlight_positive_366
 set r1 0
-label highlight_positive_370
+label highlight_positive_366
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -10653,19 +10623,19 @@ set r2 255
 label metal_bounded_26
 localset 2714 r2
 cmp r0 255
-jle intensity_bounded_371
+jle intensity_bounded_367
 set r0 255
-label intensity_bounded_371
+label intensity_bounded_367
 localset 2330 r0
 localget r1 2842
 mul r1 3
 add r1 r0
 div r1 4
 localset 2842 r1
-label body_lighting_done_367
+label body_lighting_done_363
 localget r3 3030
 cmp r3 0
-jne glass_lighting_done_368
+jne glass_lighting_done_364
 localget r0 3006
 mul r0 3588
 localget r1 3007
@@ -10684,18 +10654,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_372
+jge glass_low_368
 set r0 0
-label glass_low_372
+label glass_low_368
 cmp r0 255
-jle glass_high_373
+jle glass_high_369
 set r0 255
-label glass_high_373
+label glass_high_369
 localset 2458 r0
-label glass_lighting_done_368
+label glass_lighting_done_364
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_374
+jne body_lighting_done_370
 localget r0 3000
 mul r0 -2808
 localget r1 3001
@@ -10706,9 +10676,9 @@ mul r1 2272
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_376
+jge diffuse_positive_372
 set r0 0
-label diffuse_positive_376
+label diffuse_positive_372
 mul r0 128
 div r0 16384
 add r0 87
@@ -10727,9 +10697,9 @@ mul r2 2272
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_377
+jge highlight_positive_373
 set r1 0
-label highlight_positive_377
+label highlight_positive_373
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -10780,19 +10750,19 @@ set r2 255
 label metal_bounded_27
 localset 2715 r2
 cmp r0 255
-jle intensity_bounded_378
+jle intensity_bounded_374
 set r0 255
-label intensity_bounded_378
+label intensity_bounded_374
 localset 2331 r0
 localget r1 2843
 mul r1 3
 add r1 r0
 div r1 4
 localset 2843 r1
-label body_lighting_done_374
+label body_lighting_done_370
 localget r3 3030
 cmp r3 0
-jne glass_lighting_done_375
+jne glass_lighting_done_371
 localget r0 3006
 mul r0 -2808
 localget r1 3007
@@ -10811,18 +10781,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_379
+jge glass_low_375
 set r0 0
-label glass_low_379
+label glass_low_375
 cmp r0 255
-jle glass_high_380
+jle glass_high_376
 set r0 255
-label glass_high_380
+label glass_high_376
 localset 2459 r0
-label glass_lighting_done_375
+label glass_lighting_done_371
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_381
+jne body_lighting_done_377
 localget r0 3000
 mul r0 -2008
 localget r1 3001
@@ -10833,9 +10803,9 @@ mul r1 6638
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_383
+jge diffuse_positive_379
 set r0 0
-label diffuse_positive_383
+label diffuse_positive_379
 mul r0 128
 div r0 16384
 add r0 86
@@ -10854,9 +10824,9 @@ mul r2 6638
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_384
+jge highlight_positive_380
 set r1 0
-label highlight_positive_384
+label highlight_positive_380
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -10907,16 +10877,16 @@ set r2 255
 label metal_bounded_28
 localset 2716 r2
 cmp r0 255
-jle intensity_bounded_385
+jle intensity_bounded_381
 set r0 255
-label intensity_bounded_385
+label intensity_bounded_381
 localset 2332 r0
 localget r1 2844
 mul r1 3
 add r1 r0
 div r1 4
 localset 2844 r1
-label body_lighting_done_381
+label body_lighting_done_377
 localget r0 3006
 mul r0 -2008
 localget r1 3007
@@ -10935,18 +10905,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_386
+jge glass_low_382
 set r0 0
-label glass_low_386
+label glass_low_382
 cmp r0 255
-jle glass_high_387
+jle glass_high_383
 set r0 255
-label glass_high_387
+label glass_high_383
 localset 2460 r0
-label glass_lighting_done_382
+label glass_lighting_done_378
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_388
+jne body_lighting_done_384
 localget r0 3000
 mul r0 3130
 localget r1 3001
@@ -10957,9 +10927,9 @@ mul r1 2376
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_390
+jge diffuse_positive_386
 set r0 0
-label diffuse_positive_390
+label diffuse_positive_386
 mul r0 128
 div r0 16384
 add r0 87
@@ -10978,9 +10948,9 @@ mul r2 2376
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_391
+jge highlight_positive_387
 set r1 0
-label highlight_positive_391
+label highlight_positive_387
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -11031,19 +11001,19 @@ set r2 255
 label metal_bounded_29
 localset 2717 r2
 cmp r0 255
-jle intensity_bounded_392
+jle intensity_bounded_388
 set r0 255
-label intensity_bounded_392
+label intensity_bounded_388
 localset 2333 r0
 localget r1 2845
 mul r1 3
 add r1 r0
 div r1 4
 localset 2845 r1
-label body_lighting_done_388
+label body_lighting_done_384
 localget r3 3030
 cmp r3 1
-je body_lighting_done_393
+je body_lighting_done_389
 localget r0 3000
 mul r0 2076
 localget r1 3001
@@ -11054,9 +11024,9 @@ mul r1 6701
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_395
+jge diffuse_positive_391
 set r0 0
-label diffuse_positive_395
+label diffuse_positive_391
 mul r0 128
 div r0 16384
 add r0 86
@@ -11075,9 +11045,9 @@ mul r2 6701
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_396
+jge highlight_positive_392
 set r1 0
-label highlight_positive_396
+label highlight_positive_392
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -11128,19 +11098,19 @@ set r2 255
 label metal_bounded_30
 localset 2718 r2
 cmp r0 255
-jle intensity_bounded_397
+jle intensity_bounded_393
 set r0 255
-label intensity_bounded_397
+label intensity_bounded_393
 localset 2334 r0
 localget r1 2846
 mul r1 3
 add r1 r0
 div r1 4
 localset 2846 r1
-label body_lighting_done_393
+label body_lighting_done_389
 localget r3 3030
 cmp r3 2
-je glass_lighting_done_394
+je glass_lighting_done_390
 localget r0 3006
 mul r0 2076
 localget r1 3007
@@ -11159,18 +11129,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_398
+jge glass_low_394
 set r0 0
-label glass_low_398
+label glass_low_394
 cmp r0 255
-jle glass_high_399
+jle glass_high_395
 set r0 255
-label glass_high_399
+label glass_high_395
 localset 2462 r0
-label glass_lighting_done_394
+label glass_lighting_done_390
 localget r3 3030
 cmp r3 2
-je body_lighting_done_400
+je body_lighting_done_396
 localget r0 3000
 mul r0 -15833
 localget r1 3001
@@ -11181,9 +11151,9 @@ mul r1 4211
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_402
+jge diffuse_positive_398
 set r0 0
-label diffuse_positive_402
+label diffuse_positive_398
 mul r0 128
 div r0 16384
 add r0 66
@@ -11202,9 +11172,9 @@ mul r2 4211
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_403
+jge highlight_positive_399
 set r1 0
-label highlight_positive_403
+label highlight_positive_399
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -11255,19 +11225,19 @@ set r2 255
 label metal_bounded_31
 localset 2719 r2
 cmp r0 255
-jle intensity_bounded_404
+jle intensity_bounded_400
 set r0 255
-label intensity_bounded_404
+label intensity_bounded_400
 localset 2335 r0
 localget r1 2847
 mul r1 3
 add r1 r0
 div r1 4
 localset 2847 r1
-label body_lighting_done_400
+label body_lighting_done_396
 localget r3 3030
 cmp r3 2
-je body_lighting_done_405
+je body_lighting_done_401
 localget r0 3000
 mul r0 15833
 localget r1 3001
@@ -11278,9 +11248,9 @@ mul r1 4211
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_407
+jge diffuse_positive_403
 set r0 0
-label diffuse_positive_407
+label diffuse_positive_403
 mul r0 128
 div r0 16384
 add r0 66
@@ -11299,9 +11269,9 @@ mul r2 4211
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_408
+jge highlight_positive_404
 set r1 0
-label highlight_positive_408
+label highlight_positive_404
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -11352,19 +11322,19 @@ set r2 255
 label metal_bounded_32
 localset 2720 r2
 cmp r0 255
-jle intensity_bounded_409
+jle intensity_bounded_405
 set r0 255
-label intensity_bounded_409
+label intensity_bounded_405
 localset 2336 r0
 localget r1 2848
 mul r1 3
 add r1 r0
 div r1 4
 localset 2848 r1
-label body_lighting_done_405
+label body_lighting_done_401
 localget r3 3030
 cmp r3 2
-je body_lighting_done_410
+je body_lighting_done_406
 localget r0 3000
 mul r0 11
 localget r1 3001
@@ -11375,9 +11345,9 @@ mul r1 16384
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_412
+jge diffuse_positive_408
 set r0 0
-label diffuse_positive_412
+label diffuse_positive_408
 mul r0 128
 div r0 16384
 add r0 66
@@ -11396,9 +11366,9 @@ mul r2 16384
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_413
+jge highlight_positive_409
 set r1 0
-label highlight_positive_413
+label highlight_positive_409
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -11449,19 +11419,19 @@ set r2 255
 label metal_bounded_33
 localset 2721 r2
 cmp r0 255
-jle intensity_bounded_414
+jle intensity_bounded_410
 set r0 255
-label intensity_bounded_414
+label intensity_bounded_410
 localset 2337 r0
 localget r1 2849
 mul r1 3
 add r1 r0
 div r1 4
 localset 2849 r1
-label body_lighting_done_410
+label body_lighting_done_406
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_415
+jne body_lighting_done_411
 localget r0 3000
 mul r0 -38
 localget r1 3001
@@ -11472,9 +11442,9 @@ mul r1 15342
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_417
+jge diffuse_positive_413
 set r0 0
-label diffuse_positive_417
+label diffuse_positive_413
 mul r0 128
 div r0 16384
 add r0 74
@@ -11493,9 +11463,9 @@ mul r2 15342
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_418
+jge highlight_positive_414
 set r1 0
-label highlight_positive_418
+label highlight_positive_414
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -11546,16 +11516,16 @@ set r2 255
 label metal_bounded_34
 localset 2722 r2
 cmp r0 255
-jle intensity_bounded_419
+jle intensity_bounded_415
 set r0 255
-label intensity_bounded_419
+label intensity_bounded_415
 localset 2338 r0
 localget r1 2850
 mul r1 3
 add r1 r0
 div r1 4
 localset 2850 r1
-label body_lighting_done_415
+label body_lighting_done_411
 localget r0 3000
 mul r0 -6445
 localget r1 3001
@@ -11566,9 +11536,9 @@ mul r1 15063
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_422
+jge diffuse_positive_418
 set r0 0
-label diffuse_positive_422
+label diffuse_positive_418
 mul r0 128
 div r0 16384
 add r0 66
@@ -11587,9 +11557,9 @@ mul r2 15063
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_423
+jge highlight_positive_419
 set r1 0
-label highlight_positive_423
+label highlight_positive_419
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -11640,16 +11610,16 @@ set r2 255
 label metal_bounded_35
 localset 2723 r2
 cmp r0 255
-jle intensity_bounded_424
+jle intensity_bounded_420
 set r0 255
-label intensity_bounded_424
+label intensity_bounded_420
 localset 2339 r0
 localget r1 2851
 mul r1 3
 add r1 r0
 div r1 4
 localset 2851 r1
-label body_lighting_done_420
+label body_lighting_done_416
 localget r0 3000
 mul r0 5670
 localget r1 3001
@@ -11660,9 +11630,9 @@ mul r1 15372
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_427
+jge diffuse_positive_423
 set r0 0
-label diffuse_positive_427
+label diffuse_positive_423
 mul r0 128
 div r0 16384
 add r0 66
@@ -11681,9 +11651,9 @@ mul r2 15372
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_428
+jge highlight_positive_424
 set r1 0
-label highlight_positive_428
+label highlight_positive_424
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -11734,19 +11704,19 @@ set r2 255
 label metal_bounded_36
 localset 2724 r2
 cmp r0 255
-jle intensity_bounded_429
+jle intensity_bounded_425
 set r0 255
-label intensity_bounded_429
+label intensity_bounded_425
 localset 2340 r0
 localget r1 2852
 mul r1 3
 add r1 r0
 div r1 4
 localset 2852 r1
-label body_lighting_done_425
+label body_lighting_done_421
 localget r3 3030
 cmp r3 2
-je body_lighting_done_430
+je body_lighting_done_426
 localget r0 3000
 mul r0 0
 localget r1 3001
@@ -11757,9 +11727,9 @@ mul r1 158
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_432
+jge diffuse_positive_428
 set r0 0
-label diffuse_positive_432
+label diffuse_positive_428
 mul r0 128
 div r0 16384
 add r0 44
@@ -11778,9 +11748,9 @@ mul r2 158
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_433
+jge highlight_positive_429
 set r1 0
-label highlight_positive_433
+label highlight_positive_429
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -11831,19 +11801,19 @@ set r2 255
 label metal_bounded_37
 localset 2725 r2
 cmp r0 255
-jle intensity_bounded_434
+jle intensity_bounded_430
 set r0 255
-label intensity_bounded_434
+label intensity_bounded_430
 localset 2341 r0
 localget r1 2853
 mul r1 3
 add r1 r0
 div r1 4
 localset 2853 r1
-label body_lighting_done_430
+label body_lighting_done_426
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_435
+jne body_lighting_done_431
 localget r0 3000
 mul r0 -1968
 localget r1 3001
@@ -11854,9 +11824,9 @@ mul r1 -5370
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_437
+jge diffuse_positive_433
 set r0 0
-label diffuse_positive_437
+label diffuse_positive_433
 mul r0 128
 div r0 16384
 add r0 87
@@ -11875,9 +11845,9 @@ mul r2 -5370
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_438
+jge highlight_positive_434
 set r1 0
-label highlight_positive_438
+label highlight_positive_434
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -11928,16 +11898,16 @@ set r2 255
 label metal_bounded_38
 localset 2726 r2
 cmp r0 255
-jle intensity_bounded_439
+jle intensity_bounded_435
 set r0 255
-label intensity_bounded_439
+label intensity_bounded_435
 localset 2342 r0
 localget r1 2854
 mul r1 3
 add r1 r0
 div r1 4
 localset 2854 r1
-label body_lighting_done_435
+label body_lighting_done_431
 localget r0 3006
 mul r0 -1968
 localget r1 3007
@@ -11956,18 +11926,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_440
+jge glass_low_436
 set r0 0
-label glass_low_440
+label glass_low_436
 cmp r0 255
-jle glass_high_441
+jle glass_high_437
 set r0 255
-label glass_high_441
+label glass_high_437
 localset 2470 r0
-label glass_lighting_done_436
+label glass_lighting_done_432
 localget r3 3030
 cmp r3 0
-jne glass_lighting_done_443
+jne glass_lighting_done_439
 localget r0 3006
 mul r0 2111
 localget r1 3007
@@ -11986,18 +11956,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_444
+jge glass_low_440
 set r0 0
-label glass_low_444
+label glass_low_440
 cmp r0 255
-jle glass_high_445
+jle glass_high_441
 set r0 255
-label glass_high_445
+label glass_high_441
 localset 2471 r0
-label glass_lighting_done_443
+label glass_lighting_done_439
 localget r3 3030
 cmp r3 2
-je glass_lighting_done_447
+je glass_lighting_done_443
 localget r0 3006
 mul r0 -6369
 localget r1 3007
@@ -12016,18 +11986,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_448
+jge glass_low_444
 set r0 0
-label glass_low_448
+label glass_low_444
 cmp r0 255
-jle glass_high_449
+jle glass_high_445
 set r0 255
-label glass_high_449
+label glass_high_445
 localset 2472 r0
-label glass_lighting_done_447
+label glass_lighting_done_443
 localget r3 3030
 cmp r3 2
-je body_lighting_done_450
+je body_lighting_done_446
 localget r0 3000
 mul r0 -3689
 localget r1 3001
@@ -12038,9 +12008,9 @@ mul r1 -7449
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_452
+jge diffuse_positive_448
 set r0 0
-label diffuse_positive_452
+label diffuse_positive_448
 mul r0 128
 div r0 16384
 add r0 47
@@ -12059,9 +12029,9 @@ mul r2 -7449
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_453
+jge highlight_positive_449
 set r1 0
-label highlight_positive_453
+label highlight_positive_449
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -12112,19 +12082,19 @@ set r2 255
 label metal_bounded_41
 localset 2729 r2
 cmp r0 255
-jle intensity_bounded_454
+jle intensity_bounded_450
 set r0 255
-label intensity_bounded_454
+label intensity_bounded_450
 localset 2345 r0
 localget r1 2857
 mul r1 3
 add r1 r0
 div r1 4
 localset 2857 r1
-label body_lighting_done_450
+label body_lighting_done_446
 localget r3 3030
 cmp r3 2
-je body_lighting_done_455
+je body_lighting_done_451
 localget r0 3000
 mul r0 3689
 localget r1 3001
@@ -12135,9 +12105,9 @@ mul r1 -7449
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_457
+jge diffuse_positive_453
 set r0 0
-label diffuse_positive_457
+label diffuse_positive_453
 mul r0 128
 div r0 16384
 add r0 47
@@ -12156,9 +12126,9 @@ mul r2 -7449
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_458
+jge highlight_positive_454
 set r1 0
-label highlight_positive_458
+label highlight_positive_454
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -12209,19 +12179,19 @@ set r2 255
 label metal_bounded_42
 localset 2730 r2
 cmp r0 255
-jle intensity_bounded_459
+jle intensity_bounded_455
 set r0 255
-label intensity_bounded_459
+label intensity_bounded_455
 localset 2346 r0
 localget r1 2858
 mul r1 3
 add r1 r0
 div r1 4
 localset 2858 r1
-label body_lighting_done_455
+label body_lighting_done_451
 localget r3 3030
 cmp r3 1
-je body_lighting_done_460
+je body_lighting_done_456
 localget r0 3000
 mul r0 -2574
 localget r1 3001
@@ -12232,9 +12202,9 @@ mul r1 10619
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_462
+jge diffuse_positive_458
 set r0 0
-label diffuse_positive_462
+label diffuse_positive_458
 mul r0 128
 div r0 16384
 add r0 82
@@ -12253,9 +12223,9 @@ mul r2 10619
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_463
+jge highlight_positive_459
 set r1 0
-label highlight_positive_463
+label highlight_positive_459
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -12306,19 +12276,19 @@ set r2 255
 label metal_bounded_43
 localset 2731 r2
 cmp r0 255
-jle intensity_bounded_464
+jle intensity_bounded_460
 set r0 255
-label intensity_bounded_464
+label intensity_bounded_460
 localset 2347 r0
 localget r1 2859
 mul r1 3
 add r1 r0
 div r1 4
 localset 2859 r1
-label body_lighting_done_460
+label body_lighting_done_456
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_465
+jne body_lighting_done_461
 localget r0 3000
 mul r0 -2759
 localget r1 3001
@@ -12329,9 +12299,9 @@ mul r1 -10463
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_467
+jge diffuse_positive_463
 set r0 0
-label diffuse_positive_467
+label diffuse_positive_463
 mul r0 128
 div r0 16384
 add r0 83
@@ -12350,9 +12320,9 @@ mul r2 -10463
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_468
+jge highlight_positive_464
 set r1 0
-label highlight_positive_468
+label highlight_positive_464
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -12403,19 +12373,19 @@ set r2 255
 label metal_bounded_44
 localset 2732 r2
 cmp r0 255
-jle intensity_bounded_469
+jle intensity_bounded_465
 set r0 255
-label intensity_bounded_469
+label intensity_bounded_465
 localset 2348 r0
 localget r1 2860
 mul r1 3
 add r1 r0
 div r1 4
 localset 2860 r1
-label body_lighting_done_465
+label body_lighting_done_461
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_470
+jne body_lighting_done_466
 localget r0 3000
 mul r0 0
 localget r1 3001
@@ -12426,9 +12396,9 @@ mul r1 -15218
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_472
+jge diffuse_positive_468
 set r0 0
-label diffuse_positive_472
+label diffuse_positive_468
 mul r0 128
 div r0 16384
 add r0 58
@@ -12447,9 +12417,9 @@ mul r2 -15218
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_473
+jge highlight_positive_469
 set r1 0
-label highlight_positive_473
+label highlight_positive_469
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -12500,19 +12470,19 @@ set r2 255
 label metal_bounded_45
 localset 2733 r2
 cmp r0 255
-jle intensity_bounded_474
+jle intensity_bounded_470
 set r0 255
-label intensity_bounded_474
+label intensity_bounded_470
 localset 2349 r0
 localget r1 2861
 mul r1 3
 add r1 r0
 div r1 4
 localset 2861 r1
-label body_lighting_done_470
+label body_lighting_done_466
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_475
+jne body_lighting_done_471
 localget r0 3000
 mul r0 -2759
 localget r1 3001
@@ -12523,9 +12493,9 @@ mul r1 -12302
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_477
+jge diffuse_positive_473
 set r0 0
-label diffuse_positive_477
+label diffuse_positive_473
 mul r0 128
 div r0 16384
 add r0 52
@@ -12544,9 +12514,9 @@ mul r2 -12302
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_478
+jge highlight_positive_474
 set r1 0
-label highlight_positive_478
+label highlight_positive_474
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -12597,16 +12567,16 @@ set r2 255
 label metal_bounded_46
 localset 2734 r2
 cmp r0 255
-jle intensity_bounded_479
+jle intensity_bounded_475
 set r0 255
-label intensity_bounded_479
+label intensity_bounded_475
 localset 2350 r0
 localget r1 2862
 mul r1 3
 add r1 r0
 div r1 4
 localset 2862 r1
-label body_lighting_done_475
+label body_lighting_done_471
 localget r0 3000
 mul r0 0
 localget r1 3001
@@ -12617,9 +12587,9 @@ mul r1 -11567
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_482
+jge diffuse_positive_478
 set r0 0
-label diffuse_positive_482
+label diffuse_positive_478
 mul r0 128
 div r0 16384
 add r0 50
@@ -12638,9 +12608,9 @@ mul r2 -11567
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_483
+jge highlight_positive_479
 set r1 0
-label highlight_positive_483
+label highlight_positive_479
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -12691,19 +12661,19 @@ set r2 255
 label metal_bounded_47
 localset 2735 r2
 cmp r0 255
-jle intensity_bounded_484
+jle intensity_bounded_480
 set r0 255
-label intensity_bounded_484
+label intensity_bounded_480
 localset 2351 r0
 localget r1 2863
 mul r1 3
 add r1 r0
 div r1 4
 localset 2863 r1
-label body_lighting_done_480
+label body_lighting_done_476
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_485
+jne body_lighting_done_481
 localget r0 3000
 mul r0 0
 localget r1 3001
@@ -12714,9 +12684,9 @@ mul r1 -6305
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_487
+jge diffuse_positive_483
 set r0 0
-label diffuse_positive_487
+label diffuse_positive_483
 mul r0 128
 div r0 16384
 add r0 46
@@ -12735,9 +12705,9 @@ mul r2 -6305
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_488
+jge highlight_positive_484
 set r1 0
-label highlight_positive_488
+label highlight_positive_484
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -12788,19 +12758,19 @@ set r2 255
 label metal_bounded_48
 localset 2736 r2
 cmp r0 255
-jle intensity_bounded_489
+jle intensity_bounded_485
 set r0 255
-label intensity_bounded_489
+label intensity_bounded_485
 localset 2352 r0
 localget r1 2864
 mul r1 3
 add r1 r0
 div r1 4
 localset 2864 r1
-label body_lighting_done_485
+label body_lighting_done_481
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_490
+jne body_lighting_done_486
 localget r0 3000
 mul r0 0
 localget r1 3001
@@ -12811,9 +12781,9 @@ mul r1 6305
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_492
+jge diffuse_positive_488
 set r0 0
-label diffuse_positive_492
+label diffuse_positive_488
 mul r0 128
 div r0 16384
 add r0 46
@@ -12832,9 +12802,9 @@ mul r2 6305
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_493
+jge highlight_positive_489
 set r1 0
-label highlight_positive_493
+label highlight_positive_489
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -12885,19 +12855,19 @@ set r2 255
 label metal_bounded_49
 localset 2737 r2
 cmp r0 255
-jle intensity_bounded_494
+jle intensity_bounded_490
 set r0 255
-label intensity_bounded_494
+label intensity_bounded_490
 localset 2353 r0
 localget r1 2865
 mul r1 3
 add r1 r0
 div r1 4
 localset 2865 r1
-label body_lighting_done_490
+label body_lighting_done_486
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_495
+jne body_lighting_done_491
 localget r0 3000
 mul r0 -2759
 localget r1 3001
@@ -12908,9 +12878,9 @@ mul r1 10463
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_497
+jge diffuse_positive_493
 set r0 0
-label diffuse_positive_497
+label diffuse_positive_493
 mul r0 128
 div r0 16384
 add r0 49
@@ -12929,9 +12899,9 @@ mul r2 10463
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_498
+jge highlight_positive_494
 set r1 0
-label highlight_positive_498
+label highlight_positive_494
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -12982,19 +12952,19 @@ set r2 255
 label metal_bounded_50
 localset 2738 r2
 cmp r0 255
-jle intensity_bounded_499
+jle intensity_bounded_495
 set r0 255
-label intensity_bounded_499
+label intensity_bounded_495
 localset 2354 r0
 localget r1 2866
 mul r1 3
 add r1 r0
 div r1 4
 localset 2866 r1
-label body_lighting_done_495
+label body_lighting_done_491
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_500
+jne body_lighting_done_496
 localget r0 3000
 mul r0 -2700
 localget r1 3001
@@ -13005,9 +12975,9 @@ mul r1 5514
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_502
+jge diffuse_positive_498
 set r0 0
-label diffuse_positive_502
+label diffuse_positive_498
 mul r0 128
 div r0 16384
 add r0 46
@@ -13026,9 +12996,9 @@ mul r2 5514
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_503
+jge highlight_positive_499
 set r1 0
-label highlight_positive_503
+label highlight_positive_499
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -13079,16 +13049,16 @@ set r2 255
 label metal_bounded_51
 localset 2739 r2
 cmp r0 255
-jle intensity_bounded_504
+jle intensity_bounded_500
 set r0 255
-label intensity_bounded_504
+label intensity_bounded_500
 localset 2355 r0
 localget r1 2867
 mul r1 3
 add r1 r0
 div r1 4
 localset 2867 r1
-label body_lighting_done_500
+label body_lighting_done_496
 localget r0 3000
 mul r0 0
 localget r1 3001
@@ -13099,9 +13069,9 @@ mul r1 11604
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_507
+jge diffuse_positive_503
 set r0 0
-label diffuse_positive_507
+label diffuse_positive_503
 mul r0 128
 div r0 16384
 add r0 50
@@ -13120,9 +13090,9 @@ mul r2 11604
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_508
+jge highlight_positive_504
 set r1 0
-label highlight_positive_508
+label highlight_positive_504
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -13173,19 +13143,19 @@ set r2 255
 label metal_bounded_52
 localset 2740 r2
 cmp r0 255
-jle intensity_bounded_509
+jle intensity_bounded_505
 set r0 255
-label intensity_bounded_509
+label intensity_bounded_505
 localset 2356 r0
 localget r1 2868
 mul r1 3
 add r1 r0
 div r1 4
 localset 2868 r1
-label body_lighting_done_505
+label body_lighting_done_501
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_510
+jne body_lighting_done_506
 localget r0 3000
 mul r0 0
 localget r1 3001
@@ -13196,9 +13166,9 @@ mul r1 15122
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_512
+jge diffuse_positive_508
 set r0 0
-label diffuse_positive_512
+label diffuse_positive_508
 mul r0 128
 div r0 16384
 add r0 58
@@ -13217,9 +13187,9 @@ mul r2 15122
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_513
+jge highlight_positive_509
 set r1 0
-label highlight_positive_513
+label highlight_positive_509
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -13270,19 +13240,19 @@ set r2 255
 label metal_bounded_53
 localset 2741 r2
 cmp r0 255
-jle intensity_bounded_514
+jle intensity_bounded_510
 set r0 255
-label intensity_bounded_514
+label intensity_bounded_510
 localset 2357 r0
 localget r1 2869
 mul r1 3
 add r1 r0
 div r1 4
 localset 2869 r1
-label body_lighting_done_510
+label body_lighting_done_506
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_515
+jne body_lighting_done_511
 localget r0 3000
 mul r0 -10412
 localget r1 3001
@@ -13293,9 +13263,9 @@ mul r1 10622
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_517
+jge diffuse_positive_513
 set r0 0
-label diffuse_positive_517
+label diffuse_positive_513
 mul r0 128
 div r0 16384
 add r0 75
@@ -13314,9 +13284,9 @@ mul r2 10622
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_518
+jge highlight_positive_514
 set r1 0
-label highlight_positive_518
+label highlight_positive_514
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -13367,19 +13337,19 @@ set r2 255
 label metal_bounded_54
 localset 2742 r2
 cmp r0 255
-jle intensity_bounded_519
+jle intensity_bounded_515
 set r0 255
-label intensity_bounded_519
+label intensity_bounded_515
 localset 2358 r0
 localget r1 2870
 mul r1 3
 add r1 r0
 div r1 4
 localset 2870 r1
-label body_lighting_done_515
+label body_lighting_done_511
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_520
+jne body_lighting_done_516
 localget r0 3000
 mul r0 -12050
 localget r1 3001
@@ -13390,9 +13360,9 @@ mul r1 -5555
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_522
+jge diffuse_positive_518
 set r0 0
-label diffuse_positive_522
+label diffuse_positive_518
 mul r0 128
 div r0 16384
 add r0 79
@@ -13411,9 +13381,9 @@ mul r2 -5555
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_523
+jge highlight_positive_519
 set r1 0
-label highlight_positive_523
+label highlight_positive_519
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -13464,19 +13434,19 @@ set r2 255
 label metal_bounded_55
 localset 2743 r2
 cmp r0 255
-jle intensity_bounded_524
+jle intensity_bounded_520
 set r0 255
-label intensity_bounded_524
+label intensity_bounded_520
 localset 2359 r0
 localget r1 2871
 mul r1 3
 add r1 r0
 div r1 4
 localset 2871 r1
-label body_lighting_done_520
+label body_lighting_done_516
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_525
+jne body_lighting_done_521
 localget r0 3000
 mul r0 -8564
 localget r1 3001
@@ -13487,9 +13457,9 @@ mul r1 -8045
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_527
+jge diffuse_positive_523
 set r0 0
-label diffuse_positive_527
+label diffuse_positive_523
 mul r0 128
 div r0 16384
 add r0 81
@@ -13508,9 +13478,9 @@ mul r2 -8045
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_528
+jge highlight_positive_524
 set r1 0
-label highlight_positive_528
+label highlight_positive_524
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -13561,19 +13531,19 @@ set r2 255
 label metal_bounded_56
 localset 2744 r2
 cmp r0 255
-jle intensity_bounded_529
+jle intensity_bounded_525
 set r0 255
-label intensity_bounded_529
+label intensity_bounded_525
 localset 2360 r0
 localget r1 2872
 mul r1 3
 add r1 r0
 div r1 4
 localset 2872 r1
-label body_lighting_done_525
+label body_lighting_done_521
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_530
+jne body_lighting_done_526
 localget r0 3000
 mul r0 -11892
 localget r1 3001
@@ -13584,9 +13554,9 @@ mul r1 -9279
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_532
+jge diffuse_positive_528
 set r0 0
-label diffuse_positive_532
+label diffuse_positive_528
 mul r0 128
 div r0 16384
 add r0 75
@@ -13605,9 +13575,9 @@ mul r2 -9279
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_533
+jge highlight_positive_529
 set r1 0
-label highlight_positive_533
+label highlight_positive_529
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -13658,19 +13628,19 @@ set r2 255
 label metal_bounded_57
 localset 2745 r2
 cmp r0 255
-jle intensity_bounded_534
+jle intensity_bounded_530
 set r0 255
-label intensity_bounded_534
+label intensity_bounded_530
 localset 2361 r0
 localget r1 2873
 mul r1 3
 add r1 r0
 div r1 4
 localset 2873 r1
-label body_lighting_done_530
+label body_lighting_done_526
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_535
+jne body_lighting_done_531
 localget r0 3000
 mul r0 -10412
 localget r1 3001
@@ -13681,9 +13651,9 @@ mul r1 -10622
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_537
+jge diffuse_positive_533
 set r0 0
-label diffuse_positive_537
+label diffuse_positive_533
 mul r0 128
 div r0 16384
 add r0 57
@@ -13702,9 +13672,9 @@ mul r2 -10622
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_538
+jge highlight_positive_534
 set r1 0
-label highlight_positive_538
+label highlight_positive_534
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -13755,19 +13725,19 @@ set r2 255
 label metal_bounded_58
 localset 2746 r2
 cmp r0 255
-jle intensity_bounded_539
+jle intensity_bounded_535
 set r0 255
-label intensity_bounded_539
+label intensity_bounded_535
 localset 2362 r0
 localget r1 2874
 mul r1 3
 add r1 r0
 div r1 4
 localset 2874 r1
-label body_lighting_done_535
+label body_lighting_done_531
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_540
+jne body_lighting_done_536
 localget r0 3000
 mul r0 -11892
 localget r1 3001
@@ -13778,9 +13748,9 @@ mul r1 -6396
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_542
+jge diffuse_positive_538
 set r0 0
-label diffuse_positive_542
+label diffuse_positive_538
 mul r0 128
 div r0 16384
 add r0 54
@@ -13799,9 +13769,9 @@ mul r2 -6396
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_543
+jge highlight_positive_539
 set r1 0
-label highlight_positive_543
+label highlight_positive_539
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -13852,19 +13822,19 @@ set r2 255
 label metal_bounded_59
 localset 2747 r2
 cmp r0 255
-jle intensity_bounded_544
+jle intensity_bounded_540
 set r0 255
-label intensity_bounded_544
+label intensity_bounded_540
 localset 2363 r0
 localget r1 2875
 mul r1 3
 add r1 r0
 div r1 4
 localset 2875 r1
-label body_lighting_done_540
+label body_lighting_done_536
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_545
+jne body_lighting_done_541
 localget r0 3000
 mul r0 -15907
 localget r1 3001
@@ -13875,9 +13845,9 @@ mul r1 -55
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_547
+jge diffuse_positive_543
 set r0 0
-label diffuse_positive_547
+label diffuse_positive_543
 mul r0 128
 div r0 16384
 add r0 61
@@ -13896,9 +13866,9 @@ mul r2 -55
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_548
+jge highlight_positive_544
 set r1 0
-label highlight_positive_548
+label highlight_positive_544
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -13949,19 +13919,19 @@ set r2 255
 label metal_bounded_60
 localset 2748 r2
 cmp r0 255
-jle intensity_bounded_549
+jle intensity_bounded_545
 set r0 255
-label intensity_bounded_549
+label intensity_bounded_545
 localset 2364 r0
 localget r1 2876
 mul r1 3
 add r1 r0
 div r1 4
 localset 2876 r1
-label body_lighting_done_545
+label body_lighting_done_541
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_550
+jne body_lighting_done_546
 localget r0 3000
 mul r0 -12050
 localget r1 3001
@@ -13972,9 +13942,9 @@ mul r1 5555
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_552
+jge diffuse_positive_548
 set r0 0
-label diffuse_positive_552
+label diffuse_positive_548
 mul r0 128
 div r0 16384
 add r0 53
@@ -13993,9 +13963,9 @@ mul r2 5555
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_553
+jge highlight_positive_549
 set r1 0
-label highlight_positive_553
+label highlight_positive_549
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -14046,19 +14016,19 @@ set r2 255
 label metal_bounded_61
 localset 2749 r2
 cmp r0 255
-jle intensity_bounded_554
+jle intensity_bounded_550
 set r0 255
-label intensity_bounded_554
+label intensity_bounded_550
 localset 2365 r0
 localget r1 2877
 mul r1 3
 add r1 r0
 div r1 4
 localset 2877 r1
-label body_lighting_done_550
+label body_lighting_done_546
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_555
+jne body_lighting_done_551
 localget r0 3000
 mul r0 -8564
 localget r1 3001
@@ -14069,9 +14039,9 @@ mul r1 8045
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_557
+jge diffuse_positive_553
 set r0 0
-label diffuse_positive_557
+label diffuse_positive_553
 mul r0 128
 div r0 16384
 add r0 51
@@ -14090,9 +14060,9 @@ mul r2 8045
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_558
+jge highlight_positive_554
 set r1 0
-label highlight_positive_558
+label highlight_positive_554
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -14143,19 +14113,19 @@ set r2 255
 label metal_bounded_62
 localset 2750 r2
 cmp r0 255
-jle intensity_bounded_559
+jle intensity_bounded_555
 set r0 255
-label intensity_bounded_559
+label intensity_bounded_555
 localset 2366 r0
 localget r1 2878
 mul r1 3
 add r1 r0
 div r1 4
 localset 2878 r1
-label body_lighting_done_555
+label body_lighting_done_551
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_560
+jne body_lighting_done_556
 localget r0 3000
 mul r0 -11892
 localget r1 3001
@@ -14166,9 +14136,9 @@ mul r1 9279
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_562
+jge diffuse_positive_558
 set r0 0
-label diffuse_positive_562
+label diffuse_positive_558
 mul r0 128
 div r0 16384
 add r0 57
@@ -14187,9 +14157,9 @@ mul r2 9279
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_563
+jge highlight_positive_559
 set r1 0
-label highlight_positive_563
+label highlight_positive_559
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -14240,19 +14210,19 @@ set r2 255
 label metal_bounded_63
 localset 2751 r2
 cmp r0 255
-jle intensity_bounded_564
+jle intensity_bounded_560
 set r0 255
-label intensity_bounded_564
+label intensity_bounded_560
 localset 2367 r0
 localget r1 2879
 mul r1 3
 add r1 r0
 div r1 4
 localset 2879 r1
-label body_lighting_done_560
+label body_lighting_done_556
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_565
+jne body_lighting_done_561
 localget r0 3000
 mul r0 2343
 localget r1 3001
@@ -14263,9 +14233,9 @@ mul r1 10429
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_567
+jge diffuse_positive_563
 set r0 0
-label diffuse_positive_567
+label diffuse_positive_563
 mul r0 128
 div r0 16384
 add r0 83
@@ -14284,9 +14254,9 @@ mul r2 10429
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_568
+jge highlight_positive_564
 set r1 0
-label highlight_positive_568
+label highlight_positive_564
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -14337,19 +14307,19 @@ set r2 255
 label metal_bounded_64
 localset 2752 r2
 cmp r0 255
-jle intensity_bounded_569
+jle intensity_bounded_565
 set r0 255
-label intensity_bounded_569
+label intensity_bounded_565
 localset 2368 r0
 localget r1 2880
 mul r1 3
 add r1 r0
 div r1 4
 localset 2880 r1
-label body_lighting_done_565
+label body_lighting_done_561
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_570
+jne body_lighting_done_566
 localget r0 3000
 mul r0 2759
 localget r1 3001
@@ -14360,9 +14330,9 @@ mul r1 -10463
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_572
+jge diffuse_positive_568
 set r0 0
-label diffuse_positive_572
+label diffuse_positive_568
 mul r0 128
 div r0 16384
 add r0 83
@@ -14381,9 +14351,9 @@ mul r2 -10463
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_573
+jge highlight_positive_569
 set r1 0
-label highlight_positive_573
+label highlight_positive_569
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -14434,19 +14404,19 @@ set r2 255
 label metal_bounded_65
 localset 2753 r2
 cmp r0 255
-jle intensity_bounded_574
+jle intensity_bounded_570
 set r0 255
-label intensity_bounded_574
+label intensity_bounded_570
 localset 2369 r0
 localget r1 2881
 mul r1 3
 add r1 r0
 div r1 4
 localset 2881 r1
-label body_lighting_done_570
+label body_lighting_done_566
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_575
+jne body_lighting_done_571
 localget r0 3000
 mul r0 2759
 localget r1 3001
@@ -14457,9 +14427,9 @@ mul r1 -12302
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_577
+jge diffuse_positive_573
 set r0 0
-label diffuse_positive_577
+label diffuse_positive_573
 mul r0 128
 div r0 16384
 add r0 52
@@ -14478,9 +14448,9 @@ mul r2 -12302
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_578
+jge highlight_positive_574
 set r1 0
-label highlight_positive_578
+label highlight_positive_574
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -14531,19 +14501,19 @@ set r2 255
 label metal_bounded_66
 localset 2754 r2
 cmp r0 255
-jle intensity_bounded_579
+jle intensity_bounded_575
 set r0 255
-label intensity_bounded_579
+label intensity_bounded_575
 localset 2370 r0
 localget r1 2882
 mul r1 3
 add r1 r0
 div r1 4
 localset 2882 r1
-label body_lighting_done_575
+label body_lighting_done_571
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_580
+jne body_lighting_done_576
 localget r0 3000
 mul r0 2700
 localget r1 3001
@@ -14554,9 +14524,9 @@ mul r1 5514
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_582
+jge diffuse_positive_578
 set r0 0
-label diffuse_positive_582
+label diffuse_positive_578
 mul r0 128
 div r0 16384
 add r0 46
@@ -14575,9 +14545,9 @@ mul r2 5514
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_583
+jge highlight_positive_579
 set r1 0
-label highlight_positive_583
+label highlight_positive_579
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -14628,19 +14598,19 @@ set r2 255
 label metal_bounded_67
 localset 2755 r2
 cmp r0 255
-jle intensity_bounded_584
+jle intensity_bounded_580
 set r0 255
-label intensity_bounded_584
+label intensity_bounded_580
 localset 2371 r0
 localget r1 2883
 mul r1 3
 add r1 r0
 div r1 4
 localset 2883 r1
-label body_lighting_done_580
+label body_lighting_done_576
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_585
+jne body_lighting_done_581
 localget r0 3000
 mul r0 2759
 localget r1 3001
@@ -14651,9 +14621,9 @@ mul r1 10463
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_587
+jge diffuse_positive_583
 set r0 0
-label diffuse_positive_587
+label diffuse_positive_583
 mul r0 128
 div r0 16384
 add r0 49
@@ -14672,9 +14642,9 @@ mul r2 10463
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_588
+jge highlight_positive_584
 set r1 0
-label highlight_positive_588
+label highlight_positive_584
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -14725,19 +14695,19 @@ set r2 255
 label metal_bounded_68
 localset 2756 r2
 cmp r0 255
-jle intensity_bounded_589
+jle intensity_bounded_585
 set r0 255
-label intensity_bounded_589
+label intensity_bounded_585
 localset 2372 r0
 localget r1 2884
 mul r1 3
 add r1 r0
 div r1 4
 localset 2884 r1
-label body_lighting_done_585
+label body_lighting_done_581
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_590
+jne body_lighting_done_586
 localget r0 3000
 mul r0 10412
 localget r1 3001
@@ -14748,9 +14718,9 @@ mul r1 10622
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_592
+jge diffuse_positive_588
 set r0 0
-label diffuse_positive_592
+label diffuse_positive_588
 mul r0 128
 div r0 16384
 add r0 75
@@ -14769,9 +14739,9 @@ mul r2 10622
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_593
+jge highlight_positive_589
 set r1 0
-label highlight_positive_593
+label highlight_positive_589
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -14822,19 +14792,19 @@ set r2 255
 label metal_bounded_69
 localset 2757 r2
 cmp r0 255
-jle intensity_bounded_594
+jle intensity_bounded_590
 set r0 255
-label intensity_bounded_594
+label intensity_bounded_590
 localset 2373 r0
 localget r1 2885
 mul r1 3
 add r1 r0
 div r1 4
 localset 2885 r1
-label body_lighting_done_590
+label body_lighting_done_586
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_595
+jne body_lighting_done_591
 localget r0 3000
 mul r0 12050
 localget r1 3001
@@ -14845,9 +14815,9 @@ mul r1 -5555
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_597
+jge diffuse_positive_593
 set r0 0
-label diffuse_positive_597
+label diffuse_positive_593
 mul r0 128
 div r0 16384
 add r0 79
@@ -14866,9 +14836,9 @@ mul r2 -5555
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_598
+jge highlight_positive_594
 set r1 0
-label highlight_positive_598
+label highlight_positive_594
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -14919,19 +14889,19 @@ set r2 255
 label metal_bounded_70
 localset 2758 r2
 cmp r0 255
-jle intensity_bounded_599
+jle intensity_bounded_595
 set r0 255
-label intensity_bounded_599
+label intensity_bounded_595
 localset 2374 r0
 localget r1 2886
 mul r1 3
 add r1 r0
 div r1 4
 localset 2886 r1
-label body_lighting_done_595
+label body_lighting_done_591
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_600
+jne body_lighting_done_596
 localget r0 3000
 mul r0 8564
 localget r1 3001
@@ -14942,9 +14912,9 @@ mul r1 -8045
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_602
+jge diffuse_positive_598
 set r0 0
-label diffuse_positive_602
+label diffuse_positive_598
 mul r0 128
 div r0 16384
 add r0 81
@@ -14963,9 +14933,9 @@ mul r2 -8045
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_603
+jge highlight_positive_599
 set r1 0
-label highlight_positive_603
+label highlight_positive_599
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -15016,19 +14986,19 @@ set r2 255
 label metal_bounded_71
 localset 2759 r2
 cmp r0 255
-jle intensity_bounded_604
+jle intensity_bounded_600
 set r0 255
-label intensity_bounded_604
+label intensity_bounded_600
 localset 2375 r0
 localget r1 2887
 mul r1 3
 add r1 r0
 div r1 4
 localset 2887 r1
-label body_lighting_done_600
+label body_lighting_done_596
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_605
+jne body_lighting_done_601
 localget r0 3000
 mul r0 11892
 localget r1 3001
@@ -15039,9 +15009,9 @@ mul r1 -9279
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_607
+jge diffuse_positive_603
 set r0 0
-label diffuse_positive_607
+label diffuse_positive_603
 mul r0 128
 div r0 16384
 add r0 75
@@ -15060,9 +15030,9 @@ mul r2 -9279
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_608
+jge highlight_positive_604
 set r1 0
-label highlight_positive_608
+label highlight_positive_604
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -15113,19 +15083,19 @@ set r2 255
 label metal_bounded_72
 localset 2760 r2
 cmp r0 255
-jle intensity_bounded_609
+jle intensity_bounded_605
 set r0 255
-label intensity_bounded_609
+label intensity_bounded_605
 localset 2376 r0
 localget r1 2888
 mul r1 3
 add r1 r0
 div r1 4
 localset 2888 r1
-label body_lighting_done_605
+label body_lighting_done_601
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_610
+jne body_lighting_done_606
 localget r0 3000
 mul r0 10412
 localget r1 3001
@@ -15136,9 +15106,9 @@ mul r1 -10622
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_612
+jge diffuse_positive_608
 set r0 0
-label diffuse_positive_612
+label diffuse_positive_608
 mul r0 128
 div r0 16384
 add r0 57
@@ -15157,9 +15127,9 @@ mul r2 -10622
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_613
+jge highlight_positive_609
 set r1 0
-label highlight_positive_613
+label highlight_positive_609
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -15210,19 +15180,19 @@ set r2 255
 label metal_bounded_73
 localset 2761 r2
 cmp r0 255
-jle intensity_bounded_614
+jle intensity_bounded_610
 set r0 255
-label intensity_bounded_614
+label intensity_bounded_610
 localset 2377 r0
 localget r1 2889
 mul r1 3
 add r1 r0
 div r1 4
 localset 2889 r1
-label body_lighting_done_610
+label body_lighting_done_606
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_615
+jne body_lighting_done_611
 localget r0 3000
 mul r0 11892
 localget r1 3001
@@ -15233,9 +15203,9 @@ mul r1 -6396
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_617
+jge diffuse_positive_613
 set r0 0
-label diffuse_positive_617
+label diffuse_positive_613
 mul r0 128
 div r0 16384
 add r0 54
@@ -15254,9 +15224,9 @@ mul r2 -6396
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_618
+jge highlight_positive_614
 set r1 0
-label highlight_positive_618
+label highlight_positive_614
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -15307,19 +15277,19 @@ set r2 255
 label metal_bounded_74
 localset 2762 r2
 cmp r0 255
-jle intensity_bounded_619
+jle intensity_bounded_615
 set r0 255
-label intensity_bounded_619
+label intensity_bounded_615
 localset 2378 r0
 localget r1 2890
 mul r1 3
 add r1 r0
 div r1 4
 localset 2890 r1
-label body_lighting_done_615
+label body_lighting_done_611
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_620
+jne body_lighting_done_616
 localget r0 3000
 mul r0 15907
 localget r1 3001
@@ -15330,9 +15300,9 @@ mul r1 -55
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_622
+jge diffuse_positive_618
 set r0 0
-label diffuse_positive_622
+label diffuse_positive_618
 mul r0 128
 div r0 16384
 add r0 61
@@ -15351,9 +15321,9 @@ mul r2 -55
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_623
+jge highlight_positive_619
 set r1 0
-label highlight_positive_623
+label highlight_positive_619
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -15404,19 +15374,19 @@ set r2 255
 label metal_bounded_75
 localset 2763 r2
 cmp r0 255
-jle intensity_bounded_624
+jle intensity_bounded_620
 set r0 255
-label intensity_bounded_624
+label intensity_bounded_620
 localset 2379 r0
 localget r1 2891
 mul r1 3
 add r1 r0
 div r1 4
 localset 2891 r1
-label body_lighting_done_620
+label body_lighting_done_616
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_625
+jne body_lighting_done_621
 localget r0 3000
 mul r0 12050
 localget r1 3001
@@ -15427,9 +15397,9 @@ mul r1 5555
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_627
+jge diffuse_positive_623
 set r0 0
-label diffuse_positive_627
+label diffuse_positive_623
 mul r0 128
 div r0 16384
 add r0 53
@@ -15448,9 +15418,9 @@ mul r2 5555
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_628
+jge highlight_positive_624
 set r1 0
-label highlight_positive_628
+label highlight_positive_624
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -15501,19 +15471,19 @@ set r2 255
 label metal_bounded_76
 localset 2764 r2
 cmp r0 255
-jle intensity_bounded_629
+jle intensity_bounded_625
 set r0 255
-label intensity_bounded_629
+label intensity_bounded_625
 localset 2380 r0
 localget r1 2892
 mul r1 3
 add r1 r0
 div r1 4
 localset 2892 r1
-label body_lighting_done_625
+label body_lighting_done_621
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_630
+jne body_lighting_done_626
 localget r0 3000
 mul r0 8564
 localget r1 3001
@@ -15524,9 +15494,9 @@ mul r1 8045
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_632
+jge diffuse_positive_628
 set r0 0
-label diffuse_positive_632
+label diffuse_positive_628
 mul r0 128
 div r0 16384
 add r0 51
@@ -15545,9 +15515,9 @@ mul r2 8045
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_633
+jge highlight_positive_629
 set r1 0
-label highlight_positive_633
+label highlight_positive_629
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -15598,19 +15568,19 @@ set r2 255
 label metal_bounded_77
 localset 2765 r2
 cmp r0 255
-jle intensity_bounded_634
+jle intensity_bounded_630
 set r0 255
-label intensity_bounded_634
+label intensity_bounded_630
 localset 2381 r0
 localget r1 2893
 mul r1 3
 add r1 r0
 div r1 4
 localset 2893 r1
-label body_lighting_done_630
+label body_lighting_done_626
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_635
+jne body_lighting_done_631
 localget r0 3000
 mul r0 11892
 localget r1 3001
@@ -15621,9 +15591,9 @@ mul r1 9279
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_637
+jge diffuse_positive_633
 set r0 0
-label diffuse_positive_637
+label diffuse_positive_633
 mul r0 128
 div r0 16384
 add r0 57
@@ -15642,9 +15612,9 @@ mul r2 9279
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_638
+jge highlight_positive_634
 set r1 0
-label highlight_positive_638
+label highlight_positive_634
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -15695,19 +15665,19 @@ set r2 255
 label metal_bounded_78
 localset 2766 r2
 cmp r0 255
-jle intensity_bounded_639
+jle intensity_bounded_635
 set r0 255
-label intensity_bounded_639
+label intensity_bounded_635
 localset 2382 r0
 localget r1 2894
 mul r1 3
 add r1 r0
 div r1 4
 localset 2894 r1
-label body_lighting_done_635
+label body_lighting_done_631
 localget r3 3030
 cmp r3 2
-jne body_lighting_done_640
+jne body_lighting_done_636
 localget r0 3000
 mul r0 -11211
 localget r1 3001
@@ -15718,9 +15688,9 @@ mul r1 11948
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_642
+jge diffuse_positive_638
 set r0 0
-label diffuse_positive_642
+label diffuse_positive_638
 mul r0 128
 div r0 16384
 add r0 66
@@ -15739,9 +15709,9 @@ mul r2 11948
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_643
+jge highlight_positive_639
 set r1 0
-label highlight_positive_643
+label highlight_positive_639
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -15792,19 +15762,19 @@ set r2 255
 label metal_bounded_79
 localset 2767 r2
 cmp r0 255
-jle intensity_bounded_644
+jle intensity_bounded_640
 set r0 255
-label intensity_bounded_644
+label intensity_bounded_640
 localset 2383 r0
 localget r1 2895
 mul r1 3
 add r1 r0
 div r1 4
 localset 2895 r1
-label body_lighting_done_640
+label body_lighting_done_636
 localget r3 3030
 cmp r3 2
-jne body_lighting_done_647
+jne body_lighting_done_643
 localget r0 3000
 mul r0 11794
 localget r1 3001
@@ -15815,9 +15785,9 @@ mul r1 11373
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_649
+jge diffuse_positive_645
 set r0 0
-label diffuse_positive_649
+label diffuse_positive_645
 mul r0 128
 div r0 16384
 add r0 66
@@ -15836,9 +15806,9 @@ mul r2 11373
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_650
+jge highlight_positive_646
 set r1 0
-label highlight_positive_650
+label highlight_positive_646
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -15889,19 +15859,19 @@ set r2 255
 label metal_bounded_81
 localset 2769 r2
 cmp r0 255
-jle intensity_bounded_651
+jle intensity_bounded_647
 set r0 255
-label intensity_bounded_651
+label intensity_bounded_647
 localset 2385 r0
 localget r1 2897
 mul r1 3
 add r1 r0
 div r1 4
 localset 2897 r1
-label body_lighting_done_647
+label body_lighting_done_643
 localget r3 3030
 cmp r3 1
-jne body_lighting_done_654
+jne body_lighting_done_650
 localget r0 3000
 mul r0 -3028
 localget r1 3001
@@ -15912,9 +15882,9 @@ mul r1 13295
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_656
+jge diffuse_positive_652
 set r0 0
-label diffuse_positive_656
+label diffuse_positive_652
 mul r0 128
 div r0 16384
 add r0 78
@@ -15933,9 +15903,9 @@ mul r2 13295
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_657
+jge highlight_positive_653
 set r1 0
-label highlight_positive_657
+label highlight_positive_653
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -15986,17 +15956,31 @@ set r2 255
 label metal_bounded_83
 localset 2771 r2
 cmp r0 255
-jle intensity_bounded_658
+jle intensity_bounded_654
 set r0 255
-label intensity_bounded_658
+label intensity_bounded_654
 localset 2387 r0
 localget r1 2899
 mul r1 3
 add r1 r0
 div r1 4
 localset 2899 r1
-label body_lighting_done_654
+label body_lighting_done_650
 label lighting_table_ready
+localget r0 11
+cmp r0 4
+jlt open_forest_lod_ready
+cmp r0 124
+jge open_forest_lod_ready
+mod r0 10
+cmp r0 8
+jge open_forest_lod_ready
+localget r0 112
+sub r0 1000000
+cmp r0 12000
+jle open_forest_lod_ready
+localset 134 1558
+label open_forest_lod_ready
 localget r0 11
 cmp r0 4
 jge wheel_motion_ready
@@ -16019,6 +16003,69 @@ mod r0 214
 mul r0 4096
 div r0 214
 label wheel_phase_ready
+mov r5 r0
+add r5 0
+mod r5 4096
+cmp r5 0
+jge sin_negative_655
+add r5 4096
+label sin_negative_655
+mov r7 r5
+mod r7 2048
+set r8 2048
+sub r8 r7
+mul r7 r8
+mov r8 r7
+mul r8 4
+set r6 20971520
+sub r6 r8
+mul r7 262144
+div r7 r6
+cmp r5 2048
+jlt sin_done_656
+mul r7 -1
+label sin_done_656
+mov r5 r7
+mov r8 r5
+mov r9 r8
+add r9 32768
+localset 58 r9
+mov r6 r0
+add r6 1024
+mod r6 4096
+cmp r6 0
+jge sin_negative_657
+add r6 4096
+label sin_negative_657
+mov r7 r6
+mod r7 2048
+set r8 2048
+sub r8 r7
+mul r7 r8
+mov r8 r7
+mul r8 4
+set r5 20971520
+sub r5 r8
+mul r7 262144
+div r7 r5
+cmp r6 2048
+jlt sin_done_658
+mul r7 -1
+label sin_done_658
+mov r6 r7
+localget r5 58
+sub r5 32768
+localset 3040 r5
+localset 3041 r6
+localget r0 11
+cmp r0 0
+jne wheel_steer_neutral
+load16 r0 256
+sub r0 1000
+mul r0 320
+div r0 1000
+add r0 4096
+mod r0 4096
 mov r5 r0
 add r5 0
 mod r5 4096
@@ -16071,69 +16118,6 @@ label sin_done_662
 mov r6 r7
 localget r5 58
 sub r5 32768
-localset 3040 r5
-localset 3041 r6
-localget r0 11
-cmp r0 0
-jne wheel_steer_neutral
-load16 r0 256
-sub r0 1000
-mul r0 320
-div r0 1000
-add r0 4096
-mod r0 4096
-mov r5 r0
-add r5 0
-mod r5 4096
-cmp r5 0
-jge sin_negative_663
-add r5 4096
-label sin_negative_663
-mov r7 r5
-mod r7 2048
-set r8 2048
-sub r8 r7
-mul r7 r8
-mov r8 r7
-mul r8 4
-set r6 20971520
-sub r6 r8
-mul r7 262144
-div r7 r6
-cmp r5 2048
-jlt sin_done_664
-mul r7 -1
-label sin_done_664
-mov r5 r7
-mov r8 r5
-mov r9 r8
-add r9 32768
-localset 58 r9
-mov r6 r0
-add r6 1024
-mod r6 4096
-cmp r6 0
-jge sin_negative_665
-add r6 4096
-label sin_negative_665
-mov r7 r6
-mod r7 2048
-set r8 2048
-sub r8 r7
-mul r7 r8
-mov r8 r7
-mul r8 4
-set r5 20971520
-sub r5 r8
-mul r7 262144
-div r7 r5
-cmp r6 2048
-jlt sin_done_666
-mul r7 -1
-label sin_done_666
-mov r6 r7
-localget r5 58
-sub r5 32768
 localset 3042 r5
 localset 3043 r6
 jmp wheel_motion_ready
@@ -16164,9 +16148,9 @@ label vertex_transform_position
 meshread r0 r1 r2 r8
 localget r9 11
 cmp r9 4
-jlt nature_pose_done_667
+jlt nature_pose_done_663
 cmp r9 124
-jge nature_pose_done_667
+jge nature_pose_done_663
 localget r9 3120
 localset 3091 r1
 mov r5 r9
@@ -16194,75 +16178,75 @@ div r9 70
 add r0 r9
 localget r9 3104
 add r1 r9
-label nature_pose_done_667
+label nature_pose_done_663
 cmp r8 279
-jlt wheel_next_model_670
+jlt wheel_next_model_666
 cmp r8 795
-jge wheel_next_model_670
+jge wheel_next_model_666
 cmp r8 408
-jge wheel_next_wheel_671
+jge wheel_next_wheel_667
 localset 3044 -88
 localset 3045 -142
 localset 3046 0
-jmp wheel_transform_668
-label wheel_next_wheel_671
+jmp wheel_transform_664
+label wheel_next_wheel_667
 cmp r8 537
-jge wheel_next_wheel_672
+jge wheel_next_wheel_668
 localset 3044 88
 localset 3045 -142
 localset 3046 0
-jmp wheel_transform_668
-label wheel_next_wheel_672
+jmp wheel_transform_664
+label wheel_next_wheel_668
 cmp r8 666
-jge wheel_next_wheel_673
+jge wheel_next_wheel_669
 localset 3044 -88
 localset 3045 138
 localset 3046 1
-jmp wheel_transform_668
-label wheel_next_wheel_673
+jmp wheel_transform_664
+label wheel_next_wheel_669
 cmp r8 795
-jge wheel_next_wheel_674
+jge wheel_next_wheel_670
 localset 3044 88
 localset 3045 138
 localset 3046 1
-jmp wheel_transform_668
-label wheel_next_wheel_674
-label wheel_next_model_670
+jmp wheel_transform_664
+label wheel_next_wheel_670
+label wheel_next_model_666
 cmp r8 1109
-jlt wheel_next_model_675
+jlt wheel_next_model_671
 cmp r8 1309
-jge wheel_next_model_675
+jge wheel_next_model_671
 cmp r8 1159
-jge wheel_next_wheel_676
+jge wheel_next_wheel_672
 localset 3044 -88
 localset 3045 -142
 localset 3046 0
-jmp wheel_transform_668
-label wheel_next_wheel_676
+jmp wheel_transform_664
+label wheel_next_wheel_672
 cmp r8 1209
-jge wheel_next_wheel_677
+jge wheel_next_wheel_673
 localset 3044 88
 localset 3045 -142
 localset 3046 0
-jmp wheel_transform_668
-label wheel_next_wheel_677
+jmp wheel_transform_664
+label wheel_next_wheel_673
 cmp r8 1259
-jge wheel_next_wheel_678
+jge wheel_next_wheel_674
 localset 3044 -88
 localset 3045 138
 localset 3046 1
-jmp wheel_transform_668
-label wheel_next_wheel_678
+jmp wheel_transform_664
+label wheel_next_wheel_674
 cmp r8 1309
-jge wheel_next_wheel_679
+jge wheel_next_wheel_675
 localset 3044 88
 localset 3045 138
 localset 3046 1
-jmp wheel_transform_668
-label wheel_next_wheel_679
-label wheel_next_model_675
-jmp wheel_transform_done_669
-label wheel_transform_668
+jmp wheel_transform_664
+label wheel_next_wheel_675
+label wheel_next_model_671
+jmp wheel_transform_done_665
+label wheel_transform_664
 sub r1 34
 localget r9 3045
 sub r2 r9
@@ -16285,7 +16269,7 @@ mov r1 r7
 add r1 34
 localget r9 3046
 cmp r9 0
-je wheel_rear_680
+je wheel_rear_676
 localget r9 3044
 sub r0 r9
 localget r9 3045
@@ -16310,49 +16294,49 @@ add r0 r10
 mov r2 r9
 localget r10 3045
 add r2 r10
-label wheel_rear_680
-label wheel_transform_done_669
+label wheel_rear_676
+label wheel_transform_done_665
 localget r9 3070
 cmp r9 1
-je garage_gt_681
+je garage_gt_677
 cmp r9 2
-je garage_track_682
-jmp garage_morph_done_683
-label garage_gt_681
+je garage_track_678
+jmp garage_morph_done_679
+label garage_gt_677
 mul r0 96
 div r0 100
 mul r2 113
 div r2 100
 cmp r1 74
-jle garage_morph_done_683
+jle garage_morph_done_679
 add r1 18
-jmp garage_morph_done_683
-label garage_track_682
+jmp garage_morph_done_679
+label garage_track_678
 mul r0 114
 div r0 100
 mul r2 92
 div r2 100
 cmp r1 77
-jle garage_morph_done_683
+jle garage_morph_done_679
 sub r1 14
-label garage_morph_done_683
+label garage_morph_done_679
 localget r9 11
 cmp r9 0
-jne suspension_done_684
+jne suspension_done_680
 cmp r8 1535
-jge suspension_done_684
+jge suspension_done_680
 localget r9 3103
 add r0 r9
 cmp r8 279
-jlt suspension_body_685
+jlt suspension_body_681
 cmp r8 795
-jge suspension_body_685
+jge suspension_body_681
 load16 r9 384
 cmp r9 0
-je suspension_done_684
+je suspension_done_680
 sub r1 4
-jmp suspension_done_684
-label suspension_body_685
+jmp suspension_done_680
+label suspension_body_681
 mov r5 r1
 sub r5 34
 localget r6 3101
@@ -16373,47 +16357,53 @@ div r9 35840
 sub r2 r9
 localget r9 3100
 add r1 r9
-label suspension_done_684
+label suspension_done_680
 localget r9 11
 cmp r9 0
-jne fx_transform_done_686
+jne fx_transform_done_682
 cmp r8 1591
-jlt smoke_transform_done_687
+jlt smoke_transform_done_683
 cmp r8 1607
-jge smoke_transform_done_687
+jge smoke_transform_done_683
 load8 r9 395
 mul r1 r9
 div r1 16
-label smoke_transform_done_687
+label smoke_transform_done_683
 cmp r8 1607
-jlt nitro_transform_done_688
+jlt nitro_transform_done_684
 cmp r8 1615
-jge nitro_transform_done_688
+jge nitro_transform_done_684
 load32 r9 115
 mod r9 7
 sub r9 3
 add r2 r9
-label nitro_transform_done_688
-label fx_transform_done_686
+label nitro_transform_done_684
+label fx_transform_done_682
 localget r9 11
 cmp r9 0
-jne vertex_no_pneumatic_rise_689
+jne vertex_no_pneumatic_rise_685
 cmp r8 1535
-jlt vertex_pneumatic_rise_690
+jlt vertex_pneumatic_rise_686
 cmp r8 1607
-jlt vertex_no_pneumatic_rise_689
+jlt vertex_no_pneumatic_rise_685
 cmp r8 1615
-jge vertex_no_pneumatic_rise_689
-label vertex_pneumatic_rise_690
+jge vertex_no_pneumatic_rise_685
+label vertex_pneumatic_rise_686
 load16 r9 384
 add r1 r9
-label vertex_no_pneumatic_rise_689
+label vertex_no_pneumatic_rise_685
 localget r9 11
 cmp r9 0
-jne open_ground_rise_done_691
+je open_player_ground_688
+cmp r9 124
+jlt open_ground_rise_done_687
+localget r9 3104
+add r1 r9
+jmp open_ground_rise_done_687
+label open_player_ground_688
 load16 r9 520
 add r1 r9
-label open_ground_rise_done_691
+label open_ground_rise_done_687
 localget r9 118
 sub r9 32768
 mul r9 r0
@@ -18506,7 +18496,7 @@ meshface 3019 3020 3021 241 r9 r10 r11 60
 meshface 3019 3022 3020 241 r9 r10 r11 60
 load8 r0 388
 cmp r0 0
-jle air_jet_pulse_done_692
+jle air_jet_pulse_done_689
 meshfacegradient 3559 3561 3560 244 12 r9 r10 r11 60
 meshfacegradient 3559 3560 3562 244 12 r9 r10 r11 60
 meshfacegradient 3559 3563 3560 244 12 r9 r10 r11 60
@@ -18523,13 +18513,13 @@ meshfacegradient 3577 3579 3578 244 12 r9 r10 r11 60
 meshfacegradient 3577 3578 3580 244 12 r9 r10 r11 60
 meshfacegradient 3577 3581 3578 244 12 r9 r10 r11 60
 meshfacegradient 3577 3578 3582 244 12 r9 r10 r11 60
-label air_jet_pulse_done_692
+label air_jet_pulse_done_689
 load8 r0 395
 cmp r0 0
-jle smoke_done_693
+jle smoke_done_690
 load16 r0 384
 cmp r0 0
-jne smoke_done_693
+jne smoke_done_690
 meshfacegradient 3639 3640 3641 244 12 r9 r10 r11 60
 meshfacegradient 3639 3641 3642 244 12 r9 r10 r11 60
 meshfacegradient 3643 3644 3645 244 12 r9 r10 r11 60
@@ -18538,15 +18528,15 @@ meshfacegradient 3647 3648 3649 244 12 r9 r10 r11 60
 meshfacegradient 3647 3649 3650 244 12 r9 r10 r11 60
 meshfacegradient 3651 3652 3653 244 12 r9 r10 r11 60
 meshfacegradient 3651 3653 3654 244 12 r9 r10 r11 60
-label smoke_done_693
+label smoke_done_690
 load8 r0 382
 cmp r0 1
-jne nitro_done_694
+jne nitro_done_691
 meshfacegradient 3655 3656 3657 56 8 r9 r10 r11 60
 meshfacegradient 3655 3657 3658 56 8 r9 r10 r11 60
 meshfacegradient 3659 3660 3661 56 8 r9 r10 r11 60
 meshfacegradient 3659 3661 3662 56 8 r9 r10 r11 60
-label nitro_done_694
+label nitro_done_691
 jmp emit_shadow
 label emit_medium
 localget r12 126

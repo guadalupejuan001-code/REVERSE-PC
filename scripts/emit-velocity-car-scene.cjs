@@ -130,16 +130,16 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label,open
  out('load8 r7 8203\nsub r7 1\nmul r7 32\nadd r7 6004');load('r0','r7',4,65536);out('add r7 4');load('r2','r7',4,65536);out('add r7 4');load('r8','r7',2,0);
  out('load8 r9 8203\nmul r9 24\nadd r9 64\nstore8 8318 r9\njmp actor_ready\nlabel tree_actor');
  range(treeStart,treeEnd);
- out('load8 r5 8203\nlocalget r6 3200\nmul r6 4\nadd r5 r6\nlocalset 3120 r5\nload8 r8 8203\nsub r8 4\ndiv r8 4\nlocalget r7 3200\nadd r8 r7\nlocalget r7 3201\ncmp r8 r7\njge next_actor\nmov r7 r8\nadd r7 5500\nload8 r7 $r7\ncmp r7 1\nje next_actor\ncmp r7 2\njne open_tree_bank_ready\nload8 r7 8203\nmod r7 2\ncmp r7 1\nje next_actor\nlabel open_tree_bank_ready\nmov r7 r8\nmul r7 2\nadd r7 5000');load('r6','r7',2,0);trig('r6','r3','r4','r1','r2');
+ out('load8 r5 8203\nlocalget r6 3200\nmul r6 4\nadd r5 r6\nlocalset 3120 r5\nload8 r8 8203\nsub r8 4\ndiv r8 4\nlocalget r7 3200\nadd r8 r7\nlocalget r7 3201\ncmp r8 r7\njge next_actor\nmov r7 r8\nadd r7 5500\nload8 r7 $r7\ncmp r7 1\nje next_actor\ncmp r7 2\njne open_tree_bank_ready\nload8 r7 8203\nmod r7 2\ncmp r7 1\nje next_actor\nlabel open_tree_bank_ready\nmov r7 r8\nmul r7 2\nadd r7 5000');out('sub r7 1400\nlocalget r3 r7\nadd r7 1\nlocalget r4 r7');
  out('load8 r0 8203\nmod r0 2\nmul r0 2\nsub r0 1\nlocalget r1 3120\nmul r1 73\nmod r1 2500\nadd r1 470\nmul r0 r1\nmul r4 r0\ndiv r4 16384\nmul r3 r0\ndiv r3 16384\nmul r8 8\nadd r8 4096');load('r0','r8',4,65536);out('add r0 r4\nadd r8 4');load('r2','r8',4,65536);
  out('sub r2 r3\nload8 r5 8203\nsub r5 4\ndiv r5 4\nlocalget r6 3200\nadd r5 r6\nmul r5 2\nadd r5 5300\nload16 r5 $r5\nlocalset 3104 r5\nset r8 0\njmp actor_ready\nlabel skid_actor');
  range(skidStart,skidEnd);
  out('load8 r7 8203\nsub r7 124\nmul r7 12\nadd r7 410\nload8 r9 $r7\ncmp r9 0\njle next_actor\nsub r7 10');
  load('r0','r7',4,2000000);out('add r7 4');
  load('r2','r7',4,2000000);out('add r7 4');
- load('r8','r7',2,0);
- out('label actor_ready');
- trig('r8','r3','r4','r5','r6');
+ load('r8','r7',2,0);out('add r7 3\nload8 r5 $r7\nlocalset 3104 r5');
+ out('label actor_ready\nload8 r5 8203\ncmp r5 4\njlt open_actor_heading\ncmp r5 124\njge open_actor_heading\nset r3 0\nset r4 16384\njmp open_actor_heading_ready\nlabel open_actor_heading');
+ trig('r8','r3','r4','r5','r6');out('label open_actor_heading_ready');
  // Object-local sun and half vector. Values use Q14; the source supplies the
  // material intensity, while the generic engine only interpolates it.
  const sun=norm([-.55,.84,-.38]).map(x=>Math.round(x*16384));
@@ -189,7 +189,8 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label,open
  });
 
  // XI physics controls the actual steering and road progress. The rig only reads them.
- out('label lighting_table_ready\nload8 r0 8203\ncmp r0 4\njge wheel_motion_ready\nload8 r0 8334\ncmp r0 2\nje wheel_motion_ready\nload8 r0 8203\ncmp r0 0\njne wheel_rival_distance');
+
+ out('label lighting_table_ready\nload8 r0 8203\ncmp r0 4\njlt open_forest_lod_ready\ncmp r0 124\njge open_forest_lod_ready\nmod r0 10\ncmp r0 8\njge open_forest_lod_ready\nload32 r0 8304\nsub r0 1000000\ncmp r0 12000\njle open_forest_lod_ready\nlocalset 134 1558\nlabel open_forest_lod_ready\nload8 r0 8203\ncmp r0 4\njge wheel_motion_ready\nload8 r0 8334\ncmp r0 2\nje wheel_motion_ready\nload8 r0 8203\ncmp r0 0\njne wheel_rival_distance');
  load('r0',498,2,0);
  out('jmp wheel_phase_ready\nlabel wheel_rival_distance\nload8 r7 8203\nsub r7 1\nmul r7 32\nadd r7 6016');
  load('r0','r7',4,0);
@@ -284,7 +285,8 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label,open
       '\ncmp r8 '+nitroEnd+'\njge '+noRise+
       '\nlabel '+rise+'\nload16 r9 384\nadd r1 r9\nlabel '+noRise);
   const groundRiseDone=label('open_ground_rise_done');
-  out('load8 r9 8203\ncmp r9 0\njne '+groundRiseDone+'\nload16 r9 520\nadd r1 r9\nlabel '+groundRiseDone);
+  const playerGround=label('open_player_ground');
+  out('load8 r9 8203\ncmp r9 0\nje '+playerGround+'\ncmp r9 124\njlt '+groundRiseDone+'\nlocalget r9 3104\nadd r1 r9\njmp '+groundRiseDone+'\nlabel '+playerGround+'\nload16 r9 520\nadd r1 r9\nlabel '+groundRiseDone);
   load('r9',8310,2,32768);out('mul r9 r0');load('r10',8308,2,32768);out('mul r10 r2\nadd r9 r10\ndiv r9 16384');store('r9',8320,4,1000000,'r10','r11');
   load('r9',8310,2,32768);out('mul r9 r2');load('r10',8308,2,32768);out('mul r10 r0\nsub r9 r10\ndiv r9 16384');load('r10',8304);out('add r10 r9');load('r0',8320);load('r11',8300);out('add r0 r11');
   load('r11',8192,2,0);out('add r10 r11');load('r11',8194,2,0);out('sub r1 r11');pitch('r0','r1','r2');

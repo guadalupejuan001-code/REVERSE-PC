@@ -196,7 +196,11 @@ function hierarchy(){
           fs.writeFileSync(path.join(out,'fullscreen-education-ui.xml'),xml);
           tapNode(hint);report.fullscreenHintDismissed=true;
           check(true,'dismissed known SystemUI fullscreen education');
-          sleep(350);attempt--;continue; // Overlay is not a failed app hierarchy.
+          sleep(350);
+          // The initial P key is consumed while SystemUI owns focus. Pause
+          // again only after dismissing this observed education overlay.
+          if(stage==='initial')adbText(['shell','input','keyevent','KEYCODE_P']);
+          attempt--;continue; // Overlay is not a failed app hierarchy.
         }
         const app=all.filter(x=>x.package===pkg);
         if(app.length){

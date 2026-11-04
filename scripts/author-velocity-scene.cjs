@@ -69,6 +69,7 @@ function pitch(x,y,z){
 out('load8 r0 273\ndiv r0 10\nmul r0 10\nsub r0 10\ncmp r0 0\njge open_sector_start\nset r0 0\nlabel open_sector_start\nlocalset 3200 r0\nmov r1 r0\nadd r1 30\ncmp r1 80\njle open_sector_end\nset r1 80\nlabel open_sector_end\nlocalset 3201 r1\nstore8 8200 r0\nlabel transform_track\nload8 r8 8200\nmov r7 r8\nmul r7 8\nadd r7 4096');load('r0','r7',4,65536);out('add r7 4');load('r2','r7',4,65536);out('load8 r1 8200\nmul r1 2\nadd r1 5300\nload16 r1 $r1');cameraPoint('r0','r1','r2');
 out('load8 r8 8200\nmul r8 2\nadd r8 1600\nmeshvertex r8 r0 r1 r2');
 out('load8 r7 8200\nmul r7 2\nadd r7 5000');load('r0','r7',2,0);trig('r0','r1','r2','r3','r4');
+out('load8 r5 8200\nmul r5 2\nadd r5 3600\nlocalset r5 r1\nadd r5 1\nlocalset r5 r2');
 out('mov r0 r2\nmul r0 r15\nmov r3 r1\nmul r3 r14\nadd r0 r3\ndiv r0 16384\nmov r10 r2\nmul r10 r14\nmul r1 r15\nsub r10 r1\ndiv r10 16384\nset r1 0\nset r2 0');pitch('r0','r1','r2');
 out('load8 r8 8200\nmul r8 2\nadd r8 1601\nmeshvertex r8 r0 r1 r2');
 out('load8 r8 8200\nadd r8 1\nstore8 8200 r8\nlocalget r9 3201\ncmp r8 r9\njle transform_track\nlocalget r0 3200\nstore8 8200 r0\nlabel road_segment');

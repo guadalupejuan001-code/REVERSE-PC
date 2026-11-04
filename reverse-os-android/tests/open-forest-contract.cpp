@@ -33,6 +33,16 @@ int main(int argc,char**argv){try{
  }
  check(arrived&&sectors.size()==8,"pilot traverses all eight finite sectors and brakes at the road end");
  check(contacts==0,"one-lane route pilot does not strike map boundaries or water");save(pilot,out/"end.rvp");
+ // Real drift events retain the elevation of the road in each mark sample.
+ auto drift=reverse_pc::rvpc2::restore(initial);
+ const int d=55;const double dyaw=std::atan2(double(p[(d+1)*2]-p[d*2]),double(p[(d+1)*2+1]-p[d*2+1]));
+ const int heading=(int(std::round(dyaw*4096/(2*std::acos(-1.))))+4096)%4096;
+ drift.execute(header+"store32 100 "+std::to_string(p[d*2]+2000000)+"\nstore32 104 "+std::to_string(p[d*2+1]+2000000)+"\nstore8 273 55\nstore16 108 "+std::to_string(heading)+"\nstore16 261 "+std::to_string(32768+int(2000*std::sin(dyaw)))+"\nstore16 263 "+std::to_string(32768+int(2000*std::cos(dyaw)))+"\nstore16 110 2000\nhalt\n");
+ State drifting{};
+ for(int i=0;i<8;i++)drifting=observe(drift.execute(header+"store8 128 1\nstore8 129 0\nstore8 130 2\nstore8 131 1\nstore8 132 0\nstore8 136 0\n"+drive.substr(header.size())));
+ const auto markHeight=drift.memory().read("411",drift.core());
+ check(markHeight.deterministic&&markHeight.value>0&&std::abs(int(markHeight.value)-int(drifting[26]))<10,"skid samples stay on the actual elevated road");
+ save(drift,out/"forest-drift.rvp");
  // The map end remains playable and reverse never teleports to the old start seam.
  auto before=s;for(int i=0;i<100;i++)s=observe(pilot.execute(command(1,0,1,1,0)));
  check(s[1]>140000&&s[11]<before[11],"reverse from road end moves back through the same world");check(s[7]==0,"road end is not a race finish");

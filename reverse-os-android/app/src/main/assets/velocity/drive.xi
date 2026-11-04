@@ -1517,6 +1517,9 @@ load16 r1 108
 store16 $r12 r1
 add r12 2
 store8 $r12 120
+add r12 1
+load16 r1 520
+store8 $r12 r1
 add r0 1
 mod r0 4
 store8 393 r0
