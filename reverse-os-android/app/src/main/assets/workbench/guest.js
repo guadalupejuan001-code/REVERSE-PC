@@ -9,6 +9,7 @@ function guestHTML(){
     row('Modo',g.system_mode?'Sistema · EL'+g.exception_level+' · MMU '+(g.mmu_enabled?'activa':'inactiva'):'Aplicación · EL0')+
     row('RAM lógica',Number(g.logical_ram_bytes).toLocaleString('es')+' bytes')+row('Programa conservado',g.immutable_image_bytes+' bytes')+
     row('Bytes diferentes',g.delta_overrides)+row('Último checkpoint',(guestUi.snapshot.snapshot_bytes??guestUi.snapshot.last_checkpoint_bytes)+' bytes'+(guestUi.snapshot.checkpoint_dirty?' · cambios pendientes':''))+
+    (guestUi.snapshot.journal_rolled_back?row('Recuperación','Último guardado válido; tramo incompleto descartado'):'')+
     row('Instrucciones ejecutadas',g.instructions)+row('Excepciones atendidas',g.exceptions||0)+row('Posición',g.pc)+'</div>':'<p>Prueba la compatibilidad de sistema o importa un programa ARM64.</p>';
   return '<div class="programs-layout guest-layout"><span class="eyebrow">XI / ETHER · COMPATIBILIDAD</span><h2>ARM64 en REVERSE</h2>'+
     '<p class="guest-boundary">Extensión del ejecutor de REVERSE con memoria XI/Ether. Android y Wild Rift todavía no arrancan.</p>'+

@@ -166,6 +166,27 @@ class AdaptiveOverrideMap {
       emit(entry.first,bitmap,values);
     }
   }
+  // Host checkpoint metadata: unchanged COW leaves are never re-encoded.
+  template<class Fn>void for_each_page_extent(Fn&& emit) const {
+    for(const auto& entry:state_->pages)emit(entry.first,entry.second->size());
+  }
+  template<class Fn>void for_each_changed_page_record(const AdaptiveOverrideMap& previous,Fn&& emit) const {
+    auto old=previous.state_->pages.begin(),now=state_->pages.begin();
+    while(old!=previous.state_->pages.end()||now!=state_->pages.end()){
+      if(now==state_->pages.end()||(old!=previous.state_->pages.end()&&old->first<now->first)){
+        emit(old->first,std::string{},std::string{},true);++old;continue;
+      }
+      const bool same=old!=previous.state_->pages.end()&&old->first==now->first;
+      if(!same||old->second!=now->second){
+        std::string bitmap(kPageSize/8,'\0'),values;values.reserve(now->second->size());
+        now->second->for_each([&](std::size_t at,std::uint8_t value){
+          bitmap[at/8]=char(static_cast<unsigned char>(bitmap[at/8])|(1u<<(at%8)));values.push_back(char(value));
+        });
+        emit(now->first,bitmap,values,false);
+      }
+      if(same)++old;++now;
+    }
+  }
   template<class Fn>void for_each_large_address(Fn&& emit) const {
     state_->large_addresses.for_each_sorted(std::forward<Fn>(emit));
   }

@@ -68,6 +68,7 @@ struct RunResult {
 };
 
 class MinimalGuest {
+  friend struct GuestCheckpointRecords; // Read-only canonical checkpoint transport.
  public:
   static constexpr std::uint64_t max_ram=UINT64_C(1)<<48;
   // Preserve the old 16 MiB ELF limit and legacy RVG transport. Real AOSP GKI

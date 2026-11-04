@@ -82,7 +82,7 @@ public final class GuestStore {
             candidate==null?null:candidate.getAbsolutePath(),revision),StandardCharsets.UTF_8)).put("ok",true).put("loaded",true);
     }
     private JSONObject flushResident()throws Exception{
-        JSONObject state=residentReport(0,0,"",null,0);if(!state.getBoolean("checkpoint_dirty"))return state;
+        JSONObject state=residentReport(0,0,"",null,0);if(!state.getBoolean("checkpoint_dirty")&&state.optInt("journal_entries")==0)return state;
         File candidate=File.createTempFile("reverse-resident-",".rvg",cache);
         try{
             JSONObject staged=residentReport(4,0,"",candidate,0);
@@ -90,14 +90,19 @@ public final class GuestStore {
             return residentReport(6,0,"",null,staged.getLong("staged_revision"));
         }finally{candidate.delete();}
     }
+    /** Same path used by the continuous-run checkpoint cadence. */
+    public JSONObject checkpoint()throws Exception{
+        JSONObject result=residentReport(7,0,"",null,0);
+        return result.optBoolean("journal_compaction_required")?flushResident():result;
+    }
     private JSONObject mutateResident(int operation,int steps,String text,boolean durable)throws Exception{
         boolean persistenceAttempted=false;
         try{
             JSONObject result=residentReport(operation,steps,text,null,0),g=result.getJSONObject("guest");
             if(durable||result.optBoolean("checkpoint_due")||g.optBoolean("halted")||g.optBoolean("waiting")){
                 persistenceAttempted=true;
-                JSONObject saved=flushResident();
-                for(String key:new String[]{"checkpoint_dirty","checkpoint_due","last_checkpoint_bytes","snapshot_bytes"})
+                JSONObject saved=durable||g.optBoolean("halted")||g.optBoolean("waiting")?flushResident():checkpoint();
+                for(String key:new String[]{"checkpoint_dirty","checkpoint_due","last_checkpoint_bytes","snapshot_bytes","journal_entries","journal_bytes","journal_recovered_entries","journal_rolled_back"})
                     if(saved.has(key))result.put(key,saved.get(key));
             }
             return result;
@@ -115,7 +120,8 @@ public final class GuestStore {
         return result.put("resident",false).put("paused",true);
     }
     private void releaseForReplacement()throws Exception{
-        if(resident!=0){if(!file.getBaseFile().getAbsolutePath().equals(residentPath))throw new IllegalStateException("La sesión pertenece a otro archivo");residentOwner=this;pause();}
+        if(resident==0&&new File(file.getBaseFile()+".journal").exists())session();
+        if(resident!=0){if(!file.getBaseFile().getAbsolutePath().equals(residentPath))throw new IllegalStateException("La sesión pertenece a otro archivo");residentOwner=this;flushResident();residentReport(8,0,"",null,0);pause();}
     }
     public JSONObject importDisk(InputStream input)throws Exception{
         if(!disks.isDirectory()&&!disks.mkdirs())throw new IllegalStateException("No se pudo preparar el disco");
@@ -208,9 +214,9 @@ public final class GuestStore {
             throw new IllegalArgumentException("Programa XI del delta supera 64 KiB");
         return mutateResident(2,0,source,true);
     }
-    public byte[] export()throws Exception{if(resident!=0){session();flushResident();}return state();}
+    public byte[] export()throws Exception{if(resident!=0||new File(file.getBaseFile()+".journal").exists()){session();flushResident();}return state();}
     public void exportTo(OutputStream output)throws Exception{
-        if(resident!=0){session();flushResident();}
+        if(resident!=0||new File(file.getBaseFile()+".journal").exists()){session();flushResident();}
         try(InputStream input=file.openRead()){copy(input,output,MAX_CHECKPOINT);}
     }
     public static byte[] readElf(InputStream input)throws Exception{

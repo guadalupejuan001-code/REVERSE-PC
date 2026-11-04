@@ -43,12 +43,33 @@
     if(limits_.max_overrides)return persistent_snapshot().size();
     std::size_t size=std::string("MXIM2 "+std::to_string(revision_)+"\nMXIM3 "+std::to_string(unsigned(background_))+"\n").size();
     auto add=[&](std::size_t count){if(count>std::numeric_limits<std::size_t>::max()-size)throw std::length_error("Ether snapshot size overflow");size+=count;};
-    overrides_->for_each_page_record([&](std::uint64_t page,const std::string& bitmap,const std::string& values){
-      add(5+std::to_string(page).size()+bitmap.size()*2+values.size()*2);
+    overrides_->for_each_page_extent([&](std::uint64_t page,std::size_t values){
+      add(5+std::to_string(page).size()+1024+values*2);
     });
     overrides_->for_each_large_address([&](const auto& item){add(4+item.first.size()+std::to_string(unsigned(item.second)).size());});
     bindings_->for_each_sorted([&](const auto& item){add(4+item.first.size()+item.second.size());});
     return size;
+  }
+  // Read-only host transport. Every replacement retains its original MXIM
+  // spelling; deletion removes that record from the reconstructed RVG.
+  template<class Emit>void checkpoint_patch_since(const InverseMemory& previous,Emit&& emit)const{
+    if(limits_.max_overrides||previous.limits_.max_overrides){
+      if(limits_.max_overrides!=previous.limits_.max_overrides)throw std::invalid_argument("Checkpoint memory profile changed");
+      const auto text=persistent_snapshot();if(text!=previous.persistent_snapshot())emit("B",text,false);return;
+    }
+    auto prefix=[](const InverseMemory& m){return "MXIM2 "+std::to_string(m.revision_)+"\nMXIM3 "+std::to_string(unsigned(m.background_))+"\n";};
+    const auto header=prefix(*this);if(header!=prefix(previous))emit("M",header,false);
+    auto hex=[](const std::string& bytes){constexpr char digits[]="0123456789abcdef";std::string out;out.reserve(bytes.size()*2);
+      for(unsigned char byte:bytes){out.push_back(digits[byte>>4]);out.push_back(digits[byte&15]);}return out;};
+    overrides_->for_each_changed_page_record(*previous.overrides_,[&](std::uint64_t page,const std::string& bitmap,const std::string& values,bool removed){
+      const auto id=std::to_string(page);emit("P"+id,removed?std::string{}:"P "+id+" "+hex(bitmap)+" "+hex(values)+"\n",removed);
+    });
+    overrides_->for_each_large_address([&](const auto& entry){const auto* old=previous.overrides_->get(entry.first);
+      if(!old||*old!=entry.second)emit("O"+entry.first,"O "+entry.first+" "+std::to_string(unsigned(entry.second))+"\n",false);});
+    previous.overrides_->for_each_large_address([&](const auto& entry){if(!overrides_->get(entry.first))emit("O"+entry.first,std::string{},true);});
+    bindings_->for_each_sorted([&](const auto& entry){const auto* old=previous.bindings_->get(entry.first);
+      if(!old||*old!=entry.second)emit("Q"+entry.first,"Q "+entry.first+" "+entry.second+"\n",false);});
+    previous.bindings_->for_each_sorted([&](const auto& entry){if(!bindings_->get(entry.first))emit("Q"+entry.first,std::string{},true);});
   }
   static InverseMemory from_adaptive_snapshot(const std::string& saved,Limits limits){
     const auto unhex=[](const std::string& hex,std::size_t maximum){
