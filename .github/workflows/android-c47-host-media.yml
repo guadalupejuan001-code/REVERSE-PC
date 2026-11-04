@@ -1,0 +1,87 @@
+name: C47 verified original Android media transport
+'on':
+  pull_request:
+    types: [opened, reopened, synchronize]
+    paths:
+      - .github/workflows/android-c47-host-media.yml
+permissions:
+  contents: read
+  actions: read
+jobs:
+  verified-media:
+    if: github.event.pull_request.head.ref == 'tools/android-c47-host-media' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24.22.1
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: reverse-android-c03-genuine-partition-disk
+          run-id: 40910284394
+          github-token: ${{ github.token }}
+          path: disk-input
+      - name: Reconstruct and authenticate the identical immutable original disk
+        run: |
+          set -euo pipefail
+          mkdir transport
+          ORIGINAL=$(find disk-input -name android-slot-a.raw -print -quit)
+          test -n "$ORIGINAL"
+          node tools/android_c27_media.mjs "$ORIGINAL" new-media > transport/media.json
+          rm -rf disk-input
+          test "$(sha256sum new-media/android-c27.raw | cut -d ' ' -f 1)" = '4c2eaf3fa7d81e9649072fc81f0651f4129bd9f41d4a9f9964cc627741a7b92e'
+          gzip -1 -c new-media/android-c27.raw | split -b 400M - transport/disk.part-
+          python3 - <<'PY'
+          import pathlib,hashlib,json
+          parts=sorted(pathlib.Path('transport').glob('disk.part-*'))
+          assert 1<=len(parts)<=4
+          records=[]
+          for p in parts:
+            h=hashlib.sha256()
+            with p.open('rb') as f:
+              for b in iter(lambda:f.read(1024*1024),b''):h.update(b)
+            records.append({'file':p.name,'bytes':p.stat().st_size,'sha256':h.hexdigest()})
+          m={'schema':'reverse-c47-verified-original-media-transport-v1','disk_bytes':10888413184,'disk_sha256':'4c2eaf3fa7d81e9649072fc81f0651f4129bd9f41d4a9f9964cc627741a7b92e','compression':'gzip','parts':records,'guest_state_modified':False,'guest_instructions_executed':0}
+          pathlib.Path('transport/manifest.json').write_text(json.dumps(m,indent=2)+'\n')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: reverse-c47-original-media-manifest
+          path: |
+            transport/manifest.json
+            transport/media.json
+          if-no-files-found: error
+          retention-days: 90
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: reverse-c47-original-media-aa
+          path: transport/disk.part-aa
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 90
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: reverse-c47-original-media-ab
+          path: transport/disk.part-ab
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 90
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: reverse-c47-original-media-ac
+          path: transport/disk.part-ac
+          compression-level: 0
+          if-no-files-found: warn
+          retention-days: 90
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: reverse-c47-original-media-ad
+          path: transport/disk.part-ad
+          compression-level: 0
+          if-no-files-found: warn
+          retention-days: 90
