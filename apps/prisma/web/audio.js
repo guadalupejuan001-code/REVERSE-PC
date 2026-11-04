@@ -26,19 +26,6 @@ export class RhythmAudio {
   time() { return this.running ? this.offset + this.ctx.currentTime - this.startedAt : this.offset; }
   pause() { const t = clamp(this.time(), 0, this.buffer?.duration || 0); this.stop(); this.offset = t; return t; }
   energy() { if (!this.analyser || !this.running) return 0; this.analyser.getByteFrequencyData(this.bins); let sum = 0; for (let i = 1; i < 14; i++) sum += this.bins[i]; return sum / 3315; }
-  swish(color = 0) {
-    if (!this.ctx || this.ctx.state !== 'running') return;
-    if (!this.swishBuffer) {
-      const length = Math.round(this.ctx.sampleRate * .065);
-      this.swishBuffer = this.ctx.createBuffer(1, length, this.ctx.sampleRate);
-      const samples = this.swishBuffer.getChannelData(0);
-      for (let i = 0; i < length; i++) samples[i] = (Math.random() * 2 - 1) * Math.sin(Math.PI * i / length) * Math.exp(-i / length * 3);
-    }
-    const source = this.ctx.createBufferSource(), filter = this.ctx.createBiquadFilter(), gain = this.ctx.createGain();
-    source.buffer = this.swishBuffer; filter.type = 'highpass'; filter.frequency.value = color ? 2800 : 1800; gain.gain.value = .11;
-    source.connect(filter); filter.connect(gain); gain.connect(this.gain); source.start();
-    source.onended = () => { source.disconnect(); filter.disconnect(); gain.disconnect(); };
-  }
   async decode(file) {
     await this.init();
     const bytes = await file.arrayBuffer();

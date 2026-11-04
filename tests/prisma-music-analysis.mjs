@@ -42,7 +42,7 @@ const verify = (condition, reason) => { assert.ok(condition, reason); assertions
 const mixed = fixture();
 const result = await analyseMusicBuffer(mixed);
 verify(!result.fallback, 'Percussive song should not become a synthetic grid');
-verify(result.analysisMethod === 'three-band-transient-v2', 'Wrong analysis path');
+verify(result.analysisMethod === 'stereo-spectral-flux-v3', 'Wrong analysis path');
 verify(result.peaks.filter(p => p.source === 'bass').length >= 20, 'Missed bass attacks');
 verify(result.peaks.filter(p => p.source === 'percussion').length >= 20, 'Missed treble attacks');
 verify(result.peaks.every(p => p.t > 0 && p.t < mixed.duration), 'Onset time out of song');

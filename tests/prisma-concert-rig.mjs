@@ -10,6 +10,7 @@ async function source(path) {
 }
 const stage=await source('../apps/prisma/web/concert-rig.js');
 const combo=await source('../apps/prisma/web/combo-spectacle.js');
+const live=await source('../apps/prisma/web/living-galaxy.js');
 const {makeConcertProgram, concertSection, concertPose, concertBeat, concertNativeParts,
   RIG_STATIONS, RIG_MAX_CUBOIDS}=stage;
 
@@ -70,10 +71,10 @@ const text=readFileSync(new URL('../apps/prisma/web/engine.js',import.meta.url),
 const Scene=new Function('makeConcertProgram','concertPose','concertNativeParts',
   'RIG_MAX_CUBOIDS','MusicStageDirector','makeIntelligentChart','seeded','CubeGPU','NativeXRender',
   'createSpectacleEvent','pruneSpectacles','spectacleEnvelope','spectacleGeometry','SPECTACLE_MAX_EVENTS',
-  text+';return Scene;')(makeConcertProgram,concertPose,concertNativeParts,RIG_MAX_CUBOIDS,
+  'livingGalaxyFrame','drawLivingGalaxy','overlayPixelRatio',text+';return Scene;')(makeConcertProgram,concertPose,concertNativeParts,RIG_MAX_CUBOIDS,
   class{},()=>[],()=>()=>.5,{},{},
   combo.createSpectacleEvent,combo.pruneSpectacles,combo.spectacleEnvelope,
-  combo.spectacleGeometry,combo.SPECTACLE_MAX_EVENTS); // Constructor intentionally bypassed.
+  combo.spectacleGeometry,combo.SPECTACLE_MAX_EVENTS,live.livingGalaxyFrame,live.drawLivingGalaxy,live.overlayPixelRatio); // Constructor intentionally bypassed.
 const scene=Object.create(Scene.prototype);
 const drawn=[],canvas={dataset:{}};
 scene.gpu={native:true,count:63,cube:(...p)=>{drawn.push(p);scene.gpu.count++;}};
@@ -91,6 +92,7 @@ const ctx={
   save:()=>{},restore:()=>{},beginPath:()=>{},closePath:()=>{},moveTo:()=>{},lineTo:()=>{},
   arc:()=>{},ellipse:()=>{},fill:()=>events.push('fill'),stroke:()=>events.push('stroke'),
   fillRect:()=>events.push('fillRect'),strokeRect:()=>events.push('strokeRect'),
+  rect:()=>{},clip:()=>{},createRadialGradient:()=>gradient,
   createLinearGradient:()=>gradient
 };
 scene.settings=()=>({palette:'coral'});scene.width=880;scene.height=440;
@@ -125,7 +127,7 @@ gameplay.energy=0;gameplay.pulse=0;gameplay.shake=0;gameplay.diagnostics=false;
 gameplay.musicStage=null;gameplay.concertProgram=previews;
 gameplay.qualityScale=1;
 gameplay.visualState={quality:'balanced',slowFrames:0,fastFrames:0,cooldownUntil:0};
-gameplay.stageExplosions=[];gameplay.particles=[];gameplay.shards=[];gameplay.trails=new Map();
+gameplay.cutRings=[];gameplay.stageExplosions=[];gameplay.particles=[];gameplay.shards=[];gameplay.trails=new Map();
 const packed=Array.from({length:80},(_,i)=>({
   t:1+i*.03,lane:1,row:0,color:0,dir:0,hit:false,missed:false
 }));
