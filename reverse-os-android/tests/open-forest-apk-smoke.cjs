@@ -307,10 +307,20 @@ try{
   const timeOf=items=>(items.find(n=>/^\d{2}:\d{2} · /.test(n.text||''))||{}).text;
   const frozen=timeOf(ui);sleep(700);ui=waitText(/EN PAUSA/);check(frozen&&frozen===timeOf(ui),'paused world clock and distance remain stable');
   stage='touch camera';
-  const target=ui.find(n=>n.class==='android.view.SurfaceView');check(!!target,'world SurfaceView accessible');
+  // Android exposes this custom SurfaceView as android.view.View. Its
+  // observed accessibility description identifies the actual camera target.
+  const target=ui.find(n=>/^Cámara 3D\./.test(n['content-desc']||'')&&n.clickable==='true');
+  check(!!target,'world camera accessible');
   const b=/^\[(\d+),(\d+)\]\[(\d+),(\d+)\]$/.exec(target.bounds);const w=+b[3]-b[1],h=+b[4]-b[2];
-  adbText(['shell','input','swipe',String(Math.round(+b[1]+w*.38)),String(Math.round(+b[2]+h*.43)),String(Math.round(+b[1]+w*.64)),String(Math.round(+b[2]+h*.39)),'350']);sleep(400);
-  check(/ORBIT_FRAME yaw=[1-9]/.test(logs()),'touch orbit posts a new XI world view');screenshot('forest-orbit');
+  adbText(['shell','input','swipe',String(Math.round(+b[1]+w*.38)),String(Math.round(+b[2]+h*.43)),String(Math.round(+b[1]+w*.64)),String(Math.round(+b[2]+h*.39)),'350']);
+  let orbitRendered=false;
+  for(let attempt=0;attempt<15;attempt++){
+    const text=logs();checkNoFailure(text);
+    orbitRendered=/ORBIT_INPUT yaw=[1-9]\d* pitch=/.test(text)&&/ORBIT_FRAME yaw=[1-9]\d* pitch=/.test(text);
+    if(orbitRendered)break;
+    sleep(250);
+  }
+  check(orbitRendered,'touch orbit posts a new XI world view');screenshot('forest-orbit');
   stage='native photo';ui=revealToolbar('Foto 4K',false);tapNode(findText(ui,'Foto 4K'));ui=waitText(/^Salir 4K$/);report.native4K=waitNative4KFrame();
   check(report.native4K.width===3840&&report.native4K.height===2160,'world photo uses original 3840x2160 XI pixels');screenshot('open-world-photo-4k');
   tapNode(findText(ui,'Salir 4K'));ui=waitText(/^Foto 4K$/);check(true,'returns from photo to the adaptive world profile');
