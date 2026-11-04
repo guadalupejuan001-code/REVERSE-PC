@@ -5,6 +5,7 @@ import { MusicStageDirector, makeIntelligentChart } from './music-stage.js';
 import { makeConcertProgram, concertPose, concertNativeParts, RIG_MAX_CUBOIDS } from './concert-rig.js';
 import { createSpectacleEvent, pruneSpectacles, spectacleEnvelope, spectacleGeometry, SPECTACLE_MAX_EVENTS } from './combo-spectacle.js';
 import { nextVisualQuality, visualBudget } from './performance-policy.js';
+import { livingGalaxyFrame, drawLivingGalaxy, overlayPixelRatio } from './living-galaxy.js';
 export const PALETTES = { coral: ['#63ffb4','#ff5074'], violet: ['#63ffb4','#bd8bff'], ice: ['#7aeaff','#ff5074'] };
 export const DIRECTIONS = [{x:0,y:-1},{x:1,y:0},{x:0,y:1},{x:-1,y:0}];
 export function makeChart(peaks, level, seed = 7721, music = null) {
@@ -22,7 +23,7 @@ export function visibleRange(chart,time,latency=0){
 export class Scene {
   constructor(canvas, getSettings) {
     this.canvas = canvas; this.ctx = canvas.getContext('2d', { alpha:true, desynchronized:true }); this.settings = getSettings;
-    this.width = 0; this.height = 0; this.particles = []; this.shards = []; this.trails = new Map(); this.pulse = 0; this.energy = 0; this.flash = 0; this.shake = 0; this.musicStage = null; this.stageExplosions = []; this.concertProgram = makeConcertProgram(null); this.rigPose = null; this.stageShow = null;
+    this.width = 0; this.height = 0; this.particles = []; this.shards = []; this.cutRings = []; this.trails = new Map(); this.pulse = 0; this.energy = 0; this.flash = 0; this.shake = 0; this.musicStage = null; this.stageExplosions = []; this.concertProgram = makeConcertProgram(null); this.rigPose = null; this.stageShow = null;
     const random = seeded(6631); this.stars = Array.from({length:100}, () => ({x:random(),y:random(),a:.15+random()*.5,s:random()>.9?1.4:.6}));
     this.qualityScale=1;this.frameTotal=0;this.frameCount=0;this.cooldown=0;this.visualState={quality:'balanced',slowFrames:0,fastFrames:0,cooldownUntil:0};this.view=new Float32Array(4);this.paletteKey='';this.rgb=[];this.diagnostics=new URLSearchParams(location.search).has('diagnostics');this.cpuTimes=[];
     this.gpu=NativeXRender.create()||(new URLSearchParams(location.search).get('renderer')==='canvas'?null:CubeGPU.create(canvas.parentElement));
@@ -44,11 +45,12 @@ export class Scene {
     const r=this.canvas.getBoundingClientRect(),quality=this.settings().quality||'auto';
     const budget=this.gpu?(quality==='high'?3000000:1600000):850000;
     const ceiling=quality==='battery'?1:quality==='high'?2:1.5;
-    const dpr=Math.min(devicePixelRatio||1,ceiling,Math.sqrt(budget/Math.max(1,r.width*r.height)))*(quality==='auto'?this.qualityScale:1);
+    const sceneDpr=Math.min(devicePixelRatio||1,ceiling,Math.sqrt(budget/Math.max(1,r.width*r.height)))*(quality==='auto'?this.qualityScale:1);
+    const dpr=overlayPixelRatio(r.width,r.height,devicePixelRatio||1,quality);
     this.width=r.width;this.height=r.height;this.dpr=dpr;
     const w=Math.max(1,Math.round(r.width*dpr)),h=Math.max(1,Math.round(r.height*dpr));
     if(this.canvas.width!==w||this.canvas.height!==h){this.canvas.width=w;this.canvas.height=h;}
-    this.gpu?.resize(w,h);this.vignette=null;
+    this.gpu?.resize(Math.max(1,Math.round(r.width*sceneDpr)),Math.max(1,Math.round(r.height*sceneDpr)));this.vignette=null;
   }
   adapt(frameSeconds,now){
     if(this.settings().quality!=='auto'||frameSeconds>.1||frameSeconds<=0)return;
@@ -73,6 +75,7 @@ export class Scene {
     const color = PALETTES[this.settings().palette][note.color], reduced = this.settings().effects;
     this.pulse = Math.max(this.pulse,.65); if (!reduced) {this.shake=2.5;this.flash=.025;}
     const length = Math.hypot(dx,dy) || 1, nx=dx/length, ny=dy/length;
+    if(!reduced){this.cutRings.push({x:p.x,y:p.y,r:p.s*.28,life:1,color,perfect:quality>.9});if(this.cutRings.length>14)this.cutRings.shift();}
     for (let side of [-1,1]) this.shards.push({x:p.x,y:p.y,size:p.s*.68,angle:Math.atan2(dy,dx),vx:(-ny*side*150+nx*65),vy:(nx*side*150+ny*45),vr:side*1.8,life:1,color,side});
     // Scale disposable impact particles before touching playable note quality.
     // Quality:auto responds to the existing frame-time governor.
@@ -153,51 +156,12 @@ export class Scene {
     const finiteTime=Number.isFinite(time)?Math.max(0,time):0;
     ctx.save();
     ctx.globalCompositeOperation='source-over';
-    // Cosmic haze is an intentionally bounded screen-space approximation.
-    // Only the stage perimeter is illuminated; the gameplay strike zone stays legible.
-    if(galaxy&&!reduced){
-      const layers=battery?1:pose.quality==='high'?4:3;
-      for(let i=0;i<layers;i++){
-        const side=i%2===0?-1:1;
-        const x=this.width*(.5+side*(.34+.025*Math.sin(finiteTime*.16+i)));
-        const y=this.height*(.17+.07*Math.cos(finiteTime*.12+i*2));
-        const spread=Math.max(65,Math.min(this.width*.37,this.height*.75));
-        const tint=['#6b78ff','#7d36db','#15afd4','#ff448e'][i];
-        const rgba=hexRGB(tint),strength=(battery?.075:.085)+pose.energy*.045;
-        const aura=radial(x,y,spread);
-        aura.addColorStop(0,'rgba('+rgba+','+strength.toFixed(3)+')');
-        aura.addColorStop(.44,'rgba('+rgba+','+(strength*.34).toFixed(3)+')');
-        aura.addColorStop(1,'rgba('+rgba+',0)');
-        ctx.fillStyle=aura;ctx.fillRect(0,0,this.width,this.height);
-      }
-      // Orbital halos are drawn behind the fixture beams and never timed as
-      // artificial beats. They rotate continuously with the song's beat phase.
-      ctx.globalCompositeOperation='lighter';
-      const loops=battery?0:pose.quality==='high'?3:2;
-      for(let i=0;i<loops;i++){
-        const center=this.projection(0,-1.55,15+i*7,preview);
-        const hue=hexRGB(['#6c7dff','#ed77ee','#53dafa'][i]);
-        const size=Math.max(16,center.s*(2.55+i*.7));
-        const angle=Math.sin(pose.beat*Math.PI/8+i)*.25;
-        ctx.beginPath();
-        ctx.ellipse(center.x,center.y,size,size*.31,angle,0,Math.PI*2);
-        ctx.lineWidth=i===0?1.3:.8;
-        ctx.strokeStyle='rgba('+hue+','+(.060+pose.energy*.055).toFixed(3)+')';
-        ctx.stroke();
-      }
-      // Stable star-dust particles with depth and slow parallax, never RNG per frame.
-      const count=battery?8:pose.quality==='high'?42:24;
-      for(let i=0;i<count;i++){
-        const hash=n=>{const v=Math.sin(n*127.1+37.719)*43758.5453;return v-Math.floor(v);};
-        const side=i%2===0?-1:1;
-        const x=this.width*(.5+side*(.21+hash(i+1)*.27));
-        const y=this.height*(.045+hash(i+61)*.80);
-        const drift=Math.sin(finiteTime*(.08+hash(i+5)*.16)+i)*1.9;
-        const a=.11+.15*hash(i+98)+pose.energy*.07;
-        ctx.fillStyle='rgba(160,212,255,'+Math.min(.38,a).toFixed(3)+')';
-        ctx.fillRect(x+drift,y,hash(i+7)>.82?2:1,hash(i+7)>.82?2:1);
-      }
-      ctx.globalCompositeOperation='source-over';
+    if(galaxy){
+      const live=livingGalaxyFrame(this.musicStage?.map,time,pose,{quality:pose.quality,reduced});
+      drawLivingGalaxy(ctx,this.width,this.height,live,{preview,reduced,battery});
+      this.canvas.dataset.speakers='2';
+      this.canvas.dataset.laserCount=String(live.rays.length);
+      this.canvas.dataset.ambientBursts=String(live.bursts.length);
     }
     // The trusses, gimbals and lenses follow six distinct 3D fixture poses.
     // Browser/WebView overlays do not pretend to be volumetric native light.
@@ -420,8 +384,31 @@ export class Scene {
     const ctx=this.ctx;
     for(let i=this.shards.length-1;i>=0;i--){const s=this.shards[i];s.life-=dt*1.8;if(s.life<=0){this.shards.splice(i,1);continue;}s.x+=s.vx*dt;s.y+=s.vy*dt;s.vy+=180*dt;s.angle+=s.vr*dt;ctx.save();ctx.translate(s.x,s.y);ctx.rotate(s.angle);ctx.globalAlpha=Math.min(1,s.life*1.5);ctx.fillStyle='#0b2116';ctx.strokeStyle=s.color;ctx.lineWidth=1.3;ctx.shadowColor=s.color;ctx.shadowBlur=0;ctx.beginPath();ctx.moveTo(-s.size*.5,s.side*s.size*.05);ctx.lineTo(s.size*.5,s.side*s.size*.05);ctx.lineTo(s.size*.5,s.side*s.size*.48);ctx.lineTo(-s.size*.5,s.side*s.size*.48);ctx.closePath();ctx.fill();ctx.globalAlpha*=.6;ctx.fillStyle=s.color;ctx.fill();ctx.globalAlpha=Math.min(1,s.life);ctx.stroke();ctx.restore();}
     for(let i=this.particles.length-1;i>=0;i--){const p=this.particles[i];p.life-=dt*1.8;if(p.life<=0){this.particles.splice(i,1);continue;}p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=140*dt;ctx.globalAlpha=p.life;ctx.strokeStyle=p.color;ctx.lineWidth=p.size;ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(p.x-p.vx*.017,p.y-p.vy*.017);ctx.stroke();}ctx.globalAlpha=1;
-    for(const [id,trail]of this.trails){for(const p of trail.points)p.life-=dt*4.3;trail.points=trail.points.filter(p=>p.life>0);if(!trail.points.length){if(!trail.active)this.trails.delete(id);continue;}ctx.save();ctx.strokeStyle=trail.color;ctx.lineJoin='round';ctx.lineCap='round';ctx.shadowColor=trail.color;ctx.shadowBlur=0;for(let i=1;i<trail.points.length;i++){const a=trail.points[i-1],b=trail.points[i];ctx.globalAlpha=b.life*.8;ctx.lineWidth=b.life*5;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}ctx.shadowBlur=0;ctx.strokeStyle='#f0fff8';for(let i=1;i<trail.points.length;i++){const a=trail.points[i-1],b=trail.points[i];ctx.globalAlpha=b.life;ctx.lineWidth=b.life*1.4;ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();}ctx.restore();}
+    for(let i=this.cutRings.length-1;i>=0;i--){
+      const r=this.cutRings[i];r.life-=dt*4.8;if(r.life<=0){this.cutRings.splice(i,1);continue;}
+      ctx.save();ctx.globalCompositeOperation='lighter';ctx.globalAlpha=r.life*.55;
+      ctx.beginPath();ctx.arc(r.x,r.y,r.r*(1+(1-r.life)*1.6),0,Math.PI*2);
+      ctx.strokeStyle=r.color;ctx.lineWidth=r.perfect?2.2:1.2;ctx.stroke();ctx.restore();
+    }
+    for(const [id,trail]of this.trails){
+      for(const p of trail.points)p.life-=dt*4.3;
+      trail.points=trail.points.filter(p=>p.life>0);
+      if(trail.points.length<2){if(!trail.active&&!trail.points.length)this.trails.delete(id);continue;}
+      const points=trail.points,last=points[points.length-1];
+      ctx.save();ctx.lineJoin='round';ctx.lineCap='round';
+      const path=()=>{
+        ctx.beginPath();ctx.moveTo(points[0].x,points[0].y);
+        for(let i=1;i<points.length-1;i++){
+          const p=points[i],n=points[i+1];ctx.quadraticCurveTo(p.x,p.y,(p.x+n.x)*.5,(p.y+n.y)*.5);
+        }
+        ctx.lineTo(last.x,last.y);
+      };
+      for(const [width,alpha,color]of [[9,.14,trail.color],[4.4,.8,trail.color],[1.35,1,'#f4ffff']]){
+        path();ctx.globalAlpha=last.life*alpha;ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke();
+      }
+      ctx.restore();
+    }
   }
-  clearEffects(){this.particles=[];this.shards=[];this.trails.clear();this.stageExplosions=[];this.stageShow=null;this.cancelCombo();}
+  clearEffects(){this.particles=[];this.shards=[];this.cutRings=[];this.trails.clear();this.stageExplosions=[];this.stageShow=null;this.cancelCombo();}
 }
 export function hexRGB(hex){return `${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(3,5),16)},${parseInt(hex.slice(5,7),16)}`;}

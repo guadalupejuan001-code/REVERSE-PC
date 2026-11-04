@@ -1,0 +1,93 @@
+name: PRISMA 2.5 Living Galaxy
+on:
+  push:
+    branches: [codex/prisma-living-galaxy-20261104]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: prisma-living-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      REVERSE_SIGNING_KEYSTORE: ${{ github.workspace }}/build-signing/prisma-ci.jks
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: e2778d962af22f6f1a0794058dd4685fc2573966
+          path: deps/mundo-x
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '17'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - uses: gradle/actions/setup-gradle@v4
+        with: {gradle-version: '8.9'}
+      - name: Verify rhythm and build original XI executable
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p evidence dist build-signing
+          for t in tests/prisma-*.mjs; do node "$t"; done | tee evidence/music-and-gameplay.txt
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+          cmake --build build --target reverse_pc --parallel 2
+          node scripts/build-prisma.mjs build/reverse_pc build/prisma "$GITHUB_SHA" > evidence/prisma-manifest.json
+          python3 tests/rxe_graphics_cli.py build/reverse_pc build/prisma/PRISMA.rxe > evidence/xi-score-validation.json
+          mkdir -p reverse-os-android/app/src/main/assets/native-apps
+          cp build/prisma/PRISMA.rxe reverse-os-android/app/src/main/assets/native-apps/PRISMA.rxe
+          cp build/prisma/PRISMA.rxe dist/PRISMA-2.5-Galaxia-Viva.rxe
+      - name: Build Android ARM64 and x86_64
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          keytool -genkeypair -keystore "$REVERSE_SIGNING_KEYSTORE" -storetype JKS -storepass android -keypass android -alias reverse-desktop -keyalg RSA -keysize 2048 -validity 3650 -dname 'CN=PRISMA Test'
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1' platform-tools emulator 'system-images;android-35;default;x86_64' > evidence/sdk.log
+          gradle -p reverse-os-android --no-daemon :app:assemblePrismaDebug :app:assemblePrismaDebugAndroidTest > evidence/gradle.log 2>&1 || { tail -140 evidence/gradle.log; exit 1; }
+          cp reverse-os-android/app/build/outputs/apk/prisma/debug/app-prisma-debug.apk dist/PRISMA-2.5-Galaxia-Viva.apk
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" dist/apksigner.jar
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/PRISMA-2.5-Galaxia-Viva.apk > evidence/signature.txt
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -p 4 dist/PRISMA-2.5-Galaxia-Viva.apk
+      - name: Play and verify on Android 15
+        shell: bash
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          export PATH="$ANDROID_HOME/platform-tools:$PATH"
+          sudo chmod a+rw /dev/kvm
+          export ANDROID_AVD_HOME="$(mktemp -d /tmp/prisma-avd.XXXXXX)"
+          printf 'no\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --force -n prisma -p "$ANDROID_AVD_HOME/prisma.avd" -k 'system-images;android-35;default;x86_64'
+          "$ANDROID_HOME/emulator/emulator" -avd prisma -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader -feature -Vulkan -memory 2048 > evidence/emulator.log 2>&1 &
+          EMU_PID=$!
+          trap 'adb logcat -d > evidence/logcat.txt 2>/dev/null || true; adb exec-out screencap -p > evidence/last-screen.png 2>/dev/null || true; kill "$EMU_PID" 2>/dev/null || true' EXIT
+          ready=false
+          for i in $(seq 1 100); do
+            if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == 1 ]]; then ready=true;break;fi
+            sleep 2
+          done
+          test "$ready" = true
+          adb shell wm size 720x1600
+          adb shell wm density 280
+          adb shell settings put system accelerometer_rotation 0
+          adb shell settings put system user_rotation 1
+          adb shell settings put secure immersive_mode_confirmations confirmed
+          adb shell input keyevent 82
+          adb install -r dist/PRISMA-2.5-Galaxia-Viva.apk
+          adb install -r reverse-os-android/app/build/outputs/apk/androidTest/prisma/debug/app-prisma-debug-androidTest.apk
+          timeout 180s adb shell am instrument -w org.reverse.prisma.test/com.reversepc.os.PrismaTestRunner | tee evidence/android-tests.txt
+          grep 'PRISMA_ANDROID_OK' evidence/android-tests.txt
+          adb pull /sdcard/Android/data/org.reverse.prisma/files/prisma-evidence evidence/android
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: PRISMA-2.5-Galaxia-Viva
+          path: |
+            dist/
+            evidence/
+          retention-days: 14

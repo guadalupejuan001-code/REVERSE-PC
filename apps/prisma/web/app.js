@@ -14,6 +14,7 @@ const scene=new Scene($('game'),()=>settings);
 const random=seeded(3334);
 const demoWave=Array.from({length:160},(_,i)=>.18+random()*.55+Math.sin(i*.38)**2*.23);
 const demoPeaks=Array.from({length:252},(_,i)=>({t:(i+4)*60/DEMO_BPM/2,strength:i%2===0?1:.36})).filter(p=>p.t<DEMO_DURATION-2.0);
+let demoOnsetsCache=null;
 let demoEnergyCache=null; // measured from the synthesized audio, not invented light events
 let track={name:'Midnight Motion',demo:true,bpm:DEMO_BPM,duration:DEMO_DURATION,peaks:demoPeaks,wave:demoWave,buffer:null,fallback:false};
 let level='flow', chart=[], status='home', frozenTime=0, booting=false, missIndex=0, sceneDirty=true, gameBounds=null, lastScene=0, lastElapsed='';
@@ -82,12 +83,14 @@ async function startGame(){
       if(!demoEnergyCache){
         const measured=await analyseRhythm(track.buffer);
         demoEnergyCache=measured.energy;
+        demoOnsetsCache=measured.peaks;
       }
       track.energy=demoEnergyCache;
+      track.peaks=demoOnsetsCache||track.peaks;
     }
     if(thisRun!==runId)return;
     setLoading(false);audio.buffer=track.buffer;
-    const peaks=track.demo&&level==='flow'?track.peaks.filter((_,i)=>i%2===0):track.peaks;
+    const peaks=track.peaks;
     const musicMap=makeMusicStage(track.peaks,{bpm:track.bpm,duration:track.duration,
        energy:track.energy,tempoSegments:track.tempoSegments,fallback:track.fallback});
     chart=makeChart(peaks,level,track.demo?7721:Math.round(track.duration*173),musicMap);
@@ -123,7 +126,7 @@ function cut(note,t,dx,dy,isTap=false,isKey=false){
   const delta=note.t+settings.latency/1000-t;if(Math.abs(delta)>hitWindow())return false;
   const dir=DIRECTIONS[note.dir],length=Math.hypot(dx,dy),dot=length?(dx*dir.x+dy*dir.y)/length:0,correct=dot>.43;
   if(settings.precise&&(!correct||isTap))return false;
-  note.hit=true;audio.swish(note.color);hits++;combo++;maxCombo=Math.max(combo,maxCombo);
+  note.hit=true;hits++;combo++;maxCombo=Math.max(combo,maxCombo);
    scene.armCombo(combo,t);
   const perfect=Math.abs(delta)<.145&&(correct||isKey),base=perfect?150:correct?105:isTap?70:80,multiplier=Math.min(4,1+Math.floor(combo/12));
   score+=base*multiplier;if(nativeGraphics)nativeEvent(1,base);

@@ -27,7 +27,7 @@ export function makeMusicStage(peaks, { bpm = 120, duration = 60, energy = null,
   const safeDuration = numeric(duration) ? clamp(duration, 0.01, 14400) : 60;
   const safeBpm = numeric(bpm) ? clamp(bpm, 40, 260) : 120;
   const period = 60 / safeBpm;
-  const samplePeriod = 0.25;
+  const samplePeriod = 0.05;
   const length = Math.max(1, Math.ceil(safeDuration / samplePeriod));
   const raw = new Float32Array(length);
   if (energy && typeof energy.length === 'number' && energy.length > 0) {
@@ -47,7 +47,8 @@ export function makeMusicStage(peaks, { bpm = 120, duration = 60, energy = null,
 
   const onsets = (Array.isArray(peaks) ? peaks : [])
     .filter(p => p && numeric(p.t) && p.t >= 0 && p.t < safeDuration && numeric(p.strength))
-    .map(p => ({ t: p.t, strength: clamp(p.strength, 0, 1) }))
+    .map(p => ({ t: p.t, strength: clamp(p.strength, 0, 1), source:p.source,
+      bands:Array.isArray(p.bands)&&p.bands.length===3?p.bands.slice():undefined }))
     .sort((a, b) => a.t - b.t);
   const strengths = onsets.map(p => p.strength).sort((a, b) => a - b);
   const threshold = Math.max(0.12, percentile(strengths, 0.58));

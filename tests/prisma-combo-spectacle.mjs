@@ -101,19 +101,20 @@ check(boosted.intensity>plain.intensity,'earned accent must activate stage fixtu
 check(boosted.intensity<=.29,'stage brightness exceeded safe clamp');
 check(quiet.intensity<=.07,'reduced-motion show is too bright');
 
+const live=await moduleFile('living-galaxy.js');
 const sceneSource=readFileSync(
   new URL('../apps/prisma/web/engine.js',import.meta.url),'utf8'
 ).replace(/^import .*;$/gm,'').replace(/^export /gm,'');
 const Scene=new Function('CubeGPU','NativeXRender','seeded','MusicStageDirector','makeIntelligentChart',
   'makeConcertProgram','concertPose','concertNativeParts','RIG_MAX_CUBOIDS',
   'createSpectacleEvent','pruneSpectacles','spectacleEnvelope','spectacleGeometry',
-  'SPECTACLE_MAX_EVENTS',
+  'SPECTACLE_MAX_EVENTS','livingGalaxyFrame','drawLivingGalaxy','overlayPixelRatio',
   sceneSource+';return Scene;')(
     {},{},()=>()=>.5,MusicStageDirector,()=>[],
     concert.makeConcertProgram,concert.concertPose,concert.concertNativeParts,
     concert.RIG_MAX_CUBOIDS,
     createSpectacleEvent,pruneSpectacles,spectacleEnvelope,spectacleGeometry,
-    SPECTACLE_MAX_EVENTS
+    SPECTACLE_MAX_EVENTS,live.livingGalaxyFrame,live.drawLivingGalaxy,live.overlayPixelRatio
   );
 const metrics={strokes:0,fills:0},gradient={addColorStop:()=>{}};
 const ctx={
@@ -121,6 +122,7 @@ const ctx={
   translate:()=>{},rotate:()=>{},beginPath:()=>{},closePath:()=>{},
   moveTo:()=>{},lineTo:()=>{},bezierCurveTo:()=>{},arc:()=>{},ellipse:()=>{},
   fillRect:()=>{},strokeRect:()=>{},stroke:()=>metrics.strokes++,
+  rect:()=>{},clip:()=>{},createRadialGradient:()=>gradient,
   fill:()=>metrics.fills++,createLinearGradient:()=>gradient
 };
 const scene=Object.create(Scene.prototype);
@@ -130,7 +132,7 @@ scene.settings=()=>({quality:'auto',palette:'coral',effects:false});
 scene.gpu={native:true,quality:0,count:0,begin(){this.count=0;},
   cube(){this.count++},flush(){}};
 scene.paletteKey='';scene.rgb=[];scene.view=new Float32Array(4);
-scene.particles=[];scene.shards=[];scene.trails=new Map();
+scene.particles=[];scene.shards=[];scene.cutRings=[];scene.trails=new Map();
 scene.pulse=scene.energy=scene.shake=0;
 scene.diagnostics=false;scene.qualityScale=1;scene.stageExplosions=[];
 scene.visualState={quality:'balanced',slowFrames:0,fastFrames:0,cooldownUntil:0};

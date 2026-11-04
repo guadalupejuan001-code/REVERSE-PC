@@ -123,7 +123,7 @@ const original=scene.qualityScale;
 for(let i=0;i<180;i++)scene.adapt(.034,30000+i*34);
 test(scene.qualityScale===original,'Manually selected high quality must not be changed');
 
-scene.particles=[];scene.shards=[];scene.trails=new Map();
+scene.particles=[];scene.shards=[];scene.cutRings=[];scene.trails=new Map();
 scene.qualityScale=1;
 scene.settings=()=>({quality:'high',palette:'coral',effects:false});
 const point={x:200,y:120,s:70},note={color:0};
