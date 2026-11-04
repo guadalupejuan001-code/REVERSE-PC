@@ -178,6 +178,20 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
   const bool q=i&0x40000000,u=i&0x20000000;
   const unsigned width=q?128:64,size=(i>>22)&3,element=8u<<size;
   auto commit=[&](Vector128 value){if(!q)value.high=0;floating_.v[rd]=value;};
+  const bool indexed_scalar=(i&0xff80b400u)==0x5f801000u;
+  if(indexed_scalar||(i&0xbf80b400u)==0x0f801000u){ // FMLA/FMLS, single/double by indexed element.
+    const unsigned lane_bits=(i&0x00400000u)?64u:32u;
+    // L is reserved for D elements; the vector 1D form is unallocated.
+    if(lane_bits==64&&((i&0x00200000u)||(!indexed_scalar&&!q)))return false;
+    const unsigned index=lane_bits==64?((i>>11)&1u):(((i>>11)&1u)<<1)|((i>>21)&1u);
+    fp_access();const auto a=floating_.v[rn],b=floating_.v[rm],old=floating_.v[rd];
+    const auto selected=b.lane(index,lane_bits);Vector128 value;
+    // Copy every operand first, including the indexed source when Rd == Rm.
+    for(unsigned n=0;n<(indexed_scalar?1u:width/lane_bits);++n)
+      value.lane(n,lane_bits,fp.fma(lane_bits,a.lane(n,lane_bits),selected,
+          old.lane(n,lane_bits),bool(i&0x00004000u),false));
+    floating_.v[rd]=value;return true; // Scalar/64-bit forms clear the unwritten upper bits.
+  }
   const auto right_shift=[&](std::uint64_t x,unsigned amount,unsigned lane_bits,bool signed_value){
     const bool negative=signed_value&&bool(x&(UINT64_C(1)<<(lane_bits-1)));
     if(amount>=lane_bits)return negative?low_mask(lane_bits):UINT64_C(0);
