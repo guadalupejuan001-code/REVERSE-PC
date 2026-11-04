@@ -112,6 +112,14 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
     if(mode==1||mode==3)set(rn,updated,64,true);return true;
   }
   ArmFloat fp(floating_);
+  if((i&0x9fbffc00u)==0x0e21d800u){ // SCVTF/UCVTF Vd.2S/4S/2D,Vn.2S/4S/2D.
+    const bool wide=i&0x40000000u;const unsigned lane_bits=i&0x00400000u?64u:32u;
+    if(!wide&&lane_bits==64)return false; // The 1D vector form is unallocated.
+    fp_access();const auto source=floating_.v[rn];Vector128 output;
+    for(unsigned lane=0;lane<(wide?128u:64u)/lane_bits;++lane)
+      output.lane(lane,lane_bits,fp.from_int(lane_bits,source.lane(lane,lane_bits),!(i&0x20000000u),lane_bits));
+    floating_.v[rd]=output;return true;
+  }
   if((i&0xdfbffc00u)==0x5ea1b800u){ // FCVTZS/FCVTZU Sd,Sn or Dd,Dn (AdvSIMD scalar).
     const unsigned scalar_bits=(i&0x00400000u)?64u:32u;
     fp_access();const auto value=floating_.v[rn].lane(0,scalar_bits);

@@ -22,6 +22,13 @@ using Bytes = std::vector<std::uint8_t>;
 inline void require(bool condition, const std::string& message) {
   if (!condition) throw std::runtime_error(message);
 }
+#ifndef REVERSE_PC_EAGER_GUARD_REFERENCE
+// Literal diagnostics need no temporary std::string on successful CPU checks.
+// Keep the original overload for dynamic messages and the exact failure type.
+template<std::size_t N> inline void require(bool condition,const char (&message)[N]) {
+  if(!condition)throw std::runtime_error(message);
+}
+#endif
 inline std::uint64_t get(const Bytes& bytes, std::size_t offset, unsigned size) {
   require(offset <= bytes.size() && size <= bytes.size() - offset, "Guest binary is truncated");
   std::uint64_t value = 0;

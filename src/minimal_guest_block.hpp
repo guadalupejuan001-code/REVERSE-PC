@@ -12,6 +12,9 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#ifdef REVERSE_PC_OPENSSL_DISK_SHA
+#include <openssl/evp.h>
+#endif
 namespace reverse_pc::guest {
 class GuestSha256 {
   std::array<std::uint32_t,8> h{0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19};
@@ -30,6 +33,33 @@ class GuestSha256 {
   std::string finish(){const auto bits=total*8;const std::uint8_t one=128,zero=0;update(&one,1);while(used!=56)update(&zero,1);std::uint8_t length[8];for(unsigned i=0;i<8;i++)length[i]=std::uint8_t(bits>>(56-8*i));update(length,8);std::ostringstream out;out<<std::hex<<std::setfill('0');for(auto x:h)out<<std::setw(8)<<x;return out.str();}
   static std::string hash(const std::vector<std::uint8_t>& b){GuestSha256 h;h.update(b.data(),b.size());return h.finish();}
 };
+// Host disk authentication only. The original portable hash remains unchanged.
+#ifdef REVERSE_PC_OPENSSL_DISK_SHA
+class GuestDiskSha256 {
+  std::unique_ptr<EVP_MD_CTX,decltype(&EVP_MD_CTX_free)> context_{EVP_MD_CTX_new(),EVP_MD_CTX_free};
+ public:
+  GuestDiskSha256(){
+    if(!context_||EVP_DigestInit_ex(context_.get(),EVP_sha256(),nullptr)!=1)
+      throw std::runtime_error("Cannot initialize host disk SHA-256");
+  }
+  void update(const std::uint8_t* data,std::size_t size){
+    if(EVP_DigestUpdate(context_.get(),data,size)!=1)
+      throw std::runtime_error("Cannot authenticate host disk bytes");
+  }
+  std::string finish(){
+    std::array<unsigned char,EVP_MAX_MD_SIZE> bytes{};unsigned size=0;
+    if(EVP_DigestFinal_ex(context_.get(),bytes.data(),&size)!=1||size!=32)
+      throw std::runtime_error("Cannot finish host disk SHA-256");
+    std::ostringstream out;out<<std::hex<<std::setfill('0');
+    for(unsigned n=0;n<size;++n)out<<std::setw(2)<<unsigned(bytes[n]);return out.str();
+  }
+  static std::string hash(const std::vector<std::uint8_t>& bytes){
+    GuestDiskSha256 hash;hash.update(bytes.data(),bytes.size());return hash.finish();
+  }
+};
+#else
+using GuestDiskSha256=GuestSha256;
+#endif
 class GuestBlockImage {
   static constexpr std::size_t block_size=65536;
   std::string path_,sha_;std::uint64_t size_=0;
@@ -40,8 +70,8 @@ class GuestBlockImage {
     if(!file_)throw std::runtime_error("Cannot open explicitly attached disk");
     file_.seekg(0,std::ios::end);const auto end=file_.tellg();
     if(end<=0||std::uint64_t(end)>(UINT64_C(1)<<40)||std::uint64_t(end)%512)throw std::runtime_error("Disk must be 512-byte aligned and at most 1 TiB");
-    size_=std::uint64_t(end);file_.seekg(0);GuestSha256 whole;
-    for(std::uint64_t at=0;at<size_;at+=block_size){std::vector<std::uint8_t> b(std::size_t(std::min<std::uint64_t>(block_size,size_-at)));file_.read(reinterpret_cast<char*>(b.data()),std::streamsize(b.size()));if(!file_)throw std::runtime_error("Disk changed while attaching");whole.update(b.data(),b.size());hashes_.push_back(GuestSha256::hash(b));}
+    size_=std::uint64_t(end);file_.seekg(0);GuestDiskSha256 whole;
+    for(std::uint64_t at=0;at<size_;at+=block_size){std::vector<std::uint8_t> b(std::size_t(std::min<std::uint64_t>(block_size,size_-at)));file_.read(reinterpret_cast<char*>(b.data()),std::streamsize(b.size()));if(!file_)throw std::runtime_error("Disk changed while attaching");whole.update(b.data(),b.size());hashes_.push_back(GuestDiskSha256::hash(b));}
     sha_=whole.finish();
   }
  public:
@@ -52,7 +82,7 @@ class GuestBlockImage {
     if(offset>size_||length>size_-offset||length>1024*1024)throw std::runtime_error("Disk read outside bounded image");
     std::lock_guard<std::mutex> guard(mutex_);std::vector<std::uint8_t> out(length);std::size_t done=0;
     while(done<length){const auto at=offset+done,index=at/block_size;
-      if(cached_!=index){std::vector<std::uint8_t> b(std::size_t(std::min<std::uint64_t>(block_size,size_-index*block_size)));file_.clear();file_.seekg(std::streamoff(index*block_size));file_.read(reinterpret_cast<char*>(b.data()),std::streamsize(b.size()));if(!file_||GuestSha256::hash(b)!=hashes_.at(std::size_t(index)))throw std::runtime_error("Attached disk block changed; guest transaction rejected");cache_=std::move(b);cached_=index;}
+      if(cached_!=index){std::vector<std::uint8_t> b(std::size_t(std::min<std::uint64_t>(block_size,size_-index*block_size)));file_.clear();file_.seekg(std::streamoff(index*block_size));file_.read(reinterpret_cast<char*>(b.data()),std::streamsize(b.size()));if(!file_||GuestDiskSha256::hash(b)!=hashes_.at(std::size_t(index)))throw std::runtime_error("Attached disk block changed; guest transaction rejected");cache_=std::move(b);cached_=index;}
       const auto in=std::size_t(at%block_size),n=std::min(length-done,cache_.size()-in);std::copy(cache_.begin()+in,cache_.begin()+in+n,out.begin()+done);done+=n;
     }return out;
   }

@@ -59,7 +59,7 @@ struct MachineState {
     return (timer_pending(true)&&!(cntp_ctl&2)?1u<<30:0u)|
            (timer_pending(false)&&!(cntv_ctl&2)?1u<<27:0u);
   }
-  unsigned next_irq() const {
+  unsigned next_irq_reference() const {
     if(!(dist_ctl&1)||!(cpu_ctl&1))return 1023;
     unsigned selected=1023, threshold=pmr;
     // Single-core GICv2: do not preempt an equal/higher active priority.
@@ -71,6 +71,33 @@ struct MachineState {
       threshold=priority[i];selected=i;
     }
     return selected;
+  }
+
+  unsigned next_irq() const {
+#ifdef REVERSE_PC_GIC_SCAN_REFERENCE
+    return next_irq_reference();
+#else
+    if(!(dist_ctl&1)||!(cpu_ctl&1))return 1023;
+    unsigned selected=1023,threshold=pmr;
+    // Same ascending ID order and strict priority comparison as the original.
+    // No result is cached: timer/device levels are reevaluated on every call.
+    for(unsigned word=0;word<2;++word){
+      auto bits=active_irqs[word];
+      while(bits){
+        const auto i=32*word+unsigned(__builtin_ctz(bits));bits&=bits-1;
+        if(priority[i]<threshold)threshold=priority[i];
+      }
+    }
+    for(unsigned word=0;word<2;++word){
+      if(!enabled_irqs[word])continue;
+      auto bits=enabled_irqs[word]&(pending_irqs[word]|level_irqs(word))&~active_irqs[word];
+      while(bits){
+        const auto i=32*word+unsigned(__builtin_ctz(bits));bits&=bits-1;
+        if((i<32||(targets[i]&1))&&priority[i]<threshold){threshold=priority[i];selected=i;}
+      }
+    }
+    return selected;
+#endif
   }
 
   std::vector<std::uint8_t> save() const {
