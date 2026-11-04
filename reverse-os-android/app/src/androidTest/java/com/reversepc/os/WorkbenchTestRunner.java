@@ -540,6 +540,61 @@ public final class WorkbenchTestRunner extends Instrumentation {
             .put("activity_pause_instructions",1250000).put("host_rvg_identical",true).put("failed_publication_retry",true)
             .put("stale_owner_protected",true).put("android_boot",false).toString().getBytes(StandardCharsets.UTF_8));
     }
+    private void journalSeedWorkflow(boolean torn)throws Exception{
+        File input=dataFile("resident-input.rvg");
+        JSONObject imported=RuntimeExecutor.INSTANCE.submit(()->{try(java.io.InputStream stream=new java.io.FileInputStream(input)){return new GuestStore(getTargetContext()).importCheckpoint(stream);}}).get(90,TimeUnit.SECONDS);
+        openGuestView();js("window.ReverseGuest.imported("+imported+");true");
+        String baseSha=streamHash(dataFile("guest-aarch64.rvg"));
+        RuntimeExecutor.INSTANCE.submit(()->{
+            GuestStore journalStore=new GuestStore(getTargetContext());journalStore.runContinuous();journalStore.runContinuous();
+            JSONObject first=journalStore.checkpoint();require(!first.getBoolean("checkpoint_dirty")&&first.getInt("journal_entries")==1,"First periodic journal was not committed");
+            journalStore.runContinuous();JSONObject second=journalStore.checkpoint();
+            require(second.getInt("journal_entries")==2&&second.getJSONObject("guest").getLong("instructions")==750000,"Second journal lost guest progress");
+            journalStore.runContinuous();JSONObject volatileState=journalStore.inspect();
+            require(volatileState.getBoolean("checkpoint_dirty")&&volatileState.getJSONObject("guest").getLong("instructions")==1000000,"Crash seed has no separate unsaved window");
+            require(streamHash(dataFile("guest-aarch64.rvg")).equals(baseSha),"Periodic checkpoint rewrote the canonical base");
+            if(torn)try(java.io.RandomAccessFile damaged=new java.io.RandomAccessFile(dataFile("guest-aarch64.rvg.journal/generation-2/data"),"rw")){damaged.setLength(7);damaged.getFD().sync();}
+            JSONObject proof=new JSONObject().put("committed_instructions",torn?500000:750000).put("volatile_instructions",1000000)
+                .put("journal_entries",2).put("journal_payload_bytes",second.getLong("journal_bytes")).put("base_sha256",baseSha).put("torn_tail",torn).put("android_boot",false);
+            try(FileOutputStream saved=new FileOutputStream(dataFile("journal-seed-proof.json"))){saved.write(proof.toString().getBytes(StandardCharsets.UTF_8));saved.getFD().sync();}
+            return true;
+        }).get(120,TimeUnit.SECONDS);
+        // Kill this disposable test process before Activity pause can compact.
+        android.os.Process.killProcess(android.os.Process.myPid());throw new AssertionError("Expected the seed process to terminate");
+    }
+    private void journalRecoveryWorkflow(boolean torn)throws Exception{
+        String desktopBefore=hash("session.rvp");long expectedCount=torn?500000:750000;
+        JSONObject recovered=RuntimeExecutor.INSTANCE.submit(()->new GuestStore(getTargetContext()).inspect()).get(90,TimeUnit.SECONDS);
+        require(recovered.getJSONObject("guest").getLong("instructions")==expectedCount,"Cold journal recovery repeated or lost committed CPU work");
+        require(recovered.getInt("journal_recovered_entries")== (torn?1:2),"Cold recovery selected an incomplete journal entry");
+        require(recovered.getBoolean("journal_rolled_back")==torn,"Torn-tail recovery was not reported accurately");
+        openGuestView();js("window.ReverseGuest.imported("+recovered+");true");visualCheck(torn?"journal-torn-recovered":"journal-clean-recovered");
+        File exported=dataFile("journal-export.rvg");
+        RuntimeExecutor.INSTANCE.submit(()->{try(OutputStream stream=new FileOutputStream(exported)){new GuestStore(getTargetContext()).exportTo(stream);}return true;}).get(90,TimeUnit.SECONDS);
+        String expectedSha=arguments.getString("journal_expected_sha256");require(expectedSha!=null&&streamHash(exported).equals(expectedSha),"Recovered export differs from independent original execution");
+        require(streamHash(dataFile("guest-aarch64.rvg")).equals(expectedSha)&&!dataFile("guest-aarch64.rvg.journal").exists(),"Export did not compact and retire its journal");
+        // Storage failure retains the live block; retry saves it without CPU replay.
+        JSONObject finalState=RuntimeExecutor.INSTANCE.submit(()->{
+            GuestStore journalStore=new GuestStore(getTargetContext());
+            try(java.io.InputStream stream=new java.io.FileInputStream(dataFile("resident-input.rvg"))){journalStore.importCheckpoint(stream);}
+            journalStore.inspect();journalStore.runContinuous();File blocker=dataFile("guest-aarch64.rvg.journal");
+            try(FileOutputStream output=new FileOutputStream(blocker)){output.write(1);}boolean rejected=false;
+            try{journalStore.checkpoint();}catch(Exception expected){rejected=true;}
+            JSONObject pending=journalStore.inspect();require(rejected&&pending.getBoolean("checkpoint_dirty")&&pending.getJSONObject("guest").getLong("instructions")==250000,"Failed journal write discarded accepted progress");
+            require(blocker.delete(),"Cannot remove journal failure blocker");JSONObject retried=journalStore.checkpoint();
+            require(!retried.getBoolean("checkpoint_dirty")&&retried.getJSONObject("guest").getLong("instructions")==250000,"Journal retry replayed CPU");
+            // Importing the very same original base must explicitly discard its
+            // later journal, rather than replaying that history over the import.
+            try(java.io.InputStream stream=new java.io.FileInputStream(dataFile("resident-input.rvg"))){journalStore.importCheckpoint(stream);}
+            JSONObject restored=journalStore.inspect();require(restored.getJSONObject("guest").getLong("instructions")==0&&!dataFile("guest-aarch64.rvg.journal").exists(),"Explicit original import replayed an obsolete journal");
+            journalStore.pause();return restored;
+        }).get(120,TimeUnit.SECONDS);
+        openGuestView();js("window.ReverseGuest.imported("+finalState+");true");
+        require(desktopBefore.equals(hash("session.rvp")),"Journal changed the desktop/BBY Q authority");
+        Files.write(dataFile("journal-recovery-proof.json").toPath(),new JSONObject().put("instructions",expectedCount).put("sha256",expectedSha)
+            .put("process_death_recovered",true).put("torn_tail",torn).put("failed_write_retry",true).put("explicit_import_preserved",true)
+            .put("host_state_identical",true).put("android_boot",false).toString().getBytes(StandardCharsets.UTF_8));
+    }
     private void systemWorkflow(boolean restore)throws Exception{
         String desktopBefore=hash("session.rvp");
         openGuestView();
@@ -602,6 +657,13 @@ public final class WorkbenchTestRunner extends Instrumentation {
             require(snapshot.getJSONObject("android").getLong("ram_total_bytes")>0,"No native RAM reading");
             require(snapshot.getJSONObject("core").getString("state_format").equals("RVPC2"),"Wrong checkpoint format");
             require(snapshot.getJSONObject("build").getString("source_commit").matches("[a-f0-9]{40}"),"Missing build provenance");
+            if(requested.equals("guestJournalSeed")||requested.equals("guestJournalTornSeed")){
+                journalSeedWorkflow(requested.equals("guestJournalTornSeed"));throw new AssertionError("Journal seed did not terminate");
+            }
+            if(requested.equals("guestJournalRecover")||requested.equals("guestJournalTornRecover")){
+                journalRecoveryWorkflow(requested.equals("guestJournalTornRecover"));visualCheck(requested);
+                result.putString("stream","WORKBENCH_TESTS_OK mode="+requested+" original-rvg=true journal-recovery=true\n");result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
+            }
             if(requested.equals("guestResident")){
                 residentGuestWorkflow();visualCheck(requested);
                 result.putString("stream","WORKBENCH_TESTS_OK mode=guestResident native=XI/Ether resident=true original-rvg=true\n");result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;

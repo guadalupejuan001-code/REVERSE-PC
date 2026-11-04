@@ -202,7 +202,7 @@ Java_com_reversepc_os_NativeRuntime_guestSessionOpen(JNIEnv* e,jclass,jstring in
 extern "C" JNIEXPORT jbyteArray JNICALL
 Java_com_reversepc_os_NativeRuntime_guestSessionOperation(JNIEnv* e,jclass,jlong handle,jint operation,jint steps,jstring text,jstring candidate,jlong revision){
   try{
-    reverse_pc::guest::require(handle>0&&operation>=0&&operation<=6&&steps>=0&&revision>=0,"Invalid resident guest request");
+    reverse_pc::guest::require(handle>0&&operation>=0&&operation<=8&&steps>=0&&revision>=0,"Invalid resident guest request");
     const auto result=guest_sessions().operation(std::uint64_t(handle),unsigned(operation),std::uint64_t(steps),text?source(e,text):std::string{},candidate?source(e,candidate):std::string{},std::uint64_t(revision));
     return output(e,std::vector<std::uint8_t>(result.begin(),result.end()));
   }catch(const std::exception& x){throw_java(e,x);return nullptr;}
