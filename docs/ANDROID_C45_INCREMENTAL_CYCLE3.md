@@ -29,9 +29,12 @@ The in-memory baseline advances only after this publication succeeds.
 The chain is limited to 16 generations and the smaller of 64 MiB or one quarter
 of the base size, with a 1 MiB minimum. Reaching the bound requests a full
 canonical save. Pause, export, manual changes and replacement also compact to
-the original RVG and retire the journal after successful file publication.
-Retirement renames the directory before cleanup so a crash during cleanup
-cannot expose a half-deleted active journal.
+the original RVG and retire the journal after successful file publication and
+sync of its parent directory. The base file is also synced before journal setup.
+Retirement renames and syncs the directory before cleanup so a crash during
+cleanup cannot expose a half-deleted active journal. Failure to detach is
+reported and leaves the resident state available; deleting retired files is
+best effort.
 
 ## Recovery and replacement
 

@@ -57,7 +57,7 @@ class GuestResidentSession {
     require(staged_&&revision==staged_revision_&&revision==revision_,"Stale or missing checkpoint acknowledgement");
     // The caller acknowledges only after AtomicFile publication has succeeded.
     auto saved=guest_;const auto now=clock_();
-    if(journal_)journal_->retire();checkpoint_guest_=std::move(saved);recovered_entries_=0;
+    if(journal_){journal_->sync_published_base_directory();journal_->retire();}checkpoint_guest_=std::move(saved);recovered_entries_=0;
     bytes_=staged_bytes_;saved_at_=now;saved_instructions_=guest_.registers().instructions;dirty_=false;staged_=false;
     return report(guest_,revision_,false,{},bytes_);
   }

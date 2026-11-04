@@ -28,6 +28,9 @@ class GuestIncrementalJournal {
   bool initialized()const noexcept{return initialized_;}
   std::size_t logical_bytes()const{return validate(index_);}
   const std::string& base_sha()const noexcept{return base_sha_;}
+  void sync_published_base_directory()const{
+    sync_dir(root_.parent_path().empty()?std::filesystem::path("."):root_.parent_path());
+  }
 
   // No journal means no extra base scan on the ordinary C44 load path.
   bool recover(){
@@ -113,9 +116,10 @@ class GuestIncrementalJournal {
       return logical;
     }catch(...){std::error_code ignored;std::filesystem::remove_all(pending,ignored);throw;}
   }
-  void retire()noexcept{
+  void retire(){
     // The canonical RVG has already been published and verified by the caller.
-    try{archive_root();}catch(const std::exception&){}
+    // Detaching history is required; removal of its retired files is best effort.
+    checkpoint("before_retire");archive_root();
     initialized_=false;selected_={0,zeros()};index_.clear();base_index_.clear();journal_bytes_=0;rolled_back_=false;observed_head_.clear();attempted_head_.clear();pending_cleanup_=0;
   }
   template<class Sink>void materialize(Sink&& sink)const{emit(index_,std::forward<Sink>(sink));}
@@ -287,6 +291,9 @@ class GuestIncrementalJournal {
     const auto canonical=previous.snapshot_sha256();const auto disk=hash_file(source_);
     if(canonical!=disk)throw GuestJournalCompaction("Checkpoint base must first be normalized to the original canonical RVG");
     base_sha_=disk;base_index_=parse_base();index_=base_index_;limit_=std::min(max_payload,std::max<std::size_t>(1024*1024,std::filesystem::file_size(source_)/4));
+    // The immutable base must itself be durable before a journal can refer to it.
+    const int base_fd=::open(source_.c_str(),O_RDONLY);require(base_fd>=0,"Cannot sync the checkpoint journal base");
+    const int base_synced=::fsync(base_fd),base_closed=::close(base_fd);require(base_synced==0&&base_closed==0,"Cannot persist the checkpoint journal base");
     if(std::filesystem::exists(root_)){
       const auto identity=read_text(root_/"identity",128);
       require(!std::filesystem::is_symlink(root_)&&identity.compare(0,9,"RVJROOT1 ")==0,"Unrecognized checkpoint journal directory");
@@ -307,7 +314,7 @@ class GuestIncrementalJournal {
     if(!std::filesystem::exists(root_))return;
     auto pattern=root_.string()+".retired-XXXXXX";std::vector<char> temporary(pattern.begin(),pattern.end());temporary.push_back(0);
     require(::mkdtemp(temporary.data())!=nullptr,"Cannot retire checkpoint journal directory");
-    try{std::filesystem::rename(root_,temporary.data());sync_dir(root_.parent_path().empty()?std::filesystem::path("."):root_.parent_path());}
+    try{sync_published_base_directory();std::filesystem::rename(root_,temporary.data());sync_published_base_directory();}
     catch(...){std::error_code ignored;std::filesystem::remove(temporary.data(),ignored);throw;}
     std::error_code ignored;std::filesystem::remove_all(temporary.data(),ignored);
   }

@@ -104,5 +104,11 @@ int main(int argc,char** argv){try{
  check(guest_read_file(candidate,MinimalGuest::max_adaptive_snapshot)==expected.snapshot(),"Resident recovery changed or repeated CPU work");
  std::filesystem::rename(candidate,resident_path);registry.operation(reopened_handle,6,0,"","",0);registry.operation(reopened_handle,8);registry.close(reopened_handle);
  check(!std::filesystem::exists(resident_path+".journal"),"Canonical publication did not retire its journal");
+ // A failed detach is reported rather than falsely acknowledging retirement.
+ const auto retirement_path=path("retirement.rvg");guest_write_snapshot_candidate(first,retirement_path);bool block_retirement=false;
+ GuestIncrementalJournal retirement(retirement_path,MinimalGuest::max_adaptive_snapshot,[&](const std::string& phase){if(block_retirement&&phase=="before_retire")throw std::runtime_error("Injected retirement failure");});
+ auto retirement_next=first;retirement_next.run(1);retirement.commit(retirement_next,first);guest_write_snapshot_candidate(retirement_next,retirement_path);
+ block_retirement=true;rejects([&]{retirement.retire();});check(std::filesystem::exists(retirement_path+".journal"),"Failed retirement destroyed its recovery history");
+ block_retirement=false;retirement.retire();check(!std::filesystem::exists(retirement_path+".journal"),"Retirement retry left a selected journal");
  std::cout<<"{\"checks\":"<<checks<<",\"same_original_rvg\":true,\"original_decoder\":true,\"changed_pages_only\":true,\"crash_recovery\":true,\"bounded_compaction\":true,\"android_boot\":false}\n";return 0;
 }catch(const std::exception& e){std::cerr<<e.what()<<'\n';return 1;}}
