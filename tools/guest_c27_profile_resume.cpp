@@ -36,7 +36,7 @@ int main(int argc,char** argv){try{
   const auto override_budget=[&](const char* key,std::uint64_t maximum,std::uint64_t baseline){
     const auto* value=std::getenv(key);return value?number(value,maximum):baseline;
   };
-  limits.chunk=override_budget("REVERSE_PC_C39_CHUNK",200000,50000);
+  limits.chunk=override_budget("REVERSE_PC_C39_CHUNK",1000000,50000);
   limits.checkpoint_ms=override_budget("REVERSE_PC_C39_CHECKPOINT_MS",180000,60000);
   limits.checkpoint_instructions=override_budget("REVERSE_PC_C39_CHECKPOINT_INSTRUCTIONS",300000000,100000000);
   std::cerr<<"REVERSE_C39_HOST_POLICY {\"chunk\":"<<limits.chunk<<",\"checkpoint_ms\":"<<limits.checkpoint_ms
