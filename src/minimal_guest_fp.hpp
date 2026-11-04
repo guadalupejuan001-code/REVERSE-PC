@@ -134,6 +134,19 @@ class ArmFloat {
       (is_signed?std::uint64_t(f64_to_i64(x,std::uint_fast8_t(mode),true)):f64_to_ui64(x,std::uint_fast8_t(mode),true));}
     flags(unsigned(softfloat_exceptionFlags));return integer_bits==32?result&0xffffffff:result;
   }
+  std::uint64_t to_fixed(unsigned bits,std::uint64_t value,bool is_signed,unsigned fracbits){
+    // FPToFixed scales the exact real value, without an intermediate floating
+    // multiply or its overflow/inexact flags. Apply FZ to the original input.
+    value=input(value,bits);const unsigned shift=bits==32?23u:52u;
+    const auto signbit=value&sign(bits),mask=fraction(bits),maximum=exponent(bits)>>shift;
+    auto exp=(value>>shift)&maximum,mantissa=value&mask;
+    if(exp!=maximum&&(exp||mantissa)){
+      while(!exp&&fracbits){mantissa<<=1;--fracbits;if(mantissa&(UINT64_C(1)<<shift)){exp=1;mantissa&=mask;}}
+      exp+=fracbits;
+      value=signbit|(exp>=maximum?exponent(bits):(exp<<shift)|mantissa);
+    }
+    return to_int(bits,value,is_signed,bits,softfloat_round_minMag);
+  }
   std::uint64_t convert(unsigned source_bits,unsigned destination_bits,std::uint64_t value){
     begin();if(source_bits!=16)value=input(value,source_bits);std::uint64_t result=0;
     if(source_bits==32&&destination_bits==64)result=f32_to_f64(float32_t{std::uint32_t(value)}).v;
