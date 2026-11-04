@@ -20,16 +20,32 @@ static void exclusive_write(const char* path,const Bytes& bytes){
 int main(int argc,char** argv){try{
   require(argc==7,"Expected checkpoint.rvg disk.raw|- checkpoint-sha256 disk-sha256 disk-bytes new-frame.ppm");
   const std::string state_sha=argv[3],disk_sha=argv[4];require(digest(state_sha)&&digest(disk_sha),"Invalid SHA-256 pins");
-  const auto disk_bytes=decimal(argv[5]);const auto input=guest_read_file(argv[1],MinimalGuest::max_explicit_adaptive_snapshot);
+#ifdef REVERSE_PC_COMPACT_RESTORE_VIEW
+  constexpr auto capacity=MinimalGuest::max_view_snapshot;
+#else
+  constexpr auto capacity=MinimalGuest::max_explicit_adaptive_snapshot;
+#endif
+  const auto disk_bytes=decimal(argv[5]);const auto input=guest_read_file(argv[1],capacity);
   require(GuestSha256::hash(input)==state_sha,"Wrong checkpoint SHA-256");
   std::shared_ptr<const GuestBlockImage> disk;
   if(disk_bytes){require(std::string(argv[2])!="-","Explicit disk is required");disk=GuestBlockImage::open(argv[2]);require(disk->size()==disk_bytes&&disk->sha256()==disk_sha,"Wrong disk identity");}
   else require(std::string(argv[2])=="-"&&disk_sha==std::string(64,'0'),"Invalid empty disk identity");
-  auto guest=MinimalGuest::from_snapshot(input,disk,MinimalGuest::max_explicit_adaptive_snapshot);
-  require(guest.snapshot()==input,"Restore changed the original checkpoint");
+#ifdef REVERSE_PC_COMPACT_RESTORE_VIEW
+  auto guest=MinimalGuest::from_snapshot_view(input,disk,capacity);
+#else
+  auto guest=MinimalGuest::from_snapshot(input,disk,capacity);
+#endif
+  const auto verify_original=[&]{
+    std::size_t compared=0;
+    guest.snapshot_to([&](const std::uint8_t* bytes,std::size_t size){
+      require(compared<=input.size()&&size<=input.size()-compared&&std::equal(bytes,bytes+size,input.begin()+compared),"Restore changed the original checkpoint");compared+=size;
+    });
+    require(compared==input.size(),"Restore changed the original checkpoint extent");
+  };
+  verify_original();
   const auto count=guest.registers().instructions,pc=guest.registers().pc;const auto& display=guest.machine().pci;
   const auto rgb=guest.display_rgb();
-  require(guest.registers().instructions==count&&guest.registers().pc==pc&&guest.snapshot()==input,"Read-only scanout changed the guest");
+  require(guest.registers().instructions==count&&guest.registers().pc==pc,"Read-only scanout changed the guest");verify_original();
   if(rgb.empty()){
     require(!display.scanout||!display.scan_w||!display.scan_h,"Empty active scanout");
     std::cout<<"{\"schema\":\"reverse-snapshot-scanout-v1\",\"status\":\"no_scanout\",\"source_checkpoint_sha256\":"<<quote(state_sha)<<",\"cpu_instructions_executed\":0,\"original_snapshot_unchanged\":true,\"android_boot_verified\":false,\"android_display_verified\":false}\n";return 3;

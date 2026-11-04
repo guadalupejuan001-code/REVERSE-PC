@@ -82,6 +82,7 @@ class MinimalGuest {
   // this is still finite and must never be mistaken for infinite physical RAM.
   static constexpr std::size_t max_adaptive_snapshot=256*1024*1024;
   static constexpr std::size_t max_explicit_adaptive_snapshot=1024ull*1024*1024;
+  static constexpr std::size_t max_view_snapshot=2ull*1024*1024*1024; // Explicit host view; defaults remain unchanged.
   static constexpr std::size_t max_output=65536;
 
   explicit MinimalGuest(std::uint64_t ram=UINT64_C(1)<<30, std::size_t overrides=65536)
@@ -456,6 +457,85 @@ class MinimalGuest {
     const std::string core(bytes.begin()+at,bytes.begin()+at+std::size_t(core_size)); at+=std::size_t(core_size);
     const std::string memory(bytes.begin()+at,bytes.begin()+at+std::size_t(memory_size));
     candidate.runtime_.restore(core,memory);
+    require(cpu.pc%4==0 && (system || (cpu.pc<=ram && (cpu.halted || cpu.pc<ram))), "Invalid guest PC in snapshot");
+    if(system){candidate.machine_=std::move(machine);candidate.validate_system_configuration();}
+    if(fp_size)candidate.floating_=FloatingState::restore(Bytes(bytes.end()-8-std::size_t(fp_size),bytes.end()-8));
+    candidate.registers_=cpu;candidate.adaptive_snapshot_capacity_=adaptive_capacity; return candidate;
+  }
+  // Non-owning transport decoder; the unchanged decoder above is its oracle.
+  static MinimalGuest from_snapshot_view(const Bytes& bytes,std::shared_ptr<const GuestBlockImage> disk={},
+                                    std::size_t adaptive_capacity=max_adaptive_snapshot) {
+    require(adaptive_capacity>=4096 && adaptive_capacity<=max_view_snapshot,"Invalid explicit host snapshot transport capacity");
+    const unsigned version=bytes.size()>=4?unsigned(bytes[3]):0;
+    require(version=='1'||version=='2'||version=='3',"Unsupported guest checkpoint version");
+    const Bytes magic{'R','V','G',std::uint8_t(version),13,10,26,10};
+    const auto max_input_bytes=bytes.size()>=24 && get(bytes,16,8)==0 ?
+        adaptive_capacity:max_snapshot;
+    require(bytes.size()>=8+8*(8+31+3)+8 && bytes.size()<=max_input_bytes &&
+            std::equal(magic.begin(),magic.end(),bytes.begin()), "Invalid guest snapshot header/size");
+    require(get(bytes,bytes.size()-8,8)==digest(bytes,bytes.size()-8), "Guest snapshot checksum mismatch");
+    std::size_t at=8;
+    auto take=[&](){auto value=get(bytes,at,8);at+=8;return value;};
+    const auto ram=take(), overrides=take(); MinimalGuest candidate(ram,std::size_t(overrides));
+    Registers cpu; cpu.pc=take(); cpu.sp=take(); cpu.instructions=take();
+    const auto flags=take(), halted=take(), status=take();
+    require(flags<=15 && halted<=1 && status<=255, "Invalid guest CPU snapshot fields");
+    cpu.nzcv=unsigned(flags); cpu.halted=halted!=0; cpu.exit_code=unsigned(status);
+    for (auto& value:cpu.x) value=take();
+    const auto image_size=take(), core_size=take(), memory_size=take(),system_size=version!='1'?take():0,fp_size=version=='3'?take():0;
+    const bool system=system_size!=0;
+    // An RVG2/3 system snapshot can contain a Linux RVI1 larger than the
+    // historical ELF limit. MachineState image_kind below still rejects
+    // oversized ELF payloads; this check must not block valid GKI restores.
+    require(image_size<=(system?max_linux_container:max_image) &&
+            core_size<=max_input_bytes && memory_size<=max_input_bytes &&
+            system_size<=262144 && fp_size<=532 && (version!='2'||system) && (version!='3'||fp_size>=20) &&
+            image_size+core_size+memory_size+system_size+fp_size==bytes.size()-at-8, "Guest snapshot extents are invalid");
+    MachineState machine;
+    if(system)machine=MachineState::restore(Bytes(bytes.end()-8-std::size_t(fp_size)-std::size_t(system_size),bytes.end()-8-std::size_t(fp_size)));
+    if(image_size){
+      const Bytes image(bytes.begin()+at,bytes.begin()+at+std::size_t(image_size));
+      if(system&&machine.image_kind==2){
+        const Bytes signature{'R','V','I',0,13,10,26,10};
+        require(image.size()>=32 &&
+                std::equal(signature.begin(),signature.begin()+3,image.begin()) &&
+                (image[3]=='1'||image[3]=='2'||image[3]=='3') &&
+                std::equal(signature.begin()+4,signature.end(),image.begin()+4),
+                "Invalid Linux Image container");
+        const bool pci=image[3]=='3',extended=image[3]!='1';
+        const std::size_t prefix=pci?48:extended?40:32;
+        require(image.size()>=prefix,"Truncated Linux boot profile header");
+        const auto kernel_size=get(image,8,8),tree_size=get(image,16,8),
+                   initrd_size=get(image,24,8),
+                   bootargs_size=extended?get(image,32,8):0,
+                   device_size=pci?get(image,40,8):0;
+        require(kernel_size<=max_linux_kernel&&tree_size<=65536&&
+                initrd_size<=max_linux_initrd &&
+                (!extended || ((pci||bootargs_size>0)&&bootargs_size<=1024)) &&
+                device_size==(pci?80:0) &&
+                kernel_size+tree_size+initrd_size+bootargs_size+device_size==image.size()-prefix,
+                "Invalid Linux Image container extents");
+        const std::size_t k=std::size_t(kernel_size),
+                          t=std::size_t(tree_size),
+                          rd=std::size_t(initrd_size);
+        const std::string args=extended ?
+          std::string(image.begin()+prefix+k+t+rd,image.begin()+prefix+k+t+rd+std::size_t(bootargs_size)):std::string{};
+        if(pci){const auto d=prefix+k+t+rd+std::size_t(bootargs_size);const auto size=get(image,d+8,8);const std::string hash(image.begin()+d+16,image.end());
+          require(get(image,d,8)==1&&machine.pci.enabled&&machine.pci.disk_bytes==size,"PCI image and device state disagree");
+          require(size?disk&&disk->size()==size&&disk->sha256()==hash:!disk&&hash==std::string(64,'0'),"Explicit disk attachment is missing or has the wrong SHA-256");
+        }else require(!machine.pci.enabled,"Legacy image cannot restore PCI state");
+        candidate.load_linux_image(
+          Bytes(image.begin()+prefix,image.begin()+prefix+k),
+          Bytes(image.begin()+prefix+k+t,image.begin()+prefix+k+t+rd),args,pci?disk:nullptr,pci);
+        require(*candidate.image_==image,
+                "Linux Image device tree or boot profile does not match this machine");
+      }else candidate.load_elf(image,system);
+    }
+    require(!system||image_size,"System snapshot is missing its boot image");
+    at+=std::size_t(image_size);
+    const std::string core(bytes.begin()+at,bytes.begin()+at+std::size_t(core_size)); at+=std::size_t(core_size);
+    const std::string_view memory(reinterpret_cast<const char*>(bytes.data()+at),std::size_t(memory_size));
+    candidate.runtime_.restore_view(core,memory);
     require(cpu.pc%4==0 && (system || (cpu.pc<=ram && (cpu.halted || cpu.pc<ram))), "Invalid guest PC in snapshot");
     if(system){candidate.machine_=std::move(machine);candidate.validate_system_configuration();}
     if(fp_size)candidate.floating_=FloatingState::restore(Bytes(bytes.end()-8-std::size_t(fp_size),bytes.end()-8));

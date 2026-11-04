@@ -71,5 +71,15 @@ def configure(expected,replacements):
     }'''),
     ]
     replacements['quantum_runtime.hpp'] += [
+        ('  // Restore both authorities transactionally. A bad core or memory snapshot',
+'''  // Original state restoration with a non-owning view of memory transport.
+  void restore_view(const std::string& core_saved,std::string_view memory_saved){
+    auto candidate_core=InfiniteCore::from_snapshot(core_saved,core_.limits());
+    auto candidate_memory=InverseMemory::from_snapshot_view(memory_saved,memory_.limits());
+    candidate_memory.validate_quantum_bindings(candidate_core);
+    core_=std::move(candidate_core);memory_=std::move(candidate_memory);
+  }
+
+  // Restore both authorities transactionally. A bad core or memory snapshot'''),
         ('  std::string memory_snapshot() const { return memory_.snapshot(); }','  std::string memory_snapshot() const { return memory_.snapshot(); }\n  std::string memory_persistent_snapshot() const { return memory_.persistent_snapshot(); }'),
     ]

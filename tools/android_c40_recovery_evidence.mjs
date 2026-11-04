@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {createReadStream,existsSync,statSync,readFileSync} from 'node:fs';
 import {createHash} from 'node:crypto';
 import {join} from 'node:path';
-import {preflight} from './android_c27_profile_resume.mjs';
+import {preflight,hostTransportBound} from './android_c27_profile_resume.mjs';
 import {analyzeGuestConsole} from './android_guest_outcome.mjs';
 import {acceptsProgress} from './android_c15_result.mjs';
 
@@ -20,8 +20,8 @@ const safeJson=(p,max)=>{
   try{return limitedJson(p,max);}
   catch(e){return {unreadable:true,reason:e.message};}
 };
-async function shaFile(file){
-  assert.ok(statSync(file).size<=MAX_SNAPSHOT,'Recovery snapshot is oversized');
+async function shaFile(file,maximum=MAX_SNAPSHOT){
+  assert.ok(statSync(file).size<=maximum,'Recovery snapshot is oversized');
   const h=createHash('sha256');
   for await (const bytes of createReadStream(file,{highWaterMark:1024*1024}))h.update(bytes);
   return h.digest('hex');
@@ -66,8 +66,9 @@ export function classifyRecovery({sourceCheckpointSha,sourceInstructions,process
     resumption_source_remains_last_clean_contract:true};
 }
 
-export async function inspectNativeRecovery({sourceContract,source,nativeDirectory}){
-  const sourceProof=preflight(sourceContract,source);
+export async function inspectNativeRecovery({sourceContract,source,nativeDirectory,maxTransportBytes=MAX_SNAPSHOT}){
+ hostTransportBound(maxTransportBytes);
+  const sourceProof=preflight(sourceContract,source,{maxTransportBytes});
   const outcome=safeJson(join(nativeDirectory,'process-outcome.json'),131072);
   const report=safeJson(join(nativeDirectory,'current.json'),8*1024*1024);
   const journalRoot=join(nativeDirectory,'journal');
@@ -80,7 +81,7 @@ export async function inspectNativeRecovery({sourceContract,source,nativeDirecto
       assert.match(pointer.checkpoint_sha256,HEX);
       const dir=join(journalRoot,pointer.generation);
       const raw=join(dir,'checkpoint.rvg'),r=limitedJson(join(dir,'report.json'));
-      const digest=await shaFile(raw);
+      const digest=await shaFile(raw,maxTransportBytes);
       assert.equal(digest,pointer.checkpoint_sha256,'Recovery journal SHA differs');
       assert.equal(r.checkpoint_sha256,digest,'Recovery journal report has wrong checkpoint SHA');
       assert.equal(r.initial_instructions,sourceProof.report.guest.instructions);
