@@ -17,6 +17,23 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
     // Scalar writes clear the upper 64 bits and leave NZCV/FPCR/FPSR unchanged.
     fp_set(rd,source.low+source.high,64);return true;
   }
+  const auto scalar_compare=i&0xdf20fc00u;
+  if(scalar_compare==0x5e203400u||scalar_compare==0x5e203c00u||scalar_compare==0x5e208c00u){ // CMGT/CMHI, CMGE/CMHS, CMTST/CMEQ Dd,Dn,Dm.
+    if(type!=3)return false;fp_access();const auto a=floating_.v[rn].low,b=floating_.v[rm].low;
+    const bool unsigned_form=i&0x20000000u;bool match;
+    if(scalar_compare==0x5e208c00u)match=unsigned_form?a==b:bool(a&b);
+    else{
+      const auto bias=unsigned_form?UINT64_C(0):UINT64_C(0x8000000000000000),x=a^bias,y=b^bias;
+      match=scalar_compare==0x5e203400u?x>y:x>=y;
+    }
+    fp_set(rd,match?UINT64_MAX:0,64);return true;
+  }
+  const auto scalar_compare_zero=i&0xff3ffc00u;
+  if(scalar_compare_zero==0x5e208800u||scalar_compare_zero==0x7e208800u||scalar_compare_zero==0x5e209800u||scalar_compare_zero==0x7e209800u||scalar_compare_zero==0x5e20a800u){ // Scalar CMGT/CMGE/CMEQ/CMLE/CMLT #0.
+    if(type!=3)return false;fp_access();const auto x=floating_.v[rn].low;const bool negative=x&UINT64_C(0x8000000000000000);
+    const bool match=scalar_compare_zero==0x5e208800u?!negative&&x:scalar_compare_zero==0x7e208800u?!negative:scalar_compare_zero==0x5e209800u?!x:scalar_compare_zero==0x7e209800u?negative||!x:negative;
+    fp_set(rd,match?UINT64_MAX:0,64);return true;
+  }
   if((i&0xbf40d000u)==0x0d40c000u){ // LD1R/LD2R/LD3R/LD4R, replicate one element per vector.
     const bool post=i&0x00800000u,wide=i&0x40000000u;
     if(!post&&rm)return false;
