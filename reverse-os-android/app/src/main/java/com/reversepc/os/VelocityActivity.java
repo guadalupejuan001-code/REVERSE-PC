@@ -8,6 +8,7 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.StateListDrawable;
 import android.os.Bundle;
 import android.os.SystemClock;
 import android.view.Gravity;
@@ -33,16 +34,24 @@ public final class VelocityActivity extends Activity {
     private long gearWarningUntil;
     private VelocityCockpitView cockpit;
     private Button gearButton;
-    private Button pauseButton,native4KButton;
+    private Button pauseButton,native4KButton,hudButton,garageButton,assistButton;
+    private boolean dashboardVisible;
+    private static final String[] CARS={
+        "AERO X-01 · carrocería original",
+        "GRAN TURISMO X-02 · más largo y estrecho",
+        "TRACK X-03 · más ancho y bajo"
+    };
+    private VelocityActionButton nitroButton,jumpButton;
     private RaceMap map;
-    private boolean gas,brake,left,right,drift;
-    private boolean keyGas,keyBrake,keyLeft,keyRight,keyDrift;
+    private boolean gas,brake,left,right,drift,nitro,jump;
+    private boolean keyGas,keyBrake,keyLeft,keyRight,keyDrift,keyNitro,keyJump;
     private final List<Set<Integer>> touchPointers=new ArrayList<>();
     private int dp(float value){return Math.round(getResources().getDisplayMetrics().density*value);}
     private GradientDrawable background(int color){
-        GradientDrawable drawable=new GradientDrawable();
-        drawable.setColor(color);drawable.setCornerRadius(dp(14));
-        drawable.setStroke(dp(1),0x557ab9e3);return drawable;
+        GradientDrawable drawable=new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+            new int[]{0xc8384b5a,color,0xe0091420});
+        drawable.setCornerRadius(dp(12));
+        drawable.setStroke(dp(1),0x857d9eaf);return drawable;
     }
     private TextView text(String value,int size){
         TextView t=new TextView(this);t.setText(value);t.setTextColor(Color.WHITE);t.setTextSize(size);
@@ -57,9 +66,15 @@ public final class VelocityActivity extends Activity {
         p.setMargins(dp(l),dp(t),dp(r),dp(b));root.addView(view,p);
     }
     private Button button(String label){
-        Button b=new Button(this);b.setText(label);b.setTextColor(0xfff3f8fe);b.setTextSize(12);
-        b.setAllCaps(false);b.setBackground(background(0xa318283a));b.setMinWidth(0);b.setMinimumWidth(0);
-        b.setMinHeight(0);b.setMinimumHeight(0);b.setPadding(dp(5),0,dp(5),0);
+        Button b=new Button(this);b.setText(label);b.setTextColor(0xfff3f8fe);b.setTextSize(11.5f);
+        b.setTypeface(Typeface.create("sans-serif-medium",Typeface.BOLD));
+        b.setAllCaps(false);
+        StateListDrawable states=new StateListDrawable();
+        states.addState(new int[]{android.R.attr.state_pressed},background(0xe12b5a70));
+        states.addState(new int[]{android.R.attr.state_selected},background(0xe12b5a70));
+        states.addState(new int[]{},background(0xbb172738));
+        b.setBackground(states);b.setMinWidth(0);b.setMinimumWidth(0);
+        b.setMinHeight(0);b.setMinimumHeight(0);b.setPadding(dp(6),0,dp(6),0);
         b.setContentDescription(label);return b;
     }
     private void hold(Button button,int which){
@@ -77,7 +92,8 @@ public final class VelocityActivity extends Activity {
             boolean down=!pointers.isEmpty();
             if(which==0)left=down;if(which==1)right=down;if(which==2)brake=down;
             if(which==3)gas=down;if(which==4)drift=down;
-            view.setAlpha(down?.58f:1f);controls();
+            if(which==5)nitro=down;if(which==6)jump=down;
+            button.setPressed(down);button.setSelected(down);controls();
             if(action==MotionEvent.ACTION_UP)view.performClick();
             return true;
         });
@@ -85,12 +101,16 @@ public final class VelocityActivity extends Activity {
     private void controls(){
         if(surface==null)return;
         boolean l=left||keyLeft,r=right||keyRight;
-        surface.controls(gas||keyGas?1:0,brake||keyBrake?1:0,l==r?1:l?0:2,drift||keyDrift);
+        surface.controls(gas||keyGas?1:0,brake||keyBrake?1:0,l==r?1:l?0:2,
+            drift||keyDrift,nitro||keyNitro,jump||keyJump);
     }
     private void releaseControls(){
         for(Set<Integer> pointers:touchPointers)pointers.clear();
-        gas=brake=left=right=drift=false;
-        keyGas=keyBrake=keyLeft=keyRight=keyDrift=false;controls();
+        gas=brake=left=right=drift=nitro=jump=false;
+        keyGas=keyBrake=keyLeft=keyRight=keyDrift=keyNitro=keyJump=false;
+        if(nitroButton!=null)nitroButton.setSelected(false);
+        if(jumpButton!=null)jumpButton.setSelected(false);
+        controls();
     }
     private void changeGear(){
         if(surface==null||gearButton==null)return;
@@ -102,13 +122,29 @@ public final class VelocityActivity extends Activity {
             changedText(warning,"DETENTE PARA CAMBIAR");}
     }
     private void togglePause(){
-        if(surface==null)return;releaseControls();
+        if(surface==null||surface.is4KEnabled())return;
+        releaseControls();
         boolean paused=surface.togglePause();pauseButton.setText(paused?"Continuar":"Pausa");
+    }
+    private void showGarage(){
+        if(surface==null)return;
+        releaseControls();
+        new AlertDialog.Builder(this)
+            .setTitle("Garaje · tres carrocerías XI")
+            .setSingleChoiceItems(CARS,surface.selectedCar(),(dialog,which)->{
+                surface.selectCar(which);
+                garageButton.setText("Coche "+(which+1));
+                garageButton.setContentDescription("Garaje. "+CARS[which]);
+                dialog.dismiss();
+            }).setNegativeButton("Cerrar",null).show();
     }
     private void raceHud(VelocityXiEngine.Snapshot s,boolean paused,String error,int w,int h,int fps){
         if(s==null)return;
         changedText(speed,s.speedKmh()+" km/h");
         cockpit.update(s,surface.isReverseGear(),surface.isBrakePressed(),surface.isAccelerating());
+        if(nitroButton!=null)nitroButton.setStatus(s.nitroPercent()/100f,s.nitroActive);
+        if(jumpButton!=null)jumpButton.setStatus(
+            s.jumpHeightCm>0?1f:1f-s.jumpCooldown/90f,s.jumpHeightCm>0);
         changedText(lap,"VUELTA "+s.displayedLap()+" / 3");
         changedText(position,"POSICIÓN "+s.position+" / 4");
         long hundredths=s.ticks*2;
@@ -116,20 +152,36 @@ public final class VelocityActivity extends Activity {
         String center=error;
         boolean isCounting=error.isEmpty()&&!paused&&!s.finished&&
             s.countdown>0&&s.countdown<150;
-        if(center.isEmpty())center=paused?"EN PAUSA":s.finished?"META · "+s.position+".º":
+        boolean photo=surface.is4KEnabled();
+        if(center.isEmpty())center=photo?"FOTO 4K · PAUSA":
+            paused?"EN PAUSA":s.finished?"META · "+s.position+".º":
             s.countdown==150?"ACELERA PARA SALIR":"";
         changedText(status,center);
         status.setVisibility(center.isEmpty()?View.GONE:View.VISIBLE);
         countdown.setVisibility(isCounting?View.VISIBLE:View.GONE);
         if(isCounting)changedText(countdown,Integer.toString((s.countdown+49)/50));
-        String roadWarning=s.wallContact?"CONTACTO":s.offRoad?"FUERA DE PISTA":"";
+        String roadWarning=s.jumpHeightCm>0?"AIRE · "+s.jumpHeightCm+" cm":
+            s.landingPulse?"ATERRIZAJE":s.wallContact?"CONTACTO":
+            s.offRoad?(s.surface==2?"BORDE · AGARRE MEDIO":"PASTO · POCO AGARRE"):
+            s.drafting?"REBUFO · NITRO +":
+            s.driftComboPct>100?
+                "DERRAPE "+s.driftScore+" PTS · x"+String.format(Locale.ROOT,"%.1f",s.driftComboPct/100f):"";
         if(SystemClock.elapsedRealtime()<gearWarningUntil)roadWarning="DETENTE PARA CAMBIAR";
+        else if(roadWarning.isEmpty()&&surface.assistMode()>0)
+            roadWarning=surface.assistMode()==2?"PILOTO XI":"ASISTIDA XI";
         changedText(warning,roadWarning);
-        if(native4KButton!=null&&!surface.is4KEnabled()&&
-                "4K XI activo".contentEquals(native4KButton.getText()))
-            native4KButton.setText("4K XI");
-        if(renderInfo!=null){String backend=w==3840?"REgraphics XI 4K nativo":"REgraphics XI";
-            changedText(renderInfo,backend+"  "+w+" × "+h+(paused?"  |  PAUSA":"  |  "+fps+" FPS"));}
+        if(native4KButton!=null)
+            changedText(native4KButton,photo?"Salir 4K":"Foto 4K");
+        // Only the small race labels remain; never obscure the car with
+        // animated dials or the minimap during native-resolution photography.
+        cockpit.setVisibility(!photo&&dashboardVisible?View.VISIBLE:View.GONE);
+        map.setVisibility(photo?View.GONE:View.VISIBLE);
+        speed.setVisibility(photo?View.GONE:View.VISIBLE);
+        warning.setVisibility(photo?View.GONE:View.VISIBLE);
+        if(pauseButton!=null)pauseButton.setEnabled(!photo);
+        if(renderInfo!=null){String backend=w==3840?"REgraphics XI · FOTO 4K":"REgraphics XI";
+            changedText(renderInfo,photo?"XI FOTO "+w+"×"+h:
+                "XI "+w+"×"+h+" · "+fps+" FPS");}
         map.setCar(s.xCm/100f,s.zCm/100f);
     }
     @Override public void onCreate(Bundle saved){
@@ -149,12 +201,12 @@ public final class VelocityActivity extends Activity {
         View topWash=new View(this);
         topWash.setBackground(new GradientDrawable(
             GradientDrawable.Orientation.TOP_BOTTOM,
-            new int[]{0xe20a1522,0x9e13263a,0x0013263a}));
+            new int[]{0x910a1522,0x4813263a,0x0013263a}));
         add(root,topWash,-1,114,Gravity.TOP,0,0,0,0);
         View bottomWash=new View(this);
         bottomWash.setBackground(new GradientDrawable(
             GradientDrawable.Orientation.BOTTOM_TOP,
-            new int[]{0xa808101c,0x0008101c}));
+            new int[]{0x5208101c,0x0008101c}));
         add(root,bottomWash,-1,130,Gravity.BOTTOM,0,0,0,0);
         lap=text("VUELTA 1 / 3",18);add(root,lap,-2,-2,Gravity.TOP|Gravity.LEFT,18,14,0,0);
         position=text("POSICIÓN 4 / 4",18);add(root,position,-2,-2,Gravity.TOP|Gravity.RIGHT,0,14,18,0);
@@ -163,12 +215,13 @@ public final class VelocityActivity extends Activity {
         // Keep the tachometer clear of the top controls on short landscapes.
         cockpit=new VelocityCockpitView(this);
         add(root,cockpit,194,106,Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL,0,0,0,6);
+        cockpit.setVisibility(View.GONE); // Full vehicle silhouette by default.
         speed=text("0 km/h",20);
         speed.setGravity(Gravity.CENTER);
-        add(root,speed,116,32,Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL,0,0,0,42);
-        warning=text("",12);add(root,warning,-2,-2,Gravity.BOTTOM|Gravity.RIGHT,0,0,18,168);
+        add(root,speed,116,28,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,116,0,0);
+        warning=text("",12);add(root,warning,-2,-2,Gravity.TOP|Gravity.RIGHT,0,133,18,0);
         renderInfo=text("REgraphics XI",10);renderInfo.setTextColor(0xffb4d5e7);
-        add(root,renderInfo,-2,-2,Gravity.BOTTOM|Gravity.LEFT,18,0,0,154);
+        add(root,renderInfo,144,24,Gravity.TOP|Gravity.LEFT,132,10,0,0);
         status=text("ACELERA PARA SALIR",14);status.setGravity(Gravity.CENTER);
         status.setBackground(background(0xb322374b));
         status.setPadding(dp(12),dp(2),dp(12),dp(2));
@@ -178,9 +231,18 @@ public final class VelocityActivity extends Activity {
         countdown=text("",64);countdown.setGravity(Gravity.CENTER);
         add(root,countdown,104,100,Gravity.CENTER,0,0,0,0);
         countdown.setVisibility(View.GONE);
-        map=new RaceMap(game.track());add(root,map,86,86,Gravity.TOP|Gravity.LEFT,16,92,0,0);
+        map=new RaceMap(game.track());add(root,map,68,68,Gravity.TOP|Gravity.LEFT,16,96,0,0);
         LinearLayout menu=new LinearLayout(this);menu.setOrientation(LinearLayout.HORIZONTAL);
-        Button camera=button("Cámara");camera.setOnClickListener(v->{int m=surface.cycleCamera();camera.setText(m==0?"Cámara":m==1?"Cercana":"Capó");});
+        assistButton=button("Manual");
+        assistButton.setContentDescription("Cambiar conducción: Manual, Asistida o Piloto automático. Dirección y freno manual siempre tienen prioridad");
+        assistButton.setOnClickListener(v->{
+            int mode=surface.cycleAssistMode();
+            assistButton.setText(mode==0?"Manual":mode==1?"Asistida":"Piloto");
+        });
+        Button camera=button("Cámara");
+        camera.setContentDescription("Cámara: toque para cambiar de vista; arrastra la pantalla para orbitar 360 grados o cambiar altura; doble toque o pulsación larga aquí para centrar");
+        camera.setOnClickListener(v->{int m=surface.cycleCamera();camera.setText(m==0?"Cámara":m==1?"Cercana":"Capó");});
+        camera.setOnLongClickListener(v->{surface.centerCamera();return true;});
         Button colors=button("Color");colors.setOnClickListener(v->colors.setText("Color "+(surface.cyclePaint()+1)));
         Button sharpness=button("Nitidez");sharpness.setOnClickListener(v->{
             boolean high=surface.toggleSharpness();sharpness.setText(high?"Alta":"Auto");
@@ -188,12 +250,16 @@ public final class VelocityActivity extends Activity {
         });
         // No third-party GPU renderer. Display the exact REgraphics technical
         // boundary, instead of pretending the XI 640x360 image is native 4K.
-        Button native4k=button("4K XI");native4KButton=native4k;
-        native4k.setContentDescription("Activar 4K nativo experimental mediante XI");
+        Button native4k=button("Foto 4K");native4KButton=native4k;
+        native4k.setContentDescription("Capturar foto nativa 3840 por 2160 con la carrera detenida");
         native4k.setOnClickListener(v->{
+            releaseControls();
             boolean enabled=surface.toggle4K();
-            native4k.setText(enabled?"4K XI activo":"4K XI");
-            native4k.setContentDescription(enabled?"Desactivar 4K XI":"Activar 4K nativo XI");
+            native4k.setText(enabled?"Salir 4K":"Foto 4K");
+            native4k.setContentDescription(enabled?"Volver a la conducción":
+                "Entrar en fotografía 4K de un fotograma");
+            pauseButton.setText(surface.isPaused()?"Continuar":"Pausa");
+            cockpit.setVisibility(View.GONE);
         });
         Button engine=button("Motor XI");
         engine.setContentDescription("Capacidades y límites actuales del renderizador XI");
@@ -203,24 +269,34 @@ public final class VelocityActivity extends Activity {
                 "Android únicamente muestra píxeles XFS1/XFB5.\n\n"+
                 "Resolución habitual: hasta 640 × 360; 4K XI nativo experimental.\n"+
                 "XFS1 anterior: 8.000.000 pruebas; XFB5 escala el trabajo por resolución.\n"+
-                "El modo 4K XI calcula 3840 × 2160 píxeles por franjas de 32 filas. "+
-                "Ether Spatial descarta regiones 32×32 fuera de los triángulos, "+
-                "conservando la profundidad, colores y texturas de XI. "+
-                "El rendimiento depende del dispositivo; 60/120 FPS no están certificados. "+
-                "No hay OpenGL ni escalado presentado como 4K.")
+                "FOTO 4K: 3840 × 2160 píxeles XI auténticos, una sola captura en pausa. "+
+                "En un móvil, 4K software en conducción puede dar 1–2 FPS; "+
+                "por ello la carrera vuelve al perfil adaptativo 320–640 × 180–360. "+
+                "Ether Spatial elimina regiones invisibles, pero no hace gratuita la rasterización. "+
+                "No hay OpenGL, 4K falso ni promesa de 60/120 FPS.")
             .setPositiveButton("Entendido",(dialog,which)->dialog.dismiss())
             .show());
         pauseButton=button("Pausa");pauseButton.setOnClickListener(v->togglePause());
         Button restart=button("Reiniciar");restart.setOnClickListener(v->{releaseControls();surface.reset();pauseButton.setText("Pausa");if(gearButton!=null)gearButton.setText("Marcha D");});
         Button exit=button("Salir");exit.setOnClickListener(v->finish());
-        for(Button b:new Button[]{camera,colors,sharpness,native4k,engine,pauseButton,restart,exit}){
-            LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(66),dp(32));p.setMargins(dp(1),0,dp(1),0);menu.addView(b,p);
+        garageButton=button("Garaje");
+        garageButton.setOnClickListener(v->showGarage());
+        hudButton=button("HUD libre");
+        hudButton.setOnClickListener(v->{
+            dashboardVisible=!dashboardVisible;
+            hudButton.setText(dashboardVisible?"HUD tablero":"HUD libre");
+            cockpit.setVisibility(dashboardVisible&&!surface.is4KEnabled()?View.VISIBLE:View.GONE);
+        });
+        for(Button b:new Button[]{assistButton,camera,colors,sharpness,native4k,pauseButton,
+                garageButton,hudButton,engine,restart,exit}){
+            LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(76),dp(40));p.setMargins(dp(2),0,dp(2),0);menu.addView(b,p);
         }
         HorizontalScrollView tools=new HorizontalScrollView(this);
         tools.setHorizontalScrollBarEnabled(false);
         tools.setFillViewport(false);
-        tools.addView(menu,new HorizontalScrollView.LayoutParams(-2,dp(32)));
-        add(root,tools,-1,36,Gravity.TOP,8,48,8,0);
+        tools.setContentDescription("Opciones de la carrera. Desliza esta barra horizontalmente para encontrar Motor XI, Reiniciar, Salir y otros controles.");
+        tools.addView(menu,new HorizontalScrollView.LayoutParams(-2,dp(40)));
+        add(root,tools,-1,44,Gravity.TOP,8,48,8,0);
         // Native Button descendants keep the accessibility and adb touch contract.
         VelocitySteeringFrame steering=new VelocitySteeringFrame(this);
         Button bLeft=button("◀");hold(bLeft,0);
@@ -234,9 +310,13 @@ public final class VelocityActivity extends Activity {
         Button bBrake=new VelocityPedalButton(this,"FRENO",true);hold(bBrake,2);
         Button bGas=new VelocityPedalButton(this,"ACELERAR",false);hold(bGas,3);
         Button bDrift=button("DERRAPE");hold(bDrift,4);
+        nitroButton=new VelocityActionButton(this,"NITRO",false);hold(nitroButton,5);
+        jumpButton=new VelocityActionButton(this,"SALTO",true);hold(jumpButton,6);
+        add(root,nitroButton,94,54,Gravity.BOTTOM|Gravity.RIGHT,0,0,14,120);
+        add(root,jumpButton,94,54,Gravity.BOTTOM|Gravity.RIGHT,0,0,116,120);
         add(root,bGas,88,92,Gravity.BOTTOM|Gravity.RIGHT,0,0,14,10);
         add(root,bBrake,76,78,Gravity.BOTTOM|Gravity.RIGHT,0,0,114,10);
-        add(root,bDrift,84,32,Gravity.BOTTOM|Gravity.LEFT,16,0,0,112);
+        add(root,bDrift,88,42,Gravity.BOTTOM|Gravity.LEFT,16,0,0,116);
         gearButton=button("Marcha D");
         gearButton.setOnClickListener(v->changeGear());
         add(root,gearButton,80,38,Gravity.TOP|Gravity.RIGHT,0,94,16,0);
@@ -264,12 +344,16 @@ public final class VelocityActivity extends Activity {
     @Override public boolean onKeyDown(int key,KeyEvent event){
         if(key==KeyEvent.KEYCODE_P){if(event.getRepeatCount()==0)togglePause();return true;}
         if(key==KeyEvent.KEYCODE_G){if(event.getRepeatCount()==0)changeGear();return true;}
+        if(key==KeyEvent.KEYCODE_C){if(surface!=null)surface.centerCamera();return true;}
         if(key==KeyEvent.KEYCODE_R){if(surface!=null){releaseControls();surface.reset();}if(pauseButton!=null)pauseButton.setText("Pausa");if(gearButton!=null)gearButton.setText("Marcha D");return true;}
         if(key==KeyEvent.KEYCODE_W||key==KeyEvent.KEYCODE_DPAD_UP)keyGas=true;
         else if(key==KeyEvent.KEYCODE_S||key==KeyEvent.KEYCODE_DPAD_DOWN)keyBrake=true;
         else if(key==KeyEvent.KEYCODE_A||key==KeyEvent.KEYCODE_DPAD_LEFT)keyLeft=true;
         else if(key==KeyEvent.KEYCODE_D||key==KeyEvent.KEYCODE_DPAD_RIGHT)keyRight=true;
-        else if(key==KeyEvent.KEYCODE_SPACE)keyDrift=true;else return super.onKeyDown(key,event);
+        else if(key==KeyEvent.KEYCODE_SPACE)keyDrift=true;
+        else if(key==KeyEvent.KEYCODE_N)keyNitro=true;
+        else if(key==KeyEvent.KEYCODE_J)keyJump=true;
+        else return super.onKeyDown(key,event);
         controls();return true;
     }
     @Override public boolean onKeyUp(int key,KeyEvent event){
@@ -277,7 +361,10 @@ public final class VelocityActivity extends Activity {
         else if(key==KeyEvent.KEYCODE_S||key==KeyEvent.KEYCODE_DPAD_DOWN)keyBrake=false;
         else if(key==KeyEvent.KEYCODE_A||key==KeyEvent.KEYCODE_DPAD_LEFT)keyLeft=false;
         else if(key==KeyEvent.KEYCODE_D||key==KeyEvent.KEYCODE_DPAD_RIGHT)keyRight=false;
-        else if(key==KeyEvent.KEYCODE_SPACE)keyDrift=false;else return super.onKeyUp(key,event);
+        else if(key==KeyEvent.KEYCODE_SPACE)keyDrift=false;
+        else if(key==KeyEvent.KEYCODE_N)keyNitro=false;
+        else if(key==KeyEvent.KEYCODE_J)keyJump=false;
+        else return super.onKeyUp(key,event);
         controls();return true;
     }
     @Override protected void onResume(){super.onResume();WorkbenchActivity.immersive(this);if(surface!=null)surface.resumeLoop();}
