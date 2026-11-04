@@ -1,6 +1,6 @@
 'use strict';
 // Fixed 8-bit material transport, with dedicated smooth lighting ramps.
-const WORLD_MAP=new Map([[8,0],[38,1],[72,2],[210,20],[211,21],[189,3],[78,4],[208,5],[108,6],[206,7],[204,8],[202,9],[203,10],[205,11],[194,12],[195,13],[196,14],[197,15],[198,16],[199,17],[200,18],[201,19]]);
+const WORLD_MAP=new Map([[8,0],[38,1],[72,12],[210,20],[211,13],[189,18],[78,4],[208,9],[108,6],[206,7],[204,8],[202,9],[203,10],[205,11],[194,12],[195,13],[196,14],[197,15],[198,16],[199,17],[200,18],[201,19]]);
 function worldMaterial(old){if(!WORLD_MAP.has(old))throw Error('Unknown world material '+old);return WORLD_MAP.get(old);}
 const RAMPS=Object.freeze({paint:{base:64,count:24},glass:{base:184,count:24},tire:{base:208,count:4},rim:{base:212,count:12},aero:{base:228,count:12}});
 const FLAT=Object.freeze({lampRed:224,lampWhite:225,grille:226,shadow:227,shadowSoft:28,shadowMid:29,shadowContact:30,seam:240,metal:241});
@@ -48,9 +48,23 @@ function buildPalette(){
  p[22]='46554a';p[23]='96a393'; // damp stone through distance haze
  p[18]='789384';p[19]='a3b4a5'; // bounded canopy fog ramp // mossy raised forest verge
  p[240]='343d47';p[241]='596977';
- p[242]='69202b'; // tail light at idle; braking lights use hot-red 224
+ p[242]='69202b';p[243]='edbb6a';
+ for(let i=0;i<7;i++)p[i]=hex(mix(rgb('52758c'),rgb('c2d0bc'),i/6));
+ for(let i=0;i<8;i++)p[32+i]=hex(mix(rgb('163d45'),rgb('9ebdb1'),Math.pow(i/7,1.45))); // tail light at idle; braking lights use hot-red 224
   // Fine pneumatic exhaust ramps: pale physical vapor, not colored pixel blobs.
   for(let i=0;i<12;i++)p[244+i]=hex(mix(rgb('1b2830'),rgb('c7e0e3'),Math.pow(i/11,.9)));
  return p;
 }
-module.exports={worldMaterial,RAMPS,FLAT,buildPalette};
+function buildEnvironmentPalettes(){
+ const day=buildPalette();
+ const tint=(palette,weights)=>palette.map(h=>hex(rgb(h).map((v,i)=>Math.round(v*weights[i]))));
+ const dusk=tint(day,[.91,.66,.49]),night=tint(day,[.15,.21,.31]);
+ for(let i=0;i<7;i++)dusk[i]=hex(mix(rgb('445a78'),rgb('d7aa81'),i/6));
+ for(let i=0;i<7;i++)night[i]=hex(mix(rgb('080f21'),rgb('2b3b4c'),i/6));
+ night[18]='213747';night[19]='314451';
+ for(let i=0;i<8;i++)night[32+i]=hex(mix(rgb('071c26'),rgb('627f91'),Math.pow(i/7,1.7)));
+ for(let i=0;i<16;i++)night[40+i]=hex(i<12?mix(rgb('0c171b'),rgb('2c3c42'),i/11):mix(rgb('48535a'),rgb('a5a998'),(i-12)/3));
+ for(const p of [dusk,night]){p[224]='ff2437';p[225]='fff1cb';p[242]='7f2630';for(let i=56;i<64;i++)p[i]=day[i];}
+ return {day,dusk,night};
+}
+module.exports={worldMaterial,RAMPS,FLAT,buildPalette,buildEnvironmentPalettes};

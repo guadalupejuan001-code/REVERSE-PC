@@ -30,10 +30,11 @@ import java.util.Set;
 /** Physical controls and compact race HUD; all game rules remain in XI. */
 public final class VelocityActivity extends Activity {
     private VelocityXSurface surface;
+    private final VelocityAmbientAudio ambient=new VelocityAmbientAudio();
     private TextView speed,lap,position,timer,status,countdown,warning,renderInfo;
     private long gearWarningUntil;
     private VelocityCockpitView cockpit;
-    private Button gearButton;
+    private Button gearButton,soundButton;
     private Button pauseButton,native4KButton,hudButton,garageButton,assistButton;
     private boolean dashboardVisible;
     private static final String[] CARS={
@@ -140,32 +141,35 @@ public final class VelocityActivity extends Activity {
     }
     private void raceHud(VelocityXiEngine.Snapshot s,boolean paused,String error,int w,int h,int fps){
         if(s==null)return;
+        ambient.update(s);if(soundButton!=null)changedText(soundButton,ambient.isEnabled()?"Sonido: on":"Sonido: off");
         changedText(speed,s.speedKmh()+" km/h");
         cockpit.update(s,surface.isReverseGear(),surface.isBrakePressed(),surface.isAccelerating());
         if(nitroButton!=null)nitroButton.setStatus(s.nitroPercent()/100f,s.nitroActive);
         if(jumpButton!=null)jumpButton.setStatus(
             s.jumpHeightCm>0?1f:1f-s.jumpCooldown/90f,s.jumpHeightCm>0);
-        changedText(lap,"VUELTA "+s.displayedLap()+" / 3");
-        changedText(position,"POSICIÓN "+s.position+" / 4");
+        changedText(lap,s.openWorld?"OPEN FOREST ROAD":"VUELTA "+s.displayedLap()+" / 3");
+        changedText(position,s.openWorld?"SECTOR "+(s.sector+1)+" / 8":"POSICIÓN "+s.position+" / 4");
         long hundredths=s.ticks*2;
-        changedText(timer,String.format(Locale.ROOT,"%02d:%02d.%02d",hundredths/6000,(hundredths/100)%60,hundredths%100));
+        int clock=VelocityWorldLight.minutes(s.dayPhase);
+        changedText(timer,s.openWorld?String.format(Locale.ROOT,"%02d:%02d · %.2f km",clock/60,clock%60,s.trackS/100000.0):String.format(Locale.ROOT,"%02d:%02d.%02d",hundredths/6000,(hundredths/100)%60,hundredths%100));
         String center=error;
         boolean isCounting=error.isEmpty()&&!paused&&!s.finished&&
             s.countdown>0&&s.countdown<150;
         boolean photo=surface.is4KEnabled();
         if(center.isEmpty())center=photo?"FOTO 4K · PAUSA":
             paused?"EN PAUSA":s.finished?"META · "+s.position+".º":
-            s.countdown==150?"ACELERA PARA SALIR":"";
+            s.openWorld?"":s.countdown==150?"ACELERA PARA SALIR":"";
         changedText(status,center);
         status.setVisibility(center.isEmpty()?View.GONE:View.VISIBLE);
         countdown.setVisibility(isCounting?View.VISIBLE:View.GONE);
         if(isCounting)changedText(countdown,Integer.toString((s.countdown+49)/50));
         String roadWarning=s.jumpHeightCm>0?"AIRE · "+s.jumpHeightCm+" cm":
             s.landingPulse?"ATERRIZAJE":s.wallContact?"CONTACTO":
-            s.offRoad?(s.surface==2?"BORDE · AGARRE MEDIO":"PASTO · POCO AGARRE"):
+            s.offRoad?(s.surface==3?"BARRO · POCO AGARRE":s.surface==2?"BORDE · AGARRE MEDIO":"PASTO · POCO AGARRE"):
             s.drafting?"REBUFO · NITRO +":
             s.driftComboPct>100?
                 "DERRAPE "+s.driftScore+" PTS · x"+String.format(Locale.ROOT,"%.1f",s.driftComboPct/100f):"";
+        if(s.openWorld&&roadWarning.isEmpty())roadWarning=s.roadEnd?"CLARO FINAL · PUEDES REGRESAR":s.biome==1?"PUENTE DEL RÍO":s.biome==2?"LAGUNA DE LOS CEDROS":s.ambientMode==2?"NOCHE · FAROS AUTOMÁTICOS":"";
         if(SystemClock.elapsedRealtime()<gearWarningUntil)roadWarning="DETENTE PARA CAMBIAR";
         else if(roadWarning.isEmpty()&&surface.assistMode()>0)
             roadWarning=surface.assistMode()==2?"PILOTO XI":"ASISTIDA XI";
@@ -190,7 +194,7 @@ public final class VelocityActivity extends Activity {
         final VelocityXiEngine game;
         try{game=new VelocityXiEngine(this);}
         catch(Exception failure){
-            TextView error=text("No se pudo preparar la carrera: "+failure.getMessage(),17);
+            TextView error=text("No se pudo preparar el bosque: "+failure.getMessage(),17);
             error.setPadding(dp(24),dp(24),dp(24),dp(24));error.setBackgroundColor(0xff10191d);
             setContentView(error);return;
         }
@@ -208,8 +212,8 @@ public final class VelocityActivity extends Activity {
             GradientDrawable.Orientation.BOTTOM_TOP,
             new int[]{0x5208101c,0x0008101c}));
         add(root,bottomWash,-1,130,Gravity.BOTTOM,0,0,0,0);
-        lap=text("VUELTA 1 / 3",18);add(root,lap,-2,-2,Gravity.TOP|Gravity.LEFT,18,14,0,0);
-        position=text("POSICIÓN 4 / 4",18);add(root,position,-2,-2,Gravity.TOP|Gravity.RIGHT,0,14,18,0);
+        lap=text("OPEN FOREST ROAD",18);add(root,lap,-2,-2,Gravity.TOP|Gravity.LEFT,18,14,0,0);
+        position=text("SECTOR 1 / 8",18);add(root,position,-2,-2,Gravity.TOP|Gravity.RIGHT,0,14,18,0);
         timer=text("00:00.00",18);add(root,timer,-2,-2,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,14,0,0);
         // Three distinct bottom zones: wheel, center instruments, pedals.
         // Keep the tachometer clear of the top controls on short landscapes.
@@ -222,7 +226,7 @@ public final class VelocityActivity extends Activity {
         warning=text("",12);add(root,warning,-2,-2,Gravity.TOP|Gravity.RIGHT,0,133,18,0);
         renderInfo=text("REgraphics XI",10);renderInfo.setTextColor(0xffb4d5e7);
         add(root,renderInfo,144,24,Gravity.TOP|Gravity.LEFT,132,10,0,0);
-        status=text("ACELERA PARA SALIR",14);status.setGravity(Gravity.CENTER);
+        status=text("",14);status.setGravity(Gravity.CENTER);
         status.setBackground(background(0xb322374b));
         status.setPadding(dp(12),dp(2),dp(12),dp(2));
         add(root,status,-2,26,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,89,0,0);
@@ -243,6 +247,10 @@ public final class VelocityActivity extends Activity {
         camera.setContentDescription("Cámara: toque para cambiar de vista; arrastra la pantalla para orbitar 360 grados o cambiar altura; doble toque o pulsación larga aquí para centrar");
         camera.setOnClickListener(v->{int m=surface.cycleCamera();camera.setText(m==0?"Cámara":m==1?"Cercana":"Capó");});
         camera.setOnLongClickListener(v->{surface.centerCamera();return true;});
+        Button time=button("Hora: auto");
+        time.setContentDescription("Cambiar hora: ciclo automático, día, atardecer o noche");
+        time.setOnClickListener(v->{int mode=surface.cycleWorldTime();time.setText(new String[]{"Hora: auto","Día","Atardecer","Noche"}[mode]);});
+        Button sound=button("Sonido: off");soundButton=sound;sound.setOnClickListener(v->sound.setText(ambient.toggle()?"Sonido: on":"Sonido: off"));
         Button colors=button("Color");colors.setOnClickListener(v->colors.setText("Color "+(surface.cyclePaint()+1)));
         Button sharpness=button("Nitidez");sharpness.setOnClickListener(v->{
             boolean high=surface.toggleSharpness();sharpness.setText(high?"Alta":"Auto");
@@ -265,15 +273,7 @@ public final class VelocityActivity extends Activity {
         engine.setContentDescription("Capacidades y límites actuales del renderizador XI");
         engine.setOnClickListener(v->new AlertDialog.Builder(this)
             .setTitle("REgraphics XI • nativo")
-            .setMessage("REgraphics hace proyección, texturas, sombras y rasterizado. "+
-                "Android únicamente muestra píxeles XFS1/XFB5.\n\n"+
-                "Resolución habitual: hasta 640 × 360; 4K XI nativo experimental.\n"+
-                "XFS1 anterior: 8.000.000 pruebas; XFB5 escala el trabajo por resolución.\n"+
-                "FOTO 4K: 3840 × 2160 píxeles XI auténticos, una sola captura en pausa. "+
-                "En un móvil, 4K software en conducción puede dar 1–2 FPS; "+
-                "por ello la carrera vuelve al perfil adaptativo 320–640 × 180–360. "+
-                "Ether Spatial elimina regiones invisibles, pero no hace gratuita la rasterización. "+
-                "No hay OpenGL, 4K falso ni promesa de 60/120 FPS.")
+            .setMessage("Open Forest Road 3.0\n\nExplora una carretera forestal de 1,6 km dividida en ocho sectores. El puente y la laguna son zonas del mismo mapa. Al llegar al claro final puedes dar la vuelta o usar reversa.\n\nLa hora cambia automáticamente; puedes elegir día, atardecer o noche. Foto 4K pausa la conducción. Nitidez automática adapta el detalle a la carga del sector.")
             .setPositiveButton("Entendido",(dialog,which)->dialog.dismiss())
             .show());
         pauseButton=button("Pausa");pauseButton.setOnClickListener(v->togglePause());
@@ -287,14 +287,14 @@ public final class VelocityActivity extends Activity {
             hudButton.setText(dashboardVisible?"HUD tablero":"HUD libre");
             cockpit.setVisibility(dashboardVisible&&!surface.is4KEnabled()?View.VISIBLE:View.GONE);
         });
-        for(Button b:new Button[]{assistButton,camera,colors,sharpness,native4k,pauseButton,
-                garageButton,hudButton,engine,restart,exit}){
+        for(Button b:new Button[]{assistButton,camera,time,colors,sharpness,native4k,pauseButton,
+                garageButton,hudButton,sound,engine,restart,exit}){
             LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(76),dp(40));p.setMargins(dp(2),0,dp(2),0);menu.addView(b,p);
         }
         HorizontalScrollView tools=new HorizontalScrollView(this);
         tools.setHorizontalScrollBarEnabled(false);
         tools.setFillViewport(false);
-        tools.setContentDescription("Opciones de la carrera. Desliza esta barra horizontalmente para encontrar Motor XI, Reiniciar, Salir y otros controles.");
+        tools.setContentDescription("Opciones del mapa. Desliza esta barra horizontalmente para encontrar Motor XI, Reiniciar, Salir y otros controles.");
         tools.addView(menu,new HorizontalScrollView.LayoutParams(-2,dp(40)));
         add(root,tools,-1,44,Gravity.TOP,8,48,8,0);
         // Native Button descendants keep the accessibility and adb touch contract.
@@ -329,7 +329,7 @@ public final class VelocityActivity extends Activity {
         RaceMap(float[] points){super(VelocityActivity.this);this.points=points;
             minX=minZ=Float.MAX_VALUE;maxX=maxZ=-Float.MAX_VALUE;
             for(int i=0;i<points.length;i+=2){minX=Math.min(minX,points[i]);maxX=Math.max(maxX,points[i]);minZ=Math.min(minZ,points[i+1]);maxZ=Math.max(maxZ,points[i+1]);}
-            setContentDescription("Mapa del circuito");
+            setContentDescription("Mapa de la carretera forestal abierta");
         }
         void setCar(float x,float z){if(x==carX&&z==carZ)return;carX=x;carZ=z;invalidate();}
         @Override protected void onDraw(Canvas canvas){
@@ -367,8 +367,8 @@ public final class VelocityActivity extends Activity {
         else return super.onKeyUp(key,event);
         controls();return true;
     }
-    @Override protected void onResume(){super.onResume();WorkbenchActivity.immersive(this);if(surface!=null)surface.resumeLoop();}
-    @Override protected void onPause(){if(surface!=null){releaseControls();surface.pauseLoop();}super.onPause();}
+    @Override protected void onResume(){super.onResume();ambient.resume();WorkbenchActivity.immersive(this);if(surface!=null)surface.resumeLoop();}
+    @Override protected void onPause(){ambient.pause();if(surface!=null){releaseControls();surface.pauseLoop();}super.onPause();}
     @Override public void onWindowFocusChanged(boolean focus){super.onWindowFocusChanged(focus);if(!focus)releaseControls();}
-    @Override protected void onDestroy(){if(surface!=null)surface.closeLoop();super.onDestroy();}
+    @Override protected void onDestroy(){ambient.close();if(surface!=null)surface.closeLoop();super.onDestroy();}
 }

@@ -23,8 +23,10 @@ final class VelocityXiEngine {
         final int nitroCharge,jumpHeightCm,airPulse,jumpCooldown;
         final int driftScore,driftComboPct,surface;
         final boolean drafting;
+        final boolean openWorld,roadEnd;
+        final int groundHeightCm,sector,dayPhase,ambientMode,biome;
         Snapshot(long[] values){
-            if(values==null||values.length!=26)throw new IllegalArgumentException("XI race output needs 26 registers");
+            if(values==null||(values.length!=26&&values.length!=32))throw new IllegalArgumentException("XI output needs 26 race or 32 world registers");
             for(int i=2;i<values.length;i++)if(values[i]<Integer.MIN_VALUE||values[i]>Integer.MAX_VALUE)
                 throw new IllegalArgumentException("XI race register exceeds integer range");
             xCm=values[0];zCm=values[1];yaw4096=(int)values[2];
@@ -39,8 +41,14 @@ final class VelocityXiEngine {
             jumpCooldown=(int)values[20];landingPulse=values[21]==1;
             driftScore=(int)values[22];driftComboPct=(int)values[23];
             drafting=values[24]==1;surface=(int)values[25];
+            openWorld=values.length==32;
+            groundHeightCm=openWorld?(int)values[26]:0;sector=openWorld?(int)values[27]:0;
+            dayPhase=openWorld?(int)values[28]:0;ambientMode=openWorld?(int)values[29]:0;
+            biome=openWorld?(int)values[30]:0;roadEnd=openWorld&&values[31]==1;
+            if(groundHeightCm<0||groundHeightCm>600||sector<0||sector>7||dayPhase<0||dayPhase>=4096||ambientMode<0||ambientMode>2||biome<0||biome>4)
+                throw new IllegalArgumentException("XI world state outside limits");
             if(driftScore<0||driftScore>9_999_999||driftComboPct<100||driftComboPct>400||
-                    values[24]<0||values[24]>1||surface<0||surface>2)
+                    values[24]<0||values[24]>1||surface<0||surface>3)
                 throw new IllegalArgumentException("XI drift/rebufo/surface state outside limits");
             if(nitroCharge<0||nitroCharge>1000||values[17]<0||values[17]>1||
                     jumpHeightCm<0||jumpHeightCm>300||airPulse<0||airPulse>30||
@@ -72,7 +80,9 @@ final class VelocityXiEngine {
     private int native4KProgramKey=-1;
     private static final String XI_HEADER="#!reverse-pc-machine-v1\n";
     private final float[] worldPoints; // read-only XI generated geometry samples
-    private final int[] palette;
+    private final int[] palette,paletteDusk,paletteNight;
+    private final String environmentXi;
+    private int environmentMode;
     private Snapshot snapshot;
     static final class Observation {
         final RegraphicsFrame frame;
@@ -96,6 +106,9 @@ final class VelocityXiEngine {
         xiRenderer=asset(context,"velocity/render.xi");
         xiNative4KRenderer=asset(context,"velocity/render-native4k.xi");
         palette=parsePalette(asset(context,"velocity/palette.txt"));
+        paletteDusk=parsePalette(asset(context,"velocity/palette-dusk.txt"));
+        paletteNight=parsePalette(asset(context,"velocity/palette-night.txt"));
+        environmentXi=asset(context,"velocity/environment.xi");
         if(!xiNative4KRenderer.startsWith(XI_HEADER))
             throw new IllegalStateException("XI native 4K source header missing");
         if(!xiRenderer.startsWith(XI_HEADER))
@@ -146,18 +159,18 @@ final class VelocityXiEngine {
     }
 
     private static Snapshot parseState(String output)throws Exception{
-        long[] observed=new long[26];int n=0;
+        long[] observed=new long[32];int n=0;
         for(String line:output.split("\n")){
             if(line.trim().isEmpty())continue;
-            if(n>=26)throw new IllegalArgumentException("XI game published too many registers");
+            if(n>=32)throw new IllegalArgumentException("XI game published too many registers");
             JSONObject row=new JSONObject(line);
             if(!"register".equals(row.getString("type"))||
                !("r"+(n%16)).equals(row.getString("register")))
                 throw new IllegalArgumentException("XI game register order mismatch");
             observed[n++]=row.getLong("value");
         }
-        if(n!=26)throw new IllegalArgumentException("Incomplete XI game observation");
-        return new Snapshot(observed);
+        if(n!=26&&n!=32)throw new IllegalArgumentException("Incomplete XI game observation");
+        return new Snapshot(java.util.Arrays.copyOf(observed,n));
     }
 
     synchronized Snapshot step(int gas,int brake,int steer,int drift,boolean reverse,boolean reset)throws Exception{
@@ -237,7 +250,7 @@ final class VelocityXiEngine {
         final byte[] frameBytes=NativeRuntime.observeFrame(observation,source);
         final long executeElapsed=System.nanoTime()-executeStart;
         final long decodeStart=System.nanoTime();
-        final RegraphicsFrame frame=RegraphicsFrame.decodeOwned(frameBytes,stride,palette);
+        final RegraphicsFrame frame=RegraphicsFrame.decodeOwned(frameBytes,stride,VelocityWorldLight.palette(palette,paletteDusk,paletteNight,observedState.dayPhase));
         final long decodeElapsed=System.nanoTime()-decodeStart;
         return new Observation(frame,observedState,executeElapsed,decodeElapsed,frameBytes.length);
     }
@@ -273,7 +286,7 @@ final class VelocityXiEngine {
         final byte[] frameBytes=NativeRuntime.observeFrame(observedState,program);
         final long executeElapsed=System.nanoTime()-executeStart;
         final long decodeStart=System.nanoTime();
-        final RegraphicsFrame frame=RegraphicsFrame.decodeNative4KOwned(frameBytes,palette);
+        final RegraphicsFrame frame=RegraphicsFrame.decodeNative4KOwned(frameBytes,VelocityWorldLight.palette(palette,paletteDusk,paletteNight,observed.dayPhase));
         final long decodeElapsed=System.nanoTime()-decodeStart;
         return new Observation(frame,observed,executeElapsed,decodeElapsed,frameBytes.length);
     }
@@ -287,6 +300,15 @@ final class VelocityXiEngine {
         }
         return palette;
     }
+    synchronized Snapshot setEnvironmentMode(int mode)throws Exception{
+        if(mode<0||mode>3)throw new IllegalArgumentException("Unknown world time mode");
+        ResultPacket result=ResultPacket.parse(NativeRuntime.execute(privateState,
+            XI_HEADER+"store8 137 "+mode+"\n"+environmentXi.substring(XI_HEADER.length())));
+        Snapshot candidate=parseState(result.output);
+        privateState=result.state;snapshot=candidate;environmentMode=mode;
+        return candidate;
+    }
+    synchronized int environmentMode(){return environmentMode;}
     synchronized Snapshot current(){return snapshot;}
     float[] track(){return worldPoints.clone();} // Read-only circuit samples for HUD.
 }

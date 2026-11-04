@@ -14,9 +14,9 @@ const CAMERA=2048,TREE_START=1552,ROCK_START=1566,GRASS_START=1579,END=1591;
 const treeShape=[
  [14,1150,-16],[246,315,33],[100,364,209],[-161,288,205],
  [-258,330,-61],[-101,292,-217],
- [-350,835,-110],[-500,0,-130],[-200,0,-130],
- [380,990,150],[240,0,160],[520,0,160],
- [0,0,-25],[0,0,21]
+ [-18,0,0],[18,0,0],[18,390,0],
+ [-18,390,0],[0,0,-18],[0,0,18],
+ [0,390,18],[0,390,-18]
 ];
 const rock=[
  [24,105,-8],[-183,48,-93],[-72,85,-153],[126,64,-142],
@@ -28,7 +28,7 @@ const grass=[
  [-42,0,-22],[29,0,17],[-8,103,-17],
  [-13,0,-55],[24,0,63],[5,116,15],
  [-61,0,43],[45,0,-42],[23,77,9],
- [41,0,39],[-43,0,-36],[10,88,-35]
+ [-18,63,-6],[16,63,4],[1,83,-2]
 ];
 function requireOnce(source,needle,label){
  const at=source.indexOf(needle);
@@ -59,7 +59,7 @@ function tailLamps(source){
  if(count!==6)throw Error('Expected six authored vehicle tail-light faces, got '+count);
  return source;
 }
-function finishScene(content){
+function finishScene(content,options={}){
  let source=tailLamps(content);
  if(source.includes('label nature_model_ready'))return source; // deterministic rerun
  // Shape the five-sided tree canopy and its crossed real trunk with asymmetry.
@@ -108,13 +108,9 @@ function finishScene(content){
  const original=source.slice(treeStart+'label emit_tree\n'.length,next);
  const originalFaces=original.split('\n');
  if(originalFaces.length!==9)throw Error('Tree triangle count changed');
- const groveFaces=[
-   ...originalFaces.slice(0,5).map(s=>s.replace(/^meshface (\d+) (\d+) (\d+) \d+/, 'meshfacegradienttex $1 $2 $3 12 8 6 2')),
-   face(TREE_START+6,TREE_START+7,TREE_START+8,15),
-   face(TREE_START+8,TREE_START+7,TREE_START+6,14),
-   face(TREE_START+9,TREE_START+10,TREE_START+11,16),
-   face(TREE_START+11,TREE_START+10,TREE_START+9,15)
- ];
+ const trunk=(a,b,c)=>'meshfacegradienttex '+[a,b,c].map(i=>TREE_START+i+CAMERA).join(' ')+' 9 3 7 2 r9 r10 r11 60';
+ const canopyFaces=originalFaces.slice(0,5).map(s=>s.replace(/^meshface (\d+) (\d+) (\d+) \d+/, 'meshfacegradienttex $1 $2 $3 12 8 6 2'));
+ const groveFaces=[...canopyFaces,trunk(6,7,8),trunk(6,8,9),trunk(10,11,12),trunk(10,12,13)];
  if(groveFaces.length!==9)throw Error('Forest grove must cost nine faces');
  const rockFaces=[],grassFaces=[];
  for(let k=0;k<6;k++){
@@ -124,40 +120,33 @@ function finishScene(content){
  }
  for(let k=0;k<4;k++){
   const a=GRASS_START+k*3,b=a+1,c=a+2;
-  grassFaces.push(face(a,b,c,14+k));
-  grassFaces.push(face(c,b,a,12+k));
+  grassFaces.push(k===3?'meshface '+[a,b,c].map(i=>i+CAMERA).join(' ')+' 243 r9 r10 r11 60':face(a,b,c,14+k));
+  grassFaces.push(k===3?'meshface '+[c,b,a].map(i=>i+CAMERA).join(' ')+' 243 r9 r10 r11 60':face(c,b,a,12+k));
  }
  if(32*9+4*rockFaces.length+4*grassFaces.length!==368)
   throw Error('Forest triangle budget is not bounded');
  const full=['label emit_tree','localget r0 11','mod r0 10','cmp r0 8',
    'je nature_emit_rock','cmp r0 9','je nature_emit_grass',
-   ...groveFaces,'jmp next_actor','label nature_emit_rock',
+   ...canopyFaces,'localget r0 112','sub r0 1000000','cmp r0 12000','jgt next_actor',...groveFaces.slice(5),'jmp next_actor','label nature_emit_rock',
    ...rockFaces,'jmp next_actor','label nature_emit_grass',
    ...grassFaces].join('\n');
  source=source.slice(0,treeStart)+full+source.slice(next);
- // Give grassy verges a 22cm natural berm; no collision boundary is modified.
- source=change(source,
-   'set r0 -1000\nset r1 -670\nset r2 0\nset r3 0',
-   'set r0 -1000\nset r1 -670\nset r2 22\nset r3 0','left raised verge');
- source=change(source,
-   'set r0 670\nset r1 1000\nset r2 0\nset r3 0',
-   'set r0 670\nset r1 1000\nset r2 0\nset r3 22','right raised verge');
  // Irregular peak heights break the old eight-identical-cones skyline.
  source=change(source,
-   'meshtri r1 r3 999990 r4 r5 999990 r2 r3 999990 3',
+   'meshtri r1 r3 999990 r4 r5 999990 r2 r3 999990 18',
    'mov r6 r7\nmul r6 17\nmod r6 5\nmul r6 r0\ndiv r6 140\nsub r5 r6\n'+
-   'meshtri r1 r3 999990 r4 r5 999990 r2 r3 999990 3',
+   'meshtri r1 r3 999990 r4 r5 999990 r2 r3 999990 18',
    'uneven mountain ridge');
  const labels=source.split('\n').filter(s=>s.startsWith('label ')).map(s=>s.slice(6));
  if(new Set(labels).size!==labels.length)throw Error('Landscape produced duplicate XI labels');
  if(source.length>=512*1024)throw Error('Landscape XI exceeds engine source ceiling');
  return source;
 }
-function run(){
+function run(options={}){
  const changed=[];
  for(const name of ['render.xi','render4k.xi']){
   const filename=path.join(ROOT,name);
-  const before=fs.readFileSync(filename,'utf8'),after=finishScene(before);
+  const before=fs.readFileSync(filename,'utf8'),after=finishScene(before,options);
   if(before!==after)fs.writeFileSync(filename,after);
   changed.push({name,bytes:Buffer.byteLength(after),updated:before!==after,
     trees:32,rocks:4,grassClumps:4,faces:368});

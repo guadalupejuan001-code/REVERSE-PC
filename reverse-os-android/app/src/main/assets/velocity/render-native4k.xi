@@ -1,5 +1,5 @@
 #!reverse-pc-machine-v1
-# REgraphics v4: curved vehicles, smooth XI lighting and bounded 3D raster.
+# REgraphics Open Forest 3.0: bounded sectors, one-lane road and world lighting.
 # The generic meshtri3 primitive clips/rasterizes; XI owns world geometry and camera.
 # Read-only observation: every scratch byte belongs to the discarded render candidate.
 load32 r12 100
@@ -117,6 +117,8 @@ add r2 r6
 load16 r4 384
 mul r4 3
 div r4 5
+add r1 r4
+load16 r4 520
 add r1 r4
 mov r9 r0
 localset 0 r9
@@ -268,24 +270,46 @@ div r3 r4
 sub r2 r3
 mov r9 r2
 localset 46 r9
-mov r3 r2
-div r3 2
-mov r4 r3
-div r4 2
-meshtri 0 0 999999 r0 0 999999 r0 r4 999999 20
-meshtri 0 0 999999 r0 r4 999999 0 r4 999999 20
-meshtri 0 r4 999999 r0 r4 999999 r0 r3 999999 0
-meshtri 0 r4 999999 r0 r3 999999 0 r3 999999 0
-meshtri 0 r3 999999 r0 r3 999999 r0 r2 999999 1
-meshtri 0 r3 999999 r0 r2 999999 0 r2 999999 1
-mov r4 r1
-sub r4 r2
-div r4 2
-add r4 r2
-meshtri 0 r2 999998 r0 r2 999998 r0 r4 999998 2
-meshtri 0 r2 999998 r0 r4 999998 0 r4 999998 2
-meshtri 0 r4 999998 r0 r4 999998 r0 r1 999998 21
-meshtri 0 r4 999998 r0 r1 999998 0 r1 999998 21
+localget r0 4
+mul r0 999999
+localget r1 6
+div r0 r1
+meshvertex 1790 -600000 340000 999999
+meshvertex 1791 600000 340000 999999
+meshvertex 1792 600000 r0 999999
+meshvertex 1793 -600000 r0 999999
+meshshade 1790 0
+meshshade 1791 0
+meshshade 1792 255
+meshshade 1793 255
+localget r9 18
+mov r10 r9
+div r10 2
+mov r11 r10
+mul r11 9
+div r11 16
+mul r9 85
+div r9 100
+meshfacegradient 1790 1791 1792 0 7 r9 r10 r11 60
+meshfacegradient 1790 1792 1793 0 7 r9 r10 r11 60
+meshvertex 1794 -600000 r0 999998
+meshvertex 1795 600000 r0 999998
+meshvertex 1796 600000 -800000 999998
+meshvertex 1797 -600000 -800000 999998
+meshshade 1794 240
+meshshade 1795 240
+meshshade 1796 0
+meshshade 1797 0
+localget r9 18
+mov r10 r9
+div r10 2
+mov r11 r10
+mul r11 9
+div r11 16
+mul r9 85
+div r9 100
+meshfacegradient 1794 1795 1796 12 8 r9 r10 r11 60
+meshfacegradient 1794 1796 1797 12 8 r9 r10 r11 60
 load8 r6 108
 load8 r7 109
 mul r7 256
@@ -324,11 +348,27 @@ mod r6 5
 mul r6 r0
 div r6 140
 sub r5 r6
-meshtri r1 r3 999990 r4 r5 999990 r2 r3 999990 3
+meshtri r1 r3 999990 r4 r5 999990 r2 r3 999990 18
 add r7 1
 cmp r7 8
 jlt hills
-localset 8 0
+load8 r0 273
+div r0 10
+mul r0 10
+sub r0 10
+cmp r0 0
+jge open_sector_start
+set r0 0
+label open_sector_start
+localset 3200 r0
+mov r1 r0
+add r1 30
+cmp r1 80
+jle open_sector_end
+set r1 80
+label open_sector_end
+localset 3201 r1
+localset 8 r0
 label transform_track
 localget r8 8
 mov r7 r8
@@ -339,7 +379,10 @@ sub r0 65536
 add r7 4
 load32 r2 $r7
 sub r2 65536
-set r1 0
+localget r1 8
+mul r1 2
+add r1 5300
+load16 r1 $r1
 sub r0 r12
 sub r2 r13
 mov r9 r0
@@ -463,9 +506,11 @@ meshvertex r8 r0 r1 r2
 localget r8 8
 add r8 1
 localset 8 r8
-cmp r8 81
-jlt transform_track
-localset 8 0
+localget r9 3201
+cmp r8 r9
+jle transform_track
+localget r0 3200
+localset 8 r0
 label road_segment
 localget r9 8
 mul r9 2
@@ -512,9 +557,9 @@ label road_band
 localget r0 9
 cmp r0 0
 jne band_0_skip
-set r0 -1000
-set r1 -670
-set r2 22
+set r0 -6000
+set r1 -300
+set r2 300
 set r3 0
 localset 28 78
 jmp band_ready
@@ -522,8 +567,8 @@ label band_0_skip
 localget r0 9
 cmp r0 1
 jne band_1_skip
-set r0 -670
-set r1 -600
+set r0 -300
+set r1 -200
 set r2 0
 set r3 0
 localset 28 208
@@ -532,93 +577,53 @@ label band_1_skip
 localget r0 9
 cmp r0 2
 jne band_2_skip
-set r0 -600
-set r1 600
+set r0 -200
+set r1 -180
 set r2 0
 set r3 0
-localset 28 108
+localset 28 206
 jmp band_ready
 label band_2_skip
 localget r0 9
 cmp r0 3
 jne band_3_skip
-set r0 600
-set r1 670
+set r0 -180
+set r1 180
 set r2 0
 set r3 0
-localset 28 208
+localset 28 108
 jmp band_ready
 label band_3_skip
 localget r0 9
 cmp r0 4
 jne band_4_skip
-set r0 670
-set r1 1000
+set r0 180
+set r1 200
 set r2 0
-set r3 22
-localset 28 78
+set r3 0
+localset 28 206
 jmp band_ready
 label band_4_skip
 localget r0 9
 cmp r0 5
 jne band_5_skip
-set r0 -590
-set r1 -580
-set r2 1
-set r3 1
-localset 28 206
+set r0 200
+set r1 300
+set r2 0
+set r3 0
+localset 28 208
 jmp band_ready
 label band_5_skip
 localget r0 9
 cmp r0 6
 jne band_6_skip
-set r0 580
-set r1 590
-set r2 1
-set r3 1
-localset 28 206
+set r0 300
+set r1 6000
+set r2 0
+set r3 350
+localset 28 78
 jmp band_ready
 label band_6_skip
-localget r0 9
-cmp r0 7
-jne band_7_skip
-set r0 -205
-set r1 -195
-set r2 2
-set r3 2
-localset 28 206
-jmp band_ready
-label band_7_skip
-localget r0 9
-cmp r0 8
-jne band_8_skip
-set r0 195
-set r1 205
-set r2 2
-set r3 2
-localset 28 206
-jmp band_ready
-label band_8_skip
-localget r0 9
-cmp r0 9
-jne band_9_skip
-set r0 -1000
-set r1 -1000
-set r2 0
-set r3 100
-localset 28 204
-jmp band_ready
-label band_9_skip
-localget r0 9
-cmp r0 10
-jne band_10_skip
-set r0 1000
-set r1 1000
-set r2 0
-set r3 100
-localset 28 204
-jmp band_ready
-label band_10_skip
 jmp next_segment
 label band_ready
 mov r9 r0
@@ -631,28 +636,24 @@ mov r9 r2
 localset 26 r9
 mov r9 r3
 localset 30 r9
-localget r0 9
-cmp r0 7
-jlt stripe_ready
-cmp r0 8
-jgt stripe_ready
 localget r0 8
-mod r0 2
+add r0 5500
+load8 r0 $r0
+cmp r0 1
+je open_river_band
+cmp r0 2
+jne open_road_band_ready
+localget r0 9
+cmp r0 6
+je next_band
+jmp open_road_band_ready
+label open_river_band
+localget r0 9
 cmp r0 0
 je next_band
-label stripe_ready
-localget r0 9
-cmp r0 1
-je curb_color
-cmp r0 3
-jne curb_ready
-label curb_color
-localget r0 8
-mod r0 2
-cmp r0 0
-jne curb_ready
-localset 28 206
-label curb_ready
+cmp r0 6
+je next_band
+label open_road_band_ready
 localget r9 8
 add r9 0
 mul r9 2
@@ -867,7 +868,7 @@ jne material_skip_22
 mov r9 r10
 mul r9 170
 div r9 100
-meshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 5 r9 r10 r11 60
+meshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 9 r9 r10 r11 60
 jmp triangle_emitted_20
 label material_skip_22
 cmp r9 108
@@ -1110,7 +1111,7 @@ jne material_skip_28
 mov r9 r10
 mul r9 170
 div r9 100
-meshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 5 r9 r10 r11 60
+meshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 9 r9 r10 r11 60
 jmp triangle_emitted_26
 label material_skip_28
 cmp r9 108
@@ -1143,16 +1144,3205 @@ label next_band
 localget r0 9
 add r0 1
 localset 9 r0
-cmp r0 11
+cmp r0 7
 jlt road_band
 label next_segment
 localget r0 8
 add r0 1
 localset 8 r0
-cmp r0 80
+localget r1 3201
+cmp r0 r1
 jlt road_segment
 load32 r12 100
 sub r12 2000000
+load32 r13 104
+sub r13 2000000
+localset 3300 0
+jmp open_object_dispatch
+label open_object_transform
+localset 3302 0
+label open_object_vertex
+localget r8 3302
+mov r9 r8
+add r9 1900
+meshread r0 r1 r2 r9
+localget r3 3310
+add r0 r3
+mov r9 r8
+add r9 3400
+localget r9 r9
+cmp r9 0
+je open_object_motion_done
+load32 r3 115
+mod r3 40
+cmp r3 20
+jle open_flap_fold
+set r4 40
+sub r4 r3
+mov r3 r4
+label open_flap_fold
+sub r3 10
+cmp r9 1
+jne open_leg_motion
+mul r3 3
+add r1 r3
+jmp open_object_motion_done
+label open_leg_motion
+mul r3 r9
+add r2 r3
+label open_object_motion_done
+localget r3 3312
+cmp r3 0
+je open_water_vertex_ready
+mov r3 r0
+div r3 50
+load32 r4 115
+div r4 8
+add r3 r4
+mov r4 r2
+div r4 35
+localget r9 3302
+add r9 1900
+meshtexuv r9 r3 r4
+add r3 r4
+mod r3 64
+cmp r3 32
+jle open_wave_fold
+set r4 64
+sub r4 r3
+mov r3 r4
+label open_wave_fold
+mul r3 3
+add r3 110
+localset 3311 r3
+label open_water_vertex_ready
+sub r0 r12
+sub r2 r13
+mov r9 r0
+mul r9 r15
+mov r10 r2
+mul r10 r14
+sub r9 r10
+div r9 16384
+mov r10 r0
+mul r10 r14
+mov r11 r2
+mul r11 r15
+add r10 r11
+div r10 16384
+mov r0 r9
+localget r11 0
+add r10 r11
+localget r11 2
+sub r1 r11
+localget r11 4
+mul r11 r1
+localget r9 6
+mov r2 r10
+mul r2 r9
+sub r2 r11
+div r2 1000
+mul r1 r9
+localget r11 4
+mul r11 r10
+add r1 r11
+div r1 1000
+localget r8 3302
+mov r9 r8
+add r9 2000
+meshvertex r9 r0 r1 r2
+mov r3 r8
+add r3 1900
+meshtexcopy r9 r3
+localget r4 3311
+meshshade r9 r4
+add r8 1
+localset 3302 r8
+localget r9 3301
+cmp r8 r9
+jlt open_object_vertex
+jmp open_object_draw
+label open_object_dispatch
+localget r0 3300
+cmp r0 0
+jne open_object_skip_32
+localget r0 3200
+cmp r0 1
+jgt open_object_next
+localget r0 3201
+cmp r0 0
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+meshvertex 1900 -650 1 -1200
+localset 3400 0
+meshtexuv 1900 -26 -48
+meshvertex 1901 650 1 -1200
+localset 3401 0
+meshtexuv 1901 26 -48
+meshvertex 1902 650 1 1000
+localset 3402 0
+meshtexuv 1902 26 40
+meshvertex 1903 -650 1 1000
+localset 3403 0
+meshtexuv 1903 -26 40
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_32
+localget r0 3300
+cmp r0 1
+jne open_object_skip_34
+localget r0 3200
+cmp r0 29
+jgt open_object_next
+localget r0 3201
+cmp r0 28
+jle open_object_next
+load8 r0 140
+cmp r0 1
+je open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 1
+load32 r0 115
+div r0 7
+mod r0 60
+add r0 145
+localset 3311 r0
+meshvertex 1900 -3600 2 55507
+localset 3400 0
+meshtexuv 1900 -144 2220
+meshvertex 1901 -3682 9 57505
+localset 3401 0
+meshtexuv 1901 -147 2300
+meshvertex 1902 8308 9 58001
+localset 3402 0
+meshtexuv 1902 332 2320
+meshvertex 1903 8390 2 56003
+localset 3403 0
+meshtexuv 1903 336 2240
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_34
+localget r0 3300
+cmp r0 2
+jne open_object_skip_36
+localget r0 3200
+cmp r0 50
+jgt open_object_next
+localget r0 3201
+cmp r0 49
+jle open_object_next
+load8 r0 140
+cmp r0 1
+je open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 1
+load32 r0 115
+div r0 7
+mod r0 60
+add r0 145
+localset 3311 r0
+meshvertex 1900 -4335 0 97037
+localset 3400 0
+meshtexuv 1900 -173 3881
+meshvertex 1901 -4733 0 98959
+localset 3401 0
+meshtexuv 1901 -189 3958
+meshvertex 1902 -178 0 99706
+localset 3402 0
+meshtexuv 1902 -7 3988
+meshvertex 1903 185 0 97973
+localset 3403 0
+meshtexuv 1903 7 3919
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_36
+localget r0 3300
+cmp r0 3
+jne open_object_skip_38
+localget r0 3200
+cmp r0 50
+jgt open_object_next
+localget r0 3201
+cmp r0 49
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+meshvertex 1900 -4795 184 96942
+localset 3400 0
+meshtexuv 1900 -192 3878
+meshvertex 1901 -5197 180 98883
+localset 3401 0
+meshtexuv 1901 -208 3955
+meshvertex 1902 -4733 0 98959
+localset 3402 0
+meshtexuv 1902 -189 3958
+meshvertex 1903 -4335 0 97037
+localset 3403 0
+meshtexuv 1903 -173 3881
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_38
+localget r0 3300
+cmp r0 4
+jne open_object_skip_40
+localget r0 3200
+cmp r0 51
+jgt open_object_next
+localget r0 3201
+cmp r0 50
+jle open_object_next
+load8 r0 140
+cmp r0 1
+je open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 1
+load32 r0 115
+div r0 7
+mod r0 60
+add r0 145
+localset 3311 r0
+meshvertex 1900 -4826 0 98944
+localset 3400 0
+meshtexuv 1900 -193 3958
+meshvertex 1901 -5145 0 100879
+localset 3401 0
+meshtexuv 1901 -206 4035
+meshvertex 1902 -340 0 101442
+localset 3402 0
+meshtexuv 1902 -14 4058
+meshvertex 1903 -53 0 99727
+localset 3403 0
+meshtexuv 1903 -2 3989
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_40
+localget r0 3300
+cmp r0 5
+jne open_object_skip_42
+localget r0 3200
+cmp r0 51
+jgt open_object_next
+localget r0 3201
+cmp r0 50
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+meshvertex 1900 -5197 180 98883
+localset 3400 0
+meshtexuv 1900 -208 3955
+meshvertex 1901 -5518 174 100835
+localset 3401 0
+meshtexuv 1901 -221 4033
+meshvertex 1902 -5145 0 100879
+localset 3402 0
+meshtexuv 1902 -206 4035
+meshvertex 1903 -4826 0 98944
+localset 3403 0
+meshtexuv 1903 -193 3958
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_42
+localget r0 3300
+cmp r0 6
+jne open_object_skip_44
+localget r0 3200
+cmp r0 52
+jgt open_object_next
+localget r0 3201
+cmp r0 51
+jle open_object_next
+load8 r0 140
+cmp r0 1
+je open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 1
+load32 r0 115
+div r0 7
+mod r0 60
+add r0 145
+localset 3311 r0
+meshvertex 1900 -5190 0 100874
+localset 3400 0
+meshtexuv 1900 -208 4035
+meshvertex 1901 -5419 0 102819
+localset 3401 0
+meshtexuv 1901 -217 4113
+meshvertex 1902 -401 0 103143
+localset 3402 0
+meshtexuv 1902 -16 4126
+meshvertex 1903 -196 0 101459
+localset 3403 0
+meshtexuv 1903 -8 4058
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_44
+localget r0 3300
+cmp r0 7
+jne open_object_skip_46
+localget r0 3200
+cmp r0 52
+jgt open_object_next
+localget r0 3201
+cmp r0 51
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+meshvertex 1900 -5518 174 100835
+localset 3400 0
+meshtexuv 1900 -221 4033
+meshvertex 1901 -5748 167 102798
+localset 3401 0
+meshtexuv 1901 -230 4112
+meshvertex 1902 -5419 0 102819
+localset 3402 0
+meshtexuv 1902 -217 4113
+meshvertex 1903 -5190 0 100874
+localset 3403 0
+meshtexuv 1903 -208 4035
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_46
+localget r0 3300
+cmp r0 8
+jne open_object_skip_48
+localget r0 3200
+cmp r0 53
+jgt open_object_next
+localget r0 3201
+cmp r0 52
+jle open_object_next
+load8 r0 140
+cmp r0 1
+je open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 1
+load32 r0 115
+div r0 7
+mod r0 60
+add r0 145
+localset 3311 r0
+meshvertex 1900 -5387 0 102821
+localset 3400 0
+meshtexuv 1900 -215 4113
+meshvertex 1901 -5515 0 104775
+localset 3401 0
+meshtexuv 1901 -221 4191
+meshvertex 1902 -375 0 104838
+localset 3402 0
+meshtexuv 1902 -15 4194
+meshvertex 1903 -257 0 103152
+localset 3403 0
+meshtexuv 1903 -10 4126
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_48
+localget r0 3300
+cmp r0 9
+jne open_object_skip_50
+localget r0 3200
+cmp r0 53
+jgt open_object_next
+localget r0 3201
+cmp r0 52
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+meshvertex 1900 -5748 167 102798
+localset 3400 0
+meshtexuv 1900 -230 4112
+meshvertex 1901 -5877 157 104771
+localset 3401 0
+meshtexuv 1901 -235 4191
+meshvertex 1902 -5515 0 104775
+localset 3402 0
+meshtexuv 1902 -221 4191
+meshvertex 1903 -5387 0 102821
+localset 3403 0
+meshtexuv 1903 -215 4113
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_50
+localget r0 3300
+cmp r0 10
+jne open_object_skip_52
+localget r0 3200
+cmp r0 54
+jgt open_object_next
+localget r0 3201
+cmp r0 53
+jle open_object_next
+load8 r0 140
+cmp r0 1
+je open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 1
+load32 r0 115
+div r0 7
+mod r0 60
+add r0 145
+localset 3311 r0
+meshvertex 1900 -5426 0 104776
+localset 3400 0
+meshtexuv 1900 -217 4191
+meshvertex 1901 -5450 0 106727
+localset 3401 0
+meshtexuv 1901 -218 4269
+meshvertex 1902 -279 0 106512
+localset 3402 0
+meshtexuv 1902 -11 4260
+meshvertex 1903 -251 0 104840
+localset 3403 0
+meshtexuv 1903 -10 4194
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_52
+localget r0 3300
+cmp r0 11
+jne open_object_skip_54
+localget r0 3200
+cmp r0 54
+jgt open_object_next
+localget r0 3201
+cmp r0 53
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+meshvertex 1900 -5877 157 104771
+localset 3400 0
+meshtexuv 1900 -235 4191
+meshvertex 1901 -5900 146 106745
+localset 3401 0
+meshtexuv 1901 -236 4270
+meshvertex 1902 -5450 0 106727
+localset 3402 0
+meshtexuv 1902 -218 4269
+meshvertex 1903 -5426 0 104776
+localset 3403 0
+meshtexuv 1903 -217 4191
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_54
+localget r0 3300
+cmp r0 12
+jne open_object_skip_56
+localget r0 3200
+cmp r0 55
+jgt open_object_next
+localget r0 3201
+cmp r0 54
+jle open_object_next
+load8 r0 140
+cmp r0 1
+je open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 1
+load32 r0 115
+div r0 7
+mod r0 60
+add r0 145
+localset 3311 r0
+meshvertex 1900 -5362 0 106723
+localset 3400 0
+meshtexuv 1900 -214 4269
+meshvertex 1901 -5282 0 108670
+localset 3401 0
+meshtexuv 1901 -211 4347
+meshvertex 1902 -132 0 108186
+localset 3402 0
+meshtexuv 1902 -5 4327
+meshvertex 1903 -193 0 106509
+localset 3403 0
+meshtexuv 1903 -8 4260
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_56
+localget r0 3300
+cmp r0 13
+jne open_object_skip_58
+localget r0 3200
+cmp r0 55
+jgt open_object_next
+localget r0 3201
+cmp r0 54
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+meshvertex 1900 -5900 146 106745
+localset 3400 0
+meshtexuv 1900 -236 4270
+meshvertex 1901 -5819 135 108720
+localset 3401 0
+meshtexuv 1901 -233 4349
+meshvertex 1902 -5282 0 108670
+localset 3402 0
+meshtexuv 1902 -211 4347
+meshvertex 1903 -5362 0 106723
+localset 3403 0
+meshtexuv 1903 -214 4269
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_58
+localget r0 3300
+cmp r0 14
+jne open_object_skip_60
+localget r0 3200
+cmp r0 56
+jgt open_object_next
+localget r0 3201
+cmp r0 55
+jle open_object_next
+load8 r0 140
+cmp r0 1
+je open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 1
+load32 r0 115
+div r0 7
+mod r0 60
+add r0 145
+localset 3311 r0
+meshvertex 1900 -5252 0 108667
+localset 3400 0
+meshtexuv 1900 -210 4347
+meshvertex 1901 -5072 0 110612
+localset 3401 0
+meshtexuv 1901 -203 4424
+meshvertex 1902 58 0 109891
+localset 3402 0
+meshtexuv 1902 2 4396
+meshvertex 1903 -95 0 108183
+localset 3403 0
+meshtexuv 1903 -4 4327
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_60
+localget r0 3300
+cmp r0 15
+jne open_object_skip_62
+localget r0 3200
+cmp r0 56
+jgt open_object_next
+localget r0 3201
+cmp r0 55
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+meshvertex 1900 -5819 135 108720
+localset 3400 0
+meshtexuv 1900 -233 4349
+meshvertex 1901 -5635 123 110691
+localset 3401 0
+meshtexuv 1901 -225 4428
+meshvertex 1902 -5072 0 110612
+localset 3402 0
+meshtexuv 1902 -203 4424
+meshvertex 1903 -5252 0 108667
+localset 3403 0
+meshtexuv 1903 -210 4347
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_62
+localget r0 3300
+cmp r0 16
+jne open_object_skip_64
+localget r0 3200
+cmp r0 57
+jgt open_object_next
+localget r0 3201
+cmp r0 56
+jle open_object_next
+load8 r0 140
+cmp r0 1
+je open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 1
+load32 r0 115
+div r0 7
+mod r0 60
+add r0 145
+localset 3311 r0
+meshvertex 1900 -5118 0 110619
+localset 3400 0
+meshtexuv 1900 -205 4425
+meshvertex 1901 -4847 0 112559
+localset 3401 0
+meshtexuv 1901 -194 4502
+meshvertex 1902 278 0 111621
+localset 3402 0
+meshtexuv 1902 11 4465
+meshvertex 1903 41 0 109894
+localset 3403 0
+meshtexuv 1903 2 4396
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_64
+localget r0 3300
+cmp r0 17
+jne open_object_skip_66
+localget r0 3200
+cmp r0 57
+jgt open_object_next
+localget r0 3201
+cmp r0 56
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+meshvertex 1900 -5635 123 110691
+localset 3400 0
+meshtexuv 1900 -225 4428
+meshvertex 1901 -5360 112 112653
+localset 3401 0
+meshtexuv 1901 -214 4506
+meshvertex 1902 -4847 0 112559
+localset 3402 0
+meshtexuv 1902 -194 4502
+meshvertex 1903 -5118 0 110619
+localset 3403 0
+meshtexuv 1903 -205 4425
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_66
+localget r0 3300
+cmp r0 18
+jne open_object_skip_68
+localget r0 3200
+cmp r0 58
+jgt open_object_next
+localget r0 3201
+cmp r0 57
+jle open_object_next
+load8 r0 140
+cmp r0 1
+je open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 1
+load32 r0 115
+div r0 7
+mod r0 60
+add r0 145
+localset 3311 r0
+meshvertex 1900 -4939 0 112576
+localset 3400 0
+meshtexuv 1900 -198 4503
+meshvertex 1901 -4585 0 114514
+localset 3401 0
+meshtexuv 1901 -183 4581
+meshvertex 1902 531 0 113398
+localset 3402 0
+meshtexuv 1902 21 4536
+meshvertex 1903 211 0 111633
+localset 3403 0
+meshtexuv 1903 8 4465
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_68
+localget r0 3300
+cmp r0 19
+jne open_object_skip_70
+localget r0 3200
+cmp r0 58
+jgt open_object_next
+localget r0 3201
+cmp r0 57
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+meshvertex 1900 -5360 112 112653
+localset 3400 0
+meshtexuv 1900 -214 4506
+meshvertex 1901 -5003 102 114605
+localset 3401 0
+meshtexuv 1901 -200 4584
+meshvertex 1902 -4585 0 114514
+localset 3402 0
+meshtexuv 1902 -183 4581
+meshvertex 1903 -4939 0 112576
+localset 3403 0
+meshtexuv 1903 -198 4503
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_70
+localget r0 3300
+cmp r0 20
+jne open_object_skip_72
+localget r0 3200
+cmp r0 59
+jgt open_object_next
+localget r0 3201
+cmp r0 58
+jle open_object_next
+load8 r0 140
+cmp r0 1
+je open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 1
+load32 r0 115
+div r0 7
+mod r0 60
+add r0 145
+localset 3311 r0
+meshvertex 1900 -4663 0 114531
+localset 3400 0
+meshtexuv 1900 -187 4581
+meshvertex 1901 -4241 0 116463
+localset 3401 0
+meshtexuv 1901 -170 4659
+meshvertex 1902 812 0 115214
+localset 3402 0
+meshtexuv 1902 32 4609
+meshvertex 1903 422 0 113422
+localset 3403 0
+meshtexuv 1903 17 4537
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_72
+localget r0 3300
+cmp r0 21
+jne open_object_skip_74
+localget r0 3200
+cmp r0 59
+jgt open_object_next
+localget r0 3201
+cmp r0 58
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+meshvertex 1900 -5003 102 114605
+localset 3400 0
+meshtexuv 1900 -200 4584
+meshvertex 1901 -4579 93 116547
+localset 3401 0
+meshtexuv 1901 -183 4662
+meshvertex 1902 -4241 0 116463
+localset 3402 0
+meshtexuv 1902 -170 4659
+meshvertex 1903 -4663 0 114531
+localset 3403 0
+meshtexuv 1903 -187 4581
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_74
+localget r0 3300
+cmp r0 22
+jne open_object_skip_76
+localget r0 3200
+cmp r0 60
+jgt open_object_next
+localget r0 3201
+cmp r0 59
+jle open_object_next
+load8 r0 140
+cmp r0 1
+je open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 1
+load32 r0 115
+div r0 7
+mod r0 60
+add r0 145
+localset 3311 r0
+meshvertex 1900 -4254 0 116467
+localset 3400 0
+meshtexuv 1900 -170 4659
+meshvertex 1901 -3778 0 118395
+localset 3401 0
+meshtexuv 1901 -151 4736
+meshvertex 1902 1130 0 117085
+localset 3402 0
+meshtexuv 1902 45 4683
+meshvertex 1903 677 0 115248
+localset 3403 0
+meshtexuv 1903 27 4610
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_76
+localget r0 3300
+cmp r0 23
+jne open_object_skip_78
+localget r0 3200
+cmp r0 60
+jgt open_object_next
+localget r0 3201
+cmp r0 59
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+meshvertex 1900 -4579 93 116547
+localset 3400 0
+meshtexuv 1900 -183 4662
+meshvertex 1901 -4101 85 118481
+localset 3401 0
+meshtexuv 1901 -164 4739
+meshvertex 1902 -3778 0 118395
+localset 3402 0
+meshtexuv 1902 -151 4736
+meshvertex 1903 -4254 0 116467
+localset 3403 0
+meshtexuv 1903 -170 4659
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_78
+localget r0 3300
+cmp r0 24
+jne open_object_skip_80
+localget r0 3200
+cmp r0 61
+jgt open_object_next
+localget r0 3201
+cmp r0 60
+jle open_object_next
+load8 r0 140
+cmp r0 1
+je open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 1
+load32 r0 115
+div r0 7
+mod r0 60
+add r0 145
+localset 3311 r0
+meshvertex 1900 -3719 0 118379
+localset 3400 0
+meshtexuv 1900 -149 4735
+meshvertex 1901 -3206 0 120301
+localset 3401 0
+meshtexuv 1901 -128 4812
+meshvertex 1902 1484 0 118987
+localset 3402 0
+meshtexuv 1902 59 4759
+meshvertex 1903 988 0 117123
+localset 3403 0
+meshtexuv 1903 40 4685
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_80
+localget r0 3300
+cmp r0 25
+jne open_object_skip_82
+localget r0 3200
+cmp r0 61
+jgt open_object_next
+localget r0 3201
+cmp r0 60
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+meshvertex 1900 -4101 85 118481
+localset 3400 0
+meshtexuv 1900 -164 4739
+meshvertex 1901 -3588 79 120408
+localset 3401 0
+meshtexuv 1901 -144 4816
+meshvertex 1902 -3206 0 120301
+localset 3402 0
+meshtexuv 1902 -128 4812
+meshvertex 1903 -3719 0 118379
+localset 3403 0
+meshtexuv 1903 -149 4735
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_82
+localget r0 3300
+cmp r0 26
+jne open_object_skip_84
+localget r0 3200
+cmp r0 62
+jgt open_object_next
+localget r0 3201
+cmp r0 61
+jle open_object_next
+load8 r0 140
+cmp r0 1
+je open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 1
+load32 r0 115
+div r0 7
+mod r0 60
+add r0 145
+localset 3311 r0
+meshvertex 1900 -3113 0 120275
+localset 3400 0
+meshtexuv 1900 -125 4811
+meshvertex 1901 -2576 0 122198
+localset 3401 0
+meshtexuv 1901 -103 4888
+meshvertex 1902 1887 0 120934
+localset 3402 0
+meshtexuv 1902 75 4837
+meshvertex 1903 1353 0 119024
+localset 3403 0
+meshtexuv 1903 54 4761
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_84
+localget r0 3300
+cmp r0 27
+jne open_object_skip_86
+localget r0 3200
+cmp r0 62
+jgt open_object_next
+localget r0 3201
+cmp r0 61
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+meshvertex 1900 -3588 79 120408
+localset 3400 0
+meshtexuv 1900 -144 4816
+meshvertex 1901 -3050 75 122332
+localset 3401 0
+meshtexuv 1901 -122 4893
+meshvertex 1902 -2576 0 122198
+localset 3402 0
+meshtexuv 1902 -103 4888
+meshvertex 1903 -3113 0 120275
+localset 3403 0
+meshtexuv 1903 -125 4811
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_86
+localget r0 3300
+cmp r0 28
+jne open_object_skip_88
+localget r0 3200
+cmp r0 63
+jgt open_object_next
+localget r0 3201
+cmp r0 62
+jle open_object_next
+load8 r0 140
+cmp r0 1
+je open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 1
+load32 r0 115
+div r0 7
+mod r0 60
+add r0 145
+localset 3311 r0
+meshvertex 1900 -2509 0 122179
+localset 3400 0
+meshtexuv 1900 -100 4887
+meshvertex 1901 -1964 0 124109
+localset 3401 0
+meshtexuv 1901 -79 4964
+meshvertex 1902 2335 0 122912
+localset 3402 0
+meshtexuv 1902 93 4916
+meshvertex 1903 1785 0 120962
+localset 3403 0
+meshtexuv 1903 71 4838
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_88
+localget r0 3300
+cmp r0 29
+jne open_object_skip_90
+localget r0 3200
+cmp r0 63
+jgt open_object_next
+localget r0 3201
+cmp r0 62
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+meshvertex 1900 -3050 75 122332
+localset 3400 0
+meshtexuv 1900 -122 4893
+meshvertex 1901 -2505 72 124259
+localset 3401 0
+meshtexuv 1901 -100 4970
+meshvertex 1902 -1964 0 124109
+localset 3402 0
+meshtexuv 1902 -79 4964
+meshvertex 1903 -2509 0 122179
+localset 3403 0
+meshtexuv 1903 -100 4887
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_90
+localget r0 3300
+cmp r0 30
+jne open_object_skip_92
+localget r0 3200
+cmp r0 51
+jgt open_object_next
+localget r0 3201
+cmp r0 50
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+meshvertex 1900 -4911 60 98931
+localset 3400 0
+meshtexuv 1900 -196 3957
+meshvertex 1901 -4901 170 98931
+localset 3401 0
+meshtexuv 1901 -196 3957
+meshvertex 1902 -4894 60 98931
+localset 3402 0
+meshtexuv 1902 -196 3957
+meshvertex 1903 -4899 60 98940
+localset 3403 0
+meshtexuv 1903 -196 3958
+meshvertex 1904 -4889 160 98940
+localset 3404 0
+meshtexuv 1904 -196 3958
+meshvertex 1905 -4882 60 98940
+localset 3405 0
+meshtexuv 1905 -195 3958
+meshvertex 1906 -4887 60 98949
+localset 3406 0
+meshtexuv 1906 -195 3958
+meshvertex 1907 -4877 150 98949
+localset 3407 0
+meshtexuv 1907 -195 3958
+meshvertex 1908 -4870 60 98949
+localset 3408 0
+meshtexuv 1908 -195 3958
+localset 3301 9
+jmp open_object_transform
+label open_object_skip_92
+localget r0 3300
+cmp r0 31
+jne open_object_skip_94
+localget r0 3200
+cmp r0 55
+jgt open_object_next
+localget r0 3201
+cmp r0 54
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+meshvertex 1900 -5611 49 106733
+localset 3400 0
+meshtexuv 1900 -224 4269
+meshvertex 1901 -5601 159 106733
+localset 3401 0
+meshtexuv 1901 -224 4269
+meshvertex 1902 -5594 49 106733
+localset 3402 0
+meshtexuv 1902 -224 4269
+meshvertex 1903 -5599 49 106742
+localset 3403 0
+meshtexuv 1903 -224 4270
+meshvertex 1904 -5589 149 106742
+localset 3404 0
+meshtexuv 1904 -224 4270
+meshvertex 1905 -5582 49 106742
+localset 3405 0
+meshtexuv 1905 -223 4270
+meshvertex 1906 -5587 49 106751
+localset 3406 0
+meshtexuv 1906 -223 4270
+meshvertex 1907 -5577 139 106751
+localset 3407 0
+meshtexuv 1907 -223 4270
+meshvertex 1908 -5570 49 106751
+localset 3408 0
+meshtexuv 1908 -223 4270
+localset 3301 9
+jmp open_object_transform
+label open_object_skip_94
+localget r0 3300
+cmp r0 32
+jne open_object_skip_96
+localget r0 3200
+cmp r0 61
+jgt open_object_next
+localget r0 3201
+cmp r0 60
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+meshvertex 1900 -3821 28 118404
+localset 3400 0
+meshtexuv 1900 -153 4736
+meshvertex 1901 -3811 138 118404
+localset 3401 0
+meshtexuv 1901 -152 4736
+meshvertex 1902 -3804 28 118404
+localset 3402 0
+meshtexuv 1902 -152 4736
+meshvertex 1903 -3809 28 118413
+localset 3403 0
+meshtexuv 1903 -152 4737
+meshvertex 1904 -3799 128 118413
+localset 3404 0
+meshtexuv 1904 -152 4737
+meshvertex 1905 -3792 28 118413
+localset 3405 0
+meshtexuv 1905 -152 4737
+meshvertex 1906 -3797 28 118422
+localset 3406 0
+meshtexuv 1906 -152 4737
+meshvertex 1907 -3787 118 118422
+localset 3407 0
+meshtexuv 1907 -151 4737
+meshvertex 1908 -3780 28 118422
+localset 3408 0
+meshtexuv 1908 -151 4737
+localset 3301 9
+jmp open_object_transform
+label open_object_skip_96
+localget r0 3300
+cmp r0 33
+jne open_object_skip_98
+localget r0 3200
+cmp r0 29
+jgt open_object_next
+localget r0 3201
+cmp r0 28
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+meshvertex 1900 2120 171 55795
+localset 3400 0
+meshtexuv 1900 85 2232
+meshvertex 1901 2138 171 55795
+localset 3401 0
+meshtexuv 1901 86 2232
+meshvertex 1902 2138 261 55795
+localset 3402 0
+meshtexuv 1902 86 2232
+meshvertex 1903 2120 261 55795
+localset 3403 0
+meshtexuv 1903 85 2232
+meshvertex 1904 2120 171 57695
+localset 3404 0
+meshtexuv 1904 85 2308
+meshvertex 1905 2120 261 57695
+localset 3405 0
+meshtexuv 1905 85 2308
+meshvertex 1906 2138 261 57695
+localset 3406 0
+meshtexuv 1906 86 2308
+meshvertex 1907 2138 171 57695
+localset 3407 0
+meshtexuv 1907 86 2308
+meshvertex 1908 2570 171 55813
+localset 3408 0
+meshtexuv 1908 103 2233
+meshvertex 1909 2588 171 55813
+localset 3409 0
+meshtexuv 1909 104 2233
+meshvertex 1910 2588 261 55813
+localset 3410 0
+meshtexuv 1910 104 2233
+meshvertex 1911 2570 261 55813
+localset 3411 0
+meshtexuv 1911 103 2233
+meshvertex 1912 2570 171 57713
+localset 3412 0
+meshtexuv 1912 103 2309
+meshvertex 1913 2570 261 57713
+localset 3413 0
+meshtexuv 1913 103 2309
+meshvertex 1914 2588 261 57713
+localset 3414 0
+meshtexuv 1914 104 2309
+meshvertex 1915 2588 171 57713
+localset 3415 0
+meshtexuv 1915 104 2309
+localset 3301 16
+jmp open_object_transform
+label open_object_skip_98
+localget r0 3300
+cmp r0 34
+jne open_object_skip_100
+localget r0 3200
+cmp r0 13
+jgt open_object_next
+localget r0 3201
+cmp r0 12
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+meshvertex 1900 670 69 24033
+localset 3400 0
+meshtexuv 1900 27 961
+meshvertex 1901 874 70 25972
+localset 3401 0
+meshtexuv 1901 35 1039
+meshvertex 1902 2868 70 25809
+localset 3402 0
+meshtexuv 1902 115 1032
+meshvertex 1903 2659 69 23825
+localset 3403 0
+meshtexuv 1903 106 953
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_100
+localget r0 3300
+cmp r0 35
+jne open_object_skip_102
+localget r0 3200
+cmp r0 14
+jgt open_object_next
+localget r0 3201
+cmp r0 13
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+meshvertex 1900 874 70 25972
+localset 3400 0
+meshtexuv 1900 35 1039
+meshvertex 1901 1034 71 27911
+localset 3401 0
+meshtexuv 1901 41 1116
+meshvertex 1902 3030 71 27797
+localset 3402 0
+meshtexuv 1902 121 1112
+meshvertex 1903 2868 70 25809
+localset 3403 0
+meshtexuv 1903 115 1032
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_102
+localget r0 3300
+cmp r0 36
+jne open_object_skip_104
+localget r0 3200
+cmp r0 44
+jgt open_object_next
+localget r0 3201
+cmp r0 43
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+meshvertex 1900 -1715 177 85385
+localset 3400 0
+meshtexuv 1900 -69 3415
+meshvertex 1901 -2306 180 87297
+localset 3401 0
+meshtexuv 1901 -92 3492
+meshvertex 1902 -397 180 87892
+localset 3402 0
+meshtexuv 1902 -16 3516
+meshvertex 1903 195 177 85978
+localset 3403 0
+meshtexuv 1903 8 3439
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_104
+localget r0 3300
+cmp r0 37
+jne open_object_skip_106
+localget r0 3200
+cmp r0 45
+jgt open_object_next
+localget r0 3201
+cmp r0 44
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+meshvertex 1900 -2306 180 87297
+localset 3400 0
+meshtexuv 1900 -92 3492
+meshvertex 1901 -2900 183 89204
+localset 3401 0
+meshtexuv 1901 -116 3568
+meshvertex 1902 -987 183 89788
+localset 3402 0
+meshtexuv 1902 -39 3592
+meshvertex 1903 -397 180 87892
+localset 3403 0
+meshtexuv 1903 -16 3516
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_106
+localget r0 3300
+cmp r0 38
+jne open_object_skip_108
+localget r0 3200
+cmp r0 77
+jgt open_object_next
+localget r0 3201
+cmp r0 76
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+meshvertex 1900 -1751 18 149932
+localset 3400 0
+meshtexuv 1900 -70 5997
+meshvertex 1901 -1834 12 151904
+localset 3401 0
+meshtexuv 1901 -73 6076
+meshvertex 1902 163 12 152011
+localset 3402 0
+meshtexuv 1902 7 6080
+meshvertex 1903 247 18 150015
+localset 3403 0
+meshtexuv 1903 10 6001
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_108
+localget r0 3300
+cmp r0 39
+jne open_object_skip_110
+localget r0 3200
+cmp r0 78
+jgt open_object_next
+localget r0 3201
+cmp r0 77
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+meshvertex 1900 -1834 12 151904
+localset 3400 0
+meshtexuv 1900 -73 6076
+meshvertex 1901 -1939 6 153884
+localset 3401 0
+meshtexuv 1901 -78 6155
+meshvertex 1902 57 6 154007
+localset 3402 0
+meshtexuv 1902 2 6160
+meshvertex 1903 163 12 152011
+localset 3403 0
+meshtexuv 1903 7 6080
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_110
+localget r0 3300
+cmp r0 40
+jne open_object_skip_112
+localget r0 3200
+cmp r0 16
+jgt open_object_next
+localget r0 3201
+cmp r0 15
+jle open_object_next
+load8 r0 139
+cmp r0 1
+je open_object_next
+load8 r0 526
+cmp r0 2
+je open_object_next
+load32 r0 100
+sub r0 2003344
+mul r0 r0
+load32 r1 104
+sub r1 2029783
+mul r1 r1
+add r0 r1
+cmp r0 100000000
+jgt open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+load32 r0 115
+mod r0 200
+cmp r0 100
+jle open_object_active_113
+set r1 200
+sub r1 r0
+mov r0 r1
+label open_object_active_113
+sub r0 50
+div r0 2
+localset 3310 r0
+meshvertex 1900 4173 130 29689
+localset 3400 0
+meshtexuv 1900 167 1188
+meshvertex 1901 4215 130 29689
+localset 3401 0
+meshtexuv 1901 169 1188
+meshvertex 1902 4215 182 29689
+localset 3402 0
+meshtexuv 1902 169 1188
+meshvertex 1903 4173 182 29689
+localset 3403 0
+meshtexuv 1903 167 1188
+meshvertex 1904 4173 130 29819
+localset 3404 0
+meshtexuv 1904 167 1193
+meshvertex 1905 4173 182 29819
+localset 3405 0
+meshtexuv 1905 167 1193
+meshvertex 1906 4215 182 29819
+localset 3406 0
+meshtexuv 1906 169 1193
+meshvertex 1907 4215 130 29819
+localset 3407 0
+meshtexuv 1907 169 1193
+meshvertex 1908 4181 162 29805
+localset 3408 0
+meshtexuv 1908 167 1192
+meshvertex 1909 4207 162 29805
+localset 3409 0
+meshtexuv 1909 168 1192
+meshvertex 1910 4207 207 29805
+localset 3410 0
+meshtexuv 1910 168 1192
+meshvertex 1911 4181 207 29805
+localset 3411 0
+meshtexuv 1911 167 1192
+meshvertex 1912 4181 162 29839
+localset 3412 0
+meshtexuv 1912 167 1194
+meshvertex 1913 4181 207 29839
+localset 3413 0
+meshtexuv 1913 167 1194
+meshvertex 1914 4207 207 29839
+localset 3414 0
+meshtexuv 1914 168 1194
+meshvertex 1915 4207 162 29839
+localset 3415 0
+meshtexuv 1915 168 1194
+meshvertex 1916 4172 138 29711
+localset 3416 0
+meshtexuv 1916 167 1188
+meshvertex 1917 4182 138 29711
+localset 3417 0
+meshtexuv 1917 167 1188
+meshvertex 1918 4181 70 29717
+localset 3418 2
+meshtexuv 1918 167 1189
+meshvertex 1919 4173 70 29717
+localset 3419 2
+meshtexuv 1919 167 1189
+meshvertex 1920 4172 138 29797
+localset 3420 0
+meshtexuv 1920 167 1192
+meshvertex 1921 4182 138 29797
+localset 3421 0
+meshtexuv 1921 167 1192
+meshvertex 1922 4181 70 29803
+localset 3422 -2
+meshtexuv 1922 167 1192
+meshvertex 1923 4173 70 29803
+localset 3423 -2
+meshtexuv 1923 167 1192
+meshvertex 1924 4206 138 29711
+localset 3424 0
+meshtexuv 1924 168 1188
+meshvertex 1925 4216 138 29711
+localset 3425 0
+meshtexuv 1925 169 1188
+meshvertex 1926 4215 70 29717
+localset 3426 -2
+meshtexuv 1926 169 1189
+meshvertex 1927 4207 70 29717
+localset 3427 -2
+meshtexuv 1927 168 1189
+meshvertex 1928 4206 138 29797
+localset 3428 0
+meshtexuv 1928 168 1192
+meshvertex 1929 4216 138 29797
+localset 3429 0
+meshtexuv 1929 169 1192
+meshvertex 1930 4215 70 29803
+localset 3430 2
+meshtexuv 1930 169 1192
+meshvertex 1931 4207 70 29803
+localset 3431 2
+meshtexuv 1931 168 1192
+meshvertex 1932 4185 202 29818
+localset 3432 0
+meshtexuv 1932 167 1193
+meshvertex 1933 4172 225 29813
+localset 3433 0
+meshtexuv 1933 167 1193
+meshvertex 1934 4192 209 29823
+localset 3434 0
+meshtexuv 1934 168 1193
+meshvertex 1935 4203 202 29818
+localset 3435 0
+meshtexuv 1935 168 1193
+meshvertex 1936 4216 225 29813
+localset 3436 0
+meshtexuv 1936 169 1193
+meshvertex 1937 4196 209 29823
+localset 3437 0
+meshtexuv 1937 168 1193
+meshvertex 1938 4156 71 29669
+localset 3438 0
+meshtexuv 1938 166 1187
+meshvertex 1939 4232 71 29669
+localset 3439 0
+meshtexuv 1939 169 1187
+meshvertex 1940 4232 71 29839
+localset 3440 0
+meshtexuv 1940 169 1194
+meshvertex 1941 4156 71 29839
+localset 3441 0
+meshtexuv 1941 166 1194
+localset 3301 42
+jmp open_object_transform
+label open_object_skip_112
+localget r0 3300
+cmp r0 41
+jne open_object_skip_114
+localget r0 3200
+cmp r0 44
+jgt open_object_next
+localget r0 3201
+cmp r0 43
+jle open_object_next
+load8 r0 139
+cmp r0 1
+je open_object_next
+load8 r0 526
+cmp r0 2
+je open_object_next
+load32 r0 100
+sub r0 1998094
+mul r0 r0
+load32 r1 104
+sub r1 2085326
+mul r1 r1
+add r0 r1
+cmp r0 100000000
+jgt open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+load32 r0 115
+mod r0 200
+cmp r0 100
+jle open_object_active_115
+set r1 200
+sub r1 r0
+mov r0 r1
+label open_object_active_115
+sub r0 50
+div r0 2
+localset 3310 r0
+meshvertex 1900 -2739 235 85009
+localset 3400 0
+meshtexuv 1900 -110 3400
+meshvertex 1901 -2697 235 85009
+localset 3401 0
+meshtexuv 1901 -108 3400
+meshvertex 1902 -2697 287 85009
+localset 3402 0
+meshtexuv 1902 -108 3400
+meshvertex 1903 -2739 287 85009
+localset 3403 0
+meshtexuv 1903 -110 3400
+meshvertex 1904 -2739 235 85139
+localset 3404 0
+meshtexuv 1904 -110 3406
+meshvertex 1905 -2739 287 85139
+localset 3405 0
+meshtexuv 1905 -110 3406
+meshvertex 1906 -2697 287 85139
+localset 3406 0
+meshtexuv 1906 -108 3406
+meshvertex 1907 -2697 235 85139
+localset 3407 0
+meshtexuv 1907 -108 3406
+meshvertex 1908 -2731 267 85125
+localset 3408 0
+meshtexuv 1908 -109 3405
+meshvertex 1909 -2705 267 85125
+localset 3409 0
+meshtexuv 1909 -108 3405
+meshvertex 1910 -2705 312 85125
+localset 3410 0
+meshtexuv 1910 -108 3405
+meshvertex 1911 -2731 312 85125
+localset 3411 0
+meshtexuv 1911 -109 3405
+meshvertex 1912 -2731 267 85159
+localset 3412 0
+meshtexuv 1912 -109 3406
+meshvertex 1913 -2731 312 85159
+localset 3413 0
+meshtexuv 1913 -109 3406
+meshvertex 1914 -2705 312 85159
+localset 3414 0
+meshtexuv 1914 -108 3406
+meshvertex 1915 -2705 267 85159
+localset 3415 0
+meshtexuv 1915 -108 3406
+meshvertex 1916 -2740 243 85031
+localset 3416 0
+meshtexuv 1916 -110 3401
+meshvertex 1917 -2730 243 85031
+localset 3417 0
+meshtexuv 1917 -109 3401
+meshvertex 1918 -2731 175 85037
+localset 3418 2
+meshtexuv 1918 -109 3401
+meshvertex 1919 -2739 175 85037
+localset 3419 2
+meshtexuv 1919 -110 3401
+meshvertex 1920 -2740 243 85117
+localset 3420 0
+meshtexuv 1920 -110 3405
+meshvertex 1921 -2730 243 85117
+localset 3421 0
+meshtexuv 1921 -109 3405
+meshvertex 1922 -2731 175 85123
+localset 3422 -2
+meshtexuv 1922 -109 3405
+meshvertex 1923 -2739 175 85123
+localset 3423 -2
+meshtexuv 1923 -110 3405
+meshvertex 1924 -2706 243 85031
+localset 3424 0
+meshtexuv 1924 -108 3401
+meshvertex 1925 -2696 243 85031
+localset 3425 0
+meshtexuv 1925 -108 3401
+meshvertex 1926 -2697 175 85037
+localset 3426 -2
+meshtexuv 1926 -108 3401
+meshvertex 1927 -2705 175 85037
+localset 3427 -2
+meshtexuv 1927 -108 3401
+meshvertex 1928 -2706 243 85117
+localset 3428 0
+meshtexuv 1928 -108 3405
+meshvertex 1929 -2696 243 85117
+localset 3429 0
+meshtexuv 1929 -108 3405
+meshvertex 1930 -2697 175 85123
+localset 3430 2
+meshtexuv 1930 -108 3405
+meshvertex 1931 -2705 175 85123
+localset 3431 2
+meshtexuv 1931 -108 3405
+meshvertex 1932 -2727 307 85138
+localset 3432 0
+meshtexuv 1932 -109 3406
+meshvertex 1933 -2740 330 85133
+localset 3433 0
+meshtexuv 1933 -110 3405
+meshvertex 1934 -2720 314 85143
+localset 3434 0
+meshtexuv 1934 -109 3406
+meshvertex 1935 -2709 307 85138
+localset 3435 0
+meshtexuv 1935 -108 3406
+meshvertex 1936 -2696 330 85133
+localset 3436 0
+meshtexuv 1936 -108 3405
+meshvertex 1937 -2716 314 85143
+localset 3437 0
+meshtexuv 1937 -109 3406
+meshvertex 1938 -2756 176 84989
+localset 3438 0
+meshtexuv 1938 -110 3400
+meshvertex 1939 -2680 176 84989
+localset 3439 0
+meshtexuv 1939 -107 3400
+meshvertex 1940 -2680 176 85159
+localset 3440 0
+meshtexuv 1940 -107 3406
+meshvertex 1941 -2756 176 85159
+localset 3441 0
+meshtexuv 1941 -110 3406
+localset 3301 42
+jmp open_object_transform
+label open_object_skip_114
+localget r0 3300
+cmp r0 42
+jne open_object_skip_116
+localget r0 3200
+cmp r0 75
+jgt open_object_next
+localget r0 3201
+cmp r0 74
+jle open_object_next
+load8 r0 139
+cmp r0 1
+je open_object_next
+load8 r0 526
+cmp r0 2
+je open_object_next
+load32 r0 100
+sub r0 2000514
+mul r0 r0
+load32 r1 104
+sub r1 2146024
+mul r1 r1
+add r0 r1
+cmp r0 100000000
+jgt open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+load32 r0 115
+mod r0 200
+cmp r0 100
+jle open_object_active_117
+set r1 200
+sub r1 r0
+mov r0 r1
+label open_object_active_117
+sub r0 50
+div r0 2
+localset 3310 r0
+meshvertex 1900 1343 92 145966
+localset 3400 0
+meshtexuv 1900 54 5839
+meshvertex 1901 1385 92 145966
+localset 3401 0
+meshtexuv 1901 55 5839
+meshvertex 1902 1385 144 145966
+localset 3402 0
+meshtexuv 1902 55 5839
+meshvertex 1903 1343 144 145966
+localset 3403 0
+meshtexuv 1903 54 5839
+meshvertex 1904 1343 92 146096
+localset 3404 0
+meshtexuv 1904 54 5844
+meshvertex 1905 1343 144 146096
+localset 3405 0
+meshtexuv 1905 54 5844
+meshvertex 1906 1385 144 146096
+localset 3406 0
+meshtexuv 1906 55 5844
+meshvertex 1907 1385 92 146096
+localset 3407 0
+meshtexuv 1907 55 5844
+meshvertex 1908 1351 124 146082
+localset 3408 0
+meshtexuv 1908 54 5843
+meshvertex 1909 1377 124 146082
+localset 3409 0
+meshtexuv 1909 55 5843
+meshvertex 1910 1377 169 146082
+localset 3410 0
+meshtexuv 1910 55 5843
+meshvertex 1911 1351 169 146082
+localset 3411 0
+meshtexuv 1911 54 5843
+meshvertex 1912 1351 124 146116
+localset 3412 0
+meshtexuv 1912 54 5845
+meshvertex 1913 1351 169 146116
+localset 3413 0
+meshtexuv 1913 54 5845
+meshvertex 1914 1377 169 146116
+localset 3414 0
+meshtexuv 1914 55 5845
+meshvertex 1915 1377 124 146116
+localset 3415 0
+meshtexuv 1915 55 5845
+meshvertex 1916 1342 100 145988
+localset 3416 0
+meshtexuv 1916 54 5840
+meshvertex 1917 1352 100 145988
+localset 3417 0
+meshtexuv 1917 54 5840
+meshvertex 1918 1351 32 145994
+localset 3418 2
+meshtexuv 1918 54 5840
+meshvertex 1919 1343 32 145994
+localset 3419 2
+meshtexuv 1919 54 5840
+meshvertex 1920 1342 100 146074
+localset 3420 0
+meshtexuv 1920 54 5843
+meshvertex 1921 1352 100 146074
+localset 3421 0
+meshtexuv 1921 54 5843
+meshvertex 1922 1351 32 146080
+localset 3422 -2
+meshtexuv 1922 54 5843
+meshvertex 1923 1343 32 146080
+localset 3423 -2
+meshtexuv 1923 54 5843
+meshvertex 1924 1376 100 145988
+localset 3424 0
+meshtexuv 1924 55 5840
+meshvertex 1925 1386 100 145988
+localset 3425 0
+meshtexuv 1925 55 5840
+meshvertex 1926 1385 32 145994
+localset 3426 -2
+meshtexuv 1926 55 5840
+meshvertex 1927 1377 32 145994
+localset 3427 -2
+meshtexuv 1927 55 5840
+meshvertex 1928 1376 100 146074
+localset 3428 0
+meshtexuv 1928 55 5843
+meshvertex 1929 1386 100 146074
+localset 3429 0
+meshtexuv 1929 55 5843
+meshvertex 1930 1385 32 146080
+localset 3430 2
+meshtexuv 1930 55 5843
+meshvertex 1931 1377 32 146080
+localset 3431 2
+meshtexuv 1931 55 5843
+meshvertex 1932 1355 164 146095
+localset 3432 0
+meshtexuv 1932 54 5844
+meshvertex 1933 1342 187 146090
+localset 3433 0
+meshtexuv 1933 54 5844
+meshvertex 1934 1362 171 146100
+localset 3434 0
+meshtexuv 1934 54 5844
+meshvertex 1935 1373 164 146095
+localset 3435 0
+meshtexuv 1935 55 5844
+meshvertex 1936 1386 187 146090
+localset 3436 0
+meshtexuv 1936 55 5844
+meshvertex 1937 1366 171 146100
+localset 3437 0
+meshtexuv 1937 55 5844
+meshvertex 1938 1326 33 145946
+localset 3438 0
+meshtexuv 1938 53 5838
+meshvertex 1939 1402 33 145946
+localset 3439 0
+meshtexuv 1939 56 5838
+meshvertex 1940 1402 33 146116
+localset 3440 0
+meshtexuv 1940 56 5845
+meshvertex 1941 1326 33 146116
+localset 3441 0
+meshtexuv 1941 53 5845
+localset 3301 42
+jmp open_object_transform
+label open_object_skip_116
+localget r0 3300
+cmp r0 43
+jne open_object_skip_118
+localget r0 3200
+cmp r0 7
+jgt open_object_next
+localget r0 3201
+cmp r0 6
+jle open_object_next
+load8 r0 139
+cmp r0 1
+je open_object_next
+load8 r0 526
+cmp r0 2
+je open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+load32 r0 115
+mod r0 200
+cmp r0 100
+jle open_object_active_119
+set r1 200
+sub r1 r0
+mov r0 r1
+label open_object_active_119
+sub r0 50
+div r0 2
+localset 3310 r0
+meshvertex 1900 -26 732 12097
+localset 3400 0
+meshtexuv 1900 -1 484
+meshvertex 1901 -91 739 12116
+localset 3401 1
+meshtexuv 1901 -4 485
+meshvertex 1902 -26 732 12137
+localset 3402 0
+meshtexuv 1902 -1 485
+meshvertex 1903 39 739 12116
+localset 3403 1
+meshtexuv 1903 2 485
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_118
+localget r0 3300
+cmp r0 44
+jne open_object_skip_120
+localget r0 3200
+cmp r0 22
+jgt open_object_next
+localget r0 3201
+cmp r0 21
+jle open_object_next
+load8 r0 139
+cmp r0 1
+je open_object_next
+load8 r0 526
+cmp r0 2
+je open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+load32 r0 115
+mod r0 200
+cmp r0 100
+jle open_object_active_121
+set r1 200
+sub r1 r0
+mov r0 r1
+label open_object_active_121
+sub r0 50
+div r0 2
+localset 3310 r0
+meshvertex 1900 2060 793 41695
+localset 3400 0
+meshtexuv 1900 82 1668
+meshvertex 1901 1995 800 41714
+localset 3401 1
+meshtexuv 1901 80 1669
+meshvertex 1902 2060 793 41735
+localset 3402 0
+meshtexuv 1902 82 1669
+meshvertex 1903 2125 800 41714
+localset 3403 1
+meshtexuv 1903 85 1669
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_120
+localget r0 3300
+cmp r0 45
+jne open_object_skip_122
+localget r0 3200
+cmp r0 40
+jgt open_object_next
+localget r0 3201
+cmp r0 39
+jle open_object_next
+load8 r0 139
+cmp r0 1
+je open_object_next
+load8 r0 526
+cmp r0 2
+je open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+load32 r0 115
+mod r0 200
+cmp r0 100
+jle open_object_active_123
+set r1 200
+sub r1 r0
+mov r0 r1
+label open_object_active_123
+sub r0 50
+div r0 2
+localset 3310 r0
+meshvertex 1900 -878 871 77335
+localset 3400 0
+meshtexuv 1900 -35 3093
+meshvertex 1901 -943 878 77354
+localset 3401 1
+meshtexuv 1901 -38 3094
+meshvertex 1902 -878 871 77375
+localset 3402 0
+meshtexuv 1902 -35 3095
+meshvertex 1903 -813 878 77354
+localset 3403 1
+meshtexuv 1903 -33 3094
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_122
+localget r0 3300
+cmp r0 46
+jne open_object_skip_124
+localget r0 3200
+cmp r0 68
+jgt open_object_next
+localget r0 3201
+cmp r0 67
+jle open_object_next
+load8 r0 139
+cmp r0 1
+je open_object_next
+load8 r0 526
+cmp r0 2
+je open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+load32 r0 115
+mod r0 200
+cmp r0 100
+jle open_object_active_125
+set r1 200
+sub r1 r0
+mov r0 r1
+label open_object_active_125
+sub r0 50
+div r0 2
+localset 3310 r0
+meshvertex 1900 -2034 768 132327
+localset 3400 0
+meshtexuv 1900 -81 5293
+meshvertex 1901 -2099 775 132346
+localset 3401 1
+meshtexuv 1901 -84 5294
+meshvertex 1902 -2034 768 132367
+localset 3402 0
+meshtexuv 1902 -81 5295
+meshvertex 1903 -1969 775 132346
+localset 3403 1
+meshtexuv 1903 -79 5294
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_124
+localget r0 3300
+cmp r0 47
+jne open_object_skip_126
+localget r0 3200
+cmp r0 52
+jgt open_object_next
+localget r0 3201
+cmp r0 51
+jle open_object_next
+load8 r0 139
+cmp r0 1
+je open_object_next
+load32 r0 100
+sub r0 1994035
+mul r0 r0
+load32 r1 104
+sub r1 2100783
+mul r1 r1
+add r0 r1
+cmp r0 36000000
+jgt open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+load32 r0 115
+mod r0 200
+cmp r0 100
+jle open_object_active_127
+set r1 200
+sub r1 r0
+mov r0 r1
+label open_object_active_127
+sub r0 50
+div r0 2
+localset 3310 r0
+meshvertex 1900 -4781 3 100899
+localset 3400 0
+meshtexuv 1900 -191 4036
+meshvertex 1901 -4762 3 100923
+localset 3401 0
+meshtexuv 1901 -190 4037
+meshvertex 1902 -4781 3 100947
+localset 3402 0
+meshtexuv 1902 -191 4038
+meshvertex 1903 -4781 3 100941
+localset 3403 0
+meshtexuv 1903 -191 4038
+meshvertex 1904 -4791 3 100957
+localset 3404 0
+meshtexuv 1904 -192 4038
+meshvertex 1905 -4767 3 100952
+localset 3405 0
+meshtexuv 1905 -191 4038
+localset 3301 6
+jmp open_object_transform
+label open_object_skip_126
+localget r0 3300
+cmp r0 48
+jne open_object_skip_128
+localget r0 3200
+cmp r0 57
+jgt open_object_next
+localget r0 3201
+cmp r0 56
+jle open_object_next
+load8 r0 139
+cmp r0 1
+je open_object_next
+load32 r0 100
+sub r0 1993919
+mul r0 r0
+load32 r1 104
+sub r1 2110754
+mul r1 r1
+add r0 r1
+cmp r0 36000000
+jgt open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+load32 r0 115
+mod r0 200
+cmp r0 100
+jle open_object_active_129
+set r1 200
+sub r1 r0
+mov r0 r1
+label open_object_active_129
+sub r0 50
+div r0 2
+localset 3310 r0
+meshvertex 1900 -4901 3 110563
+localset 3400 0
+meshtexuv 1900 -196 4423
+meshvertex 1901 -4882 3 110587
+localset 3401 0
+meshtexuv 1901 -195 4423
+meshvertex 1902 -4901 3 110611
+localset 3402 0
+meshtexuv 1902 -196 4424
+meshvertex 1903 -4901 3 110605
+localset 3403 0
+meshtexuv 1903 -196 4424
+meshvertex 1904 -4911 3 110621
+localset 3404 0
+meshtexuv 1904 -196 4425
+meshvertex 1905 -4887 3 110616
+localset 3405 0
+meshtexuv 1905 -195 4425
+localset 3301 6
+jmp open_object_transform
+label open_object_skip_128
+localget r0 3300
+cmp r0 49
+jne open_object_skip_130
+localget r0 3200
+cmp r0 61
+jgt open_object_next
+localget r0 3201
+cmp r0 60
+jle open_object_next
+load8 r0 139
+cmp r0 1
+je open_object_next
+load32 r0 100
+sub r0 1995464
+mul r0 r0
+load32 r1 104
+sub r1 2118597
+mul r1 r1
+add r0 r1
+cmp r0 36000000
+jgt open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+load32 r0 115
+mod r0 200
+cmp r0 100
+jle open_object_active_131
+set r1 200
+sub r1 r0
+mov r0 r1
+label open_object_active_131
+sub r0 50
+div r0 2
+localset 3310 r0
+meshvertex 1900 -3385 3 118264
+localset 3400 0
+meshtexuv 1900 -135 4731
+meshvertex 1901 -3366 3 118288
+localset 3401 0
+meshtexuv 1901 -135 4732
+meshvertex 1902 -3385 3 118312
+localset 3402 0
+meshtexuv 1902 -135 4732
+meshvertex 1903 -3385 3 118306
+localset 3403 0
+meshtexuv 1903 -135 4732
+meshvertex 1904 -3395 3 118322
+localset 3404 0
+meshtexuv 1904 -136 4733
+meshvertex 1905 -3371 3 118317
+localset 3405 0
+meshtexuv 1905 -135 4733
+localset 3301 6
+jmp open_object_transform
+label open_object_skip_130
+localget r0 3300
+cmp r0 50
+jne open_object_skip_132
+localget r0 3200
+cmp r0 12
+jgt open_object_next
+localget r0 3201
+cmp r0 11
+jle open_object_next
+load8 r0 139
+cmp r0 1
+je open_object_next
+load8 r0 526
+cmp r0 2
+je open_object_next
+load32 r0 100
+sub r0 2002609
+mul r0 r0
+load32 r1 104
+sub r1 2021820
+mul r1 r1
+add r0 r1
+cmp r0 36000000
+jgt open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+load32 r0 115
+mod r0 200
+cmp r0 100
+jle open_object_active_133
+set r1 200
+sub r1 r0
+mov r0 r1
+label open_object_active_133
+sub r0 50
+div r0 2
+localset 3310 r0
+meshvertex 1900 3204 129 21742
+localset 3400 0
+meshtexuv 1900 128 870
+meshvertex 1901 3191 138 21746
+localset 3401 1
+meshtexuv 1901 128 870
+meshvertex 1902 3204 129 21755
+localset 3402 0
+meshtexuv 1902 128 870
+meshvertex 1903 3217 138 21746
+localset 3403 1
+meshtexuv 1903 129 870
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_132
+localget r0 3300
+cmp r0 51
+jne open_object_skip_134
+localget r0 3200
+cmp r0 43
+jgt open_object_next
+localget r0 3201
+cmp r0 42
+jle open_object_next
+load8 r0 139
+cmp r0 1
+je open_object_next
+load8 r0 526
+cmp r0 2
+je open_object_next
+load32 r0 100
+sub r0 1998668
+mul r0 r0
+load32 r1 104
+sub r1 2083410
+mul r1 r1
+add r0 r1
+cmp r0 36000000
+jgt open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+load32 r0 115
+mod r0 200
+cmp r0 100
+jle open_object_active_135
+set r1 200
+sub r1 r0
+mov r0 r1
+label open_object_active_135
+sub r0 50
+div r0 2
+localset 3310 r0
+meshvertex 1900 -757 237 83578
+localset 3400 0
+meshtexuv 1900 -30 3343
+meshvertex 1901 -770 246 83582
+localset 3401 1
+meshtexuv 1901 -31 3343
+meshvertex 1902 -757 237 83591
+localset 3402 0
+meshtexuv 1902 -30 3344
+meshvertex 1903 -744 246 83582
+localset 3403 1
+meshtexuv 1903 -30 3343
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_134
+localget r0 3300
+cmp r0 52
+jne open_object_skip_136
+localget r0 3200
+cmp r0 76
+jgt open_object_next
+localget r0 3201
+cmp r0 75
+jle open_object_next
+load8 r0 139
+cmp r0 1
+je open_object_next
+load8 r0 526
+cmp r0 2
+je open_object_next
+load32 r0 100
+sub r0 2000500
+mul r0 r0
+load32 r1 104
+sub r1 2148024
+mul r1 r1
+add r0 r1
+cmp r0 36000000
+jgt open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+load32 r0 115
+mod r0 200
+cmp r0 100
+jle open_object_active_137
+set r1 200
+sub r1 r0
+mov r0 r1
+label open_object_active_137
+sub r0 50
+div r0 2
+localset 3310 r0
+meshvertex 1900 1100 89 148036
+localset 3400 0
+meshtexuv 1900 44 5921
+meshvertex 1901 1087 98 148040
+localset 3401 1
+meshtexuv 1901 43 5922
+meshvertex 1902 1100 89 148049
+localset 3402 0
+meshtexuv 1902 44 5922
+meshvertex 1903 1113 98 148040
+localset 3403 1
+meshtexuv 1903 45 5922
+localset 3301 4
+jmp open_object_transform
+label open_object_skip_136
+jmp open_objects_done
+label open_object_draw
+localget r9 18
+mov r10 r9
+div r10 2
+mov r11 r10
+mul r11 9
+div r11 16
+mul r9 85
+div r9 100
+localget r0 3300
+cmp r0 0
+jne open_draw_skip_138
+meshfacegradienttex 2000 2001 2002 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 9 3 7 2 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_138
+localget r0 3300
+cmp r0 1
+jne open_draw_skip_139
+meshfacegradienttex 2000 2001 2002 32 8 0 1 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 32 8 0 1 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_139
+localget r0 3300
+cmp r0 2
+jne open_draw_skip_140
+meshfacegradienttex 2000 2001 2002 32 8 0 1 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 32 8 0 1 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_140
+localget r0 3300
+cmp r0 3
+jne open_draw_skip_141
+meshfacegradienttex 2000 2001 2002 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 9 3 7 2 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_141
+localget r0 3300
+cmp r0 4
+jne open_draw_skip_142
+meshfacegradienttex 2000 2001 2002 32 8 0 1 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 32 8 0 1 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_142
+localget r0 3300
+cmp r0 5
+jne open_draw_skip_143
+meshfacegradienttex 2000 2001 2002 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 9 3 7 2 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_143
+localget r0 3300
+cmp r0 6
+jne open_draw_skip_144
+meshfacegradienttex 2000 2001 2002 32 8 0 1 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 32 8 0 1 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_144
+localget r0 3300
+cmp r0 7
+jne open_draw_skip_145
+meshfacegradienttex 2000 2001 2002 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 9 3 7 2 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_145
+localget r0 3300
+cmp r0 8
+jne open_draw_skip_146
+meshfacegradienttex 2000 2001 2002 32 8 0 1 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 32 8 0 1 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_146
+localget r0 3300
+cmp r0 9
+jne open_draw_skip_147
+meshfacegradienttex 2000 2001 2002 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 9 3 7 2 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_147
+localget r0 3300
+cmp r0 10
+jne open_draw_skip_148
+meshfacegradienttex 2000 2001 2002 32 8 0 1 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 32 8 0 1 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_148
+localget r0 3300
+cmp r0 11
+jne open_draw_skip_149
+meshfacegradienttex 2000 2001 2002 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 9 3 7 2 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_149
+localget r0 3300
+cmp r0 12
+jne open_draw_skip_150
+meshfacegradienttex 2000 2001 2002 32 8 0 1 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 32 8 0 1 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_150
+localget r0 3300
+cmp r0 13
+jne open_draw_skip_151
+meshfacegradienttex 2000 2001 2002 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 9 3 7 2 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_151
+localget r0 3300
+cmp r0 14
+jne open_draw_skip_152
+meshfacegradienttex 2000 2001 2002 32 8 0 1 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 32 8 0 1 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_152
+localget r0 3300
+cmp r0 15
+jne open_draw_skip_153
+meshfacegradienttex 2000 2001 2002 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 9 3 7 2 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_153
+localget r0 3300
+cmp r0 16
+jne open_draw_skip_154
+meshfacegradienttex 2000 2001 2002 32 8 0 1 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 32 8 0 1 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_154
+localget r0 3300
+cmp r0 17
+jne open_draw_skip_155
+meshfacegradienttex 2000 2001 2002 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 9 3 7 2 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_155
+localget r0 3300
+cmp r0 18
+jne open_draw_skip_156
+meshfacegradienttex 2000 2001 2002 32 8 0 1 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 32 8 0 1 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_156
+localget r0 3300
+cmp r0 19
+jne open_draw_skip_157
+meshfacegradienttex 2000 2001 2002 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 9 3 7 2 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_157
+localget r0 3300
+cmp r0 20
+jne open_draw_skip_158
+meshfacegradienttex 2000 2001 2002 32 8 0 1 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 32 8 0 1 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_158
+localget r0 3300
+cmp r0 21
+jne open_draw_skip_159
+meshfacegradienttex 2000 2001 2002 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 9 3 7 2 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_159
+localget r0 3300
+cmp r0 22
+jne open_draw_skip_160
+meshfacegradienttex 2000 2001 2002 32 8 0 1 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 32 8 0 1 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_160
+localget r0 3300
+cmp r0 23
+jne open_draw_skip_161
+meshfacegradienttex 2000 2001 2002 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 9 3 7 2 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_161
+localget r0 3300
+cmp r0 24
+jne open_draw_skip_162
+meshfacegradienttex 2000 2001 2002 32 8 0 1 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 32 8 0 1 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_162
+localget r0 3300
+cmp r0 25
+jne open_draw_skip_163
+meshfacegradienttex 2000 2001 2002 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 9 3 7 2 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_163
+localget r0 3300
+cmp r0 26
+jne open_draw_skip_164
+meshfacegradienttex 2000 2001 2002 32 8 0 1 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 32 8 0 1 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_164
+localget r0 3300
+cmp r0 27
+jne open_draw_skip_165
+meshfacegradienttex 2000 2001 2002 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 9 3 7 2 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_165
+localget r0 3300
+cmp r0 28
+jne open_draw_skip_166
+meshfacegradienttex 2000 2001 2002 32 8 0 1 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 32 8 0 1 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_166
+localget r0 3300
+cmp r0 29
+jne open_draw_skip_167
+meshfacegradienttex 2000 2001 2002 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 9 3 7 2 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_167
+localget r0 3300
+cmp r0 30
+jne open_draw_skip_168
+meshface 2000 2001 2002 14 r9 r10 r11 60
+meshface 2003 2004 2005 14 r9 r10 r11 60
+meshface 2006 2007 2008 14 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_168
+localget r0 3300
+cmp r0 31
+jne open_draw_skip_169
+meshface 2000 2001 2002 14 r9 r10 r11 60
+meshface 2003 2004 2005 14 r9 r10 r11 60
+meshface 2006 2007 2008 14 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_169
+localget r0 3300
+cmp r0 32
+jne open_draw_skip_170
+meshface 2000 2001 2002 14 r9 r10 r11 60
+meshface 2003 2004 2005 14 r9 r10 r11 60
+meshface 2006 2007 2008 14 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_170
+localget r0 3300
+cmp r0 33
+jne open_draw_skip_171
+meshfacegradienttex 2000 2001 2002 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2004 2005 2006 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2004 2006 2007 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2000 2004 2007 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2000 2007 2001 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2003 2002 2006 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2003 2006 2005 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2000 2003 2005 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2000 2005 2004 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2001 2007 2006 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2001 2006 2002 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2008 2009 2010 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2008 2010 2011 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2012 2013 2014 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2012 2014 2015 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2008 2012 2015 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2008 2015 2009 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2011 2010 2014 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2011 2014 2013 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2008 2011 2013 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2008 2013 2012 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2009 2015 2014 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2009 2014 2010 9 3 7 2 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_171
+localget r0 3300
+cmp r0 34
+jne open_draw_skip_172
+meshfacegradienttex 2000 2001 2002 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 9 3 7 2 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_172
+localget r0 3300
+cmp r0 35
+jne open_draw_skip_173
+meshfacegradienttex 2000 2001 2002 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 9 3 7 2 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_173
+localget r0 3300
+cmp r0 36
+jne open_draw_skip_174
+meshfacegradienttex 2000 2001 2002 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 9 3 7 2 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_174
+localget r0 3300
+cmp r0 37
+jne open_draw_skip_175
+meshfacegradienttex 2000 2001 2002 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 9 3 7 2 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_175
+localget r0 3300
+cmp r0 38
+jne open_draw_skip_176
+meshfacegradienttex 2000 2001 2002 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 9 3 7 2 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_176
+localget r0 3300
+cmp r0 39
+jne open_draw_skip_177
+meshfacegradienttex 2000 2001 2002 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 2000 2002 2003 9 3 7 2 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_177
+localget r0 3300
+cmp r0 40
+jne open_draw_skip_178
+meshface 2000 2001 2002 10 r9 r10 r11 60
+meshface 2000 2002 2003 10 r9 r10 r11 60
+meshface 2004 2005 2006 10 r9 r10 r11 60
+meshface 2004 2006 2007 10 r9 r10 r11 60
+meshface 2000 2004 2007 10 r9 r10 r11 60
+meshface 2000 2007 2001 10 r9 r10 r11 60
+meshface 2003 2002 2006 10 r9 r10 r11 60
+meshface 2003 2006 2005 10 r9 r10 r11 60
+meshface 2000 2003 2005 10 r9 r10 r11 60
+meshface 2000 2005 2004 10 r9 r10 r11 60
+meshface 2001 2007 2006 10 r9 r10 r11 60
+meshface 2001 2006 2002 10 r9 r10 r11 60
+meshface 2008 2009 2010 11 r9 r10 r11 60
+meshface 2008 2010 2011 11 r9 r10 r11 60
+meshface 2012 2013 2014 11 r9 r10 r11 60
+meshface 2012 2014 2015 11 r9 r10 r11 60
+meshface 2008 2012 2015 11 r9 r10 r11 60
+meshface 2008 2015 2009 11 r9 r10 r11 60
+meshface 2011 2010 2014 11 r9 r10 r11 60
+meshface 2011 2014 2013 11 r9 r10 r11 60
+meshface 2008 2011 2013 11 r9 r10 r11 60
+meshface 2008 2013 2012 11 r9 r10 r11 60
+meshface 2009 2015 2014 11 r9 r10 r11 60
+meshface 2009 2014 2010 11 r9 r10 r11 60
+meshface 2016 2017 2018 9 r9 r10 r11 60
+meshface 2016 2018 2019 9 r9 r10 r11 60
+meshface 2020 2021 2022 9 r9 r10 r11 60
+meshface 2020 2022 2023 9 r9 r10 r11 60
+meshface 2024 2025 2026 9 r9 r10 r11 60
+meshface 2024 2026 2027 9 r9 r10 r11 60
+meshface 2028 2029 2030 9 r9 r10 r11 60
+meshface 2028 2030 2031 9 r9 r10 r11 60
+meshface 2032 2033 2034 11 r9 r10 r11 60
+meshface 2035 2036 2037 11 r9 r10 r11 60
+meshface 2038 2039 2040 24 r9 r10 r11 60
+meshface 2038 2040 2041 24 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_178
+localget r0 3300
+cmp r0 41
+jne open_draw_skip_179
+meshface 2000 2001 2002 10 r9 r10 r11 60
+meshface 2000 2002 2003 10 r9 r10 r11 60
+meshface 2004 2005 2006 10 r9 r10 r11 60
+meshface 2004 2006 2007 10 r9 r10 r11 60
+meshface 2000 2004 2007 10 r9 r10 r11 60
+meshface 2000 2007 2001 10 r9 r10 r11 60
+meshface 2003 2002 2006 10 r9 r10 r11 60
+meshface 2003 2006 2005 10 r9 r10 r11 60
+meshface 2000 2003 2005 10 r9 r10 r11 60
+meshface 2000 2005 2004 10 r9 r10 r11 60
+meshface 2001 2007 2006 10 r9 r10 r11 60
+meshface 2001 2006 2002 10 r9 r10 r11 60
+meshface 2008 2009 2010 11 r9 r10 r11 60
+meshface 2008 2010 2011 11 r9 r10 r11 60
+meshface 2012 2013 2014 11 r9 r10 r11 60
+meshface 2012 2014 2015 11 r9 r10 r11 60
+meshface 2008 2012 2015 11 r9 r10 r11 60
+meshface 2008 2015 2009 11 r9 r10 r11 60
+meshface 2011 2010 2014 11 r9 r10 r11 60
+meshface 2011 2014 2013 11 r9 r10 r11 60
+meshface 2008 2011 2013 11 r9 r10 r11 60
+meshface 2008 2013 2012 11 r9 r10 r11 60
+meshface 2009 2015 2014 11 r9 r10 r11 60
+meshface 2009 2014 2010 11 r9 r10 r11 60
+meshface 2016 2017 2018 9 r9 r10 r11 60
+meshface 2016 2018 2019 9 r9 r10 r11 60
+meshface 2020 2021 2022 9 r9 r10 r11 60
+meshface 2020 2022 2023 9 r9 r10 r11 60
+meshface 2024 2025 2026 9 r9 r10 r11 60
+meshface 2024 2026 2027 9 r9 r10 r11 60
+meshface 2028 2029 2030 9 r9 r10 r11 60
+meshface 2028 2030 2031 9 r9 r10 r11 60
+meshface 2032 2033 2034 11 r9 r10 r11 60
+meshface 2035 2036 2037 11 r9 r10 r11 60
+meshface 2038 2039 2040 24 r9 r10 r11 60
+meshface 2038 2040 2041 24 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_179
+localget r0 3300
+cmp r0 42
+jne open_draw_skip_180
+meshface 2000 2001 2002 10 r9 r10 r11 60
+meshface 2000 2002 2003 10 r9 r10 r11 60
+meshface 2004 2005 2006 10 r9 r10 r11 60
+meshface 2004 2006 2007 10 r9 r10 r11 60
+meshface 2000 2004 2007 10 r9 r10 r11 60
+meshface 2000 2007 2001 10 r9 r10 r11 60
+meshface 2003 2002 2006 10 r9 r10 r11 60
+meshface 2003 2006 2005 10 r9 r10 r11 60
+meshface 2000 2003 2005 10 r9 r10 r11 60
+meshface 2000 2005 2004 10 r9 r10 r11 60
+meshface 2001 2007 2006 10 r9 r10 r11 60
+meshface 2001 2006 2002 10 r9 r10 r11 60
+meshface 2008 2009 2010 11 r9 r10 r11 60
+meshface 2008 2010 2011 11 r9 r10 r11 60
+meshface 2012 2013 2014 11 r9 r10 r11 60
+meshface 2012 2014 2015 11 r9 r10 r11 60
+meshface 2008 2012 2015 11 r9 r10 r11 60
+meshface 2008 2015 2009 11 r9 r10 r11 60
+meshface 2011 2010 2014 11 r9 r10 r11 60
+meshface 2011 2014 2013 11 r9 r10 r11 60
+meshface 2008 2011 2013 11 r9 r10 r11 60
+meshface 2008 2013 2012 11 r9 r10 r11 60
+meshface 2009 2015 2014 11 r9 r10 r11 60
+meshface 2009 2014 2010 11 r9 r10 r11 60
+meshface 2016 2017 2018 9 r9 r10 r11 60
+meshface 2016 2018 2019 9 r9 r10 r11 60
+meshface 2020 2021 2022 9 r9 r10 r11 60
+meshface 2020 2022 2023 9 r9 r10 r11 60
+meshface 2024 2025 2026 9 r9 r10 r11 60
+meshface 2024 2026 2027 9 r9 r10 r11 60
+meshface 2028 2029 2030 9 r9 r10 r11 60
+meshface 2028 2030 2031 9 r9 r10 r11 60
+meshface 2032 2033 2034 11 r9 r10 r11 60
+meshface 2035 2036 2037 11 r9 r10 r11 60
+meshface 2038 2039 2040 24 r9 r10 r11 60
+meshface 2038 2040 2041 24 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_180
+localget r0 3300
+cmp r0 43
+jne open_draw_skip_181
+meshface 2000 2001 2002 226 r9 r10 r11 60
+meshface 2000 2002 2003 226 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_181
+localget r0 3300
+cmp r0 44
+jne open_draw_skip_182
+meshface 2000 2001 2002 226 r9 r10 r11 60
+meshface 2000 2002 2003 226 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_182
+localget r0 3300
+cmp r0 45
+jne open_draw_skip_183
+meshface 2000 2001 2002 226 r9 r10 r11 60
+meshface 2000 2002 2003 226 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_183
+localget r0 3300
+cmp r0 46
+jne open_draw_skip_184
+meshface 2000 2001 2002 226 r9 r10 r11 60
+meshface 2000 2002 2003 226 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_184
+localget r0 3300
+cmp r0 47
+jne open_draw_skip_185
+meshface 2000 2001 2002 22 r9 r10 r11 60
+meshface 2003 2004 2005 22 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_185
+localget r0 3300
+cmp r0 48
+jne open_draw_skip_186
+meshface 2000 2001 2002 22 r9 r10 r11 60
+meshface 2003 2004 2005 22 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_186
+localget r0 3300
+cmp r0 49
+jne open_draw_skip_187
+meshface 2000 2001 2002 22 r9 r10 r11 60
+meshface 2003 2004 2005 22 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_187
+localget r0 3300
+cmp r0 50
+jne open_draw_skip_188
+meshface 2000 2001 2002 243 r9 r10 r11 60
+meshface 2000 2002 2003 243 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_188
+localget r0 3300
+cmp r0 51
+jne open_draw_skip_189
+meshface 2000 2001 2002 243 r9 r10 r11 60
+meshface 2000 2002 2003 243 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_189
+localget r0 3300
+cmp r0 52
+jne open_draw_skip_190
+meshface 2000 2001 2002 243 r9 r10 r11 60
+meshface 2000 2002 2003 243 r9 r10 r11 60
+jmp open_object_next
+label open_draw_skip_190
+label open_object_next
+localget r0 3300
+add r0 1
+localset 3300 r0
+jmp open_object_dispatch
+label open_objects_done
+load8 r0 526
+cmp r0 0
+je open_headlights_done
+load16 r0 108
+mov r3 r0
+add r3 0
+mod r3 4096
+cmp r3 0
+jge sin_negative_191
+add r3 4096
+label sin_negative_191
+mov r5 r3
+mod r5 2048
+set r6 2048
+sub r6 r5
+mul r5 r6
+mov r6 r5
+mul r6 4
+set r4 20971520
+sub r4 r6
+mul r5 262144
+div r5 r4
+cmp r3 2048
+jlt sin_done_192
+mul r5 -1
+label sin_done_192
+mov r3 r5
+mov r6 r3
+mov r9 r6
+add r9 32768
+localset 58 r9
+mov r4 r0
+add r4 1024
+mod r4 4096
+cmp r4 0
+jge sin_negative_193
+add r4 4096
+label sin_negative_193
+mov r5 r4
+mod r5 2048
+set r6 2048
+sub r6 r5
+mul r5 r6
+mov r6 r5
+mul r6 4
+set r3 20971520
+sub r3 r6
+mul r5 262144
+div r5 r3
+cmp r4 2048
+jlt sin_done_194
+mul r5 -1
+label sin_done_194
+mov r4 r5
+localget r3 58
+sub r3 32768
+localset 3323 r3
+localset 3324 r4
+localget r0 3324
+mul r0 -65
+localget r2 3323
+mul r2 190
+add r0 r2
+div r0 16384
+load32 r1 100
+sub r1 2000000
+add r0 r1
+localget r2 3324
+mul r2 190
+localget r1 3323
+mul r1 -65
+sub r2 r1
+div r2 16384
+load32 r1 104
+sub r1 2000000
+add r2 r1
+load16 r1 520
+add r1 4
+sub r0 r12
+sub r2 r13
+mov r9 r0
+mul r9 r15
+mov r10 r2
+mul r10 r14
+sub r9 r10
+div r9 16384
+mov r10 r0
+mul r10 r14
+mov r11 r2
+mul r11 r15
+add r10 r11
+div r10 16384
+mov r0 r9
+localget r11 0
+add r10 r11
+localget r11 2
+sub r1 r11
+localget r11 4
+mul r11 r1
+localget r9 6
+mov r2 r10
+mul r2 r9
+sub r2 r11
+div r2 1000
+mul r1 r9
+localget r11 4
+mul r11 r10
+add r1 r11
+div r1 1000
+meshvertex 2000 r0 r1 r2
+meshshade 2000 225
+localget r0 3324
+mul r0 65
+localget r2 3323
+mul r2 190
+add r0 r2
+div r0 16384
+load32 r1 100
+sub r1 2000000
+add r0 r1
+localget r2 3324
+mul r2 190
+localget r1 3323
+mul r1 65
+sub r2 r1
+div r2 16384
+load32 r1 104
+sub r1 2000000
+add r2 r1
+load16 r1 520
+add r1 4
+sub r0 r12
+sub r2 r13
+mov r9 r0
+mul r9 r15
+mov r10 r2
+mul r10 r14
+sub r9 r10
+div r9 16384
+mov r10 r0
+mul r10 r14
+mov r11 r2
+mul r11 r15
+add r10 r11
+div r10 16384
+mov r0 r9
+localget r11 0
+add r10 r11
+localget r11 2
+sub r1 r11
+localget r11 4
+mul r11 r1
+localget r9 6
+mov r2 r10
+mul r2 r9
+sub r2 r11
+div r2 1000
+mul r1 r9
+localget r11 4
+mul r11 r10
+add r1 r11
+div r1 1000
+meshvertex 2001 r0 r1 r2
+meshshade 2001 225
+localget r0 3324
+mul r0 360
+localget r2 3323
+mul r2 1700
+add r0 r2
+div r0 16384
+load32 r1 100
+sub r1 2000000
+add r0 r1
+localget r2 3324
+mul r2 1700
+localget r1 3323
+mul r1 360
+sub r2 r1
+div r2 16384
+load32 r1 104
+sub r1 2000000
+add r2 r1
+load16 r1 520
+add r1 4
+sub r0 r12
+sub r2 r13
+mov r9 r0
+mul r9 r15
+mov r10 r2
+mul r10 r14
+sub r9 r10
+div r9 16384
+mov r10 r0
+mul r10 r14
+mov r11 r2
+mul r11 r15
+add r10 r11
+div r10 16384
+mov r0 r9
+localget r11 0
+add r10 r11
+localget r11 2
+sub r1 r11
+localget r11 4
+mul r11 r1
+localget r9 6
+mov r2 r10
+mul r2 r9
+sub r2 r11
+div r2 1000
+mul r1 r9
+localget r11 4
+mul r11 r10
+add r1 r11
+div r1 1000
+meshvertex 2002 r0 r1 r2
+meshshade 2002 0
+localget r0 3324
+mul r0 -360
+localget r2 3323
+mul r2 1700
+add r0 r2
+div r0 16384
+load32 r1 100
+sub r1 2000000
+add r0 r1
+localget r2 3324
+mul r2 1700
+localget r1 3323
+mul r1 -360
+sub r2 r1
+div r2 16384
+load32 r1 104
+sub r1 2000000
+add r2 r1
+load16 r1 520
+add r1 4
+sub r0 r12
+sub r2 r13
+mov r9 r0
+mul r9 r15
+mov r10 r2
+mul r10 r14
+sub r9 r10
+div r9 16384
+mov r10 r0
+mul r10 r14
+mov r11 r2
+mul r11 r15
+add r10 r11
+div r10 16384
+mov r0 r9
+localget r11 0
+add r10 r11
+localget r11 2
+sub r1 r11
+localget r11 4
+mul r11 r1
+localget r9 6
+mov r2 r10
+mul r2 r9
+sub r2 r11
+div r2 1000
+mul r1 r9
+localget r11 4
+mul r11 r10
+add r1 r11
+div r1 1000
+meshvertex 2003 r0 r1 r2
+meshshade 2003 0
+localget r9 18
+mov r10 r9
+div r10 2
+mov r11 r10
+mul r11 9
+div r11 16
+mul r9 85
+div r9 100
+meshfacegradient 2000 2001 2002 40 16 r9 r10 r11 60
+meshfacegradient 2000 2002 2003 40 16 r9 r10 r11 60
+label open_headlights_done
 # Original detailed car meshes; all world transforms and lighting execute in XI.
 meshvertex 0 -85 72 -223
 meshtexuv 0 -14 -37
@@ -2640,664 +5830,6 @@ meshvertex 973 80 46 -227
 meshtexuv 973 11 -32
 meshvertex 974 70 49 -227
 meshtexuv 974 10 -32
-meshvertex 975 -85 72 -223
-meshtexuv 975 -14 -37
-meshvertex 976 -95 79 -181
-meshtexuv 976 -16 -30
-meshvertex 977 0 78 -181
-meshtexuv 977 0 -30
-meshvertex 978 0 69 -223
-meshtexuv 978 0 -37
-meshvertex 979 95 79 -181
-meshtexuv 979 16 -30
-meshvertex 980 85 72 -223
-meshtexuv 980 14 -37
-meshvertex 982 -95 34 -181
-meshtexuv 982 -16 -30
-meshvertex 984 -85 22 -223
-meshtexuv 984 -14 -37
-meshvertex 987 95 34 -181
-meshtexuv 987 16 -30
-meshvertex 988 85 22 -223
-meshtexuv 988 14 -37
-meshvertex 989 -96 79 -167
-meshtexuv 989 -16 -28
-meshvertex 990 0 78 -167
-meshtexuv 990 0 -28
-meshvertex 991 96 79 -167
-meshtexuv 991 16 -28
-meshvertex 992 -96 64 -167
-meshtexuv 992 -16 -28
-meshvertex 995 96 64 -167
-meshtexuv 995 16 -28
-meshvertex 996 -97 80 -142
-meshtexuv 996 -16 -24
-meshvertex 997 0 78 -142
-meshtexuv 997 0 -24
-meshvertex 998 97 80 -142
-meshtexuv 998 16 -24
-meshvertex 999 -97 73 -142
-meshtexuv 999 -16 -24
-meshvertex 1002 97 73 -142
-meshtexuv 1002 16 -24
-meshvertex 1003 -94 78 -117
-meshtexuv 1003 -16 -19
-meshvertex 1004 0 77 -117
-meshtexuv 1004 0 -19
-meshvertex 1005 94 78 -117
-meshtexuv 1005 16 -19
-meshvertex 1006 -94 64 -117
-meshtexuv 1006 -16 -19
-meshvertex 1009 94 64 -117
-meshtexuv 1009 16 -19
-meshvertex 1010 -92 77 -103
-meshtexuv 1010 -15 -17
-meshvertex 1011 0 77 -103
-meshtexuv 1011 0 -17
-meshvertex 1012 92 77 -103
-meshtexuv 1012 15 -17
-meshvertex 1013 -92 34 -103
-meshtexuv 1013 -15 -17
-meshvertex 1016 92 34 -103
-meshtexuv 1016 15 -17
-meshvertex 1017 -92 76 99
-meshtexuv 1017 -15 17
-meshvertex 1018 0 72 99
-meshtexuv 1018 0 17
-meshvertex 1019 92 76 99
-meshtexuv 1019 15 17
-meshvertex 1020 -92 34 99
-meshtexuv 1020 -15 17
-meshvertex 1023 92 34 99
-meshtexuv 1023 15 17
-meshvertex 1024 -93 76 113
-meshtexuv 1024 -15 19
-meshvertex 1025 0 71 113
-meshtexuv 1025 0 19
-meshvertex 1026 93 76 113
-meshtexuv 1026 16 19
-meshvertex 1027 -93 64 113
-meshtexuv 1027 -15 19
-meshvertex 1030 93 64 113
-meshtexuv 1030 16 19
-meshvertex 1031 -96 76 138
-meshtexuv 1031 -16 23
-meshvertex 1032 0 69 138
-meshtexuv 1032 0 23
-meshvertex 1033 96 76 138
-meshtexuv 1033 16 23
-meshvertex 1034 -96 73 138
-meshtexuv 1034 -16 23
-meshvertex 1037 96 73 138
-meshtexuv 1037 16 23
-meshvertex 1038 -93 72 163
-meshtexuv 1038 -15 27
-meshvertex 1039 0 66 163
-meshtexuv 1039 0 27
-meshvertex 1040 93 72 163
-meshtexuv 1040 16 27
-meshvertex 1041 -93 64 163
-meshtexuv 1041 -15 27
-meshvertex 1044 93 64 163
-meshtexuv 1044 16 27
-meshvertex 1045 -91 69 177
-meshtexuv 1045 -15 30
-meshvertex 1046 0 64 177
-meshtexuv 1046 0 30
-meshvertex 1047 91 69 177
-meshtexuv 1047 15 30
-meshvertex 1048 -91 34 177
-meshtexuv 1048 -15 30
-meshvertex 1051 91 34 177
-meshtexuv 1051 15 30
-meshvertex 1052 -72 48 223
-meshtexuv 1052 -12 37
-meshvertex 1053 0 46 223
-meshtexuv 1053 0 37
-meshvertex 1054 72 48 223
-meshtexuv 1054 12 37
-meshvertex 1055 -72 22 223
-meshtexuv 1055 -12 37
-meshvertex 1058 72 22 223
-meshtexuv 1058 12 37
-meshvertex 1059 0 32 -223
-meshtexuv 1059 0 -37
-meshvertex 1065 0 32 223
-meshtexuv 1065 0 37
-meshvertex 1068 -71 18 -204
-meshtexuv 1068 -10 -29
-meshvertex 1069 71 18 197
-meshtexuv 1069 10 28
-meshvertex 1070 -71 18 197
-meshtexuv 1070 -10 28
-meshvertex 1071 71 18 -204
-meshtexuv 1071 10 -29
-meshvertex 1072 -54 73 -150
-meshtexuv 1072 -6 -17
-meshvertex 1073 -60 106 -60
-meshtexuv 1073 -7 -7
-meshvertex 1074 0 113 -60
-meshtexuv 1074 0 -7
-meshvertex 1075 0 75 -150
-meshtexuv 1075 0 -17
-meshvertex 1076 60 106 -60
-meshtexuv 1076 7 -7
-meshvertex 1077 54 73 -150
-meshtexuv 1077 6 -17
-meshvertex 1078 -61 108 -10
-meshtexuv 1078 -7 -1
-meshvertex 1079 0 115 -10
-meshtexuv 1079 0 -1
-meshvertex 1080 61 108 -10
-meshtexuv 1080 7 -1
-meshvertex 1081 -54 101 48
-meshtexuv 1081 -6 5
-meshvertex 1082 0 108 48
-meshtexuv 1082 0 5
-meshvertex 1083 54 101 48
-meshtexuv 1083 6 5
-meshvertex 1084 -69 73 108
-meshtexuv 1084 -8 12
-meshvertex 1085 0 75 108
-meshtexuv 1085 0 12
-meshvertex 1086 69 73 108
-meshtexuv 1086 8 12
-meshvertex 1087 -78 79 -126
-meshtexuv 1087 -9 -14
-meshvertex 1088 -55 101 48
-meshtexuv 1088 -6 5
-meshvertex 1089 -61 104 -61
-meshtexuv 1089 -7 -7
-meshvertex 1090 -74 78 101
-meshtexuv 1090 -8 11
-meshvertex 1091 -81 77 -64
-meshtexuv 1091 -9 -7
-meshvertex 1092 -80 77 -141
-meshtexuv 1092 -13 -23
-meshvertex 1098 78 79 -126
-meshtexuv 1098 9 -14
-meshvertex 1099 61 104 -61
-meshtexuv 1099 7 -7
-meshvertex 1100 55 101 48
-meshtexuv 1100 6 5
-meshvertex 1101 74 78 101
-meshtexuv 1101 8 11
-meshvertex 1102 81 77 -64
-meshtexuv 1102 9 -7
-meshvertex 1103 80 77 -141
-meshtexuv 1103 13 -23
-meshvertex 1109 -76 34 -108
-meshtexuv 1109 0 9
-meshvertex 1110 -98 58 -118
-meshtexuv 1110 6 6
-meshvertex 1111 -98 34 -108
-meshtexuv 1111 0 9
-meshvertex 1112 -76 58 -118
-meshtexuv 1112 6 6
-meshvertex 1113 -98 68 -142
-meshtexuv 1113 9 0
-meshvertex 1114 -76 68 -142
-meshtexuv 1114 9 0
-meshvertex 1115 -98 58 -166
-meshtexuv 1115 6 -6
-meshvertex 1116 -76 58 -166
-meshtexuv 1116 6 -6
-meshvertex 1117 -98 34 -176
-meshtexuv 1117 0 -8
-meshvertex 1118 -76 34 -176
-meshtexuv 1118 0 -8
-meshvertex 1119 -98 10 -166
-meshtexuv 1119 -6 -6
-meshvertex 1120 -76 10 -166
-meshtexuv 1120 -6 -6
-meshvertex 1121 -98 0 -142
-meshtexuv 1121 -8 0
-meshvertex 1122 -76 0 -142
-meshtexuv 1122 -8 0
-meshvertex 1123 -98 10 -118
-meshtexuv 1123 -6 6
-meshvertex 1124 -76 10 -118
-meshtexuv 1124 -6 6
-meshvertex 1126 -100 50 -126
-meshtexuv 1126 4 4
-meshvertex 1127 -100 34 -120
-meshtexuv 1127 0 6
-meshvertex 1129 -100 56 -142
-meshtexuv 1129 6 0
-meshvertex 1131 -100 50 -158
-meshtexuv 1131 4 -4
-meshvertex 1133 -100 34 -164
-meshtexuv 1133 0 -5
-meshvertex 1135 -100 18 -158
-meshtexuv 1135 -4 -4
-meshvertex 1137 -100 12 -142
-meshtexuv 1137 -5 0
-meshvertex 1139 -100 18 -126
-meshtexuv 1139 -4 4
-meshvertex 1141 -100 34 -142
-meshtexuv 1141 0 0
-meshvertex 1159 76 34 -108
-meshtexuv 1159 0 9
-meshvertex 1160 98 34 -108
-meshtexuv 1160 0 9
-meshvertex 1161 98 58 -118
-meshtexuv 1161 6 6
-meshvertex 1162 76 58 -118
-meshtexuv 1162 6 6
-meshvertex 1163 98 68 -142
-meshtexuv 1163 9 0
-meshvertex 1164 76 68 -142
-meshtexuv 1164 9 0
-meshvertex 1165 98 58 -166
-meshtexuv 1165 6 -6
-meshvertex 1166 76 58 -166
-meshtexuv 1166 6 -6
-meshvertex 1167 98 34 -176
-meshtexuv 1167 0 -8
-meshvertex 1168 76 34 -176
-meshtexuv 1168 0 -8
-meshvertex 1169 98 10 -166
-meshtexuv 1169 -6 -6
-meshvertex 1170 76 10 -166
-meshtexuv 1170 -6 -6
-meshvertex 1171 98 0 -142
-meshtexuv 1171 -8 0
-meshvertex 1172 76 0 -142
-meshtexuv 1172 -8 0
-meshvertex 1173 98 10 -118
-meshtexuv 1173 -6 6
-meshvertex 1174 76 10 -118
-meshtexuv 1174 -6 6
-meshvertex 1176 100 34 -120
-meshtexuv 1176 0 6
-meshvertex 1177 100 50 -126
-meshtexuv 1177 4 4
-meshvertex 1179 100 56 -142
-meshtexuv 1179 6 0
-meshvertex 1181 100 50 -158
-meshtexuv 1181 4 -4
-meshvertex 1183 100 34 -164
-meshtexuv 1183 0 -5
-meshvertex 1185 100 18 -158
-meshtexuv 1185 -4 -4
-meshvertex 1187 100 12 -142
-meshtexuv 1187 -5 0
-meshvertex 1189 100 18 -126
-meshtexuv 1189 -4 4
-meshvertex 1191 100 34 -142
-meshtexuv 1191 0 0
-meshvertex 1209 -76 34 172
-meshtexuv 1209 0 9
-meshvertex 1210 -98 58 162
-meshtexuv 1210 6 6
-meshvertex 1211 -98 34 172
-meshtexuv 1211 0 9
-meshvertex 1212 -76 58 162
-meshtexuv 1212 6 6
-meshvertex 1213 -98 68 138
-meshtexuv 1213 9 0
-meshvertex 1214 -76 68 138
-meshtexuv 1214 9 0
-meshvertex 1215 -98 58 114
-meshtexuv 1215 6 -6
-meshvertex 1216 -76 58 114
-meshtexuv 1216 6 -6
-meshvertex 1217 -98 34 104
-meshtexuv 1217 0 -8
-meshvertex 1218 -76 34 104
-meshtexuv 1218 0 -8
-meshvertex 1219 -98 10 114
-meshtexuv 1219 -6 -6
-meshvertex 1220 -76 10 114
-meshtexuv 1220 -6 -6
-meshvertex 1221 -98 0 138
-meshtexuv 1221 -8 0
-meshvertex 1222 -76 0 138
-meshtexuv 1222 -8 0
-meshvertex 1223 -98 10 162
-meshtexuv 1223 -6 6
-meshvertex 1224 -76 10 162
-meshtexuv 1224 -6 6
-meshvertex 1226 -100 50 154
-meshtexuv 1226 4 4
-meshvertex 1227 -100 34 160
-meshtexuv 1227 0 6
-meshvertex 1229 -100 56 138
-meshtexuv 1229 6 0
-meshvertex 1231 -100 50 122
-meshtexuv 1231 4 -4
-meshvertex 1233 -100 34 116
-meshtexuv 1233 0 -5
-meshvertex 1235 -100 18 122
-meshtexuv 1235 -4 -4
-meshvertex 1237 -100 12 138
-meshtexuv 1237 -5 0
-meshvertex 1239 -100 18 154
-meshtexuv 1239 -4 4
-meshvertex 1241 -100 34 138
-meshtexuv 1241 0 0
-meshvertex 1259 76 34 172
-meshtexuv 1259 0 9
-meshvertex 1260 98 34 172
-meshtexuv 1260 0 9
-meshvertex 1261 98 58 162
-meshtexuv 1261 6 6
-meshvertex 1262 76 58 162
-meshtexuv 1262 6 6
-meshvertex 1263 98 68 138
-meshtexuv 1263 9 0
-meshvertex 1264 76 68 138
-meshtexuv 1264 9 0
-meshvertex 1265 98 58 114
-meshtexuv 1265 6 -6
-meshvertex 1266 76 58 114
-meshtexuv 1266 6 -6
-meshvertex 1267 98 34 104
-meshtexuv 1267 0 -8
-meshvertex 1268 76 34 104
-meshtexuv 1268 0 -8
-meshvertex 1269 98 10 114
-meshtexuv 1269 -6 -6
-meshvertex 1270 76 10 114
-meshtexuv 1270 -6 -6
-meshvertex 1271 98 0 138
-meshtexuv 1271 -8 0
-meshvertex 1272 76 0 138
-meshtexuv 1272 -8 0
-meshvertex 1273 98 10 162
-meshtexuv 1273 -6 6
-meshvertex 1274 76 10 162
-meshtexuv 1274 -6 6
-meshvertex 1276 100 34 160
-meshtexuv 1276 0 6
-meshvertex 1277 100 50 154
-meshtexuv 1277 4 4
-meshvertex 1279 100 56 138
-meshtexuv 1279 6 0
-meshvertex 1281 100 50 122
-meshtexuv 1281 4 -4
-meshvertex 1283 100 34 116
-meshtexuv 1283 0 -5
-meshvertex 1285 100 18 122
-meshtexuv 1285 -4 -4
-meshvertex 1287 100 12 138
-meshtexuv 1287 -5 0
-meshvertex 1289 100 18 154
-meshtexuv 1289 -4 4
-meshvertex 1291 100 34 138
-meshtexuv 1291 0 0
-meshvertex 1309 -94 36 -91
-meshtexuv 1309 -13 -13
-meshvertex 1310 -88 57 -55
-meshtexuv 1310 -13 -8
-meshvertex 1311 -91 60 -90
-meshtexuv 1311 -13 -13
-meshvertex 1312 94 36 -91
-meshtexuv 1312 13 -13
-meshvertex 1313 91 60 -90
-meshtexuv 1313 13 -13
-meshvertex 1314 88 57 -55
-meshtexuv 1314 13 -8
-meshvertex 1315 -80 50 226
-meshtexuv 1315 -11 32
-meshvertex 1316 80 50 226
-meshtexuv 1316 11 32
-meshvertex 1317 80 53 225
-meshtexuv 1317 11 32
-meshvertex 1318 -80 53 225
-meshtexuv 1318 -11 32
-meshvertex 1319 -81 63 -227
-meshtexuv 1319 -12 -32
-meshvertex 1320 81 67 -226
-meshtexuv 1320 12 -32
-meshvertex 1321 81 63 -227
-meshtexuv 1321 12 -32
-meshvertex 1322 -81 67 -226
-meshtexuv 1322 -12 -32
-meshvertex 1323 -84 39 -227
-meshtexuv 1323 -17 -45
-meshvertex 1324 80 57 -225
-meshtexuv 1324 16 -45
-meshvertex 1325 84 39 -227
-meshtexuv 1325 17 -45
-meshvertex 1326 -80 57 -225
-meshtexuv 1326 -16 -45
-meshvertex 1327 -51 24 225
-meshtexuv 1327 -7 32
-meshvertex 1328 51 24 225
-meshtexuv 1328 7 32
-meshvertex 1329 57 43 225
-meshtexuv 1329 8 32
-meshvertex 1330 -57 43 225
-meshtexuv 1330 -8 32
-meshvertex 1331 -73 15 -225
-meshtexuv 1331 -10 -32
-meshvertex 1332 67 39 -225
-meshtexuv 1332 10 -32
-meshvertex 1333 73 15 -225
-meshtexuv 1333 10 -32
-meshvertex 1334 -67 39 -225
-meshtexuv 1334 -10 -32
-meshvertex 1335 -93 29 -103
-meshtexuv 1335 -19 -21
-meshvertex 1336 -86 29 0
-meshtexuv 1336 -17 0
-meshvertex 1337 -86 43 0
-meshtexuv 1337 -17 0
-meshvertex 1338 -93 43 -103
-meshtexuv 1338 -19 -21
-meshvertex 1339 -93 29 99
-meshtexuv 1339 -19 20
-meshvertex 1340 -93 43 99
-meshtexuv 1340 -19 20
-meshvertex 1341 93 29 -103
-meshtexuv 1341 19 -21
-meshvertex 1342 86 43 0
-meshtexuv 1342 17 0
-meshvertex 1343 86 29 0
-meshtexuv 1343 17 0
-meshvertex 1344 93 43 -103
-meshtexuv 1344 19 -21
-meshvertex 1345 93 43 99
-meshtexuv 1345 19 20
-meshvertex 1346 93 29 99
-meshtexuv 1346 19 20
-meshvertex 1347 -85 72 -223
-meshtexuv 1347 -14 -37
-meshvertex 1348 -97 80 -142
-meshtexuv 1348 -16 -24
-meshvertex 1349 0 78 -142
-meshtexuv 1349 0 -24
-meshvertex 1350 0 69 -223
-meshtexuv 1350 0 -37
-meshvertex 1351 97 80 -142
-meshtexuv 1351 16 -24
-meshvertex 1352 85 72 -223
-meshtexuv 1352 14 -37
-meshvertex 1354 -97 22 -142
-meshtexuv 1354 -16 -24
-meshvertex 1356 -85 22 -223
-meshtexuv 1356 -14 -37
-meshvertex 1359 97 22 -142
-meshtexuv 1359 16 -24
-meshvertex 1360 85 22 -223
-meshtexuv 1360 14 -37
-meshvertex 1361 -87 75 -65
-meshtexuv 1361 -14 -11
-meshvertex 1362 0 76 -65
-meshtexuv 1362 0 -11
-meshvertex 1363 87 75 -65
-meshtexuv 1363 15 -11
-meshvertex 1364 -87 22 -65
-meshtexuv 1364 -14 -11
-meshvertex 1367 87 22 -65
-meshtexuv 1367 15 -11
-meshvertex 1368 -88 74 65
-meshtexuv 1368 -15 11
-meshvertex 1369 0 75 65
-meshtexuv 1369 0 11
-meshvertex 1370 88 74 65
-meshtexuv 1370 15 11
-meshvertex 1371 -88 22 65
-meshtexuv 1371 -15 11
-meshvertex 1374 88 22 65
-meshtexuv 1374 15 11
-meshvertex 1375 -96 76 138
-meshtexuv 1375 -16 23
-meshvertex 1376 0 69 138
-meshtexuv 1376 0 23
-meshvertex 1377 96 76 138
-meshtexuv 1377 16 23
-meshvertex 1378 -96 22 138
-meshtexuv 1378 -16 23
-meshvertex 1381 96 22 138
-meshtexuv 1381 16 23
-meshvertex 1382 -72 48 223
-meshtexuv 1382 -12 37
-meshvertex 1383 0 46 223
-meshtexuv 1383 0 37
-meshvertex 1384 72 48 223
-meshtexuv 1384 12 37
-meshvertex 1385 -72 22 223
-meshtexuv 1385 -12 37
-meshvertex 1388 72 22 223
-meshtexuv 1388 12 37
-meshvertex 1395 -71 18 -204
-meshtexuv 1395 -10 -29
-meshvertex 1396 71 18 197
-meshtexuv 1396 10 28
-meshvertex 1397 -71 18 197
-meshtexuv 1397 -10 28
-meshvertex 1398 71 18 -204
-meshtexuv 1398 10 -29
-meshvertex 1399 -54 74 -145
-meshtexuv 1399 -6 -16
-meshvertex 1400 -60 106 -55
-meshtexuv 1400 -7 -6
-meshvertex 1401 0 113 -55
-meshtexuv 1401 0 -6
-meshvertex 1402 0 77 -145
-meshtexuv 1402 0 -16
-meshvertex 1403 60 106 -55
-meshtexuv 1403 7 -6
-meshvertex 1404 54 74 -145
-meshtexuv 1404 6 -16
-meshvertex 1405 -57 107 30
-meshtexuv 1405 -6 3
-meshvertex 1406 0 115 30
-meshtexuv 1406 0 3
-meshvertex 1407 57 107 30
-meshtexuv 1407 6 3
-meshvertex 1408 -69 73 108
-meshtexuv 1408 -8 12
-meshvertex 1409 0 75 108
-meshtexuv 1409 0 12
-meshvertex 1410 69 73 108
-meshtexuv 1410 8 12
-meshvertex 1411 -78 79 -126
-meshtexuv 1411 -9 -14
-meshvertex 1412 -55 101 48
-meshtexuv 1412 -6 5
-meshvertex 1413 -60 107 -15
-meshtexuv 1413 -7 -2
-meshvertex 1414 -74 78 101
-meshtexuv 1414 -8 11
-meshvertex 1415 78 79 -126
-meshtexuv 1415 9 -14
-meshvertex 1416 60 107 -15
-meshtexuv 1416 7 -2
-meshvertex 1417 55 101 48
-meshtexuv 1417 6 5
-meshvertex 1418 74 78 101
-meshtexuv 1418 8 11
-meshvertex 1419 -78 34 -108
-meshtexuv 1419 0 9
-meshvertex 1420 -100 68 -142
-meshtexuv 1420 9 0
-meshvertex 1421 -100 34 -108
-meshtexuv 1421 0 9
-meshvertex 1422 -78 68 -142
-meshtexuv 1422 9 0
-meshvertex 1424 -100 34 -176
-meshtexuv 1424 0 -8
-meshvertex 1426 -78 34 -176
-meshtexuv 1426 0 -8
-meshvertex 1428 -100 0 -142
-meshtexuv 1428 -8 0
-meshvertex 1430 -78 0 -142
-meshtexuv 1430 -8 0
-meshvertex 1439 78 34 -108
-meshtexuv 1439 0 9
-meshvertex 1440 100 34 -108
-meshtexuv 1440 0 9
-meshvertex 1441 100 68 -142
-meshtexuv 1441 9 0
-meshvertex 1442 78 68 -142
-meshtexuv 1442 9 0
-meshvertex 1445 100 34 -176
-meshtexuv 1445 0 -8
-meshvertex 1446 78 34 -176
-meshtexuv 1446 0 -8
-meshvertex 1449 100 0 -142
-meshtexuv 1449 -8 0
-meshvertex 1450 78 0 -142
-meshtexuv 1450 -8 0
-meshvertex 1459 -78 34 172
-meshtexuv 1459 0 9
-meshvertex 1460 -100 68 138
-meshtexuv 1460 9 0
-meshvertex 1461 -100 34 172
-meshtexuv 1461 0 9
-meshvertex 1462 -78 68 138
-meshtexuv 1462 9 0
-meshvertex 1464 -100 34 104
-meshtexuv 1464 0 -8
-meshvertex 1466 -78 34 104
-meshtexuv 1466 0 -8
-meshvertex 1468 -100 0 138
-meshtexuv 1468 -8 0
-meshvertex 1470 -78 0 138
-meshtexuv 1470 -8 0
-meshvertex 1479 78 34 172
-meshtexuv 1479 0 9
-meshvertex 1480 100 34 172
-meshtexuv 1480 0 9
-meshvertex 1481 100 68 138
-meshtexuv 1481 9 0
-meshvertex 1482 78 68 138
-meshtexuv 1482 9 0
-meshvertex 1485 100 34 104
-meshtexuv 1485 0 -8
-meshvertex 1486 78 34 104
-meshtexuv 1486 0 -8
-meshvertex 1489 100 0 138
-meshtexuv 1489 -8 0
-meshvertex 1490 78 0 138
-meshtexuv 1490 -8 0
-meshvertex 1499 -80 50 226
-meshtexuv 1499 -11 32
-meshvertex 1500 80 50 226
-meshtexuv 1500 11 32
-meshvertex 1501 80 53 225
-meshtexuv 1501 11 32
-meshvertex 1502 -80 53 225
-meshtexuv 1502 -11 32
-meshvertex 1503 -81 63 -227
-meshtexuv 1503 -12 -32
-meshvertex 1504 81 67 -226
-meshtexuv 1504 12 -32
-meshvertex 1505 81 63 -227
-meshtexuv 1505 12 -32
-meshvertex 1506 -81 67 -226
-meshtexuv 1506 -12 -32
-meshvertex 1507 -84 39 -227
-meshtexuv 1507 -17 -45
-meshvertex 1508 80 57 -225
-meshtexuv 1508 16 -45
-meshvertex 1509 84 39 -227
-meshtexuv 1509 17 -45
-meshvertex 1510 -80 57 -225
-meshtexuv 1510 -16 -45
 meshvertex 1511 -91 24 -142
 meshtexuv 1511 -13 -20
 meshvertex 1512 -91 -75 -142
@@ -3392,22 +5924,22 @@ meshvertex 1556 -258 330 -61
 meshtexuv 1556 -37 -9
 meshvertex 1557 -101 292 -217
 meshtexuv 1557 -14 -31
-meshvertex 1558 -350 835 -110
-meshtexuv 1558 -50 -16
-meshvertex 1559 -500 0 -130
-meshtexuv 1559 -71 -19
-meshvertex 1560 -200 0 -130
-meshtexuv 1560 -29 -19
-meshvertex 1561 380 990 150
-meshtexuv 1561 54 21
-meshvertex 1562 240 0 160
-meshtexuv 1562 34 23
-meshvertex 1563 520 0 160
-meshtexuv 1563 74 23
-meshvertex 1564 0 0 -25
-meshtexuv 1564 0 -4
-meshvertex 1565 0 0 21
-meshtexuv 1565 0 3
+meshvertex 1558 -18 0 0
+meshtexuv 1558 -3 0
+meshvertex 1559 18 0 0
+meshtexuv 1559 3 0
+meshvertex 1560 18 390 0
+meshtexuv 1560 3 0
+meshvertex 1561 -18 390 0
+meshtexuv 1561 -3 0
+meshvertex 1562 0 0 -18
+meshtexuv 1562 0 -3
+meshvertex 1563 0 0 18
+meshtexuv 1563 0 3
+meshvertex 1564 0 390 18
+meshtexuv 1564 0 3
+meshvertex 1565 0 390 -18
+meshtexuv 1565 0 -3
 meshvertex 1591 -109 26 -151
 meshtexuv 1591 -16 -22
 meshvertex 1592 -73 27 -154
@@ -3516,12 +6048,12 @@ meshvertex 1586 45 0 -42
 meshtexuv 1586 6 -6
 meshvertex 1587 23 77 9
 meshtexuv 1587 3 1
-meshvertex 1588 41 0 39
-meshtexuv 1588 6 6
-meshvertex 1589 -43 0 -36
-meshtexuv 1589 -6 -5
-meshvertex 1590 10 88 -35
-meshtexuv 1590 1 -5
+meshvertex 1588 -18 63 -6
+meshtexuv 1588 -3 -1
+meshvertex 1589 16 63 4
+meshtexuv 1589 2 1
+meshvertex 1590 1 83 -2
+meshtexuv 1590 0 0
 localset 512 256
 localset 513 2305
 localset 514 4354
@@ -4497,542 +7029,6 @@ localset 1483 1988864
 localset 1484 1990912
 localset 1485 1992960
 localset 1486 1995008
-localset 1487 1997066
-localset 1488 1999114
-localset 1489 2001162
-localset 1490 2003210
-localset 1491 2005258
-localset 1492 2007306
-localset 1493 1997062
-localset 1494 2011398
-localset 1495 1999122
-localset 1496 2015494
-localset 1497 2007303
-localset 1498 2005263
-localset 1499 2021639
-localset 1500 2023687
-localset 1501 2025738
-localset 1502 2027786
-localset 1503 2029834
-localset 1504 2031890
-localset 1505 2025746
-localset 1506 2029839
-localset 1507 2038031
-localset 1508 2040074
-localset 1509 2042122
-localset 1510 2044170
-localset 1511 2046226
-localset 1512 2040082
-localset 1513 2044175
-localset 1514 2052367
-localset 1515 2054410
-localset 1516 2056458
-localset 1517 2058506
-localset 1518 2060562
-localset 1519 2054418
-localset 1520 2058511
-localset 1521 2066703
-localset 1522 2068746
-localset 1523 2070794
-localset 1524 2072842
-localset 1525 2074898
-localset 1526 2068754
-localset 1527 2072847
-localset 1528 2081039
-localset 1529 2083082
-localset 1530 2085130
-localset 1531 2087178
-localset 1532 2089234
-localset 1533 2083090
-localset 1534 2087183
-localset 1535 2095375
-localset 1536 2097418
-localset 1537 2099466
-localset 1538 2101514
-localset 1539 2103570
-localset 1540 2097426
-localset 1541 2101519
-localset 1542 2109711
-localset 1543 2111754
-localset 1544 2113802
-localset 1545 2115850
-localset 1546 2117906
-localset 1547 2111762
-localset 1548 2115855
-localset 1549 2124047
-localset 1550 2126090
-localset 1551 2128138
-localset 1552 2130186
-localset 1553 2132242
-localset 1554 2126098
-localset 1555 2130191
-localset 1556 2138383
-localset 1557 2140428
-localset 1558 2142476
-localset 1559 2144524
-localset 1560 2146591
-localset 1561 2140447
-localset 1562 2144544
-localset 1563 2152736
-localset 1564 2154763
-localset 1565 2156812
-localset 1566 2158859
-localset 1567 2160931
-localset 1568 2154787
-localset 1569 2158884
-localset 1570 2167076
-localset 1571 2169088
-localset 1572 2015488
-localset 1573 1997056
-localset 1574 2003200
-localset 1575 2007296
-localset 1576 2023680
-localset 1577 2181409
-localset 1578 2154835
-localset 1579 2158859
-localset 1580 2187557
-localset 1581 2189605
-localset 1582 2191653
-localset 1583 2193701
-localset 1584 2195842
-localset 1585 2197926
-localset 1586 2199938
-localset 1587 2201986
-localset 1588 2204046
-localset 1589 2206082
-localset 1590 2208138
-localset 1591 2210186
-localset 1592 2212234
-localset 1593 2214300
-localset 1594 2216332
-localset 1595 2218398
-localset 1596 2220428
-localset 1597 2222476
-localset 1598 2224524
-localset 1599 2226579
-localset 1600 2228627
-localset 1601 2230672
-localset 1602 2232723
-localset 1603 2234792
-localset 1604 2236688
-localset 1605 2226448
-localset 1606 2230544
-localset 1607 2228521
-localset 1608 2220329
-localset 1609 2232617
-localset 1610 2249108
-localset 1611 2251153
-localset 1612 2253204
-localset 1613 2255252
-localset 1614 2257293
-localset 1615 2259217
-localset 1616 2251025
-localset 1617 2248977
-localset 1618 2253098
-localset 1619 2255146
-localset 1620 2224426
-localset 1621 2271777
-localset 1622 2273803
-localset 1623 2275873
-localset 1624 2277899
-localset 1625 2279946
-localset 1626 2281994
-localset 1627 2284036
-localset 1628 2286084
-localset 1629 2288128
-localset 1630 2290176
-localset 1631 2292271
-localset 1632 2294319
-localset 1633 2296357
-localset 1634 2298405
-localset 1635 2300468
-localset 1636 2302516
-localset 1637 2275858
-localset 1638 2306578
-localset 1639 2308626
-localset 1640 2273810
-localset 1641 2312722
-localset 1642 2279954
-localset 1643 2316818
-localset 1644 2284050
-localset 1645 2320914
-localset 1646 2288146
-localset 1647 2325010
-localset 1648 2292242
-localset 1649 2329106
-localset 1650 2296338
-localset 1651 2333202
-localset 1652 2300434
-localset 1653 2337426
-localset 1654 2308754
-localset 1655 2306706
-localset 1656 2337042
-localset 1657 2306322
-localset 1658 2312466
-localset 1659 2312850
-localset 1660 2316946
-localset 1661 2316562
-localset 1662 2320658
-localset 1663 2321042
-localset 1664 2325138
-localset 1665 2324754
-localset 1666 2328850
-localset 1667 2329234
-localset 1668 2333330
-localset 1669 2332946
-localset 1670 2308370
-localset 1671 2374177
-localset 1672 2376225
-localset 1673 2378251
-localset 1674 2380299
-localset 1675 2382346
-localset 1676 2384394
-localset 1677 2386436
-localset 1678 2388484
-localset 1679 2390528
-localset 1680 2392576
-localset 1681 2394671
-localset 1682 2396719
-localset 1683 2398757
-localset 1684 2400805
-localset 1685 2402868
-localset 1686 2404916
-localset 1687 2376207
-localset 1688 2408975
-localset 1689 2411023
-localset 1690 2378255
-localset 1691 2415119
-localset 1692 2382351
-localset 1693 2419215
-localset 1694 2386447
-localset 1695 2423311
-localset 1696 2390543
-localset 1697 2427407
-localset 1698 2394639
-localset 1699 2431503
-localset 1700 2398735
-localset 1701 2435599
-localset 1702 2402831
-localset 1703 2439823
-localset 1704 2411151
-localset 1705 2409103
-localset 1706 2439439
-localset 1707 2414863
-localset 1708 2410767
-localset 1709 2419343
-localset 1710 2415247
-localset 1711 2423055
-localset 1712 2418959
-localset 1713 2427535
-localset 1714 2423439
-localset 1715 2431247
-localset 1716 2427151
-localset 1717 2435727
-localset 1718 2431631
-localset 1719 2408719
-localset 1720 2435343
-localset 1721 2476577
-localset 1722 2478603
-localset 1723 2480673
-localset 1724 2482699
-localset 1725 2484746
-localset 1726 2486794
-localset 1727 2488836
-localset 1728 2490884
-localset 1729 2492928
-localset 1730 2494976
-localset 1731 2497071
-localset 1732 2499119
-localset 1733 2501157
-localset 1734 2503205
-localset 1735 2505268
-localset 1736 2507316
-localset 1737 2480658
-localset 1738 2511378
-localset 1739 2513426
-localset 1740 2478610
-localset 1741 2517522
-localset 1742 2484754
-localset 1743 2521618
-localset 1744 2488850
-localset 1745 2525714
-localset 1746 2492946
-localset 1747 2529810
-localset 1748 2497042
-localset 1749 2533906
-localset 1750 2501138
-localset 1751 2538002
-localset 1752 2505234
-localset 1753 2542226
-localset 1754 2513554
-localset 1755 2511506
-localset 1756 2541842
-localset 1757 2511122
-localset 1758 2517266
-localset 1759 2517650
-localset 1760 2521746
-localset 1761 2521362
-localset 1762 2525458
-localset 1763 2525842
-localset 1764 2529938
-localset 1765 2529554
-localset 1766 2533650
-localset 1767 2534034
-localset 1768 2538130
-localset 1769 2537746
-localset 1770 2513170
-localset 1771 2578977
-localset 1772 2581025
-localset 1773 2583051
-localset 1774 2585099
-localset 1775 2587146
-localset 1776 2589194
-localset 1777 2591236
-localset 1778 2593284
-localset 1779 2595328
-localset 1780 2597376
-localset 1781 2599471
-localset 1782 2601519
-localset 1783 2603557
-localset 1784 2605605
-localset 1785 2607668
-localset 1786 2609716
-localset 1787 2581007
-localset 1788 2613775
-localset 1789 2615823
-localset 1790 2583055
-localset 1791 2619919
-localset 1792 2587151
-localset 1793 2624015
-localset 1794 2591247
-localset 1795 2628111
-localset 1796 2595343
-localset 1797 2632207
-localset 1798 2599439
-localset 1799 2636303
-localset 1800 2603535
-localset 1801 2640399
-localset 1802 2607631
-localset 1803 2644623
-localset 1804 2615951
-localset 1805 2613903
-localset 1806 2644239
-localset 1807 2619663
-localset 1808 2615567
-localset 1809 2624143
-localset 1810 2620047
-localset 1811 2627855
-localset 1812 2623759
-localset 1813 2632335
-localset 1814 2628239
-localset 1815 2636047
-localset 1816 2631951
-localset 1817 2640527
-localset 1818 2636431
-localset 1819 2613519
-localset 1820 2640143
-localset 1821 2681106
-localset 1822 2683154
-localset 1823 2685202
-localset 1824 2687247
-localset 1825 2689295
-localset 1826 2691343
-localset 1827 2693410
-localset 1828 2695458
-localset 1829 2697506
-localset 1830 2699554
-localset 1831 2701571
-localset 1832 2703619
-localset 1833 2705667
-localset 1834 2707715
-localset 1835 2710272
-localset 1836 2712320
-localset 1837 2714368
-localset 1838 2716416
-localset 1839 2717985
-localset 1840 2720033
-localset 1841 2722081
-localset 1842 2724129
-localset 1843 2726144
-localset 1844 2728192
-localset 1845 2730240
-localset 1846 2732288
-localset 1847 2734866
-localset 1848 2736914
-localset 1849 2738962
-localset 1850 2741010
-localset 1851 2743058
-localset 1852 2745106
-localset 1853 2747151
-localset 1854 2749199
-localset 1855 2751247
-localset 1856 2753295
-localset 1857 2755343
-localset 1858 2757391
-localset 1859 2758922
-localset 1860 2760970
-localset 1861 2763018
-localset 1862 2765066
-localset 1863 2767114
-localset 1864 2769162
-localset 1865 2758930
-localset 1866 2773266
-localset 1867 2760978
-localset 1868 2777362
-localset 1869 2769167
-localset 1870 2767119
-localset 1871 2783503
-localset 1872 2785551
-localset 1873 2787594
-localset 1874 2789642
-localset 1875 2791690
-localset 1876 2793746
-localset 1877 2787602
-localset 1878 2791695
-localset 1879 2799887
-localset 1880 2801930
-localset 1881 2803978
-localset 1882 2806026
-localset 1883 2808082
-localset 1884 2801938
-localset 1885 2806031
-localset 1886 2814223
-localset 1887 2816286
-localset 1888 2818314
-localset 1889 2820362
-localset 1890 2822418
-localset 1891 2816274
-localset 1892 2820367
-localset 1893 2828559
-localset 1894 2830603
-localset 1895 2832652
-localset 1896 2834699
-localset 1897 2836815
-localset 1898 2830627
-localset 1899 2834724
-localset 1900 2842961
-localset 1901 2777344
-localset 1902 2758912
-localset 1903 2769152
-localset 1904 2785536
-localset 1905 2834699
-localset 1906 2830635
-localset 1907 2857253
-localset 1908 2859301
-localset 1909 2861349
-localset 1910 2863397
-localset 1911 2865574
-localset 1912 2867594
-localset 1913 2869634
-localset 1914 2871682
-localset 1915 2873742
-localset 1916 2875778
-localset 1917 2877852
-localset 1918 2879884
-localset 1919 2881930
-localset 1920 2883980
-localset 1921 2886028
-localset 1922 2888076
-localset 1923 2890131
-localset 1924 2892179
-localset 1925 2894224
-localset 1926 2896275
-localset 1927 2898324
-localset 1928 2900369
-localset 1929 2902420
-localset 1930 2904468
-localset 1931 2906635
-localset 1932 2908683
-localset 1933 2910731
-localset 1934 2912779
-localset 1935 2912772
-localset 1936 2916868
-localset 1937 2908676
-localset 1938 2920964
-localset 1939 2921007
-localset 1940 2925103
-localset 1941 2916911
-localset 1942 2929199
-localset 1943 2929204
-localset 1944 2910772
-localset 1945 2925108
-localset 1946 2906676
-localset 1947 2910866
-localset 1948 2908818
-localset 1949 2917010
-localset 1950 2925202
-localset 1951 2947595
-localset 1952 2949643
-localset 1953 2951691
-localset 1954 2953739
-localset 1955 2953732
-localset 1956 2951684
-localset 1957 2959876
-localset 1958 2961924
-localset 1959 2961967
-localset 1960 2959919
-localset 1961 2968111
-localset 1962 2970159
-localset 1963 2970164
-localset 1964 2968116
-localset 1965 2949684
-localset 1966 2947636
-localset 1967 2949775
-localset 1968 2960015
-localset 1969 2951823
-localset 1970 2968207
-localset 1971 2988555
-localset 1972 2990603
-localset 1973 2992651
-localset 1974 2994699
-localset 1975 2994692
-localset 1976 2998788
-localset 1977 2990596
-localset 1978 3002884
-localset 1979 3002927
-localset 1980 3007023
-localset 1981 2998831
-localset 1982 3011119
-localset 1983 3011124
-localset 1984 2992692
-localset 1985 3007028
-localset 1986 2988596
-localset 1987 2992786
-localset 1988 2990738
-localset 1989 2998930
-localset 1990 3007122
-localset 1991 3029515
-localset 1992 3031563
-localset 1993 3033611
-localset 1994 3035659
-localset 1995 3035652
-localset 1996 3033604
-localset 1997 3041796
-localset 1998 3043844
-localset 1999 3043887
-localset 2000 3041839
-localset 2001 3050031
-localset 2002 3052079
-localset 2003 3052084
-localset 2004 3050036
-localset 2005 3031604
-localset 2006 3029556
-localset 2007 3031695
-localset 2008 3041935
-localset 2009 3033743
-localset 2010 3050127
-localset 2011 3070242
-localset 2012 3072290
-localset 2013 3074338
-localset 2014 3076386
-localset 2015 3078403
-localset 2016 3080451
-localset 2017 3082499
-localset 2018 3084547
-localset 2019 3087104
-localset 2020 3089152
-localset 2021 3091200
-localset 2022 3093248
 localset 2023 3094753
 localset 2024 3096598
 localset 2025 3098711
@@ -5120,6 +7116,8 @@ localset 2131 3315932
 localset 2132 3317975
 localset 2133 3320008
 localset 2134 3322076
+localset 3202 124
+localset 3203 128
 localset 2078 3207168
 localset 2079 3209216
 localset 2080 3211264
@@ -5152,12 +7150,14 @@ localset 144 0
 localset 145 0
 localset 146 0
 localget r0 11
-cmp r0 44
+cmp r0 124
 jge skid_actor
 cmp r0 4
 jge tree_actor
 cmp r0 0
-jne rival_actor
+je open_player_actor
+jmp next_actor
+label open_player_actor
 set r0 0
 mov r9 r0
 localset 132 r9
@@ -5232,10 +7232,31 @@ set r0 1591
 mov r9 r0
 localset 134 r9
 label nature_model_ready
+localget r5 11
+localget r6 3200
+mul r6 4
+add r5 r6
+localset 3120 r5
 localget r8 11
 sub r8 4
-div r8 2
-mul r8 4
+div r8 4
+localget r7 3200
+add r8 r7
+localget r7 3201
+cmp r8 r7
+jge next_actor
+mov r7 r8
+add r7 5500
+load8 r7 $r7
+cmp r7 1
+je next_actor
+cmp r7 2
+jne open_tree_bank_ready
+localget r7 11
+mod r7 2
+cmp r7 1
+je next_actor
+label open_tree_bank_ready
 mov r7 r8
 mul r7 2
 add r7 5000
@@ -5244,9 +7265,9 @@ mov r3 r6
 add r3 0
 mod r3 4096
 cmp r3 0
-jge sin_negative_32
+jge sin_negative_195
 add r3 4096
-label sin_negative_32
+label sin_negative_195
 mov r1 r3
 mod r1 2048
 set r2 2048
@@ -5259,9 +7280,9 @@ sub r4 r2
 mul r1 262144
 div r1 r4
 cmp r3 2048
-jlt sin_done_33
+jlt sin_done_196
 mul r1 -1
-label sin_done_33
+label sin_done_196
 mov r3 r1
 mov r2 r3
 mov r9 r2
@@ -5271,9 +7292,9 @@ mov r4 r6
 add r4 1024
 mod r4 4096
 cmp r4 0
-jge sin_negative_34
+jge sin_negative_197
 add r4 4096
-label sin_negative_34
+label sin_negative_197
 mov r1 r4
 mod r1 2048
 set r2 2048
@@ -5286,9 +7307,9 @@ sub r3 r2
 mul r1 262144
 div r1 r3
 cmp r4 2048
-jlt sin_done_35
+jlt sin_done_198
 mul r1 -1
-label sin_done_35
+label sin_done_198
 mov r4 r1
 localget r3 58
 sub r3 32768
@@ -5296,10 +7317,10 @@ localget r0 11
 mod r0 2
 mul r0 2
 sub r0 1
-localget r1 11
+localget r1 3120
 mul r1 73
-mod r1 540
-add r1 1460
+mod r1 2500
+add r1 470
 mul r0 r1
 mul r4 r0
 div r4 16384
@@ -5314,6 +7335,15 @@ add r8 4
 load32 r2 $r8
 sub r2 65536
 sub r2 r3
+localget r5 11
+sub r5 4
+div r5 4
+localget r6 3200
+add r5 r6
+mul r5 2
+add r5 5300
+load16 r5 $r5
+localset 3104 r5
 set r8 0
 jmp actor_ready
 label skid_actor
@@ -5324,7 +7354,7 @@ set r0 1623
 mov r9 r0
 localset 134 r9
 localget r7 11
-sub r7 44
+sub r7 124
 mul r7 12
 add r7 410
 load8 r9 $r7
@@ -5343,9 +7373,9 @@ mov r3 r8
 add r3 0
 mod r3 4096
 cmp r3 0
-jge sin_negative_36
+jge sin_negative_199
 add r3 4096
-label sin_negative_36
+label sin_negative_199
 mov r5 r3
 mod r5 2048
 set r6 2048
@@ -5358,9 +7388,9 @@ sub r4 r6
 mul r5 262144
 div r5 r4
 cmp r3 2048
-jlt sin_done_37
+jlt sin_done_200
 mul r5 -1
-label sin_done_37
+label sin_done_200
 mov r3 r5
 mov r6 r3
 mov r9 r6
@@ -5370,9 +7400,9 @@ mov r4 r8
 add r4 1024
 mod r4 4096
 cmp r4 0
-jge sin_negative_38
+jge sin_negative_201
 add r4 4096
-label sin_negative_38
+label sin_negative_201
 mov r5 r4
 mod r5 2048
 set r6 2048
@@ -5385,27 +7415,51 @@ sub r3 r6
 mul r5 262144
 div r5 r3
 cmp r4 2048
-jlt sin_done_39
+jlt sin_done_202
 mul r5 -1
-label sin_done_39
+label sin_done_202
 mov r4 r5
 localget r3 58
 sub r3 32768
+localset 3320 -8390
+localset 3321 12815
+localset 3322 -5796
+load8 r5 526
+cmp r5 1
+je open_sun_dusk
+cmp r5 2
+je open_sun_night
+jmp open_sun_ready
+label open_sun_dusk
+localset 3320 -13300
+localset 3321 5400
+localset 3322 -7900
+jmp open_sun_ready
+label open_sun_night
+localset 3320 3800
+localset 3321 12600
+localset 3322 9700
+label open_sun_ready
 localget r5 11
 cmp r5 4
 jge lighting_basis_ready
 mov r5 r4
-mul r5 -8394
+localget r7 3320
+mul r5 r7
 mov r6 r3
-mul r6 -5799
+localget r7 3322
+mul r6 r7
 sub r5 r6
 div r5 16384
 localset 3000 r5
-localset 3001 12820
+localget r7 3321
+localset 3001 r7
 mov r5 r3
-mul r5 -8394
+localget r7 3320
+mul r5 r7
 mov r6 r4
-mul r6 -5799
+localget r7 3322
+mul r6 r7
 add r5 r6
 div r5 16384
 localset 3002 r5
@@ -5450,38 +7504,38 @@ add r8 r9
 set r9 0
 mov r10 r5
 cmp r10 0
-jge norm_component_44
+jge norm_component_207
 mul r10 -1
-label norm_component_44
+label norm_component_207
 add r9 r10
 mov r10 r6
 cmp r10 0
-jge norm_component_45
+jge norm_component_208
 mul r10 -1
-label norm_component_45
+label norm_component_208
 add r9 r10
 mov r10 r7
 cmp r10 0
-jge norm_component_46
+jge norm_component_209
 mul r10 -1
-label norm_component_46
+label norm_component_209
 add r9 r10
 cmp r9 0
-jgt norm_nonzero_43
+jgt norm_nonzero_206
 set r9 1
-label norm_nonzero_43
-label norm_sqrt_41
+label norm_nonzero_206
+label norm_sqrt_204
 mov r10 r8
 div r10 r9
 add r10 r9
 div r10 2
 cmp r10 r9
-jge norm_done_42
+jge norm_done_205
 mov r9 r10
 cmp r9 0
-jgt norm_sqrt_41
+jgt norm_sqrt_204
 set r9 1
-label norm_done_42
+label norm_done_205
 mul r5 16384
 div r5 r9
 mul r6 16384
@@ -5508,38 +7562,38 @@ add r8 r9
 set r9 0
 mov r10 r5
 cmp r10 0
-jge norm_component_51
+jge norm_component_214
 mul r10 -1
-label norm_component_51
+label norm_component_214
 add r9 r10
 mov r10 r6
 cmp r10 0
-jge norm_component_52
+jge norm_component_215
 mul r10 -1
-label norm_component_52
+label norm_component_215
 add r9 r10
 mov r10 r7
 cmp r10 0
-jge norm_component_53
+jge norm_component_216
 mul r10 -1
-label norm_component_53
+label norm_component_216
 add r9 r10
 cmp r9 0
-jgt norm_nonzero_50
+jgt norm_nonzero_213
 set r9 1
-label norm_nonzero_50
-label norm_sqrt_48
+label norm_nonzero_213
+label norm_sqrt_211
 mov r10 r8
 div r10 r9
 add r10 r9
 div r10 2
 cmp r10 r9
-jge norm_done_49
+jge norm_done_212
 mov r9 r10
 cmp r9 0
-jgt norm_sqrt_48
+jgt norm_sqrt_211
 set r9 1
-label norm_done_49
+label norm_done_212
 mul r5 16384
 div r5 r9
 mul r6 16384
@@ -5674,7 +7728,7 @@ add r9 1000000
 localset 112 r9
 cmp r0 -1200
 jlt next_actor
-cmp r0 30000
+cmp r0 22000
 jgt next_actor
 mov r2 r0
 mul r2 2
@@ -5745,9 +7799,9 @@ mul r1 -16380
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_56
+jge diffuse_positive_219
 set r0 0
-label diffuse_positive_56
+label diffuse_positive_219
 mul r0 128
 div r0 16384
 add r0 66
@@ -5766,9 +7820,9 @@ mul r2 -16380
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_57
+jge highlight_positive_220
 set r1 0
-label highlight_positive_57
+label highlight_positive_220
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -5819,19 +7873,19 @@ set r2 255
 label metal_bounded_0
 localset 2688 r2
 cmp r0 255
-jle intensity_bounded_58
+jle intensity_bounded_221
 set r0 255
-label intensity_bounded_58
+label intensity_bounded_221
 localset 2304 r0
 localget r1 2816
 mul r1 3
 add r1 r0
 div r1 4
 localset 2816 r1
-label body_lighting_done_54
+label body_lighting_done_217
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_59
+jne body_lighting_done_222
 localget r0 3000
 mul r0 -15205
 localget r1 3001
@@ -5842,9 +7896,9 @@ mul r1 -4574
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_61
+jge diffuse_positive_224
 set r0 0
-label diffuse_positive_61
+label diffuse_positive_224
 mul r0 128
 div r0 16384
 add r0 71
@@ -5863,9 +7917,9 @@ mul r2 -4574
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_62
+jge highlight_positive_225
 set r1 0
-label highlight_positive_62
+label highlight_positive_225
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -5916,19 +7970,19 @@ set r2 255
 label metal_bounded_1
 localset 2689 r2
 cmp r0 255
-jle intensity_bounded_63
+jle intensity_bounded_226
 set r0 255
-label intensity_bounded_63
+label intensity_bounded_226
 localset 2305 r0
 localget r1 2817
 mul r1 3
 add r1 r0
 div r1 4
 localset 2817 r1
-label body_lighting_done_59
+label body_lighting_done_222
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_64
+jne body_lighting_done_227
 localget r0 3000
 mul r0 79
 localget r1 3001
@@ -5939,9 +7993,9 @@ mul r1 -6156
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_66
+jge diffuse_positive_229
 set r0 0
-label diffuse_positive_66
+label diffuse_positive_229
 mul r0 128
 div r0 16384
 add r0 86
@@ -5960,9 +8014,9 @@ mul r2 -6156
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_67
+jge highlight_positive_230
 set r1 0
-label highlight_positive_67
+label highlight_positive_230
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -6013,16 +8067,16 @@ set r2 255
 label metal_bounded_2
 localset 2690 r2
 cmp r0 255
-jle intensity_bounded_68
+jle intensity_bounded_231
 set r0 255
-label intensity_bounded_68
+label intensity_bounded_231
 localset 2306 r0
 localget r1 2818
 mul r1 3
 add r1 r0
 div r1 4
 localset 2818 r1
-label body_lighting_done_64
+label body_lighting_done_227
 localget r0 3006
 mul r0 79
 localget r1 3007
@@ -6041,18 +8095,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_69
+jge glass_low_232
 set r0 0
-label glass_low_69
+label glass_low_232
 cmp r0 255
-jle glass_high_70
+jle glass_high_233
 set r0 255
-label glass_high_70
+label glass_high_233
 localset 2434 r0
-label glass_lighting_done_65
+label glass_lighting_done_228
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_71
+jne body_lighting_done_234
 localget r0 3000
 mul r0 4
 localget r1 3001
@@ -6063,9 +8117,9 @@ mul r1 -15524
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_73
+jge diffuse_positive_236
 set r0 0
-label diffuse_positive_73
+label diffuse_positive_236
 mul r0 128
 div r0 16384
 add r0 73
@@ -6084,9 +8138,9 @@ mul r2 -15524
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_74
+jge highlight_positive_237
 set r1 0
-label highlight_positive_74
+label highlight_positive_237
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -6137,19 +8191,19 @@ set r2 255
 label metal_bounded_3
 localset 2691 r2
 cmp r0 255
-jle intensity_bounded_75
+jle intensity_bounded_238
 set r0 255
-label intensity_bounded_75
+label intensity_bounded_238
 localset 2307 r0
 localget r1 2819
 mul r1 3
 add r1 r0
 div r1 4
 localset 2819 r1
-label body_lighting_done_71
+label body_lighting_done_234
 localget r3 3030
 cmp r3 0
-jne glass_lighting_done_72
+jne glass_lighting_done_235
 localget r0 3006
 mul r0 4
 localget r1 3007
@@ -6168,15 +8222,15 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_76
+jge glass_low_239
 set r0 0
-label glass_low_76
+label glass_low_239
 cmp r0 255
-jle glass_high_77
+jle glass_high_240
 set r0 255
-label glass_high_77
+label glass_high_240
 localset 2435 r0
-label glass_lighting_done_72
+label glass_lighting_done_235
 localget r0 3000
 mul r0 20
 localget r1 3001
@@ -6187,9 +8241,9 @@ mul r1 -12166
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_80
+jge diffuse_positive_243
 set r0 0
-label diffuse_positive_80
+label diffuse_positive_243
 mul r0 128
 div r0 16384
 add r0 81
@@ -6208,9 +8262,9 @@ mul r2 -12166
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_81
+jge highlight_positive_244
 set r1 0
-label highlight_positive_81
+label highlight_positive_244
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -6261,19 +8315,19 @@ set r2 255
 label metal_bounded_4
 localset 2692 r2
 cmp r0 255
-jle intensity_bounded_82
+jle intensity_bounded_245
 set r0 255
-label intensity_bounded_82
+label intensity_bounded_245
 localset 2308 r0
 localget r1 2820
 mul r1 3
 add r1 r0
 div r1 4
 localset 2820 r1
-label body_lighting_done_78
+label body_lighting_done_241
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_83
+jne body_lighting_done_246
 localget r0 3000
 mul r0 14114
 localget r1 3001
@@ -6284,9 +8338,9 @@ mul r1 -6211
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_85
+jge diffuse_positive_248
 set r0 0
-label diffuse_positive_85
+label diffuse_positive_248
 mul r0 128
 div r0 16384
 add r0 73
@@ -6305,9 +8359,9 @@ mul r2 -6211
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_86
+jge highlight_positive_249
 set r1 0
-label highlight_positive_86
+label highlight_positive_249
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -6358,19 +8412,19 @@ set r2 255
 label metal_bounded_5
 localset 2693 r2
 cmp r0 255
-jle intensity_bounded_87
+jle intensity_bounded_250
 set r0 255
-label intensity_bounded_87
+label intensity_bounded_250
 localset 2309 r0
 localget r1 2821
 mul r1 3
 add r1 r0
 div r1 4
 localset 2821 r1
-label body_lighting_done_83
+label body_lighting_done_246
 localget r3 3030
 cmp r3 2
-je body_lighting_done_88
+je body_lighting_done_251
 localget r0 3000
 mul r0 -15872
 localget r1 3001
@@ -6381,9 +8435,9 @@ mul r1 -4061
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_90
+jge diffuse_positive_253
 set r0 0
-label diffuse_positive_90
+label diffuse_positive_253
 mul r0 128
 div r0 16384
 add r0 66
@@ -6402,9 +8456,9 @@ mul r2 -4061
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_91
+jge highlight_positive_254
 set r1 0
-label highlight_positive_91
+label highlight_positive_254
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -6455,19 +8509,19 @@ set r2 255
 label metal_bounded_6
 localset 2694 r2
 cmp r0 255
-jle intensity_bounded_92
+jle intensity_bounded_255
 set r0 255
-label intensity_bounded_92
+label intensity_bounded_255
 localset 2310 r0
 localget r1 2822
 mul r1 3
 add r1 r0
 div r1 4
 localset 2822 r1
-label body_lighting_done_88
+label body_lighting_done_251
 localget r3 3030
 cmp r3 2
-je body_lighting_done_93
+je body_lighting_done_256
 localget r0 3000
 mul r0 15915
 localget r1 3001
@@ -6478,9 +8532,9 @@ mul r1 -3891
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_95
+jge diffuse_positive_258
 set r0 0
-label diffuse_positive_95
+label diffuse_positive_258
 mul r0 128
 div r0 16384
 add r0 66
@@ -6499,9 +8553,9 @@ mul r2 -3891
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_96
+jge highlight_positive_259
 set r1 0
-label highlight_positive_96
+label highlight_positive_259
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -6552,19 +8606,19 @@ set r2 255
 label metal_bounded_7
 localset 2695 r2
 cmp r0 255
-jle intensity_bounded_97
+jle intensity_bounded_260
 set r0 255
-label intensity_bounded_97
+label intensity_bounded_260
 localset 2311 r0
 localget r1 2823
 mul r1 3
 add r1 r0
 div r1 4
 localset 2823 r1
-label body_lighting_done_93
+label body_lighting_done_256
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_98
+jne body_lighting_done_261
 localget r0 3000
 mul r0 -3216
 localget r1 3001
@@ -6575,9 +8629,9 @@ mul r1 -3305
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_100
+jge diffuse_positive_263
 set r0 0
-label diffuse_positive_100
+label diffuse_positive_263
 mul r0 128
 div r0 16384
 add r0 87
@@ -6596,9 +8650,9 @@ mul r2 -3305
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_101
+jge highlight_positive_264
 set r1 0
-label highlight_positive_101
+label highlight_positive_264
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -6649,19 +8703,19 @@ set r2 255
 label metal_bounded_8
 localset 2696 r2
 cmp r0 255
-jle intensity_bounded_102
+jle intensity_bounded_265
 set r0 255
-label intensity_bounded_102
+label intensity_bounded_265
 localset 2312 r0
 localget r1 2824
 mul r1 3
 add r1 r0
 div r1 4
 localset 2824 r1
-label body_lighting_done_98
+label body_lighting_done_261
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_103
+jne body_lighting_done_266
 localget r0 3000
 mul r0 -5031
 localget r1 3001
@@ -6672,9 +8726,9 @@ mul r1 -1850
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_105
+jge diffuse_positive_268
 set r0 0
-label diffuse_positive_105
+label diffuse_positive_268
 mul r0 128
 div r0 16384
 add r0 87
@@ -6693,9 +8747,9 @@ mul r2 -1850
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_106
+jge highlight_positive_269
 set r1 0
-label highlight_positive_106
+label highlight_positive_269
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -6746,16 +8800,16 @@ set r2 255
 label metal_bounded_9
 localset 2697 r2
 cmp r0 255
-jle intensity_bounded_107
+jle intensity_bounded_270
 set r0 255
-label intensity_bounded_107
+label intensity_bounded_270
 localset 2313 r0
 localget r1 2825
 mul r1 3
 add r1 r0
 div r1 4
 localset 2825 r1
-label body_lighting_done_103
+label body_lighting_done_266
 localget r0 3000
 mul r0 10
 localget r1 3001
@@ -6766,9 +8820,9 @@ mul r1 247
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_110
+jge diffuse_positive_273
 set r0 0
-label diffuse_positive_110
+label diffuse_positive_273
 mul r0 128
 div r0 16384
 add r0 88
@@ -6787,9 +8841,9 @@ mul r2 247
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_111
+jge highlight_positive_274
 set r1 0
-label highlight_positive_111
+label highlight_positive_274
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -6840,16 +8894,16 @@ set r2 255
 label metal_bounded_10
 localset 2698 r2
 cmp r0 255
-jle intensity_bounded_112
+jle intensity_bounded_275
 set r0 255
-label intensity_bounded_112
+label intensity_bounded_275
 localset 2314 r0
 localget r1 2826
 mul r1 3
 add r1 r0
 div r1 4
 localset 2826 r1
-label body_lighting_done_108
+label body_lighting_done_271
 localget r0 3006
 mul r0 10
 localget r1 3007
@@ -6868,15 +8922,15 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_113
+jge glass_low_276
 set r0 0
-label glass_low_113
+label glass_low_276
 cmp r0 255
-jle glass_high_114
+jle glass_high_277
 set r0 255
-label glass_high_114
+label glass_high_277
 localset 2442 r0
-label glass_lighting_done_109
+label glass_lighting_done_272
 localget r0 3000
 mul r0 54
 localget r1 3001
@@ -6887,9 +8941,9 @@ mul r1 11434
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_117
+jge diffuse_positive_280
 set r0 0
-label diffuse_positive_117
+label diffuse_positive_280
 mul r0 128
 div r0 16384
 add r0 82
@@ -6908,9 +8962,9 @@ mul r2 11434
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_118
+jge highlight_positive_281
 set r1 0
-label highlight_positive_118
+label highlight_positive_281
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -6961,16 +9015,16 @@ set r2 255
 label metal_bounded_11
 localset 2699 r2
 cmp r0 255
-jle intensity_bounded_119
+jle intensity_bounded_282
 set r0 255
-label intensity_bounded_119
+label intensity_bounded_282
 localset 2315 r0
 localget r1 2827
 mul r1 3
 add r1 r0
 div r1 4
 localset 2827 r1
-label body_lighting_done_115
+label body_lighting_done_278
 localget r0 3000
 mul r0 -120
 localget r1 3001
@@ -6981,9 +9035,9 @@ mul r1 6373
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_122
+jge diffuse_positive_285
 set r0 0
-label diffuse_positive_122
+label diffuse_positive_285
 mul r0 128
 div r0 16384
 add r0 86
@@ -7002,9 +9056,9 @@ mul r2 6373
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_123
+jge highlight_positive_286
 set r1 0
-label highlight_positive_123
+label highlight_positive_286
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -7055,16 +9109,16 @@ set r2 255
 label metal_bounded_12
 localset 2700 r2
 cmp r0 255
-jle intensity_bounded_124
+jle intensity_bounded_287
 set r0 255
-label intensity_bounded_124
+label intensity_bounded_287
 localset 2316 r0
 localget r1 2828
 mul r1 3
 add r1 r0
 div r1 4
 localset 2828 r1
-label body_lighting_done_120
+label body_lighting_done_283
 localget r0 3006
 mul r0 -120
 localget r1 3007
@@ -7083,18 +9137,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_125
+jge glass_low_288
 set r0 0
-label glass_low_125
+label glass_low_288
 cmp r0 255
-jle glass_high_126
+jle glass_high_289
 set r0 255
-label glass_high_126
+label glass_high_289
 localset 2444 r0
-label glass_lighting_done_121
+label glass_lighting_done_284
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_127
+jne body_lighting_done_290
 localget r0 3000
 mul r0 5537
 localget r1 3001
@@ -7105,9 +9159,9 @@ mul r1 277
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_129
+jge diffuse_positive_292
 set r0 0
-label diffuse_positive_129
+label diffuse_positive_292
 mul r0 128
 div r0 16384
 add r0 87
@@ -7126,9 +9180,9 @@ mul r2 277
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_130
+jge highlight_positive_293
 set r1 0
-label highlight_positive_130
+label highlight_positive_293
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -7179,19 +9233,19 @@ set r2 255
 label metal_bounded_13
 localset 2701 r2
 cmp r0 255
-jle intensity_bounded_131
+jle intensity_bounded_294
 set r0 255
-label intensity_bounded_131
+label intensity_bounded_294
 localset 2317 r0
 localget r1 2829
 mul r1 3
 add r1 r0
 div r1 4
 localset 2829 r1
-label body_lighting_done_127
+label body_lighting_done_290
 localget r3 3030
 cmp r3 2
-je glass_lighting_done_128
+je glass_lighting_done_291
 localget r0 3006
 mul r0 5537
 localget r1 3007
@@ -7210,18 +9264,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_132
+jge glass_low_295
 set r0 0
-label glass_low_132
+label glass_low_295
 cmp r0 255
-jle glass_high_133
+jle glass_high_296
 set r0 255
-label glass_high_133
+label glass_high_296
 localset 2445 r0
-label glass_lighting_done_128
+label glass_lighting_done_291
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_134
+jne body_lighting_done_297
 localget r0 3000
 mul r0 2016
 localget r1 3001
@@ -7232,9 +9286,9 @@ mul r1 -5748
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_136
+jge diffuse_positive_299
 set r0 0
-label diffuse_positive_136
+label diffuse_positive_299
 mul r0 128
 div r0 16384
 add r0 86
@@ -7253,9 +9307,9 @@ mul r2 -5748
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_137
+jge highlight_positive_300
 set r1 0
-label highlight_positive_137
+label highlight_positive_300
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -7306,16 +9360,16 @@ set r2 255
 label metal_bounded_14
 localset 2702 r2
 cmp r0 255
-jle intensity_bounded_138
+jle intensity_bounded_301
 set r0 255
-label intensity_bounded_138
+label intensity_bounded_301
 localset 2318 r0
 localget r1 2830
 mul r1 3
 add r1 r0
 div r1 4
 localset 2830 r1
-label body_lighting_done_134
+label body_lighting_done_297
 localget r0 3006
 mul r0 2016
 localget r1 3007
@@ -7334,15 +9388,15 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_139
+jge glass_low_302
 set r0 0
-label glass_low_139
+label glass_low_302
 cmp r0 255
-jle glass_high_140
+jle glass_high_303
 set r0 255
-label glass_high_140
+label glass_high_303
 localset 2446 r0
-label glass_lighting_done_135
+label glass_lighting_done_298
 localget r0 3000
 mul r0 16384
 localget r1 3001
@@ -7353,9 +9407,9 @@ mul r1 18
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_143
+jge diffuse_positive_306
 set r0 0
-label diffuse_positive_143
+label diffuse_positive_306
 mul r0 128
 div r0 16384
 add r0 66
@@ -7374,9 +9428,9 @@ mul r2 18
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_144
+jge highlight_positive_307
 set r1 0
-label highlight_positive_144
+label highlight_positive_307
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -7427,19 +9481,19 @@ set r2 255
 label metal_bounded_15
 localset 2703 r2
 cmp r0 255
-jle intensity_bounded_145
+jle intensity_bounded_308
 set r0 255
-label intensity_bounded_145
+label intensity_bounded_308
 localset 2319 r0
 localget r1 2831
 mul r1 3
 add r1 r0
 div r1 4
 localset 2831 r1
-label body_lighting_done_141
+label body_lighting_done_304
 localget r3 3030
 cmp r3 2
-je body_lighting_done_146
+je body_lighting_done_309
 localget r0 3000
 mul r0 -15542
 localget r1 3001
@@ -7450,9 +9504,9 @@ mul r1 152
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_148
+jge diffuse_positive_311
 set r0 0
-label diffuse_positive_148
+label diffuse_positive_311
 mul r0 128
 div r0 16384
 add r0 73
@@ -7471,9 +9525,9 @@ mul r2 152
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_149
+jge highlight_positive_312
 set r1 0
-label highlight_positive_149
+label highlight_positive_312
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -7524,16 +9578,16 @@ set r2 255
 label metal_bounded_16
 localset 2704 r2
 cmp r0 255
-jle intensity_bounded_150
+jle intensity_bounded_313
 set r0 255
-label intensity_bounded_150
+label intensity_bounded_313
 localset 2320 r0
 localget r1 2832
 mul r1 3
 add r1 r0
 div r1 4
 localset 2832 r1
-label body_lighting_done_146
+label body_lighting_done_309
 localget r0 3006
 mul r0 -15542
 localget r1 3007
@@ -7552,18 +9606,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_151
+jge glass_low_314
 set r0 0
-label glass_low_151
+label glass_low_314
 cmp r0 255
-jle glass_high_152
+jle glass_high_315
 set r0 255
-label glass_high_152
+label glass_high_315
 localset 2448 r0
-label glass_lighting_done_147
+label glass_lighting_done_310
 localget r3 3030
 cmp r3 2
-je body_lighting_done_153
+je body_lighting_done_316
 localget r0 3000
 mul r0 15486
 localget r1 3001
@@ -7574,9 +9628,9 @@ mul r1 111
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_155
+jge diffuse_positive_318
 set r0 0
-label diffuse_positive_155
+label diffuse_positive_318
 mul r0 128
 div r0 16384
 add r0 73
@@ -7595,9 +9649,9 @@ mul r2 111
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_156
+jge highlight_positive_319
 set r1 0
-label highlight_positive_156
+label highlight_positive_319
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -7648,16 +9702,16 @@ set r2 255
 label metal_bounded_17
 localset 2705 r2
 cmp r0 255
-jle intensity_bounded_157
+jle intensity_bounded_320
 set r0 255
-label intensity_bounded_157
+label intensity_bounded_320
 localset 2321 r0
 localget r1 2833
 mul r1 3
 add r1 r0
 div r1 4
 localset 2833 r1
-label body_lighting_done_153
+label body_lighting_done_316
 localget r0 3006
 mul r0 15486
 localget r1 3007
@@ -7676,15 +9730,15 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_158
+jge glass_low_321
 set r0 0
-label glass_low_158
+label glass_low_321
 cmp r0 255
-jle glass_high_159
+jle glass_high_322
 set r0 255
-label glass_high_159
+label glass_high_322
 localset 2449 r0
-label glass_lighting_done_154
+label glass_lighting_done_317
 localget r0 3000
 mul r0 -16384
 localget r1 3001
@@ -7695,9 +9749,9 @@ mul r1 40
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_162
+jge diffuse_positive_325
 set r0 0
-label diffuse_positive_162
+label diffuse_positive_325
 mul r0 128
 div r0 16384
 add r0 66
@@ -7716,9 +9770,9 @@ mul r2 40
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_163
+jge highlight_positive_326
 set r1 0
-label highlight_positive_163
+label highlight_positive_326
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -7769,19 +9823,19 @@ set r2 255
 label metal_bounded_18
 localset 2706 r2
 cmp r0 255
-jle intensity_bounded_164
+jle intensity_bounded_327
 set r0 255
-label intensity_bounded_164
+label intensity_bounded_327
 localset 2322 r0
 localget r1 2834
 mul r1 3
 add r1 r0
 div r1 4
 localset 2834 r1
-label body_lighting_done_160
+label body_lighting_done_323
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_165
+jne body_lighting_done_328
 localget r0 3000
 mul r0 -12536
 localget r1 3001
@@ -7792,9 +9846,9 @@ mul r1 109
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_167
+jge diffuse_positive_330
 set r0 0
-label diffuse_positive_167
+label diffuse_positive_330
 mul r0 128
 div r0 16384
 add r0 80
@@ -7813,9 +9867,9 @@ mul r2 109
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_168
+jge highlight_positive_331
 set r1 0
-label highlight_positive_168
+label highlight_positive_331
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -7866,16 +9920,16 @@ set r2 255
 label metal_bounded_19
 localset 2707 r2
 cmp r0 255
-jle intensity_bounded_169
+jle intensity_bounded_332
 set r0 255
-label intensity_bounded_169
+label intensity_bounded_332
 localset 2323 r0
 localget r1 2835
 mul r1 3
 add r1 r0
 div r1 4
 localset 2835 r1
-label body_lighting_done_165
+label body_lighting_done_328
 localget r0 3006
 mul r0 -12536
 localget r1 3007
@@ -7894,18 +9948,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_170
+jge glass_low_333
 set r0 0
-label glass_low_170
+label glass_low_333
 cmp r0 255
-jle glass_high_171
+jle glass_high_334
 set r0 255
-label glass_high_171
+label glass_high_334
 localset 2451 r0
-label glass_lighting_done_166
+label glass_lighting_done_329
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_172
+jne body_lighting_done_335
 localget r0 3000
 mul r0 12291
 localget r1 3001
@@ -7916,9 +9970,9 @@ mul r1 168
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_174
+jge diffuse_positive_337
 set r0 0
-label diffuse_positive_174
+label diffuse_positive_337
 mul r0 128
 div r0 16384
 add r0 81
@@ -7937,9 +9991,9 @@ mul r2 168
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_175
+jge highlight_positive_338
 set r1 0
-label highlight_positive_175
+label highlight_positive_338
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -7990,16 +10044,16 @@ set r2 255
 label metal_bounded_20
 localset 2708 r2
 cmp r0 255
-jle intensity_bounded_176
+jle intensity_bounded_339
 set r0 255
-label intensity_bounded_176
+label intensity_bounded_339
 localset 2324 r0
 localget r1 2836
 mul r1 3
 add r1 r0
 div r1 4
 localset 2836 r1
-label body_lighting_done_172
+label body_lighting_done_335
 localget r0 3006
 mul r0 12291
 localget r1 3007
@@ -8018,18 +10072,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_177
+jge glass_low_340
 set r0 0
-label glass_low_177
+label glass_low_340
 cmp r0 255
-jle glass_high_178
+jle glass_high_341
 set r0 255
-label glass_high_178
+label glass_high_341
 localset 2452 r0
-label glass_lighting_done_173
+label glass_lighting_done_336
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_179
+jne body_lighting_done_342
 localget r0 3000
 mul r0 -11041
 localget r1 3001
@@ -8040,9 +10094,9 @@ mul r1 4856
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_181
+jge diffuse_positive_344
 set r0 0
-label diffuse_positive_181
+label diffuse_positive_344
 mul r0 128
 div r0 16384
 add r0 81
@@ -8061,9 +10115,9 @@ mul r2 4856
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_182
+jge highlight_positive_345
 set r1 0
-label highlight_positive_182
+label highlight_positive_345
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -8114,19 +10168,19 @@ set r2 255
 label metal_bounded_21
 localset 2709 r2
 cmp r0 255
-jle intensity_bounded_183
+jle intensity_bounded_346
 set r0 255
-label intensity_bounded_183
+label intensity_bounded_346
 localset 2325 r0
 localget r1 2837
 mul r1 3
 add r1 r0
 div r1 4
 localset 2837 r1
-label body_lighting_done_179
+label body_lighting_done_342
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_184
+jne body_lighting_done_347
 localget r0 3000
 mul r0 11383
 localget r1 3001
@@ -8137,9 +10191,9 @@ mul r1 5082
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_186
+jge diffuse_positive_349
 set r0 0
-label diffuse_positive_186
+label diffuse_positive_349
 mul r0 128
 div r0 16384
 add r0 80
@@ -8158,9 +10212,9 @@ mul r2 5082
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_187
+jge highlight_positive_350
 set r1 0
-label highlight_positive_187
+label highlight_positive_350
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -8211,19 +10265,19 @@ set r2 255
 label metal_bounded_22
 localset 2710 r2
 cmp r0 255
-jle intensity_bounded_188
+jle intensity_bounded_351
 set r0 255
-label intensity_bounded_188
+label intensity_bounded_351
 localset 2326 r0
 localget r1 2838
 mul r1 3
 add r1 r0
 div r1 4
 localset 2838 r1
-label body_lighting_done_184
+label body_lighting_done_347
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_189
+jne body_lighting_done_352
 localget r0 3000
 mul r0 -14031
 localget r1 3001
@@ -8234,9 +10288,9 @@ mul r1 5443
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_191
+jge diffuse_positive_354
 set r0 0
-label diffuse_positive_191
+label diffuse_positive_354
 mul r0 128
 div r0 16384
 add r0 75
@@ -8255,9 +10309,9 @@ mul r2 5443
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_192
+jge highlight_positive_355
 set r1 0
-label highlight_positive_192
+label highlight_positive_355
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -8308,19 +10362,19 @@ set r2 255
 label metal_bounded_23
 localset 2711 r2
 cmp r0 255
-jle intensity_bounded_193
+jle intensity_bounded_356
 set r0 255
-label intensity_bounded_193
+label intensity_bounded_356
 localset 2327 r0
 localget r1 2839
 mul r1 3
 add r1 r0
 div r1 4
 localset 2839 r1
-label body_lighting_done_189
+label body_lighting_done_352
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_194
+jne body_lighting_done_357
 localget r0 3000
 mul r0 14057
 localget r1 3001
@@ -8331,9 +10385,9 @@ mul r1 5819
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_196
+jge diffuse_positive_359
 set r0 0
-label diffuse_positive_196
+label diffuse_positive_359
 mul r0 128
 div r0 16384
 add r0 74
@@ -8352,9 +10406,9 @@ mul r2 5819
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_197
+jge highlight_positive_360
 set r1 0
-label highlight_positive_197
+label highlight_positive_360
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -8405,19 +10459,19 @@ set r2 255
 label metal_bounded_24
 localset 2712 r2
 cmp r0 255
-jle intensity_bounded_198
+jle intensity_bounded_361
 set r0 255
-label intensity_bounded_198
+label intensity_bounded_361
 localset 2328 r0
 localget r1 2840
 mul r1 3
 add r1 r0
 div r1 4
 localset 2840 r1
-label body_lighting_done_194
+label body_lighting_done_357
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_199
+jne body_lighting_done_362
 localget r0 3000
 mul r0 -3668
 localget r1 3001
@@ -8428,9 +10482,9 @@ mul r1 1457
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_201
+jge diffuse_positive_364
 set r0 0
-label diffuse_positive_201
+label diffuse_positive_364
 mul r0 128
 div r0 16384
 add r0 87
@@ -8449,9 +10503,9 @@ mul r2 1457
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_202
+jge highlight_positive_365
 set r1 0
-label highlight_positive_202
+label highlight_positive_365
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -8502,19 +10556,19 @@ set r2 255
 label metal_bounded_25
 localset 2713 r2
 cmp r0 255
-jle intensity_bounded_203
+jle intensity_bounded_366
 set r0 255
-label intensity_bounded_203
+label intensity_bounded_366
 localset 2329 r0
 localget r1 2841
 mul r1 3
 add r1 r0
 div r1 4
 localset 2841 r1
-label body_lighting_done_199
+label body_lighting_done_362
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_204
+jne body_lighting_done_367
 localget r0 3000
 mul r0 3588
 localget r1 3001
@@ -8525,9 +10579,9 @@ mul r1 1526
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_206
+jge diffuse_positive_369
 set r0 0
-label diffuse_positive_206
+label diffuse_positive_369
 mul r0 128
 div r0 16384
 add r0 87
@@ -8546,9 +10600,9 @@ mul r2 1526
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_207
+jge highlight_positive_370
 set r1 0
-label highlight_positive_207
+label highlight_positive_370
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -8599,19 +10653,19 @@ set r2 255
 label metal_bounded_26
 localset 2714 r2
 cmp r0 255
-jle intensity_bounded_208
+jle intensity_bounded_371
 set r0 255
-label intensity_bounded_208
+label intensity_bounded_371
 localset 2330 r0
 localget r1 2842
 mul r1 3
 add r1 r0
 div r1 4
 localset 2842 r1
-label body_lighting_done_204
+label body_lighting_done_367
 localget r3 3030
 cmp r3 0
-jne glass_lighting_done_205
+jne glass_lighting_done_368
 localget r0 3006
 mul r0 3588
 localget r1 3007
@@ -8630,18 +10684,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_209
+jge glass_low_372
 set r0 0
-label glass_low_209
+label glass_low_372
 cmp r0 255
-jle glass_high_210
+jle glass_high_373
 set r0 255
-label glass_high_210
+label glass_high_373
 localset 2458 r0
-label glass_lighting_done_205
+label glass_lighting_done_368
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_211
+jne body_lighting_done_374
 localget r0 3000
 mul r0 -2808
 localget r1 3001
@@ -8652,9 +10706,9 @@ mul r1 2272
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_213
+jge diffuse_positive_376
 set r0 0
-label diffuse_positive_213
+label diffuse_positive_376
 mul r0 128
 div r0 16384
 add r0 87
@@ -8673,9 +10727,9 @@ mul r2 2272
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_214
+jge highlight_positive_377
 set r1 0
-label highlight_positive_214
+label highlight_positive_377
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -8726,19 +10780,19 @@ set r2 255
 label metal_bounded_27
 localset 2715 r2
 cmp r0 255
-jle intensity_bounded_215
+jle intensity_bounded_378
 set r0 255
-label intensity_bounded_215
+label intensity_bounded_378
 localset 2331 r0
 localget r1 2843
 mul r1 3
 add r1 r0
 div r1 4
 localset 2843 r1
-label body_lighting_done_211
+label body_lighting_done_374
 localget r3 3030
 cmp r3 0
-jne glass_lighting_done_212
+jne glass_lighting_done_375
 localget r0 3006
 mul r0 -2808
 localget r1 3007
@@ -8757,18 +10811,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_216
+jge glass_low_379
 set r0 0
-label glass_low_216
+label glass_low_379
 cmp r0 255
-jle glass_high_217
+jle glass_high_380
 set r0 255
-label glass_high_217
+label glass_high_380
 localset 2459 r0
-label glass_lighting_done_212
+label glass_lighting_done_375
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_218
+jne body_lighting_done_381
 localget r0 3000
 mul r0 -2008
 localget r1 3001
@@ -8779,9 +10833,9 @@ mul r1 6638
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_220
+jge diffuse_positive_383
 set r0 0
-label diffuse_positive_220
+label diffuse_positive_383
 mul r0 128
 div r0 16384
 add r0 86
@@ -8800,9 +10854,9 @@ mul r2 6638
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_221
+jge highlight_positive_384
 set r1 0
-label highlight_positive_221
+label highlight_positive_384
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -8853,16 +10907,16 @@ set r2 255
 label metal_bounded_28
 localset 2716 r2
 cmp r0 255
-jle intensity_bounded_222
+jle intensity_bounded_385
 set r0 255
-label intensity_bounded_222
+label intensity_bounded_385
 localset 2332 r0
 localget r1 2844
 mul r1 3
 add r1 r0
 div r1 4
 localset 2844 r1
-label body_lighting_done_218
+label body_lighting_done_381
 localget r0 3006
 mul r0 -2008
 localget r1 3007
@@ -8881,18 +10935,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_223
+jge glass_low_386
 set r0 0
-label glass_low_223
+label glass_low_386
 cmp r0 255
-jle glass_high_224
+jle glass_high_387
 set r0 255
-label glass_high_224
+label glass_high_387
 localset 2460 r0
-label glass_lighting_done_219
+label glass_lighting_done_382
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_225
+jne body_lighting_done_388
 localget r0 3000
 mul r0 3130
 localget r1 3001
@@ -8903,9 +10957,9 @@ mul r1 2376
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_227
+jge diffuse_positive_390
 set r0 0
-label diffuse_positive_227
+label diffuse_positive_390
 mul r0 128
 div r0 16384
 add r0 87
@@ -8924,9 +10978,9 @@ mul r2 2376
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_228
+jge highlight_positive_391
 set r1 0
-label highlight_positive_228
+label highlight_positive_391
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -8977,19 +11031,19 @@ set r2 255
 label metal_bounded_29
 localset 2717 r2
 cmp r0 255
-jle intensity_bounded_229
+jle intensity_bounded_392
 set r0 255
-label intensity_bounded_229
+label intensity_bounded_392
 localset 2333 r0
 localget r1 2845
 mul r1 3
 add r1 r0
 div r1 4
 localset 2845 r1
-label body_lighting_done_225
+label body_lighting_done_388
 localget r3 3030
 cmp r3 1
-je body_lighting_done_230
+je body_lighting_done_393
 localget r0 3000
 mul r0 2076
 localget r1 3001
@@ -9000,9 +11054,9 @@ mul r1 6701
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_232
+jge diffuse_positive_395
 set r0 0
-label diffuse_positive_232
+label diffuse_positive_395
 mul r0 128
 div r0 16384
 add r0 86
@@ -9021,9 +11075,9 @@ mul r2 6701
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_233
+jge highlight_positive_396
 set r1 0
-label highlight_positive_233
+label highlight_positive_396
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -9074,19 +11128,19 @@ set r2 255
 label metal_bounded_30
 localset 2718 r2
 cmp r0 255
-jle intensity_bounded_234
+jle intensity_bounded_397
 set r0 255
-label intensity_bounded_234
+label intensity_bounded_397
 localset 2334 r0
 localget r1 2846
 mul r1 3
 add r1 r0
 div r1 4
 localset 2846 r1
-label body_lighting_done_230
+label body_lighting_done_393
 localget r3 3030
 cmp r3 2
-je glass_lighting_done_231
+je glass_lighting_done_394
 localget r0 3006
 mul r0 2076
 localget r1 3007
@@ -9105,18 +11159,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_235
+jge glass_low_398
 set r0 0
-label glass_low_235
+label glass_low_398
 cmp r0 255
-jle glass_high_236
+jle glass_high_399
 set r0 255
-label glass_high_236
+label glass_high_399
 localset 2462 r0
-label glass_lighting_done_231
+label glass_lighting_done_394
 localget r3 3030
 cmp r3 2
-je body_lighting_done_237
+je body_lighting_done_400
 localget r0 3000
 mul r0 -15833
 localget r1 3001
@@ -9127,9 +11181,9 @@ mul r1 4211
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_239
+jge diffuse_positive_402
 set r0 0
-label diffuse_positive_239
+label diffuse_positive_402
 mul r0 128
 div r0 16384
 add r0 66
@@ -9148,9 +11202,9 @@ mul r2 4211
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_240
+jge highlight_positive_403
 set r1 0
-label highlight_positive_240
+label highlight_positive_403
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -9201,19 +11255,19 @@ set r2 255
 label metal_bounded_31
 localset 2719 r2
 cmp r0 255
-jle intensity_bounded_241
+jle intensity_bounded_404
 set r0 255
-label intensity_bounded_241
+label intensity_bounded_404
 localset 2335 r0
 localget r1 2847
 mul r1 3
 add r1 r0
 div r1 4
 localset 2847 r1
-label body_lighting_done_237
+label body_lighting_done_400
 localget r3 3030
 cmp r3 2
-je body_lighting_done_242
+je body_lighting_done_405
 localget r0 3000
 mul r0 15833
 localget r1 3001
@@ -9224,9 +11278,9 @@ mul r1 4211
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_244
+jge diffuse_positive_407
 set r0 0
-label diffuse_positive_244
+label diffuse_positive_407
 mul r0 128
 div r0 16384
 add r0 66
@@ -9245,9 +11299,9 @@ mul r2 4211
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_245
+jge highlight_positive_408
 set r1 0
-label highlight_positive_245
+label highlight_positive_408
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -9298,19 +11352,19 @@ set r2 255
 label metal_bounded_32
 localset 2720 r2
 cmp r0 255
-jle intensity_bounded_246
+jle intensity_bounded_409
 set r0 255
-label intensity_bounded_246
+label intensity_bounded_409
 localset 2336 r0
 localget r1 2848
 mul r1 3
 add r1 r0
 div r1 4
 localset 2848 r1
-label body_lighting_done_242
+label body_lighting_done_405
 localget r3 3030
 cmp r3 2
-je body_lighting_done_247
+je body_lighting_done_410
 localget r0 3000
 mul r0 11
 localget r1 3001
@@ -9321,9 +11375,9 @@ mul r1 16384
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_249
+jge diffuse_positive_412
 set r0 0
-label diffuse_positive_249
+label diffuse_positive_412
 mul r0 128
 div r0 16384
 add r0 66
@@ -9342,9 +11396,9 @@ mul r2 16384
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_250
+jge highlight_positive_413
 set r1 0
-label highlight_positive_250
+label highlight_positive_413
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -9395,19 +11449,19 @@ set r2 255
 label metal_bounded_33
 localset 2721 r2
 cmp r0 255
-jle intensity_bounded_251
+jle intensity_bounded_414
 set r0 255
-label intensity_bounded_251
+label intensity_bounded_414
 localset 2337 r0
 localget r1 2849
 mul r1 3
 add r1 r0
 div r1 4
 localset 2849 r1
-label body_lighting_done_247
+label body_lighting_done_410
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_252
+jne body_lighting_done_415
 localget r0 3000
 mul r0 -38
 localget r1 3001
@@ -9418,9 +11472,9 @@ mul r1 15342
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_254
+jge diffuse_positive_417
 set r0 0
-label diffuse_positive_254
+label diffuse_positive_417
 mul r0 128
 div r0 16384
 add r0 74
@@ -9439,9 +11493,9 @@ mul r2 15342
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_255
+jge highlight_positive_418
 set r1 0
-label highlight_positive_255
+label highlight_positive_418
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -9492,16 +11546,16 @@ set r2 255
 label metal_bounded_34
 localset 2722 r2
 cmp r0 255
-jle intensity_bounded_256
+jle intensity_bounded_419
 set r0 255
-label intensity_bounded_256
+label intensity_bounded_419
 localset 2338 r0
 localget r1 2850
 mul r1 3
 add r1 r0
 div r1 4
 localset 2850 r1
-label body_lighting_done_252
+label body_lighting_done_415
 localget r0 3000
 mul r0 -6445
 localget r1 3001
@@ -9512,9 +11566,9 @@ mul r1 15063
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_259
+jge diffuse_positive_422
 set r0 0
-label diffuse_positive_259
+label diffuse_positive_422
 mul r0 128
 div r0 16384
 add r0 66
@@ -9533,9 +11587,9 @@ mul r2 15063
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_260
+jge highlight_positive_423
 set r1 0
-label highlight_positive_260
+label highlight_positive_423
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -9586,16 +11640,16 @@ set r2 255
 label metal_bounded_35
 localset 2723 r2
 cmp r0 255
-jle intensity_bounded_261
+jle intensity_bounded_424
 set r0 255
-label intensity_bounded_261
+label intensity_bounded_424
 localset 2339 r0
 localget r1 2851
 mul r1 3
 add r1 r0
 div r1 4
 localset 2851 r1
-label body_lighting_done_257
+label body_lighting_done_420
 localget r0 3000
 mul r0 5670
 localget r1 3001
@@ -9606,9 +11660,9 @@ mul r1 15372
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_264
+jge diffuse_positive_427
 set r0 0
-label diffuse_positive_264
+label diffuse_positive_427
 mul r0 128
 div r0 16384
 add r0 66
@@ -9627,9 +11681,9 @@ mul r2 15372
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_265
+jge highlight_positive_428
 set r1 0
-label highlight_positive_265
+label highlight_positive_428
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -9680,19 +11734,19 @@ set r2 255
 label metal_bounded_36
 localset 2724 r2
 cmp r0 255
-jle intensity_bounded_266
+jle intensity_bounded_429
 set r0 255
-label intensity_bounded_266
+label intensity_bounded_429
 localset 2340 r0
 localget r1 2852
 mul r1 3
 add r1 r0
 div r1 4
 localset 2852 r1
-label body_lighting_done_262
+label body_lighting_done_425
 localget r3 3030
 cmp r3 2
-je body_lighting_done_267
+je body_lighting_done_430
 localget r0 3000
 mul r0 0
 localget r1 3001
@@ -9703,9 +11757,9 @@ mul r1 158
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_269
+jge diffuse_positive_432
 set r0 0
-label diffuse_positive_269
+label diffuse_positive_432
 mul r0 128
 div r0 16384
 add r0 44
@@ -9724,9 +11778,9 @@ mul r2 158
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_270
+jge highlight_positive_433
 set r1 0
-label highlight_positive_270
+label highlight_positive_433
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -9777,19 +11831,19 @@ set r2 255
 label metal_bounded_37
 localset 2725 r2
 cmp r0 255
-jle intensity_bounded_271
+jle intensity_bounded_434
 set r0 255
-label intensity_bounded_271
+label intensity_bounded_434
 localset 2341 r0
 localget r1 2853
 mul r1 3
 add r1 r0
 div r1 4
 localset 2853 r1
-label body_lighting_done_267
+label body_lighting_done_430
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_272
+jne body_lighting_done_435
 localget r0 3000
 mul r0 -1968
 localget r1 3001
@@ -9800,9 +11854,9 @@ mul r1 -5370
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_274
+jge diffuse_positive_437
 set r0 0
-label diffuse_positive_274
+label diffuse_positive_437
 mul r0 128
 div r0 16384
 add r0 87
@@ -9821,9 +11875,9 @@ mul r2 -5370
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_275
+jge highlight_positive_438
 set r1 0
-label highlight_positive_275
+label highlight_positive_438
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -9874,16 +11928,16 @@ set r2 255
 label metal_bounded_38
 localset 2726 r2
 cmp r0 255
-jle intensity_bounded_276
+jle intensity_bounded_439
 set r0 255
-label intensity_bounded_276
+label intensity_bounded_439
 localset 2342 r0
 localget r1 2854
 mul r1 3
 add r1 r0
 div r1 4
 localset 2854 r1
-label body_lighting_done_272
+label body_lighting_done_435
 localget r0 3006
 mul r0 -1968
 localget r1 3007
@@ -9902,18 +11956,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_277
+jge glass_low_440
 set r0 0
-label glass_low_277
+label glass_low_440
 cmp r0 255
-jle glass_high_278
+jle glass_high_441
 set r0 255
-label glass_high_278
+label glass_high_441
 localset 2470 r0
-label glass_lighting_done_273
+label glass_lighting_done_436
 localget r3 3030
 cmp r3 0
-jne glass_lighting_done_280
+jne glass_lighting_done_443
 localget r0 3006
 mul r0 2111
 localget r1 3007
@@ -9932,18 +11986,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_281
+jge glass_low_444
 set r0 0
-label glass_low_281
+label glass_low_444
 cmp r0 255
-jle glass_high_282
+jle glass_high_445
 set r0 255
-label glass_high_282
+label glass_high_445
 localset 2471 r0
-label glass_lighting_done_280
+label glass_lighting_done_443
 localget r3 3030
 cmp r3 2
-je glass_lighting_done_284
+je glass_lighting_done_447
 localget r0 3006
 mul r0 -6369
 localget r1 3007
@@ -9962,18 +12016,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_285
+jge glass_low_448
 set r0 0
-label glass_low_285
+label glass_low_448
 cmp r0 255
-jle glass_high_286
+jle glass_high_449
 set r0 255
-label glass_high_286
+label glass_high_449
 localset 2472 r0
-label glass_lighting_done_284
+label glass_lighting_done_447
 localget r3 3030
 cmp r3 2
-je body_lighting_done_287
+je body_lighting_done_450
 localget r0 3000
 mul r0 -3689
 localget r1 3001
@@ -9984,9 +12038,9 @@ mul r1 -7449
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_289
+jge diffuse_positive_452
 set r0 0
-label diffuse_positive_289
+label diffuse_positive_452
 mul r0 128
 div r0 16384
 add r0 47
@@ -10005,9 +12059,9 @@ mul r2 -7449
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_290
+jge highlight_positive_453
 set r1 0
-label highlight_positive_290
+label highlight_positive_453
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -10058,19 +12112,19 @@ set r2 255
 label metal_bounded_41
 localset 2729 r2
 cmp r0 255
-jle intensity_bounded_291
+jle intensity_bounded_454
 set r0 255
-label intensity_bounded_291
+label intensity_bounded_454
 localset 2345 r0
 localget r1 2857
 mul r1 3
 add r1 r0
 div r1 4
 localset 2857 r1
-label body_lighting_done_287
+label body_lighting_done_450
 localget r3 3030
 cmp r3 2
-je body_lighting_done_292
+je body_lighting_done_455
 localget r0 3000
 mul r0 3689
 localget r1 3001
@@ -10081,9 +12135,9 @@ mul r1 -7449
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_294
+jge diffuse_positive_457
 set r0 0
-label diffuse_positive_294
+label diffuse_positive_457
 mul r0 128
 div r0 16384
 add r0 47
@@ -10102,9 +12156,9 @@ mul r2 -7449
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_295
+jge highlight_positive_458
 set r1 0
-label highlight_positive_295
+label highlight_positive_458
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -10155,19 +12209,19 @@ set r2 255
 label metal_bounded_42
 localset 2730 r2
 cmp r0 255
-jle intensity_bounded_296
+jle intensity_bounded_459
 set r0 255
-label intensity_bounded_296
+label intensity_bounded_459
 localset 2346 r0
 localget r1 2858
 mul r1 3
 add r1 r0
 div r1 4
 localset 2858 r1
-label body_lighting_done_292
+label body_lighting_done_455
 localget r3 3030
 cmp r3 1
-je body_lighting_done_297
+je body_lighting_done_460
 localget r0 3000
 mul r0 -2574
 localget r1 3001
@@ -10178,9 +12232,9 @@ mul r1 10619
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_299
+jge diffuse_positive_462
 set r0 0
-label diffuse_positive_299
+label diffuse_positive_462
 mul r0 128
 div r0 16384
 add r0 82
@@ -10199,9 +12253,9 @@ mul r2 10619
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_300
+jge highlight_positive_463
 set r1 0
-label highlight_positive_300
+label highlight_positive_463
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -10252,19 +12306,19 @@ set r2 255
 label metal_bounded_43
 localset 2731 r2
 cmp r0 255
-jle intensity_bounded_301
+jle intensity_bounded_464
 set r0 255
-label intensity_bounded_301
+label intensity_bounded_464
 localset 2347 r0
 localget r1 2859
 mul r1 3
 add r1 r0
 div r1 4
 localset 2859 r1
-label body_lighting_done_297
+label body_lighting_done_460
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_302
+jne body_lighting_done_465
 localget r0 3000
 mul r0 -2759
 localget r1 3001
@@ -10275,9 +12329,9 @@ mul r1 -10463
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_304
+jge diffuse_positive_467
 set r0 0
-label diffuse_positive_304
+label diffuse_positive_467
 mul r0 128
 div r0 16384
 add r0 83
@@ -10296,9 +12350,9 @@ mul r2 -10463
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_305
+jge highlight_positive_468
 set r1 0
-label highlight_positive_305
+label highlight_positive_468
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -10349,19 +12403,19 @@ set r2 255
 label metal_bounded_44
 localset 2732 r2
 cmp r0 255
-jle intensity_bounded_306
+jle intensity_bounded_469
 set r0 255
-label intensity_bounded_306
+label intensity_bounded_469
 localset 2348 r0
 localget r1 2860
 mul r1 3
 add r1 r0
 div r1 4
 localset 2860 r1
-label body_lighting_done_302
+label body_lighting_done_465
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_307
+jne body_lighting_done_470
 localget r0 3000
 mul r0 0
 localget r1 3001
@@ -10372,9 +12426,9 @@ mul r1 -15218
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_309
+jge diffuse_positive_472
 set r0 0
-label diffuse_positive_309
+label diffuse_positive_472
 mul r0 128
 div r0 16384
 add r0 58
@@ -10393,9 +12447,9 @@ mul r2 -15218
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_310
+jge highlight_positive_473
 set r1 0
-label highlight_positive_310
+label highlight_positive_473
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -10446,19 +12500,19 @@ set r2 255
 label metal_bounded_45
 localset 2733 r2
 cmp r0 255
-jle intensity_bounded_311
+jle intensity_bounded_474
 set r0 255
-label intensity_bounded_311
+label intensity_bounded_474
 localset 2349 r0
 localget r1 2861
 mul r1 3
 add r1 r0
 div r1 4
 localset 2861 r1
-label body_lighting_done_307
+label body_lighting_done_470
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_312
+jne body_lighting_done_475
 localget r0 3000
 mul r0 -2759
 localget r1 3001
@@ -10469,9 +12523,9 @@ mul r1 -12302
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_314
+jge diffuse_positive_477
 set r0 0
-label diffuse_positive_314
+label diffuse_positive_477
 mul r0 128
 div r0 16384
 add r0 52
@@ -10490,9 +12544,9 @@ mul r2 -12302
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_315
+jge highlight_positive_478
 set r1 0
-label highlight_positive_315
+label highlight_positive_478
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -10543,16 +12597,16 @@ set r2 255
 label metal_bounded_46
 localset 2734 r2
 cmp r0 255
-jle intensity_bounded_316
+jle intensity_bounded_479
 set r0 255
-label intensity_bounded_316
+label intensity_bounded_479
 localset 2350 r0
 localget r1 2862
 mul r1 3
 add r1 r0
 div r1 4
 localset 2862 r1
-label body_lighting_done_312
+label body_lighting_done_475
 localget r0 3000
 mul r0 0
 localget r1 3001
@@ -10563,9 +12617,9 @@ mul r1 -11567
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_319
+jge diffuse_positive_482
 set r0 0
-label diffuse_positive_319
+label diffuse_positive_482
 mul r0 128
 div r0 16384
 add r0 50
@@ -10584,9 +12638,9 @@ mul r2 -11567
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_320
+jge highlight_positive_483
 set r1 0
-label highlight_positive_320
+label highlight_positive_483
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -10637,19 +12691,19 @@ set r2 255
 label metal_bounded_47
 localset 2735 r2
 cmp r0 255
-jle intensity_bounded_321
+jle intensity_bounded_484
 set r0 255
-label intensity_bounded_321
+label intensity_bounded_484
 localset 2351 r0
 localget r1 2863
 mul r1 3
 add r1 r0
 div r1 4
 localset 2863 r1
-label body_lighting_done_317
+label body_lighting_done_480
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_322
+jne body_lighting_done_485
 localget r0 3000
 mul r0 0
 localget r1 3001
@@ -10660,9 +12714,9 @@ mul r1 -6305
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_324
+jge diffuse_positive_487
 set r0 0
-label diffuse_positive_324
+label diffuse_positive_487
 mul r0 128
 div r0 16384
 add r0 46
@@ -10681,9 +12735,9 @@ mul r2 -6305
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_325
+jge highlight_positive_488
 set r1 0
-label highlight_positive_325
+label highlight_positive_488
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -10734,19 +12788,19 @@ set r2 255
 label metal_bounded_48
 localset 2736 r2
 cmp r0 255
-jle intensity_bounded_326
+jle intensity_bounded_489
 set r0 255
-label intensity_bounded_326
+label intensity_bounded_489
 localset 2352 r0
 localget r1 2864
 mul r1 3
 add r1 r0
 div r1 4
 localset 2864 r1
-label body_lighting_done_322
+label body_lighting_done_485
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_327
+jne body_lighting_done_490
 localget r0 3000
 mul r0 0
 localget r1 3001
@@ -10757,9 +12811,9 @@ mul r1 6305
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_329
+jge diffuse_positive_492
 set r0 0
-label diffuse_positive_329
+label diffuse_positive_492
 mul r0 128
 div r0 16384
 add r0 46
@@ -10778,9 +12832,9 @@ mul r2 6305
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_330
+jge highlight_positive_493
 set r1 0
-label highlight_positive_330
+label highlight_positive_493
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -10831,19 +12885,19 @@ set r2 255
 label metal_bounded_49
 localset 2737 r2
 cmp r0 255
-jle intensity_bounded_331
+jle intensity_bounded_494
 set r0 255
-label intensity_bounded_331
+label intensity_bounded_494
 localset 2353 r0
 localget r1 2865
 mul r1 3
 add r1 r0
 div r1 4
 localset 2865 r1
-label body_lighting_done_327
+label body_lighting_done_490
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_332
+jne body_lighting_done_495
 localget r0 3000
 mul r0 -2759
 localget r1 3001
@@ -10854,9 +12908,9 @@ mul r1 10463
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_334
+jge diffuse_positive_497
 set r0 0
-label diffuse_positive_334
+label diffuse_positive_497
 mul r0 128
 div r0 16384
 add r0 49
@@ -10875,9 +12929,9 @@ mul r2 10463
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_335
+jge highlight_positive_498
 set r1 0
-label highlight_positive_335
+label highlight_positive_498
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -10928,19 +12982,19 @@ set r2 255
 label metal_bounded_50
 localset 2738 r2
 cmp r0 255
-jle intensity_bounded_336
+jle intensity_bounded_499
 set r0 255
-label intensity_bounded_336
+label intensity_bounded_499
 localset 2354 r0
 localget r1 2866
 mul r1 3
 add r1 r0
 div r1 4
 localset 2866 r1
-label body_lighting_done_332
+label body_lighting_done_495
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_337
+jne body_lighting_done_500
 localget r0 3000
 mul r0 -2700
 localget r1 3001
@@ -10951,9 +13005,9 @@ mul r1 5514
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_339
+jge diffuse_positive_502
 set r0 0
-label diffuse_positive_339
+label diffuse_positive_502
 mul r0 128
 div r0 16384
 add r0 46
@@ -10972,9 +13026,9 @@ mul r2 5514
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_340
+jge highlight_positive_503
 set r1 0
-label highlight_positive_340
+label highlight_positive_503
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -11025,16 +13079,16 @@ set r2 255
 label metal_bounded_51
 localset 2739 r2
 cmp r0 255
-jle intensity_bounded_341
+jle intensity_bounded_504
 set r0 255
-label intensity_bounded_341
+label intensity_bounded_504
 localset 2355 r0
 localget r1 2867
 mul r1 3
 add r1 r0
 div r1 4
 localset 2867 r1
-label body_lighting_done_337
+label body_lighting_done_500
 localget r0 3000
 mul r0 0
 localget r1 3001
@@ -11045,9 +13099,9 @@ mul r1 11604
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_344
+jge diffuse_positive_507
 set r0 0
-label diffuse_positive_344
+label diffuse_positive_507
 mul r0 128
 div r0 16384
 add r0 50
@@ -11066,9 +13120,9 @@ mul r2 11604
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_345
+jge highlight_positive_508
 set r1 0
-label highlight_positive_345
+label highlight_positive_508
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -11119,19 +13173,19 @@ set r2 255
 label metal_bounded_52
 localset 2740 r2
 cmp r0 255
-jle intensity_bounded_346
+jle intensity_bounded_509
 set r0 255
-label intensity_bounded_346
+label intensity_bounded_509
 localset 2356 r0
 localget r1 2868
 mul r1 3
 add r1 r0
 div r1 4
 localset 2868 r1
-label body_lighting_done_342
+label body_lighting_done_505
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_347
+jne body_lighting_done_510
 localget r0 3000
 mul r0 0
 localget r1 3001
@@ -11142,9 +13196,9 @@ mul r1 15122
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_349
+jge diffuse_positive_512
 set r0 0
-label diffuse_positive_349
+label diffuse_positive_512
 mul r0 128
 div r0 16384
 add r0 58
@@ -11163,9 +13217,9 @@ mul r2 15122
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_350
+jge highlight_positive_513
 set r1 0
-label highlight_positive_350
+label highlight_positive_513
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -11216,19 +13270,19 @@ set r2 255
 label metal_bounded_53
 localset 2741 r2
 cmp r0 255
-jle intensity_bounded_351
+jle intensity_bounded_514
 set r0 255
-label intensity_bounded_351
+label intensity_bounded_514
 localset 2357 r0
 localget r1 2869
 mul r1 3
 add r1 r0
 div r1 4
 localset 2869 r1
-label body_lighting_done_347
+label body_lighting_done_510
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_352
+jne body_lighting_done_515
 localget r0 3000
 mul r0 -10412
 localget r1 3001
@@ -11239,9 +13293,9 @@ mul r1 10622
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_354
+jge diffuse_positive_517
 set r0 0
-label diffuse_positive_354
+label diffuse_positive_517
 mul r0 128
 div r0 16384
 add r0 75
@@ -11260,9 +13314,9 @@ mul r2 10622
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_355
+jge highlight_positive_518
 set r1 0
-label highlight_positive_355
+label highlight_positive_518
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -11313,19 +13367,19 @@ set r2 255
 label metal_bounded_54
 localset 2742 r2
 cmp r0 255
-jle intensity_bounded_356
+jle intensity_bounded_519
 set r0 255
-label intensity_bounded_356
+label intensity_bounded_519
 localset 2358 r0
 localget r1 2870
 mul r1 3
 add r1 r0
 div r1 4
 localset 2870 r1
-label body_lighting_done_352
+label body_lighting_done_515
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_357
+jne body_lighting_done_520
 localget r0 3000
 mul r0 -12050
 localget r1 3001
@@ -11336,9 +13390,9 @@ mul r1 -5555
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_359
+jge diffuse_positive_522
 set r0 0
-label diffuse_positive_359
+label diffuse_positive_522
 mul r0 128
 div r0 16384
 add r0 79
@@ -11357,9 +13411,9 @@ mul r2 -5555
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_360
+jge highlight_positive_523
 set r1 0
-label highlight_positive_360
+label highlight_positive_523
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -11410,19 +13464,19 @@ set r2 255
 label metal_bounded_55
 localset 2743 r2
 cmp r0 255
-jle intensity_bounded_361
+jle intensity_bounded_524
 set r0 255
-label intensity_bounded_361
+label intensity_bounded_524
 localset 2359 r0
 localget r1 2871
 mul r1 3
 add r1 r0
 div r1 4
 localset 2871 r1
-label body_lighting_done_357
+label body_lighting_done_520
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_362
+jne body_lighting_done_525
 localget r0 3000
 mul r0 -8564
 localget r1 3001
@@ -11433,9 +13487,9 @@ mul r1 -8045
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_364
+jge diffuse_positive_527
 set r0 0
-label diffuse_positive_364
+label diffuse_positive_527
 mul r0 128
 div r0 16384
 add r0 81
@@ -11454,9 +13508,9 @@ mul r2 -8045
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_365
+jge highlight_positive_528
 set r1 0
-label highlight_positive_365
+label highlight_positive_528
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -11507,19 +13561,19 @@ set r2 255
 label metal_bounded_56
 localset 2744 r2
 cmp r0 255
-jle intensity_bounded_366
+jle intensity_bounded_529
 set r0 255
-label intensity_bounded_366
+label intensity_bounded_529
 localset 2360 r0
 localget r1 2872
 mul r1 3
 add r1 r0
 div r1 4
 localset 2872 r1
-label body_lighting_done_362
+label body_lighting_done_525
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_367
+jne body_lighting_done_530
 localget r0 3000
 mul r0 -11892
 localget r1 3001
@@ -11530,9 +13584,9 @@ mul r1 -9279
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_369
+jge diffuse_positive_532
 set r0 0
-label diffuse_positive_369
+label diffuse_positive_532
 mul r0 128
 div r0 16384
 add r0 75
@@ -11551,9 +13605,9 @@ mul r2 -9279
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_370
+jge highlight_positive_533
 set r1 0
-label highlight_positive_370
+label highlight_positive_533
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -11604,19 +13658,19 @@ set r2 255
 label metal_bounded_57
 localset 2745 r2
 cmp r0 255
-jle intensity_bounded_371
+jle intensity_bounded_534
 set r0 255
-label intensity_bounded_371
+label intensity_bounded_534
 localset 2361 r0
 localget r1 2873
 mul r1 3
 add r1 r0
 div r1 4
 localset 2873 r1
-label body_lighting_done_367
+label body_lighting_done_530
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_372
+jne body_lighting_done_535
 localget r0 3000
 mul r0 -10412
 localget r1 3001
@@ -11627,9 +13681,9 @@ mul r1 -10622
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_374
+jge diffuse_positive_537
 set r0 0
-label diffuse_positive_374
+label diffuse_positive_537
 mul r0 128
 div r0 16384
 add r0 57
@@ -11648,9 +13702,9 @@ mul r2 -10622
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_375
+jge highlight_positive_538
 set r1 0
-label highlight_positive_375
+label highlight_positive_538
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -11701,19 +13755,19 @@ set r2 255
 label metal_bounded_58
 localset 2746 r2
 cmp r0 255
-jle intensity_bounded_376
+jle intensity_bounded_539
 set r0 255
-label intensity_bounded_376
+label intensity_bounded_539
 localset 2362 r0
 localget r1 2874
 mul r1 3
 add r1 r0
 div r1 4
 localset 2874 r1
-label body_lighting_done_372
+label body_lighting_done_535
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_377
+jne body_lighting_done_540
 localget r0 3000
 mul r0 -11892
 localget r1 3001
@@ -11724,9 +13778,9 @@ mul r1 -6396
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_379
+jge diffuse_positive_542
 set r0 0
-label diffuse_positive_379
+label diffuse_positive_542
 mul r0 128
 div r0 16384
 add r0 54
@@ -11745,9 +13799,9 @@ mul r2 -6396
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_380
+jge highlight_positive_543
 set r1 0
-label highlight_positive_380
+label highlight_positive_543
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -11798,19 +13852,19 @@ set r2 255
 label metal_bounded_59
 localset 2747 r2
 cmp r0 255
-jle intensity_bounded_381
+jle intensity_bounded_544
 set r0 255
-label intensity_bounded_381
+label intensity_bounded_544
 localset 2363 r0
 localget r1 2875
 mul r1 3
 add r1 r0
 div r1 4
 localset 2875 r1
-label body_lighting_done_377
+label body_lighting_done_540
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_382
+jne body_lighting_done_545
 localget r0 3000
 mul r0 -15907
 localget r1 3001
@@ -11821,9 +13875,9 @@ mul r1 -55
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_384
+jge diffuse_positive_547
 set r0 0
-label diffuse_positive_384
+label diffuse_positive_547
 mul r0 128
 div r0 16384
 add r0 61
@@ -11842,9 +13896,9 @@ mul r2 -55
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_385
+jge highlight_positive_548
 set r1 0
-label highlight_positive_385
+label highlight_positive_548
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -11895,19 +13949,19 @@ set r2 255
 label metal_bounded_60
 localset 2748 r2
 cmp r0 255
-jle intensity_bounded_386
+jle intensity_bounded_549
 set r0 255
-label intensity_bounded_386
+label intensity_bounded_549
 localset 2364 r0
 localget r1 2876
 mul r1 3
 add r1 r0
 div r1 4
 localset 2876 r1
-label body_lighting_done_382
+label body_lighting_done_545
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_387
+jne body_lighting_done_550
 localget r0 3000
 mul r0 -12050
 localget r1 3001
@@ -11918,9 +13972,9 @@ mul r1 5555
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_389
+jge diffuse_positive_552
 set r0 0
-label diffuse_positive_389
+label diffuse_positive_552
 mul r0 128
 div r0 16384
 add r0 53
@@ -11939,9 +13993,9 @@ mul r2 5555
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_390
+jge highlight_positive_553
 set r1 0
-label highlight_positive_390
+label highlight_positive_553
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -11992,19 +14046,19 @@ set r2 255
 label metal_bounded_61
 localset 2749 r2
 cmp r0 255
-jle intensity_bounded_391
+jle intensity_bounded_554
 set r0 255
-label intensity_bounded_391
+label intensity_bounded_554
 localset 2365 r0
 localget r1 2877
 mul r1 3
 add r1 r0
 div r1 4
 localset 2877 r1
-label body_lighting_done_387
+label body_lighting_done_550
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_392
+jne body_lighting_done_555
 localget r0 3000
 mul r0 -8564
 localget r1 3001
@@ -12015,9 +14069,9 @@ mul r1 8045
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_394
+jge diffuse_positive_557
 set r0 0
-label diffuse_positive_394
+label diffuse_positive_557
 mul r0 128
 div r0 16384
 add r0 51
@@ -12036,9 +14090,9 @@ mul r2 8045
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_395
+jge highlight_positive_558
 set r1 0
-label highlight_positive_395
+label highlight_positive_558
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -12089,19 +14143,19 @@ set r2 255
 label metal_bounded_62
 localset 2750 r2
 cmp r0 255
-jle intensity_bounded_396
+jle intensity_bounded_559
 set r0 255
-label intensity_bounded_396
+label intensity_bounded_559
 localset 2366 r0
 localget r1 2878
 mul r1 3
 add r1 r0
 div r1 4
 localset 2878 r1
-label body_lighting_done_392
+label body_lighting_done_555
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_397
+jne body_lighting_done_560
 localget r0 3000
 mul r0 -11892
 localget r1 3001
@@ -12112,9 +14166,9 @@ mul r1 9279
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_399
+jge diffuse_positive_562
 set r0 0
-label diffuse_positive_399
+label diffuse_positive_562
 mul r0 128
 div r0 16384
 add r0 57
@@ -12133,9 +14187,9 @@ mul r2 9279
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_400
+jge highlight_positive_563
 set r1 0
-label highlight_positive_400
+label highlight_positive_563
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -12186,19 +14240,19 @@ set r2 255
 label metal_bounded_63
 localset 2751 r2
 cmp r0 255
-jle intensity_bounded_401
+jle intensity_bounded_564
 set r0 255
-label intensity_bounded_401
+label intensity_bounded_564
 localset 2367 r0
 localget r1 2879
 mul r1 3
 add r1 r0
 div r1 4
 localset 2879 r1
-label body_lighting_done_397
+label body_lighting_done_560
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_402
+jne body_lighting_done_565
 localget r0 3000
 mul r0 2343
 localget r1 3001
@@ -12209,9 +14263,9 @@ mul r1 10429
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_404
+jge diffuse_positive_567
 set r0 0
-label diffuse_positive_404
+label diffuse_positive_567
 mul r0 128
 div r0 16384
 add r0 83
@@ -12230,9 +14284,9 @@ mul r2 10429
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_405
+jge highlight_positive_568
 set r1 0
-label highlight_positive_405
+label highlight_positive_568
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -12283,19 +14337,19 @@ set r2 255
 label metal_bounded_64
 localset 2752 r2
 cmp r0 255
-jle intensity_bounded_406
+jle intensity_bounded_569
 set r0 255
-label intensity_bounded_406
+label intensity_bounded_569
 localset 2368 r0
 localget r1 2880
 mul r1 3
 add r1 r0
 div r1 4
 localset 2880 r1
-label body_lighting_done_402
+label body_lighting_done_565
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_407
+jne body_lighting_done_570
 localget r0 3000
 mul r0 2759
 localget r1 3001
@@ -12306,9 +14360,9 @@ mul r1 -10463
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_409
+jge diffuse_positive_572
 set r0 0
-label diffuse_positive_409
+label diffuse_positive_572
 mul r0 128
 div r0 16384
 add r0 83
@@ -12327,9 +14381,9 @@ mul r2 -10463
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_410
+jge highlight_positive_573
 set r1 0
-label highlight_positive_410
+label highlight_positive_573
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -12380,19 +14434,19 @@ set r2 255
 label metal_bounded_65
 localset 2753 r2
 cmp r0 255
-jle intensity_bounded_411
+jle intensity_bounded_574
 set r0 255
-label intensity_bounded_411
+label intensity_bounded_574
 localset 2369 r0
 localget r1 2881
 mul r1 3
 add r1 r0
 div r1 4
 localset 2881 r1
-label body_lighting_done_407
+label body_lighting_done_570
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_412
+jne body_lighting_done_575
 localget r0 3000
 mul r0 2759
 localget r1 3001
@@ -12403,9 +14457,9 @@ mul r1 -12302
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_414
+jge diffuse_positive_577
 set r0 0
-label diffuse_positive_414
+label diffuse_positive_577
 mul r0 128
 div r0 16384
 add r0 52
@@ -12424,9 +14478,9 @@ mul r2 -12302
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_415
+jge highlight_positive_578
 set r1 0
-label highlight_positive_415
+label highlight_positive_578
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -12477,19 +14531,19 @@ set r2 255
 label metal_bounded_66
 localset 2754 r2
 cmp r0 255
-jle intensity_bounded_416
+jle intensity_bounded_579
 set r0 255
-label intensity_bounded_416
+label intensity_bounded_579
 localset 2370 r0
 localget r1 2882
 mul r1 3
 add r1 r0
 div r1 4
 localset 2882 r1
-label body_lighting_done_412
+label body_lighting_done_575
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_417
+jne body_lighting_done_580
 localget r0 3000
 mul r0 2700
 localget r1 3001
@@ -12500,9 +14554,9 @@ mul r1 5514
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_419
+jge diffuse_positive_582
 set r0 0
-label diffuse_positive_419
+label diffuse_positive_582
 mul r0 128
 div r0 16384
 add r0 46
@@ -12521,9 +14575,9 @@ mul r2 5514
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_420
+jge highlight_positive_583
 set r1 0
-label highlight_positive_420
+label highlight_positive_583
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -12574,19 +14628,19 @@ set r2 255
 label metal_bounded_67
 localset 2755 r2
 cmp r0 255
-jle intensity_bounded_421
+jle intensity_bounded_584
 set r0 255
-label intensity_bounded_421
+label intensity_bounded_584
 localset 2371 r0
 localget r1 2883
 mul r1 3
 add r1 r0
 div r1 4
 localset 2883 r1
-label body_lighting_done_417
+label body_lighting_done_580
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_422
+jne body_lighting_done_585
 localget r0 3000
 mul r0 2759
 localget r1 3001
@@ -12597,9 +14651,9 @@ mul r1 10463
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_424
+jge diffuse_positive_587
 set r0 0
-label diffuse_positive_424
+label diffuse_positive_587
 mul r0 128
 div r0 16384
 add r0 49
@@ -12618,9 +14672,9 @@ mul r2 10463
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_425
+jge highlight_positive_588
 set r1 0
-label highlight_positive_425
+label highlight_positive_588
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -12671,19 +14725,19 @@ set r2 255
 label metal_bounded_68
 localset 2756 r2
 cmp r0 255
-jle intensity_bounded_426
+jle intensity_bounded_589
 set r0 255
-label intensity_bounded_426
+label intensity_bounded_589
 localset 2372 r0
 localget r1 2884
 mul r1 3
 add r1 r0
 div r1 4
 localset 2884 r1
-label body_lighting_done_422
+label body_lighting_done_585
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_427
+jne body_lighting_done_590
 localget r0 3000
 mul r0 10412
 localget r1 3001
@@ -12694,9 +14748,9 @@ mul r1 10622
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_429
+jge diffuse_positive_592
 set r0 0
-label diffuse_positive_429
+label diffuse_positive_592
 mul r0 128
 div r0 16384
 add r0 75
@@ -12715,9 +14769,9 @@ mul r2 10622
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_430
+jge highlight_positive_593
 set r1 0
-label highlight_positive_430
+label highlight_positive_593
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -12768,19 +14822,19 @@ set r2 255
 label metal_bounded_69
 localset 2757 r2
 cmp r0 255
-jle intensity_bounded_431
+jle intensity_bounded_594
 set r0 255
-label intensity_bounded_431
+label intensity_bounded_594
 localset 2373 r0
 localget r1 2885
 mul r1 3
 add r1 r0
 div r1 4
 localset 2885 r1
-label body_lighting_done_427
+label body_lighting_done_590
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_432
+jne body_lighting_done_595
 localget r0 3000
 mul r0 12050
 localget r1 3001
@@ -12791,9 +14845,9 @@ mul r1 -5555
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_434
+jge diffuse_positive_597
 set r0 0
-label diffuse_positive_434
+label diffuse_positive_597
 mul r0 128
 div r0 16384
 add r0 79
@@ -12812,9 +14866,9 @@ mul r2 -5555
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_435
+jge highlight_positive_598
 set r1 0
-label highlight_positive_435
+label highlight_positive_598
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -12865,19 +14919,19 @@ set r2 255
 label metal_bounded_70
 localset 2758 r2
 cmp r0 255
-jle intensity_bounded_436
+jle intensity_bounded_599
 set r0 255
-label intensity_bounded_436
+label intensity_bounded_599
 localset 2374 r0
 localget r1 2886
 mul r1 3
 add r1 r0
 div r1 4
 localset 2886 r1
-label body_lighting_done_432
+label body_lighting_done_595
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_437
+jne body_lighting_done_600
 localget r0 3000
 mul r0 8564
 localget r1 3001
@@ -12888,9 +14942,9 @@ mul r1 -8045
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_439
+jge diffuse_positive_602
 set r0 0
-label diffuse_positive_439
+label diffuse_positive_602
 mul r0 128
 div r0 16384
 add r0 81
@@ -12909,9 +14963,9 @@ mul r2 -8045
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_440
+jge highlight_positive_603
 set r1 0
-label highlight_positive_440
+label highlight_positive_603
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -12962,19 +15016,19 @@ set r2 255
 label metal_bounded_71
 localset 2759 r2
 cmp r0 255
-jle intensity_bounded_441
+jle intensity_bounded_604
 set r0 255
-label intensity_bounded_441
+label intensity_bounded_604
 localset 2375 r0
 localget r1 2887
 mul r1 3
 add r1 r0
 div r1 4
 localset 2887 r1
-label body_lighting_done_437
+label body_lighting_done_600
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_442
+jne body_lighting_done_605
 localget r0 3000
 mul r0 11892
 localget r1 3001
@@ -12985,9 +15039,9 @@ mul r1 -9279
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_444
+jge diffuse_positive_607
 set r0 0
-label diffuse_positive_444
+label diffuse_positive_607
 mul r0 128
 div r0 16384
 add r0 75
@@ -13006,9 +15060,9 @@ mul r2 -9279
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_445
+jge highlight_positive_608
 set r1 0
-label highlight_positive_445
+label highlight_positive_608
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -13059,19 +15113,19 @@ set r2 255
 label metal_bounded_72
 localset 2760 r2
 cmp r0 255
-jle intensity_bounded_446
+jle intensity_bounded_609
 set r0 255
-label intensity_bounded_446
+label intensity_bounded_609
 localset 2376 r0
 localget r1 2888
 mul r1 3
 add r1 r0
 div r1 4
 localset 2888 r1
-label body_lighting_done_442
+label body_lighting_done_605
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_447
+jne body_lighting_done_610
 localget r0 3000
 mul r0 10412
 localget r1 3001
@@ -13082,9 +15136,9 @@ mul r1 -10622
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_449
+jge diffuse_positive_612
 set r0 0
-label diffuse_positive_449
+label diffuse_positive_612
 mul r0 128
 div r0 16384
 add r0 57
@@ -13103,9 +15157,9 @@ mul r2 -10622
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_450
+jge highlight_positive_613
 set r1 0
-label highlight_positive_450
+label highlight_positive_613
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -13156,19 +15210,19 @@ set r2 255
 label metal_bounded_73
 localset 2761 r2
 cmp r0 255
-jle intensity_bounded_451
+jle intensity_bounded_614
 set r0 255
-label intensity_bounded_451
+label intensity_bounded_614
 localset 2377 r0
 localget r1 2889
 mul r1 3
 add r1 r0
 div r1 4
 localset 2889 r1
-label body_lighting_done_447
+label body_lighting_done_610
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_452
+jne body_lighting_done_615
 localget r0 3000
 mul r0 11892
 localget r1 3001
@@ -13179,9 +15233,9 @@ mul r1 -6396
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_454
+jge diffuse_positive_617
 set r0 0
-label diffuse_positive_454
+label diffuse_positive_617
 mul r0 128
 div r0 16384
 add r0 54
@@ -13200,9 +15254,9 @@ mul r2 -6396
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_455
+jge highlight_positive_618
 set r1 0
-label highlight_positive_455
+label highlight_positive_618
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -13253,19 +15307,19 @@ set r2 255
 label metal_bounded_74
 localset 2762 r2
 cmp r0 255
-jle intensity_bounded_456
+jle intensity_bounded_619
 set r0 255
-label intensity_bounded_456
+label intensity_bounded_619
 localset 2378 r0
 localget r1 2890
 mul r1 3
 add r1 r0
 div r1 4
 localset 2890 r1
-label body_lighting_done_452
+label body_lighting_done_615
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_457
+jne body_lighting_done_620
 localget r0 3000
 mul r0 15907
 localget r1 3001
@@ -13276,9 +15330,9 @@ mul r1 -55
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_459
+jge diffuse_positive_622
 set r0 0
-label diffuse_positive_459
+label diffuse_positive_622
 mul r0 128
 div r0 16384
 add r0 61
@@ -13297,9 +15351,9 @@ mul r2 -55
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_460
+jge highlight_positive_623
 set r1 0
-label highlight_positive_460
+label highlight_positive_623
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -13350,19 +15404,19 @@ set r2 255
 label metal_bounded_75
 localset 2763 r2
 cmp r0 255
-jle intensity_bounded_461
+jle intensity_bounded_624
 set r0 255
-label intensity_bounded_461
+label intensity_bounded_624
 localset 2379 r0
 localget r1 2891
 mul r1 3
 add r1 r0
 div r1 4
 localset 2891 r1
-label body_lighting_done_457
+label body_lighting_done_620
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_462
+jne body_lighting_done_625
 localget r0 3000
 mul r0 12050
 localget r1 3001
@@ -13373,9 +15427,9 @@ mul r1 5555
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_464
+jge diffuse_positive_627
 set r0 0
-label diffuse_positive_464
+label diffuse_positive_627
 mul r0 128
 div r0 16384
 add r0 53
@@ -13394,9 +15448,9 @@ mul r2 5555
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_465
+jge highlight_positive_628
 set r1 0
-label highlight_positive_465
+label highlight_positive_628
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -13447,19 +15501,19 @@ set r2 255
 label metal_bounded_76
 localset 2764 r2
 cmp r0 255
-jle intensity_bounded_466
+jle intensity_bounded_629
 set r0 255
-label intensity_bounded_466
+label intensity_bounded_629
 localset 2380 r0
 localget r1 2892
 mul r1 3
 add r1 r0
 div r1 4
 localset 2892 r1
-label body_lighting_done_462
+label body_lighting_done_625
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_467
+jne body_lighting_done_630
 localget r0 3000
 mul r0 8564
 localget r1 3001
@@ -13470,9 +15524,9 @@ mul r1 8045
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_469
+jge diffuse_positive_632
 set r0 0
-label diffuse_positive_469
+label diffuse_positive_632
 mul r0 128
 div r0 16384
 add r0 51
@@ -13491,9 +15545,9 @@ mul r2 8045
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_470
+jge highlight_positive_633
 set r1 0
-label highlight_positive_470
+label highlight_positive_633
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -13544,19 +15598,19 @@ set r2 255
 label metal_bounded_77
 localset 2765 r2
 cmp r0 255
-jle intensity_bounded_471
+jle intensity_bounded_634
 set r0 255
-label intensity_bounded_471
+label intensity_bounded_634
 localset 2381 r0
 localget r1 2893
 mul r1 3
 add r1 r0
 div r1 4
 localset 2893 r1
-label body_lighting_done_467
+label body_lighting_done_630
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_472
+jne body_lighting_done_635
 localget r0 3000
 mul r0 11892
 localget r1 3001
@@ -13567,9 +15621,9 @@ mul r1 9279
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_474
+jge diffuse_positive_637
 set r0 0
-label diffuse_positive_474
+label diffuse_positive_637
 mul r0 128
 div r0 16384
 add r0 57
@@ -13588,9 +15642,9 @@ mul r2 9279
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_475
+jge highlight_positive_638
 set r1 0
-label highlight_positive_475
+label highlight_positive_638
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -13641,19 +15695,19 @@ set r2 255
 label metal_bounded_78
 localset 2766 r2
 cmp r0 255
-jle intensity_bounded_476
+jle intensity_bounded_639
 set r0 255
-label intensity_bounded_476
+label intensity_bounded_639
 localset 2382 r0
 localget r1 2894
 mul r1 3
 add r1 r0
 div r1 4
 localset 2894 r1
-label body_lighting_done_472
+label body_lighting_done_635
 localget r3 3030
 cmp r3 2
-jne body_lighting_done_477
+jne body_lighting_done_640
 localget r0 3000
 mul r0 -11211
 localget r1 3001
@@ -13664,9 +15718,9 @@ mul r1 11948
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_479
+jge diffuse_positive_642
 set r0 0
-label diffuse_positive_479
+label diffuse_positive_642
 mul r0 128
 div r0 16384
 add r0 66
@@ -13685,9 +15739,9 @@ mul r2 11948
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_480
+jge highlight_positive_643
 set r1 0
-label highlight_positive_480
+label highlight_positive_643
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -13738,19 +15792,19 @@ set r2 255
 label metal_bounded_79
 localset 2767 r2
 cmp r0 255
-jle intensity_bounded_481
+jle intensity_bounded_644
 set r0 255
-label intensity_bounded_481
+label intensity_bounded_644
 localset 2383 r0
 localget r1 2895
 mul r1 3
 add r1 r0
 div r1 4
 localset 2895 r1
-label body_lighting_done_477
+label body_lighting_done_640
 localget r3 3030
 cmp r3 2
-jne body_lighting_done_484
+jne body_lighting_done_647
 localget r0 3000
 mul r0 11794
 localget r1 3001
@@ -13761,9 +15815,9 @@ mul r1 11373
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_486
+jge diffuse_positive_649
 set r0 0
-label diffuse_positive_486
+label diffuse_positive_649
 mul r0 128
 div r0 16384
 add r0 66
@@ -13782,9 +15836,9 @@ mul r2 11373
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_487
+jge highlight_positive_650
 set r1 0
-label highlight_positive_487
+label highlight_positive_650
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -13835,19 +15889,19 @@ set r2 255
 label metal_bounded_81
 localset 2769 r2
 cmp r0 255
-jle intensity_bounded_488
+jle intensity_bounded_651
 set r0 255
-label intensity_bounded_488
+label intensity_bounded_651
 localset 2385 r0
 localget r1 2897
 mul r1 3
 add r1 r0
 div r1 4
 localset 2897 r1
-label body_lighting_done_484
+label body_lighting_done_647
 localget r3 3030
 cmp r3 1
-jne body_lighting_done_491
+jne body_lighting_done_654
 localget r0 3000
 mul r0 -3028
 localget r1 3001
@@ -13858,9 +15912,9 @@ mul r1 13295
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_493
+jge diffuse_positive_656
 set r0 0
-label diffuse_positive_493
+label diffuse_positive_656
 mul r0 128
 div r0 16384
 add r0 78
@@ -13879,9 +15933,9 @@ mul r2 13295
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_494
+jge highlight_positive_657
 set r1 0
-label highlight_positive_494
+label highlight_positive_657
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -13932,16 +15986,16 @@ set r2 255
 label metal_bounded_83
 localset 2771 r2
 cmp r0 255
-jle intensity_bounded_495
+jle intensity_bounded_658
 set r0 255
-label intensity_bounded_495
+label intensity_bounded_658
 localset 2387 r0
 localget r1 2899
 mul r1 3
 add r1 r0
 div r1 4
 localset 2899 r1
-label body_lighting_done_491
+label body_lighting_done_654
 label lighting_table_ready
 localget r0 11
 cmp r0 4
@@ -13969,9 +16023,9 @@ mov r5 r0
 add r5 0
 mod r5 4096
 cmp r5 0
-jge sin_negative_496
+jge sin_negative_659
 add r5 4096
-label sin_negative_496
+label sin_negative_659
 mov r7 r5
 mod r7 2048
 set r8 2048
@@ -13984,9 +16038,9 @@ sub r6 r8
 mul r7 262144
 div r7 r6
 cmp r5 2048
-jlt sin_done_497
+jlt sin_done_660
 mul r7 -1
-label sin_done_497
+label sin_done_660
 mov r5 r7
 mov r8 r5
 mov r9 r8
@@ -13996,9 +16050,9 @@ mov r6 r0
 add r6 1024
 mod r6 4096
 cmp r6 0
-jge sin_negative_498
+jge sin_negative_661
 add r6 4096
-label sin_negative_498
+label sin_negative_661
 mov r7 r6
 mod r7 2048
 set r8 2048
@@ -14011,9 +16065,9 @@ sub r5 r8
 mul r7 262144
 div r7 r5
 cmp r6 2048
-jlt sin_done_499
+jlt sin_done_662
 mul r7 -1
-label sin_done_499
+label sin_done_662
 mov r6 r7
 localget r5 58
 sub r5 32768
@@ -14032,9 +16086,9 @@ mov r5 r0
 add r5 0
 mod r5 4096
 cmp r5 0
-jge sin_negative_500
+jge sin_negative_663
 add r5 4096
-label sin_negative_500
+label sin_negative_663
 mov r7 r5
 mod r7 2048
 set r8 2048
@@ -14047,9 +16101,9 @@ sub r6 r8
 mul r7 262144
 div r7 r6
 cmp r5 2048
-jlt sin_done_501
+jlt sin_done_664
 mul r7 -1
-label sin_done_501
+label sin_done_664
 mov r5 r7
 mov r8 r5
 mov r9 r8
@@ -14059,9 +16113,9 @@ mov r6 r0
 add r6 1024
 mod r6 4096
 cmp r6 0
-jge sin_negative_502
+jge sin_negative_665
 add r6 4096
-label sin_negative_502
+label sin_negative_665
 mov r7 r6
 mod r7 2048
 set r8 2048
@@ -14074,9 +16128,9 @@ sub r5 r8
 mul r7 262144
 div r7 r5
 cmp r6 2048
-jlt sin_done_503
+jlt sin_done_666
 mul r7 -1
-label sin_done_503
+label sin_done_666
 mov r6 r7
 localget r5 58
 sub r5 32768
@@ -14110,9 +16164,10 @@ label vertex_transform_position
 meshread r0 r1 r2 r8
 localget r9 11
 cmp r9 4
-jlt nature_pose_done_504
-cmp r9 44
-jge nature_pose_done_504
+jlt nature_pose_done_667
+cmp r9 124
+jge nature_pose_done_667
+localget r9 3120
 localset 3091 r1
 mov r5 r9
 mul r5 73
@@ -14137,75 +16192,77 @@ sub r9 3
 mul r9 r1
 div r9 70
 add r0 r9
-label nature_pose_done_504
+localget r9 3104
+add r1 r9
+label nature_pose_done_667
 cmp r8 279
-jlt wheel_next_model_507
+jlt wheel_next_model_670
 cmp r8 795
-jge wheel_next_model_507
+jge wheel_next_model_670
 cmp r8 408
-jge wheel_next_wheel_508
+jge wheel_next_wheel_671
 localset 3044 -88
 localset 3045 -142
 localset 3046 0
-jmp wheel_transform_505
-label wheel_next_wheel_508
+jmp wheel_transform_668
+label wheel_next_wheel_671
 cmp r8 537
-jge wheel_next_wheel_509
+jge wheel_next_wheel_672
 localset 3044 88
 localset 3045 -142
 localset 3046 0
-jmp wheel_transform_505
-label wheel_next_wheel_509
+jmp wheel_transform_668
+label wheel_next_wheel_672
 cmp r8 666
-jge wheel_next_wheel_510
+jge wheel_next_wheel_673
 localset 3044 -88
 localset 3045 138
 localset 3046 1
-jmp wheel_transform_505
-label wheel_next_wheel_510
+jmp wheel_transform_668
+label wheel_next_wheel_673
 cmp r8 795
-jge wheel_next_wheel_511
+jge wheel_next_wheel_674
 localset 3044 88
 localset 3045 138
 localset 3046 1
-jmp wheel_transform_505
-label wheel_next_wheel_511
-label wheel_next_model_507
+jmp wheel_transform_668
+label wheel_next_wheel_674
+label wheel_next_model_670
 cmp r8 1109
-jlt wheel_next_model_512
+jlt wheel_next_model_675
 cmp r8 1309
-jge wheel_next_model_512
+jge wheel_next_model_675
 cmp r8 1159
-jge wheel_next_wheel_513
+jge wheel_next_wheel_676
 localset 3044 -88
 localset 3045 -142
 localset 3046 0
-jmp wheel_transform_505
-label wheel_next_wheel_513
+jmp wheel_transform_668
+label wheel_next_wheel_676
 cmp r8 1209
-jge wheel_next_wheel_514
+jge wheel_next_wheel_677
 localset 3044 88
 localset 3045 -142
 localset 3046 0
-jmp wheel_transform_505
-label wheel_next_wheel_514
+jmp wheel_transform_668
+label wheel_next_wheel_677
 cmp r8 1259
-jge wheel_next_wheel_515
+jge wheel_next_wheel_678
 localset 3044 -88
 localset 3045 138
 localset 3046 1
-jmp wheel_transform_505
-label wheel_next_wheel_515
+jmp wheel_transform_668
+label wheel_next_wheel_678
 cmp r8 1309
-jge wheel_next_wheel_516
+jge wheel_next_wheel_679
 localset 3044 88
 localset 3045 138
 localset 3046 1
-jmp wheel_transform_505
-label wheel_next_wheel_516
-label wheel_next_model_512
-jmp wheel_transform_done_506
-label wheel_transform_505
+jmp wheel_transform_668
+label wheel_next_wheel_679
+label wheel_next_model_675
+jmp wheel_transform_done_669
+label wheel_transform_668
 sub r1 34
 localget r9 3045
 sub r2 r9
@@ -14228,7 +16285,7 @@ mov r1 r7
 add r1 34
 localget r9 3046
 cmp r9 0
-je wheel_rear_517
+je wheel_rear_680
 localget r9 3044
 sub r0 r9
 localget r9 3045
@@ -14253,49 +16310,49 @@ add r0 r10
 mov r2 r9
 localget r10 3045
 add r2 r10
-label wheel_rear_517
-label wheel_transform_done_506
+label wheel_rear_680
+label wheel_transform_done_669
 localget r9 3070
 cmp r9 1
-je garage_gt_518
+je garage_gt_681
 cmp r9 2
-je garage_track_519
-jmp garage_morph_done_520
-label garage_gt_518
+je garage_track_682
+jmp garage_morph_done_683
+label garage_gt_681
 mul r0 96
 div r0 100
 mul r2 113
 div r2 100
 cmp r1 74
-jle garage_morph_done_520
+jle garage_morph_done_683
 add r1 18
-jmp garage_morph_done_520
-label garage_track_519
+jmp garage_morph_done_683
+label garage_track_682
 mul r0 114
 div r0 100
 mul r2 92
 div r2 100
 cmp r1 77
-jle garage_morph_done_520
+jle garage_morph_done_683
 sub r1 14
-label garage_morph_done_520
+label garage_morph_done_683
 localget r9 11
 cmp r9 0
-jne suspension_done_521
+jne suspension_done_684
 cmp r8 1535
-jge suspension_done_521
+jge suspension_done_684
 localget r9 3103
 add r0 r9
 cmp r8 279
-jlt suspension_body_522
+jlt suspension_body_685
 cmp r8 795
-jge suspension_body_522
+jge suspension_body_685
 load16 r9 384
 cmp r9 0
-je suspension_done_521
+je suspension_done_684
 sub r1 4
-jmp suspension_done_521
-label suspension_body_522
+jmp suspension_done_684
+label suspension_body_685
 mov r5 r1
 sub r5 34
 localget r6 3101
@@ -14316,41 +16373,47 @@ div r9 35840
 sub r2 r9
 localget r9 3100
 add r1 r9
-label suspension_done_521
+label suspension_done_684
 localget r9 11
 cmp r9 0
-jne fx_transform_done_523
+jne fx_transform_done_686
 cmp r8 1591
-jlt smoke_transform_done_524
+jlt smoke_transform_done_687
 cmp r8 1607
-jge smoke_transform_done_524
+jge smoke_transform_done_687
 load8 r9 395
 mul r1 r9
 div r1 16
-label smoke_transform_done_524
+label smoke_transform_done_687
 cmp r8 1607
-jlt nitro_transform_done_525
+jlt nitro_transform_done_688
 cmp r8 1615
-jge nitro_transform_done_525
+jge nitro_transform_done_688
 load32 r9 115
 mod r9 7
 sub r9 3
 add r2 r9
-label nitro_transform_done_525
-label fx_transform_done_523
+label nitro_transform_done_688
+label fx_transform_done_686
 localget r9 11
 cmp r9 0
-jne vertex_no_pneumatic_rise_526
+jne vertex_no_pneumatic_rise_689
 cmp r8 1535
-jlt vertex_pneumatic_rise_527
+jlt vertex_pneumatic_rise_690
 cmp r8 1607
-jlt vertex_no_pneumatic_rise_526
+jlt vertex_no_pneumatic_rise_689
 cmp r8 1615
-jge vertex_no_pneumatic_rise_526
-label vertex_pneumatic_rise_527
+jge vertex_no_pneumatic_rise_689
+label vertex_pneumatic_rise_690
 load16 r9 384
 add r1 r9
-label vertex_no_pneumatic_rise_526
+label vertex_no_pneumatic_rise_689
+localget r9 11
+cmp r9 0
+jne open_ground_rise_done_691
+load16 r9 520
+add r1 r9
+label open_ground_rise_done_691
 localget r9 118
 sub r9 32768
 mul r9 r0
@@ -14416,7 +16479,7 @@ label vertex_shade_ready
 localget r6 11
 cmp r6 4
 jlt nature_vertex_shade_done
-cmp r6 44
+cmp r6 124
 jge nature_vertex_shade_done
 localget r9 3090
 localget r6 3091
@@ -14505,7 +16568,7 @@ div r11 16
 mul r9 85
 div r9 100
 localget r12 11
-cmp r12 44
+cmp r12 124
 jge emit_skid
 cmp r12 4
 jge emit_tree
@@ -16443,7 +18506,7 @@ meshface 3019 3020 3021 241 r9 r10 r11 60
 meshface 3019 3022 3020 241 r9 r10 r11 60
 load8 r0 388
 cmp r0 0
-jle air_jet_pulse_done_528
+jle air_jet_pulse_done_692
 meshfacegradient 3559 3561 3560 244 12 r9 r10 r11 60
 meshfacegradient 3559 3560 3562 244 12 r9 r10 r11 60
 meshfacegradient 3559 3563 3560 244 12 r9 r10 r11 60
@@ -16460,13 +18523,13 @@ meshfacegradient 3577 3579 3578 244 12 r9 r10 r11 60
 meshfacegradient 3577 3578 3580 244 12 r9 r10 r11 60
 meshfacegradient 3577 3581 3578 244 12 r9 r10 r11 60
 meshfacegradient 3577 3578 3582 244 12 r9 r10 r11 60
-label air_jet_pulse_done_528
+label air_jet_pulse_done_692
 load8 r0 395
 cmp r0 0
-jle smoke_done_529
+jle smoke_done_693
 load16 r0 384
 cmp r0 0
-jne smoke_done_529
+jne smoke_done_693
 meshfacegradient 3639 3640 3641 244 12 r9 r10 r11 60
 meshfacegradient 3639 3641 3642 244 12 r9 r10 r11 60
 meshfacegradient 3643 3644 3645 244 12 r9 r10 r11 60
@@ -16475,15 +18538,15 @@ meshfacegradient 3647 3648 3649 244 12 r9 r10 r11 60
 meshfacegradient 3647 3649 3650 244 12 r9 r10 r11 60
 meshfacegradient 3651 3652 3653 244 12 r9 r10 r11 60
 meshfacegradient 3651 3653 3654 244 12 r9 r10 r11 60
-label smoke_done_529
+label smoke_done_693
 load8 r0 382
 cmp r0 1
-jne nitro_done_530
+jne nitro_done_694
 meshfacegradient 3655 3656 3657 56 8 r9 r10 r11 60
 meshfacegradient 3655 3657 3658 56 8 r9 r10 r11 60
 meshfacegradient 3659 3660 3661 56 8 r9 r10 r11 60
 meshfacegradient 3659 3661 3662 56 8 r9 r10 r11 60
-label nitro_done_530
+label nitro_done_694
 jmp emit_shadow
 label emit_medium
 localget r12 126
@@ -17337,7 +19400,7 @@ jne shadow_base_ready
 load8 r0 120
 cmp r0 0
 je shadow_base_ready
-set r12 32
+set r12 24
 label shadow_base_ready
 meshfacegradient 3583 3584 3585 r12 8 r9 r10 r11 60
 meshfacegradient 3584 3592 3593 r12 8 r9 r10 r11 60
@@ -17376,10 +19439,14 @@ meshfacegradienttex 3600 3602 3603 12 8 6 2 r9 r10 r11 60
 meshfacegradienttex 3600 3603 3604 12 8 6 2 r9 r10 r11 60
 meshfacegradienttex 3600 3604 3605 12 8 6 2 r9 r10 r11 60
 meshfacegradienttex 3600 3605 3601 12 8 6 2 r9 r10 r11 60
-meshfacegradienttex 3606 3607 3608 12 8 6 2 r9 r10 r11 60
-meshfacegradienttex 3608 3607 3606 12 8 6 2 r9 r10 r11 60
-meshfacegradienttex 3609 3610 3611 12 8 6 2 r9 r10 r11 60
-meshfacegradienttex 3611 3610 3609 12 8 6 2 r9 r10 r11 60
+localget r0 112
+sub r0 1000000
+cmp r0 12000
+jgt next_actor
+meshfacegradienttex 3606 3607 3608 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 3606 3608 3609 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 3610 3611 3612 9 3 7 2 r9 r10 r11 60
+meshfacegradienttex 3610 3612 3613 9 3 7 2 r9 r10 r11 60
 jmp next_actor
 label nature_emit_rock
 meshfacegradienttex 3614 3615 3616 22 2 7 3 r9 r10 r11 60
@@ -17402,15 +19469,15 @@ meshfacegradienttex 3630 3631 3632 12 8 6 2 r9 r10 r11 60
 meshfacegradienttex 3632 3631 3630 12 8 6 2 r9 r10 r11 60
 meshfacegradienttex 3633 3634 3635 12 8 6 2 r9 r10 r11 60
 meshfacegradienttex 3635 3634 3633 12 8 6 2 r9 r10 r11 60
-meshfacegradienttex 3636 3637 3638 12 8 6 2 r9 r10 r11 60
-meshfacegradienttex 3638 3637 3636 12 8 6 2 r9 r10 r11 60
+meshface 3636 3637 3638 243 r9 r10 r11 60
+meshface 3638 3637 3636 243 r9 r10 r11 60
 label next_actor
 load32 r12 100
 sub r12 2000000
 localget r0 11
 add r0 1
 localset 11 r0
-cmp r0 48
+cmp r0 128
 jlt actor
 meshend
 halt

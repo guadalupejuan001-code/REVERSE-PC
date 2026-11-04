@@ -34,6 +34,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     private long lastTapUptime;
     private final Object detailLock=new Object();
     private int quality=1;
+    private int fastFrames;
     private boolean fixedDetail;
     private volatile int physicsHz;
     private volatile boolean paused;
@@ -177,6 +178,12 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
         return assistMode;
     }
     int assistMode(){return assistMode;}
+    int cycleWorldTime(){
+        int mode=(game.environmentMode()+1)%4;
+        try{game.setEnvironmentMode(mode);repaintRequested.set(true);Log.i("ReverseVelocity","WORLD_TIME mode="+mode+" phase="+game.current().dayPhase+" ticks="+game.current().ticks);}
+        catch(Exception failure){error="No se pudo cambiar la hora: "+failure.getMessage();return game.environmentMode();}
+        return mode;
+    }
     int cycleCamera(){cameraMode=(cameraMode+1)%3;return cameraMode;}
     int cyclePaint(){paintId=(paintId+1)%5;return paintId;}
     int selectedCar(){return carId;}
@@ -216,7 +223,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     }
     private void failed(Throwable thrown){
         physicsHz=0;
-        error="No se pudo continuar la carrera: "+thrown.getMessage();
+        error="No se pudo continuar la exploración: "+thrown.getMessage();
         physicsLifecycle.fail();lifecycle.fail();
         hud.update(game.current(),paused,0,0,0,error);
         Log.e("ReverseVelocity","Race worker failed",thrown);
@@ -413,7 +420,12 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 synchronized(detailLock){
                     if(!native4K&&!fixedDetail&&!selectedFixed&&quality==selected&&cost>45_000_000L&&selected>0){
                         if(++slowFrames>=5){quality=selected-1;slowFrames=0;}
-                    }else slowFrames=0;
+                    }else {
+                        slowFrames=0;
+                        if(!native4K&&!fixedDetail&&quality==selected&&cost<23_000_000L&&selected<2){
+                            if(++fastFrames>=90){quality=selected+1;fastFrames=0;}
+                        }else fastFrames=0;
+                    }
                 }
                 long remaining=(paused?100_000_000L:33_333_333L)-cost;
                 if(remaining>1_000_000L)Thread.sleep(remaining/1_000_000L);

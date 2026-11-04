@@ -15,7 +15,7 @@ assert(src['VelocityXSurface.java'].includes('frame.present(pixels,width,height)
  'Only XI XFS1/XFB5 pixels may be handed to Android');
 assert(src['VelocityActivity.java'].includes('Motor XI'),
  'in-game renderer capabilities dialog must be reachable');
-assert(src['VelocityActivity.java'].includes('XFB5 escala el trabajo por resolución'),
+assert(src['VelocityActivity.java'].includes('Foto 4K pausa la conducción'),
  '4K renderer limits must be clearly explained in the application');
 assert(fs.existsSync('reverse-os-android/app/src/main/assets/velocity/render.xi'),
  'XI original scene asset missing');
