@@ -39,8 +39,9 @@ Recovery validates the bound base, pointers, metadata links and payload hashes.
 It reconstructs the original RVG order and original FNV checksum, then invokes
 the unchanged original decoder. It executes no guest instructions. An incomplete
 or corrupt selected payload selects the last complete verified prefix. An invalid
-head can use the previous pointer. Unverifiable history falls back conservatively
-to the complete base. Reports expose rollback; the guest view indicates when an
+head can use the previous pointer. A verified pointer can reconstruct a damaged
+identity marker's base binding. With that binding established, unverifiable
+generations fall back conservatively to the complete base. Reports expose rollback; the guest view indicates when an
 incomplete segment was discarded.
 
 An explicit import first compacts any pending journal and retires its identity,

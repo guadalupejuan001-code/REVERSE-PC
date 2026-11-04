@@ -40,6 +40,14 @@ int main(int argc,char** argv){try{
  journal.commit(guest,previous);check(journal.recovered_bytes()==guest.snapshot(),"Deleted page/address/binding or quantum component was lost");
  auto second=guest;GuestIncrementalJournal reopened(path("base.rvg"),MinimalGuest::max_adaptive_snapshot);
  check(reopened.recover()&&reopened.entries()==2,"Committed journal did not reopen");check(reopened.recovered_bytes()==second.snapshot(),"Reopened bytes differ");
+ corrupt(path("base.rvg.journal/previous"));GuestIncrementalJournal bad_backup(path("base.rvg"),MinimalGuest::max_adaptive_snapshot);
+ check(bad_backup.recover()&&!bad_backup.rolled_back()&&bad_backup.recovered_bytes()==second.snapshot(),"Damaged backup falsely reported loss of the intact latest state");
+ // Either verified pointer can reconstruct the base binding if its redundant
+ // identity marker is damaged; this must not discard committed guest work.
+ const auto identity_path=path("identity.rvg");guest_write_snapshot_candidate(first,identity_path);auto identity_next=first;identity_next.run(1);
+ GuestIncrementalJournal identity_writer(identity_path,MinimalGuest::max_adaptive_snapshot);identity_writer.commit(identity_next,first);corrupt(identity_path+".journal/identity");
+ GuestIncrementalJournal identity_recovered(identity_path,MinimalGuest::max_adaptive_snapshot);
+ check(identity_recovered.recover()&&identity_recovered.recovered_bytes()==identity_next.snapshot(),"Damaged identity marker discarded a verified journal");
  // A complete payload without its head update is not selected.
  for(const auto* phase:{"payload_synced","generation_synced","before_head"}){
   const auto name=path(std::string("crash-")+phase+".rvg");guest_write_snapshot_candidate(first,name);

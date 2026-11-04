@@ -34,14 +34,18 @@ class GuestIncrementalJournal {
     if(!std::filesystem::exists(root_))return false;
     require(stamp(source_).size<=capacity_,"Checkpoint base exceeds journal capacity");
     require(std::filesystem::is_directory(root_)&&!std::filesystem::is_symlink(root_),"Invalid checkpoint journal directory");
-    const auto marker=read_text(root_/"identity",128);std::istringstream mark(marker);std::string magic,base;
-    require(bool(mark>>magic>>base)&&magic=="RVJROOT1"&&sha_valid(base)&&end(mark),"Invalid checkpoint journal identity");
-    const auto actual=hash_file(source_);
-    if(actual!=base)return false; // A validated replacement RVG supersedes this history.
-    base_sha_=base;base_index_=parse_base();index_=base_index_;selected_={0,zeros()};
+    std::string declared_base;bool identity_valid=false;
+    try{std::istringstream mark(read_text(root_/"identity",128));std::string magic;
+      identity_valid=bool(mark>>magic>>declared_base)&&magic=="RVJROOT1"&&sha_valid(declared_base)&&end(mark);
+    }catch(const std::exception&){}
+    base_sha_=hash_file(source_);
+    std::vector<Head> candidates;bool current_head_bad=false;unsigned requested_sequence=0;
+    for(const auto* name:{"head","previous"})try{auto head=read_head(root_/name);requested_sequence=std::max(requested_sequence,head.sequence);candidates.push_back(std::move(head));}
+      catch(const std::exception&){if(std::string(name)=="head")current_head_bad=true;}
+    if(identity_valid&&declared_base!=base_sha_&&candidates.empty()){rolled_back_=false;return false;} // A replacement RVG supersedes this history.
+    require((identity_valid&&declared_base==base_sha_)||!candidates.empty(),"Journal identity and both recovery pointers are unverifiable");
+    base_index_=parse_base();index_=base_index_;selected_={0,zeros()};
     limit_=std::min(max_payload,std::max<std::size_t>(1024*1024,std::filesystem::file_size(source_)/4));
-    std::vector<Head> candidates;
-    for(const auto* name:{"head","previous"})try{candidates.push_back(read_head(root_/name));}catch(const std::exception&){rolled_back_=true;}
     std::sort(candidates.begin(),candidates.end(),[](const Head& a,const Head& b){return a.sequence>b.sequence;});
     for(const auto& head:candidates){
       try{
@@ -58,6 +62,7 @@ class GuestIncrementalJournal {
         if(good.sequence<head.sequence)rolled_back_=true;
       }catch(const std::exception&){rolled_back_=true;}
     }
+    rolled_back_=current_head_bad||selected_.sequence<requested_sequence;
     try{observed_head_=read_text(root_/"head",256);}catch(const std::exception&){observed_head_.clear();}
     initialized_=true;stamp_=stamp(source_);return selected_.sequence!=0;
   }
@@ -286,6 +291,8 @@ class GuestIncrementalJournal {
       const auto identity=read_text(root_/"identity",128);
       require(!std::filesystem::is_symlink(root_)&&identity.compare(0,9,"RVJROOT1 ")==0,"Unrecognized checkpoint journal directory");
       if(identity=="RVJROOT1 "+base_sha_+"\n")require(read_head(root_/"head").sequence==0&&read_head(root_/"previous").sequence==0,"Recover the existing committed journal before writing");
+      else{bool selected=false;for(const auto* name:{"head","previous"})try{selected=selected||read_head(root_/name).sequence!=0;}catch(const std::exception&){}
+        require(!selected,"Recover the existing committed journal before writing");}
       archive_root();
     }
     const auto destination=root_;auto pattern=root_.string()+".initial-XXXXXX";std::vector<char> temporary(pattern.begin(),pattern.end());temporary.push_back(0);
