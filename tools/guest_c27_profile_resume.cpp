@@ -2,6 +2,7 @@
 // Invoke through android_c27_profile_resume.mjs, which validates the pinned source evidence.
 #include "guest_budget_cycles.hpp"
 #include "guest_file_session.hpp"
+#include "guest_console_input.hpp"
 #include <csignal>
 #include <cstdlib>
 #include <iostream>
@@ -22,6 +23,7 @@ int main(int argc,char** argv){try{
     std::cout<<"{\"schema\":\"reverse-c27-profile-native-pins-v1\",\"disk_sha256\":"<<quote(disk_sha)<<",\"root_checkpoint_sha256\":"<<quote(root_sha)<<",\"counter_seed_sha256\":"<<quote(seed_sha)<<",\"logical_ram_bytes\":2147483648,\"counter_instructions_per_tick\":64,\"host_snapshot_transport_bytes\":"<<host_capacity<<"}\n";return 0;
   }
   require(argc==13,"Expected state report disk journal wall-ms instructions cycles state-sha report-sha initial-instructions pc counter-subtick; use android_c27_profile_resume.mjs");
+  const auto console_input=guest_console_input_file(std::getenv("REVERSE_PC_UART_INPUT_FILE"));
   const std::string state_sha=argv[8],report_sha=argv[9],pc_text=argv[11];
   const auto valid_sha=[](const std::string& s){return s.size()==64&&s.find_first_not_of("0123456789abcdef")==std::string::npos;};
   require(valid_sha(state_sha)&&valid_sha(report_sha),"Invalid source SHA-256 pins");
@@ -67,7 +69,10 @@ int main(int argc,char** argv){try{
   require(clock.enabled&&clock.instructions_per_tick==64&&clock.subtick==phase,"Counter cadence changed");
   require(GuestSha256::hash(Bytes(clock.seed.begin(),clock.seed.end()))==seed_sha,"Counter seed changed");
   require(guest.host_snapshot_transport_capacity()==host_capacity,"Explicit host bound lost");
-  const std::string provenance="{\"experiment\":\"c27-profile-budget-continuation\",\"root_checkpoint_sha256\":"+quote(root_sha)+",\"input_checkpoint_sha256\":"+quote(state_sha)+",\"input_report_sha256\":"+quote(report_sha)+",\"snapshot_round_trip_verified\":true,\"source_profile_verified\":true,\"host_snapshot_transport_bytes\":"+std::to_string(host_capacity)+",\"host_transport_policy_serialized\":false,\"cycle_limit\":"+std::to_string(cycle_limit)+",\"timing_seed_origin\":\"checkpoint\",\"timing_seed_sha256\":"+quote(seed_sha)+",\"disk_sha256\":"+quote(disk_sha)+",\"ram_profile_changed\":false,\"original_state_modified\":false}";
+  // Only after the original state has round-tripped and every source pin passed.
+  // Empty or absent input preserves the original execution and provenance bytes.
+  const auto uart_provenance=guest_console_input_event(guest,console_input);
+  const std::string provenance="{\"experiment\":\"c27-profile-budget-continuation\",\"root_checkpoint_sha256\":"+quote(root_sha)+",\"input_checkpoint_sha256\":"+quote(state_sha)+",\"input_report_sha256\":"+quote(report_sha)+",\"snapshot_round_trip_verified\":true,\"source_profile_verified\":true,\"host_snapshot_transport_bytes\":"+std::to_string(host_capacity)+",\"host_transport_policy_serialized\":false,\"cycle_limit\":"+std::to_string(cycle_limit)+",\"timing_seed_origin\":\"checkpoint\",\"timing_seed_sha256\":"+quote(seed_sha)+",\"disk_sha256\":"+quote(disk_sha)+",\"ram_profile_changed\":false,\"original_state_modified\":false"+uart_provenance+"}";
   BootCycleJournal journal(argv[4]);std::signal(SIGTERM,stop);std::signal(SIGINT,stop);
   bool failure=false;std::size_t uart=0;auto last=std::chrono::steady_clock::now(),frame_time=last;
   std::uint64_t captured_frame=UINT64_MAX;
