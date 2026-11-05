@@ -1,6 +1,7 @@
 #include "session.hpp"
 #include "rxe.hpp"
 #include "rxe_app.hpp"
+#include "integration/readonly_geometry.hpp"
 #include <jni.h>
 #include <exception>
 #include <limits>
@@ -80,6 +81,26 @@ Java_com_reversepc_os_NativeRuntime_observeFrame(JNIEnv* e,jclass,
                           frame.compare(0,4,"XFB5")!=0))
       throw std::invalid_argument("Read-only XI observation requires XFS1/XFB5 output");
     return output_frame(e,frame);
+  }catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_observeGeometry(JNIEnv* e,jclass,
+    jbyteArray state,jstring text,jintArray addresses,jbyteArray values){
+  try{
+    if(!addresses||!values)throw std::invalid_argument("Geometry input mailbox missing");
+    const auto count=e->GetArrayLength(addresses);
+    if(count<0||count>32||e->GetArrayLength(values)!=count)
+      throw std::invalid_argument("Geometry input mailbox bounds");
+    std::vector<jint> indices(count);std::vector<jbyte> data(count);
+    if(count){e->GetIntArrayRegion(addresses,0,count,indices.data());e->GetByteArrayRegion(values,0,count,data.data());}
+    if(e->ExceptionCheck())throw std::runtime_error("Geometry inputs could not be read");
+    std::vector<std::pair<std::uint32_t,std::uint8_t>> inputs;inputs.reserve(count);
+    for(int i=0;i<count;i++){
+      if(indices[i]<0)throw std::invalid_argument("Geometry input address must be nonnegative");
+      inputs.emplace_back(static_cast<std::uint32_t>(indices[i]),static_cast<std::uint8_t>(data[i]));
+    }
+    return output_frame(e,reverse_pc::observe_geometry(bytes(e,state),source(e,text),inputs));
   }catch(const std::exception& x){throw_java(e,x);return nullptr;}
 }
 

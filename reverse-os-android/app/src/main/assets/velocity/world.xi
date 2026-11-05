@@ -1,178 +1,819 @@
 #!reverse-pc-machine-v1
-# REVERSE VELOCITY stadium circuit, authored and generated entirely in XI.
-# Centimeters; yaw4096: 0=+z,1024=+x. Radius12732, two40000cm straights.
-# 81 centerline vertices close80 segments, about1600m total.
-# World mailbox: 1000='X',1001='I',1002=2,1004=80.
-# Vertex i at4096+8*i: little-endianu32(x+65536),u32(z+65536).
-# Segment tangent yaw at5000+2*i, i0..79 (entry80 repeatsheading0).
-# Observer output is exactly81 pairs x_cm,z_cm, printed r0 thenr1.
+# OPEN FOREST ROAD 3.0 — finite open road, never wraps to its start.
+# 80 ~20 m segments, eight 200 m sectors, 3.6 m one-lane asphalt.
+# Packed route4096, headings5000, elevations5300, biome5500.
 store8 1000 88
 store8 1001 73
-store8 1002 2
+store8 1002 3
 store8 1004 80
-set r2 0
-label world_vertex
-cmp r2 20
-jle world_outbound
-cmp r2 40
-jle world_arc_one
-cmp r2 60
-jle world_inbound
-# Return semicircle: center(R,0), heading2048..4096.
-set r14 2
-mov r3 r2
-sub r3 60
-mul r3 2048
-div r3 20
-jmp world_arc_trig
-label world_outbound
+store32 4096 65536
+store32 4100 65536
+store16 5000 11
+store16 5300 3
+store8 5500 0
+store16 5800 0
 set r0 0
-mov r1 r2
-mul r1 2000
-jmp world_tangent
-label world_inbound
-set r0 25464
-mov r1 r2
-sub r1 40
-mul r1 2000
-set r4 40000
-sub r4 r1
-mov r1 r4
-jmp world_tangent
-label world_arc_one
-set r14 1
-mov r3 r2
-sub r3 20
-mul r3 2048
-div r3 20
-label world_arc_trig
-mov r4 r3
-set r11 0
-jmp world_sine
-label world_sine_ready
-mov r12 r5
-mov r4 r3
-add r4 1024
-set r11 1
-jmp world_sine
-label world_cosine_ready
-mov r13 r5
-mul r12 12732
-div r12 16384
-mul r13 12732
-div r13 16384
-cmp r14 2
-je world_arc_return
-set r0 12732
-sub r0 r13
-set r1 40000
-add r1 r12
-jmp world_tangent
-label world_arc_return
-set r0 12732
-add r0 r13
 set r1 0
-sub r1 r12
-jmp world_tangent
-# Bhaskara rational sine, fixed16384. Range reduction is exact at quadrant
-# boundaries; products remain within signed64-bit integer range.
-label world_sine
-mod r4 4096
-set r6 1
-cmp r4 2048
-jle world_sine_folded
-sub r4 2048
-set r6 -1
-label world_sine_folded
-mov r7 r4
-set r10 2048
-sub r10 r4
-mul r7 r10
-mov r8 r7
-mul r8 16
-mul r8 16384
-mov r9 r7
-mul r9 4
-set r10 20971520
-sub r10 r9
-div r8 r10
-mul r8 r6
-mov r5 r8
-cmp r11 0
-je world_sine_ready
-jmp world_cosine_ready
-label world_tangent
-# Tangents use each chord's midpoint heading. They are observations of the
-# same stadium parameterization, never a host-side duplicate road function.
-cmp r2 20
-jlt world_tangent_out
-cmp r2 40
-jlt world_tangent_arc_one
-cmp r2 60
-jlt world_tangent_in
-cmp r2 80
-jge world_tangent_out
-mov r3 r2
-sub r3 60
-mul r3 2
-add r3 1
-mul r3 2048
-div r3 40
-add r3 2048
-jmp world_publish
-label world_tangent_out
-set r3 0
-jmp world_publish
-label world_tangent_in
-set r3 2048
-jmp world_publish
-label world_tangent_arc_one
-mov r3 r2
-sub r3 20
-mul r3 2
-add r3 1
-mul r3 2048
-div r3 40
-label world_publish
-mov r4 r2
-mul r4 8
-add r4 4096
-mov r5 r0
-add r5 65536
-set r7 4
-label world_store_x
-mov r6 r5
-mod r6 256
-store8 $r4 r6
-add r4 1
-div r5 256
-sub r7 1
-cmp r7 0
-jgt world_store_x
-mov r5 r1
-add r5 65536
-set r7 4
-label world_store_z
-mov r6 r5
-mod r6 256
-store8 $r4 r6
-add r4 1
-div r5 256
-sub r7 1
-cmp r7 0
-jgt world_store_z
-mov r4 r2
-mul r4 2
-add r4 5000
-mov r5 r3
-mod r5 256
-store8 $r4 r5
-add r4 1
-div r3 256
-store8 $r4 r3
 print r0
 print r1
-add r2 1
-cmp r2 80
-jle world_vertex
+store32 4104 65570
+store32 4108 67536
+store16 5002 32
+store16 5302 4
+store8 5501 0
+store16 5802 1
+set r0 34
+set r1 2000
+print r0
+print r1
+store32 4112 65669
+store32 4116 69533
+store16 5004 53
+store16 5304 7
+store8 5502 0
+store16 5804 4
+set r0 133
+set r1 3997
+print r0
+print r1
+store32 4120 65830
+store32 4124 71527
+store16 5006 70
+store16 5306 13
+store8 5503 4
+store16 5806 10
+set r0 294
+set r1 5991
+print r0
+print r1
+store32 4128 66044
+store32 4132 73515
+store16 5008 85
+store16 5308 19
+store8 5504 4
+store16 5808 16
+set r0 508
+set r1 7979
+print r0
+print r1
+store32 4136 66303
+store32 4140 75498
+store16 5010 96
+store16 5310 27
+store8 5505 4
+store16 5810 24
+set r0 767
+set r1 9962
+print r0
+print r1
+store32 4144 66596
+store32 4148 77477
+store16 5012 103
+store16 5312 35
+store8 5506 4
+store16 5812 32
+set r0 1060
+set r1 11941
+print r0
+print r1
+store32 4152 66910
+store32 4156 79452
+store16 5014 106
+store16 5314 43
+store8 5507 4
+store16 5814 40
+set r0 1374
+set r1 13916
+print r0
+print r1
+store32 4160 67233
+store32 4164 81425
+store16 5016 105
+store16 5316 51
+store8 5508 4
+store16 5816 48
+set r0 1697
+set r1 15889
+print r0
+print r1
+store32 4168 67554
+store32 4172 83399
+store16 5018 101
+store16 5318 58
+store8 5509 4
+store16 5818 55
+set r0 2018
+set r1 17863
+print r0
+print r1
+store32 4176 67862
+store32 4180 85376
+store16 5020 93
+store16 5320 63
+store8 5510 4
+store16 5820 60
+set r0 2326
+set r1 19840
+print r0
+print r1
+store32 4184 68145
+store32 4188 87356
+store16 5022 81
+store16 5322 67
+store8 5511 3
+store16 5822 64
+set r0 2609
+set r1 21820
+print r0
+print r1
+store32 4192 68394
+store32 4196 89340
+store16 5024 68
+store16 5324 70
+store8 5512 3
+store16 5824 67
+set r0 2858
+set r1 23804
+print r0
+print r1
+store32 4200 68603
+store32 4204 91329
+store16 5026 53
+store16 5326 71
+store8 5513 3
+store16 5826 68
+set r0 3067
+set r1 25793
+print r0
+print r1
+store32 4208 68766
+store32 4212 93322
+store16 5028 37
+store16 5328 72
+store8 5514 3
+store16 5828 69
+set r0 3230
+set r1 27786
+print r0
+print r1
+store32 4216 68880
+store32 4220 95319
+store16 5030 22
+store16 5330 73
+store8 5515 3
+store16 5830 70
+set r0 3344
+set r1 29783
+print r0
+print r1
+store32 4224 68946
+store32 4228 97318
+store16 5032 6
+store16 5332 74
+store8 5516 3
+store16 5832 71
+set r0 3410
+set r1 31782
+print r0
+print r1
+store32 4232 68965
+store32 4236 99318
+store16 5034 4089
+store16 5334 75
+store8 5517 4
+store16 5834 72
+set r0 3429
+set r1 33782
+print r0
+print r1
+store32 4240 68943
+store32 4244 101318
+store16 5036 4077
+store16 5336 78
+store8 5518 4
+store16 5836 75
+set r0 3407
+set r1 35782
+print r0
+print r1
+store32 4248 68886
+store32 4252 103317
+store16 5038 4068
+store16 5338 82
+store8 5519 4
+store16 5838 79
+set r0 3350
+set r1 37781
+print r0
+print r1
+store32 4256 68800
+store32 4260 105315
+store16 5040 4061
+store16 5340 88
+store8 5520 4
+store16 5840 85
+set r0 3264
+set r1 39779
+print r0
+print r1
+store32 4264 68694
+store32 4268 107312
+store16 5042 4058
+store16 5342 96
+store8 5521 4
+store16 5842 93
+set r0 3158
+set r1 41776
+print r0
+print r1
+store32 4272 68576
+store32 4276 109309
+store16 5044 4056
+store16 5344 105
+store8 5522 4
+store16 5844 102
+set r0 3040
+set r1 43773
+print r0
+print r1
+store32 4280 68454
+store32 4284 111305
+store16 5046 4057
+store16 5346 115
+store8 5523 4
+store16 5846 112
+set r0 2918
+set r1 45769
+print r0
+print r1
+store32 4288 68333
+store32 4292 113301
+store16 5048 4059
+store16 5348 126
+store8 5524 4
+store16 5848 123
+set r0 2797
+set r1 47765
+print r0
+print r1
+store32 4296 68218
+store32 4300 115298
+store16 5050 4062
+store16 5350 138
+store8 5525 4
+store16 5850 135
+set r0 2682
+set r1 49762
+print r0
+print r1
+store32 4304 68113
+store32 4308 117295
+store16 5052 4065
+store16 5352 149
+store8 5526 4
+store16 5852 146
+set r0 2577
+set r1 51759
+print r0
+print r1
+store32 4312 68018
+store32 4316 119293
+store16 5054 4068
+store16 5354 118
+store8 5527 4
+store16 5854 115
+set r0 2482
+set r1 53757
+print r0
+print r1
+store32 4320 67931
+store32 4324 121291
+store16 5056 4069
+store16 5356 73
+store8 5528 5
+store16 5856 70
+set r0 2395
+set r1 55755
+print r0
+print r1
+store32 4328 67849
+store32 4332 123289
+store16 5058 4069
+store16 5358 68
+store8 5529 5
+store16 5858 65
+set r0 2313
+set r1 57753
+print r0
+print r1
+store32 4336 67767
+store32 4340 125288
+store16 5060 4067
+store16 5360 93
+store8 5530 4
+store16 5860 90
+set r0 2231
+set r1 59752
+print r0
+print r1
+store32 4344 67677
+store32 4348 127285
+store16 5062 4061
+store16 5362 187
+store8 5531 4
+store16 5862 184
+set r0 2141
+set r1 61749
+print r0
+print r1
+store32 4352 67570
+store32 4356 129283
+store16 5064 4053
+store16 5364 188
+store8 5532 4
+store16 5864 185
+set r0 2034
+set r1 63747
+print r0
+print r1
+store32 4360 67439
+store32 4364 131278
+store16 5066 4042
+store16 5366 188
+store8 5533 4
+store16 5866 185
+set r0 1903
+set r1 65742
+print r0
+print r1
+store32 4368 67274
+store32 4372 133271
+store16 5068 4029
+store16 5368 187
+store8 5534 4
+store16 5868 184
+set r0 1738
+set r1 67735
+print r0
+print r1
+store32 4376 67068
+store32 4380 135261
+store16 5070 4013
+store16 5370 184
+store8 5535 4
+store16 5870 181
+set r0 1532
+set r1 69725
+print r0
+print r1
+store32 4384 66813
+store32 4388 137244
+store16 5072 3996
+store16 5372 181
+store8 5536 4
+store16 5872 178
+set r0 1277
+set r1 71708
+print r0
+print r1
+store32 4392 66506
+store32 4396 139221
+store16 5074 3977
+store16 5374 178
+store8 5537 4
+store16 5874 175
+set r0 970
+set r1 73685
+print r0
+print r1
+store32 4400 66144
+store32 4404 141188
+store16 5076 3959
+store16 5376 175
+store8 5538 4
+store16 5876 172
+set r0 608
+set r1 75652
+print r0
+print r1
+store32 4408 65728
+store32 4412 143144
+store16 5078 3943
+store16 5378 174
+store8 5539 4
+store16 5878 171
+set r0 192
+set r1 77608
+print r0
+print r1
+store32 4416 65262
+store32 4420 145089
+store16 5080 3928
+store16 5380 173
+store8 5540 4
+store16 5880 170
+set r0 -274
+set r1 79553
+print r0
+print r1
+store32 4424 64752
+store32 4428 147022
+store16 5082 3915
+store16 5382 174
+store8 5541 3
+store16 5882 171
+set r0 -784
+set r1 81486
+print r0
+print r1
+store32 4432 64204
+store32 4436 148946
+store16 5084 3906
+store16 5384 175
+store8 5542 3
+store16 5884 172
+set r0 -1332
+set r1 83410
+print r0
+print r1
+store32 4440 63630
+store32 4444 150862
+store16 5086 3900
+store16 5386 178
+store8 5543 3
+store16 5886 175
+set r0 -1906
+set r1 85326
+print r0
+print r1
+store32 4448 63039
+store32 4452 152773
+store16 5088 3899
+store16 5388 181
+store8 5544 3
+store16 5888 178
+set r0 -2497
+set r1 87237
+print r0
+print r1
+store32 4456 62445
+store32 4460 154682
+store16 5090 3903
+store16 5390 184
+store8 5545 3
+store16 5890 181
+set r0 -3091
+set r1 89146
+print r0
+print r1
+store32 4464 61860
+store32 4468 156595
+store16 5092 3910
+store16 5392 187
+store8 5546 4
+store16 5892 184
+set r0 -3676
+set r1 91059
+print r0
+print r1
+store32 4472 61297
+store32 4476 158514
+store16 5094 3923
+store16 5394 188
+store8 5547 4
+store16 5894 185
+set r0 -4239
+set r1 92978
+print r0
+print r1
+store32 4480 60773
+store32 4484 160444
+store16 5096 3940
+store16 5396 188
+store8 5548 4
+store16 5896 185
+set r0 -4763
+set r1 94908
+print r0
+print r1
+store32 4488 60300
+store32 4492 162387
+store16 5098 3963
+store16 5398 187
+store8 5549 2
+store16 5898 184
+set r0 -5236
+set r1 96851
+print r0
+print r1
+store32 4496 59895
+store32 4500 164346
+store16 5100 3990
+store16 5400 183
+store8 5550 2
+store16 5900 180
+set r0 -5641
+set r1 98810
+print r0
+print r1
+store32 4504 59571
+store32 4508 166319
+store16 5102 4020
+store16 5402 177
+store8 5551 2
+store16 5902 174
+set r0 -5965
+set r1 100783
+print r0
+print r1
+store32 4512 59339
+store32 4516 168305
+store16 5104 4054
+store16 5404 170
+store8 5552 2
+store16 5904 167
+set r0 -6197
+set r1 102769
+print r0
+print r1
+store32 4520 59209
+store32 4524 170301
+store16 5106 4088
+store16 5406 160
+store8 5553 2
+store16 5906 157
+set r0 -6327
+set r1 104765
+print r0
+print r1
+store32 4528 59186
+store32 4532 172300
+store16 5108 27
+store16 5408 149
+store8 5554 2
+store16 5908 146
+set r0 -6350
+set r1 106764
+print r0
+print r1
+store32 4536 59269
+store32 4540 174298
+store16 5110 61
+store16 5410 138
+store8 5555 2
+store16 5910 135
+set r0 -6267
+set r1 108762
+print r0
+print r1
+store32 4544 59455
+store32 4548 176290
+store16 5112 91
+store16 5412 126
+store8 5556 2
+store16 5912 123
+set r0 -6081
+set r1 110754
+print r0
+print r1
+store32 4552 59733
+store32 4556 178270
+store16 5114 118
+store16 5414 115
+store8 5557 2
+store16 5914 112
+set r0 -5803
+set r1 112734
+print r0
+print r1
+store32 4560 60093
+store32 4564 180237
+store16 5116 140
+store16 5416 105
+store8 5558 2
+store16 5916 102
+set r0 -5443
+set r1 114701
+print r0
+print r1
+store32 4568 60520
+store32 4572 182191
+store16 5118 158
+store16 5418 96
+store8 5559 2
+store16 5918 93
+set r0 -5016
+set r1 116655
+print r0
+print r1
+store32 4576 61000
+store32 4580 184133
+store16 5120 170
+store16 5420 88
+store8 5560 2
+store16 5920 85
+set r0 -4536
+set r1 118597
+print r0
+print r1
+store32 4584 61515
+store32 4588 186065
+store16 5122 178
+store16 5422 82
+store8 5561 2
+store16 5922 79
+set r0 -4021
+set r1 120529
+print r0
+print r1
+store32 4592 62053
+store32 4596 187991
+store16 5124 180
+store16 5424 78
+store8 5562 2
+store16 5924 75
+set r0 -3483
+set r1 122455
+print r0
+print r1
+store32 4600 62597
+store32 4604 189916
+store16 5126 177
+store16 5426 75
+store8 5563 4
+store16 5926 72
+set r0 -2939
+set r1 124380
+print r0
+print r1
+store32 4608 63134
+store32 4612 191842
+store16 5128 171
+store16 5428 74
+store8 5564 4
+store16 5928 71
+set r0 -2402
+set r1 126306
+print r0
+print r1
+store32 4616 63652
+store32 4620 193774
+store16 5130 160
+store16 5430 253
+store8 5565 1
+store16 5930 70
+set r0 -1884
+set r1 128238
+print r0
+print r1
+store32 4624 64138
+store32 4628 195714
+store16 5132 146
+store16 5432 252
+store8 5566 4
+store16 5932 69
+set r0 -1398
+set r1 130178
+print r0
+print r1
+store32 4632 64581
+store32 4636 197664
+store16 5134 129
+store16 5434 71
+store8 5567 4
+store16 5934 68
+set r0 -955
+set r1 132128
+print r0
+print r1
+store32 4640 64973
+store32 4644 199626
+store16 5136 109
+store16 5436 70
+store8 5568 4
+store16 5936 67
+set r0 -563
+set r1 134090
+print r0
+print r1
+store32 4648 65307
+store32 4652 201597
+store16 5138 89
+store16 5438 67
+store8 5569 4
+store16 5938 64
+set r0 -229
+set r1 136061
+print r0
+print r1
+store32 4656 65579
+store32 4660 203579
+store16 5140 68
+store16 5440 63
+store8 5570 4
+store16 5940 60
+set r0 43
+set r1 138043
+print r0
+print r1
+store32 4664 65787
+store32 4668 205568
+store16 5142 47
+store16 5442 58
+store8 5571 4
+store16 5942 55
+set r0 251
+set r1 140032
+print r0
+print r1
+store32 4672 65932
+store32 4676 207562
+store16 5144 28
+store16 5444 51
+store8 5572 4
+store16 5944 48
+set r0 396
+set r1 142026
+print r0
+print r1
+store32 4680 66018
+store32 4684 209561
+store16 5146 10
+store16 5446 43
+store8 5573 4
+store16 5946 40
+set r0 482
+set r1 144025
+print r0
+print r1
+store32 4688 66050
+store32 4692 211560
+store16 5148 4091
+store16 5448 35
+store8 5574 4
+store16 5948 32
+set r0 514
+set r1 146024
+print r0
+print r1
+store32 4696 66036
+store32 4700 213560
+store16 5150 4079
+store16 5450 27
+store8 5575 3
+store16 5950 24
+set r0 500
+set r1 148024
+print r0
+print r1
+store32 4704 65983
+store32 4708 215559
+store16 5152 4069
+store16 5452 19
+store8 5576 3
+store16 5952 16
+set r0 447
+set r1 150023
+print r0
+print r1
+store32 4712 65899
+store32 4716 217558
+store16 5154 4061
+store16 5454 13
+store8 5577 3
+store16 5954 10
+set r0 363
+set r1 152022
+print r0
+print r1
+store32 4720 65793
+store32 4724 219555
+store16 5156 4056
+store16 5456 7
+store8 5578 3
+store16 5956 4
+set r0 257
+set r1 154019
+print r0
+print r1
+store32 4728 65670
+store32 4732 221551
+store16 5158 4052
+store16 5458 4
+store8 5579 3
+store16 5958 1
+set r0 134
+set r1 156015
+print r0
+print r1
+store32 4736 65536
+store32 4740 223547
+store16 5160 4052
+store16 5460 3
+store8 5580 3
+store16 5960 0
+set r0 0
+set r1 158011
+print r0
+print r1
 halt
