@@ -67,6 +67,55 @@ int main(int argc,char** argv){try{
  auto tiny=create;field(tiny,24,2,4);field(tiny,32,1,4);field(tiny,36,1,4);check(gpu.gpu(tiny)==0x1100,"Second GPU resource allocation failed");
  auto many=command(0x106,32+1000*16);field(many,24,2,4);field(many,28,1000,4);for(unsigned i=0;i<1000;i++){field(many,32+i*16,pixels,8);field(many,40+i*16,4096,4);}check(gpu.gpu(many)==0x1100,"Page-granular framebuffer backing was rejected");
  const auto pagewise=g.snapshot();check(MinimalGuest::from_snapshot(pagewise,disk).snapshot()==pagewise,"Large scatter-gather device state did not restore");
+ // Android's real 800x600 allocation has 65 SG entries: one coalesced
+ // 1,179,648-byte range and 1,921,024 backing bytes in total. Control
+ // descriptors stay small; their budget is not a framebuffer-entry limit.
+ {
+  MinimalGuest actual(UINT64_C(2)*1024*1024*1024,0);
+  actual.load_linux_image(kernel,{},"console=ttyAMA0",nullptr,true);Client real(actual,1);
+  auto resource=create;field(resource,24,2,4);field(resource,32,800,4);field(resource,36,600,4);
+  check(real.gpu(resource)==0x1100,"Android-size GPU resource failed");
+  auto header=command(0x106,32);field(header,24,2,4);field(header,28,65,4);
+  Bytes table(65*16);std::uint64_t total=0;
+  for(unsigned j=0;j<65;j++){
+   const unsigned length=j==63?1179648:j==64?479232:j==15?8192:4096;
+   field(table,j*16,UINT64_C(0x50000000)+std::uint64_t(j)*0x200000,8);field(table,j*16+8,length,4);total+=length;
+  }
+  check(total==1921024,"Observed Android SG extent differs");
+  const auto sg=real.input+0x8000;
+  for(unsigned j=0;j<header.size();j++)actual.write(real.input+j,header[j],1);
+  for(unsigned j=0;j<table.size();j++)actual.write(sg+j,table[j],1);
+  real.descriptor(0,real.input,32,1,2);real.descriptor(2,sg,unsigned(table.size()),1,1);real.descriptor(1,real.output,24,2);real.kick();
+  check(actual.read(real.output,4)==0x1100&&actual.machine().pci.resources[0].backing.size()==66&&
+        actual.machine().pci.resources[0].backing[63].length==1048576&&
+        actual.machine().pci.resources[0].backing[64].length==131072,"Coalesced Android GPU backing normalization differs");
+  const auto coalesced=actual.snapshot();check(MinimalGuest::from_snapshot(coalesced).snapshot()==coalesced,"Coalesced Android backing changed original checkpoint bytes");
+  auto one=resource;field(one,24,3,4);field(one,32,1,4);field(one,36,1,4);check(real.gpu(one)==0x1100,"GPU backing boundary fixture failed");
+  auto maximum=command(0x106,48);field(maximum,24,3,4);field(maximum,28,1,4);field(maximum,32,0x60000000,8);field(maximum,40,5*1024*1024,4);
+  check(real.gpu(maximum)==0x1100&&actual.machine().pci.resources[1].backing.size()==5,"Five-MiB GPU backing was not normalized");
+  const auto bound=actual.snapshot();check(MinimalGuest::from_snapshot(bound).snapshot()==bound,"Normalized GPU backing did not restore exactly");
+  actual.write(0x60100000,0x0055aacc,4);auto largeTransfer=command(0x105,56);setrect(largeTransfer,1,1);field(largeTransfer,40,0x100000,8);field(largeTransfer,48,3,4);
+  check(real.gpu(largeTransfer)==0x1100,"GPU DMA past the old one-MiB boundary failed");
+  auto smallScan=command(0x103,48);setrect(smallScan,1,1);field(smallScan,44,3,4);
+  check(real.gpu(smallScan)==0x1100&&actual.display_rgb()==Bytes({0x55,0xaa,0xcc}),"Large backing pixels lost original XI/Ether authority");
+  const auto displayed=actual.snapshot();auto displayReload=MinimalGuest::from_snapshot(displayed);
+  check(displayReload.snapshot()==displayed&&displayReload.display_rgb()==actual.display_rgb(),"Large backing scanout changed across original restore");
+  auto invalid=[&](Bytes badEntry){
+   for(unsigned j=0;j<badEntry.size();j++)actual.write(real.input+j,badEntry[j],1);
+   real.descriptor(0,real.input,unsigned(badEntry.size()),1,1);real.descriptor(1,real.output,24,2);
+   actual.write(real.avail+4+2*(real.available%8),0,2);actual.write(real.avail+2,real.available+1,2);
+   Bytes notify;mov(notify,0,real.bar+0x1000);mov(notify,1,0);for(unsigned j=0;j<4;j++)notify.push_back(std::uint8_t(0x79000001u>>(8*j)));
+   const auto at=actual.registers().pc;for(unsigned j=0;j<notify.size();j+=4)actual.write(at+j,get(notify,j,4),4);
+   const auto before=actual.snapshot();rejected([&]{actual.run(notify.size()/4);},"Invalid GPU backing entry accepted");
+   check(actual.snapshot()==before,"Rejected GPU backing changed CPU, queue, pixels or original memory");
+  };
+  auto badEntry=maximum;field(badEntry,40,0,4);invalid(badEntry);
+  badEntry=maximum;field(badEntry,32,0xbffff000,8);field(badEntry,40,8192,4);invalid(badEntry);
+  badEntry=command(0x106,64);field(badEntry,24,3,4);field(badEntry,28,2,4);field(badEntry,32,0x40000000,8);field(badEntry,40,0x80000000,4);field(badEntry,48,0x50000000,8);field(badEntry,56,1,4);invalid(badEntry);
+  auto pci=actual.machine().pci;pci.resources[0].backing[0].length=1024*1024+1;
+  rejected([&]{GuestPciState::restore(pci.save());},"Oversized backing survived PCI restore");
+  pci.resources[0].backing[0].length=0;rejected([&]{GuestPciState::restore(pci.save());},"Empty backing survived PCI restore");
+ }
  // A malformed descriptor loop must roll back the complete native run.
  gpu.descriptor(0,gpu.input,24,1,0);g.write(gpu.avail+4+2*(gpu.available%8),0,2);g.write(gpu.avail+2,gpu.available+1,2);
  Bytes code;mov(code,0,gpu.bar+0x1000);mov(code,1,0);for(unsigned j=0;j<4;j++)code.push_back(std::uint8_t(0x79000001u>>(8*j)));const auto pc=g.registers().pc;for(unsigned i=0;i<code.size();i+=4)g.write(pc+i,get(code,i,4),4);const auto bad=g.snapshot();rejected([&]{g.run(code.size()/4);},"Cyclic DMA chain accepted");check(g.snapshot()==bad,"Malformed DMA changed authoritative state");

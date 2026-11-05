@@ -115,7 +115,20 @@ inline void MinimalGuest::pci_notify(unsigned device,unsigned queue){
       else if(type==0x101){need(40);const auto id=unsigned(get(input,24,4)),format=unsigned(get(input,28,4)),w=unsigned(get(input,32,4)),h=unsigned(get(input,36,4));int slot=-1;for(unsigned i=0;i<p.resources.size();i++)if(!p.resources[i].id){slot=int(i);break;}
         if(!id||resource(id)>=0||!w||!h||w>1280||h>1024||!(format==1||format==2||format==67||format==134))result=0x1205;else if(slot<0)result=0x1201;else{auto& r=p.resources[unsigned(slot)];r.id=id;r.format=format;r.width=w;r.height=h;clear(unsigned(slot));}}
       else if(type==0x102){need(32);const auto id=unsigned(get(input,24,4));const int i=resource(id);if(i<0)result=0x1203;else{clear(unsigned(i));p.resources[unsigned(i)]={};if(p.cursor==id)p.cursor=0;if(p.scanout==id){p.scanout=p.scan_w=p.scan_h=0;++p.flushes;}}}
-      else if(type==0x106){need(32);const int i=resource(unsigned(get(input,24,4)));const auto n=unsigned(get(input,28,4));if(i<0)result=0x1203;else if(n>2048||input.size()!=32+std::size_t(n)*16)result=0x1205;else{auto& r=p.resources[unsigned(i)];std::vector<GuestGpuResource::Entry> entries;std::uint64_t total=0;for(unsigned j=0;j<n;j++){const auto a=get(input,32+j*16,8),length=get(input,40+j*16,4);require(length&&length<=1024*1024,"GPU backing entry exceeds device budget");range(a,length);total+=length;entries.push_back({a,length});}if(total<std::uint64_t(r.width)*r.height*4)result=0x1205;else r.backing=std::move(entries);}}
+      else if(type==0x106){need(32);const int i=resource(unsigned(get(input,24,4)));const auto n=unsigned(get(input,28,4));if(i<0)result=0x1203;else if(n>2048||input.size()!=32+std::size_t(n)*16)result=0x1205;else{
+        auto& r=p.resources[unsigned(i)];std::vector<GuestGpuResource::Entry> entries;std::uint64_t total=0;
+        for(unsigned j=0;j<n;j++){
+          const auto a=get(input,32+j*16,8),length=get(input,40+j*16,4);
+          require(length,"GPU backing entry exceeds device budget");range(a,length);
+          // Normalize contiguous guest extents to the existing snapshot's
+          // <=1-MiB entries. The original decoder and 2048-entry bound stay.
+          constexpr std::uint64_t chunk=1024*1024;
+          require((length+chunk-1)/chunk<=2048-entries.size(),"GPU backing exceeds normalized entry budget");
+          total+=length;
+          for(std::uint64_t offset=0;offset<length;offset+=chunk)entries.push_back({a+offset,std::min(chunk,length-offset)});
+        }
+        if(total<std::uint64_t(r.width)*r.height*4)result=0x1205;else r.backing=std::move(entries);
+      }}
       else if(type==0x107){need(32);const int i=resource(unsigned(get(input,24,4)));if(i<0)result=0x1203;else p.resources[unsigned(i)].backing.clear();}
       else if(type==0x103){need(48);const auto id=unsigned(get(input,44,4));const int i=resource(id);if(get(input,40,4))result=0x1202;else if(!id){p.scanout=p.scan_w=p.scan_h=0;++p.flushes;}else if(i<0)result=0x1203;else if(!rect(p.resources[unsigned(i)]))result=0x1205;else{p.scanout=id;p.scan_x=unsigned(get(input,24,4));p.scan_y=unsigned(get(input,28,4));p.scan_w=unsigned(get(input,32,4));p.scan_h=unsigned(get(input,36,4));present(p.scan_x,p.scan_y,p.scan_w,p.scan_h);++p.flushes;}}
       else if(type==0x105){need(56);const int i=resource(unsigned(get(input,48,4)));if(i<0)result=0x1203;else{const auto& r=p.resources[unsigned(i)];if(!rect(r)||r.backing.empty())result=0x1205;else{const auto offset=get(input,40,8),x=get(input,24,4),y=get(input,28,4),w=get(input,32,4),h=get(input,36,4);std::uint64_t total=0;for(auto& e:r.backing)total+=e.length;
