@@ -164,6 +164,7 @@ jobs:
           "$ready"
           adb shell wm size 1280x720
           adb shell wm density 240
+          sleep 5
           adb shell settings put global window_animation_scale 0
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0

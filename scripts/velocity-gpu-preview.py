@@ -85,7 +85,7 @@ def texture(unit,internal,tw,th,form,pixels,nearest=False):
 palette=bytes(sum([list(bytes.fromhex(line.strip()))+[255] for line in pathlib.Path(sys.argv[2]).read_text().splitlines() if line.strip()],[]))
 texture(0,0x8058,256,1,0x1908,palette)
 atlas=bytes(packet[16+tile*256+y*16+x] for y in range(16) for tile in range(8) for x in range(16))
-texture(1,0x8229,128,16,0x1903,atlas,True)
+texture(1,0x8229,128,16,0x1903,atlas,False)
 color=texture(2,0x8058,w,h,0x1908,None)
 fbo=U();depth=U();gl('glGenFramebuffers',None,I,P)(1,C.byref(fbo));gl('glBindFramebuffer',None,U,U)(0x8D40,fbo)
 gl('glFramebufferTexture2D',None,U,U,U,U,I)(0x8D40,0x8CE0,0x0DE1,color,0)
@@ -95,7 +95,9 @@ assert gl('glCheckFramebufferStatus',U,U)(0x8D40)==0x8CD5,'framebuffer'
 gl('glUseProgram',None,U)(scene)
 def loc(name,p=scene):
     n=gl('glGetUniformLocation',I,U,C.c_char_p)(p,name.encode());assert n>=0,name;return n
-for name,val in [('uTime',3.4),('uDay',.12 if 'night' in sys.argv[2] else .48 if 'dusk' in sys.argv[2] else 1),('uYaw',float(os.getenv('VELOCITY_VIEW_YAW','0'))),('uWet',.6),('uWaterDepth',float(os.getenv('VELOCITY_WATER_DEPTH','0'))),('uAspect',w/h)]:gl('glUniform1f',None,I,F)(loc(name),val)
+for name,val in [('uTime',3.4),('uDay',.12 if 'night' in sys.argv[2] else .48 if 'dusk' in sys.argv[2] else 1),('uWet',.6),('uWaterDepth',float(os.getenv('VELOCITY_WATER_DEPTH','0'))),('uAspect',w/h)]:gl('glUniform1f',None,I,F)(loc(name),val)
+angle=float(os.getenv('VELOCITY_VIEW_YAW','0')); sc=np.cos(angle);ss=np.sin(angle);sn=1/np.sqrt(1.1525)
+gl('glUniform3f',None,I,F,F,F)(loc('uSunDirection'),(-.55*sc+.38*ss)*sn,.84*sn,(-.55*ss-.38*sc)*sn)
 lamp=lamp or [0,0,0,0,0,1]
 for name,values in [('uLampOrigin',lamp[:3]),('uLampDirection',[lamp[3+i]-lamp[i] for i in range(3)])]:gl('glUniform3f',None,I,F,F,F)(loc(name),*values)
 gl('glUniform1f',None,I,F)(loc('uLampPower'),1 if 'night' in sys.argv[2] else .6 if 'dusk' in sys.argv[2] else 0)

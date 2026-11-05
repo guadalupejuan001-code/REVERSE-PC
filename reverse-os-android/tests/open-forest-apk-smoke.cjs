@@ -199,11 +199,12 @@ function hierarchy(){
           sleep(350);
           // The initial P key is consumed while SystemUI owns focus. Pause
           // again only after dismissing this observed education overlay.
-          if(stage==='initial')adbText(['shell','input','keyevent','KEYCODE_P']);
+
           attempt--;continue; // Overlay is not a failed app hierarchy.
         }
         const app=all.filter(x=>x.package===pkg);
         if(app.length){
+          if(stage==='initial'&&!app.some(n=>/EN PAUSA/.test(n.text||''))){adbText(['shell','input','keyevent','KEYCODE_P']);sleep(350);continue;}
           checkNoFailure(app.map(x=>x.text||'').join('\n'));
           return app;
         }
@@ -262,6 +263,8 @@ try{
   const launch=adbText(['shell','am','start','-W','-a','android.intent.action.MAIN','-c','android.intent.category.LAUNCHER','-f','0x10200000','-n',component]);
   check(!/Error:|Exception/i.test(launch),'Open Forest Road launches');rememberPid();
   initialMarker=waitFrame();check(!!initialMarker,'actual XI world frame posted');
+  let hdReady=false;for(let attempt=0;attempt<80;attempt++){const text=logs();checkNoFailure(text);if(/GPU_FALLBACK/.test(text))throw Error('GPU failed during HD startup');if(/GPU_FRAME_READY source=XI_XFG4/.test(text)&&/GPU_HD_PIXELS .*pixels=921600/.test(text)){hdReady=true;break;}sleep(250);}
+  check(hdReady,'real HD GPU frame is posted before interaction');
   adbText(['shell','input','keyevent','KEYCODE_P']);
   let ui=waitText(/EN PAUSA/);
   check(!!findText(ui,'OPEN FOREST ROAD')&&ui.some(n=>/^SECTOR \d+ \/ 8$/.test(n.text||'')),'exploration HUD replaces laps and race positions');

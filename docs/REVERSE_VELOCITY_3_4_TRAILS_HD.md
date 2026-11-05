@@ -41,7 +41,11 @@ The optional Fluido mode adjusts resolution using GPU presentation cost, rather
 than reacting to the CPU time needed to prepare XI geometry. Photo 4K remains
 an optional frozen frame. The software fallback retains its smaller raster.
 
-The shader uses a cheaper spatial hash and gentler edge filtering. Dirt has
+The shader uses a cheaper spatial hash, hardware atlas interpolation, an early
+terrain/foliage path, a frame-uniform sun vector and reused post-process samples.
+Car paint, glass, water and lamp reflections keep their separate material shading.
+World initialization runs off the UI thread; immersive mode begins after a posted
+frame, avoiding a fullscreen-education overlay during cold GPU compilation. Dirt has
 paired tire ruts and softened grass margins. Binary dispatch replaces repeated
 linear scans for world objects and material groups. Generated internal symbols
 are shortened without changing the XI instructions they branch to.

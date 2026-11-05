@@ -14,11 +14,7 @@ void main(){
         vec3 d=texture(uImage,uv+vec2(0.0,uTexel.y)).rgb,e=texture(uImage,uv-vec2(0.0,uTexel.y)).rgb;
         float edge=max(max(luma(a),luma(b)),max(luma(d),luma(e)))-min(min(luma(a),luma(b)),min(luma(d),luma(e)));
         c=mix(c,(a+b+d+e+c*2.0)/6.0,smoothstep(.09,.32,edge)*.36);
-        vec3 glow=vec3(0.0);
-        for(int i=0;i<4;i++){
-            vec2 off=i==0?vec2(2.5,0.0):i==1?vec2(-2.5,0.0):i==2?vec2(0.0,2.5):vec2(0.0,-2.5);
-            glow+=max(texture(uImage,uv+off*uTexel).rgb-vec3(.82),vec3(0.0));
-        }
+        vec3 glow=max(a-vec3(.82),vec3(0))+max(b-vec3(.82),vec3(0))+max(d-vec3(.82),vec3(0))+max(e-vec3(.82),vec3(0));
         c+=glow*.13;c*=1.0-.065*dot(vUv-.5,vUv-.5);
     }
     color=vec4(clamp(c,0.0,1.0),1.0);

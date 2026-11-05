@@ -35,7 +35,8 @@ public final class VelocityActivity extends Activity {
     private VelocityCockpitView cockpit;
     private Button gearButton,soundButton;
     private Button pauseButton,native4KButton,hudButton,garageButton,assistButton;
-    private boolean dashboardVisible;
+    private boolean dashboardVisible,immersiveReady;
+    private boolean foreground;
     private static final String[] CARS={
         "AERO X-01 · carrocería original",
         "GRAN TURISMO X-02 · más largo y estrecho",
@@ -138,6 +139,7 @@ public final class VelocityActivity extends Activity {
     }
     private void raceHud(VelocityXiEngine.Snapshot s,boolean paused,String error,int w,int h,int fps){
         if(s==null)return;
+        if(!immersiveReady&&((gpu!=null&&gpu.hasPresentedFrame())||(gpu==null&&w>0))){immersiveReady=true;WorkbenchActivity.immersive(this);}
         ambient.update(s);if(soundButton!=null)changedText(soundButton,ambient.isEnabled()?"Sonido: on":"Sonido: off");
         changedText(speed,(surface.isReverseGear()?"R · ":"")+s.speedKmh()+" km/h");
         if(gearButton!=null){
@@ -196,14 +198,13 @@ public final class VelocityActivity extends Activity {
     }
     @Override public void onCreate(Bundle saved){
         super.onCreate(saved);getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        WorkbenchActivity.immersive(this);
-        final VelocityXiEngine game;
-        try{game=new VelocityXiEngine(this);}
-        catch(Exception failure){
-            TextView error=text("No se pudo preparar el bosque: "+failure.getMessage(),17);
-            error.setPadding(dp(24),dp(24),dp(24),dp(24));error.setBackgroundColor(0xff10191d);
-            setContentView(error);return;
-        }
+        TextView loading=text("Preparando el bosque…",17);loading.setPadding(dp(24),dp(24),dp(24),dp(24));loading.setBackgroundColor(0xff10191d);setContentView(loading);
+        new Thread(()->{
+            try{VelocityXiEngine game=new VelocityXiEngine(this);runOnUiThread(()->{if(!isFinishing()&&!isDestroyed())buildScene(game);});}
+            catch(Exception failure){runOnUiThread(()->{if(!isFinishing()&&!isDestroyed())loading.setText("No se pudo preparar el bosque: "+failure.getMessage());});}
+        },"Velocity-World-Loader").start();
+    }
+    private void buildScene(VelocityXiEngine game){
         FrameLayout root=new FrameLayout(this);root.setMotionEventSplittingEnabled(true);
         root.setBackgroundColor(0xff101a24);
         surface=new VelocityXSurface(this,game,(s,paused,fps,w,h,error)->runOnUiThread(()->raceHud(s,paused,error,w,h,fps)));
@@ -335,6 +336,7 @@ public final class VelocityActivity extends Activity {
         gearButton.setOnClickListener(v->changeGear());
         add(root,gearButton,80,38,Gravity.TOP|Gravity.RIGHT,0,94,16,0);
         setContentView(root);
+        if(foreground){if(gpu!=null)gpu.onResume();surface.resumeLoop();}
     }
     private void showMap(){
         releaseControls();boolean resume=!surface.isPaused();if(resume)surface.togglePause();
@@ -374,8 +376,8 @@ public final class VelocityActivity extends Activity {
         else return super.onKeyUp(key,event);
         controls();return true;
     }
-    @Override protected void onResume(){super.onResume();ambient.resume();WorkbenchActivity.immersive(this);if(gpu!=null)gpu.onResume();if(surface!=null)surface.resumeLoop();}
-    @Override protected void onPause(){ambient.pause();if(surface!=null){releaseControls();surface.pauseLoop();}if(gpu!=null)gpu.onPause();super.onPause();}
+    @Override protected void onResume(){super.onResume();foreground=true;ambient.resume();if(immersiveReady)WorkbenchActivity.immersive(this);if(gpu!=null)gpu.onResume();if(surface!=null)surface.resumeLoop();}
+    @Override protected void onPause(){foreground=false;ambient.pause();if(surface!=null){releaseControls();surface.pauseLoop();}if(gpu!=null)gpu.onPause();super.onPause();}
     @Override public void onWindowFocusChanged(boolean focus){super.onWindowFocusChanged(focus);if(!focus)releaseControls();}
     @Override protected void onDestroy(){ambient.close();if(surface!=null)surface.closeLoop();super.onDestroy();}
 }
