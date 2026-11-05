@@ -27,8 +27,8 @@ check(badges.length===8,'Double-note order badge missing');
 check(badges.every((a,i)=>badges.every((b,j)=>i===j||Math.hypot(a.x-b.x,a.y-b.y)>=21)),'Order numbers overlap in a dense sequence');
 check(badges.every(b=>b.x>=14&&b.x<=986),'Order badge is outside the screen');
 const stack=[{t:1,lane:1,row:1,dir:0},{t:1.13,lane:1,row:1,dir:0}],project=()=>({x:100,y:100,s:80});
-check(qa.nearestSwipeNote(stack,1.12,0,'flow',100,100,100,100,project,{isTap:true})===stack[0],'Later note stole a tap from the first cube in the same target');
-check(qa.nearestKeyNote(stack,1.12,0,'flow',0)===stack[0],'Keyboard order differs from visible order');
+check(qa.nearestSwipeNote(stack,1.12,0,'flow',100,100,100,100,project,{isTap:true})===stack[1],'An old Flow cube stole the current musical attack');
+check(qa.nearestKeyNote(stack,1.12,0,'flow',0)===stack[1],'Flow keyboard selection does not follow the current beat');
 stack[0].hit=true;check(qa.nearestKeyNote(stack,1.12,0,'flow',0)===stack[1],'Stack did not advance after the first hit');
 for(const t of [0,2,3.8,4,4.23]){const m=flow.noteMotion({t:4},t,0,4);check(m.alpha>=.35&&m.z>=0,'Unjudged note vanishes or passes behind the camera');}
 const peaks=Array.from({length:20000},(_,i)=>({t:.025+i*.005,strength:1,source:'percussion'}));

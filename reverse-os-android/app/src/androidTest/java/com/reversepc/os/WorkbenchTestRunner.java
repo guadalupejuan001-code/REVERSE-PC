@@ -393,7 +393,7 @@ public final class WorkbenchTestRunner extends Instrumentation {
         WorkspaceFiles migration=new WorkspaceFiles(new File(getTargetContext().getCacheDir(),"prisma-upgrade-"+System.nanoTime()));
         android.content.SharedPreferences flags=getTargetContext().getSharedPreferences("prisma-upgrade-check",0);flags.edit().clear().commit();
         WorkbenchPrograms.seedGraphics(getTargetContext(),migration,flags);byte[] current=migration.read("Aplicaciones/PRISMA.rxe");
-        require(new JSONObject(new String(NativeRuntime.inspectRxe(current),StandardCharsets.UTF_8)).getString("app_version").equals("2.9.0"),"Fresh install did not seed PRISMA 2.8");
+        require(new JSONObject(new String(NativeRuntime.inspectRxe(current),StandardCharsets.UTF_8)).getString("app_version").equals("3.0.0"),"Fresh install did not seed PRISMA 2.8");
         byte[] prior;try(java.io.InputStream input=getContext().getAssets().open("prisma-1.1.rxe")){prior=WorkbenchPrograms.read(input);}
         require(digest(prior).equals(WorkbenchPrograms.PRISMA_11_SHA),"Wrong official PRISMA upgrade fixture");
         require(WorkbenchPrograms.trustedOldPrisma("8eab78b37f7d18365f26746e4ed30bf6433c36109f23c0ee92d6c42804b534f0"),"Official PRISMA 1.2 was not allowlisted");

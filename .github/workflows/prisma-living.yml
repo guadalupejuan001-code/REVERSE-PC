@@ -1,7 +1,7 @@
-name: PRISMA 2.9 Flow
+name: PRISMA 3.0 Music Clock
 on:
   push:
-    branches: [codex/prisma-flow-gameplay-20261104]
+    branches: [codex/prisma-music-clock-20261104]
   workflow_dispatch:
 permissions:
   contents: read
@@ -44,11 +44,11 @@ jobs:
           python3 tests/rxe_graphics_cli.py build/reverse_pc build/prisma/PRISMA.rxe > evidence/xi-score-validation.json
           mkdir -p reverse-os-android/app/src/main/assets/native-apps
           cp build/prisma/PRISMA.rxe reverse-os-android/app/src/main/assets/native-apps/PRISMA.rxe
-          cp build/prisma/PRISMA.rxe dist/PRISMA-2.9-Flow.rxe
+          cp build/prisma/PRISMA.rxe dist/PRISMA-3.0-Musica.rxe
       - uses: actions/download-artifact@v4
         with:
-          name: PRISMA-2.8-GPU-3D
-          run-id: 41961406066
+          name: PRISMA-2.9-Flow
+          run-id: 41969457710
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: build/previous-prisma
       - name: Build Android ARM64 and x86_64
@@ -59,10 +59,10 @@ jobs:
           keytool -genkeypair -keystore "$REVERSE_SIGNING_KEYSTORE" -storetype JKS -storepass android -keypass android -alias reverse-desktop -keyalg RSA -keysize 2048 -validity 3650 -dname 'CN=PRISMA Test'
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1' platform-tools emulator 'system-images;android-35;default;x86_64' > evidence/sdk.log
           gradle -p reverse-os-android --no-daemon :app:assemblePrismaDebug :app:assemblePrismaDebugAndroidTest > evidence/gradle.log 2>&1 || { tail -140 evidence/gradle.log; exit 1; }
-          cp reverse-os-android/app/build/outputs/apk/prisma/debug/app-prisma-debug.apk dist/PRISMA-2.9-Flow.apk
+          cp reverse-os-android/app/build/outputs/apk/prisma/debug/app-prisma-debug.apk dist/PRISMA-3.0-Musica.apk
           cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" dist/apksigner.jar
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/PRISMA-2.9-Flow.apk > evidence/signature.txt
-          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -p 4 dist/PRISMA-2.9-Flow.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/PRISMA-3.0-Musica.apk > evidence/signature.txt
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -p 4 dist/PRISMA-3.0-Musica.apk
       - name: Play and verify on Android 15
         shell: bash
         timeout-minutes: 10
@@ -92,7 +92,7 @@ jobs:
           # Let cold-boot display/configuration changes settle before opening
           # the previous version's WebView for the real upgrade fixture.
           sleep 5
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks "$REVERSE_SIGNING_KEYSTORE" --ks-key-alias reverse-desktop --ks-pass pass:android --key-pass pass:android --out build/prisma-previous.apk build/previous-prisma/dist/PRISMA-2.8-GPU-3D.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks "$REVERSE_SIGNING_KEYSTORE" --ks-key-alias reverse-desktop --ks-pass pass:android --key-pass pass:android --out build/prisma-previous.apk build/previous-prisma/dist/PRISMA-2.9-Flow.apk
           adb install -r build/prisma-previous.apk
           adb install -r reverse-os-android/app/build/outputs/apk/androidTest/prisma/debug/app-prisma-debug-androidTest.apk
           timeout 90s adb shell am instrument -w -e phase seed org.reverse.prisma.test/com.reversepc.os.PrismaTestRunner | tee evidence/android-upgrade-seed.txt
@@ -105,14 +105,14 @@ jobs:
             timeout 90s adb shell am instrument -w -e phase seed org.reverse.prisma.test/com.reversepc.os.PrismaTestRunner | tee evidence/android-upgrade-seed.txt
           fi
           grep 'PRISMA_UPGRADE_SEEDED' evidence/android-upgrade-seed.txt
-          adb install -r dist/PRISMA-2.9-Flow.apk
+          adb install -r dist/PRISMA-3.0-Musica.apk
           timeout 210s adb shell am instrument -w org.reverse.prisma.test/com.reversepc.os.PrismaTestRunner | tee evidence/android-tests.txt
           grep 'PRISMA_ANDROID_OK' evidence/android-tests.txt
           adb pull /sdcard/Android/data/org.reverse.prisma/files/prisma-evidence evidence/android
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: PRISMA-2.9-Flow
+          name: PRISMA-3.0-Musica
           path: |
             dist/
             evidence/

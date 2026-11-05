@@ -40,7 +40,7 @@ export class Scene {
   }
   setMusicStage(map,level='flow') {
     this.musicStage = new MusicStageDirector(map);
-    this.level=level;this.flowCursor=0;this.flowPresentation=new FlowPresentation();this.flowPositions=new Map();this.visibleNotes=[];
+    this.level=level;this.flowCursor=0;this.flowRecovery=false;this.flowDeferred=0;this.flowPresentation=new FlowPresentation();this.flowPositions=new Map();this.visibleNotes=[];
     this.travel=this.settings().anticipation||approachSeconds(map.bpm,level);this.phraseGlow=0;
     this.concertProgram = makeConcertProgram(map);
     this.festivalProgram=makeFestivalProgram(map,this.concertProgram);this.rewardShells=[];
@@ -82,12 +82,18 @@ export class Scene {
     return {x:cx + x * scale,y:cy + y * scale,s:scale};
   }
   motion(note,t,latency=0){
-    const remaining=this.level==='flow'?this.flowPositions?.get(note):undefined;
+    // Live picking must honor the supplied event time, including a delayed
+    // native pointer. Only end recovery uses a presentation queue/cache.
+    const remaining=this.level==='flow'&&this.flowRecovery?this.flowPositions?.get(note):undefined;
     const m=noteMotion(note,remaining===undefined?t:note.t+latency-remaining,latency,this.travel||4.8);
-    if(this.level==='flow')m.alpha=1;
+    if(this.level==='flow'){
+      m.alpha=1;
+      const exit=this.flowPresentation.departure(m.delta,this.flowRecovery);
+      m.yShift=exit.yShift;m.size*=exit.sizeScale;
+    }
     return m;
   }
-  noteProjection(note,t,latency=0) { const motion=this.motion(note,t,latency);return {...this.projection((note.lane-1)*1.13,(note.row-.5)*1.33,motion.z),size:motion.size}; }
+  noteProjection(note,t,latency=0) { const motion=this.motion(note,t,latency),p=this.projection((note.lane-1)*1.13,(note.row-.5)*1.33+(motion.yShift||0),motion.z);return {...p,s:p.s*motion.size/NOTE_SIZE,size:motion.size}; }
   celebratePhrase(time){this.phraseGlow=time+1.2;}
   drawNoteGuides(ctx,time,chart,latency){
     const colors=PALETTES[this.settings().palette],theme=this.guidance||{colors,base:'#0c1929'};
@@ -434,9 +440,11 @@ export class Scene {
     this.rigPose=rigPose;
     if(!preview&&this.level==='flow'){
       while(this.flowCursor<chart.length&&(chart[this.flowCursor].hit||chart[this.flowCursor].missed))this.flowCursor++;
-      this.visibleNotes=flowCandidates(chart,time,latency,this.travel||4.8,this.flowCursor);
-      this.flowPositions=this.flowPresentation.step(this.visibleNotes,time,animate?dt:0,latency);
-      this.arrivals=this.visibleNotes.map((note,i)=>({note,rank:i+1,delta:note.t+latency-time}));
+      this.visibleNotes=flowCandidates(chart,time,latency,this.travel||3.4,this.flowCursor,this.flowRecovery);
+      this.flowPositions=this.flowPresentation.step(this.visibleNotes,time,animate?dt:0,latency,this.flowRecovery);
+      this.flowDeferred=this.flowPresentation.deferred(chart,time,latency);
+      this.arrivals=this.visibleNotes.filter(n=>this.flowRecovery||n.t+latency-time>=-.12).map((note,i)=>({note,rank:i+1,delta:note.t+latency-time}));
+      this.canvas.dataset.deferredNotes=String(this.flowDeferred);
     }else this.arrivals=preview?[]:arrivalQueue(chart,time,latency,this.travel||4.8);
     this.noteRanks=new Map(this.arrivals.map(a=>[a.note,a.rank]));
     const world=worldFrame(this.festivalProgram,preview?0:musicTime,this.settings().world||'journey',this.settings().effects);
@@ -464,7 +472,7 @@ export class Scene {
       for(const n of notes){
         const m=this.motion(n,time,latency);
         if(!n.holding&&m.delta>(this.travel||3.6))continue;
-        this.cube((n.lane-1)*1.13,(n.row-.5)*1.33,m.z,m.size,n.color,n.dir,0,false,n.holding||this.noteRanks.get(n)===1&&m.delta<.7,m.alpha);
+        this.cube((n.lane-1)*1.13,(n.row-.5)*1.33+(m.yShift||0),m.z,m.size,n.color,n.dir,0,false,n.holding||this.noteRanks.get(n)===1&&m.delta<.7,m.alpha);
       }
       this.canvas.dataset.noteCount=String(notes.filter(n=>!n.missed).length);this.canvas.dataset.lookAhead=String(this.travel||3.6);
     }

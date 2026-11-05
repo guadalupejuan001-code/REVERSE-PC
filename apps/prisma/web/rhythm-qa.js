@@ -2,7 +2,7 @@
 // Screen-space picking chooses the best playable note, not the first note in
 // chart order, when overlapping events share a hit window.
 const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
-const windows=Object.freeze({flow:.45,pulse:.19,vertigo:.16});
+const windows=Object.freeze({flow:1.05,pulse:.19,vertigo:.16});
 export const hitWindowFor=level=>windows[level]||windows.flow;
 export const isEndOfSong=(audioTime,duration,level,latencySeconds=0)=>
  Number.isFinite(audioTime)&&Number.isFinite(duration)&&
@@ -21,7 +21,7 @@ const range=(notes,time,latency,window)=>{
  return [search(time-latency-window-.001),search(time-latency+window+.001)];
 };
 export function nearestSwipeNote(chart,time,latency,level,
- ax,ay,bx,by,project,{precise=false,isTap=false,lookAhead=4.8}={}) {
+ ax,ay,bx,by,project,{precise=false,isTap=false,lookAhead=3.4,recovery=false}={}) {
  if(!Array.isArray(chart)||!chart.length||typeof project!=='function')return null;
  const window=hitWindowFor(level),length=Math.hypot(bx-ax,by-ay);
  if(!isTap&&length<3)return null;
@@ -33,7 +33,7 @@ export function nearestSwipeNote(chart,time,latency,level,
   if(n.hit||n.missed||n.holding||!Number.isFinite(n.t))continue;
   if(isTap&&n.kind!=='hold'&&!relaxed)continue;
   const delta=n.t+latency-time;
-  if(relaxed?delta>lookAhead:Math.abs(delta)>window)continue;
+  if(relaxed?(recovery?delta>lookAhead:delta>.35||delta<-window):Math.abs(delta)>window)continue;
   const p=project(n,time,latency),radius=Math.max(relaxed?27:18,p.s*.64*(relaxed?.86:.66));
   if(!(radius>0))continue;
   const distance=segmentDistance(p.x,p.y,ax,ay,bx,by);
@@ -43,25 +43,26 @@ export function nearestSwipeNote(chart,time,latency,level,
   eligible.push(n);
   // Timing is dominant; when notes are simultaneous choose the closer cube.
   const grade=Math.abs(delta)/window+distance/radius*.20;
-  if(relaxed?!winner||n.t<winner.t:grade<best){best=grade;winner=n;}
+  if(relaxed&&recovery?!winner||n.t<winner.t:grade<best){best=grade;winner=n;}
  }
  // A later attack in the same target must not steal the visible first cube.
  // Distinct targets still use timing and spatial proximity independently.
- if(winner&&Number.isInteger(winner.lane)&&Number.isInteger(winner.row))return eligible.find(n=>n.lane===winner.lane&&n.row===winner.row&&n.t<winner.t-.012)||winner;
+ if(!relaxed&&winner&&Number.isInteger(winner.lane)&&Number.isInteger(winner.row))return eligible.find(n=>n.lane===winner.lane&&n.row===winner.row&&n.t<winner.t-.012)||winner;
  return winner;
 }
-export function nearestKeyNote(chart,time,latency,level,direction,lookAhead=4.8) {
+export function nearestKeyNote(chart,time,latency,level,direction,lookAhead=3.4,recovery=false) {
  if(!Array.isArray(chart)||!chart.length)return null;
  const window=hitWindowFor(level),relaxed=level==='flow';if(relaxed&&time<0)return null;
  const [first,last]=relaxed?[0,chart.length]:range(chart,time,latency,window);
  let note=null,best=Infinity;const eligible=[];
  for(let i=first;i<last;i++){
   const n=chart[i],error=Math.abs(n.t+latency-time);
-  if(!n.hit&&!n.missed&&!n.holding&&n.dir===direction&&(relaxed?n.t+latency-time<=lookAhead:error<=window)){
-   eligible.push(n);if(relaxed?!note||n.t<note.t:error<best){best=error;note=n;}
+  const delta=n.t+latency-time,valid=relaxed?(recovery?delta<=lookAhead:delta<=.35&&delta>=-window):error<=window;
+  if(!n.hit&&!n.missed&&!n.holding&&n.dir===direction&&valid){
+   eligible.push(n);if(relaxed&&recovery?!note||n.t<note.t:error<best){best=error;note=n;}
   }
  }
- if(note&&Number.isInteger(note.lane)&&Number.isInteger(note.row))return eligible.find(n=>n.lane===note.lane&&n.row===note.row&&n.t<note.t-.012)||note;
+ if(!relaxed&&note&&Number.isInteger(note.lane)&&Number.isInteger(note.row))return eligible.find(n=>n.lane===note.lane&&n.row===note.row&&n.t<note.t-.012)||note;
  return note;
 }
 export function timingLabel(delta,perfect,validDirection,isTap=false) {

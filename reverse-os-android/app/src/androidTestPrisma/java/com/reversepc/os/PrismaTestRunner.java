@@ -42,9 +42,10 @@ public final class PrismaTestRunner extends Instrumentation {
     private void until(String condition,int seconds)throws Exception{
         long deadline=SystemClock.uptimeMillis()+seconds*1000L;
         while(SystemClock.uptimeMillis()<deadline){if("true".equals(js(condition)))return;SystemClock.sleep(100);}
-        throw new AssertionError("Timed out: "+condition+"; diagnostic="+js("(()=>{const d=document.getElementById('game')?.dataset;return {playing:document.body.classList.contains('is-playing'),holds:d?.holdCompletions,phrases:d?.phrasesCompleted,constellations:d?.constellations,score:document.getElementById('score')?.textContent,inputs:window.__fixtureEvents,errors:window.__errors}})()"));
+        throw new AssertionError("Timed out: "+condition+"; diagnostic="+js("(()=>{const d=document.getElementById('game')?.dataset;return {playing:document.body.classList.contains('is-playing'),holds:d?.holdCompletions,phrases:d?.phrasesCompleted,constellations:d?.constellations,score:document.getElementById('score')?.textContent,inputs:window.__fixtureEvents,touches:window.__touchProbe,errors:window.__errors}})()"));
     }
     private void tap(String selector)throws Exception{
+        if(selector.equals("!nextCube")){tapMovingCube();return;}
         long deadline=SystemClock.uptimeMillis()+15000;
         while(SystemClock.uptimeMillis()<deadline){
             boolean[] focused={false};
@@ -71,6 +72,33 @@ public final class PrismaTestRunner extends Instrumentation {
         }
         throw new AssertionError("Game window was not stable for touch: "+selector);
     }
+    private void tapMovingCube()throws Exception{
+        CountDownLatch done=new CountDownLatch(1);Throwable[] error={null};long deadline=SystemClock.uptimeMillis()+15000;
+        runOnMainSync(()->{
+            WebView w=game.testingWebView();Runnable[] attempt={null};
+            // Wait for a currently visible late target inside this UI callback,
+            // then dispatch exactly one Android touch. Host readiness round trips
+            // must not assume a previously measured moving cube is still there.
+            attempt[0]=()->{
+                if(SystemClock.uptimeMillis()>deadline){error[0]=new AssertionError("No late target became ready");done.countDown();return;}
+                w.evaluateJavascript("(()=>{const a=__audio,t=a.offset+__clock(a.ctx,performance.now(),true).time-a.when,n=__testScene.visibleNotes.find(n=>!n.hit&&t-n.t>.28&&t-n.t<.60);if(!n)return null;const p=__testScene.noteProjection(n,t),r=document.getElementById('game').getBoundingClientRect();return [r.x+p.x,r.y+p.y,innerWidth,Date.now()]})()",value->{
+                    if(value==null||value.equals("null")){w.postDelayed(attempt[0],20);return;}
+                    try{
+                        JSONArray p=new JSONArray(value);long age=System.currentTimeMillis()-p.getLong(3);
+                        if(age<0||age>800){w.postDelayed(attempt[0],20);return;}
+                        float scale=w.getWidth()/(float)p.getDouble(2),x=(float)p.getDouble(0)*scale,y=(float)p.getDouble(1)*scale;
+                        // The gesture happened when JS measured this point, not
+                        // after the measurement callback waited in Android's UI queue.
+                        long at=SystemClock.uptimeMillis()-age;MotionEvent down=MotionEvent.obtain(at,at,MotionEvent.ACTION_DOWN,x,y,0);down.setSource(android.view.InputDevice.SOURCE_TOUCHSCREEN);
+                        try{w.dispatchTouchEvent(down);}finally{down.recycle();}
+                        w.postDelayed(()->{MotionEvent up=MotionEvent.obtain(at,at+35,MotionEvent.ACTION_UP,x,y,0);up.setSource(android.view.InputDevice.SOURCE_TOUCHSCREEN);try{w.dispatchTouchEvent(up);}catch(Throwable e){error[0]=e;}finally{up.recycle();done.countDown();}},35);
+                    }catch(Throwable e){error[0]=e;done.countDown();}
+                });
+            };attempt[0].run();
+        });
+        require(done.await(18,TimeUnit.SECONDS),"Moving-cube touch callback timed out");
+        if(error[0]!=null)throw new AssertionError("Moving-cube native touch failed",error[0]);
+    }
     @Override public void onStart(){
         Bundle result=new Bundle();
         try{
@@ -79,13 +107,13 @@ public final class PrismaTestRunner extends Instrumentation {
             game=(RxeGraphicsActivity)monitor.waitForActivityWithTimeout(20000);require(game!=null,"Standalone entry did not open the game");
             until("!!document.getElementById('startBtn')&&document.getElementById('game').dataset.speakers==='2'",30);
             if(phase.equals("seed")){
-                until("(()=>{localStorage.setItem('prisma.upgrade-proof','2.8-to-2.9');localStorage.setItem('prisma.records',JSON.stringify([{track:'Récord conservado',level:'flow',score:137,accuracy:83,combo:4,date:1}]));return localStorage.getItem('prisma.upgrade-proof')==='2.8-to-2.9'})()",15);
+                until("(()=>{localStorage.setItem('prisma.upgrade-proof','2.9-to-3.0');localStorage.setItem('prisma.records',JSON.stringify([{track:'Récord conservado',level:'flow',rules:'flow-2.9',score:137,accuracy:83,combo:4,date:1}]));return localStorage.getItem('prisma.upgrade-proof')==='2.9-to-3.0'})()",15);
                 // WebView commits DOM storage asynchronously. Do not kill its
                 // process immediately after writing the upgrade fixture.
                 runOnMainSync(()->game.moveTaskToBack(true));SystemClock.sleep(6500);
                 result.putString("stream","PRISMA_UPGRADE_SEEDED\n");finish(Activity.RESULT_OK,result);return;
             }
-            until("localStorage.getItem('prisma.upgrade-proof')==='2.8-to-2.9'&&JSON.parse(localStorage.getItem('prisma.records')||'[]').some(r=>r.score===137)",10);
+            until("localStorage.getItem('prisma.upgrade-proof')==='2.9-to-3.0'&&JSON.parse(localStorage.getItem('prisma.records')||'[]').some(r=>r.score===137)",10);
             require("true".equals(js("document.documentElement.classList.contains('native-xrender')&&!document.querySelector('.gpu-canvas')")),"Native X Render was replaced");
             js("window.__errors=[];addEventListener('error',e=>__errors.push(e.message));window.__musicSources=0;const originalSource=AudioContext.prototype.createBufferSource;AudioContext.prototype.createBufferSource=function(){__musicSources++;const ctx=this,node=originalSource.call(this),start=node.start;node.start=function(when=0,offset=0){window.__audio={ctx,when,offset};return start.apply(this,arguments)};return node;};import(location.origin+'/audio.js').then(m=>window.__clock=m.outputClock).catch(e=>window.__clockError=String(e));true");
             until("typeof __clock==='function'",10);
@@ -101,9 +129,9 @@ public final class PrismaTestRunner extends Instrumentation {
             require(render.optLong("frames")>30,"Native renderer did not advance");
             require(render.optString("renderer").equals("ether-render-x-gpu")&&render.optInt("world_vertices")>1000,"Geometry is still calculated on CPU or no 3D world was submitted");
             require(render.optInt("depth_bits")>=24&&render.optInt("world_uploads")==5,"GPU depth buffer/model cache missing");
-            require("true".equals(js("document.getElementById('game').dataset.mesh3d==='true'&&+document.getElementById('game').dataset.lookAhead>=3.6")),"3D mode/read-ahead not active");
+            require("true".equals(js("document.getElementById('game').dataset.mesh3d==='true'&&Math.abs(+document.getElementById('game').dataset.lookAhead-3.4)<.001")),"3D mode or the new 3.4-second default is not active");
             File folder=new File(getTargetContext().getExternalFilesDir(null),"prisma-evidence");folder.mkdirs();
-            Bitmap image=getUiAutomation().takeScreenshot();try(FileOutputStream out=new FileOutputStream(new File(folder,"PRISMA-2.9-Android.png"))){image.compress(Bitmap.CompressFormat.PNG,100,out);}image.recycle();
+            Bitmap image=getUiAutomation().takeScreenshot();try(FileOutputStream out=new FileOutputStream(new File(folder,"PRISMA-3.0-Android.png"))){image.compress(Bitmap.CompressFormat.PNG,100,out);}image.recycle();
             JSONObject report=new JSONObject().put("android_gameplay",true).put("speakers",2).put("cut_audio_sources",0).put("music_sources",1).put("native_render",render).put("ui",new JSONObject(js("(()=>{const c=document.getElementById('game');return {width:c.width,height:c.height,ratio:c.width/c.getBoundingClientRect().width,lasers:+c.dataset.laserCount}})()")));
             JSONArray visited=new JSONArray();
             for(String id:new String[]{"neon","aurora","abyss","volcano","galaxy"}){
@@ -127,9 +155,13 @@ public final class PrismaTestRunner extends Instrumentation {
             js(RhythmFixture.prepareScript());until("window.__fixtureReady===true",15);
             js("document.getElementById('precise').checked=true;document.getElementById('precise').dispatchEvent(new Event('change'));true");
             tap("#startBtn");until("document.body.classList.contains('is-playing')",30);
-            until("__audio.offset+__clock(__audio.ctx,performance.now(),true).time-__audio.when>3.3",15);
-            require("true".equals(js("Math.abs(+document.getElementById('game').dataset.firstNoteTime-1.025)<.03&&document.getElementById('game').dataset.misses==='0'&&document.getElementById('game').dataset.holdCount==='0'&&document.getElementById('game').dataset.chainCount==='0'&&+document.getElementById('game').dataset.noteCount<=4")),"Flow deleted its first cube, added a hold or flooded the viewport");
+            until("Math.abs(+document.getElementById('game').dataset.firstNoteTime-1.025)<.03",6);
+            until("!!window.__musicClockProof",15);
+            require("true".equals(js("document.getElementById('game').dataset.misses==='0'&&document.getElementById('game').dataset.holdCount==='0'&&document.getElementById('game').dataset.chainCount==='0'&&__musicClockProof.deferred>0&&__musicClockProof.notes.some(n=>Math.abs(n.onset-__musicClockProof.frameTime)<.12)&&__musicClockProof.notes.every(n=>Math.abs(n.remaining-(n.onset-__musicClockProof.frameTime))<.00001)")),"Flow stream, clock or simple cuts failed: "+js("({proof:window.__musicClockProof,data:{...document.getElementById('game').dataset}})"));
+            report.put("flow_live_stream_unblocked",true).put("flow_audio_clock",new JSONObject(js("__musicClockProof")));
             tap("!nextCube");until("+document.getElementById('game').dataset.hits===1",8);
+            require("true".equals(js("__lastNativeCut.time-__lastNativeCut.onset>.24&&__lastNativeCut.time-__lastNativeCut.onset<1.10")),"The native cut was not inside the intended late grace");
+            report.put("flow_native_cut_timing",new JSONObject(js("__lastNativeCut")));
             report.put("flow_late_native_touch",true).put("flow_no_holds",true).put("ordered_first_note",true);
             until("document.getElementById('game').dataset.flowCoda==='true'",30);
             require("true".equals(js("document.getElementById('game').dataset.misses==='0'&&!document.getElementById('flowFinishBtn').hidden")),"Flow failed or hid its pending notes at song end");
@@ -148,8 +180,8 @@ public final class PrismaTestRunner extends Instrumentation {
             js("document.getElementById('effects').checked=true;document.getElementById('effects').dispatchEvent(new Event('change'));true");
             until("document.getElementById('game').dataset.fireworks==='0'",5);
             report.put("soft_effects_disable_fireworks",true);
-            require("true".equals(js("JSON.parse(localStorage.getItem('prisma.records')||'[]').some(r=>r.score===137&&!r.rules)")),"Saving forgiving Flow erased the old record");
-            report.put("upgrade_2_8_records_preserved",true);
+            require("true".equals(js("JSON.parse(localStorage.getItem('prisma.records')||'[]').some(r=>r.score===137&&r.rules==='flow-2.9')")),"Saving forgiving Flow erased the old record");
+            report.put("upgrade_2_9_records_preserved",true);
             Files.write(new File(folder,"android-validation.json").toPath(),report.toString(2).getBytes(StandardCharsets.UTF_8));
             result.putString("stream","PRISMA_ANDROID_OK music=1 cut-sounds=0 speakers=2 native=Ether-Render-X\n");finish(Activity.RESULT_OK,result);
         }catch(Throwable e){result.putString("stream","PRISMA_ANDROID_FAILED "+e+"\n");finish(Activity.RESULT_CANCELED,result);}

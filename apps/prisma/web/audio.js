@@ -45,7 +45,7 @@ export class RhythmAudio {
     const t=this.offset>0?Math.max(this.offset,this.offset+stamp.time-this.startedAt):this.offset+stamp.time-this.startedAt;
     this.lastTime=Math.max(this.lastTime,t);return this.lastTime;
   }
-  inputTime(eventStamp){const now=performance.now(),lag=now-eventStamp;return this.time(now)-(Number.isFinite(lag)&&lag>=0&&lag<=100?lag/1000:0);}
+  inputTime(eventStamp){const now=performance.now(),lag=now-eventStamp;return this.time(now)-(Number.isFinite(lag)&&lag>=0&&lag<=1000?lag/1000:0);}
   pause() { const t = clamp(this.time(), 0, this.buffer?.duration || 0); this.stop(); this.offset = t; return t; }
   energy() { if (!this.analyser || !this.running) return 0; this.analyser.getByteFrequencyData(this.bins); let sum = 0; for (let i = 1; i < 14; i++) sum += this.bins[i]; return sum / 3315; }
   async decode(file) {

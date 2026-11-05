@@ -14,7 +14,7 @@ const demo=readFileSync(new URL('../apps/prisma/web/audio.js',import.meta.url),'
   .replace(/^export \{.*$/gm,'').replace(/^export /gm,'');
 const {RhythmAudio}=new Function(demo+';return {RhythmAudio};')();
 
-test(Math.abs(qa.hitWindowFor('flow')-.45)<1e-8,'Flow scoring grace changed');
+test(Math.abs(qa.hitWindowFor('flow')-1.05)<1e-8,'Flow scoring grace changed');
 test(Math.abs(qa.hitWindowFor('pulse')-.19)<1e-8,'Pulse timing contract changed');
 test(Math.abs(qa.hitWindowFor('vertigo')-.16)<1e-8,'Vertigo timing contract changed');
 test(qa.segmentDistance(0,0,-10,0,10,0)===0,'Segment crossing wrong');
@@ -92,6 +92,10 @@ test(Math.abs(audio.time()-.2)<1e-8,'Resuming shifted the hit clock');
 audio.ctx.currentTime=7.15;
 test(Math.abs(audio.time()-.35)<1e-8,'Resumed playback time drift');
 audio.stop();test(!audio.running,'Audio engine failed to stop');
+const originalTime=audio.time;audio.time=()=>8.5;
+test(Math.abs(audio.inputTime(performance.now()-500)-8)<.01,'A delayed native event lost its original musical time');
+test(Math.abs(audio.inputTime(performance.now()-1500)-8.5)<.01,'An obsolete event was backdated across sessions');
+audio.time=originalTime;
 
 const cb=await load('concert-rig.js'),effects=await load('combo-spectacle.js'),
   music=await load('music-stage.js'),policy=await load('performance-policy.js');

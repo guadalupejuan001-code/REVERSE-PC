@@ -4,7 +4,7 @@ import { hitWindowFor, isEndOfSong, nearestSwipeNote, nearestKeyNote, timingLabe
 import { makeMusicStage } from './music-stage.js';
 import { SustainController, PhraseController } from './note-flow.js';
 import { WORLDS, WORLD_IDS, Constellation } from './festival-worlds.js';
-import { scoreRules, recordRules, keepRecord } from './flow-gameplay.js';
+import { scoreRules, recordRules, keepRecord, FLOW_EARLY_GRACE, flowCandidates } from './flow-gameplay.js';
 const $ = id => document.getElementById(id);
 const all = selector => [...document.querySelectorAll(selector)];
 const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
@@ -12,8 +12,8 @@ const formatTime = seconds => { const s=Math.max(0,Math.floor(seconds));return `
 let saved={};try{saved=JSON.parse(localStorage.getItem('prisma.settings')||'{}')||{};}catch{}
 const settings={quality:['auto','high','battery'].includes(saved.quality)?saved.quality:'auto',palette:['coral','violet','ice'].includes(saved.palette)?saved.palette:'coral',stageStyle:['galaxy','club','classic'].includes(saved.stageStyle)?saved.stageStyle:'galaxy',mechanics:saved.mechanics!==false,autoSync:saved.autoSync!==false,precise:!!saved.precise,effects:saved.effects??matchMedia('(prefers-reduced-motion: reduce)').matches,latency:clamp(Number(saved.latency)||0,-200,200),volume:clamp(saved.volume??65,0,100)};
 settings.world=['journey',...WORLD_IDS].includes(saved.world)?saved.world:'journey';settings.fireworks=saved.fireworks!==false;
-settings.anticipation=clamp(saved.gameplayVersion===29?(Number(saved.anticipation)||4.8):Math.max(4.8,Number(saved.anticipation)||0),3.2,6.4);
-settings.gameplayVersion=29;
+settings.anticipation=clamp(saved.gameplayVersion===30?(Number(saved.anticipation)||3.4):Number(saved.anticipation)&&Math.abs(Number(saved.anticipation)-4.8)>.01?Number(saved.anticipation):3.4,2.6,5.2);
+settings.gameplayVersion=30;
 const constellation=new Constellation();
 let records=[];try{records=JSON.parse(localStorage.getItem('prisma.records')||'[]');if(!Array.isArray(records))records=[];}catch{}
 const audio=new RhythmAudio();audio.volume=settings.volume/100;audio.outputSync=settings.autoSync;
@@ -136,7 +136,7 @@ async function startGame(){
     $('game').dataset.holdCompletions='0';$('game').dataset.phrasesCompleted='0';
     $('game').dataset.level=level;$('game').dataset.retainedNotes=level==='flow'?'true':'false';$('game').dataset.flowCoda='false';
     $('bestInGame').textContent=`RÉCORD ${bestForTrack().toLocaleString('es')}`;updateScores();
-    $('hitHelp').textContent=level==='flow'?'TOCA O CORTA. LOS CUBOS TE ESPERAN.':'SIGUE LAS FLECHAS. ENCUENTRA TU FLOW.';$('hitHelp').style.opacity='1';$('feedback').classList.remove('show');
+    $('hitHelp').textContent=level==='flow'?'TOCA O CORTA CON LA MÚSICA.':'SIGUE LAS FLECHAS. ENCUENTRA TU FLOW.';$('hitHelp').style.opacity='1';$('feedback').classList.remove('show');
     nativeFailure=false;if(nativeGraphics&&!await nativeEvent(0,0,thisRun))throw new Error('No se pudo iniciar la sesión XI.');
     setStatus('playing');audio.play(0,Math.max(3.2,scene.travel));$('game').focus({preventScroll:true});
   }catch(error){setLoading(false);setStatus('home');toast(error.message||'No se pudo iniciar la pista. Inténtalo otra vez.');}
@@ -197,7 +197,8 @@ function withinHold(note,input){
 function cut(note,t,dx,dy,isTap=false,isKey=false,input=null){
   if(note.hit||note.missed||note.holding)return false;
   const delta=note.t+settings.latency/1000-t;
-  if(level==='flow'?!scene.visibleNotes?.includes(note):Math.abs(delta)>hitWindow())return false;
+  if(level==='flow'?flowCoda&&!scene.visibleNotes?.includes(note):Math.abs(delta)>hitWindow())return false;
+  if(level==='flow'&&!flowCoda&&(delta>FLOW_EARLY_GRACE||delta<-hitWindow()))return false;
   const dir=DIRECTIONS[note.dir],length=Math.hypot(dx,dy),correct=length?(dx*dir.x+dy*dir.y)/length>.43:false;
   if(level!=='flow'&&settings.precise&&note.kind!=='hold'&&(!correct||isTap))return false;
   const grade=timingGrade(delta,correct||isKey||isTap||note.kind==='hold');
@@ -212,8 +213,13 @@ function processSwipe(ax,ay,bx,by,isTap=false,input=null,eventStamp){
   if(status!=='playing')return false;const t=audio.inputTime(eventStamp);if(t<0)return false;
   const dx=bx-ax,dy=by-ay;if(!isTap&&Math.hypot(dx,dy)<3)return false;
   if(scene.diagnostics)$('game').dataset.lastInputTime=t.toFixed(4);
-  const note=nearestSwipeNote(level==='flow'?scene.visibleNotes||[]:chart,t,settings.latency/1000,level,ax,ay,bx,by,
-    (n,at,latency)=>scene.noteProjection(n,at,latency),{precise:settings.precise,isTap,lookAhead:scene.travel});
+  const targets=level==='flow'?(flowCoda?scene.visibleNotes||[]:flowCandidates(chart,t,settings.latency/1000,scene.travel)):chart;
+  const note=nearestSwipeNote(targets,t,settings.latency/1000,level,ax,ay,bx,by,
+    (n,at,latency)=>scene.noteProjection(n,at,latency),{precise:settings.precise,isTap,lookAhead:scene.travel,recovery:flowCoda});
+  if(!note&&isTap&&level==='flow'&&!flowCoda){
+    const early=scene.visibleNotes?.some(n=>{if(n.t+settings.latency/1000-t<=FLOW_EARLY_GRACE)return false;const p=scene.noteProjection(n,t,settings.latency/1000);return Math.hypot(bx-p.x,by-p.y)<Math.max(27,p.s*.55);});
+    if(early)feedback('CON EL GOLPE',scene.guidance?.colors[0]);
+  }
   return note?cut(note,t,dx,dy,isTap,false,input):false;
 }
 const point=e=>{const rect=gameBounds||(gameBounds=$('game').getBoundingClientRect());return{x:e.clientX-rect.left,y:e.clientY-rect.top};};
@@ -247,7 +253,8 @@ document.addEventListener('keydown',e=>{
   if(sustains.regrab(input,audio.time(),n=>n.dir===keyIndex))return;
   if(inputOwnsHold(input))return;
   const t=audio.inputTime(e.timeStamp);
-  const note=nearestKeyNote(level==='flow'?scene.visibleNotes||[]:chart,t,settings.latency/1000,level,keyIndex,scene.travel);
+  const targets=level==='flow'?(flowCoda?scene.visibleNotes||[]:flowCandidates(chart,t,settings.latency/1000,scene.travel)):chart;
+  const note=nearestKeyNote(targets,t,settings.latency/1000,level,keyIndex,scene.travel,flowCoda);
   if(note){const n=note,d=DIRECTIONS[keyIndex],p=scene.noteProjection(n,t,settings.latency/1000),id='key-'+performance.now();scene.addTrail(id,p.x-d.x*50,p.y-d.y*50,PALETTES[settings.palette][n.color]);scene.addTrail(id,p.x+d.x*50,p.y+d.y*50,PALETTES[settings.palette][n.color]);scene.endTrail(id);cut(n,t,d.x*100,d.y*100,false,true,input);}
 
 });
@@ -278,7 +285,7 @@ $('pauseBtn').addEventListener('click',pauseGame);$('resumeBtn').addEventListene
 $('flowFinishBtn').addEventListener('click',finishGame);
 $('navPlay').addEventListener('click',()=>{if(status==='paused')resumeGame();else if(status==='home')$('startBtn').focus({preventScroll:true});else $('game').focus({preventScroll:true});});
 document.querySelector('.brand').addEventListener('click',e=>{e.preventDefault();if(!booting)goHome();});
-all('[data-level]').forEach(b=>b.addEventListener('click',()=>{level=b.dataset.level;all('[data-level]').forEach(x=>{const selected=x===b;x.classList.toggle('selected',selected);x.setAttribute('aria-pressed',String(selected));});if(status==='ended')goHome();toast({flow:'Flow · un corte por cubo. Los cubos te esperan.',pulse:'Pulso · más notas y cortes más rápidos.',vertigo:'Vértigo · dobles cubos y máxima intensidad.'}[level]);}));
+all('[data-level]').forEach(b=>b.addEventListener('click',()=>{level=b.dataset.level;all('[data-level]').forEach(x=>{const selected=x===b;x.classList.toggle('selected',selected);x.setAttribute('aria-pressed',String(selected));});if(status==='ended')goHome();toast({flow:'Flow · sigue la música. Recupera pendientes al final.',pulse:'Pulso · más notas y cortes más rápidos.',vertigo:'Vértigo · dobles cubos y máxima intensidad.'}[level]);}));
 function updateRendererStatus(){
   $('rendererStatus').textContent='Motor gráfico: '+(scene.gpu?.mesh3D?(scene.gpu.native?'Ether Render X · GPU 3D':'Graphics/COSMIC · GPU 3D'):scene.gpu?.native?'Ether Render X nativo':
     scene.gpu?'Graphics/COSMIC WebGL':'Canvas de reserva');
@@ -292,11 +299,11 @@ function openDialog(id){
 all('[data-dialog]').forEach(b=>b.addEventListener('click',()=>openDialog(b.dataset.dialog)));
 all('.close-dialog').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
 all('dialog').forEach(dialog=>dialog.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();}}));
-function renderRecords(){const list=$('recordList');list.replaceChildren();if(!records.length){const p=document.createElement('p');p.className='dialog-lead';p.textContent='Tu primera marca todavía está por escribirse. Completa una pista y vuelve aquí.';list.append(p);return;}for(const r of records.slice(0,8)){const row=document.createElement('div'),meta=document.createElement('span'),small=document.createElement('small'),value=document.createElement('strong');meta.textContent=r.track;small.textContent=`${r.level==='flow'&&recordRules(r)==='flow-legacy'?'Flow anterior':levelNames[r.level]||'Flow'} · ${r.accuracy}% precisión · ${r.combo} combo`;meta.append(small);value.textContent=r.score.toLocaleString('es');row.append(meta,value);list.append(row);}}
+function renderRecords(){const list=$('recordList');list.replaceChildren();if(!records.length){const p=document.createElement('p');p.className='dialog-lead';p.textContent='Tu primera marca todavía está por escribirse. Completa una pista y vuelve aquí.';list.append(p);return;}for(const r of records.slice(0,8)){const row=document.createElement('div'),meta=document.createElement('span'),small=document.createElement('small'),value=document.createElement('strong');meta.textContent=r.track;small.textContent=`${r.level==='flow'&&recordRules(r)!==scoreRules('flow')?'Flow anterior':levelNames[r.level]||'Flow'} · ${r.accuracy}% precisión · ${r.combo} combo`;meta.append(small);value.textContent=r.score.toLocaleString('es');row.append(meta,value);list.append(row);}}
 $('mechanics').checked=settings.mechanics;$('autoSync').checked=settings.autoSync;
 $('world').value=settings.world;$('fireworks').checked=settings.fireworks;
 $('anticipation').value=settings.anticipation;$('anticipationValue').textContent=settings.anticipation.toFixed(1)+' s';
-$('anticipation').addEventListener('input',e=>{settings.anticipation=clamp(Number(e.target.value),3.2,6.4);$('anticipationValue').textContent=settings.anticipation.toFixed(1)+' s';persistSettings();});
+$('anticipation').addEventListener('input',e=>{settings.anticipation=clamp(Number(e.target.value),2.6,5.2);$('anticipationValue').textContent=settings.anticipation.toFixed(1)+' s';persistSettings();});
 function selectWorld(id){
   if(!['journey',...WORLD_IDS].includes(id))return;
   settings.world=id;$('world').value=id;sceneDirty=true;persistSettings();
@@ -363,7 +370,7 @@ function frame(now){
     holdResults(sustains.step(t,input=>input.kind==='key'?activeKeys.has(input.id):activePointers.has(input.id),withinHold),t);
     scene.holdNotes=[...sustains.active.keys()];$('game').dataset.syncMode=audio.syncMode;
     if(scene.diagnostics){$('game').dataset.audioTime=t.toFixed(4);$('game').dataset.activeHolds=String(sustains.active.size);}
-    const hint=level==='flow'&&flowCoda?'CORTA LOS PENDIENTES O FINALIZA LA SESIÓN':'';
+    const hint=level==='flow'?(flowCoda?'CORTA LOS PENDIENTES O FINALIZA LA SESIÓN':scene.flowDeferred?`${scene.flowDeferred} PARA RECUPERAR AL FINAL`:''):'';
     if($('mechanicStatus').textContent!==hint)$('mechanicStatus').textContent=hint;
     $('countdown').hidden=t>=0;
     if(t<0){const count=Math.ceil(-t);if($('countdown').dataset.count!==String(count)){$('countdown').dataset.count=count;$('countdown').replaceChildren();$('countdown').append(String(count));const small=document.createElement('small');small.textContent='ENCUENTRA EL RITMO';$('countdown').append(small);}}
@@ -372,6 +379,7 @@ function frame(now){
     else if(isEndOfSong(t,track.duration,level,settings.latency/1000)){
       if(level==='flow'&&chart.some(n=>!n.hit)){
         audio.pause();audio.offset=track.duration;frozenTime=t=track.duration;flowCoda=true;
+        scene.flowRecovery=true;
         $('flowFinishBtn').hidden=false;$('game').dataset.flowCoda='true';
         feedback('TERMINA A TU RITMO',scene.guidance?.colors[0]);
       }else{finishGame();t=track.duration;}
