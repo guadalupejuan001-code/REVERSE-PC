@@ -119,6 +119,8 @@ public final class RxeGraphicsActivity extends Activity {
         // Old RXE3 apps keep their original v1 packets. PRISMA 2.2 can opt
         // into material descriptors without changing the existing graphics ABI.
         @JavascriptInterface public String xRenderMaterials(){return "prisma-materials-v2";}
+        @JavascriptInterface public String xRenderMeshes(){return "prisma-gpu-mesh-v3";}
+        @JavascriptInterface public void model(int id,float[] vertices){if(!closed&&xrender!=null)xrender.model(id,vertices);}
         @JavascriptInterface public void frame(float[] data){if(!closed&&foreground&&xrender!=null)xrender.submit(data);}
         @JavascriptInterface public String xRenderInfo(){return xrender==null?"{}":xrender.info();}
         @JavascriptInterface public void event(int serial,int run,int kind,int quality){

@@ -13,6 +13,7 @@ public final class NativeRuntime {
     static native long xRenderCreate();
     static native void xRenderResize(long renderer,int width,int height);
     static native String xRenderFrame(long renderer,float[] frame);
+    static native void xRenderModel(long renderer,int world,float[] vertices);
     static native void xRenderDestroy(long renderer,boolean releaseGl);
     public static native byte[] appSeed(byte[] executable);
     public static native byte[] appTurn(byte[] state,byte[] executable,byte[] messageUtf8,int language);

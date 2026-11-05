@@ -11,6 +11,7 @@ const formatTime = seconds => { const s=Math.max(0,Math.floor(seconds));return `
 let saved={};try{saved=JSON.parse(localStorage.getItem('prisma.settings')||'{}')||{};}catch{}
 const settings={quality:['auto','high','battery'].includes(saved.quality)?saved.quality:'auto',palette:['coral','violet','ice'].includes(saved.palette)?saved.palette:'coral',stageStyle:['galaxy','club','classic'].includes(saved.stageStyle)?saved.stageStyle:'galaxy',mechanics:saved.mechanics!==false,autoSync:saved.autoSync!==false,precise:!!saved.precise,effects:saved.effects??matchMedia('(prefers-reduced-motion: reduce)').matches,latency:clamp(Number(saved.latency)||0,-200,200),volume:clamp(saved.volume??65,0,100)};
 settings.world=['journey',...WORLD_IDS].includes(saved.world)?saved.world:'journey';settings.fireworks=saved.fireworks!==false;
+settings.anticipation=clamp(Number(saved.anticipation)||3.6,2.8,5.2);
 const constellation=new Constellation();
 let records=[];try{records=JSON.parse(localStorage.getItem('prisma.records')||'[]');if(!Array.isArray(records))records=[];}catch{}
 const audio=new RhythmAudio();audio.volume=settings.volume/100;audio.outputSync=settings.autoSync;
@@ -79,6 +80,19 @@ function updateConstellation(){
   all('#constellationStars i').forEach((p,i)=>p.classList.toggle('lit',i<constellation.charge));
   $('game').dataset.constellations=String(constellation.completed);$('game').dataset.starCharge=String(constellation.charge);
 }
+let queueKey='';
+function updateArrivalHUD(){
+  const arrivals=(scene.arrivals||[]).filter(a=>a.rank<=4),groups=[];
+  for(const a of arrivals){let group=groups.find(g=>g.rank===a.rank);if(!group){group={rank:a.rank,t:a.note.t,delta:a.delta,notes:[]};groups.push(group);}group.notes.push(a.note);}
+  const key=groups.map(g=>g.t+':'+g.notes.map(n=>n.dir+'/'+n.kind).join(',')).join('|');
+  if(key!==queueKey){queueKey=key;const host=$('noteQueueItems');host.replaceChildren();
+    for(const g of groups){const item=document.createElement('span'),rank=document.createElement('b'),arrows=document.createElement('i');item.className='queue-note'+(g.rank===1?' first':'');rank.textContent=g.rank;arrows.textContent=g.notes.map(n=>['↑','→','↓','←'][n.dir]).join(' ');item.append(rank,arrows);
+      if(g.notes.length>1||g.notes[0].kind==='hold'){const small=document.createElement('small');small.textContent=g.notes.length>1?'DOBLE':'SOSTÉN';item.append(small);}host.append(item);
+    }
+  }
+  const first=$('noteQueueItems').firstElementChild;if(first)first.classList.toggle('due',!!groups.length&&groups[0].delta<=.13);
+  $('game').dataset.firstNoteTime=groups.length?String(groups[0].t):'';$('game').dataset.nextOrder=groups.map(g=>g.rank+':'+g.notes.map(n=>n.dir).join('+')).join(',');
+}
 function bestForTrack(){return Math.max(0,...records.filter(r=>r.track===track.name&&r.level===level).map(r=>r.score));}
 async function startGame(){
   if(booting)return;booting=true;const thisRun=++runId;
@@ -100,6 +114,7 @@ async function startGame(){
       track.peaks=demoOnsetsCache||track.peaks;
     }
     if(thisRun!==runId)return;
+    setLoading(true,'Preparando los escenarios 3D…');await scene.prepareModels();if(thisRun!==runId)return;
     setLoading(false);audio.buffer=track.buffer;
     const peaks=track.peaks;
     const musicMap=makeMusicStage(track.peaks,{bpm:track.bpm,duration:track.duration,
@@ -116,7 +131,7 @@ async function startGame(){
     $('bestInGame').textContent=`RÉCORD ${bestForTrack().toLocaleString('es')}`;updateScores();
     $('hitHelp').style.opacity='1';$('feedback').classList.remove('show');
     nativeFailure=false;if(nativeGraphics&&!await nativeEvent(0,0,thisRun))throw new Error('No se pudo iniciar la sesión XI.');
-    setStatus('playing');audio.play(0,2.8);$('game').focus({preventScroll:true});
+    setStatus('playing');audio.play(0,Math.max(3.2,scene.travel));$('game').focus({preventScroll:true});
   }catch(error){setLoading(false);setStatus('home');toast(error.message||'No se pudo iniciar la pista. Inténtalo otra vez.');}
   finally{booting=false;}
 }
@@ -139,7 +154,7 @@ async function finishGame(){
 }
 const hitWindow=()=>hitWindowFor(level);
 function failNote(note){
-  if(note.hit||note.missed)return;note.missed=true;note.holding=false;
+  if(note.hit||note.missed)return;note.missed=true;note.missedAt=audio.time();note.holding=false;
   misses++;combo=0;phrases.miss(note);scene.cancelCombo();if(nativeGraphics)nativeEvent(2,0);
   constellation.miss();updateConstellation();
 }
@@ -253,7 +268,7 @@ $('navPlay').addEventListener('click',()=>{if(status==='paused')resumeGame();els
 document.querySelector('.brand').addEventListener('click',e=>{e.preventDefault();if(!booting)goHome();});
 all('[data-level]').forEach(b=>b.addEventListener('click',()=>{level=b.dataset.level;all('[data-level]').forEach(x=>{const selected=x===b;x.classList.toggle('selected',selected);x.setAttribute('aria-pressed',String(selected));});if(status==='ended')goHome();toast({flow:'Flow · un golpe a la vez. También admite toques.',pulse:'Pulso · más notas y cortes más rápidos.',vertigo:'Vértigo · dobles cubos y máxima intensidad.'}[level]);}));
 function updateRendererStatus(){
-  $('rendererStatus').textContent='Motor gráfico: '+(scene.gpu?.native?'Ether Render X nativo':
+  $('rendererStatus').textContent='Motor gráfico: '+(scene.gpu?.mesh3D?(scene.gpu.native?'Ether Render X · GPU 3D':'Graphics/COSMIC · GPU 3D'):scene.gpu?.native?'Ether Render X nativo':
     scene.gpu?'Graphics/COSMIC WebGL':'Canvas de reserva');
 }
 function openDialog(id){
@@ -268,6 +283,8 @@ all('dialog').forEach(dialog=>dialog.addEventListener('click',e=>{if(e.target===
 function renderRecords(){const list=$('recordList');list.replaceChildren();if(!records.length){const p=document.createElement('p');p.className='dialog-lead';p.textContent='Tu primera marca todavía está por escribirse. Completa una pista y vuelve aquí.';list.append(p);return;}for(const r of records.slice(0,8)){const row=document.createElement('div'),meta=document.createElement('span'),small=document.createElement('small'),value=document.createElement('strong');meta.textContent=r.track;small.textContent=`${levelNames[r.level]||'Flow'} · ${r.accuracy}% precisión · ${r.combo} combo`;meta.append(small);value.textContent=r.score.toLocaleString('es');row.append(meta,value);list.append(row);}}
 $('mechanics').checked=settings.mechanics;$('autoSync').checked=settings.autoSync;
 $('world').value=settings.world;$('fireworks').checked=settings.fireworks;
+$('anticipation').value=settings.anticipation;$('anticipationValue').textContent=settings.anticipation.toFixed(1)+' s';
+$('anticipation').addEventListener('input',e=>{settings.anticipation=clamp(Number(e.target.value),2.8,5.2);$('anticipationValue').textContent=settings.anticipation.toFixed(1)+' s';persistSettings();});
 function selectWorld(id){
   if(!['journey',...WORLD_IDS].includes(id))return;
   settings.world=id;$('world').value=id;sceneDirty=true;persistSettings();
@@ -330,7 +347,7 @@ function frame(now){
   if(status==='playing'){
     const missAfter=hitWindow();let changed=false;
     while(missIndex<chart.length&&chart[missIndex].t+settings.latency/1000<t-missAfter){const n=chart[missIndex++];if(!n.hit&&!n.missed&&!n.holding){failNote(n);changed=true;}}
-    if(changed){updateScores();feedback('SIGUE EL RITMO','#809c89');}
+    if(changed){updateScores();feedback('PASÓ EL GOLPE','#9eb9bc');}
     holdResults(sustains.step(t,input=>input.kind==='key'?activeKeys.has(input.id):activePointers.has(input.id),withinHold),t);
     scene.holdNotes=[...sustains.active.keys()];$('game').dataset.syncMode=audio.syncMode;
     if(scene.diagnostics){$('game').dataset.audioTime=t.toFixed(4);$('game').dataset.activeHolds=String(sustains.active.size);}
@@ -345,6 +362,7 @@ function frame(now){
   const preview=!['playing','paused','ended','finishing'].includes(status);
   if(landscape&&!document.hidden&&(status==='playing'||sceneDirty||(preview&&now-lastScene>32))){scene.render(preview?now/1000:t,dt,chart,preview,audio.energy(),settings.latency/1000,status==='playing'||preview);sceneDirty=false;lastScene=now;}
   if(status==='playing')scene.adapt(Math.min(.2,(now-lastFrameAt)/1000),now);lastFrameAt=now;
+  if(status==='playing')updateArrivalHUD();
   const worldId=$('game').dataset.world,worldName=WORLDS.find(w=>w.id===worldId)?.name||'Galaxia viva';
   const worldText=settings.world==='journey'?`${worldName} · ${$('game').dataset.chapter||1}/${$('game').dataset.chapterCount||1}`:worldName;
   if($('worldStatus').textContent!==worldText)$('worldStatus').textContent=worldText;

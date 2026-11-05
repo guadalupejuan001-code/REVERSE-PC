@@ -1,7 +1,7 @@
-name: PRISMA 2.7 Festival Worlds
+name: PRISMA 2.8 GPU 3D
 on:
   push:
-    branches: [codex/prisma-festival-worlds-20261104]
+    branches: [codex/prisma-gpu-depth-20261104]
   workflow_dispatch:
 permissions:
   contents: read
@@ -38,15 +38,17 @@ jobs:
           for t in tests/prisma-*.mjs; do node "$t"; done | tee evidence/music-and-gameplay.txt
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
           cmake --build build --target reverse_pc --parallel 2
+          c++ -std=c++17 -O2 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tests/prisma_xrender.cpp -o build/prisma-observer-test
+          build/prisma-observer-test > evidence/legacy-cpu-and-gpu-packets.json
           node scripts/build-prisma.mjs build/reverse_pc build/prisma "$GITHUB_SHA" > evidence/prisma-manifest.json
           python3 tests/rxe_graphics_cli.py build/reverse_pc build/prisma/PRISMA.rxe > evidence/xi-score-validation.json
           mkdir -p reverse-os-android/app/src/main/assets/native-apps
           cp build/prisma/PRISMA.rxe reverse-os-android/app/src/main/assets/native-apps/PRISMA.rxe
-          cp build/prisma/PRISMA.rxe dist/PRISMA-2.7-Festival.rxe
+          cp build/prisma/PRISMA.rxe dist/PRISMA-2.8-GPU-3D.rxe
       - uses: actions/download-artifact@v4
         with:
-          name: PRISMA-2.6-Ritmo-y-Mecanicas
-          run-id: 41946269261
+          name: PRISMA-2.7-Festival
+          run-id: 41951302616
           github-token: ${{ secrets.GITHUB_TOKEN }}
           path: build/previous-prisma
       - name: Build Android ARM64 and x86_64
@@ -57,10 +59,10 @@ jobs:
           keytool -genkeypair -keystore "$REVERSE_SIGNING_KEYSTORE" -storetype JKS -storepass android -keypass android -alias reverse-desktop -keyalg RSA -keysize 2048 -validity 3650 -dname 'CN=PRISMA Test'
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1' platform-tools emulator 'system-images;android-35;default;x86_64' > evidence/sdk.log
           gradle -p reverse-os-android --no-daemon :app:assemblePrismaDebug :app:assemblePrismaDebugAndroidTest > evidence/gradle.log 2>&1 || { tail -140 evidence/gradle.log; exit 1; }
-          cp reverse-os-android/app/build/outputs/apk/prisma/debug/app-prisma-debug.apk dist/PRISMA-2.7-Festival.apk
+          cp reverse-os-android/app/build/outputs/apk/prisma/debug/app-prisma-debug.apk dist/PRISMA-2.8-GPU-3D.apk
           cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" dist/apksigner.jar
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/PRISMA-2.7-Festival.apk > evidence/signature.txt
-          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -p 4 dist/PRISMA-2.7-Festival.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/PRISMA-2.8-GPU-3D.apk > evidence/signature.txt
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -p 4 dist/PRISMA-2.8-GPU-3D.apk
       - name: Play and verify on Android 15
         shell: bash
         timeout-minutes: 10
@@ -79,25 +81,38 @@ jobs:
             sleep 2
           done
           test "$ready" = true
-          adb shell wm size 720x1600
-          adb shell wm density 280
+          # SwiftShader is a CPU-emulated driver. Preserve the logical viewport
+          # while limiting its pixel workload; this is not a device FPS test.
+          adb shell wm size 432x960
+          adb shell wm density 168
           adb shell settings put system accelerometer_rotation 0
           adb shell settings put system user_rotation 1
           adb shell settings put secure immersive_mode_confirmations confirmed
           adb shell input keyevent 82
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks "$REVERSE_SIGNING_KEYSTORE" --ks-key-alias reverse-desktop --ks-pass pass:android --key-pass pass:android --out build/prisma-previous.apk build/previous-prisma/dist/PRISMA-2.6-Ritmo-y-Mecanicas.apk
+          # Let cold-boot display/configuration changes settle before opening
+          # the previous version's WebView for the real upgrade fixture.
+          sleep 5
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks "$REVERSE_SIGNING_KEYSTORE" --ks-key-alias reverse-desktop --ks-pass pass:android --key-pass pass:android --out build/prisma-previous.apk build/previous-prisma/dist/PRISMA-2.7-Festival.apk
           adb install -r build/prisma-previous.apk
           adb install -r reverse-os-android/app/build/outputs/apk/androidTest/prisma/debug/app-prisma-debug-androidTest.apk
           timeout 90s adb shell am instrument -w -e phase seed org.reverse.prisma.test/com.reversepc.os.PrismaTestRunner | tee evidence/android-upgrade-seed.txt
+          if ! grep -q 'PRISMA_UPGRADE_SEEDED' evidence/android-upgrade-seed.txt && grep -q 'keyDispatchingTimedOut' evidence/android-upgrade-seed.txt; then
+            # Retry only the old-version cold-boot focus ANR, once. Never
+            # retry a gameplay assertion or suppress an application failure.
+            cp evidence/android-upgrade-seed.txt evidence/android-upgrade-seed-cold-start.txt
+            adb shell am force-stop org.reverse.prisma
+            sleep 3
+            timeout 90s adb shell am instrument -w -e phase seed org.reverse.prisma.test/com.reversepc.os.PrismaTestRunner | tee evidence/android-upgrade-seed.txt
+          fi
           grep 'PRISMA_UPGRADE_SEEDED' evidence/android-upgrade-seed.txt
-          adb install -r dist/PRISMA-2.7-Festival.apk
+          adb install -r dist/PRISMA-2.8-GPU-3D.apk
           timeout 210s adb shell am instrument -w org.reverse.prisma.test/com.reversepc.os.PrismaTestRunner | tee evidence/android-tests.txt
           grep 'PRISMA_ANDROID_OK' evidence/android-tests.txt
           adb pull /sdcard/Android/data/org.reverse.prisma/files/prisma-evidence evidence/android
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: PRISMA-2.7-Festival
+          name: PRISMA-2.8-GPU-3D
           path: |
             dist/
             evidence/

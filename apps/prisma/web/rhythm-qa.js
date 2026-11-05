@@ -26,7 +26,7 @@ export function nearestSwipeNote(chart,time,latency,level,
  const window=hitWindowFor(level),length=Math.hypot(bx-ax,by-ay);
  if(!isTap&&length<3)return null;
  const [first,last]=range(chart,time,latency,window);
- let winner=null,best=Infinity;
+ let winner=null,best=Infinity;const eligible=[];
  for(let i=first;i<last;i++){
   const n=chart[i];
   if(n.hit||n.missed||n.holding||!Number.isFinite(n.t))continue;
@@ -39,22 +39,27 @@ export function nearestSwipeNote(chart,time,latency,level,
   if(distance>radius)continue;
   const directions=[[0,-1],[1,0],[0,1],[-1,0]],dir=directions[n.dir];
   if(precise && n.kind!=='hold' && (!dir||!length||((bx-ax)*dir[0]+(by-ay)*dir[1])/length<=.43))continue;
+  eligible.push(n);
   // Timing is dominant; when notes are simultaneous choose the closer cube.
   const grade=Math.abs(delta)/window+distance/radius*.20;
   if(grade<best){best=grade;winner=n;}
  }
+ // A later attack in the same target must not steal the visible first cube.
+ // Distinct targets still use timing and spatial proximity independently.
+ if(winner&&Number.isInteger(winner.lane)&&Number.isInteger(winner.row))return eligible.find(n=>n.lane===winner.lane&&n.row===winner.row&&n.t<winner.t-.012)||winner;
  return winner;
 }
 export function nearestKeyNote(chart,time,latency,level,direction) {
  if(!Array.isArray(chart)||!chart.length)return null;
  const window=hitWindowFor(level),[first,last]=range(chart,time,latency,window);
- let note=null,best=Infinity;
+ let note=null,best=Infinity;const eligible=[];
  for(let i=first;i<last;i++){
   const n=chart[i],error=Math.abs(n.t+latency-time);
-  if(!n.hit&&!n.missed&&!n.holding&&n.dir===direction&&error<=window&&error<best){
-   best=error;note=n;
+  if(!n.hit&&!n.missed&&!n.holding&&n.dir===direction&&error<=window){
+   eligible.push(n);if(error<best){best=error;note=n;}
   }
  }
+ if(note&&Number.isInteger(note.lane)&&Number.isInteger(note.row))return eligible.find(n=>n.lane===note.lane&&n.row===note.row&&n.t<note.t-.012)||note;
  return note;
 }
 export function timingLabel(delta,perfect,validDirection,isTap=false) {

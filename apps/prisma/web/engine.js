@@ -6,8 +6,9 @@ import { makeConcertProgram, concertPose, concertNativeParts, RIG_MAX_CUBOIDS } 
 import { createSpectacleEvent, pruneSpectacles, spectacleEnvelope, spectacleGeometry, SPECTACLE_MAX_EVENTS } from './combo-spectacle.js';
 import { nextVisualQuality, visualBudget } from './performance-policy.js';
 import { livingGalaxyFrame, drawLivingGalaxy, overlayPixelRatio } from './living-galaxy.js';
-import { approachSeconds, noteMotion, decorateNotes, NOTE_SIZE } from './note-flow.js';
+import { approachSeconds, noteMotion, decorateNotes, NOTE_SIZE, arrivalQueue, orderBadgePositions } from './note-flow.js';
 import { makeFestivalProgram, worldFrame, drawWorld, fireworkFrame, drawFireworks, rewardFirework } from './festival-worlds.js';
+import { worldModel } from './world-model.js';
 export const PALETTES = { coral: ['#63ffb4','#ff5074'], violet: ['#63ffb4','#bd8bff'], ice: ['#7aeaff','#ff5074'] };
 export const DIRECTIONS = [{x:0,y:-1},{x:1,y:0},{x:0,y:1},{x:-1,y:0}];
 export function makeChart(peaks, level, seed = 7721, music = null) {
@@ -19,9 +20,9 @@ export function segmentDistance(px, py, ax, ay, bx, by) {
   const t = l ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / l)) : 0;
   return Math.hypot(px - ax - t * dx, py - ay - t * dy);
 }
-export function visibleRange(chart,time,latency=0){
+export function visibleRange(chart,time,latency=0,travel=3.6){
   const bound=value=>{let lo=0,hi=chart.length;while(lo<hi){const mid=(lo+hi)>>>1;if(chart[mid].t<value)lo=mid+1;else hi=mid;}return lo;};
-  return [bound(time-latency-.351),bound(time-latency+3.501)];
+  return [bound(time-latency-.9),bound(time-latency+travel+.001)];
 }
 export class Scene {
   constructor(canvas, getSettings) {
@@ -31,19 +32,22 @@ export class Scene {
     this.qualityScale=1;this.frameTotal=0;this.frameCount=0;this.cooldown=0;this.visualState={quality:'balanced',slowFrames:0,fastFrames:0,cooldownUntil:0};this.view=new Float32Array(4);this.paletteKey='';this.rgb=[];this.diagnostics=new URLSearchParams(location.search).has('diagnostics');this.cpuTimes=[];
     this.festivalProgram=makeFestivalProgram(null);this.rewardShells=[];
     this.gpu=NativeXRender.create()||(new URLSearchParams(location.search).get('renderer')==='canvas'?null:CubeGPU.create(canvas.parentElement));
-    canvas.dataset.renderer=this.gpu?.native?'ether-render-x-cpu':this.gpu?'graphics-cosmic-webgl2':'canvas';
+    canvas.dataset.renderer=this.gpu?.native?(this.gpu.mesh3D?'ether-render-x-gpu':'ether-render-x-cpu'):this.gpu?'graphics-cosmic-webgl2':'canvas';
+    canvas.dataset.mesh3d=String(!!this.gpu?.mesh3D);
     if(this.gpu)this.gpu.onFailure=()=>{this.gpu.canvas.remove();this.gpu=null;canvas.dataset.renderer='canvas';this.resize();};
     this.resize(); this.observer = new ResizeObserver(() => this.resize()); this.observer.observe(canvas);
   }
   setMusicStage(map,level='flow') {
     this.musicStage = new MusicStageDirector(map);
-    this.travel=approachSeconds(map.bpm,level);this.phraseGlow=0;
+    this.travel=this.settings().anticipation||approachSeconds(map.bpm,level);this.phraseGlow=0;
     this.concertProgram = makeConcertProgram(map);
     this.festivalProgram=makeFestivalProgram(map,this.concertProgram);this.rewardShells=[];
     this.rigPose = null;
     this.stageExplosions = [];
     this.stageShow = null;
   }
+  ensureWorld(id){if(this.gpu?.mesh3D)this.gpu.prepareWorld(id,worldModel(id));}
+  async prepareModels(){if(!this.gpu?.mesh3D||this.modelsReady)return;for(let i=0;i<5;i++){this.ensureWorld(i);await new Promise(resolve=>requestAnimationFrame(resolve));}this.modelsReady=true;}
   armCombo(combo, time) { return this.musicStage?.armCombo(combo, time-(this.settings().latency||0)/1000) || false; }
   cancelCombo() { this.musicStage?.cancelCombo(); }
   celebrateConstellation(time,serial){const e=rewardFirework(this.festivalProgram,time,serial);if(e){this.rewardShells.push(e);this.rewardShells=this.rewardShells.slice(-4);}return !!e;}
@@ -75,7 +79,7 @@ export class Scene {
     const scale = f / Math.max(.7, z + 4.8);
     return {x:cx + x * scale,y:cy + y * scale,s:scale};
   }
-  noteProjection(note,t,latency=0) { const motion=noteMotion(note,t,latency,this.travel||2.25);return {...this.projection((note.lane-1)*1.13,(note.row-.5)*1.33,motion.z),size:motion.size}; }
+  noteProjection(note,t,latency=0) { const motion=noteMotion(note,t,latency,this.travel||3.6);return {...this.projection((note.lane-1)*1.13,(note.row-.5)*1.33,motion.z),size:motion.size}; }
   celebratePhrase(time){this.phraseGlow=time+1.2;}
   drawNoteGuides(ctx,time,chart,latency){
     const colors=PALETTES[this.settings().palette];ctx.save();ctx.lineCap='round';
@@ -86,14 +90,24 @@ export class Scene {
         ctx.beginPath();ctx.moveTo(p.x+x*r,p.y+y*r*.6);ctx.lineTo(p.x+x*r,p.y+y*r);ctx.lineTo(p.x+x*r*.6,p.y+y*r);ctx.stroke();
       }
     }
-    const [a,b]=visibleRange(chart,time,latency);
+    const [a,b]=visibleRange(chart,time,latency,this.travel||3.6);
     const nearby=chart.slice(a,b);
     for(const n of this.holdNotes||[])if(n.holding&&!nearby.includes(n))nearby.push(n);
+    const badges=orderBadgePositions(this.arrivals||[],n=>this.noteProjection(n,time,latency),this.width);
+    nearby.sort((a,b)=>b.t-a.t);
     for(const n of nearby){
-      if(n.hit||n.missed)continue;
-      const motion=noteMotion(n,time,latency,this.travel||2.25);
-      if(motion.delta>(this.travel||2.25)||motion.delta<-.25&&!n.holding)continue;
+      if(n.hit)continue;
+      if(n.missed){const age=time-(n.missedAt??-Infinity);if(age>=0&&age<.28){const p=this.noteProjection(n,time,latency),r=p.s*NOTE_SIZE*.52;ctx.globalAlpha=(1-age/.28)*.45;ctx.strokeStyle='#9cb7c3';ctx.lineWidth=1;ctx.strokeRect(p.x-r,p.y-r,r*2,r*2);ctx.font='700 13px sans-serif';ctx.fillStyle='#aec1c8';ctx.textAlign='center';ctx.fillText('×',p.x,p.y+4);}continue;}
+      const motion=noteMotion(n,time,latency,this.travel||3.6);
+      if(motion.delta>(this.travel||3.6))continue;
       const p=this.noteProjection(n,time,latency),color=colors[n.color];
+      const badge=badges.get(n),order=badge?.rank;
+      if(order&&order<=4){
+        const bx=badge.x,by=badge.y;
+        if(Math.hypot(bx-badge.bx,by-badge.by)>3){ctx.beginPath();ctx.moveTo(badge.bx,badge.by);ctx.lineTo(bx,by);ctx.strokeStyle=color;ctx.lineWidth=1;ctx.globalAlpha=.35;ctx.stroke();}
+        ctx.globalAlpha=1;ctx.beginPath();ctx.arc(bx,by,9,0,Math.PI*2);ctx.fillStyle=order===1?'#e8fff5':'#0c1929';ctx.fill();ctx.strokeStyle=order===1?'#fff':color;ctx.lineWidth=1.4;ctx.stroke();ctx.fillStyle=order===1?'#09241b':'#e6fff6';ctx.font='700 11px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(String(order),bx,by+.5);ctx.textBaseline='alphabetic';
+        if(order===1){const r=p.s*NOTE_SIZE*.58;ctx.strokeStyle='#ebfff5';ctx.lineWidth=1.8;ctx.strokeRect(p.x-r,p.y-r,r*2,r*2);}
+      }
       ctx.globalAlpha=motion.alpha;
       if(n.kind==='hold'){
         const tail={...n,t:n.t+n.duration,holding:false},end=this.noteProjection(tail,time,latency);
@@ -101,7 +115,7 @@ export class Scene {
         ctx.strokeStyle=color;ctx.globalAlpha*=.28;ctx.lineWidth=Math.max(3,p.s*.16);ctx.stroke();ctx.globalAlpha=motion.alpha;
         ctx.beginPath();ctx.arc(p.x,p.y,p.s*.39,-Math.PI/2,-Math.PI/2+Math.PI*2*(n.holdProgress||.025));ctx.strokeStyle=color;ctx.lineWidth=3;ctx.stroke();
         ctx.font='600 11px sans-serif';ctx.textAlign='center';ctx.fillStyle='#e7fff7';
-        ctx.fillText(n.holding?'MANTÉN':'SOSTÉN',p.x,p.y-p.s*.47);
+        ctx.fillText(n.holding?'MANTÉN':'SOSTÉN',p.x,p.y-p.s*.64);
       }
       if(Number.isInteger(n.chainIndex)){
         ctx.font='600 11px sans-serif';ctx.textAlign='center';ctx.fillStyle=color;
@@ -172,6 +186,7 @@ export class Scene {
   }
   // Scene-space armature: true 3D X Render cuboids plus a 2D lighting overlay.
   stageRig(pose) {
+    if(this.gpu?.mesh3D){this.canvas.dataset.rigNativeCount='0';return;}
     if (!this.gpu || !pose) return;
     const capacity=this.gpu.native?RIG_MAX_CUBOIDS:(this.gpu.capacity||256);
     const parts=concertNativeParts(pose,Math.max(0,capacity-(this.gpu.count||0)));
@@ -201,11 +216,12 @@ export class Scene {
     ctx.globalCompositeOperation='source-over';
     if(galaxy){
       const live=livingGalaxyFrame(this.musicStage?.map,time,pose,{quality:pose.quality,reduced});
-      drawLivingGalaxy(ctx,this.width,this.height,live,{preview,reduced,battery});
+      drawLivingGalaxy(ctx,this.width,this.height,live,{preview,reduced,battery,drawSpeakers:!this.gpu?.mesh3D});
       this.canvas.dataset.speakers='2';
       this.canvas.dataset.laserCount=String(live.rays.length);
       this.canvas.dataset.ambientBursts=String(live.bursts.length);
     }
+    if(this.gpu?.mesh3D){this.canvas.dataset.speakers='2';this.canvas.dataset.meshSpeakers='2';ctx.restore();return;}
     // The trusses, gimbals and lenses follow six distinct 3D fixture poses.
     // Browser/WebView overlays do not pretend to be volumetric native light.
     const fixtures=pose.fixtures;
@@ -394,6 +410,7 @@ export class Scene {
     if(stageCue.explosion){
       const event=createSpectacleEvent(stageCue.explosion);
       if(event)this.stageExplosions.push(event);
+      if(event&&this.gpu?.mesh3D)this.rewardShells.push({t:event.t,id:200000+event.combo,kind:event.combo>=50?'willow':'peony',power:1,source:'combo'});
       if(this.stageExplosions.length>SPECTACLE_MAX_EVENTS)
         this.stageExplosions=this.stageExplosions.slice(-SPECTACLE_MAX_EVENTS);
     }
@@ -406,8 +423,13 @@ export class Scene {
     const quality=this.settings().quality==='auto'?(this.qualityScale<.78?'battery':this.visualState.quality==='high'?'high':'auto'):this.settings().quality;
     const rigPose=concertPose(this.concertProgram,musicTime,stageCue,{quality,reduced:this.settings().effects,style:this.settings().stageStyle||'galaxy'});
     this.rigPose=rigPose;
+    this.arrivals=preview?[]:arrivalQueue(chart,time,latency,this.travel||3.6);this.noteRanks=new Map(this.arrivals.map(a=>[a.note,a.rank]));
     const world=worldFrame(this.festivalProgram,preview?0:musicTime,this.settings().world||'journey',this.settings().effects);
-    drawWorld(ctx,w,h,world,musicTime,{preview,reduced:this.settings().effects,battery:quality==='battery',energy:rigPose.energy,beat:stageCue.beat});
+    if(this.gpu?.mesh3D){
+      const ids=['galaxy','neon','aurora','abyss','volcano'],current=ids.indexOf(world.current.id),previous=world.previous?ids.indexOf(world.previous.id):-1;
+      this.ensureWorld(current);if(previous>=0)this.ensureWorld(previous);
+      this.gpu.setWorld(current,previous,world.mix,musicTime,Math.min(1,rigPose.energy*.35+stageCue.beat*.65+stageCue.show*.3));
+    }else drawWorld(ctx,w,h,world,musicTime,{preview,reduced:this.settings().effects,battery:quality==='battery',energy:rigPose.energy,beat:stageCue.beat});
     this.canvas.dataset.world=world.current.id;this.canvas.dataset.chapter=String(world.index+1);this.canvas.dataset.chapterCount=String(this.festivalProgram.chapters.length);
     if(preview){
       const mobile=w<580,drift=this.settings().effects?0:Math.sin(time*.65)*.1;
@@ -416,17 +438,18 @@ export class Scene {
       for(let i=0;i<2;i++){const a=this.projection(i?1.35:-1.65,i?.85:.6,.2,true),b=this.projection(i?.65:-.38,i?-.4:-.8,1,true);ctx.save();ctx.strokeStyle=col[i];ctx.globalAlpha=.35;ctx.lineWidth=mobile?1:1.5;ctx.shadowColor=col[i];ctx.shadowBlur=this.settings().effects?0:18;ctx.beginPath();ctx.moveTo(a.x-25,a.y+40);ctx.bezierCurveTo(a.x-80,a.y+25,b.x+90,b.y+30,b.x,b.y-30);ctx.stroke();ctx.restore();}
       for(const b of blocks)this.cube(b.x,b.y+drift,b.z,b.size,b.c,b.d,b.r+drift*.25,true,false,.96);
     }else{
-      const [first,last]=visibleRange(chart,time,latency);
+      const [first,last]=visibleRange(chart,time,latency,this.travel||3.6);
       // Native packets have a strict 64-body cap: submit imminent notes first.
       // Browser WebGL retains far-to-near ordering for alpha blending.
       const held=(this.holdNotes||[]).filter(n=>n.holding&&!n.hit&&!n.missed);
       const incoming=chart.slice(first,last).filter(n=>!n.hit&&!n.missed&&!n.holding);
       const notes=this.gpu?.native?[...held,...incoming]:[...incoming.reverse(),...held];
       for(const n of notes){
-        const m=noteMotion(n,time,latency,this.travel||2.25);
-        if(!n.holding&&(m.delta>(this.travel||2.25)||m.delta<-.25))continue;
-        this.cube((n.lane-1)*1.13,(n.row-.5)*1.33,m.z,m.size,n.color,n.dir,0,false,m.hot,m.alpha);
+        const m=noteMotion(n,time,latency,this.travel||3.6);
+        if(!n.holding&&m.delta>(this.travel||3.6))continue;
+        this.cube((n.lane-1)*1.13,(n.row-.5)*1.33,m.z,m.size,n.color,n.dir,0,false,n.holding||this.noteRanks.get(n)===1&&m.delta<.7,m.alpha);
       }
+      this.canvas.dataset.noteCount=String(notes.filter(n=>!n.missed).length);this.canvas.dataset.lookAhead=String(this.travel||3.6);
     }
     // Notes are added before decorations: decorative parts never reserve 3D slots.
     this.stageRig(rigPose);
