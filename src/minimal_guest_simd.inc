@@ -174,6 +174,15 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
     const auto exponent=(std::uint64_t(!repeat)<<(e-1))|(repeat?((UINT64_C(1)<<(e-3))-1)<<2:0)|((imm>>4)&3);
     fp_set(rd,(std::uint64_t(imm>>7)<<(bits-1))|(exponent<<f)|(std::uint64_t(imm&15)<<(f-4)),bits);return true;
   }
+  if((i&0xbf3ffc00u)==0x2e213800u){ // SHLL/SHLL2 8B->8H, 4H->4S, 2S->2D, by source element size.
+    const unsigned size=(i>>22)&3u;if(size==3)return false;
+    const unsigned lane_bits=8u<<size,lanes=64u/lane_bits,first=(i&0x40000000u)?lanes:0;
+    fp_access();const auto source=floating_.v[rn];Vector128 output;
+    // Capture the entire source before writing an aliased destination. Unsigned
+    // shifts preserve the architectural low 2*esize bits without signed UB.
+    for(unsigned lane=0;lane<lanes;++lane)output.lane(lane,2*lane_bits,source.lane(first+lane,lane_bits)<<lane_bits);
+    floating_.v[rd]=output;return true;
+  }
   const auto frint_vector=i&0xbfbffc00u;
   if(frint_vector==0x0e218800u||frint_vector==0x0ea18800u||frint_vector==0x0e219800u||frint_vector==0x0ea19800u||frint_vector==0x2e218800u||frint_vector==0x2ea19800u||frint_vector==0x2e219800u){ // FRINTN/P/M/Z/A/I/X, vector 2S/4S/2D.
     const unsigned lane_bits=(i&0x00400000u)?64u:32u,width=(i&0x40000000u)?128u:64u;
