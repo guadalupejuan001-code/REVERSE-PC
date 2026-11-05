@@ -58,10 +58,9 @@ public final class PrismaTestRunner extends Instrumentation {
             js("window.__errors=[];addEventListener('error',e=>__errors.push(e.message));window.__musicSources=0;const originalSource=AudioContext.prototype.createBufferSource;AudioContext.prototype.createBufferSource=function(){__musicSources++;return originalSource.call(this)};true");
             tap("#startBtn");until("document.body.classList.contains('is-playing')",50);
             until("+document.getElementById('game').dataset.laserCount>0",10);
-            for(int i=0;i<85;i++){
-                js("['ArrowUp','ArrowRight','ArrowDown','ArrowLeft'].forEach(code=>document.dispatchEvent(new KeyboardEvent('keydown',{code,bubbles:true})));true");
-                SystemClock.sleep(90);
-            }
+            js("window.__playTest=setInterval(()=>['ArrowUp','ArrowRight','ArrowDown','ArrowLeft'].forEach(code=>document.dispatchEvent(new KeyboardEvent('keydown',{code,bubbles:true}))),55);true");
+            until("+document.getElementById('score').textContent>0",25);
+            js("clearInterval(__playTest);true");
             require("true".equals(js("+document.getElementById('score').textContent>0")),"No real cuts were scored");
             require("1".equals(js("__musicSources")),"Cuts created additional sound sources");
             require("0".equals(js("__errors.length")),"JavaScript error in gameplay");
@@ -70,6 +69,7 @@ public final class PrismaTestRunner extends Instrumentation {
             File folder=new File(getTargetContext().getExternalFilesDir(null),"prisma-evidence");folder.mkdirs();
             Bitmap image=getUiAutomation().takeScreenshot();try(FileOutputStream out=new FileOutputStream(new File(folder,"PRISMA-2.5-Android.png"))){image.compress(Bitmap.CompressFormat.PNG,100,out);}image.recycle();
             JSONObject report=new JSONObject().put("android_gameplay",true).put("speakers",2).put("cut_audio_sources",0).put("music_sources",1).put("native_render",render).put("ui",new JSONObject(js("(()=>{const c=document.getElementById('game');return {width:c.width,height:c.height,ratio:c.width/c.getBoundingClientRect().width,lasers:+c.dataset.laserCount}})()")));
+            require("true".equals(js("document.body.classList.contains('is-playing')")),"Session ended before pause test");
             tap("#pauseBtn");until("!document.getElementById('pauseOverlay').hidden",5);
             tap("#resumeBtn");until("document.body.classList.contains('is-playing')",5);
             report.put("pause_resume",true);
@@ -77,11 +77,9 @@ public final class PrismaTestRunner extends Instrumentation {
             until("document.getElementById('trackName').textContent==='PRISMA-ritmo-prueba'&&document.getElementById('loadingOverlay').hidden",30);
             tap("#startBtn");until("document.body.classList.contains('is-playing')",30);
             require("true".equals(js("+document.getElementById('game').dataset.holdCount>=3&&+document.getElementById('game').dataset.chainCount>=2")),"Decoded tones did not create real hold/phrase mechanics");
-            for(int i=0;i<210;i++){
-                js("['ArrowUp','ArrowRight','ArrowDown','ArrowLeft'].forEach(code=>document.dispatchEvent(new KeyboardEvent('keydown',{code,bubbles:true})));true");
-                if("true".equals(js("+document.getElementById('game').dataset.holdCompletions>=1&&+document.getElementById('game').dataset.phrasesCompleted>=1")))break;
-                SystemClock.sleep(55);
-            }
+            js("window.__playTest=setInterval(()=>['ArrowUp','ArrowRight','ArrowDown','ArrowLeft'].forEach(code=>document.dispatchEvent(new KeyboardEvent('keydown',{code,bubbles:true}))),45);true");
+            until("+document.getElementById('game').dataset.holdCompletions>=1&&+document.getElementById('game').dataset.phrasesCompleted>=1",35);
+            js("clearInterval(__playTest);true");
             require("true".equals(js("+document.getElementById('game').dataset.holdCompletions>=1&&+document.getElementById('game').dataset.phrasesCompleted>=1")),"Actual gameplay never completed a sustain and phrase");
             require("3".equals(js("__musicSources")),"Mechanics created non-musical audio sources");
             require("0".equals(js("__errors.length")),"Mechanics raised a JavaScript error");
