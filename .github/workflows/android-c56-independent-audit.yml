@@ -1,0 +1,51 @@
+name: Android C56 independent IEEE and physical ARM audit
+on:
+  push:
+    branches: [test/android-c56-fabd-independent]
+permissions:
+  contents: read
+jobs:
+  audit:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      with:
+        persist-credentials: false
+    - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      with:
+        repository: guadalupejuan001-code/mundo-X
+        ref: e2778d962af22f6f1a0794058dd4685fc2573966
+        path: deps/mundo-x
+        persist-credentials: false
+    - name: Build original dependencies and independent oracle
+      run: |
+        set -euo pipefail
+        mkdir -p build evidence/c56-independent
+        python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+        python3 scripts/build-softfloat.py
+        FLAGS='-std=c++17 -pthread -frounding-math -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc -Itools'
+        g++ $FLAGS -O2 tests/minimal_guest_fabd_audit.cpp build/softfloat/libreverse_softfloat.a -o build/c56-independent
+        build/c56-independent > evidence/c56-independent/release.json
+        g++ $FLAGS -O1 -fsanitize=undefined -fno-sanitize-recover=all tests/minimal_guest_fabd_audit.cpp build/softfloat/libreverse_softfloat.a -o build/c56-independent-ubsan
+        build/c56-independent-ubsan > evidence/c56-independent/ubsan.json
+        python3 - <<'PY'
+        import json, platform
+        for name in ['release', 'ubsan']:
+            r = json.load(open('evidence/c56-independent/' + name + '.json'))
+            assert r['cases'] >= 44241 and not r['android_boot']
+            assert r['native_hardware_cases'] >= 90000 if platform.machine() == 'aarch64' else r['native_hardware_cases'] == 0
+        PY
+        uname -m > evidence/c56-independent/architecture.txt
+        sha256sum tests/minimal_guest_fabd_audit.cpp src/minimal_guest_simd.inc > evidence/c56-independent/source-sha256.txt
+    - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+      if: always()
+      with:
+        name: reverse-c56-independent-${{ matrix.os }}
+        path: evidence/c56-independent
+        if-no-files-found: error
+        retention-days: 90
