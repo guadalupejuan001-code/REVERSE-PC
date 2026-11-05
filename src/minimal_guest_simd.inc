@@ -129,6 +129,21 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
     if(mode==1||mode==3)set(rn,updated,64,true);return true;
   }
   ArmFloat fp(floating_);
+  const auto vector_round=i&0xbfbffc00u;
+  if(vector_round==0x0e218800u||vector_round==0x0ea18800u||vector_round==0x0e219800u||vector_round==0x0ea19800u||vector_round==0x2e218800u||vector_round==0x2e219800u||vector_round==0x2ea19800u){ // FRINTN/P/M/Z/A/X/I, 2S/4S/2D.
+    const unsigned lane_bits=(i&0x00400000u)?64u:32u,width=(i&0x40000000u)?128u:64u;
+    if(lane_bits==64&&width==64)return false;
+    unsigned rounding=fp.rounding();
+    if(vector_round==0x0e218800u)rounding=softfloat_round_near_even;
+    else if(vector_round==0x0ea18800u)rounding=softfloat_round_max;
+    else if(vector_round==0x0e219800u)rounding=softfloat_round_min;
+    else if(vector_round==0x0ea19800u)rounding=softfloat_round_minMag;
+    else if(vector_round==0x2e218800u)rounding=softfloat_round_near_maxMag;
+    fp_access();const auto source=floating_.v[rn];Vector128 output;
+    for(unsigned lane=0;lane<width/lane_bits;++lane)
+      output.lane(lane,lane_bits,fp.round_integral(lane_bits,source.lane(lane,lane_bits),rounding,vector_round==0x2e219800u));
+    floating_.v[rd]=output;return true;
+  }
   const bool fp_zero_scalar=(i&0xdf000000u)==0x5e000000u;
   auto fp_zero=i&(fp_zero_scalar?0xffbffc00u:0xbfbffc00u);
   if(fp_zero_scalar)fp_zero&=~0x50000000u;
