@@ -256,6 +256,24 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
   const bool q=i&0x40000000,u=i&0x20000000;
   const unsigned width=q?128:64,size=(i>>22)&3,element=8u<<size;
   auto commit=[&](Vector128 value){if(!q)value.high=0;floating_.v[rd]=value;};
+  const bool indexed_multiply_scalar=(i&0xdf80f400u)==0x5f809000u;
+  if(indexed_multiply_scalar||(i&0x9f80f400u)==0x0f809000u){ // FMUL/FMULX S/D, scalar/vector by indexed element.
+    const unsigned lane_bits=(i&0x00400000u)?64u:32u;
+    if(lane_bits==64&&((i&0x00200000u)||(!indexed_multiply_scalar&&!q)))return false;
+    const unsigned index=lane_bits==64?((i>>11)&1u):(((i>>11)&1u)<<1)|((i>>21)&1u);
+    fp_access();const auto a=floating_.v[rn],b=floating_.v[rm];const auto selected=b.lane(index,lane_bits);Vector128 value;
+    for(unsigned lane=0;lane<(indexed_multiply_scalar?1u:width/lane_bits);++lane){
+      auto x=a.lane(lane,lane_bits),y=selected;std::uint64_t product;
+      if(u){
+        x=fp.input(x,lane_bits);y=fp.input(y,lane_bits);const auto sign=ArmFloat::sign(lane_bits),exponent=ArmFloat::exponent(lane_bits);
+        if((!(x&~sign)&&(y&~sign)==exponent)||(!(y&~sign)&&(x&~sign)==exponent))
+          product=((x^y)&sign)|(lane_bits==32?UINT64_C(0x40000000):UINT64_C(0x4000000000000000));
+        else product=fp.binary(0,lane_bits,x,y);
+      }else product=fp.binary(0,lane_bits,x,y);
+      value.lane(lane,lane_bits,product);
+    }
+    floating_.v[rd]=value;return true;
+  }
   const bool indexed_scalar=(i&0xff80b400u)==0x5f801000u;
   if(indexed_scalar||(i&0xbf80b400u)==0x0f801000u){ // FMLA/FMLS, single/double by indexed element.
     const unsigned lane_bits=(i&0x00400000u)?64u:32u;
