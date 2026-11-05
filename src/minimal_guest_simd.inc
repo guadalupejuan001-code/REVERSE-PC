@@ -432,6 +432,28 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
       value.lane(n,element,amount<0?right_shift(x,unsigned(-amount),element,!u):unsigned(amount)>=element?0:x<<unsigned(amount));
     }commit(value);return true;
   }
+  const bool saturating_narrow_vector=(i&0x9f3ffc00u)==0x0e214800u||(i&0xbf3ffc00u)==0x2e212800u;
+  const bool saturating_narrow_scalar=(i&0xdf3ffc00u)==0x5e214800u||(i&0xff3ffc00u)==0x7e212800u;
+  if(saturating_narrow_vector||saturating_narrow_scalar){ // SQXTN/UQXTN/SQXTUN, scalar and lower/upper vector halves.
+    if(size==3)return false;fp_access();const auto source=floating_.v[rn];Vector128 value;bool saturated=false;
+    const bool signed_source=!u||(i&0x6000u)==0x2000u;
+    for(unsigned n=0;n<(saturating_narrow_scalar?1u:64/element);n++){
+      const auto x=source.lane(n,2*element);std::uint64_t result;
+      const bool negative=signed_source&&bool(x&(UINT64_C(1)<<(2*element-1)));
+      if(negative&&u){result=0;saturated=true;}
+      else if(negative){
+        const auto magnitude=(UINT64_C(0)-x)&low_mask(2*element),limit=UINT64_C(1)<<(element-1);
+        if(magnitude>limit){result=UINT64_C(0)-limit;saturated=true;}else result=x;
+      }else{
+        const auto limit=low_mask(u?element:element-1);
+        if(x>limit){result=limit;saturated=true;}else result=x;
+      }
+      value.lane(n,element,result);
+    }
+    if(saturated)floating_.fpsr|=UINT32_C(0x08000000);
+    if(saturating_narrow_scalar)floating_.v[rd]=value;
+    else if(q)floating_.v[rd].high=value.low;else floating_.v[rd]={value.low,0};return true;
+  }
   if((i&0xbf3ffc00u)==0x0e212800u){ // XTN/XTN2: truncate each lane to half its width, without saturation.
     if(size==3)return false; // size=11 is unallocated; reject before touching any state.
     fp_access();const auto source=floating_.v[rn];Vector128 value;
