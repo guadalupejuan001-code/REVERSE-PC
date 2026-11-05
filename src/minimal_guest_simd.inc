@@ -158,6 +158,27 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
     }
     floating_.v[rd]=output;return true; // Unsigned two's-complement arithmetic gives exact modular signed results.
   }
+  const bool rounding_vector=(i&0x9f80ec00u)==0x0f002400u;
+  const bool rounding_scalar=(i&0xdf80ec00u)==0x5f002400u;
+  if((i&0x00780000u)&&(rounding_vector||rounding_scalar)){ // S/URSHR and S/URSRA, scalar D or vector B/H/S/D.
+    const unsigned encoded=(i>>16)&127u;unsigned lane_bits=8;
+    while(lane_bits*2<=encoded)lane_bits*=2;
+    const bool wide=i&0x40000000u,unsigned_form=i&0x20000000u,accumulate=i&0x1000u;
+    if((rounding_scalar&&lane_bits!=64)||(!rounding_scalar&&!wide&&lane_bits==64))return false;
+    const unsigned amount=2*lane_bits-encoded,lanes=rounding_scalar?1u:(wide?128u:64u)/lane_bits;
+    const auto mask=lane_bits==64?UINT64_MAX:(UINT64_C(1)<<lane_bits)-1;
+    fp_access();const auto source=floating_.v[rn],old=floating_.v[rd];Vector128 output{};
+    for(unsigned lane=0;lane<lanes;++lane){
+      const auto x=source.lane(lane,lane_bits);auto shifted=amount==lane_bits?UINT64_C(0):x>>amount;
+      if(!unsigned_form&&(x&(UINT64_C(1)<<(lane_bits-1))))
+        shifted|=amount==lane_bits?mask:mask^(mask>>amount);
+      // Quotient plus the discarded rounding bit avoids a 65-bit sum and
+      // never shifts a C++ word by 64. Lane writes reduce modulo 2^esize.
+      const auto rounded=shifted+((x>>(amount-1))&1u);
+      output.lane(lane,lane_bits,rounded+(accumulate?old.lane(lane,lane_bits):0));
+    }
+    floating_.v[rd]=output;return true; // Capture aliases first; clear unwritten scalar/Q=0 bits.
+  }
   ArmFloat fp(floating_);
   const auto scalar_pairwise_fp=i&0xff3ffc00u;
   if(scalar_pairwise_fp==0x7e30d800u||scalar_pairwise_fp==0x7e30f800u||scalar_pairwise_fp==0x7e30c800u){ // FADDP/FMAXP/FMINP/FMAXNMP/FMINNMP, scalar S/D.
