@@ -129,6 +129,16 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
     if(mode==1||mode==3)set(rn,updated,64,true);return true;
   }
   ArmFloat fp(floating_);
+  const auto scalar_pairwise_fp=i&0xff3ffc00u;
+  if(scalar_pairwise_fp==0x7e30d800u||scalar_pairwise_fp==0x7e30f800u||scalar_pairwise_fp==0x7e30c800u){ // FADDP/FMAXP/FMINP/FMAXNMP/FMINNMP, scalar S/D.
+    const bool minimum=i&0x00800000u;
+    if(scalar_pairwise_fp==0x7e30d800u&&minimum)return false;
+    const unsigned lane_bits=(i&0x00400000u)?64u:32u;
+    fp_access();const auto source=floating_.v[rn];
+    const unsigned operation=scalar_pairwise_fp==0x7e30d800u?2u:(scalar_pairwise_fp==0x7e30c800u?6u:4u)+unsigned(minimum);
+    fp_set(rd,fp.binary(operation,lane_bits,source.lane(0,lane_bits),source.lane(1,lane_bits)),lane_bits);
+    return true; // Capture both source lanes before an aliased scalar write clears the rest.
+  }
   if((i&0x9f80fc00u)==0x0f00fc00u||(i&0xdf80fc00u)==0x5f00fc00u){ // FCVTZS/FCVTZU SIMD scalar/vector, fixed-point.
     const bool scalar=(i&0xdf80fc00u)==0x5f00fc00u,wide=i&0x40000000u;
     const unsigned encoded=(i>>16)&127u,lane_bits=encoded>=64?64u:32u;
