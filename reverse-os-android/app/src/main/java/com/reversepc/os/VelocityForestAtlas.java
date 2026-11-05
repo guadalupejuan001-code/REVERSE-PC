@@ -34,7 +34,7 @@ final class VelocityForestAtlas {
         }
         if(trails.size()!=4||places.size()!=6)throw new IllegalArgumentException("Atlas incompleto");
     }
-    void update(VelocityXiEngine.Snapshot s){carX=s.xCm/100f;carZ=s.zCm/100f;yaw=s.yaw4096;for(MapView v:views)v.invalidate();}
+    void update(VelocityXiEngine.Snapshot s){float x=s.xCm/100f,z=s.zCm/100f;if(x==carX&&z==carZ&&yaw==s.yaw4096)return;carX=x;carZ=z;yaw=s.yaw4096;for(MapView v:views)v.invalidate();}
     String destination(){if(selected<0)return "Toca un lugar para marcar un destino";Place p=places.get(selected);return p.name+" · "+Math.round(Math.hypot(carX-p.x,carZ-p.z))+" m";}
     void select(int i){selected=i;for(MapView v:views)v.invalidate();android.util.Log.i("ReverseVelocity","MAP_WAYPOINT index="+i+" name="+(i<0?"none":places.get(i).name));}
     MapView view(Context context,boolean large){MapView v=new MapView(context,large);views.add(v);return v;}
