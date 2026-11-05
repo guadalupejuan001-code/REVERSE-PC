@@ -33,7 +33,10 @@ before any GPU upload. The original one-million-instruction XI execution limit,
 Shared prop topology reduces duplicate XI source. The conservative authoring
 budget is 3,876 triangles, with at most three active sectors and 31 road samples.
 
-Live GPU targets adapt between widths 640, 960 and 1280 to the actual view aspect.
+Live GPU targets adapt between widths 320, 480, 640, 960 and 1280 to the actual
+view aspect. The budget measures the complete posted frame, including GPU work;
+slow devices can reduce resolution while retaining the same XI world state.
+The High option fixes width at 1280; photo mode remains native 4K.
 The native XFB5 software backend remains available if GLES 3 is unsupported or
 fails. Original XFS1 and native live outputs remain pixel-identical in regression
 checks. GPU material shading intentionally differs from the indexed software

@@ -290,6 +290,8 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
         boolean firstFramePosted=false;
         int cacheHits=0,xiRenders=0,lastCameraOrbit=Integer.MIN_VALUE;
         boolean previousGpu=false;
+        final int[] gpuWidths={320,480,640,960,1280};
+        int gpuLevel=2,gpuSlow=0,gpuFast=0;
         final VelocityFrameReuse frameReuse=new VelocityFrameReuse();
         final VelocityFrameProfiler profiler=new VelocityFrameProfiler();
         try{
@@ -370,7 +372,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     long start=System.nanoTime();
                     try{
                         selectedGpuSurface.draw(observation.geometry,observation.colors,state,selectedYaw,
-                            selected4K?3840:selected==0?640:selected==1?960:1280);
+                            selected4K?3840:selectedFixed?1280:gpuWidths[gpuLevel]);
                     }catch(RuntimeException gpuFailure){
                         if(lifecycle.shouldRun()&&selectedGpuSurface.available())selectedGpuSurface.disable(gpuFailure);
                         frameReuse.invalidate();continue;
@@ -444,12 +446,23 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     lastHud=now;hud.update(state,paused,fps,width,height,error);
                 }
                 long cost=now-begin;
+                // Measure the complete posted frame, including GPU work. Slow
+                // devices can go below 640 without dropping any XI world state.
+                if(selectedGpu&&!selected4K&&!selectedFixed&&!paused&&presented){
+                    if(cost>40_000_000L){
+                        gpuFast=0;
+                        if(++gpuSlow>=4&&gpuLevel>0){gpuLevel--;gpuSlow=0;Log.i("ReverseVelocity","GPU_BUDGET width="+gpuWidths[gpuLevel]+" reason=frame_cost");}
+                    }else if(cost<23_000_000L){
+                        gpuSlow=0;
+                        if(++gpuFast>=120&&gpuLevel<gpuWidths.length-1){gpuLevel++;gpuFast=0;}
+                    }else{gpuSlow=0;gpuFast=0;}
+                }
                 synchronized(detailLock){
-                    if(!native4K&&!fixedDetail&&!selectedFixed&&quality==selected&&cost>45_000_000L&&selected>0){
+                    if(!selectedGpu&&!native4K&&!fixedDetail&&!selectedFixed&&quality==selected&&cost>45_000_000L&&selected>0){
                         if(++slowFrames>=5){quality=selected-1;slowFrames=0;}
                     }else {
                         slowFrames=0;
-                        if(!native4K&&!fixedDetail&&quality==selected&&cost<23_000_000L&&selected<2){
+                        if(!selectedGpu&&!native4K&&!fixedDetail&&quality==selected&&cost<23_000_000L&&selected<2){
                             if(++fastFrames>=90){quality=selected+1;fastFrames=0;}
                         }else fastFrames=0;
                     }
