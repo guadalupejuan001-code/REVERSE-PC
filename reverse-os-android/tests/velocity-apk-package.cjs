@@ -31,8 +31,8 @@ for(const abi of ['arm64-v8a','x86_64']){
 }
 const text=fs.readFileSync(badging,'utf8');
 assert.match(text,/package: name='com\.reversepc\.velocity'/);
-assert.match(text,/versionCode='30'/,'car build must upgrade versionCode');
-assert.match(text,/versionName='3\.0\.0-open-forest-road-xi'/,'car build version mismatch');
+assert.match(text,/versionCode='31'/,'car build must upgrade versionCode');
+assert.match(text,/versionName='3\.1\.0-native-live-xi'/,'car build version mismatch');
 assert.match(text,/launchable-activity: name='com\.reversepc\.os\.VelocityActivity'/);
 assert.match(text,/application-label:'REVERSE VELOCITY'/);
 assert.match(text,/sdkVersion:'29'/);
@@ -47,7 +47,7 @@ function sourceAssets(directory,prefix=''){
  }).sort();
 }
 const names=sourceAssets(assetRoot);
-for(const name of ['drive.xi','world.xi','render.xi'])assert(names.includes(name),'missing XI game source '+name);
+for(const name of ['drive.xi','world.xi','render.xi','render-live.xi'])assert(names.includes(name),'missing XI game source '+name);
 assert.deepEqual(entries.filter(name=>name.startsWith('assets/velocity/')&&!name.endsWith('/'))
  .map(name=>name.slice('assets/velocity/'.length)).sort(),names,'packaged game asset inventory differs');
 for(const name of names){
@@ -69,7 +69,7 @@ if(process.env.VELOCITY_EXPECTED_SIGNER_SHA256){
   'APK must keep the signer of the released 0.1 test build for in-place upgrades');
 }
 const report={passed:true,applicationId:'com.reversepc.velocity',launcher:'com.reversepc.os.VelocityActivity',minSdk:29,
- versionCode:30,versionName:'3.0.0-open-forest-road-xi',sourceCommit:process.env.GITHUB_SHA||null,
+ versionCode:31,versionName:'3.1.0-native-live-xi',sourceCommit:process.env.GITHUB_SHA||null,
  signerCertificateSha256:expected,signerMatchesCachedIdentity:true,
  abis:['arm64-v8a','x86_64'],nativeElf,assets,apkBytes:fs.statSync(apk).size,
  apkSha256:crypto.createHash('sha256').update(fs.readFileSync(apk)).digest('hex')};

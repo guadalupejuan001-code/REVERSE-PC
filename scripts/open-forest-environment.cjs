@@ -120,7 +120,9 @@ mul r0 2
 add r0 5000
 load16 r0 $r0
 # Reuse the road's authored right normal via its tangent; sine/cos are calculated below.
-store16 542 r5
+mov r6 r5
+add r6 32768
+store16 542 r6
 mov r6 r0
 add r6 1024
 mod r6 4096

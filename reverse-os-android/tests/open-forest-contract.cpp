@@ -44,10 +44,27 @@ int main(int argc,char**argv){try{
  check(markHeight.deterministic&&markHeight.value>0&&std::abs(int(markHeight.value)-int(drifting[26]))<10,"skid samples stay on the actual elevated road");
  save(drift,out/"forest-drift.rvp");
  // The map end remains playable and reverse never teleports to the old start seam.
- auto before=s;for(int i=0;i<100;i++)s=observe(pilot.execute(command(1,0,1,1,0)));
- check(s[1]>140000&&s[11]<before[11],"reverse from road end moves back through the same world");check(s[7]==0,"road end is not a race finish");
+ const auto endState=reverse_pc::rvpc2::save(pilot);auto before=s;
+ for(int mode=0;mode<3;mode++){
+  auto returning=reverse_pc::rvpc2::restore(endState);
+  for(int i=0;i<100;i++)s=observe(returning.execute(command(1,0,1,1,mode)));
+  check(s[1]>140000&&s[11]<before[11],"reverse works from road end in manual, assisted and pilot modes");
+  check(s[7]==0,"road end is not a race finish");
+ }
  auto reverse=reverse_pc::rvpc2::restore(initial);for(int i=0;i<80;i++)s=observe(reverse.execute(command(1,0,1,1)));
  check(s[1]<0&&s[1]>-10000&&s[11]<1000,"reverse at start cannot wrap to the far endpoint");
+ // Regression: the left bridge contact used to store -120 in unsigned16.
+ for(int side:{-450,450}){
+  auto bridge=reverse_pc::rvpc2::restore(initial);const int d=28;
+  const double dx=p[2*d+2]-p[2*d],dz=p[2*d+3]-p[2*d+1],length=std::hypot(dx,dz);
+  const auto x=std::llround((p[2*d]+p[2*d+2])/2.+side*dz/length);
+  const auto z=std::llround((p[2*d+1]+p[2*d+3])/2.-side*dx/length);
+  bridge.execute(header+"store32 100 "+std::to_string(2000000+x)+"\nstore32 104 "+std::to_string(2000000+z)+"\nstore8 273 28\nhalt\n");
+  const auto impact=observe(bridge.execute(command(0,0,1)));
+  check(impact[14]==1&&impact[3]==0,"both bridge sides stop the car without an unsigned16 failure");
+  const double lateral=(impact[0]-(p[2*d]+p[2*d+2])/2.)*dz/length-(impact[1]-(p[2*d+1]+p[2*d+3])/2.)*dx/length;
+  check(std::abs(lateral)<=122,"both bridge contacts preserve the correct signed bank");
+ }
  // Time controls are XI-only environment transactions and do not drive the car.
  auto time=reverse_pc::rvpc2::restore(initial);State previous=observe(time.execute(header+env.substr(header.size())));
  for(int mode=1;mode<=3;mode++){
@@ -62,6 +79,6 @@ int main(int argc,char**argv){try{
  trunk.execute(header+"store32 100 1999500\nstore32 104 2000000\nstore16 108 3072\nstore16 261 31568\nstore16 263 32768\nstore16 110 1200\nhalt\n");
  const auto contact=observe(trunk.execute(command(0,0,1)));
  check(contact[14]==1&&contact[0]==-500&&contact[3]==0,"a visible forest trunk blocks the car instead of being a ghost object");
- std::ofstream f(out/"results.json");f<<"{\"passed\":true,\"checks\":"<<checks<<",\"sectors\":"<<sectors.size()<<",\"traversalTicks\":"<<steps<<",\"contacts\":"<<contacts<<",\"offroadTicks\":"<<offroad<<",\"roadLengthM\":1600,\"roadWidthM\":3.6,\"androidDeviceMeasured\":false}\n";
+ std::ofstream f(out/"results.json");f<<"{\"passed\":true,\"checks\":"<<checks<<",\"sectors\":"<<sectors.size()<<",\"traversalTicks\":"<<steps<<",\"contacts\":"<<contacts<<",\"offroadTicks\":"<<offroad<<",\"roadLengthM\":1600,\"roadWidthM\":3.6,\"reverseModes\":3,\"bridgeSides\":2,\"androidDeviceMeasured\":false}\n";
  std::cout<<"OPEN_FOREST_GAMEPLAY_PASS checks="<<checks<<" sectors="<<sectors.size()<<" traversalTicks="<<steps<<"\n";return 0;
  }catch(const std::exception&e){std::cerr<<"OPEN_FOREST_GAMEPLAY_FAIL "<<e.what()<<"\n";return 1;}}

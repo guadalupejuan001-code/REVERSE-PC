@@ -38,7 +38,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     private boolean fixedDetail;
     private volatile int physicsHz;
     private volatile boolean paused;
-    private volatile boolean reverseGear;
+    private final VelocityGearbox gearbox=new VelocityGearbox();
     private volatile boolean native4K;
     private volatile boolean pausedBeforePhoto;
     boolean is4KEnabled(){return native4K;}
@@ -153,17 +153,21 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
         native4K=false;
         pausedBeforePhoto=false;
         input=4;
-        resetRequested.set(true);paused=false;reverseGear=false;
+        resetRequested.set(true);paused=false;gearbox.reset();error="";
         repaintRequested.set(true);
+        // Restart also recovers workers that stopped after a rejected XI step.
+        physicsLifecycle.resume();lifecycle.resume();
     }
-    boolean isReverseGear(){return reverseGear;}
+    boolean isReverseGear(){return gearbox.isReverse();}
+    boolean isGearPending(){return gearbox.isPending();}
+    boolean isReverseRequested(){return gearbox.requestedReverse();}
     boolean isBrakePressed(){return (input&2)!=0;}
     boolean isAccelerating(){return (input&1)!=0;}
     boolean setReverseGear(boolean reverse){
         VelocityXiEngine.Snapshot s=game.current();
-        // A stationary-only gear selector avoids reversing a moving drivetrain.
-        if(s!=null&&s.speedCmps>25)return false;
-        reverseGear=reverse;
+        gearbox.request(reverse,s==null?0:s.speedCmps);
+        Log.i("ReverseVelocity","GEAR_REQUEST reverse="+reverse+
+            " pending="+gearbox.isPending()+" speed="+(s==null?0:s.speedCmps));
         return true;
     }
     boolean togglePause(){
@@ -231,6 +235,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     private void runPhysics(){
         long next=SystemClock.elapsedRealtimeNanos();
         long measuredFrom=next;int measuredSteps=0;
+        boolean previousReverse=gearbox.isReverse();
         try{
             while(physicsLifecycle.shouldRun()){
                 if(resetRequested.getAndSet(false)){
@@ -243,9 +248,15 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 }
                 long now=SystemClock.elapsedRealtimeNanos(),wait=next-now;
                 if(wait>0){Thread.sleep(Math.max(1L,wait/1_000_000L));continue;}
-                int current=input;
+                int current=gearbox.prepare(input,game.current().speedCmps);
+                boolean reverse=(current&128)!=0;
+                if(reverse!=previousReverse){
+                    Log.i("ReverseVelocity","GEAR_APPLIED reverse="+reverse+
+                        " ticks="+game.current().ticks);
+                    previousReverse=reverse;
+                }
                 game.step(current&1,(current>>>1)&1,(current>>>2)&3,(current>>>4)&1,
-                     (current&32)!=0,(current&64)!=0,reverseGear,false,assistMode);
+                     (current&32)!=0,(current&64)!=0,reverse,false,assistMode);
                 measuredSteps++;
                 next+=20_000_000L;
                 // Keep fixed XI steps; a slow host does not invent simulation ticks.
@@ -301,9 +312,12 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                         Log.i("ReverseVelocity","FRAME_STATS frames="+frames+
                             " elapsedNanos="+elapsed+" fps="+fps+" width="+width+
                             " height="+height+" ticks="+currentState.ticks+
+                            " xCm="+currentState.xCm+" zCm="+currentState.zCm+
+                            " speed="+currentState.speedCmps+
+                            " reverse="+gearbox.isReverse()+
                             " physicsHz="+physicsHz+" fixedDetail="+selectedFixed+
                             " paused="+paused+
-                            " backend="+(selected4K?"REgraphics_XI_4K_NATIVE":"REgraphics_XI_CPU")+
+                            " backend="+(selected4K?"REgraphics_XI_4K_NATIVE":"REgraphics_XI_NATIVE_LIVE")+
                             " cacheHits="+cacheHits+" xiRenders="+xiRenders);
                         String normal=profiler.drain(false),nativeTimes=profiler.drain(true);
                         if(!normal.isEmpty())Log.i("ReverseVelocity","FRAME_PIPELINE "+normal);
@@ -386,6 +400,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     Log.i("ReverseVelocity","FRAME_READY "+width+"x"+height+
                         " speed="+state.speedKmh()+" ticks="+state.ticks+
                         " xCm="+state.xCm+" zCm="+state.zCm+" yaw4096="+state.yaw4096+
+                        " reverse="+gearbox.isReverse()+
                         " camera="+selectedCamera+" paint="+selectedPaint+" car="+selectedCar);
                 }
                 if(presented)frames++;
@@ -405,8 +420,11 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     fps=(int)Math.round(frames*1_000_000_000.0/elapsed);
                     Log.i("ReverseVelocity","FRAME_STATS frames="+frames+" elapsedNanos="+elapsed+
                         " fps="+fps+" width="+width+" height="+height+" ticks="+state.ticks+
+                        " xCm="+state.xCm+" zCm="+state.zCm+
+                        " speed="+state.speedCmps+
+                        " reverse="+gearbox.isReverse()+
                         " physicsHz="+physicsHz+" fixedDetail="+selectedFixed+" paused="+paused+
-                        " backend="+(selected4K?"REgraphics_XI_4K_NATIVE":"REgraphics_XI_CPU")+
+                        " backend="+(selected4K?"REgraphics_XI_4K_NATIVE":"REgraphics_XI_NATIVE_LIVE")+
                         " cacheHits="+cacheHits+" xiRenders="+xiRenders);
                     String normal=profiler.drain(false),nativeTimes=profiler.drain(true);
                     if(!normal.isEmpty())Log.i("ReverseVelocity","FRAME_PIPELINE "+normal);

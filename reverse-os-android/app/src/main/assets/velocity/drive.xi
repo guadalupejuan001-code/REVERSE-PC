@@ -180,6 +180,9 @@ jne rank
 load8 r0 136
 cmp r0 0
 je assisted_input_done
+load8 r0 133
+cmp r0 1
+je assisted_input_done
 load32 r0 274
 cmp r0 157800
 jlt open_pilot_not_end
@@ -187,9 +190,6 @@ store8 128 0
 store8 129 1
 jmp assisted_input_done
 label open_pilot_not_end
-load8 r0 133
-cmp r0 1
-je assisted_input_done
 load8 r0 131
 cmp r0 1
 je assisted_input_done
@@ -287,6 +287,9 @@ label assisted_input_done
 load8 r0 136
 cmp r0 2
 jne open_pilot_speed_ready
+load8 r0 133
+cmp r0 1
+je open_pilot_speed_ready
 load16 r0 110
 cmp r0 2600
 jle open_pilot_speed_ready
@@ -1038,7 +1041,9 @@ mul r0 2
 add r0 5000
 load16 r0 $r0
 # Reuse the road's authored right normal via its tangent; sine/cos are calculated below.
-store16 542 r5
+mov r6 r5
+add r6 32768
+store16 542 r6
 mov r6 r0
 add r6 1024
 mod r6 4096

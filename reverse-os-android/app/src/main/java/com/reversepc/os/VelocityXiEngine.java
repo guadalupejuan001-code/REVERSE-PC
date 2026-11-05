@@ -103,7 +103,7 @@ final class VelocityXiEngine {
     VelocityXiEngine(Context context)throws Exception{
         driveXi=asset(context,"velocity/drive.xi");
         String world=asset(context,"velocity/world.xi");
-        xiRenderer=asset(context,"velocity/render.xi");
+        xiRenderer=asset(context,"velocity/render-live.xi");
         xiNative4KRenderer=asset(context,"velocity/render-native4k.xi");
         palette=parsePalette(asset(context,"velocity/palette.txt"));
         paletteDusk=parsePalette(asset(context,"velocity/palette-dusk.txt"));
@@ -250,7 +250,7 @@ final class VelocityXiEngine {
         final byte[] frameBytes=NativeRuntime.observeFrame(observation,source);
         final long executeElapsed=System.nanoTime()-executeStart;
         final long decodeStart=System.nanoTime();
-        final RegraphicsFrame frame=RegraphicsFrame.decodeOwned(frameBytes,stride,VelocityWorldLight.palette(palette,paletteDusk,paletteNight,observedState.dayPhase));
+        final RegraphicsFrame frame=RegraphicsFrame.decodeLiveNativeOwned(frameBytes,stride,VelocityWorldLight.palette(palette,paletteDusk,paletteNight,observedState.dayPhase));
         final long decodeElapsed=System.nanoTime()-decodeStart;
         return new Observation(frame,observedState,executeElapsed,decodeElapsed,frameBytes.length);
     }

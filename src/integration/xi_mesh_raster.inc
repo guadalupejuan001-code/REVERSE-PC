@@ -516,9 +516,13 @@ class MachineMeshRaster {
 #endif
     static_assert(max_workers>=1 && max_workers<=8,"XI worker budget must be 1..8");
     const auto available=std::thread::hardware_concurrency();
-    const auto workers=(expected>=std::size_t(1280)*720 &&
-        deferred_faces_.size()>=128 && strips>=8)?
-        std::min<unsigned>(max_workers,std::max(1u,available)):1u;
+    // Live frames use the same exact strip kernel as photographs. Limit them
+    // to two workers so physics and Android presentation retain CPU capacity.
+    const auto worker_cap=expected<std::size_t(1280)*720?
+        std::min<unsigned>(2,max_workers):max_workers;
+    const auto workers=(expected>=std::size_t(320)*180 &&
+        deferred_faces_.size()>=128 && strips>=4)?
+        std::min<unsigned>(worker_cap,std::max(1u,available)):1u;
     native_workers_used_=workers;
     std::atomic<unsigned> next_band{0};
     std::atomic<std::uint64_t> accounted_work{pixel_tests_};

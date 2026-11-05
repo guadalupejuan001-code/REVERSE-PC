@@ -181,3 +181,9 @@ console.log('XI_LANDSCAPE_GEOMETRY_PASS',JSON.stringify(require('./velocity-land
  const nativePath=path.join(path.dirname(destination),'render-native4k.xi');
  fs.writeFileSync(nativePath,nativeSource);
  console.log('XI_NATIVE_4K_SOURCE_READY',JSON.stringify({name:path.basename(nativePath),bytes:nativeSource.length,revision:5}));
+ // The playable path uses exact XFB5 pixels and the same spatial strip kernel.
+ // Keep render.xi as the XFS1 reference for byte-for-byte image comparisons.
+ const reference=fs.readFileSync(destination,'utf8');
+ const live=reference.replace('meshbegin r0 r1 2 0','meshbegin r0 r1 5 0');
+ if(live===reference)throw Error('Expected one live XI meshbegin');
+ fs.writeFileSync(path.join(path.dirname(destination),'render-live.xi'),live);

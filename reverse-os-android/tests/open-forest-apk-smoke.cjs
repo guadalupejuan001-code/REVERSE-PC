@@ -268,7 +268,7 @@ try{
   check(!ui.some(n=>/^VUELTA |^POSICIÓN /.test(n.text||'')),'no closed-race HUD remains');
   check(!!findText(ui,'ACELERAR')&&!!findText(ui,'FRENO')&&!!findText(ui,'NITRO')&&!!findText(ui,'SALTO'),'real driving controls remain usable');
   screenshot('open-world-entry');
-  tapNode(findText(ui,'Marcha D'));ui=waitText(/^Marcha R$/);tapNode(findText(ui,'Marcha R'));ui=waitText(/^Marcha D$/);
+  tapNode(findText(ui,'Reversa R'));ui=waitText(/^Avance D$/);tapNode(findText(ui,'Avance D'));ui=waitText(/^Reversa R$/);
   check(true,'stationary reverse and forward selector work');
   stage='day and night while paused';
   ui=revealToolbar('Hora: auto',false);
@@ -304,6 +304,23 @@ try{
   check(ui.some(n=>/^[1-9]\d* km\/h$/.test(n.text||'')),'pilot accelerates the physical car without a race countdown');
   report.observedSpeedKmh=Number(ui.find(n=>/^[1-9]\d* km\/h$/.test(n.text||'')).text.split(' ')[0]);
   screenshot('driving-open-road');
+  stage='braking and physical reverse';
+  // Request reverse from a paused, genuinely moving XI car. The input adapter
+  // must brake it before selecting R; the accelerator then drives it backwards.
+  tapNode(findText(ui,'Reversa R'));ui=waitText(/^Frenando · R$/);
+  check(true,'moving reverse request visibly waits for braking');
+  const beforeShift=frameRecords(logs()).length;
+  adbText(['shell','input','keyevent','KEYCODE_P']);
+  const stopped=waitProfileFrame(beforeShift,s=>s.reverse===true&&s.speed===0&&s.physicsHz>0,'brake then engage reverse');
+  check(/GEAR_APPLIED reverse=true ticks=/.test(logs()),'actual reverse applies after XI braking');
+  const beforeReverse=frameRecords(logs()).length;
+  tapNode(findText(ui,'ACELERAR'),1800);
+  const backwards=waitProfileFrame(beforeReverse,s=>s.reverse===true&&s.speed>0&&s.zCm<stopped.zCm-100,'backward displacement');
+  check(backwards.zCm<stopped.zCm-100,'reverse pedal moves the physical car backwards by more than one metre');
+  report.reverseMotion={before:stopped,after:backwards,physicalBackwardCm:stopped.zCm-backwards.zCm};
+  adbText(['shell','input','keyevent','KEYCODE_P']);ui=waitText(/EN PAUSA/);
+  check(ui.some(n=>/^R · [1-9]\d* km\/h$/.test(n.text||'')),'reverse direction is explicit on the HUD');
+  screenshot('actual-reverse');
   const timeOf=items=>(items.find(n=>/^\d{2}:\d{2} · /.test(n.text||''))||{}).text;
   const frozen=timeOf(ui);sleep(700);ui=waitText(/EN PAUSA/);check(frozen&&frozen===timeOf(ui),'paused world clock and distance remain stable');
   stage='touch camera';

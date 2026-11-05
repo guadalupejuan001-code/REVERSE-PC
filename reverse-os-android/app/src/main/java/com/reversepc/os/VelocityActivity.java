@@ -10,7 +10,6 @@ import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.os.Bundle;
-import android.os.SystemClock;
 import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
@@ -32,7 +31,6 @@ public final class VelocityActivity extends Activity {
     private VelocityXSurface surface;
     private final VelocityAmbientAudio ambient=new VelocityAmbientAudio();
     private TextView speed,lap,position,timer,status,countdown,warning,renderInfo;
-    private long gearWarningUntil;
     private VelocityCockpitView cockpit;
     private Button gearButton,soundButton;
     private Button pauseButton,native4KButton,hudButton,garageButton,assistButton;
@@ -115,12 +113,7 @@ public final class VelocityActivity extends Activity {
     }
     private void changeGear(){
         if(surface==null||gearButton==null)return;
-        boolean toReverse=!surface.isReverseGear();
-        if(surface.setReverseGear(toReverse)){
-            gearButton.setText(toReverse?"Marcha R":"Marcha D");
-            gearButton.setContentDescription(toReverse?"Cambiar a marcha adelante":"Cambiar a reversa");
-        }else {gearWarningUntil=SystemClock.elapsedRealtime()+1600;
-            changedText(warning,"DETENTE PARA CAMBIAR");}
+        surface.setReverseGear(!surface.isReverseRequested());
     }
     private void togglePause(){
         if(surface==null||surface.is4KEnabled())return;
@@ -142,7 +135,15 @@ public final class VelocityActivity extends Activity {
     private void raceHud(VelocityXiEngine.Snapshot s,boolean paused,String error,int w,int h,int fps){
         if(s==null)return;
         ambient.update(s);if(soundButton!=null)changedText(soundButton,ambient.isEnabled()?"Sonido: on":"Sonido: off");
-        changedText(speed,s.speedKmh()+" km/h");
+        changedText(speed,(surface.isReverseGear()?"R · ":"")+s.speedKmh()+" km/h");
+        if(gearButton!=null){
+            changedText(gearButton,surface.isGearPending()?
+                (surface.isReverseRequested()?"Frenando · R":"Frenando · D"):
+                surface.isReverseGear()?"Avance D":"Reversa R");
+            gearButton.setContentDescription(surface.isGearPending()?
+                "Frenando para cambiar. Toca para cancelar":surface.isReverseGear()?
+                "Cambiar a marcha adelante":"Cambiar a reversa");
+        }
         cockpit.update(s,surface.isReverseGear(),surface.isBrakePressed(),surface.isAccelerating());
         if(nitroButton!=null)nitroButton.setStatus(s.nitroPercent()/100f,s.nitroActive);
         if(jumpButton!=null)jumpButton.setStatus(
@@ -170,7 +171,8 @@ public final class VelocityActivity extends Activity {
             s.driftComboPct>100?
                 "DERRAPE "+s.driftScore+" PTS · x"+String.format(Locale.ROOT,"%.1f",s.driftComboPct/100f):"";
         if(s.openWorld&&roadWarning.isEmpty())roadWarning=s.roadEnd?"CLARO FINAL · PUEDES REGRESAR":s.biome==1?"PUENTE DEL RÍO":s.biome==2?"LAGUNA DE LOS CEDROS":s.ambientMode==2?"NOCHE · FAROS AUTOMÁTICOS":"";
-        if(SystemClock.elapsedRealtime()<gearWarningUntil)roadWarning="DETENTE PARA CAMBIAR";
+        if(surface.isGearPending())roadWarning=surface.isReverseRequested()?
+            "FRENANDO PARA REVERSA":"FRENANDO PARA AVANZAR";
         else if(roadWarning.isEmpty()&&surface.assistMode()>0)
             roadWarning=surface.assistMode()==2?"PILOTO XI":"ASISTIDA XI";
         changedText(warning,roadWarning);
@@ -273,11 +275,11 @@ public final class VelocityActivity extends Activity {
         engine.setContentDescription("Capacidades y límites actuales del renderizador XI");
         engine.setOnClickListener(v->new AlertDialog.Builder(this)
             .setTitle("REgraphics XI • nativo")
-            .setMessage("Open Forest Road 3.0\n\nExplora una carretera forestal de 1,6 km dividida en ocho sectores. El puente y la laguna son zonas del mismo mapa. Al llegar al claro final puedes dar la vuelta o usar reversa.\n\nLa hora cambia automáticamente; puedes elegir día, atardecer o noche. Foto 4K pausa la conducción. Nitidez automática adapta el detalle a la carga del sector.")
+            .setMessage("Open Forest Road 3.1\n\nExplora una carretera forestal de 1,6 km dividida en ocho sectores. El puente y la laguna son zonas del mismo mapa. Al llegar al claro final puedes dar la vuelta o usar reversa.\n\nEl botón Reversa R frena antes de cambiar de marcha si estás avanzando. Acelera para retroceder; Avance D permite regresar a la marcha normal.\n\nLa hora cambia automáticamente; puedes elegir día, atardecer o noche. Foto 4K pausa la conducción. Nitidez automática adapta el detalle a la carga del sector.")
             .setPositiveButton("Entendido",(dialog,which)->dialog.dismiss())
             .show());
         pauseButton=button("Pausa");pauseButton.setOnClickListener(v->togglePause());
-        Button restart=button("Reiniciar");restart.setOnClickListener(v->{releaseControls();surface.reset();pauseButton.setText("Pausa");if(gearButton!=null)gearButton.setText("Marcha D");});
+        Button restart=button("Reiniciar");restart.setOnClickListener(v->{releaseControls();surface.reset();pauseButton.setText("Pausa");if(gearButton!=null)gearButton.setText("Reversa R");});
         Button exit=button("Salir");exit.setOnClickListener(v->finish());
         garageButton=button("Garaje");
         garageButton.setOnClickListener(v->showGarage());
@@ -317,7 +319,7 @@ public final class VelocityActivity extends Activity {
         add(root,bGas,88,92,Gravity.BOTTOM|Gravity.RIGHT,0,0,14,10);
         add(root,bBrake,76,78,Gravity.BOTTOM|Gravity.RIGHT,0,0,114,10);
         add(root,bDrift,88,42,Gravity.BOTTOM|Gravity.LEFT,16,0,0,116);
-        gearButton=button("Marcha D");
+        gearButton=button("Reversa R");
         gearButton.setOnClickListener(v->changeGear());
         add(root,gearButton,80,38,Gravity.TOP|Gravity.RIGHT,0,94,16,0);
         setContentView(root);
@@ -345,7 +347,7 @@ public final class VelocityActivity extends Activity {
         if(key==KeyEvent.KEYCODE_P){if(event.getRepeatCount()==0)togglePause();return true;}
         if(key==KeyEvent.KEYCODE_G){if(event.getRepeatCount()==0)changeGear();return true;}
         if(key==KeyEvent.KEYCODE_C){if(surface!=null)surface.centerCamera();return true;}
-        if(key==KeyEvent.KEYCODE_R){if(surface!=null){releaseControls();surface.reset();}if(pauseButton!=null)pauseButton.setText("Pausa");if(gearButton!=null)gearButton.setText("Marcha D");return true;}
+        if(key==KeyEvent.KEYCODE_R){if(surface!=null){releaseControls();surface.reset();}if(pauseButton!=null)pauseButton.setText("Pausa");if(gearButton!=null)gearButton.setText("Reversa R");return true;}
         if(key==KeyEvent.KEYCODE_W||key==KeyEvent.KEYCODE_DPAD_UP)keyGas=true;
         else if(key==KeyEvent.KEYCODE_S||key==KeyEvent.KEYCODE_DPAD_DOWN)keyBrake=true;
         else if(key==KeyEvent.KEYCODE_A||key==KeyEvent.KEYCODE_DPAD_LEFT)keyLeft=true;
