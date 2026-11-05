@@ -102,19 +102,20 @@ check(boosted.intensity<=.29,'stage brightness exceeded safe clamp');
 check(quiet.intensity<=.07,'reduced-motion show is too bright');
 
 const live=await moduleFile('living-galaxy.js');
+const flow=await moduleFile('note-flow.js');
 const sceneSource=readFileSync(
   new URL('../apps/prisma/web/engine.js',import.meta.url),'utf8'
 ).replace(/^import .*;$/gm,'').replace(/^export /gm,'');
 const Scene=new Function('CubeGPU','NativeXRender','seeded','MusicStageDirector','makeIntelligentChart',
   'makeConcertProgram','concertPose','concertNativeParts','RIG_MAX_CUBOIDS',
   'createSpectacleEvent','pruneSpectacles','spectacleEnvelope','spectacleGeometry',
-  'SPECTACLE_MAX_EVENTS','livingGalaxyFrame','drawLivingGalaxy','overlayPixelRatio',
+  'SPECTACLE_MAX_EVENTS','livingGalaxyFrame','drawLivingGalaxy','overlayPixelRatio','approachSeconds','noteMotion','decorateNotes','NOTE_SIZE',
   sceneSource+';return Scene;')(
     {},{},()=>()=>.5,MusicStageDirector,()=>[],
     concert.makeConcertProgram,concert.concertPose,concert.concertNativeParts,
     concert.RIG_MAX_CUBOIDS,
     createSpectacleEvent,pruneSpectacles,spectacleEnvelope,spectacleGeometry,
-    SPECTACLE_MAX_EVENTS,live.livingGalaxyFrame,live.drawLivingGalaxy,live.overlayPixelRatio
+    SPECTACLE_MAX_EVENTS,live.livingGalaxyFrame,live.drawLivingGalaxy,live.overlayPixelRatio,flow.approachSeconds,flow.noteMotion,flow.decorateNotes,flow.NOTE_SIZE
   );
 const metrics={strokes:0,fills:0},gradient={addColorStop:()=>{}};
 const ctx={
@@ -122,7 +123,7 @@ const ctx={
   translate:()=>{},rotate:()=>{},beginPath:()=>{},closePath:()=>{},
   moveTo:()=>{},lineTo:()=>{},bezierCurveTo:()=>{},arc:()=>{},ellipse:()=>{},
   fillRect:()=>{},strokeRect:()=>{},stroke:()=>metrics.strokes++,
-  rect:()=>{},clip:()=>{},createRadialGradient:()=>gradient,
+  fillText:()=>{},rect:()=>{},clip:()=>{},createRadialGradient:()=>gradient,
   fill:()=>metrics.fills++,createLinearGradient:()=>gradient
 };
 const scene=Object.create(Scene.prototype);

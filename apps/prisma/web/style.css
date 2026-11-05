@@ -22,3 +22,8 @@ html.native-xrender,html.native-xrender body,.native-xrender .app,.native-xrende
 .calibration-reset:hover{border-color:var(--green);background:#1c3828}
 #rendererStatus{font-size:10px;letter-spacing:.15px;color:#a4b7ac}
 @media(max-width:600px){.calibration-actions{justify-content:flex-start}}
+
+/* Musical-input guidance sits below the strike targets, away from arrows. */
+.mechanic-status{display:none;position:absolute;inset:auto 10% 9%;text-align:center;color:#b5d9d1;font:600 10px/1.4 sans-serif;letter-spacing:1.4px;pointer-events:none;z-index:4;text-shadow:0 1px 8px #000}
+.is-session .mechanic-status{display:block}
+@media(max-height:500px){.mechanic-status{font-size:8px;bottom:8%;letter-spacing:1px}}

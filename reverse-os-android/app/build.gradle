@@ -40,7 +40,7 @@ android {
   }
  }
  productFlavors {
-  prisma { dimension 'edition'; versionCode 250; versionName '2.5.0'; applicationId 'org.reverse.prisma'; manifestPlaceholders = [appLabel:'PRISMA']; testInstrumentationRunner 'com.reversepc.os.PrismaTestRunner' }
+  prisma { dimension 'edition'; versionCode 260; versionName '2.6.0'; applicationId 'org.reverse.prisma'; manifestPlaceholders = [appLabel:'PRISMA']; testInstrumentationRunner 'com.reversepc.os.PrismaTestRunner' }
   classic { dimension 'edition'; applicationId 'com.reversepc.os'; manifestPlaceholders = [appLabel:'REVERSE OS'] }
   desktop { dimension 'edition'; applicationId 'com.reversepc.desktop'; manifestPlaceholders = [appLabel:'REVERSE Desktop'] }
   workbench { dimension 'edition'; versionCode 254; versionName '2.5.4-icons'; applicationId 'com.reversepc.workbench'; manifestPlaceholders = [appLabel:'REVERSE Workbench'] }

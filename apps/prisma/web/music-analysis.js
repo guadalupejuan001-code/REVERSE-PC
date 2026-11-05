@@ -207,11 +207,34 @@ export function estimateTempoSegments(peaks, duration, priorBpm = 120) {
   return { bpm: segments[0].bpm, segments, variable: segments.some(s => Math.abs(s.bpm - segments[0].bpm) > 6) };
 }
 
+export function detectSustains(peaks,bands,duration){
+  const channels=[bands.bass,bands.mid,bands.treble],hop=bands.hopSeconds;
+  return peaks.map((p,index)=>{
+    if(!['melody','bass'].includes(p.source))return p;
+    const band=p.source==='bass'?0:1,data=channels[band],at=Math.round(p.t/hop);
+    let attack=0,before=0;
+    for(let i=Math.max(0,at-3);i<Math.min(data.length,at+7);i++)attack=Math.max(attack,data[i]);
+    for(let i=Math.max(0,at-12);i<Math.max(0,at-4);i++)before+=data[i]/8;
+    if(attack<.0001||attack<before*1.4)return p;
+    const floor=before+(attack-before)*.28;
+    let end=Math.min(duration-.12,p.t+1.6),quiet=0,last=at;
+    for(let j=index+1;j<peaks.length&&peaks[j].t<end;j++){
+      if(peaks[j].source===p.source&&peaks[j].strength>.45){end=Math.min(end,peaks[j].t-.10);break;}
+    }
+    for(let i=at+6;i<Math.min(data.length,Math.floor(end/hop));i++){
+      if(data[i]<floor)quiet++;else{quiet=0;last=i;}
+      if(quiet*hop>.05)break;
+    }
+    const sustain=Math.min(end-p.t,last*hop-p.t);
+    return sustain>=.38?{...p,sustain:Math.floor(sustain*100)/100}:p;
+  });
+}
+
 export async function analyseMusicBuffer(buffer) {
   const frames=spectralFrames(buffer);let next;
   do{next=frames.next();if(!next.done)await new Promise(resolve=>setTimeout(resolve,0));}while(!next.done);
   const bands=next.value;
-  const detected = detectMusicalOnsets(bands, buffer.duration);
+  const detected = detectSustains(detectMusicalOnsets(bands, buffer.duration),bands,buffer.duration);
   const tempo = estimateTempoSegments(detected, buffer.duration);
   const fallback = detected.length < Math.min(8, buffer.duration / 3);
   const bpm = tempo.bpm;

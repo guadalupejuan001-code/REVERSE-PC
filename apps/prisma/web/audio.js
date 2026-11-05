@@ -2,8 +2,23 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 export const DEMO_BPM = 122;
 export const DEMO_DURATION = 132 * 60 / DEMO_BPM;
 export function seeded(seed = 1741) { return () => { seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5; return (seed >>> 0) / 4294967296; }; }
+// Map the output-device position onto performance.now(), as specified by Web Audio.
+export function outputClock(ctx,now,enabled=true){
+  const raw=ctx.currentTime;
+  if(!enabled)return {time:raw,mode:'render'};
+  try{
+    const s=ctx.getOutputTimestamp?.();
+    if(s&&s.performanceTime>0&&s.contextTime>0&&Number.isFinite(now)&&
+       now-s.performanceTime>=-10&&now-s.performanceTime<500){
+      const t=s.contextTime+(now-s.performanceTime)/1000;
+      if(t>=raw-1&&t<=raw+.06)return {time:Math.min(raw,t),mode:'device'};
+    }
+  }catch{/* A host without a usable device timestamp retains bounded compensation. */}
+  const delay=clamp((Number(ctx.baseLatency)||0)+(Number(ctx.outputLatency)||0),0,1);
+  return {time:raw-delay,mode:delay?'latency':'render'};
+}
 export class RhythmAudio {
-  constructor() { this.ctx = null; this.buffer = null; this.source = null; this.running = false; this.offset = 0; this.startedAt = 0; this.volume = .65; this.muted = false; }
+  constructor() { this.ctx = null; this.buffer = null; this.source = null; this.running = false; this.offset = 0; this.startedAt = 0; this.volume = .65; this.muted = false; this.outputSync=true;this.syncMode='render';this.lastTime=-Infinity; }
   async init() {
     if (!this.ctx) {
       const Audio = window.AudioContext || window.webkitAudioContext;
@@ -20,10 +35,17 @@ export class RhythmAudio {
   stop() { this.running = false; if (this.source) { try { this.source.stop(); } catch {} this.source.disconnect(); this.source = null; } }
   play(offset = 0, delay = 0) {
     this.stop(); this.offset = offset; this.startedAt = this.ctx.currentTime + delay;
+    this.lastTime=offset-delay-1;
     this.source = this.ctx.createBufferSource(); this.source.buffer = this.buffer; this.source.connect(this.analyser);
     this.source.start(this.startedAt, Math.max(0, offset)); this.running = true;
   }
-  time() { return this.running ? this.offset + this.ctx.currentTime - this.startedAt : this.offset; }
+  time(now=performance.now()) {
+    if(!this.running)return this.offset;
+    const stamp=outputClock(this.ctx,now,this.outputSync);this.syncMode=stamp.mode;
+    const t=this.offset>0?Math.max(this.offset,this.offset+stamp.time-this.startedAt):this.offset+stamp.time-this.startedAt;
+    this.lastTime=Math.max(this.lastTime,t);return this.lastTime;
+  }
+  inputTime(eventStamp){const now=performance.now(),lag=now-eventStamp;return this.time(now)-(Number.isFinite(lag)&&lag>=0&&lag<=100?lag/1000:0);}
   pause() { const t = clamp(this.time(), 0, this.buffer?.duration || 0); this.stop(); this.offset = t; return t; }
   energy() { if (!this.analyser || !this.running) return 0; this.analyser.getByteFrequencyData(this.bins); let sum = 0; for (let i = 1; i < 14; i++) sum += this.bins[i]; return sum / 3315; }
   async decode(file) {
