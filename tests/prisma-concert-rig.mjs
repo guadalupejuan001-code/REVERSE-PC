@@ -12,6 +12,7 @@ const stage=await source('../apps/prisma/web/concert-rig.js');
 const combo=await source('../apps/prisma/web/combo-spectacle.js');
 const live=await source('../apps/prisma/web/living-galaxy.js');
 const flow=await source('../apps/prisma/web/note-flow.js');
+const festival=await source('../apps/prisma/web/festival-worlds.js');
 const {makeConcertProgram, concertSection, concertPose, concertBeat, concertNativeParts,
   RIG_STATIONS, RIG_MAX_CUBOIDS}=stage;
 
@@ -72,10 +73,10 @@ const text=readFileSync(new URL('../apps/prisma/web/engine.js',import.meta.url),
 const Scene=new Function('makeConcertProgram','concertPose','concertNativeParts',
   'RIG_MAX_CUBOIDS','MusicStageDirector','makeIntelligentChart','seeded','CubeGPU','NativeXRender',
   'createSpectacleEvent','pruneSpectacles','spectacleEnvelope','spectacleGeometry','SPECTACLE_MAX_EVENTS',
-  'livingGalaxyFrame','drawLivingGalaxy','overlayPixelRatio','approachSeconds','noteMotion','decorateNotes','NOTE_SIZE',text+';return Scene;')(makeConcertProgram,concertPose,concertNativeParts,RIG_MAX_CUBOIDS,
+  'livingGalaxyFrame','drawLivingGalaxy','overlayPixelRatio','approachSeconds','noteMotion','decorateNotes','NOTE_SIZE','makeFestivalProgram','worldFrame','drawWorld','fireworkFrame','drawFireworks','rewardFirework',text+';return Scene;')(makeConcertProgram,concertPose,concertNativeParts,RIG_MAX_CUBOIDS,
   class{},()=>[],()=>()=>.5,{},{},
   combo.createSpectacleEvent,combo.pruneSpectacles,combo.spectacleEnvelope,
-  combo.spectacleGeometry,combo.SPECTACLE_MAX_EVENTS,live.livingGalaxyFrame,live.drawLivingGalaxy,live.overlayPixelRatio,flow.approachSeconds,flow.noteMotion,flow.decorateNotes,flow.NOTE_SIZE); // Constructor intentionally bypassed.
+  combo.spectacleGeometry,combo.SPECTACLE_MAX_EVENTS,live.livingGalaxyFrame,live.drawLivingGalaxy,live.overlayPixelRatio,flow.approachSeconds,flow.noteMotion,flow.decorateNotes,flow.NOTE_SIZE,festival.makeFestivalProgram,festival.worldFrame,festival.drawWorld,festival.fireworkFrame,festival.drawFireworks,festival.rewardFirework); // Constructor intentionally bypassed.
 const scene=Object.create(Scene.prototype);
 const drawn=[],canvas={dataset:{}};
 scene.gpu={native:true,count:63,cube:(...p)=>{drawn.push(p);scene.gpu.count++;}};
@@ -126,7 +127,7 @@ gameplay.width=880;gameplay.height=440;gameplay.dpr=1;
 gameplay.paletteKey='';gameplay.rgb=[];gameplay.view=new Float32Array(4);
 gameplay.energy=0;gameplay.pulse=0;gameplay.shake=0;gameplay.diagnostics=false;
 gameplay.musicStage=null;gameplay.concertProgram=previews;
-gameplay.qualityScale=1;
+gameplay.qualityScale=1;gameplay.festivalProgram=festival.makeFestivalProgram(null);gameplay.rewardShells=[];
 gameplay.visualState={quality:'balanced',slowFrames:0,fastFrames:0,cooldownUntil:0};
 gameplay.cutRings=[];gameplay.stageExplosions=[];gameplay.particles=[];gameplay.shards=[];gameplay.trails=new Map();
 const packed=Array.from({length:80},(_,i)=>({

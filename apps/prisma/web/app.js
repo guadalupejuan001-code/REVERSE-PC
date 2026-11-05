@@ -3,12 +3,15 @@ import { Scene, makeChart, DIRECTIONS, PALETTES } from './engine.js';
 import { hitWindowFor, isEndOfSong, nearestSwipeNote, nearestKeyNote, timingLabel, timingGrade } from './rhythm-qa.js';
 import { makeMusicStage } from './music-stage.js';
 import { SustainController, PhraseController } from './note-flow.js';
+import { WORLDS, WORLD_IDS, Constellation } from './festival-worlds.js';
 const $ = id => document.getElementById(id);
 const all = selector => [...document.querySelectorAll(selector)];
 const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
 const formatTime = seconds => { const s=Math.max(0,Math.floor(seconds));return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; };
 let saved={};try{saved=JSON.parse(localStorage.getItem('prisma.settings')||'{}')||{};}catch{}
 const settings={quality:['auto','high','battery'].includes(saved.quality)?saved.quality:'auto',palette:['coral','violet','ice'].includes(saved.palette)?saved.palette:'coral',stageStyle:['galaxy','club','classic'].includes(saved.stageStyle)?saved.stageStyle:'galaxy',mechanics:saved.mechanics!==false,autoSync:saved.autoSync!==false,precise:!!saved.precise,effects:saved.effects??matchMedia('(prefers-reduced-motion: reduce)').matches,latency:clamp(Number(saved.latency)||0,-200,200),volume:clamp(saved.volume??65,0,100)};
+settings.world=['journey',...WORLD_IDS].includes(saved.world)?saved.world:'journey';settings.fireworks=saved.fireworks!==false;
+const constellation=new Constellation();
 let records=[];try{records=JSON.parse(localStorage.getItem('prisma.records')||'[]');if(!Array.isArray(records))records=[];}catch{}
 const audio=new RhythmAudio();audio.volume=settings.volume/100;audio.outputSync=settings.autoSync;
 const scene=new Scene($('game'),()=>settings);
@@ -71,6 +74,11 @@ function updateScores(){
   $('score').textContent=String(score).padStart(6,'0');$('combo').textContent=combo;
   $('accuracy').textContent=`${hits+misses?Math.round(timingPoints/(hits+misses)*100):100}% A TIEMPO`;
 }
+function updateConstellation(){
+  $('constellationCount').textContent=constellation.charge+'/8';$('constellationTotal').textContent=String(constellation.completed);
+  all('#constellationStars i').forEach((p,i)=>p.classList.toggle('lit',i<constellation.charge));
+  $('game').dataset.constellations=String(constellation.completed);$('game').dataset.starCharge=String(constellation.charge);
+}
 function bestForTrack(){return Math.max(0,...records.filter(r=>r.track===track.name&&r.level===level).map(r=>r.score));}
 async function startGame(){
   if(booting)return;booting=true;const thisRun=++runId;
@@ -100,6 +108,7 @@ async function startGame(){
     chart=makeChart(peaks,level,track.demo?7721:Math.round(track.duration*173),musicMap);
     if(!chart.length)throw new Error('No hay suficientes golpes para una partida. Prueba con una canción más larga.');
     score=combo=maxCombo=hits=misses=missIndex=timingPoints=holdsDone=0;activePointers.clear();activeKeys.clear();sustains.clear();phrases.reset();scene.clearEffects();
+    constellation.reset();updateConstellation();
      scene.setMusicStage(musicMap,level);frozenTime=0;
     $('game').dataset.holdCount=String(chart.filter(n=>n.kind==='hold').length);
     $('game').dataset.chainCount=String(new Set(chart.filter(n=>Number.isInteger(n.phrase)).map(n=>n.phrase)).size);
@@ -123,6 +132,7 @@ async function finishGame(){
   $('resultRank').textContent=accuracy>=97?'S':accuracy>=85?'A':accuracy>=65?'B':accuracy>=40?'C':'D';
   $('resultTitle').textContent=accuracy>=85?'Ese es tu flow.':accuracy>=40?'El ritmo está en ti.':'Tu próximo flow te espera.';
   $('resultScore').textContent=score.toLocaleString('es');$('resultHits').textContent=hits;$('resultAccuracy').textContent=`${accuracy}%`;$('resultCombo').textContent=maxCombo;
+  $('festivalResult').textContent=`${constellation.completed} ${constellation.completed===1?'constelación':'constelaciones'} · ${holdsDone} sostenidas · ${phrases.completed} frases`;
   $('recordNotice').textContent=score>previous?'NUEVO RÉCORD PERSONAL':hits?'Cada sesión te lleva un poco más lejos.':'Sigue las flechas o toca los cubos en modo Flow.';
   if(score>0){const r={track:track.name,level,score,accuracy,combo:maxCombo,date:Date.now()};records=records.filter(item=>!(item.track===r.track&&item.level===r.level&&item.score<=score));records.push(r);records.sort((a,b)=>b.score-a.score);records=records.slice(0,30);try{localStorage.setItem('prisma.records',JSON.stringify(records));}catch{}}
   $('elapsed').textContent=formatTime(Math.round(track.duration));drawWave(1);$('replayBtn').focus({preventScroll:true});
@@ -131,6 +141,7 @@ const hitWindow=()=>hitWindowFor(level);
 function failNote(note){
   if(note.hit||note.missed)return;note.missed=true;note.holding=false;
   misses++;combo=0;phrases.miss(note);scene.cancelCombo();if(nativeGraphics)nativeEvent(2,0);
+  constellation.miss();updateConstellation();
 }
 function completeNote(note,t,grade,dx=0,dy=-35,isKey=false){
   if(note.hit||note.missed)return false;
@@ -140,9 +151,10 @@ function completeNote(note,t,grade,dx=0,dy=-35,isKey=false){
   if(nativeGraphics)nativeEvent(1,grade.base);
   const p=scene.noteProjection(note,t,settings.latency/1000);scene.burst(note,p,dx||15,dy||-35,grade.perfect?1:.6);
   const phrase=phrases.hit(note);
+  const star=constellation.hit(grade.base);if(star)scene.celebrateConstellation(t-settings.latency/1000,constellation.completed);updateConstellation();
   if(phrase){scene.celebratePhrase(t-settings.latency/1000);$('game').dataset.phrasesCompleted=String(phrases.completed);}
   if(note.kind==='hold'){$('game').dataset.holdCompletions=String(++holdsDone);}
-  feedback(phrase?'FRASE COMPLETA':note.kind==='hold'?'SOSTENIDA':grade.label,PALETTES[settings.palette][note.color]);
+  feedback(star?'CONSTELACIÓN COMPLETA':phrase?'FRASE COMPLETA':note.kind==='hold'?'SOSTENIDA':grade.label,PALETTES[settings.palette][note.color]);
   if(navigator.vibrate&&!settings.effects&&!isKey)navigator.vibrate(8);
   updateScores();return true;
 }
@@ -255,6 +267,18 @@ all('.close-dialog').forEach(b=>b.addEventListener('click',()=>b.closest('dialog
 all('dialog').forEach(dialog=>dialog.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();}}));
 function renderRecords(){const list=$('recordList');list.replaceChildren();if(!records.length){const p=document.createElement('p');p.className='dialog-lead';p.textContent='Tu primera marca todavía está por escribirse. Completa una pista y vuelve aquí.';list.append(p);return;}for(const r of records.slice(0,8)){const row=document.createElement('div'),meta=document.createElement('span'),small=document.createElement('small'),value=document.createElement('strong');meta.textContent=r.track;small.textContent=`${levelNames[r.level]||'Flow'} · ${r.accuracy}% precisión · ${r.combo} combo`;meta.append(small);value.textContent=r.score.toLocaleString('es');row.append(meta,value);list.append(row);}}
 $('mechanics').checked=settings.mechanics;$('autoSync').checked=settings.autoSync;
+$('world').value=settings.world;$('fireworks').checked=settings.fireworks;
+function selectWorld(id){
+  if(!['journey',...WORLD_IDS].includes(id))return;
+  settings.world=id;$('world').value=id;sceneDirty=true;persistSettings();
+  const name=id==='journey'?'Viaje de cinco mundos':WORLDS.find(w=>w.id===id).name;
+  $('worldPickerName').textContent=name;
+  all('[data-world]').forEach(b=>{const on=b.dataset.world===id;b.classList.toggle('selected',on);b.setAttribute('aria-pressed',String(on));});
+}
+selectWorld(settings.world);
+all('[data-world]').forEach(b=>b.addEventListener('click',()=>{selectWorld(b.dataset.world);$('worldsDialog').close();}));
+$('world').addEventListener('change',e=>selectWorld(e.target.value));
+$('fireworks').addEventListener('change',e=>{settings.fireworks=e.target.checked;sceneDirty=true;persistSettings();});
 $('quality').value=settings.quality;$('palette').value=settings.palette;$('stageStyle').value=settings.stageStyle;$('precise').checked=settings.precise;$('effects').checked=settings.effects;$('latency').value=settings.latency;$('volume').value=settings.volume;$('latencyValue').textContent=`${settings.latency>0?'+':''}${settings.latency} ms`;
 function updatePalette(){sceneDirty=true;const palette=PALETTES[settings.palette];document.documentElement.style.setProperty('--green',palette[0]);document.documentElement.style.setProperty('--coral',palette[1]);all('.palette-legend>span')[0].lastChild.textContent=settings.palette==='ice'?'HIELO':'ESMERALDA';all('.palette-legend>span')[1].lastChild.textContent=settings.palette==='violet'?'VIOLETA':'CORAL';}
 $('mechanics').addEventListener('change',e=>{settings.mechanics=e.target.checked;persistSettings();toast('Se aplicará al iniciar la siguiente partida.');});
@@ -321,6 +345,9 @@ function frame(now){
   const preview=!['playing','paused','ended','finishing'].includes(status);
   if(landscape&&!document.hidden&&(status==='playing'||sceneDirty||(preview&&now-lastScene>32))){scene.render(preview?now/1000:t,dt,chart,preview,audio.energy(),settings.latency/1000,status==='playing'||preview);sceneDirty=false;lastScene=now;}
   if(status==='playing')scene.adapt(Math.min(.2,(now-lastFrameAt)/1000),now);lastFrameAt=now;
+  const worldId=$('game').dataset.world,worldName=WORLDS.find(w=>w.id===worldId)?.name||'Galaxia viva';
+  const worldText=settings.world==='journey'?`${worldName} · ${$('game').dataset.chapter||1}/${$('game').dataset.chapterCount||1}`:worldName;
+  if($('worldStatus').textContent!==worldText)$('worldStatus').textContent=worldText;
   if(now-lastUI>90){lastUI=now;if(status==='playing'){const elapsed=formatTime(t);if(elapsed!==lastElapsed){$('elapsed').textContent=elapsed;lastElapsed=elapsed;}drawWave(clamp(t/track.duration,0,1));}}
   requestAnimationFrame(frame);
 }

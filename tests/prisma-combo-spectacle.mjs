@@ -103,19 +103,20 @@ check(quiet.intensity<=.07,'reduced-motion show is too bright');
 
 const live=await moduleFile('living-galaxy.js');
 const flow=await moduleFile('note-flow.js');
+const festival=await moduleFile('festival-worlds.js');
 const sceneSource=readFileSync(
   new URL('../apps/prisma/web/engine.js',import.meta.url),'utf8'
 ).replace(/^import .*;$/gm,'').replace(/^export /gm,'');
 const Scene=new Function('CubeGPU','NativeXRender','seeded','MusicStageDirector','makeIntelligentChart',
   'makeConcertProgram','concertPose','concertNativeParts','RIG_MAX_CUBOIDS',
   'createSpectacleEvent','pruneSpectacles','spectacleEnvelope','spectacleGeometry',
-  'SPECTACLE_MAX_EVENTS','livingGalaxyFrame','drawLivingGalaxy','overlayPixelRatio','approachSeconds','noteMotion','decorateNotes','NOTE_SIZE',
+  'SPECTACLE_MAX_EVENTS','livingGalaxyFrame','drawLivingGalaxy','overlayPixelRatio','approachSeconds','noteMotion','decorateNotes','NOTE_SIZE','makeFestivalProgram','worldFrame','drawWorld','fireworkFrame','drawFireworks','rewardFirework',
   sceneSource+';return Scene;')(
     {},{},()=>()=>.5,MusicStageDirector,()=>[],
     concert.makeConcertProgram,concert.concertPose,concert.concertNativeParts,
     concert.RIG_MAX_CUBOIDS,
     createSpectacleEvent,pruneSpectacles,spectacleEnvelope,spectacleGeometry,
-    SPECTACLE_MAX_EVENTS,live.livingGalaxyFrame,live.drawLivingGalaxy,live.overlayPixelRatio,flow.approachSeconds,flow.noteMotion,flow.decorateNotes,flow.NOTE_SIZE
+    SPECTACLE_MAX_EVENTS,live.livingGalaxyFrame,live.drawLivingGalaxy,live.overlayPixelRatio,flow.approachSeconds,flow.noteMotion,flow.decorateNotes,flow.NOTE_SIZE,festival.makeFestivalProgram,festival.worldFrame,festival.drawWorld,festival.fireworkFrame,festival.drawFireworks,festival.rewardFirework
   );
 const metrics={strokes:0,fills:0},gradient={addColorStop:()=>{}};
 const ctx={
