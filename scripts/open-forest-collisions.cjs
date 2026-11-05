@@ -16,6 +16,8 @@ add r1 5500
 load8 r1 $r1
 cmp r1 1
 je open_prop_next_row
+cmp r1 5
+je open_prop_next_row
 localset 3504 r1
 localset 3502 0
 label open_prop_slot
@@ -29,8 +31,11 @@ mod r1 10
 cmp r1 9
 je open_prop_next_slot
 set r2 270
+cmp r1 7
+je wetlands_rock_collision
 cmp r1 8
 jne open_prop_radius_ready
+label wetlands_rock_collision
 load16 r1 384
 cmp r1 140
 jgt open_prop_next_slot
@@ -48,6 +53,11 @@ label open_prop_bank_ready
 mul r0 73
 mod r0 2500
 add r0 470
+localget r1 3503
+cmp r1 500
+jne wetlands_rock_offset_ready
+add r0 250
+label wetlands_rock_offset_ready
 localget r1 3502
 mod r1 2
 mul r1 2

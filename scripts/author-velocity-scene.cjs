@@ -81,7 +81,7 @@ for(let b=0;b<bands.length;b++){out(`load8 r0 8201\ncmp r0 ${b}\njne band_${b}_s
 out('jmp next_segment\nlabel band_ready');
 store('r0',8214,2,32768);store('r1',8216,2,32768);store('r2',8218,2,0);store('r3',8222,2,0);
 // River and lake cut-outs are driven by the same finite biome table as collision.
-out('load8 r0 8200\nadd r0 5500\nload8 r0 $r0\ncmp r0 1\nje open_river_band\ncmp r0 2\njne open_road_band_ready\nload8 r0 8201\ncmp r0 6\nje next_band\njmp open_road_band_ready\nlabel open_river_band\nload8 r0 8201\ncmp r0 0\nje next_band\ncmp r0 6\nje next_band\nlabel open_road_band_ready');
+out('load8 r0 8200\nadd r0 5500\nload8 r0 $r0\ncmp r0 1\nje open_river_band\ncmp r0 5\nje open_river_band\ncmp r0 2\njne open_road_band_ready\nload8 r0 8201\ncmp r0 6\nje next_band\njmp open_road_band_ready\nlabel open_river_band\nload8 r0 8201\ncmp r0 0\nje next_band\ncmp r0 6\nje next_band\nlabel open_road_band_ready\nload8 r0 8200\nadd r0 5500\nload8 r0 $r0\ncmp r0 4\njlt open_edge_ready\nload8 r0 8220\ncmp r0 206\njne open_edge_ready\nstore8 8220 208\nlabel open_edge_ready');
 function roadVertex(tuple,endpoint,side){const[x,y,z]=tuple;
  out(`load8 r9 8200\nadd r9 ${endpoint}\nmul r9 2\nadd r9 1600\nmeshread ${x} ${y} ${z} r9\nadd r9 1\nmeshread r9 r10 r11 r9`);
  load('r12',side?8216:8214,2,32768);
@@ -108,7 +108,8 @@ for(const tri of [[[0,0],[1,0],[1,1]],[[0,0],[1,1],[0,1]]]){
  out('load8 r12 8200\nmod r12 7\ncmp r12 3\njle '+darker+
    '\nset r12 42\njmp '+toneDone+
    '\nlabel '+darker+'\nset r12 40\nlabel '+toneDone);
- out('meshfacegradienttex 1770 1771 1772 r12 12 5 3 r9 r10 r11 60\njmp '+done+'\nlabel '+verge);
+ const mud=label('wet_road');out('load8 r0 8200\nadd r0 5500\nload8 r0 $r0\ncmp r0 4\njge '+mud);
+ out('meshfacegradienttex 1770 1771 1772 r12 12 5 3 r9 r10 r11 60\njmp '+done+'\nlabel '+mud+'\nmeshfacegradienttex 1770 1771 1772 9 3 7 2 r9 r10 r11 60\njmp '+done+'\nlabel '+verge);
  for(let i=0;i<3;++i)out('meshvertex '+(1770+i)+' r'+(3*i)+' r'+(3*i+1)+' r'+(3*i+2));
  for(let i=0;i<3;++i){
   const [endpoint,side]=tri[i],id=1770+i;

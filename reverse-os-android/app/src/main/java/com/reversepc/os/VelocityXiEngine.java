@@ -25,8 +25,9 @@ final class VelocityXiEngine {
         final boolean drafting;
         final boolean openWorld,roadEnd;
         final int groundHeightCm,sector,dayPhase,ambientMode,biome;
+        final int waterDepthCm,wetness,splash;
         Snapshot(long[] values){
-            if(values==null||(values.length!=26&&values.length!=32))throw new IllegalArgumentException("XI output needs 26 race or 32 world registers");
+            if(values==null||(values.length!=26&&values.length!=32&&values.length!=35))throw new IllegalArgumentException("XI output needs 26, 32 or 35 world registers");
             for(int i=2;i<values.length;i++)if(values[i]<Integer.MIN_VALUE||values[i]>Integer.MAX_VALUE)
                 throw new IllegalArgumentException("XI race register exceeds integer range");
             xCm=values[0];zCm=values[1];yaw4096=(int)values[2];
@@ -41,14 +42,18 @@ final class VelocityXiEngine {
             jumpCooldown=(int)values[20];landingPulse=values[21]==1;
             driftScore=(int)values[22];driftComboPct=(int)values[23];
             drafting=values[24]==1;surface=(int)values[25];
-            openWorld=values.length==32;
+            openWorld=values.length>=32;
             groundHeightCm=openWorld?(int)values[26]:0;sector=openWorld?(int)values[27]:0;
             dayPhase=openWorld?(int)values[28]:0;ambientMode=openWorld?(int)values[29]:0;
             biome=openWorld?(int)values[30]:0;roadEnd=openWorld&&values[31]==1;
-            if(groundHeightCm<0||groundHeightCm>600||sector<0||sector>7||dayPhase<0||dayPhase>=4096||ambientMode<0||ambientMode>2||biome<0||biome>4)
+            waterDepthCm=values.length>=35?(int)values[32]:0;
+            wetness=values.length>=35?(int)values[33]:0;splash=values.length>=35?(int)values[34]:0;
+            if(waterDepthCm<0||waterDepthCm>40||wetness<0||wetness>1000||splash<0||splash>255)
+                throw new IllegalArgumentException("XI wetland observation outside limits");
+            if(groundHeightCm<0||groundHeightCm>600||sector<0||sector>7||dayPhase<0||dayPhase>=4096||ambientMode<0||ambientMode>2||biome<0||biome>5)
                 throw new IllegalArgumentException("XI world state outside limits");
             if(driftScore<0||driftScore>9_999_999||driftComboPct<100||driftComboPct>400||
-                    values[24]<0||values[24]>1||surface<0||surface>3)
+                    values[24]<0||values[24]>1||surface<0||surface>4)
                 throw new IllegalArgumentException("XI drift/rebufo/surface state outside limits");
             if(nitroCharge<0||nitroCharge>1000||values[17]<0||values[17]>1||
                     jumpHeightCm<0||jumpHeightCm>300||airPulse<0||airPulse>30||
@@ -73,6 +78,7 @@ final class VelocityXiEngine {
     private final String driveXi;
     private final String xiRenderer;
     private final String xiNative4KRenderer;
+    private final String xiGpuRenderer;
     private final Object renderSourceLock=new Object();
     private String renderProgramCache,driveProgramCache;
     private int renderProgramKey=-1,driveProgramKey=-1;
@@ -92,11 +98,17 @@ final class VelocityXiEngine {
         // pixels; decodeNanos covers validation and ownership transfer only.
         final long executeNanos,decodeNanos;
         final int payloadBytes;
+        final RegraphicsGeometry geometry;
+        final int[] colors;
         Observation(RegraphicsFrame frame,Snapshot state,long executeNanos,
                     long decodeNanos,int payloadBytes){
             this.frame=frame;this.state=state;
             this.executeNanos=executeNanos;this.decodeNanos=decodeNanos;
             this.payloadBytes=payloadBytes;
+            geometry=null;colors=null;
+        }
+        Observation(RegraphicsGeometry geometry,int[] colors,Snapshot state,long executeNanos,long decodeNanos,int bytes){
+            frame=null;this.geometry=geometry;this.colors=colors;this.state=state;this.executeNanos=executeNanos;this.decodeNanos=decodeNanos;payloadBytes=bytes;
         }
     }
 
@@ -105,6 +117,7 @@ final class VelocityXiEngine {
         String world=asset(context,"velocity/world.xi");
         xiRenderer=asset(context,"velocity/render-live.xi");
         xiNative4KRenderer=asset(context,"velocity/render-native4k.xi");
+        xiGpuRenderer=asset(context,"velocity/render4k.xi");
         palette=parsePalette(asset(context,"velocity/palette.txt"));
         paletteDusk=parsePalette(asset(context,"velocity/palette-dusk.txt"));
         paletteNight=parsePalette(asset(context,"velocity/palette-night.txt"));
@@ -159,17 +172,17 @@ final class VelocityXiEngine {
     }
 
     private static Snapshot parseState(String output)throws Exception{
-        long[] observed=new long[32];int n=0;
+        long[] observed=new long[35];int n=0;
         for(String line:output.split("\n")){
             if(line.trim().isEmpty())continue;
-            if(n>=32)throw new IllegalArgumentException("XI game published too many registers");
+            if(n>=35)throw new IllegalArgumentException("XI game published too many registers");
             JSONObject row=new JSONObject(line);
             if(!"register".equals(row.getString("type"))||
                !("r"+(n%16)).equals(row.getString("register")))
                 throw new IllegalArgumentException("XI game register order mismatch");
             observed[n++]=row.getLong("value");
         }
-        if(n!=26&&n!=32)throw new IllegalArgumentException("Incomplete XI game observation");
+        if(n!=26&&n!=32&&n!=35)throw new IllegalArgumentException("Incomplete XI game observation");
         return new Snapshot(java.util.Arrays.copyOf(observed,n));
     }
 
@@ -210,6 +223,19 @@ final class VelocityXiEngine {
      */
     RegraphicsFrame renderFrame(int stride,int camera,int paint)throws Exception{
         return observeFrame(stride,camera,paint).frame;
+    }
+    Observation observeGpuFrame(int camera,int paint,int car,int yaw,int pitch)throws Exception{
+        if(camera<0||camera>2||paint<0||paint>4||car<0||car>=3||yaw<0||yaw>=4096||pitch<0||pitch>=512)
+            throw new IllegalArgumentException("XI GPU view controls outside range");
+        final byte[] retained;final Snapshot state;
+        synchronized(this){retained=privateState.clone();state=snapshot;}
+        final int[] addresses={200,201,202,203,204,205,206,207};
+        final byte[] inputs={1,(byte)camera,(byte)paint,(byte)car,(byte)yaw,(byte)(yaw>>>8),(byte)pitch,(byte)(pitch>>>8)};
+        long start=System.nanoTime();byte[] raw=NativeRuntime.observeGeometry(retained,xiGpuRenderer,addresses,inputs);
+        long execute=System.nanoTime()-start;start=System.nanoTime();
+        RegraphicsGeometry geometry=RegraphicsGeometry.decodeOwned(raw);
+        int[] colors=VelocityWorldLight.palette(palette,paletteDusk,paletteNight,state.dayPhase);
+        return new Observation(geometry,colors,state,execute,System.nanoTime()-start,raw.length);
     }
     Observation observeFrame(int stride,int camera,int paint)throws Exception{
         return observeFrame(stride,camera,paint,0);

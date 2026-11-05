@@ -110,12 +110,12 @@ function waitNative4KFrame(){
   for(let i=0;i<100;i++){
     const text=logs();checkNoFailure(text);
     const line=text.split(/\r?\n/).find(x=>
-      /ReverseVelocity.*NATIVE_4K_FRAME_READY source=XI_XFB5/.test(x));
+      /ReverseVelocity.*NATIVE_4K_FRAME_READY source=XI_XFG4_GLSL/.test(x));
     if(line){
       const match=/width=(\d+) height=(\d+) pixels=(\d+)/.exec(line);
       assert(match,'XI 4K telemetry dimensions absent: '+line);
       return {width:Number(match[1]),height:Number(match[2]),pixels:Number(match[3]),
-        source:'XI / REgraphics XFB5',log:line.trim()};
+        source:'XI XFG4 / REgraphics GLSL',log:line.trim()};
     }
     if(/Native XI 4K unavailable on this device/.test(text))
       throw Error('Native XI renderer could not produce 4K pixels');
@@ -268,6 +268,8 @@ try{
   check(!ui.some(n=>/^VUELTA |^POSICIÓN /.test(n.text||'')),'no closed-race HUD remains');
   check(!!findText(ui,'ACELERAR')&&!!findText(ui,'FRENO')&&!!findText(ui,'NITRO')&&!!findText(ui,'SALTO'),'real driving controls remain usable');
   screenshot('open-world-entry');
+  check(/GPU_SHADERS_READY owner=REgraphics geometry=XI_XFG4/.test(logs()),'own REgraphics shaders compiled on Android GPU');
+  check(/GPU_FRAME_READY source=XI_XFG4 shaders=REgraphics/.test(logs()),'actual XI geometry rendered through GPU');
   tapNode(findText(ui,'Reversa R'));ui=waitText(/^Avance D$/);tapNode(findText(ui,'Avance D'));ui=waitText(/^Reversa R$/);
   check(true,'stationary reverse and forward selector work');
   stage='day and night while paused';
@@ -304,6 +306,13 @@ try{
   check(ui.some(n=>/^[1-9]\d* km\/h$/.test(n.text||'')),'pilot accelerates the physical car without a race countdown');
   report.observedSpeedKmh=Number(ui.find(n=>/^[1-9]\d* km\/h$/.test(n.text||'')).text.split(' ')[0]);
   screenshot('driving-open-road');
+  stage='GPU nitro and pneumatic jump';
+  adbText(['shell','input','keyevent','KEYCODE_P']);
+  tapNode(findText(ui,'NITRO'),1200);
+  tapNode(findText(ui,'SALTO'),550);sleep(200);screenshot('gpu-air-and-nitro');
+  adbText(['shell','input','keyevent','KEYCODE_P']);ui=waitText(/EN PAUSA/);
+  check(/GPU_FX_STATE nitro=true.*emittedNitro=[1-9]/.test(logs()),'rear nitro emits actual XI triangles on GPU');
+  check(/GPU_FX_STATE .*air=true.*emittedAir=[1-9]/.test(logs()),'wheel air jets emit actual XI triangles on GPU');
   stage='braking and physical reverse';
   // Request reverse from a paused, genuinely moving XI car. The input adapter
   // must brake it before selecting R; the accelerator then drives it backwards.
@@ -339,12 +348,13 @@ try{
   }
   check(orbitRendered,'touch orbit posts a new XI world view');screenshot('forest-orbit');
   stage='native photo';ui=revealToolbar('Foto 4K',false);tapNode(findText(ui,'Foto 4K'));ui=waitText(/^Salir 4K$/);report.native4K=waitNative4KFrame();
+  check(/GPU_NATIVE_4K_PIXELS source=XI_XFG4_GLSL width=3840 height=2160 pixels=8294400 sha256=[a-f0-9]{64}/.test(logs()),'all 8.3 million GPU photo pixels read back and hashed');
   check(report.native4K.width===3840&&report.native4K.height===2160,'world photo uses original 3840x2160 XI pixels');screenshot('open-world-photo-4k');
   tapNode(findText(ui,'Salir 4K'));ui=waitText(/^Foto 4K$/);check(true,'returns from photo to the adaptive world profile');
   stage='background resume';adbText(['shell','input','keyevent','KEYCODE_HOME']);sleep(300);const count=markerLines(logs()).length;
   adbText(['shell','am','start','-W','-n',component]);rememberPid();resumedMarker=waitFrame(count);check(!!resumedMarker,'world survives Activity pause and resume');
   ui=waitText(/OPEN FOREST ROAD/);check(ui.length>0,'exploration HUD survives resume');
-  const finalLogs=logs();checkNoFailure(finalLogs);check(true,'no fatal Java, native or XI failure');
+  const finalLogs=logs();checkNoFailure(finalLogs);check(!/GPU_FALLBACK/.test(finalLogs),'GPU remains active through driving, orbit, photo and resume');check(true,'no fatal Java, native or XI failure');
   report.frameStats=frameRecords(finalLogs);report.passed=true;report.initialFrame=initialMarker;report.resumedFrame=resumedMarker;
 }catch(error){
   report.error=String(error.stack||error);report.failedStage=stage;

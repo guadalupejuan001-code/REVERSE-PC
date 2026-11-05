@@ -137,6 +137,9 @@ store16 524 0
 store8 526 0
 store8 527 0
 store32 528 0
+store16 544 0
+store16 546 0
+store8 548 0
 # BEGIN V23 RIG INITIALIZE
 # V2.3 secondary-motion state, centimetres in Q8.
 store8 496 35
@@ -296,6 +299,24 @@ jle open_pilot_speed_ready
 store8 128 0
 store8 129 1
 label open_pilot_speed_ready
+load8 r0 136
+cmp r0 2
+jne wetlands_pilot_ready
+load8 r0 133
+cmp r0 1
+je wetlands_pilot_ready
+load8 r0 523
+set r1 1800
+cmp r0 5
+jne wetlands_pilot_limit
+set r1 1000
+label wetlands_pilot_limit
+load16 r0 110
+cmp r0 r1
+jle wetlands_pilot_ready
+store8 128 0
+store8 129 1
+label wetlands_pilot_ready
 store8 283 0
 # Nitro reservoir: 4 seconds of boost, 10 seconds of normal recharge.
 load16 r0 380
@@ -377,6 +398,13 @@ set r0 0
 store8 388 10
 store8 391 1
 label jump_still_flying
+cmp r1 0
+jle wetlands_air_ready
+load8 r3 388
+cmp r3 6
+jge wetlands_air_ready
+store8 388 6
+label wetlands_air_ready
 store16 384 r1
 add r0 10000
 store16 386 r0
@@ -549,8 +577,13 @@ add r1 250
 label no_drift_drag
 load8 r6 489
 cmp r6 3
+jne wetlands_ford_drag
+add r1 650
+jmp open_dry_drag
+label wetlands_ford_drag
+cmp r6 4
 jne open_dry_drag
-add r1 1200
+add r1 480
 label open_dry_drag
 sub r0 r1
 mul r0 20
@@ -579,6 +612,13 @@ cmp r4 800
 jle reverse_speed_limit_ready
 set r4 800
 label reverse_speed_limit_ready
+load8 r6 489
+cmp r6 4
+jne wetlands_speed_ready
+cmp r4 1400
+jle wetlands_speed_ready
+set r4 1400
+label wetlands_speed_ready
 set r6 24
 load8 r0 489
 cmp r0 1
@@ -592,8 +632,13 @@ set r6 17
 label paved_grip
 load8 r0 489
 cmp r0 3
+jne wetlands_ford_grip
+set r6 12
+jmp open_dry_grip
+label wetlands_ford_grip
+cmp r0 4
 jne open_dry_grip
-set r6 6
+set r6 9
 label open_dry_grip
 load8 r0 131
 cmp r0 1
@@ -997,15 +1042,140 @@ label open_turnout_ready
 load8 r0 523
 cmp r0 4
 jne open_mud_ready
-load8 r0 120
-cmp r0 1
-jne open_mud_ready
 store8 489 3
 label open_mud_ready
+# WETLANDS PHYSICS
+# Wetlands: physically shallow water, retained wetness and wheel splash.
+store16 544 0
+load8 r0 523
+cmp r0 4
+jne wetlands_check_ford
+store8 489 3
+label wetlands_check_ford
+cmp r0 5
+jne wetlands_check_puddle
+store8 489 4
+set r1 82
+load16 r2 520
+sub r1 r2
+cmp r1 0
+jge wetlands_depth_positive
+set r1 0
+label wetlands_depth_positive
+cmp r1 40
+jle wetlands_depth_bounded
+set r1 40
+label wetlands_depth_bounded
+store16 544 r1
+jmp wetlands_wetness
+label wetlands_check_puddle
+load32 r1 330
+cmp r1 300000
+jlt wetlands_wetness
+cmp r1 700000
+jgt wetlands_wetness
+load32 r1 532
+sub r1 65536
+load8 r0 273
+mod r0 2
+mul r0 80
+sub r0 40
+sub r1 r0
+cmp r1 -115
+jlt wetlands_wetness
+cmp r1 115
+jgt wetlands_wetness
+load8 r0 273
+cmp r0 4
+je wetlands_puddle
+cmp r0 8
+je wetlands_puddle
+cmp r0 13
+je wetlands_puddle
+cmp r0 18
+je wetlands_puddle
+cmp r0 21
+je wetlands_puddle
+cmp r0 24
+je wetlands_puddle
+cmp r0 26
+je wetlands_puddle
+cmp r0 32
+je wetlands_puddle
+cmp r0 34
+je wetlands_puddle
+cmp r0 36
+je wetlands_puddle
+cmp r0 40
+je wetlands_puddle
+cmp r0 44
+je wetlands_puddle
+cmp r0 47
+je wetlands_puddle
+cmp r0 51
+je wetlands_puddle
+cmp r0 55
+je wetlands_puddle
+cmp r0 59
+je wetlands_puddle
+cmp r0 63
+je wetlands_puddle
+cmp r0 67
+je wetlands_puddle
+cmp r0 71
+je wetlands_puddle
+cmp r0 75
+je wetlands_puddle
+jmp wetlands_wetness
+label wetlands_puddle
+store16 544 4
+store8 489 3
+label wetlands_wetness
+load16 r0 546
+load16 r1 544
+cmp r1 0
+jgt wetlands_wet
+load8 r1 523
+cmp r1 4
+je wetlands_muddy
+sub r0 1
+jmp wetlands_wetness_bound
+label wetlands_muddy
+add r0 8
+jmp wetlands_wetness_bound
+label wetlands_wet
+add r0 45
+label wetlands_wetness_bound
+cmp r0 0
+jge wetlands_wetness_min
+set r0 0
+label wetlands_wetness_min
+cmp r0 1000
+jle wetlands_wetness_max
+set r0 1000
+label wetlands_wetness_max
+store16 546 r0
+load16 r0 544
+load16 r1 110
+mul r0 r1
+div r0 45
+cmp r0 255
+jle wetlands_splash_bounded
+set r0 255
+label wetlands_splash_bounded
+store8 548 r0
+cmp r0 10
+jle wetlands_splash_ready
+store8 395 16
+label wetlands_splash_ready
+load32 r1 532
+sub r1 65536
 load16 r0 384
 cmp r0 0
 jgt open_water_ready
 load8 r0 523
+cmp r0 5
+je wetlands_ford_limit
 cmp r0 1
 je open_bridge_limit
 cmp r0 2
@@ -1035,6 +1205,14 @@ jgt open_water_contact
 cmp r1 -120
 jge open_water_ready
 set r5 -120
+jmp open_water_contact
+label wetlands_ford_limit
+set r5 450
+cmp r1 450
+jgt open_water_contact
+cmp r1 -450
+jge open_water_ready
+set r5 -450
 label open_water_contact
 load8 r0 273
 mul r0 2
@@ -1119,6 +1297,8 @@ add r1 5500
 load8 r1 $r1
 cmp r1 1
 je open_prop_next_row
+cmp r1 5
+je open_prop_next_row
 localset 3504 r1
 localset 3502 0
 label open_prop_slot
@@ -1132,8 +1312,11 @@ mod r1 10
 cmp r1 9
 je open_prop_next_slot
 set r2 270
+cmp r1 7
+je wetlands_rock_collision
 cmp r1 8
 jne open_prop_radius_ready
+label wetlands_rock_collision
 load16 r1 384
 cmp r1 140
 jgt open_prop_next_slot
@@ -1151,6 +1334,11 @@ label open_prop_bank_ready
 mul r0 73
 mod r0 2500
 add r0 470
+localget r1 3503
+cmp r1 500
+jne wetlands_rock_offset_ready
+add r0 250
+label wetlands_rock_offset_ready
 localget r1 3502
 mod r1 2
 mul r1 2
@@ -1732,6 +1920,12 @@ load8 r14 523
 print r14
 load8 r15 527
 print r15
+load16 r0 544
+print r0
+load16 r1 546
+print r1
+load8 r2 548
+print r2
 halt
 label missing_world
 set r0 0

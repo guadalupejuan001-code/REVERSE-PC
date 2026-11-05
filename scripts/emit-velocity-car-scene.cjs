@@ -95,11 +95,13 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label,open
  }
  const smokeEnd=vertices.length;
  const nitroStart=vertices.length,nitroFaces=[];
- for(const side of [-1,1]){
-  const x=side*49;
-  const a=fxVertex(x-9,21,-226,55),b=fxVertex(x+9,21,-226,130);
-  const c=fxVertex(x+15,15,-302,235),d=fxVertex(x-15,15,-302,173);
+ for(const x of require('./velocity-jet-ports.cjs').rearX){
+  const a=fxVertex(x-5,26,-234,235),b=fxVertex(x+5,26,-234,225);
+  const c=fxVertex(x+14,26,-350,25),d=fxVertex(x-14,26,-350,20);
   nitroFaces.push([a,b,c],[a,c,d]);
+  const e=fxVertex(x,21,-234,235),f=fxVertex(x,31,-234,225);
+  const g=fxVertex(x,40,-350,25),h=fxVertex(x,12,-350,20);
+  nitroFaces.push([e,f,g],[e,g,h]);
  }
  const nitroEnd=vertices.length;
  const skidStart=vertices.length,skidFaces=[];
@@ -110,8 +112,8 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label,open
   skidFaces.push([a,b,c],[a,c,d]);
  }
  const skidEnd=vertices.length;
- if(skidEnd!==1623)throw Error('XI local metadata range exceeded');
- const maxTriangles=openWorld?30*7*2+18+models.high.faces.length+shadowFaces.length+120*12+airJetFaces.length+smokeFaces.length+nitroFaces.length+4*skidFaces.length+600:80*11*2+18+models.high.faces.length+3*models.medium.faces.length+4*shadowFaces.length+40*treeFaces.length+airJetFaces.length+smokeFaces.length+nitroFaces.length+4*skidFaces.length;
+ if(skidEnd>=1900)throw Error('XI local metadata range exceeded');
+ const maxTriangles=openWorld?30*7*2+18+models.high.faces.length+shadowFaces.length+120*12+airJetFaces.length+smokeFaces.length+nitroFaces.length+4*skidFaces.length+1024:80*11*2+18+models.high.faces.length+3*models.medium.faces.length+4*shadowFaces.length+40*treeFaces.length+airJetFaces.length+smokeFaces.length+nitroFaces.length+4*skidFaces.length;
  if(maxTriangles>4096)throw Error('Scene triangle budget exceeded: '+maxTriangles);
  if(groups.length>128)throw Error('Normal-group scalar encoding exceeded');
  const groupNormals=groups.map(g=>norm(g.sum).map(x=>Math.round(x*16384)));
@@ -130,8 +132,8 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label,open
  out('load8 r7 8203\nsub r7 1\nmul r7 32\nadd r7 6004');load('r0','r7',4,65536);out('add r7 4');load('r2','r7',4,65536);out('add r7 4');load('r8','r7',2,0);
  out('load8 r9 8203\nmul r9 24\nadd r9 64\nstore8 8318 r9\njmp actor_ready\nlabel tree_actor');
  range(treeStart,treeEnd);
- out('load8 r5 8203\nlocalget r6 3200\nmul r6 4\nadd r5 r6\nlocalset 3120 r5\nload8 r8 8203\nsub r8 4\ndiv r8 4\nlocalget r7 3200\nadd r8 r7\nlocalget r7 3201\ncmp r8 r7\njge next_actor\nmov r7 r8\nadd r7 5500\nload8 r7 $r7\ncmp r7 1\nje next_actor\ncmp r7 2\njne open_tree_bank_ready\nload8 r7 8203\nmod r7 2\ncmp r7 1\nje next_actor\nlabel open_tree_bank_ready\nmov r7 r8\nmul r7 2\nadd r7 5000');out('sub r7 1400\nlocalget r3 r7\nadd r7 1\nlocalget r4 r7');
- out('load8 r0 8203\nmod r0 2\nmul r0 2\nsub r0 1\nlocalget r1 3120\nmul r1 73\nmod r1 2500\nadd r1 470\nmul r0 r1\nmul r4 r0\ndiv r4 16384\nmul r3 r0\ndiv r3 16384\nmul r8 8\nadd r8 4096');load('r0','r8',4,65536);out('add r0 r4\nadd r8 4');load('r2','r8',4,65536);
+ out('load8 r5 8203\nlocalget r6 3200\nmul r6 4\nadd r5 r6\nlocalset 3120 r5\nload8 r8 8203\nsub r8 4\ndiv r8 4\nlocalget r7 3200\nadd r8 r7\nlocalget r7 3201\ncmp r8 r7\njge next_actor\nmov r7 r8\nadd r7 5500\nload8 r7 $r7\ncmp r7 1\nje next_actor\ncmp r7 5\nje next_actor\ncmp r7 2\njne open_tree_bank_ready\nload8 r7 8203\nmod r7 2\ncmp r7 1\nje next_actor\nlabel open_tree_bank_ready\nmov r7 r8\nmul r7 2\nadd r7 5000');out('sub r7 1400\nlocalget r3 r7\nadd r7 1\nlocalget r4 r7');
+ out('load8 r0 8203\nmod r0 2\nmul r0 2\nsub r0 1\nlocalget r1 3120\nmul r1 73\nmod r1 2500\nadd r1 470\nlocalget r5 3120\nmod r5 10\ncmp r5 7\nje wetlands_rock_offset\ncmp r5 8\njne wetlands_rock_offset_ready\nlabel wetlands_rock_offset\nadd r1 250\nlabel wetlands_rock_offset_ready\nmul r0 r1\nmul r4 r0\ndiv r4 16384\nmul r3 r0\ndiv r3 16384\nmul r8 8\nadd r8 4096');load('r0','r8',4,65536);out('add r0 r4\nadd r8 4');load('r2','r8',4,65536);
  out('sub r2 r3\nload8 r5 8203\nsub r5 4\ndiv r5 4\nlocalget r6 3200\nadd r5 r6\nmul r5 2\nadd r5 5300\nload16 r5 $r5\nlocalset 3104 r5\nset r8 0\njmp actor_ready\nlabel skid_actor');
  range(skidStart,skidEnd);
  out('load8 r7 8203\nsub r7 124\nmul r7 12\nadd r7 410\nload8 r9 $r7\ncmp r9 0\njle next_actor\nsub r7 10');
@@ -190,7 +192,7 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label,open
 
  // XI physics controls the actual steering and road progress. The rig only reads them.
 
- out('label lighting_table_ready\nload8 r0 8203\ncmp r0 4\njlt open_forest_lod_ready\ncmp r0 124\njge open_forest_lod_ready\nmod r0 10\ncmp r0 8\njge open_forest_lod_ready\nload32 r0 8304\nsub r0 1000000\ncmp r0 12000\njle open_forest_lod_ready\nlocalset 134 1558\nlabel open_forest_lod_ready\nload8 r0 8203\ncmp r0 4\njge wheel_motion_ready\nload8 r0 8334\ncmp r0 2\nje wheel_motion_ready\nload8 r0 8203\ncmp r0 0\njne wheel_rival_distance');
+ out('label lighting_table_ready\nload8 r0 8203\ncmp r0 4\njlt open_forest_lod_ready\ncmp r0 124\njge open_forest_lod_ready\nmod r0 10\ncmp r0 7\njge open_forest_lod_ready\nload32 r0 8304\nsub r0 1000000\ncmp r0 12000\njle open_forest_lod_ready\nlocalset 134 1558\nlabel open_forest_lod_ready\nload8 r0 8203\ncmp r0 4\njge wheel_motion_ready\nload8 r0 8334\ncmp r0 2\nje wheel_motion_ready\nload8 r0 8203\ncmp r0 0\njne wheel_rival_distance');
  load('r0',498,2,0);
  out('jmp wheel_phase_ready\nlabel wheel_rival_distance\nload8 r7 8203\nsub r7 1\nmul r7 32\nadd r7 6016');
  load('r0','r7',4,0);
@@ -277,6 +279,10 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label,open
       '\ncmp r8 '+nitroEnd+'\njge '+nitroDone+
       '\nload32 r9 115\nmod r9 7\nsub r9 3\nadd r2 r9\nlabel '+nitroDone+
       '\nlabel '+effectsDone);
+  const airShapeDone=label('pressure_length_done');
+  out('load8 r9 8203\ncmp r9 0\njne '+airShapeDone+
+      '\ncmp r8 '+airJetStart+'\njlt '+airShapeDone+'\ncmp r8 '+airJetEnd+'\njge '+airShapeDone+
+      '\nsub r1 24\nload16 r9 384\nadd r9 24\nmul r1 r9\ndiv r1 99\nadd r1 24\nlabel '+airShapeDone);
   // XI chassis altitude; ground shadow remains at road height.
   const noRise=label('vertex_no_pneumatic_rise'),rise=label('vertex_pneumatic_rise');
   out('load8 r9 8203\ncmp r9 0\njne '+noRise+
@@ -331,8 +337,12 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label,open
    const smokeSkip=label('smoke_done');
    out('load8 r0 395\ncmp r0 0\njle '+smokeSkip+
       '\nload16 r0 384\ncmp r0 0\njne '+smokeSkip);
-   for(const f of smokeFaces)
-    out('meshfacegradient '+f.map(i=>i+CAMERA).join(' ')+' 244 12 r9 r10 r11 60');
+   const drySmoke=label('spray_dry'),sprayDone=label('spray_done');
+   out('load16 r0 544\ncmp r0 0\nje '+drySmoke);
+   for(const f of smokeFaces)out('meshfacegradient '+f.map(i=>i+CAMERA).join(' ')+' 32 8 r9 r10 r11 60');
+   out('jmp '+sprayDone+'\nlabel '+drySmoke);
+   for(const f of smokeFaces)out('meshfacegradient '+f.map(i=>i+CAMERA).join(' ')+' 244 12 r9 r10 r11 60');
+   out('label '+sprayDone);
    out('label '+smokeSkip);
    const nitroSkip=label('nitro_done');
    out('load8 r0 382\ncmp r0 1\njne '+nitroSkip);

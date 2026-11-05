@@ -37,7 +37,7 @@ store32 4120 65830
 store32 4124 71527
 store16 5006 70
 store16 5306 10
-store8 5503 0
+store8 5503 4
 set r0 294
 set r1 5991
 print r0
@@ -46,7 +46,7 @@ store32 4128 66044
 store32 4132 73515
 store16 5008 85
 store16 5308 16
-store8 5504 0
+store8 5504 4
 set r0 508
 set r1 7979
 print r0
@@ -55,7 +55,7 @@ store32 4136 66303
 store32 4140 75498
 store16 5010 96
 store16 5310 24
-store8 5505 0
+store8 5505 4
 set r0 767
 set r1 9962
 print r0
@@ -64,7 +64,7 @@ store32 4144 66596
 store32 4148 77477
 store16 5012 103
 store16 5312 32
-store8 5506 0
+store8 5506 4
 set r0 1060
 set r1 11941
 print r0
@@ -73,7 +73,7 @@ store32 4152 66910
 store32 4156 79452
 store16 5014 106
 store16 5314 40
-store8 5507 0
+store8 5507 4
 set r0 1374
 set r1 13916
 print r0
@@ -82,7 +82,7 @@ store32 4160 67233
 store32 4164 81425
 store16 5016 105
 store16 5316 48
-store8 5508 0
+store8 5508 4
 set r0 1697
 set r1 15889
 print r0
@@ -91,7 +91,7 @@ store32 4168 67554
 store32 4172 83399
 store16 5018 101
 store16 5318 55
-store8 5509 0
+store8 5509 4
 set r0 2018
 set r1 17863
 print r0
@@ -100,7 +100,7 @@ store32 4176 67862
 store32 4180 85376
 store16 5020 93
 store16 5320 60
-store8 5510 0
+store8 5510 4
 set r0 2326
 set r1 19840
 print r0
@@ -163,7 +163,7 @@ store32 4232 68965
 store32 4236 99318
 store16 5034 4089
 store16 5334 72
-store8 5517 0
+store8 5517 4
 set r0 3429
 set r1 33782
 print r0
@@ -172,7 +172,7 @@ store32 4240 68943
 store32 4244 101318
 store16 5036 4077
 store16 5336 75
-store8 5518 0
+store8 5518 4
 set r0 3407
 set r1 35782
 print r0
@@ -181,7 +181,7 @@ store32 4248 68886
 store32 4252 103317
 store16 5038 4068
 store16 5338 79
-store8 5519 0
+store8 5519 4
 set r0 3350
 set r1 37781
 print r0
@@ -190,7 +190,7 @@ store32 4256 68800
 store32 4260 105315
 store16 5040 4061
 store16 5340 85
-store8 5520 0
+store8 5520 4
 set r0 3264
 set r1 39779
 print r0
@@ -199,7 +199,7 @@ store32 4264 68694
 store32 4268 107312
 store16 5042 4058
 store16 5342 93
-store8 5521 0
+store8 5521 4
 set r0 3158
 set r1 41776
 print r0
@@ -208,7 +208,7 @@ store32 4272 68576
 store32 4276 109309
 store16 5044 4056
 store16 5344 102
-store8 5522 0
+store8 5522 4
 set r0 3040
 set r1 43773
 print r0
@@ -217,7 +217,7 @@ store32 4280 68454
 store32 4284 111305
 store16 5046 4057
 store16 5346 112
-store8 5523 0
+store8 5523 4
 set r0 2918
 set r1 45769
 print r0
@@ -226,7 +226,7 @@ store32 4288 68333
 store32 4292 113301
 store16 5048 4059
 store16 5348 123
-store8 5524 0
+store8 5524 4
 set r0 2797
 set r1 47765
 print r0
@@ -235,7 +235,7 @@ store32 4296 68218
 store32 4300 115298
 store16 5050 4062
 store16 5350 135
-store8 5525 0
+store8 5525 4
 set r0 2682
 set r1 49762
 print r0
@@ -252,8 +252,8 @@ print r1
 store32 4312 68018
 store32 4316 119293
 store16 5054 4068
-store16 5354 157
-store8 5527 0
+store16 5354 115
+store8 5527 4
 set r0 2482
 set r1 53757
 print r0
@@ -261,8 +261,8 @@ print r1
 store32 4320 67931
 store32 4324 121291
 store16 5056 4069
-store16 5356 167
-store8 5528 1
+store16 5356 70
+store8 5528 5
 set r0 2395
 set r1 55755
 print r0
@@ -270,8 +270,8 @@ print r1
 store32 4328 67849
 store32 4332 123289
 store16 5058 4069
-store16 5358 174
-store8 5529 0
+store16 5358 65
+store8 5529 5
 set r0 2313
 set r1 57753
 print r0
@@ -279,8 +279,8 @@ print r1
 store32 4336 67767
 store32 4340 125288
 store16 5060 4067
-store16 5360 180
-store8 5530 0
+store16 5360 90
+store8 5530 4
 set r0 2231
 set r1 59752
 print r0
@@ -289,7 +289,7 @@ store32 4344 67677
 store32 4348 127285
 store16 5062 4061
 store16 5362 184
-store8 5531 0
+store8 5531 4
 set r0 2141
 set r1 61749
 print r0
@@ -307,7 +307,7 @@ store32 4360 67439
 store32 4364 131278
 store16 5066 4042
 store16 5366 185
-store8 5533 0
+store8 5533 4
 set r0 1903
 set r1 65742
 print r0
@@ -316,7 +316,7 @@ store32 4368 67274
 store32 4372 133271
 store16 5068 4029
 store16 5368 184
-store8 5534 0
+store8 5534 4
 set r0 1738
 set r1 67735
 print r0
@@ -325,7 +325,7 @@ store32 4376 67068
 store32 4380 135261
 store16 5070 4013
 store16 5370 181
-store8 5535 0
+store8 5535 4
 set r0 1532
 set r1 69725
 print r0
@@ -334,7 +334,7 @@ store32 4384 66813
 store32 4388 137244
 store16 5072 3996
 store16 5372 178
-store8 5536 0
+store8 5536 4
 set r0 1277
 set r1 71708
 print r0
@@ -343,7 +343,7 @@ store32 4392 66506
 store32 4396 139221
 store16 5074 3977
 store16 5374 175
-store8 5537 0
+store8 5537 4
 set r0 970
 set r1 73685
 print r0
@@ -352,7 +352,7 @@ store32 4400 66144
 store32 4404 141188
 store16 5076 3959
 store16 5376 172
-store8 5538 0
+store8 5538 4
 set r0 608
 set r1 75652
 print r0
@@ -361,7 +361,7 @@ store32 4408 65728
 store32 4412 143144
 store16 5078 3943
 store16 5378 171
-store8 5539 0
+store8 5539 4
 set r0 192
 set r1 77608
 print r0
@@ -370,7 +370,7 @@ store32 4416 65262
 store32 4420 145089
 store16 5080 3928
 store16 5380 170
-store8 5540 0
+store8 5540 4
 set r0 -274
 set r1 79553
 print r0
@@ -424,7 +424,7 @@ store32 4464 61860
 store32 4468 156595
 store16 5092 3910
 store16 5392 184
-store8 5546 0
+store8 5546 4
 set r0 -3676
 set r1 91059
 print r0
@@ -433,7 +433,7 @@ store32 4472 61297
 store32 4476 158514
 store16 5094 3923
 store16 5394 185
-store8 5547 0
+store8 5547 4
 set r0 -4239
 set r1 92978
 print r0
@@ -586,7 +586,7 @@ store32 4608 63134
 store32 4612 191842
 store16 5128 171
 store16 5428 71
-store8 5564 0
+store8 5564 4
 set r0 -2402
 set r1 126306
 print r0
@@ -595,7 +595,7 @@ store32 4616 63652
 store32 4620 193774
 store16 5130 160
 store16 5430 70
-store8 5565 0
+store8 5565 1
 set r0 -1884
 set r1 128238
 print r0
@@ -604,7 +604,7 @@ store32 4624 64138
 store32 4628 195714
 store16 5132 146
 store16 5432 69
-store8 5566 0
+store8 5566 4
 set r0 -1398
 set r1 130178
 print r0
@@ -613,7 +613,7 @@ store32 4632 64581
 store32 4636 197664
 store16 5134 129
 store16 5434 68
-store8 5567 0
+store8 5567 4
 set r0 -955
 set r1 132128
 print r0
@@ -622,7 +622,7 @@ store32 4640 64973
 store32 4644 199626
 store16 5136 109
 store16 5436 67
-store8 5568 0
+store8 5568 4
 set r0 -563
 set r1 134090
 print r0
@@ -631,7 +631,7 @@ store32 4648 65307
 store32 4652 201597
 store16 5138 89
 store16 5438 64
-store8 5569 0
+store8 5569 4
 set r0 -229
 set r1 136061
 print r0
@@ -640,7 +640,7 @@ store32 4656 65579
 store32 4660 203579
 store16 5140 68
 store16 5440 60
-store8 5570 0
+store8 5570 4
 set r0 43
 set r1 138043
 print r0
@@ -649,7 +649,7 @@ store32 4664 65787
 store32 4668 205568
 store16 5142 47
 store16 5442 55
-store8 5571 0
+store8 5571 4
 set r0 251
 set r1 140032
 print r0
@@ -658,7 +658,7 @@ store32 4672 65932
 store32 4676 207562
 store16 5144 28
 store16 5444 48
-store8 5572 0
+store8 5572 4
 set r0 396
 set r1 142026
 print r0
@@ -667,7 +667,7 @@ store32 4680 66018
 store32 4684 209561
 store16 5146 10
 store16 5446 40
-store8 5573 0
+store8 5573 4
 set r0 482
 set r1 144025
 print r0
@@ -676,7 +676,7 @@ store32 4688 66050
 store32 4692 211560
 store16 5148 4091
 store16 5448 32
-store8 5574 0
+store8 5574 4
 set r0 514
 set r1 146024
 print r0

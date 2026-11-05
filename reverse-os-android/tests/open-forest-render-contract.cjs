@@ -33,5 +33,5 @@ const initial=path.join(output,'gameplay/start.rvp');
 const at=15,inspect=run(HEADER+`store32 100 ${points[at][0]+2000000}\nstore32 104 ${points[at][1]+2000000-1200}\nstore16 108 ${headings[at]}\nstore8 273 ${at}\nstore16 520 ${heights[at]}\nstore8 137 1\n`+env.slice(HEADER.length),initial).state;
 const fa=indices(render(inspect,scene,'store16 204 400\n')),fb=indices(render(inspect,scene,'store16 204 400\nstore8 139 1\n'));
 const faunaPixels=fa.reduce((n,v,i)=>n+(v!==fb[i]),0);assert(faunaPixels>8,'visible bounded fauna has causal pixel coverage');ppm('fauna',fa,'day');
-const report={passed:true,world:'Open Forest Road 3.0',frames,faunaPixels,sourceBytes:Buffer.byteLength(scene),maxWorldTriangles:3440,sectorWindow:3,roadSamplesPreparedAtMost:31,phoneFpsMeasured:false};
+const report={passed:true,world:'Open Forest Road 3.2 Wetlands',frames,faunaPixels,sourceBytes:Buffer.byteLength(scene),maxWorldTriangles:3876,sectorWindow:3,roadSamplesPreparedAtMost:31,phoneFpsMeasured:false};
 fs.writeFileSync(path.join(output,'render-results.json'),JSON.stringify(report,null,2)+'\n');console.log('OPEN_FOREST_RENDER_PASS '+JSON.stringify(report));

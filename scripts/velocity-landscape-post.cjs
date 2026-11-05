@@ -88,7 +88,7 @@ function finishScene(content,options={}){
    newMetadata+'\nlocalset 11 0',
    'XI vertex metadata extension');
  // Dense roadside grove: 32 cedars, 4 boulders and 4 underbrush clusters.
- const choose=['localget r0 11','mod r0 10','cmp r0 8','je nature_rock_model',
+ const choose=['localget r0 11','mod r0 10','cmp r0 7','je nature_rock_model','cmp r0 8','je nature_rock_model',
    'cmp r0 9','je nature_grass_model',
    'set r0 '+TREE_START,'mov r9 r0','localset 132 r9',
    'set r0 '+ROCK_START,'mov r9 r0','localset 134 r9','jmp nature_model_ready',
@@ -123,9 +123,9 @@ function finishScene(content,options={}){
   grassFaces.push(k===3?'meshface '+[a,b,c].map(i=>i+CAMERA).join(' ')+' 243 r9 r10 r11 60':face(a,b,c,14+k));
   grassFaces.push(k===3?'meshface '+[c,b,a].map(i=>i+CAMERA).join(' ')+' 243 r9 r10 r11 60':face(c,b,a,12+k));
  }
- if(32*9+4*rockFaces.length+4*grassFaces.length!==368)
+ if(28*9+8*rockFaces.length+4*grassFaces.length!==380)
   throw Error('Forest triangle budget is not bounded');
- const full=['label emit_tree','localget r0 11','mod r0 10','cmp r0 8',
+ const full=['label emit_tree','localget r0 11','mod r0 10','cmp r0 7','je nature_emit_rock','cmp r0 8',
    'je nature_emit_rock','cmp r0 9','je nature_emit_grass',
    ...canopyFaces,'localget r0 112','sub r0 1000000','cmp r0 12000','jgt next_actor',...groveFaces.slice(5),'jmp next_actor','label nature_emit_rock',
    ...rockFaces,'jmp next_actor','label nature_emit_grass',
@@ -149,7 +149,7 @@ function run(options={}){
   const before=fs.readFileSync(filename,'utf8'),after=finishScene(before,options);
   if(before!==after)fs.writeFileSync(filename,after);
   changed.push({name,bytes:Buffer.byteLength(after),updated:before!==after,
-    trees:32,rocks:4,grassClumps:4,faces:368});
+    trees:28,rocks:8,grassClumps:4,faces:380});
  }
  return changed;
 }

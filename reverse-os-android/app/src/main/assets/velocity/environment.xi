@@ -108,4 +108,10 @@ load8 r14 523
 print r14
 load8 r15 527
 print r15
+load16 r0 544
+print r0
+load16 r1 546
+print r1
+load8 r2 548
+print r2
 halt

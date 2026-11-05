@@ -1,7 +1,7 @@
 name: REVERSE VELOCITY REgraphics
 on:
   push:
-    branches: [feature/velocity-v30-open-forest-road-20261104, feature/velocity-v31-reverse-native-live-20261105]
+    branches: [feature/velocity-v30-open-forest-road-20261104, feature/velocity-v31-reverse-native-live-20261105, feature/velocity-v32-wetlands-gpu-20261105]
   pull_request:
     branches: [feature/velocity-regraphics-20261030]
     paths: ['reverse-os-android/**', 'scripts/**', '.github/workflows/velocity-xi-render.yml']
@@ -44,6 +44,14 @@ jobs:
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/open-forest-reliability.cpp -o build/open-forest/reliability-test
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/open-forest-render-ab.cpp -o build/open-forest/render-ab
           g++ -std=c++17 -O2 -pthread tests/xi_native_tile_raster.cpp -o build/open-forest/native-tile-test
+      - name: Build and test immutable GPU geometry and chase camera
+        run: |
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/velocity-gpu-observation.cpp -o build/open-forest/gpu-observation
+          build/open-forest/gpu-observation reverse-os-android/app/src/main/assets/velocity build/open-forest
+          mkdir -p build/open-forest/java
+          javac -d build/open-forest/java reverse-os-android/app/src/main/java/com/reversepc/os/VelocityOrbitMath.java reverse-os-android/app/src/main/java/com/reversepc/os/VelocityChaseCamera.java reverse-os-android/app/src/main/java/com/reversepc/os/RegraphicsGeometry.java reverse-os-android/tests/VelocityChaseCameraTest.java reverse-os-android/tests/RegraphicsGeometryTest.java
+          java -cp build/open-forest/java com.reversepc.os.VelocityChaseCameraTest
+          java -cp build/open-forest/java com.reversepc.os.RegraphicsGeometryTest build/open-forest/gpu-0-0.xfg4
       - name: Execute all sectors, reverse, time and real XI raster
         run: |
           build/open-forest/gameplay-test reverse-os-android/app/src/main/assets/velocity build/open-forest/gameplay

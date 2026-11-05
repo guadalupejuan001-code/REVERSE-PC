@@ -24,7 +24,7 @@ int main(int argc,char** argv){int pose=0;try{
  Runtime seed;const auto p=numbers(seed.execute(read(root/"world.xi")));
  const auto input=[&](int n,int reverse){return header+"store8 128 "+std::to_string(n<36)+"\nstore8 129 "+std::to_string(n>=36)+"\nstore8 130 "+std::to_string(n<12?1:pose%3)+"\nstore8 131 "+std::to_string(n>=18&&n<30)+"\nstore8 132 0\nstore8 133 "+std::to_string(reverse)+"\nstore8 134 "+std::to_string(n<5)+"\nstore8 135 "+std::to_string(n==10)+"\nstore8 136 "+std::to_string(pose%3)+"\n"+drive.substr(header.size());};
  seed.execute(input(48,0));const auto initial=reverse_pc::rvpc2::save(seed);int ticks=0,comparisons=0;
- for(int segment:{0,11,27,28,32,49,55,63,79})for(int side:{-500,0,500})for(int direction=0;direction<2;direction++,pose++){
+ for(int segment:{0,11,27,28,32,49,55,63,65,79})for(int side:{-500,0,500})for(int direction=0;direction<2;direction++,pose++){
   auto r=reverse_pc::rvpc2::restore(initial);
   const double dx=p[2*segment+2]-p[2*segment],dz=p[2*segment+3]-p[2*segment+1],length=std::hypot(dx,dz);
   const int heading=(int(std::llround(std::atan2(dx,dz)*4096/(2*std::acos(-1.))))+4096+pose%4*1024)%4096;

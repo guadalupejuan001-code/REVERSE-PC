@@ -76,15 +76,16 @@ label open_turnout_ready
 load8 r0 523
 cmp r0 4
 jne open_mud_ready
-load8 r0 120
-cmp r0 1
-jne open_mud_ready
 store8 489 3
 label open_mud_ready
+# WETLANDS PHYSICS
+${require('./wetlands-environment.cjs').physicsXi()}
 load16 r0 384
 cmp r0 0
 jgt open_water_ready
 load8 r0 523
+cmp r0 5
+je wetlands_ford_limit
 cmp r0 1
 je open_bridge_limit
 cmp r0 2
@@ -114,6 +115,14 @@ jgt open_water_contact
 cmp r1 -120
 jge open_water_ready
 set r5 -120
+jmp open_water_contact
+label wetlands_ford_limit
+set r5 450
+cmp r1 450
+jgt open_water_contact
+cmp r1 -450
+jge open_water_ready
+set r5 -450
 label open_water_contact
 load8 r0 273
 mul r0 2
@@ -194,5 +203,11 @@ print r13
 load8 r14 523
 print r14
 load8 r15 527
-print r15`;}
+print r15
+load16 r0 544
+print r0
+load16 r1 546
+print r1
+load8 r2 548
+print r2`;}
 module.exports={timeXi,groundXi,extraObservation};

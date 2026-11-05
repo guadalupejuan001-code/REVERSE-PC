@@ -29,6 +29,7 @@ import java.util.Set;
 /** Physical controls and compact race HUD; all game rules remain in XI. */
 public final class VelocityActivity extends Activity {
     private VelocityXSurface surface;
+    private VelocityGpuSurface gpu;
     private final VelocityAmbientAudio ambient=new VelocityAmbientAudio();
     private TextView speed,lap,position,timer,status,countdown,warning,renderInfo;
     private VelocityCockpitView cockpit;
@@ -170,7 +171,7 @@ public final class VelocityActivity extends Activity {
             s.drafting?"REBUFO · NITRO +":
             s.driftComboPct>100?
                 "DERRAPE "+s.driftScore+" PTS · x"+String.format(Locale.ROOT,"%.1f",s.driftComboPct/100f):"";
-        if(s.openWorld&&roadWarning.isEmpty())roadWarning=s.roadEnd?"CLARO FINAL · PUEDES REGRESAR":s.biome==1?"PUENTE DEL RÍO":s.biome==2?"LAGUNA DE LOS CEDROS":s.ambientMode==2?"NOCHE · FAROS AUTOMÁTICOS":"";
+        if(s.openWorld&&roadWarning.isEmpty())roadWarning=s.roadEnd?"CLARO FINAL · PUEDES REGRESAR":s.biome==5?"VADO DEL RÍO · "+s.waterDepthCm+" cm":s.biome==4?"LODO · BOSQUE HÚMEDO":s.biome==1?"PUENTE DEL RÍO":s.biome==2?"LAGUNA DE LOS CEDROS":s.ambientMode==2?"NOCHE · FAROS AUTOMÁTICOS":"";
         if(surface.isGearPending())roadWarning=surface.isReverseRequested()?
             "FRENANDO PARA REVERSA":"FRENANDO PARA AVANZAR";
         else if(roadWarning.isEmpty()&&surface.assistMode()>0)
@@ -187,7 +188,7 @@ public final class VelocityActivity extends Activity {
         if(pauseButton!=null)pauseButton.setEnabled(!photo);
         if(renderInfo!=null){String backend=w==3840?"REgraphics XI · FOTO 4K":"REgraphics XI";
             changedText(renderInfo,photo?"XI FOTO "+w+"×"+h:
-                "XI "+w+"×"+h+" · "+fps+" FPS");}
+                surface.rendererLabel()+" "+w+"×"+h+" · "+fps+" FPS");}
         map.setCar(s.xCm/100f,s.zCm/100f);
     }
     @Override public void onCreate(Bundle saved){
@@ -204,6 +205,11 @@ public final class VelocityActivity extends Activity {
         root.setBackgroundColor(0xff101a24);
         surface=new VelocityXSurface(this,game,(s,paused,fps,w,h,error)->runOnUiThread(()->raceHud(s,paused,error,w,h,fps)));
         root.addView(surface,new FrameLayout.LayoutParams(-1,-1));
+        if(VelocityGpuSurface.supported(this)){
+            gpu=new VelocityGpuSurface(this,()->surface.invalidateGpu());
+            gpu.setOnTouchListener((view,event)->surface.onTouchEvent(event));
+            surface.attachGpu(gpu);root.addView(gpu,new FrameLayout.LayoutParams(-1,-1));
+        }
         View topWash=new View(this);
         topWash.setBackground(new GradientDrawable(
             GradientDrawable.Orientation.TOP_BOTTOM,
@@ -274,8 +280,8 @@ public final class VelocityActivity extends Activity {
         Button engine=button("Motor XI");
         engine.setContentDescription("Capacidades y límites actuales del renderizador XI");
         engine.setOnClickListener(v->new AlertDialog.Builder(this)
-            .setTitle("REgraphics XI • nativo")
-            .setMessage("Open Forest Road 3.1\n\nExplora una carretera forestal de 1,6 km dividida en ocho sectores. El puente y la laguna son zonas del mismo mapa. Al llegar al claro final puedes dar la vuelta o usar reversa.\n\nEl botón Reversa R frena antes de cambiar de marcha si estás avanzando. Acelera para retroceder; Avance D permite regresar a la marcha normal.\n\nLa hora cambia automáticamente; puedes elegir día, atardecer o noche. Foto 4K pausa la conducción. Nitidez automática adapta el detalle a la carga del sector.")
+            .setTitle("REgraphics XI • GPU")
+            .setMessage("Open Forest Road 3.2 — Wetlands\n\nCarretera forestal de 1,6 km: lodo, veinte charcos, un vado transitable, puente, laguna, rocas y ardillas. Las superficies cambian el agarre; cruza el río a velocidad moderada.\n\nXI/Ether controla el mundo, la física y la geometría. Los shaders propios de REgraphics usan la GPU para materiales, reflejos, agua y efectos; hay respaldo por software.\n\nLa cámara se adapta al giro, velocidad y reversa. Arrastra para inspeccionar; vuelve sola al conducir. El nitro sale de los cuatro puertos traseros y el aire junto a las cuatro ruedas al saltar.\n\nReversa R frena antes de cambiar de marcha. Acelera para retroceder. La hora cambia automáticamente. Foto 4K pausa la conducción y renderiza 3840 × 2160 píxeles. Nitidez automática adapta la resolución a la carga.")
             .setPositiveButton("Entendido",(dialog,which)->dialog.dismiss())
             .show());
         pauseButton=button("Pausa");pauseButton.setOnClickListener(v->togglePause());
@@ -369,8 +375,8 @@ public final class VelocityActivity extends Activity {
         else return super.onKeyUp(key,event);
         controls();return true;
     }
-    @Override protected void onResume(){super.onResume();ambient.resume();WorkbenchActivity.immersive(this);if(surface!=null)surface.resumeLoop();}
-    @Override protected void onPause(){ambient.pause();if(surface!=null){releaseControls();surface.pauseLoop();}super.onPause();}
+    @Override protected void onResume(){super.onResume();ambient.resume();WorkbenchActivity.immersive(this);if(gpu!=null)gpu.onResume();if(surface!=null)surface.resumeLoop();}
+    @Override protected void onPause(){ambient.pause();if(surface!=null){releaseControls();surface.pauseLoop();}if(gpu!=null)gpu.onPause();super.onPause();}
     @Override public void onWindowFocusChanged(boolean focus){super.onWindowFocusChanged(focus);if(!focus)releaseControls();}
     @Override protected void onDestroy(){ambient.close();if(surface!=null)surface.closeLoop();super.onDestroy();}
 }

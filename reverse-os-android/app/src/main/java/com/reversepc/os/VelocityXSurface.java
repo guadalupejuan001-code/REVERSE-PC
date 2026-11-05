@@ -18,6 +18,13 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
         void update(VelocityXiEngine.Snapshot state,boolean paused,int fps,int width,int height,String error);
     }
     private final VelocityXiEngine game;
+    private volatile VelocityGpuSurface gpu;
+    private final VelocityChaseCamera chaseCamera=new VelocityChaseCamera();
+    private volatile long manualCameraUntil;
+    private volatile int displayedOrbit;
+    void attachGpu(VelocityGpuSurface value){gpu=value;invalidateGpu();}
+    void invalidateGpu(){repaintRequested.set(true);}
+    String rendererLabel(){return gpu!=null&&gpu.available()?"XI · GPU":"XI · CPU";}
     private final Hud hud;
     private final Paint paint=new Paint(Paint.FILTER_BITMAP_FLAG);
     private final Rect sourceRect=new Rect(),targetRect=new Rect();
@@ -79,6 +86,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
         final int action=event.getActionMasked();
         switch(action){
             case MotionEvent.ACTION_DOWN:
+                orbitPacked=displayedOrbit;manualCameraUntil=SystemClock.elapsedRealtimeNanos()+2_600_000_000L;
                 orbitPointer=event.getPointerId(0);
                 orbitLastX=orbitDownX=event.getX(0);
                 orbitLastY=orbitDownY=event.getY(0);
@@ -95,6 +103,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 final int newState=VelocityOrbitMath.drag(orbitPacked,
                     x-orbitLastX,y-orbitLastY,getWidth());
                 orbitLastX=x;orbitLastY=y;
+                manualCameraUntil=SystemClock.elapsedRealtimeNanos()+2_600_000_000L;
                 if(newState!=orbitPacked){
                     orbitPacked=newState;
                     repaintRequested.set(true);
@@ -118,7 +127,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 if(!orbitMoved){
                     if(now-lastTapUptime<330 &&
                         Math.hypot(x-lastTapX,y-lastTapY)<getResources().getDisplayMetrics().density*45){
-                        orbitPacked=0;
+                        orbitPacked=0;manualCameraUntil=0;chaseCamera.reset();
                         repaintRequested.set(true);
                         lastTapUptime=0;
                     }else{
@@ -138,7 +147,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
         }
     }
     @Override public boolean performClick(){super.performClick();return true;}
-    void centerCamera(){orbitPacked=0;repaintRequested.set(true);}
+    void centerCamera(){orbitPacked=0;manualCameraUntil=0;chaseCamera.reset();repaintRequested.set(true);}
     int cameraOrbit(){return orbitPacked;}
 
     void controls(int gas,int brake,int steer,boolean handbrake){
@@ -280,6 +289,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
         long lastHud=0,lastFps=SystemClock.elapsedRealtimeNanos();
         boolean firstFramePosted=false;
         int cacheHits=0,xiRenders=0,lastCameraOrbit=Integer.MIN_VALUE;
+        boolean previousGpu=false;
         final VelocityFrameReuse frameReuse=new VelocityFrameReuse();
         final VelocityFrameProfiler profiler=new VelocityFrameProfiler();
         try{
@@ -289,7 +299,15 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 synchronized(detailLock){selected=fixedDetail?2:Math.max(0,Math.min(2,quality));selectedFixed=fixedDetail;}
                 int stride=selected==0?4:selected==1?2:1;
                 int selectedCamera=cameraMode,selectedPaint=paintId,selectedCar=carId;
-                int selectedOrbit=orbitPacked;
+                int manualOrbit=orbitPacked;
+                VelocityXiEngine.Snapshot cameraState=game.current();
+                int selectedOrbit=chaseCamera.update(manualOrbit,orbitDragging||begin<manualCameraUntil,
+                    paused||native4K,cameraState.yaw4096,cameraState.speedCmps,cameraState.jumpHeightCm,gearbox.isReverse(),begin);
+                displayedOrbit=selectedOrbit;
+                final VelocityGpuSurface selectedGpuSurface=gpu;
+                final boolean selectedGpu=selectedGpuSurface!=null&&selectedGpuSurface.available();
+                if(selectedGpu!=previousGpu){frameReuse.invalidate();previousGpu=selectedGpu;}
+                if(selectedOrbit!=lastCameraOrbit)frameReuse.invalidate();
                 int selectedYaw=VelocityOrbitMath.yaw(selectedOrbit);
                 int selectedPitch=VelocityOrbitMath.xiPitch(selectedOrbit);
                 VelocityXiEngine.Snapshot state;
@@ -317,7 +335,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                             " reverse="+gearbox.isReverse()+
                             " physicsHz="+physicsHz+" fixedDetail="+selectedFixed+
                             " paused="+paused+
-                            " backend="+(selected4K?"REgraphics_XI_4K_NATIVE":"REgraphics_XI_NATIVE_LIVE")+
+                            " backend="+(selectedGpu?"REgraphics_XI_GPU":selected4K?"REgraphics_XI_4K_NATIVE":"REgraphics_XI_NATIVE_LIVE")+
                             " cacheHits="+cacheHits+" xiRenders="+xiRenders);
                         String normal=profiler.drain(false),nativeTimes=profiler.drain(true);
                         if(!normal.isEmpty())Log.i("ReverseVelocity","FRAME_PIPELINE "+normal);
@@ -330,52 +348,45 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     Thread.sleep(70);
                     continue;
                 }
-                // REgraphics rasteriza triángulos XI y emite XFS1. Android solo presenta píxeles.
-                    VelocityXiEngine.Observation observation;
-                    if(selected4K){
-                        try{observation=game.observeNative4KFrame(selectedCamera,selectedPaint,selectedCar,
-                            selectedYaw,selectedPitch);}
-                        catch(Exception nativeFailure){
-                            Log.w("ReverseVelocity","Native XI 4K unavailable on this device",nativeFailure);
-                            native4K=false;
-                            paused=pausedBeforePhoto;pausedBeforePhoto=false;
-                            frameReuse.invalidate();
-                            error="Foto 4K no disponible: "+nativeFailure.getMessage();
-                            continue;
-                        }
-                    }else observation=game.observeFrame(stride,selectedCamera,selectedPaint,selectedCar,
-                        selectedYaw,selectedPitch);
-                    xiRenders++;
-                    // If a camera, paint, resolution or 4K switch happened during
-                    // this expensive XI render, do not publish an obsolete frame.
-                    boolean stale=selectedCamera!=cameraMode||selectedPaint!=paintId||
-                        selectedCar!=carId||selected4K!=native4K||selectedOrbit!=orbitPacked;
-                    if(!selected4K){
-                        synchronized(detailLock){
-                            int active=fixedDetail?2:Math.max(0,Math.min(2,quality));
-                            stale|=stride!=(active==0?4:active==1?2:1);
-                        }
+                VelocityXiEngine.Observation observation;
+                if(selectedGpu){
+                    observation=game.observeGpuFrame(selectedCamera,selectedPaint,selectedCar,selectedYaw,selectedPitch);
+                }else if(selected4K){
+                    try{observation=game.observeNative4KFrame(selectedCamera,selectedPaint,selectedCar,selectedYaw,selectedPitch);}
+                    catch(Exception nativeFailure){
+                        native4K=false;paused=pausedBeforePhoto;pausedBeforePhoto=false;
+                        frameReuse.invalidate();error="Foto 4K no disponible: "+nativeFailure.getMessage();continue;
                     }
-                    if(stale){
-                        Log.i("ReverseVelocity","FRAME_DROPPED obsolete XI camera/material/profile");
-                        continue;
+                }else observation=game.observeFrame(stride,selectedCamera,selectedPaint,selectedCar,
+                    selectedYaw,selectedPitch);
+                xiRenders++;
+                boolean stale=selectedCamera!=cameraMode||selectedPaint!=paintId||selectedCar!=carId||
+                    selected4K!=native4K||manualOrbit!=orbitPacked;
+                if(stale)continue;
+                if(!lifecycle.shouldRun())break;
+                long expandNanos=0,bitmapNanos=0,presentNanos=0;
+                state=observation.state;
+                if(selectedGpu){
+                    long start=System.nanoTime();
+                    try{
+                        selectedGpuSurface.draw(observation.geometry,observation.colors,state,selectedYaw,
+                            selected4K?3840:selected==0?640:selected==1?960:1280);
+                    }catch(RuntimeException gpuFailure){
+                        if(lifecycle.shouldRun()&&selectedGpuSurface.available())selectedGpuSurface.disable(gpuFailure);
+                        frameReuse.invalidate();continue;
                     }
+                    presentNanos=System.nanoTime()-start;
+                    width=selectedGpuSurface.outputWidth();height=selectedGpuSurface.outputHeight();presented=true;
+                }else{
                     RegraphicsFrame frame=observation.frame;
-                    if(!lifecycle.shouldRun())break;
-                    if(frame.width!=width||frame.height!=height||pixels==null){
+                    if(frame.width!=width||frame.height!=height||pixels==null||pixels.length!=frame.width*frame.height){
                         width=frame.width;height=frame.height;pixels=new int[width*height];
-                        if(image!=null)image.recycle();
-                        image=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
+                        if(image!=null)image.recycle();image=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
                         sourceRect.set(0,0,width,height);
                     }
-                    final long expandStart=System.nanoTime();
-                    frame.present(pixels,width,height);
-                    final long expandNanos=System.nanoTime()-expandStart;
-                    final long bitmapStart=System.nanoTime();
-                    image.setPixels(pixels,0,width,0,0,width,height);
-                    final long bitmapNanos=System.nanoTime()-bitmapStart;
-                    final long presentStart=System.nanoTime();
-                    Canvas canvas=null;
+                    long start=System.nanoTime();frame.present(pixels,width,height);expandNanos=System.nanoTime()-start;
+                    start=System.nanoTime();image.setPixels(pixels,0,width,0,0,width,height);bitmapNanos=System.nanoTime()-start;
+                    start=System.nanoTime();Canvas canvas=null;
                     try{
                         canvas=getHolder().lockCanvas();
                         if(canvas!=null){
@@ -387,14 +398,12 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                             canvas.drawBitmap(image,sourceRect,targetRect,paint);
                         }
                     }finally{if(canvas!=null)getHolder().unlockCanvasAndPost(canvas);}
-                    final long presentNanos=System.nanoTime()-presentStart;
-                    state=observation.state;
-                    presented=canvas!=null;
-                    if(presented)frameReuse.framePosted(state,selectedCamera,selectedPaint,stride,selected4K);
-                    if(presented&&selected4K)
-                        Log.i("ReverseVelocity","NATIVE_4K_FRAME_READY source=XI_XFB5 width="+
-                            width+" height="+height+" pixels="+(width*height)+
-                            " speed="+state.speedKmh()+" ticks="+state.ticks);
+                    presentNanos=System.nanoTime()-start;presented=canvas!=null;
+                }
+                if(presented)frameReuse.framePosted(state,selectedCamera,selectedPaint,stride,selected4K);
+                if(presented&&selected4K)Log.i("ReverseVelocity","NATIVE_4K_FRAME_READY source="+
+                    (selectedGpu?"XI_XFG4_GLSL":"XI_XFB5")+" width="+width+" height="+height+
+                    " pixels="+(width*height)+" speed="+state.speedKmh()+" ticks="+state.ticks);
                 if(presented&&!firstFramePosted){
                     firstFramePosted=true;
                     Log.i("ReverseVelocity","FRAME_READY "+width+"x"+height+
@@ -406,8 +415,8 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 if(presented)frames++;
                 if(presented&&lastCameraOrbit!=selectedOrbit){
                     lastCameraOrbit=selectedOrbit;
-                    Log.i("ReverseVelocity","ORBIT_FRAME yaw="+selectedYaw+
-                        " pitch="+VelocityOrbitMath.pitch(selectedOrbit)+
+                    if(orbitDragging||begin-lastHud>=100_000_000L)Log.i("ReverseVelocity","ORBIT_FRAME yaw="+selectedYaw+
+                        " pitch="+VelocityOrbitMath.pitch(selectedOrbit)+" auto="+(begin>=manualCameraUntil)+
                         " width="+width+" height="+height);
                 }
                 long now=SystemClock.elapsedRealtimeNanos();
@@ -424,7 +433,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                         " speed="+state.speedCmps+
                         " reverse="+gearbox.isReverse()+
                         " physicsHz="+physicsHz+" fixedDetail="+selectedFixed+" paused="+paused+
-                        " backend="+(selected4K?"REgraphics_XI_4K_NATIVE":"REgraphics_XI_NATIVE_LIVE")+
+                        " backend="+(selectedGpu?"REgraphics_XI_GPU":selected4K?"REgraphics_XI_4K_NATIVE":"REgraphics_XI_NATIVE_LIVE")+
                         " cacheHits="+cacheHits+" xiRenders="+xiRenders);
                     String normal=profiler.drain(false),nativeTimes=profiler.drain(true);
                     if(!normal.isEmpty())Log.i("ReverseVelocity","FRAME_PIPELINE "+normal);
