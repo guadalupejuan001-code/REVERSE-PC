@@ -145,6 +145,21 @@ class AdaptiveOverrideMap {
     --s.size;if(!page.size())s.pages.erase(page_number);
     return true;
   }
+  // Numeric entry points address the same canonical keys and COW pages.
+  bool insert(std::uint64_t address,const std::uint8_t& value){
+    if(get(address))return false;
+    if(state_->size==std::numeric_limits<std::size_t>::max())throw std::length_error("Ether override count overflow");
+    auto& s=writable();writable_page(s,address>>12).insert(std::size_t(address&4095),value);++s.size;return true;
+  }
+  void assign_existing(std::uint64_t address,const std::uint8_t& value){
+    if(!get(address))throw std::out_of_range("missing Ether Memory entry");
+    auto& s=writable();writable_page(s,address>>12).assign(std::size_t(address&4095),value);
+  }
+  bool erase(std::uint64_t address){
+    if(!get(address))return false;
+    auto& s=writable();const auto page_number=address>>12;auto& page=writable_page(s,page_number);page.erase(std::size_t(address&4095));--s.size;
+    if(!page.size())s.pages.erase(page_number);return true;
+  }
   template<class Fn>void for_each_sorted(Fn&& emit) const {
     for(const auto& entry:state_->pages){
       const auto base=entry.first<<12;
