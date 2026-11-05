@@ -323,9 +323,13 @@ try{
   report.observedSpeedKmh=Number(ui.find(n=>/^[1-9]\d* km\/h$/.test(n.text||'')).text.split(' ')[0]);
   screenshot('driving-open-road');
   stage='GPU nitro and pneumatic jump';
+  // Boost requires a physical accelerator. Test sustained Manual input rather
+  // than hoping the speed-limited pilot samples a one-tick boost between frames.
+  ui=revealToolbar('Piloto',false);tapNode(findText(ui,'Piloto'));ui=waitText(/^Manual$/);
   adbText(['shell','input','keyevent','KEYCODE_P']);
-  tapNode(findText(ui,'NITRO'),1200);
-  tapNode(findText(ui,'SALTO'),550);sleep(200);screenshot('gpu-air-and-nitro');
+  adbText(['shell','input','keycombination','-t','2200','KEYCODE_W','KEYCODE_N']);
+  adbText(['shell','input','keycombination','-t','1500','KEYCODE_W','KEYCODE_N','KEYCODE_J']);
+  screenshot('gpu-air-and-nitro');
   adbText(['shell','input','keyevent','KEYCODE_P']);ui=waitText(/EN PAUSA/);
   check(/GPU_FX_STATE nitro=true.*emittedNitro=[1-9]/.test(logs()),'rear nitro emits actual XI triangles on GPU');
   check(/GPU_FX_STATE .*air=true.*emittedAir=[1-9]/.test(logs()),'wheel air jets emit actual XI triangles on GPU');

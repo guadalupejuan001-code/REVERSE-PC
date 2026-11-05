@@ -148,8 +148,16 @@ jobs:
           printf 'no\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd \
             --force -n velocity -p "$ANDROID_AVD_HOME/velocity.avd" \
             -k 'system-images;android-35;default;x86_64'
+          python3 - <<'PYAVD'
+          import os, pathlib
+          p=pathlib.Path(os.environ['ANDROID_AVD_HOME'])/'velocity.avd/config.ini'
+          lines=p.read_text().splitlines()
+          values={'hw.lcd.width':'720','hw.lcd.height':'1280','hw.lcd.density':'240','hw.cpu.ncore':'4'}
+          lines=[line for line in lines if line.split('=',1)[0].strip() not in values]
+          p.write_text('\n'.join(lines+[key+'='+value for key,value in values.items()])+'\n')
+          PYAVD
           "$ANDROID_HOME/emulator/emulator" -avd velocity -no-window -no-audio \
-            -no-boot-anim -no-snapshot -gpu swiftshader -feature -Vulkan -memory 2048 \
+            -no-boot-anim -no-snapshot -gpu swiftshader -feature -Vulkan -cores 4 -memory 4096 \
             > build/velocity-apk/emulator.log 2>&1 &
           EMULATOR_PID=$!
           trap 'adb logcat -d > build/velocity-apk/logcat.txt 2>/dev/null || true; kill "$EMULATOR_PID" 2>/dev/null || true' EXIT
@@ -162,8 +170,6 @@ jobs:
             sleep 2
           done
           "$ready"
-          adb shell wm size 1280x720
-          adb shell wm density 240
           sleep 5
           adb shell settings put global window_animation_scale 0
           adb shell settings put global transition_animation_scale 0
