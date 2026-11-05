@@ -293,7 +293,7 @@ try{
   stage='world atlas';ui=revealToolbar('Mapa',false);tapNode(findText(ui,'Mapa'));ui=waitText(/^Mapa · Open Forest Road$/);
   check(!!findText(ui,'Mirador del Alba'),'actual atlas exposes the trail destinations');
   tapNode(findText(ui,'Mirador del Alba'));check(/MAP_WAYPOINT index=1 name=Mirador del Alba/.test(logs()),'map waypoint selection uses the shared authored destination');screenshot('world-atlas');
-  tapNode(findText(ui,'Volver'));ui=waitText(/OPEN FOREST ROAD/);
+  ui=hierarchy();tapNode(ui.find(n=>/^VOLVER$/i.test(n.text||'')));ui=waitText(/OPEN FOREST ROAD/);
   stage='manual steering and pedal';const manualBefore=frameRecords(logs()).length;
   adbText(['shell','input','keyevent','KEYCODE_P']);
   adbText(['shell','input','keycombination','-t','2200','KEYCODE_W','KEYCODE_D']);
