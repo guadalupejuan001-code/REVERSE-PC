@@ -106,14 +106,28 @@ final class RegraphicsFrame {
         return decodeNative4KChecked(source,colors,true);
     }
     private static RegraphicsFrame decodeNative4KChecked(byte[] source,int[] colors,boolean owned){
+        return decodeNativePixelsChecked(source,1,colors,owned,3840,2160);
+    }
+    static RegraphicsFrame decodeLiveNative(byte[] source,int stride,int[] colors){
+        return decodeLiveNativeChecked(source,stride,colors,false);
+    }
+    static RegraphicsFrame decodeLiveNativeOwned(byte[] source,int stride,int[] colors){
+        return decodeLiveNativeChecked(source,stride,colors,true);
+    }
+    private static RegraphicsFrame decodeLiveNativeChecked(byte[] source,int stride,int[] colors,boolean owned){
+        require(stride==1||stride==2||stride==4,"invalid native live stride");
+        return decodeNativePixelsChecked(source,stride,colors,owned,
+            stride==4?320:stride==2?480:640,stride==4?180:stride==2?270:360);
+    }
+    private static RegraphicsFrame decodeNativePixelsChecked(byte[] source,int stride,int[] colors,boolean owned,int w,int h){
         require(colors!=null&&colors.length==256,"native palette must have 256 colors");
-        require(source!=null&&source.length==NATIVE_4K_BYTES,"native 4K frame size mismatch");
+        require(source!=null&&source.length==16+w*h,"native pixel frame size mismatch");
         require(source[0]=='X'&&source[1]=='F'&&source[2]=='B'&&source[3]=='5',
-            "native 4K signature mismatch");
-        require(u16(source,4)==3840&&u16(source,6)==2160&&u32(source,8)==5&&
-            u32(source,12)==3840L*2160L,"native 4K dimension mismatch");
+            "native pixel signature mismatch");
+        require(u16(source,4)==w&&u16(source,6)==h&&u32(source,8)==5&&
+            u32(source,12)==(long)w*h,"native pixel dimension mismatch");
         for(int color:colors)require(color>=0&&color<=0xffffff,"native palette RGB out of range");
-        return new RegraphicsFrame(owned?source:source.clone(),1,colors.clone(),3840*2160,3840,2160,5);
+        return new RegraphicsFrame(owned?source:source.clone(),stride,colors.clone(),w*h,w,h,5);
     }
     /** Expand exact XI intervals; x1 on the XFS1 wire is inclusive. */
     void present(int[] destination,int width,int height){

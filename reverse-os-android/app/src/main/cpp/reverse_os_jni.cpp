@@ -1,6 +1,8 @@
 #include "session.hpp"
 #include "rxe.hpp"
 #include "rxe_app.hpp"
+#include "integration/readonly_geometry.hpp"
+#include "integration/xi_live_session.hpp"
 #include <jni.h>
 #include <exception>
 #include <limits>
@@ -8,6 +10,7 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+#include <unordered_map>
 namespace {
 std::vector<std::uint8_t> bytes(JNIEnv* e,jbyteArray value) {
   if(!value)return {};
@@ -50,6 +53,15 @@ void throw_java(JNIEnv* e,const std::exception& err){
   auto cls=e->FindClass("java/lang/IllegalStateException");
   if(cls)e->ThrowNew(cls,err.what());
 }
+std::mutex sessions_mutex;
+std::unordered_map<jlong,std::shared_ptr<reverse_pc::XiLiveSession>> sessions;
+jlong next_session=1;
+std::shared_ptr<reverse_pc::XiLiveSession> session(jlong handle){
+  std::lock_guard<std::mutex> lock(sessions_mutex);
+  const auto found=sessions.find(handle);
+  if(found==sessions.end())throw std::invalid_argument("XI session is closed");
+  return found->second;
+}
 }
 extern "C" JNIEXPORT jbyteArray JNICALL
 Java_com_reversepc_os_NativeRuntime_initialize(JNIEnv* e,jclass){
@@ -80,6 +92,84 @@ Java_com_reversepc_os_NativeRuntime_observeFrame(JNIEnv* e,jclass,
                           frame.compare(0,4,"XFB5")!=0))
       throw std::invalid_argument("Read-only XI observation requires XFS1/XFB5 output");
     return output_frame(e,frame);
+  }catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_observeGeometry(JNIEnv* e,jclass,
+    jbyteArray state,jstring text,jintArray addresses,jbyteArray values){
+  try{
+    if(!addresses||!values)throw std::invalid_argument("Geometry input mailbox missing");
+    const auto count=e->GetArrayLength(addresses);
+    if(count<0||count>32||e->GetArrayLength(values)!=count)
+      throw std::invalid_argument("Geometry input mailbox bounds");
+    std::vector<jint> indices(count);std::vector<jbyte> data(count);
+    if(count){e->GetIntArrayRegion(addresses,0,count,indices.data());e->GetByteArrayRegion(values,0,count,data.data());}
+    if(e->ExceptionCheck())throw std::runtime_error("Geometry inputs could not be read");
+    std::vector<std::pair<std::uint32_t,std::uint8_t>> inputs;inputs.reserve(count);
+    for(int i=0;i<count;i++){
+      if(indices[i]<0)throw std::invalid_argument("Geometry input address must be nonnegative");
+      inputs.emplace_back(static_cast<std::uint32_t>(indices[i]),static_cast<std::uint8_t>(data[i]));
+    }
+    return output_frame(e,reverse_pc::observe_geometry(bytes(e,state),source(e,text),inputs));
+  }catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_reversepc_os_NativeRuntime_sessionOpen(JNIEnv* e,jclass,jbyteArray state){
+  try{
+    auto value=std::make_shared<reverse_pc::XiLiveSession>(bytes(e,state));
+    std::lock_guard<std::mutex> lock(sessions_mutex);
+    if(sessions.size()>=64||next_session==std::numeric_limits<jlong>::max())
+      throw std::length_error("XI live session budget");
+    const auto handle=next_session++;sessions.emplace(handle,std::move(value));return handle;
+  }catch(const std::exception& x){throw_java(e,x);return 0;}
+}
+extern "C" JNIEXPORT void JNICALL
+Java_com_reversepc_os_NativeRuntime_sessionClose(JNIEnv*,jclass,jlong handle){
+  std::lock_guard<std::mutex> lock(sessions_mutex);sessions.erase(handle);
+}
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_sessionStage(JNIEnv* e,jclass,jlong handle,jstring text){
+  try{return output_frame(e,session(handle)->stage(source(e,text)));}
+  catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_reversepc_os_NativeRuntime_sessionCommit(JNIEnv* e,jclass,jlong handle){
+  try{return static_cast<jlong>(session(handle)->commit());}
+  catch(const std::exception& x){throw_java(e,x);return 0;}
+}
+extern "C" JNIEXPORT void JNICALL
+Java_com_reversepc_os_NativeRuntime_sessionDiscard(JNIEnv* e,jclass,jlong handle){
+  try{session(handle)->discard();}catch(const std::exception& x){throw_java(e,x);}
+}
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_sessionObserve(JNIEnv* e,jclass,jlong handle,
+    jstring text,jintArray addresses,jbyteArray values){
+  try{
+    if(!addresses||!values)throw std::invalid_argument("XI input mailbox missing");
+    const auto count=e->GetArrayLength(addresses);
+    if(count>32||e->GetArrayLength(values)!=count)throw std::length_error("XI input mailbox bounds");
+    std::vector<jint> indices(count);std::vector<jbyte> data(count);
+    if(count){e->GetIntArrayRegion(addresses,0,count,indices.data());e->GetByteArrayRegion(values,0,count,data.data());}
+    if(e->ExceptionCheck())throw std::runtime_error("XI inputs could not be read");
+    reverse_pc::XiLiveSession::Inputs inputs;
+    for(int i=0;i<count;i++){
+      if(indices[i]<0)throw std::invalid_argument("XI input address must be nonnegative");
+      inputs.emplace_back(std::to_string(indices[i]),static_cast<std::uint8_t>(data[i]));
+    }
+    auto observed=session(handle)->observe(source(e,text),inputs);
+    const auto& frame=observed.frame;
+    if(frame.size()<4||(frame.compare(0,4,"XFG4")&&frame.compare(0,4,"XFB5")&&frame.compare(0,4,"XFS1")))
+      throw std::invalid_argument("XI session observation requires original frame bytes");
+    if(frame.size()>40u*1024*1024||observed.output.size()>64u*1024)
+      throw std::length_error("XI observation packet budget");
+    std::vector<std::uint8_t> packet{'X','I','O','2'};
+    reverse_os::put32(packet,observed.output.size());reverse_os::put32(packet,frame.size());
+    reverse_os::put64(packet,observed.generation);
+    packet.insert(packet.end(),observed.output.begin(),observed.output.end());
+    packet.insert(packet.end(),frame.begin(),frame.end());
+    return output(e,packet);
   }catch(const std::exception& x){throw_java(e,x);return nullptr;}
 }
 
