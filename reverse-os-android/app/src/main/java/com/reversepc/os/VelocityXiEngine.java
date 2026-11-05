@@ -50,7 +50,7 @@ final class VelocityXiEngine {
             wetness=values.length>=35?(int)values[33]:0;splash=values.length>=35?(int)values[34]:0;
             if(waterDepthCm<0||waterDepthCm>40||wetness<0||wetness>1000||splash<0||splash>255)
                 throw new IllegalArgumentException("XI wetland observation outside limits");
-            if(groundHeightCm<0||groundHeightCm>600||sector<0||sector>7||dayPhase<0||dayPhase>=4096||ambientMode<0||ambientMode>2||biome<0||biome>5)
+            if(groundHeightCm<0||groundHeightCm>4096||sector<0||sector>7||dayPhase<0||dayPhase>=4096||ambientMode<0||ambientMode>2||biome<0||biome>5)
                 throw new IllegalArgumentException("XI world state outside limits");
             if(driftScore<0||driftScore>9_999_999||driftComboPct<100||driftComboPct>400||
                     values[24]<0||values[24]>1||surface<0||surface>4)

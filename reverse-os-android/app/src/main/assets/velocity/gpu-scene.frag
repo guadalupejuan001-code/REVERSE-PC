@@ -13,7 +13,7 @@ uniform vec3 uLampOrigin,uLampDirection;
 uniform float uLampPower;
 out vec4 color;
 vec3 palette(float index){return texelFetch(uPalette,ivec2(int(clamp(index,0.0,255.0)),0),0).rgb;}
-float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
+float hash(vec2 p){p=fract(p*vec2(.06711056,.00583715));return fract(52.9829189*fract(p.x+p.y));}
 float noise(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1)),f.x),f.y);}
 float fbm(vec2 p){return noise(p)*.57+noise(p*2.07)*.28+noise(p*4.13)*.15;}
 vec3 environment(vec3 r){
@@ -23,12 +23,13 @@ vec3 environment(vec3 r){
     return mix(forest,sky,smoothstep(-.10,.32,r.y+trees*.035));
 }
 void main(){
+    vec2 uv=vMaterial.w==4.0? vUv/vec2(64.0,16.0):vUv;
     float base=vMaterial.x,count=vMaterial.y,delta=0.0;
     if(vMaterial.w>0.0){
-        ivec2 uv=ivec2(floor(vUv));uv=(uv%16+16)%16;
-        ivec2 uv1=(uv+1)%16;vec2 blend=smoothstep(vec2(0),vec2(1),fract(vUv));int tx=int(vMaterial.z)*16;
-        float a=texelFetch(uAtlas,ivec2(uv.x+tx,uv.y),0).r,b=texelFetch(uAtlas,ivec2(uv1.x+tx,uv.y),0).r;
-        float c=texelFetch(uAtlas,ivec2(uv.x+tx,uv1.y),0).r,d=texelFetch(uAtlas,ivec2(uv1.x+tx,uv1.y),0).r;
+        ivec2 cell=ivec2(floor(uv));cell=(cell%16+16)%16;
+        ivec2 uv1=(cell+1)%16;vec2 blend=smoothstep(vec2(0),vec2(1),fract(uv));int tx=int(vMaterial.z)*16;
+        float a=texelFetch(uAtlas,ivec2(cell.x+tx,cell.y),0).r,b=texelFetch(uAtlas,ivec2(uv1.x+tx,cell.y),0).r;
+        float c=texelFetch(uAtlas,ivec2(cell.x+tx,uv1.y),0).r,d=texelFetch(uAtlas,ivec2(uv1.x+tx,uv1.y),0).r;
         float texel=mix(mix(a,b,blend.x),mix(c,d,blend.x),blend.y)*255.0;
         delta=(texel-8.0)*vMaterial.w/255.0;
     }
@@ -66,8 +67,8 @@ void main(){
         else rgb=rgb*(.6+diffuse*.4)+environment(R)*.16;
         rgb+=vec3(1.0,.97,.9)*spec*(paint?.52:.8)*(.28+.72*uDay);
     }else if(vCategory==3.0){
-        float wave=sin(vUv.x*.18+uTime*1.7)+cos(vUv.y*.21-uTime*1.3);
-        N=normalize(N+vec3(wave*.06,0.0,sin(vUv.x*.13+uTime)*.09));R=reflect(-V,N);
+        float wave=sin(uv.x*.18+uTime*1.7)+cos(uv.y*.21-uTime*1.3);
+        N=normalize(N+vec3(wave*.06,0.0,sin(uv.x*.13+uTime)*.09));R=reflect(-V,N);
         fresnel=pow(1.0-max(dot(N,V),0.0),3.0);
         rgb=mix(rgb*.66,environment(R),.3+fresnel*.48);
         rgb+=vec3(.55,.7,.73)*pow(max(dot(N,normalize(L+V)),0.0),110.0)*.5;
@@ -75,26 +76,32 @@ void main(){
     }else if(vCategory==2.0){
         rgb=vec3(.018,.029,.027);alpha=.10+vShade*.42;
     }else if(vCategory>=4.0&&vCategory<8.0){
-        float flow=.72+.28*sin(vUv.y*.7+uTime*24.0);
+        float flow=.72+.28*sin(uv.y*.7+uTime*24.0);
         if(vCategory==5.0){
-            float side=sin(clamp(vUv.x/16.0,0.0,1.0)*3.14159265),tail=1.0-smoothstep(.55,1.0,vUv.y/64.0);
+            float side=sin(clamp(uv.x/16.0,0.0,1.0)*3.14159265),tail=1.0-smoothstep(.55,1.0,uv.y/64.0);
             rgb=mix(vec3(.02,.18,.9),vec3(.45,.88,1.0),vShade)*1.65;
             alpha=pow(max(0.0,side),.8)*tail*vShade*.68*flow;
         }else if(vCategory==4.0){
-            float side=sin(clamp(vUv.x/16.0,0.0,1.0)*3.14159265),tail=1.0-smoothstep(.70,1.0,vUv.y/64.0);
+            float side=sin(clamp(uv.x/16.0,0.0,1.0)*3.14159265),tail=1.0-smoothstep(.70,1.0,uv.y/64.0);
             rgb=vec3(.55,.79,.95);alpha=max(0.0,side)*tail*(.06+vShade*.42)*flow;
         }
         else {rgb=vCategory==6.0?mix(vec3(.35,.3,.2),vec3(.7,.86,.9),step(.5,uWaterDepth)):vec3(.43,.36,.26);alpha=(.04+vShade*.34)*flow;}
     }else{
         rgb*=.76+.24*diffuse;
         if(base>=12.0&&base<20.0){
-            float patches=fbm(vUv*.025),fine=noise(vUv*.9);
+            float patches=fbm(uv*.025),fine=noise(uv*.9);
             rgb*=.70+patches*.43+fine*.12;
-            if(abs(N.y)>.7){float fibres=sin(vUv.x*19.0+sin(vUv.y*4.0+uTime*1.6)*.9)*sin(vUv.y*23.0);rgb+=vec3(.018,.035,.009)*smoothstep(.55,.95,fibres);}
+            if(abs(N.y)>.7){float fibres=sin(uv.x*19.0+sin(uv.y*4.0+uTime*1.6)*.9)*sin(uv.y*23.0);rgb+=vec3(.018,.035,.009)*smoothstep(.55,.95,fibres);}
             rgb=mix(rgb,rgb*vec3(1.18,1.05,.74),smoothstep(.57,.82,patches)*.32);
         }
         if(base>=9.0&&base<12.0){
-            float grain=noise(vUv*2.7),patches=fbm(vUv*.06);rgb*=.72+grain*.14+patches*.35;
+            float grain=hash(floor(uv*3.7)),patches=noise(uv*.06);rgb*=.72+grain*.14+patches*.35;
+            if(vMaterial.w==4.0){
+                float lateral=clamp(uv.x/16.0,0.0,1.0),edge=smoothstep(0.0,.14,lateral)*smoothstep(0.0,.14,1.0-lateral);
+                float ruts=exp(-pow((lateral-.27)*18.0,2.0))+exp(-pow((lateral-.73)*18.0,2.0));
+                rgb*=1.0-ruts*.26;rgb=mix(palette(14.0)*(.65+diffuse*.25),rgb,edge);
+                rgb+=vec3(.055,.04,.018)*noise(uv*.18)*(1.0-ruts*.4);
+            }
             rgb+=environment(R)*(.025+uWet*.10)*pow(max(dot(N,normalize(L+V)),0.0),45.0);
         }
         if(base>=40.0&&base<56.0)rgb+=environment(R)*(.035+uWet*.12)*pow(max(dot(N,normalize(L+V)),0.0),55.0);

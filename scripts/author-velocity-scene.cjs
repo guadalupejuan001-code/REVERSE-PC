@@ -56,9 +56,7 @@ out('meshvertex 1794 -600000 r0 999998\nmeshvertex 1795 600000 r0 999998'+
  '\nmeshvertex 1796 600000 -800000 999998\nmeshvertex 1797 -600000 -800000 999998'+
  '\nmeshshade 1794 240\nmeshshade 1795 240\nmeshshade 1796 0\nmeshshade 1797 0');
 focus();out('meshfacegradient 1794 1795 1796 12 8 r9 r10 r11 60\nmeshfacegradient 1794 1796 1797 12 8 r9 r10 r11 60');
-// Distant hills rotate as a panoramic skyline with the actual yaw.
-out('load8 r6 108\nload8 r7 109\nmul r7 256\nadd r6 r7\nload16 r7 204\nadd r6 r7\nmul r6 5\ndiv r6 16\nmod r6 160\nstore8 8236 r6\nset r7 0\nlabel hills');
-load('r0',8210,2,0);out('mov r1 r0\nmul r1 r7\ndiv r1 5\nmov r2 r0\ndiv r2 160\nload8 r6 8236\nmul r6 r2\nsub r1 r6\nmov r2 r0\ndiv r2 3\nadd r2 r1\nmov r4 r1\nadd r4 r2\ndiv r4 2');load('r3',8238,2,0);out('mov r5 r0\ndiv r5 20\nmul r5 -1\nadd r5 r3\nmeshtri r1 r3 999990 r4 r5 999990 r2 r3 999990 189\nadd r7 1\ncmp r7 8\njlt hills');
+require('./emit-forest-panorama.cjs')({out,load,store,focus});
 // Transform a ground point to camera: x/y/z in registers; r9..11 temporary.
 function cameraPoint(x,y,z){out(`sub ${x} r12\nsub ${z} r13\nmov r9 ${x}\nmul r9 r15\nmov r10 ${z}\nmul r10 r14\nsub r9 r10\ndiv r9 16384\nmov r10 ${x}\nmul r10 r14\nmov r11 ${z}\nmul r11 r15\nadd r10 r11\ndiv r10 16384\nmov ${x} r9`);load('r11',8192,2,0,'r9');out('add r10 r11');load('r11',8194,2,0,'r9');out(`sub ${y} r11`);pitch(x,y,z);}
 function pitch(x,y,z){
@@ -66,6 +64,7 @@ function pitch(x,y,z){
  load('r11',8196,2,0,'r9');out(`mul r11 ${y}`);load('r9',8198,2,0,z);out(`mov ${z} r10\nmul ${z} r9\nsub ${z} r11\ndiv ${z} 1000\nmul ${y} r9`);load('r11',8196,2,0,'r9');out(`mul r11 r10\nadd ${y} r11\ndiv ${y} 1000`);
 }
 require('./emit-streamed-ground.cjs')({out,cameraPoint,focus});
+require('./emit-forest-trails.cjs')({out,cameraPoint,focus});
 out('load32 r0 342\ncmp r0 1600000000\njgt distant_road_ready');
 // Pretransform track center and right normal once, then reuse them for road bands.
 out('load8 r0 273\ndiv r0 10\nmul r0 10\nsub r0 10\ncmp r0 0\njge open_sector_start\nset r0 0\nlabel open_sector_start\nlocalset 3200 r0\nmov r1 r0\nadd r1 30\ncmp r1 80\njle open_sector_end\nset r1 80\nlabel open_sector_end\nlocalset 3201 r1\nstore8 8200 r0\nlabel transform_track\nload8 r8 8200\nmov r7 r8\nmul r7 8\nadd r7 4096');load('r0','r7',4,65536);out('add r7 4');load('r2','r7',4,65536);out('load8 r1 8200\nmul r1 2\nadd r1 5300\nload16 r1 $r1');cameraPoint('r0','r1','r2');
@@ -159,6 +158,8 @@ lines=lines.map(s=>{
  if(m&&Number(m[1])>=8192&&Number(m[1])<9000)return `localset ${Number(m[1])-8192} ${m[2]}`;
  return s;
 });
+const internalLabels=new Map();for(const s of lines){const m=/^label (\w+_\d+)$/.exec(s);if(m&&!internalLabels.has(m[1]))internalLabels.set(m[1],'L'+internalLabels.size.toString(36));}
+lines=lines.map(s=>s.replace(/\b[A-Za-z_]\w*\b/g,t=>internalLabels.get(t)||t));
 fs.writeFileSync(destination,lines.join('\n')+'\n');
 // The GPU 4K program is the SAME XI scene, lighting, physics inputs and
 // authored meshes. Only the output mode and native projection size change.

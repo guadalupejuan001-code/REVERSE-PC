@@ -45,17 +45,26 @@ module.exports=function({out,load,focus,cameraPoint,label,trig}){
  for(const i of [11,42,75]){const o=object(i,'butterfly'),c=point(i,600,heights[i]+65);tri(o,[c[0],c[1],c[2]-4],[c[0]-13,c[1]+9,c[2]],[c[0],c[1],c[2]+9],243,[0,1,0]);tri(o,[c[0],c[1],c[2]-4],[c[0],c[1],c[2]+9],[c[0]+13,c[1]+9,c[2]],243,[0,0,1]);}
  const wetStats=require('./wetlands-objects.cjs')({object,tri,quad,box,strip});
  require('./forest-lights.cjs')({object,tri,quad,box});
+ for(const p of require('./forest-trails.cjs').pois){
+  const i=points.reduce((best,c,k)=>Math.abs(c[1]-p.z)<Math.abs(points[best][1]-p.z)?k:best,0);
+  const y=terrainHeight(p.z,p.x),o=object(Math.min(79,i),'sign');
+  box(o,[p.x+240,y+70,p.z],[12,140,12],9);
+  box(o,[p.x+240,y+145,p.z],[90,35,10],11);
+ }
  const models=[],modelMap=new Map();for(const o of objects){o.origin=o.vertices[0].slice();o.vertices=o.vertices.map(v=>v.map((n,k)=>n-o.origin[k]));const key=JSON.stringify([o.vertices,o.tags]);if(!modelMap.has(key)){modelMap.set(key,models.length);models.push(o);}o.model=modelMap.get(key);}
- out('load16 r0 108');trig('r0','r3','r4','r5','r6');out('localset 3330 r3\nlocalset 3331 r4');
+ function branchDispatch(first,last,prefix){if(last-first===1){out('jmp '+prefix+first);return;}const middle=(first+last)>>1,left=label('dispatch_left');out('cmp r0 '+middle+'\njlt '+left);branchDispatch(middle,last,prefix);out('label '+left);branchDispatch(first,middle,prefix);}
+ const drawGroups=new Map();objects.forEach((o,index)=>{const key=o.kind+JSON.stringify(o.faces);if(!drawGroups.has(key))drawGroups.set(key,{o,indices:[],id:drawGroups.size});const g=drawGroups.get(key);g.indices.push(index);o.drawId=g.id;});
+ out('load16 r0 108');trig('r0','r3','r4','r5','r6');out('localset 3330 r3\nlocalset 3331 r4');out(require('./car-ground-frame.cjs').readXi());
  out('localset 3300 0\njmp open_object_dispatch\nlabel open_object_transform\nlocalset 3302 0\nlabel open_object_vertex');
  out('localget r8 3302\nmov r9 r8\nadd r9 1900\nmeshread r0 r1 r2 r9\nlocalget r3 3316\nadd r0 r3\nlocalget r3 3317\nadd r1 r3\nlocalget r3 3318\nadd r2 r3\nlocalget r3 3310\nadd r0 r3\nmov r9 r8\nadd r9 3400\nlocalget r9 r9\ncmp r9 0\nje open_object_motion_done\nload32 r3 115\nmod r3 40\ncmp r3 20\njle open_flap_fold\nset r4 40\nsub r4 r3\nmov r3 r4\nlabel open_flap_fold\nsub r3 10\ncmp r9 1\njne open_leg_motion\nmul r3 3\nadd r1 r3\njmp open_object_motion_done\nlabel open_leg_motion\nmul r3 r9\nadd r2 r3\nlabel open_object_motion_done');
  out('localget r3 3312\ncmp r3 0\nje open_water_vertex_ready\nmov r3 r0\ndiv r3 50\nload32 r4 115\ndiv r4 8\nadd r3 r4\nmov r4 r2\ndiv r4 35\nlocalget r9 3302\nadd r9 1900\nmeshtexuv r9 r3 r4\nadd r3 r4\nmod r3 64\ncmp r3 32\njle open_wave_fold\nset r4 64\nsub r4 r3\nmov r3 r4\nlabel open_wave_fold\nmul r3 3\nadd r3 110\nlocalset 3311 r3\nlabel open_water_vertex_ready');
  out(require('./wetlands-car-transform.cjs')());
  cameraPoint('r0','r1','r2');
  out('localget r8 3302\nmov r9 r8\nadd r9 2000\nmeshvertex r9 r0 r1 r2\nmov r3 r8\nadd r3 1900\nmeshtexcopy r9 r3\nlocalget r4 3311\nmeshshade r9 r4\nadd r8 1\nlocalset 3302 r8\nlocalget r9 3301\ncmp r8 r9\njlt open_object_vertex\njmp open_object_draw\nlabel open_object_dispatch');
+ out('localget r0 3300\ncmp r0 '+objects.length+'\njge open_objects_done');branchDispatch(0,objects.length,'open_case_');
  for(let index=0;index<objects.length;index++){
   const o=objects[index],skip=label('open_object_skip'),active=label('open_object_active');
-  out(`localget r0 3300\ncmp r0 ${index}\njne ${skip}`);
+  out(`label open_case_${index}\nlocalset 3319 ${o.drawId}`);
   if(o.gpuOnly)out('load8 r0 141\ncmp r0 1\njne open_object_next');
   if(o.nightOnly)out('load8 r0 526\ncmp r0 0\nje open_object_next');
   if(o.kind!=='car'){const c=point(o.segment);out(`load32 r0 100\nsub r0 ${2000000000+c[0]}\nmul r0 r0\nload32 r1 104\nsub r1 ${2000000000+c[2]}\nmul r1 r1\nadd r0 r1\ncmp r0 2500000000\njgt open_object_next`);}
@@ -76,11 +85,9 @@ module.exports=function({out,load,focus,cameraPoint,label,trig}){
  out('label open_object_draw');focus();
  // Share identical topology/material programs across water and animal instances.
  // XI still transforms each object's own vertices and evaluates its visibility.
- const drawGroups=new Map();objects.forEach((o,index)=>{const key=o.kind+JSON.stringify(o.faces);if(!drawGroups.has(key))drawGroups.set(key,{o,indices:[]});drawGroups.get(key).indices.push(index);});
- for(const {o,indices} of drawGroups.values()){
-  const skip=label('open_draw_skip'),draw=label('open_draw_shared');out('localget r0 3300');
-  for(const index of indices)out(`cmp r0 ${index}\nje ${draw}`);
-  out(`jmp ${skip}\nlabel ${draw}`);
+ out('localget r0 3319');branchDispatch(0,drawGroups.size,'open_faces_');
+ for(const {o,id} of drawGroups.values()){
+  const skip=label('open_draw_skip');out('label open_faces_'+id);
   for(const f of o.faces){const v=f.ids.map(i=>2000+i).join(' ');if(o.kind==='car'&&f.material===58){out(`meshfacegradienttex ${v} 58 2 0 1 r9 r10 r11 60`);}else if(o.kind==='car'&&f.material===64){out('load8 r0 202\nmul r0 24\nadd r0 64');out(`meshfacegradient ${v} r0 24 r9 r10 r11 60`);}else out(o.kind==='water'?`meshfacegradienttex ${v} 32 8 0 1 r9 r10 r11 60`:o.kind==='car'&&f.material===228?`meshfacegradient ${v} 228 12 r9 r10 r11 60`:['dirt','shore','bridge'].includes(o.kind)&&f.material===9?`meshfacegradienttex ${v} 9 3 7 2 r9 r10 r11 60`:`meshface ${v} ${f.material} r9 r10 r11 60`);}
   out(`jmp open_object_next\nlabel ${skip}`);
  }

@@ -1,7 +1,7 @@
 name: REVERSE VELOCITY REgraphics
 on:
   push:
-    branches: [feature/velocity-v30-open-forest-road-20261104, feature/velocity-v31-reverse-native-live-20261105, feature/velocity-v32-wetlands-gpu-20261105, feature/velocity-v33-open-terrain-20261105]
+    branches: [feature/velocity-v30-open-forest-road-20261104, feature/velocity-v31-reverse-native-live-20261105, feature/velocity-v32-wetlands-gpu-20261105, feature/velocity-v33-open-terrain-20261105, feature/velocity-v34-trails-hd-20261105]
   pull_request:
     branches: [feature/velocity-regraphics-20261030]
     paths: ['reverse-os-android/**', 'scripts/**', '.github/workflows/velocity-xi-render.yml']
@@ -30,6 +30,7 @@ jobs:
         run: |
           node scripts/check-velocity-native-only.cjs
           node scripts/open-forest-author-contract.cjs
+          node scripts/forest-trails-contract.cjs build/open-forest
           node scripts/velocity-car-contract.cjs
           node scripts/velocity-textures-contract.cjs
           node scripts/author-velocity-forest.cjs
@@ -48,6 +49,8 @@ jobs:
         run: |
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/velocity-gpu-observation.cpp -o build/open-forest/gpu-observation
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/open-terrain-contract.cpp -o build/open-forest/open-terrain-test
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/forest-trails-drive.cpp -o build/open-forest/trails-drive
+          build/open-forest/trails-drive reverse-os-android/app/src/main/assets/velocity build/open-forest
           build/open-forest/open-terrain-test reverse-os-android/app/src/main/assets/velocity build/open-forest
           build/open-forest/gpu-observation reverse-os-android/app/src/main/assets/velocity build/open-forest
           mkdir -p build/open-forest/java

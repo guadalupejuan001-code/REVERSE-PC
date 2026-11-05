@@ -113,7 +113,7 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label,open
  }
  const skidEnd=vertices.length;
  if(skidEnd>=1900)throw Error('XI local metadata range exceeded');
- const maxTriangles=openWorld?30*5*2+198+18+models.high.faces.length+shadowFaces.length+1452+256+airJetFaces.length+smokeFaces.length+nitroFaces.length+4*skidFaces.length+worldBudget:80*11*2+18+models.high.faces.length+3*models.medium.faces.length+4*shadowFaces.length+40*treeFaces.length+airJetFaces.length+smokeFaces.length+nitroFaces.length+4*skidFaces.length;
+ const maxTriangles=openWorld?30*5*2+462+112+36+models.high.faces.length+shadowFaces.length+1090+144+airJetFaces.length+smokeFaces.length+nitroFaces.length+4*skidFaces.length+worldBudget:80*11*2+18+models.high.faces.length+3*models.medium.faces.length+4*shadowFaces.length+40*treeFaces.length+airJetFaces.length+smokeFaces.length+nitroFaces.length+4*skidFaces.length;
  if(maxTriangles>4096)throw Error('Scene triangle budget exceeded: '+maxTriangles);
  if(groups.length>128)throw Error('Normal-group scalar encoding exceeded');
  const groupNormals=groups.map(g=>norm(g.sum).map(x=>Math.round(x*16384)));
@@ -139,7 +139,7 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label,open
  out('load8 r7 8203\nsub r7 124\nmul r7 12\nadd r7 410\nload8 r9 $r7\ncmp r9 0\njle next_actor\nsub r7 10');
  load('r0','r7',4,2000000000);out('add r7 4');
  load('r2','r7',4,2000000000);out('add r7 4');
- load('r8','r7',2,0);out('add r7 3\nload8 r5 $r7\nlocalset 3104 r5');
+ load('r8','r7',2,0);out('add r7 3\nload8 r7 8203\nsub r7 124\nmul r7 2\nadd r7 960\nload16 r5 $r7\nlocalset 3104 r5');
  out('label actor_ready\nmov r5 r0\nsub r5 r12\ncmp r5 -45000\njlt next_actor\ncmp r5 45000\njgt next_actor\nmov r5 r2\nsub r5 r13\ncmp r5 -45000\njlt next_actor\ncmp r5 45000\njgt next_actor\nload8 r5 8203\ncmp r5 4\njlt open_actor_heading\ncmp r5 124\njge open_actor_heading\nset r3 0\nset r4 16384\njmp open_actor_heading_ready\nlabel open_actor_heading');
  trig('r8','r3','r4','r5','r6');out('label open_actor_heading_ready');
  // Object-local sun and half vector. Values use Q14; the source supplies the
@@ -268,6 +268,7 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label,open
       '\nmul r9 r5\ndiv r9 35840\nsub r2 r9'+
       '\nlocalget r9 3100\nadd r1 r9'+
       '\nlabel '+suspensionDone);
+  out('load8 r3 8203\ncmp r3 0\njne car_ground_plane_done\n'+require('./car-ground-frame.cjs').applyXi()+'\nlabel car_ground_plane_done');
   // FX ribbons change shape with the real XI fade clock, never screen motion.
   const effectsDone=label('fx_transform_done'),smokeDone=label('smoke_transform_done'),
     nitroDone=label('nitro_transform_done');

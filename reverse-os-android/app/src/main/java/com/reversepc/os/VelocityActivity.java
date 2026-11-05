@@ -42,7 +42,8 @@ public final class VelocityActivity extends Activity {
         "TRACK X-03 · más ancho y bajo"
     };
     private VelocityActionButton nitroButton,jumpButton;
-    private RaceMap map;
+    private VelocityForestAtlas atlas;
+    private VelocityForestAtlas.MapView map;
     private int touchSteer=255;
     private boolean gas,brake,left,right,drift,nitro,jump;
     private boolean keyGas,keyBrake,keyLeft,keyRight,keyDrift,keyNitro,keyJump;
@@ -169,7 +170,7 @@ public final class VelocityActivity extends Activity {
         if(isCounting)changedText(countdown,Integer.toString((s.countdown+49)/50));
         String roadWarning=s.jumpHeightCm>0?"AIRE · "+s.jumpHeightCm+" cm":
             s.landingPulse?"ATERRIZAJE":s.wallContact?"CONTACTO":
-            s.offRoad?(s.waterDepthCm>0?"AGUA · "+s.waterDepthCm+" cm":s.surface==3?"BARRO · POCO AGARRE":s.surface==2?"BORDE · AGARRE MEDIO":"PASTO · POCO AGARRE"):
+            s.offRoad?(s.waterDepthCm>0?"AGUA · "+s.waterDepthCm+" cm":s.surface==3?"BARRO · POCO AGARRE":s.surface==2?"TIERRA · AGARRE MEDIO":"PASTO · POCO AGARRE"):
             s.drafting?"REBUFO · NITRO +":
             s.driftComboPct>100?
                 "DERRAPE "+s.driftScore+" PTS · x"+String.format(Locale.ROOT,"%.1f",s.driftComboPct/100f):"";
@@ -191,7 +192,7 @@ public final class VelocityActivity extends Activity {
         if(renderInfo!=null){String backend=w==3840?"REgraphics XI · FOTO 4K":"REgraphics XI";
             changedText(renderInfo,photo?"XI FOTO "+w+"×"+h:
                 surface.rendererLabel()+" "+w+"×"+h+" · "+fps+" FPS");}
-        map.setCar(s.xCm/100f,s.zCm/100f);
+        atlas.update(s);
     }
     @Override public void onCreate(Bundle saved){
         super.onCreate(saved);getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -245,7 +246,8 @@ public final class VelocityActivity extends Activity {
         countdown=text("",64);countdown.setGravity(Gravity.CENTER);
         add(root,countdown,104,100,Gravity.CENTER,0,0,0,0);
         countdown.setVisibility(View.GONE);
-        map=new RaceMap(game.track());add(root,map,68,68,Gravity.TOP|Gravity.LEFT,16,96,0,0);
+        try{atlas=new VelocityForestAtlas(this,game.track());}catch(Exception e){throw new IllegalStateException("No se pudo cargar el mapa",e);}
+        map=atlas.view(this,false);map.setOnClickListener(v->showMap());add(root,map,96,68,Gravity.TOP|Gravity.LEFT,16,96,0,0);
         LinearLayout menu=new LinearLayout(this);menu.setOrientation(LinearLayout.HORIZONTAL);
         assistButton=button("Manual");
         assistButton.setContentDescription("Cambiar conducción: Manual, Asistida o Piloto automático. Dirección y freno manual siempre tienen prioridad");
@@ -262,9 +264,9 @@ public final class VelocityActivity extends Activity {
         time.setOnClickListener(v->{int mode=surface.cycleWorldTime();time.setText(new String[]{"Hora: auto","Día","Atardecer","Noche"}[mode]);});
         Button sound=button("Sonido: off");soundButton=sound;sound.setOnClickListener(v->sound.setText(ambient.toggle()?"Sonido: on":"Sonido: off"));
         Button colors=button("Color");colors.setOnClickListener(v->colors.setText("Color "+(surface.cyclePaint()+1)));
-        Button sharpness=button("Nitidez");sharpness.setOnClickListener(v->{
-            boolean high=surface.toggleSharpness();sharpness.setText(high?"Alta":"Auto");
-            sharpness.setContentDescription(high?"Nitidez alta":"Nitidez automática");
+        Button sharpness=button("HD 720p");sharpness.setOnClickListener(v->{
+            boolean high=surface.toggleSharpness();sharpness.setText(high?"HD 720p":"Fluido");
+            sharpness.setContentDescription(high?"Imagen HD real 1280 por 720":"Modo fluido de resolución adaptable");
         });
         // No third-party GPU renderer. Display the exact REgraphics technical
         // boundary, instead of pretending the XI 640x360 image is native 4K.
@@ -283,7 +285,7 @@ public final class VelocityActivity extends Activity {
         engine.setContentDescription("Capacidades y límites actuales del renderizador XI");
         engine.setOnClickListener(v->new AlertDialog.Builder(this)
             .setTitle("REgraphics XI • GPU")
-            .setMessage("Open Forest Road 3.3 — Terreno abierto\n\nPuedes salir de la carretera y seguir explorando. El terreno y el bosque se generan alrededor del coche: se eliminó la pared invisible de 50 metros y el suelo visible comparte altura con las ruedas. La carretera principal conserva ocho sectores; el piloto se detiene al final, pero en Manual puedes seguir conduciendo.\n\nEl volante es analógico: desliza el dedo para dosificar el giro y suéltalo para centrar. El giro a baja velocidad es más ágil, con mejor recuperación de agarre.\n\nPuente alineado con el camino, soportes y barandales. Ardillas con cuerpo redondeado y cola curva, ramas y pasto con viento. Lentes transparentes y faros con iluminación suave sobre el terreno y volumen de luz en la GPU.\n\nXI/Ether sigue controlando física, geometría y cámara. REgraphics usa shaders propios en GPU y conserva respaldo por software. Auto adapta resolución; Alta prioriza detalle. Foto 4K pausa la conducción y renderiza 3840 × 2160.")
+            .setMessage("Open Forest Road 3.4 — Senderos y paisajes HD\n\nPuedes salir de la carretera y seguir explorando. El terreno y el bosque se generan alrededor del coche: se eliminó la pared invisible de 50 metros y el suelo visible comparte altura con las ruedas. La carretera principal conserva ocho sectores; el piloto se detiene al final, pero en Manual puedes seguir conduciendo.\n\nEl volante es analógico: desliza el dedo para dosificar el giro y suéltalo para centrar. El giro a baja velocidad es más ágil, con mejor recuperación de agarre.\n\nPuente alineado con el camino, soportes y barandales. Ardillas con cuerpo redondeado y cola curva, ramas y pasto con viento. Lentes transparentes y faros con iluminación suave sobre el terreno y volumen de luz en la GPU.\n\nXI/Ether sigue controlando física, geometría y cámara. REgraphics usa shaders propios en GPU y conserva respaldo por software. HD 720p renderiza 1280 × 720 de verdad. Fluido adapta la resolución según el coste de presentación de la GPU. Mapa muestra cuatro senderos, seis destinos y tu posición. Hay caminos hacia el mirador, el pinar, el vado y la ribera. Foto 4K pausa la conducción y renderiza 3840 × 2160.")
             .setPositiveButton("Entendido",(dialog,which)->dialog.dismiss())
             .show());
         pauseButton=button("Pausa");pauseButton.setOnClickListener(v->togglePause());
@@ -297,7 +299,8 @@ public final class VelocityActivity extends Activity {
             hudButton.setText(dashboardVisible?"HUD tablero":"HUD libre");
             cockpit.setVisibility(dashboardVisible&&!surface.is4KEnabled()?View.VISIBLE:View.GONE);
         });
-        for(Button b:new Button[]{assistButton,camera,time,colors,sharpness,native4k,pauseButton,
+        Button atlasButton=button("Mapa");atlasButton.setOnClickListener(v->showMap());
+        for(Button b:new Button[]{assistButton,camera,atlasButton,time,colors,sharpness,native4k,pauseButton,
                 garageButton,hudButton,sound,engine,restart,exit}){
             LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(dp(76),dp(40));p.setMargins(dp(2),0,dp(2),0);menu.addView(b,p);
         }
@@ -333,24 +336,17 @@ public final class VelocityActivity extends Activity {
         add(root,gearButton,80,38,Gravity.TOP|Gravity.RIGHT,0,94,16,0);
         setContentView(root);
     }
-    /** Circuit projection for a HUD map only; it never feeds game rules. */
-    private final class RaceMap extends View {
-        private final float[] points;private final Paint pen=new Paint(Paint.ANTI_ALIAS_FLAG);
-        private float minX,maxX,minZ,maxZ,carX,carZ;
-        RaceMap(float[] points){super(VelocityActivity.this);this.points=points;
-            minX=minZ=Float.MAX_VALUE;maxX=maxZ=-Float.MAX_VALUE;
-            for(int i=0;i<points.length;i+=2){minX=Math.min(minX,points[i]);maxX=Math.max(maxX,points[i]);minZ=Math.min(minZ,points[i+1]);maxZ=Math.max(maxZ,points[i+1]);}
-            setContentDescription("Mapa de la carretera forestal abierta");
-        }
-        void setCar(float x,float z){if(x==carX&&z==carZ)return;carX=x;carZ=z;invalidate();}
-        @Override protected void onDraw(Canvas canvas){
-            super.onDraw(canvas);float pad=dp(7),scale=Math.min((getWidth()-2*pad)/Math.max(1,maxX-minX),(getHeight()-2*pad)/Math.max(1,maxZ-minZ));
-            float ox=(getWidth()-(maxX-minX)*scale)/2,oz=(getHeight()-(maxZ-minZ)*scale)/2;
-            Path path=new Path();for(int i=0;i<points.length;i+=2){float x=ox+(points[i]-minX)*scale,y=oz+(maxZ-points[i+1])*scale;if(i==0)path.moveTo(x,y);else path.lineTo(x,y);}
-            pen.setStyle(Paint.Style.STROKE);pen.setStrokeWidth(dp(5));pen.setColor(0x990b1119);canvas.drawPath(path,pen);
-            pen.setStrokeWidth(dp(2));pen.setColor(0xbbffffff);canvas.drawPath(path,pen);
-            pen.setStyle(Paint.Style.FILL);pen.setColor(0xff7fe6ff);canvas.drawCircle(ox+(carX-minX)*scale,oz+(maxZ-carZ)*scale,dp(3),pen);
-        }
+    private void showMap(){
+        releaseControls();boolean resume=!surface.isPaused();if(resume)surface.togglePause();
+        LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setPadding(dp(12),dp(4),dp(12),dp(4));
+        VelocityForestAtlas.MapView view=atlas.view(this,true);panel.addView(view,new LinearLayout.LayoutParams(-1,dp(170)));
+        TextView destination=text(atlas.destination(),12);panel.addView(destination);
+        LinearLayout choices=new LinearLayout(this);choices.setOrientation(LinearLayout.HORIZONTAL);
+        for(int i=0;i<atlas.places.size();i++){final int selected=i;Button place=button(atlas.places.get(i).name);place.setOnClickListener(v->{atlas.select(selected);destination.setText(atlas.destination());});choices.addView(place,new LinearLayout.LayoutParams(dp(145),dp(36)));}
+        HorizontalScrollView scroll=new HorizontalScrollView(this);scroll.addView(choices);panel.addView(scroll);
+        AlertDialog dialog=new AlertDialog.Builder(this).setTitle("Mapa · Open Forest Road").setView(panel).setPositiveButton("Volver",(d,w)->{}).setNeutralButton("Quitar destino",(d,w)->atlas.select(-1)).create();
+        dialog.setOnDismissListener(d->{atlas.release(view);if(resume&&surface.isPaused()&&!surface.is4KEnabled())surface.togglePause();});dialog.show();
+        android.util.Log.i("ReverseVelocity","MAP_OPEN trails=4 places=6");
     }
     @Override public boolean onKeyDown(int key,KeyEvent event){
         if(key==KeyEvent.KEYCODE_P){if(event.getRepeatCount()==0)togglePause();return true;}

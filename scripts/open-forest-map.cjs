@@ -16,7 +16,7 @@ function worldXi(){const s=['#!reverse-pc-machine-v1','# OPEN FOREST ROAD 3.0 â€
  '# 80 ~20 m segments, eight 200 m sectors, 3.6 m one-lane asphalt.',
  '# Packed route4096, headings5000, elevations5300, biome5500.',
  'store8 1000 88','store8 1001 73','store8 1002 3','store8 1004 80'];
- points.forEach(([x,z],i)=>s.push(`store32 ${4096+i*8} ${x+65536}`,`store32 ${4100+i*8} ${z+65536}`,`store16 ${5000+i*2} ${headings[i]}`,`store16 ${5300+i*2} ${heights[i]}`,`store8 ${5500+i} ${biome(i)}`,`store16 ${5800+i*2} ${terrainHeights[i]}`,`set r0 ${x}`,`set r1 ${z}`,'print r0','print r1'));s.push('halt');return s.join('\n')+'\n';}
-const terrainHeight=z=>require('./open-terrain.cjs').sample(z,points,terrainHeights);
+ points.forEach(([x,z],i)=>s.push(`store32 ${4096+i*8} ${x+65536}`,`store32 ${4100+i*8} ${z+65536}`,`store16 ${5000+i*2} ${headings[i]}`,`store16 ${5300+i*2} ${heights[i]}`,`store8 ${5500+i} ${biome(i)}`,`store16 ${5800+i*2} ${terrainHeights[i]}`,`set r0 ${x}`,`set r1 ${z}`,'print r0','print r1'));s.push(...require('./forest-trails.cjs').worldXi(),...require('./forest-trail-mesh.cjs').worldXi(),'halt');return s.join('\n')+'\n';}
+const terrainHeight=(z,x=null)=>{const t=require('./open-terrain.cjs'),center=t.roadCenter(z,points);return t.sample(z,points,terrainHeights)+t.ridge((x===null?center:x)-center);};
 module.exports={terrainHeights,terrainHeight,SEGMENTS,LENGTH,SECTOR_SEGMENTS,points,heights,headings,biome,point,worldXi};
 if(require.main===module){const fs=require('node:fs'),path=require('node:path');fs.writeFileSync(path.join(__dirname,'../reverse-os-android/app/src/main/assets/velocity/world.xi'),worldXi());console.log('OPEN_FOREST_WORLD_AUTHORED',JSON.stringify({segments:80,sectors:8,lengthCm:LENGTH,roadWidthCm:360,start:points[0],end:points[80]}));}

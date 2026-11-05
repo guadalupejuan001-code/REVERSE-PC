@@ -132,6 +132,10 @@ store8 394 0
 store8 395 0
 store8 396 0
 store16 520 0
+store16 912 32768
+store16 914 32768
+store32 900 4294967295
+store16 904 65535
 store8 522 0
 store8 523 0
 store16 524 0
@@ -664,7 +668,7 @@ jmp paved_grip
 label curb_grip
 cmp r0 2
 jne paved_grip
-set r6 17
+set r6 25
 label paved_grip
 load8 r0 489
 cmp r0 3
@@ -1009,7 +1013,11 @@ load16 r0 520
 localset 3728 r0
 load32 r2 104
 sub r2 2000000000
-# Shared terrain query: r2=world z, r1=height cm; r3..r7 scratch.
+load32 r0 100
+sub r0 2000000000
+# Shared terrain query: r0/r2=world x/z, r1=height cm; r3..r7 scratch.
+localset 3790 r0
+set r0 0
 set r1 0
 cmp r2 0
 jle support_height_done
@@ -1058,8 +1066,49 @@ sub r4 r5
 mul r6 r4
 div r6 r7
 add r1 r6
-
+sub r3 5802
+div r3 2
+mul r3 8
+add r3 4096
+load32 r5 $r3
+add r3 8
+load32 r6 $r3
+sub r5 65536
+sub r6 65536
+sub r6 r5
+mul r6 r4
+div r6 r7
+add r5 r6
+mov r0 r5
 label support_height_done
+localget r3 3790
+sub r3 r0
+cmp r3 0
+jge support_height_abs
+mul r3 -1
+label support_height_abs
+cmp r3 6500
+jle support_height_ridge_done
+cmp r3 10000
+jge support_height_upper
+sub r3 6500
+mul r3 700
+div r3 3500
+add r1 r3
+jmp support_height_ridge_done
+label support_height_upper
+cmp r3 16000
+jge support_height_plateau
+sub r3 10000
+mul r3 1100
+div r3 6000
+add r3 700
+add r1 r3
+jmp support_height_ridge_done
+label support_height_plateau
+add r1 1800
+label support_height_ridge_done
+localget r0 3790
 # Ordinary road differs by only a 2cm anti-z-fighting offset. A raised bridge
 # supports a car from above; it cannot pull a car up from the river below.
 load32 r3 342
@@ -1091,6 +1140,97 @@ cmp r0 4
 jne open_mud_ready
 store8 489 3
 label open_mud_ready
+store32 900 4294967295
+store16 904 65535
+localset 3900 0
+label trail_query
+localget r3 3900
+mul r3 24
+add r3 12000
+load32 r0 100
+sub r0 2000000000
+load32 r2 104
+sub r2 2000000000
+localset 3910 r0
+localset 3911 r2
+load32 r6 $r3
+sub r6 2000000000
+add r3 4
+load32 r7 $r3
+sub r7 2000000000
+add r3 4
+load32 r8 $r3
+sub r8 2000000000
+sub r8 r6
+add r3 4
+load32 r9 $r3
+sub r9 2000000000
+sub r9 r7
+mov r10 r8
+mul r10 r8
+mov r11 r9
+mul r11 r9
+add r10 r11
+sub r0 r6
+sub r2 r7
+mul r0 r8
+mul r2 r9
+add r0 r2
+mul r0 1000000
+div r0 r10
+cmp r0 0
+jge trail_distance_positive
+set r0 0
+label trail_distance_positive
+cmp r0 1000000
+jle trail_distance_bounded
+set r0 1000000
+label trail_distance_bounded
+mov r5 r0
+mul r8 r0
+div r8 1000000
+add r6 r8
+mul r9 r0
+div r9 1000000
+add r7 r9
+localget r4 3910
+sub r4 r6
+mul r4 r4
+localget r2 3911
+sub r2 r7
+mul r2 r2
+add r4 r2
+load32 r0 900
+cmp r4 r0
+jge trail_query_next
+store32 900 r4
+localget r0 3900
+store16 904 r0
+label trail_query_next
+localget r0 3900
+add r0 1
+localset 3900 r0
+load16 r1 908
+cmp r0 r1
+jlt trail_query
+load16 r3 904
+cmp r3 65535
+je trail_surface_done
+load32 r0 900
+mul r3 24
+add r3 12016
+load16 r1 $r3
+div r1 2
+mul r1 r1
+cmp r0 r1
+jgt trail_surface_done
+store8 489 2
+add r3 2
+load8 r0 $r3
+cmp r0 0
+je trail_surface_done
+store8 489 3
+label trail_surface_done
 # Wetlands: physically shallow water, retained wetness and wheel splash.
 store16 544 0
 load32 r0 532
@@ -1296,6 +1436,438 @@ store16 110 0
 store16 112 32768
 store8 283 1
 label open_water_ready
+load32 r0 100
+sub r0 2000000000
+load32 r2 104
+sub r2 2000000000
+add r0 -100
+# Shared terrain query: r0/r2=world x/z, r1=height cm; r3..r7 scratch.
+localset 3790 r0
+set r0 0
+set r1 0
+cmp r2 0
+jle wheel_plane_0_done
+set r3 0
+set r4 80
+label wheel_plane_0_search
+mov r5 r3
+add r5 1
+cmp r5 r4
+jge wheel_plane_0_found
+mov r5 r3
+add r5 r4
+div r5 2
+mov r6 r5
+mul r6 8
+add r6 4100
+load32 r7 $r6
+sub r7 65536
+cmp r2 r7
+jle wheel_plane_0_lower
+mov r3 r5
+jmp wheel_plane_0_search
+label wheel_plane_0_lower
+mov r4 r5
+jmp wheel_plane_0_search
+label wheel_plane_0_found
+mov r6 r3
+mul r6 8
+add r6 4100
+load32 r5 $r6
+add r6 8
+load32 r7 $r6
+sub r5 65536
+sub r7 65536
+cmp r2 r7
+jgt wheel_plane_0_done
+sub r7 r5
+mul r3 2
+add r3 5800
+load16 r1 $r3
+add r3 2
+load16 r6 $r3
+sub r6 r1
+mov r4 r2
+sub r4 r5
+mul r6 r4
+div r6 r7
+add r1 r6
+sub r3 5802
+div r3 2
+mul r3 8
+add r3 4096
+load32 r5 $r3
+add r3 8
+load32 r6 $r3
+sub r5 65536
+sub r6 65536
+sub r6 r5
+mul r6 r4
+div r6 r7
+add r5 r6
+mov r0 r5
+label wheel_plane_0_done
+localget r3 3790
+sub r3 r0
+cmp r3 0
+jge wheel_plane_0_abs
+mul r3 -1
+label wheel_plane_0_abs
+cmp r3 6500
+jle wheel_plane_0_ridge_done
+cmp r3 10000
+jge wheel_plane_0_upper
+sub r3 6500
+mul r3 700
+div r3 3500
+add r1 r3
+jmp wheel_plane_0_ridge_done
+label wheel_plane_0_upper
+cmp r3 16000
+jge wheel_plane_0_plateau
+sub r3 10000
+mul r3 1100
+div r3 6000
+add r3 700
+add r1 r3
+jmp wheel_plane_0_ridge_done
+label wheel_plane_0_plateau
+add r1 1800
+label wheel_plane_0_ridge_done
+localget r0 3790
+localset 3791 r1
+load32 r0 100
+sub r0 2000000000
+load32 r2 104
+sub r2 2000000000
+add r0 100
+# Shared terrain query: r0/r2=world x/z, r1=height cm; r3..r7 scratch.
+localset 3790 r0
+set r0 0
+set r1 0
+cmp r2 0
+jle wheel_plane_1_done
+set r3 0
+set r4 80
+label wheel_plane_1_search
+mov r5 r3
+add r5 1
+cmp r5 r4
+jge wheel_plane_1_found
+mov r5 r3
+add r5 r4
+div r5 2
+mov r6 r5
+mul r6 8
+add r6 4100
+load32 r7 $r6
+sub r7 65536
+cmp r2 r7
+jle wheel_plane_1_lower
+mov r3 r5
+jmp wheel_plane_1_search
+label wheel_plane_1_lower
+mov r4 r5
+jmp wheel_plane_1_search
+label wheel_plane_1_found
+mov r6 r3
+mul r6 8
+add r6 4100
+load32 r5 $r6
+add r6 8
+load32 r7 $r6
+sub r5 65536
+sub r7 65536
+cmp r2 r7
+jgt wheel_plane_1_done
+sub r7 r5
+mul r3 2
+add r3 5800
+load16 r1 $r3
+add r3 2
+load16 r6 $r3
+sub r6 r1
+mov r4 r2
+sub r4 r5
+mul r6 r4
+div r6 r7
+add r1 r6
+sub r3 5802
+div r3 2
+mul r3 8
+add r3 4096
+load32 r5 $r3
+add r3 8
+load32 r6 $r3
+sub r5 65536
+sub r6 65536
+sub r6 r5
+mul r6 r4
+div r6 r7
+add r5 r6
+mov r0 r5
+label wheel_plane_1_done
+localget r3 3790
+sub r3 r0
+cmp r3 0
+jge wheel_plane_1_abs
+mul r3 -1
+label wheel_plane_1_abs
+cmp r3 6500
+jle wheel_plane_1_ridge_done
+cmp r3 10000
+jge wheel_plane_1_upper
+sub r3 6500
+mul r3 700
+div r3 3500
+add r1 r3
+jmp wheel_plane_1_ridge_done
+label wheel_plane_1_upper
+cmp r3 16000
+jge wheel_plane_1_plateau
+sub r3 10000
+mul r3 1100
+div r3 6000
+add r3 700
+add r1 r3
+jmp wheel_plane_1_ridge_done
+label wheel_plane_1_plateau
+add r1 1800
+label wheel_plane_1_ridge_done
+localget r0 3790
+localset 3792 r1
+load32 r0 100
+sub r0 2000000000
+load32 r2 104
+sub r2 2000000000
+add r2 -200
+# Shared terrain query: r0/r2=world x/z, r1=height cm; r3..r7 scratch.
+localset 3790 r0
+set r0 0
+set r1 0
+cmp r2 0
+jle wheel_plane_2_done
+set r3 0
+set r4 80
+label wheel_plane_2_search
+mov r5 r3
+add r5 1
+cmp r5 r4
+jge wheel_plane_2_found
+mov r5 r3
+add r5 r4
+div r5 2
+mov r6 r5
+mul r6 8
+add r6 4100
+load32 r7 $r6
+sub r7 65536
+cmp r2 r7
+jle wheel_plane_2_lower
+mov r3 r5
+jmp wheel_plane_2_search
+label wheel_plane_2_lower
+mov r4 r5
+jmp wheel_plane_2_search
+label wheel_plane_2_found
+mov r6 r3
+mul r6 8
+add r6 4100
+load32 r5 $r6
+add r6 8
+load32 r7 $r6
+sub r5 65536
+sub r7 65536
+cmp r2 r7
+jgt wheel_plane_2_done
+sub r7 r5
+mul r3 2
+add r3 5800
+load16 r1 $r3
+add r3 2
+load16 r6 $r3
+sub r6 r1
+mov r4 r2
+sub r4 r5
+mul r6 r4
+div r6 r7
+add r1 r6
+sub r3 5802
+div r3 2
+mul r3 8
+add r3 4096
+load32 r5 $r3
+add r3 8
+load32 r6 $r3
+sub r5 65536
+sub r6 65536
+sub r6 r5
+mul r6 r4
+div r6 r7
+add r5 r6
+mov r0 r5
+label wheel_plane_2_done
+localget r3 3790
+sub r3 r0
+cmp r3 0
+jge wheel_plane_2_abs
+mul r3 -1
+label wheel_plane_2_abs
+cmp r3 6500
+jle wheel_plane_2_ridge_done
+cmp r3 10000
+jge wheel_plane_2_upper
+sub r3 6500
+mul r3 700
+div r3 3500
+add r1 r3
+jmp wheel_plane_2_ridge_done
+label wheel_plane_2_upper
+cmp r3 16000
+jge wheel_plane_2_plateau
+sub r3 10000
+mul r3 1100
+div r3 6000
+add r3 700
+add r1 r3
+jmp wheel_plane_2_ridge_done
+label wheel_plane_2_plateau
+add r1 1800
+label wheel_plane_2_ridge_done
+localget r0 3790
+localset 3793 r1
+load32 r0 100
+sub r0 2000000000
+load32 r2 104
+sub r2 2000000000
+add r2 200
+# Shared terrain query: r0/r2=world x/z, r1=height cm; r3..r7 scratch.
+localset 3790 r0
+set r0 0
+set r1 0
+cmp r2 0
+jle wheel_plane_3_done
+set r3 0
+set r4 80
+label wheel_plane_3_search
+mov r5 r3
+add r5 1
+cmp r5 r4
+jge wheel_plane_3_found
+mov r5 r3
+add r5 r4
+div r5 2
+mov r6 r5
+mul r6 8
+add r6 4100
+load32 r7 $r6
+sub r7 65536
+cmp r2 r7
+jle wheel_plane_3_lower
+mov r3 r5
+jmp wheel_plane_3_search
+label wheel_plane_3_lower
+mov r4 r5
+jmp wheel_plane_3_search
+label wheel_plane_3_found
+mov r6 r3
+mul r6 8
+add r6 4100
+load32 r5 $r6
+add r6 8
+load32 r7 $r6
+sub r5 65536
+sub r7 65536
+cmp r2 r7
+jgt wheel_plane_3_done
+sub r7 r5
+mul r3 2
+add r3 5800
+load16 r1 $r3
+add r3 2
+load16 r6 $r3
+sub r6 r1
+mov r4 r2
+sub r4 r5
+mul r6 r4
+div r6 r7
+add r1 r6
+sub r3 5802
+div r3 2
+mul r3 8
+add r3 4096
+load32 r5 $r3
+add r3 8
+load32 r6 $r3
+sub r5 65536
+sub r6 65536
+sub r6 r5
+mul r6 r4
+div r6 r7
+add r5 r6
+mov r0 r5
+label wheel_plane_3_done
+localget r3 3790
+sub r3 r0
+cmp r3 0
+jge wheel_plane_3_abs
+mul r3 -1
+label wheel_plane_3_abs
+cmp r3 6500
+jle wheel_plane_3_ridge_done
+cmp r3 10000
+jge wheel_plane_3_upper
+sub r3 6500
+mul r3 700
+div r3 3500
+add r1 r3
+jmp wheel_plane_3_ridge_done
+label wheel_plane_3_upper
+cmp r3 16000
+jge wheel_plane_3_plateau
+sub r3 10000
+mul r3 1100
+div r3 6000
+add r3 700
+add r1 r3
+jmp wheel_plane_3_ridge_done
+label wheel_plane_3_plateau
+add r1 1800
+label wheel_plane_3_ridge_done
+localget r0 3790
+localset 3794 r1
+localget r0 3792
+localget r1 3791
+sub r0 r1
+mul r0 4096
+div r0 200
+add r0 32768
+store16 912 r0
+localget r0 3794
+localget r1 3793
+sub r0 r1
+mul r0 4096
+div r0 400
+load32 r1 342
+cmp r1 90000
+jgt wheel_plane_ready
+load8 r1 273
+cmp r1 64
+jlt wheel_plane_ready
+cmp r1 66
+jgt wheel_plane_ready
+mul r1 2
+add r1 5300
+load16 r0 $r1
+add r1 2
+load16 r2 $r1
+sub r2 r0
+mul r2 4096
+div r2 2000
+mov r0 r2
+label wheel_plane_ready
+add r0 32768
+store16 914 r0
 # Preserve world-space altitude when the support plane changes in mid-air.
 # Driving off a deck starts a fall instead of snapping into the river bed.
 localget r0 3728
@@ -1357,6 +1929,24 @@ add r3 r6
 div r5 3
 sub r5 1
 add r4 r5
+cmp r4 0
+jlt trail_forest_clear
+cmp r4 80
+jge trail_forest_clear
+mov r6 r3
+add r6 16
+cmp r6 0
+jlt trail_forest_clear
+cmp r6 32
+jge trail_forest_clear
+mov r7 r4
+mul r7 32
+add r7 r6
+add r7 18000
+load8 r7 $r7
+cmp r7 1
+je forest_contact_next
+label trail_forest_clear
 mov r5 r3
 mul r5 73
 mov r6 r4
@@ -1402,7 +1992,9 @@ label forest_contact_radius
 localset 3803 r7
 localset 3804 r0
 localset 3805 r2
-# Shared terrain query: r2=world z, r1=height cm; r3..r7 scratch.
+# Shared terrain query: r0/r2=world x/z, r1=height cm; r3..r7 scratch.
+localset 3790 r0
+set r0 0
 set r1 0
 cmp r2 0
 jle forest_contact_support_done
@@ -1466,6 +2058,34 @@ div r6 r7
 add r5 r6
 mov r0 r5
 label forest_contact_support_done
+localget r3 3790
+sub r3 r0
+cmp r3 0
+jge forest_contact_support_abs
+mul r3 -1
+label forest_contact_support_abs
+cmp r3 6500
+jle forest_contact_support_ridge_done
+cmp r3 10000
+jge forest_contact_support_upper
+sub r3 6500
+mul r3 700
+div r3 3500
+add r1 r3
+jmp forest_contact_support_ridge_done
+label forest_contact_support_upper
+cmp r3 16000
+jge forest_contact_support_plateau
+sub r3 10000
+mul r3 1100
+div r3 6000
+add r3 700
+add r1 r3
+jmp forest_contact_support_ridge_done
+label forest_contact_support_plateau
+add r1 1800
+label forest_contact_support_ridge_done
+
 cmp r2 0
 jlt forest_contact_clear
 load32 r5 4740
@@ -1819,6 +2439,11 @@ add r12 2
 store8 $r12 120
 add r12 1
 load16 r1 520
+mov r3 r0
+mul r3 2
+add r3 960
+store16 $r3 r1
+set r1 0
 store8 $r12 r1
 add r0 1
 mod r0 4

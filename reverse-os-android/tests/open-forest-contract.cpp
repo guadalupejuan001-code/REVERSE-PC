@@ -15,7 +15,7 @@ int checks=0;
 void check(bool ok,const std::string& why){if(!ok)throw std::runtime_error(why);checks++;}
 std::string read(const std::filesystem::path& p){std::ifstream f(p,std::ios::binary);check(bool(f),"read "+p.string());return {std::istreambuf_iterator<char>(f),{}};}
 std::vector<long long> numbers(const std::string& text){std::vector<long long> r;std::istringstream s(text);std::string line;while(std::getline(s,line)){auto at=line.find("\"value\":");if(at!=std::string::npos)r.push_back(std::stoll(line.substr(at+8)));}return r;}
-State observe(const std::string& text){auto a=numbers(text);check(a.size()==35,"open environment ABI has 35 integer observations");State r{};std::copy(a.begin(),a.end(),r.begin());check(r[5]==0&&r[7]==0&&r[10]==0,"exploration has neither laps nor finish freeze");check(r[11]>=0&&r[11]<160000&&r[12]>=0&&r[12]<80,"finite route cursor");check(r[25]>=0&&r[25]<=4&&r[26]>=0&&r[26]<600&&r[27]>=0&&r[27]<8&&r[28]>=0&&r[28]<4096,"bounded environment fields");check(r[30]>=0&&r[30]<=5&&r[32]>=0&&r[32]<=40&&r[33]>=0&&r[33]<=1000&&r[34]>=0&&r[34]<=255,"bounded wetland observations: biome="+std::to_string(r[30])+" depth="+std::to_string(r[32])+" wetness="+std::to_string(r[33])+" splash="+std::to_string(r[34]));return r;}
+State observe(const std::string& text){auto a=numbers(text);check(a.size()==35,"open environment ABI has 35 integer observations");State r{};std::copy(a.begin(),a.end(),r.begin());check(r[5]==0&&r[7]==0&&r[10]==0,"exploration has neither laps nor finish freeze");check(r[11]>=0&&r[11]<160000&&r[12]>=0&&r[12]<80,"finite route cursor");check(r[25]>=0&&r[25]<=4&&r[26]>=0&&r[26]<4096&&r[27]>=0&&r[27]<8&&r[28]>=0&&r[28]<4096,"bounded environment fields");check(r[30]>=0&&r[30]<=5&&r[32]>=0&&r[32]<=40&&r[33]>=0&&r[33]<=1000&&r[34]>=0&&r[34]<=255,"bounded wetland observations: biome="+std::to_string(r[30])+" depth="+std::to_string(r[32])+" wetness="+std::to_string(r[33])+" splash="+std::to_string(r[34]));return r;}
 void save(const Runtime& r,const std::filesystem::path& p){auto bytes=reverse_pc::rvpc2::save(r);std::ofstream f(p,std::ios::binary);f.write((const char*)bytes.data(),bytes.size());}
 int main(int argc,char**argv){try{
  const std::filesystem::path root=argc>1?argv[1]:"reverse-os-android/app/src/main/assets/velocity",out=argc>2?argv[2]:"build/open-forest/gameplay";
@@ -43,7 +43,7 @@ int main(int argc,char**argv){try{
  drift.execute(header+"store32 100 "+std::to_string(p[d*2]+2000000000)+"\nstore32 104 "+std::to_string(p[d*2+1]+2000000000)+"\nstore8 273 55\nstore16 108 "+std::to_string(heading)+"\nstore16 261 "+std::to_string(32768+int(2000*std::sin(dyaw)))+"\nstore16 263 "+std::to_string(32768+int(2000*std::cos(dyaw)))+"\nstore16 110 2000\nhalt\n");
  State drifting{};
  for(int i=0;i<8;i++)drifting=observe(drift.execute(header+"store8 128 1\nstore8 129 0\nstore8 130 2\nstore8 131 1\nstore8 132 0\nstore8 136 0\n"+drive.substr(header.size())));
- const auto markHeight=drift.memory().read("411",drift.core());
+ const auto markHeight=drift.memory().read("960",drift.core());
  check(markHeight.deterministic&&markHeight.value>0&&std::abs(int(markHeight.value)-int(drifting[26]))<10,"skid samples stay on the actual elevated road");
  save(drift,out/"forest-drift.rvp");
  // The map end remains playable and reverse never teleports to the old start seam.

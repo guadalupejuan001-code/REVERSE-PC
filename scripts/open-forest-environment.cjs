@@ -58,6 +58,8 @@ load16 r0 520
 localset 3728 r0
 load32 r2 104
 sub r2 2000000000
+load32 r0 100
+sub r0 2000000000
 ${require('./open-terrain.cjs').heightXi('support_height')}
 # Ordinary road differs by only a 2cm anti-z-fighting offset. A raised bridge
 # supports a car from above; it cannot pull a car up from the river below.
@@ -90,6 +92,7 @@ cmp r0 4
 jne open_mud_ready
 store8 489 3
 label open_mud_ready
+${require('./forest-trails.cjs').physicsXi()}
 ${require('./wetlands-environment.cjs').physicsXi()}
 # Only the actual elevated bridge rails collide. There are no road-corridor,
 # lake-bank, ford-bank or end-of-world clamps.
@@ -133,6 +136,7 @@ store16 110 0
 store16 112 32768
 store8 283 1
 label open_water_ready
+${require('./car-ground-frame.cjs').physicsXi()}
 # Preserve world-space altitude when the support plane changes in mid-air.
 # Driving off a deck starts a fall instead of snapping into the river bed.
 localget r0 3728

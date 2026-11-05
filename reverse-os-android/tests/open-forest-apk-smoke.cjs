@@ -287,6 +287,18 @@ try{
   stage='ambient audio';ui=revealToolbar('Sonido: off',true);tapNode(findText(ui,'Sonido: off'));ui=waitText(/^Sonido: on$/);
   check(true,'optional ambient synthesis can be enabled');tapNode(findText(ui,'Sonido: on'));ui=waitText(/^Sonido: off$/);
   check(true,'ambient audio can be disabled');
+  stage='world atlas';ui=revealToolbar('Mapa',false);tapNode(findText(ui,'Mapa'));ui=waitText(/^Mapa · Open Forest Road$/);
+  check(!!findText(ui,'Mirador del Alba'),'actual atlas exposes the trail destinations');
+  tapNode(findText(ui,'Mirador del Alba'));check(/MAP_WAYPOINT index=1 name=Mirador del Alba/.test(logs()),'map waypoint selection uses the shared authored destination');screenshot('world-atlas');
+  tapNode(findText(ui,'Volver'));ui=waitText(/OPEN FOREST ROAD/);
+  stage='manual steering and pedal';const manualBefore=frameRecords(logs()).length;
+  adbText(['shell','input','keyevent','KEYCODE_P']);
+  adbText(['shell','input','keycombination','-t','2200','KEYCODE_W','KEYCODE_D']);
+  const manual=waitProfileFrame(manualBefore,s=>!s.paused&&s.speed>0&&Math.abs(s.xCm)>100&&s.yaw4096>50,'actual manual acceleration and turn');
+  report.manualTurn=manual;check(manual.width===1280&&manual.height===720,'manual driving posts true HD pixels');check(Math.abs(manual.xCm)>100&&manual.yaw4096>50,'real pedals and steering turn the XI car');
+  adbText(['shell','input','keyevent','KEYCODE_P']);ui=waitText(/EN PAUSA/);
+  adbText(['shell','input','keyevent','KEYCODE_R']);sleep(400);adbText(['shell','input','keyevent','KEYCODE_P']);ui=waitText(/EN PAUSA/);
+  check(/GPU_HD_PIXELS source=XI_XFG4_GLSL width=1280 height=720 pixels=921600 sha256=[a-f0-9]{64}/.test(logs()),'all HD pixels read back and hashed on Android');
   stage='open road pilot';ui=revealToolbar('Manual',false);tapNode(findText(ui,'Manual'));ui=waitText(/^Asistida$/);tapNode(findText(ui,'Asistida'));ui=waitText(/^Piloto$/);
   check(true,'XI pilot available for the finite road');startVideo();
   const recordsBefore=frameRecords(logs()),statsBefore=recordsBefore.length;
@@ -297,6 +309,7 @@ try{
   // progress beyond this pause, rather than asserting on that partial window.
   const moving=waitProfileFrame(statsBefore,s=>s.paused===false&&s.ticks>pausedTicks&&s.frames>0&&s.physicsHz>0,'finite road traversal');
   check(moving.physicsHz>0&&moving.ticks>pausedTicks,'XI physics actually advances in the open world');
+  check(moving.width===1280&&moving.height===720,'continuous driving retains the HD profile');
   report.movingFrame=moving;
   // A paused scene deliberately reuses its Surface pixels. Android's encoder
   // then receives no fresh buffers and can finalize a shorter MP4 timeline.

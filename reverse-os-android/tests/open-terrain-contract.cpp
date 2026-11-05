@@ -24,7 +24,7 @@ int main(int argc,char**argv){try{
  seed.execute(header+"store8 132 1\n"+drive.substr(header.size()));const auto initial=reverse_pc::rvpc2::save(seed);
  auto pose=[&](long long x,long long z,int speed=0){auto r=reverse_pc::rvpc2::restore(initial);r.execute(header+"store32 100 "+std::to_string(2000000000LL+x)+"\nstore32 104 "+std::to_string(2000000000LL+z)+"\nstore16 108 0\nstore16 261 32768\nstore16 263 "+std::to_string(32768+speed)+"\nstore16 110 "+std::to_string(speed)+"\nstore8 138 255\nhalt\n");return r;};
  const std::vector<std::pair<std::uint32_t,std::uint8_t>> view{{141,1},{200,1},{201,0},{202,0},{203,0},{204,0},{205,0},{206,0},{207,0}};
- int poses=0;for(const auto& p:std::vector<std::pair<long long,long long>>{{20000,30000},{-20000,55000},{100000,90000},{-100000,145000},{0,-20000},{0,190000},{2000000,-2000000},{-2000000,2000000}}){
+ int poses=0;for(const auto& p:std::vector<std::pair<long long,long long>>{{10000,25000},{15000,30000},{-18000,90000},{-13000,89000},{20000,30000},{-20000,55000},{100000,90000},{-100000,145000},{0,-20000},{0,190000},{2000000,-2000000},{-2000000,2000000}}){
   auto r=pose(p.first,p.second);State s{};for(int i=0;i<4;i++)s=observe(r.execute(command(0)));
   check(!s[14]&&s[0]==p.first&&s[1]==p.second,"open terrain never projects a distant car onto the road");
   const auto frame=reverse_pc::observe_geometry(reverse_pc::rvpc2::save(r),render,view);

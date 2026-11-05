@@ -13,7 +13,7 @@ void main(){
         vec3 a=texture(uImage,uv+vec2(uTexel.x,0.0)).rgb,b=texture(uImage,uv-vec2(uTexel.x,0.0)).rgb;
         vec3 d=texture(uImage,uv+vec2(0.0,uTexel.y)).rgb,e=texture(uImage,uv-vec2(0.0,uTexel.y)).rgb;
         float edge=max(max(luma(a),luma(b)),max(luma(d),luma(e)))-min(min(luma(a),luma(b)),min(luma(d),luma(e)));
-        c=mix(c,(a+b+d+e+c*2.0)/6.0,smoothstep(.07,.28,edge)*.65);
+        c=mix(c,(a+b+d+e+c*2.0)/6.0,smoothstep(.09,.32,edge)*.36);
         vec3 glow=vec3(0.0);
         for(int i=0;i<4;i++){
             vec2 off=i==0?vec2(2.5,0.0):i==1?vec2(-2.5,0.0):i==2?vec2(0.0,2.5):vec2(0.0,-2.5);

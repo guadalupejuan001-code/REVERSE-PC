@@ -42,9 +42,9 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     private boolean orbitMoved;
     private long lastTapUptime;
     private final Object detailLock=new Object();
-    private int quality=1;
+    private int quality=2;
     private int fastFrames;
-    private boolean fixedDetail;
+    private boolean fixedDetail=true;
     private volatile int physicsHz;
     private volatile boolean paused;
     private final VelocityGearbox gearbox=new VelocityGearbox();
@@ -292,8 +292,8 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
         boolean firstFramePosted=false;
         int cacheHits=0,xiRenders=0,lastCameraOrbit=Integer.MIN_VALUE;
         boolean previousGpu=false;
-        final int[] gpuWidths={320,480,640,960,1280};
-        int gpuLevel=2,gpuSlow=0,gpuFast=0;
+        final int[] gpuWidths={640,960,1280};
+        int gpuLevel=1,gpuSlow=0,gpuFast=0;
         final VelocityFrameReuse frameReuse=new VelocityFrameReuse();
         final VelocityFrameProfiler profiler=new VelocityFrameProfiler();
         try{
@@ -334,7 +334,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                         Log.i("ReverseVelocity","FRAME_STATS frames="+frames+
                             " elapsedNanos="+elapsed+" fps="+fps+" width="+width+
                             " height="+height+" ticks="+currentState.ticks+
-                            " xCm="+currentState.xCm+" zCm="+currentState.zCm+
+                            " xCm="+currentState.xCm+" zCm="+currentState.zCm+" yaw4096="+currentState.yaw4096+
                             " speed="+currentState.speedCmps+
                             " reverse="+gearbox.isReverse()+
                             " physicsHz="+physicsHz+" fixedDetail="+selectedFixed+
@@ -412,7 +412,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     firstFramePosted=true;
                     Log.i("ReverseVelocity","FRAME_READY "+width+"x"+height+
                         " speed="+state.speedKmh()+" ticks="+state.ticks+
-                        " xCm="+state.xCm+" zCm="+state.zCm+" yaw4096="+state.yaw4096+
+                        " xCm="+state.xCm+" zCm="+state.zCm+" yaw4096="+state.yaw4096+" yaw4096="+state.yaw4096+
                         " reverse="+gearbox.isReverse()+
                         " camera="+selectedCamera+" paint="+selectedPaint+" car="+selectedCar);
                 }
@@ -433,7 +433,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     fps=(int)Math.round(frames*1_000_000_000.0/elapsed);
                     Log.i("ReverseVelocity","FRAME_STATS frames="+frames+" elapsedNanos="+elapsed+
                         " fps="+fps+" width="+width+" height="+height+" ticks="+state.ticks+
-                        " xCm="+state.xCm+" zCm="+state.zCm+
+                        " xCm="+state.xCm+" zCm="+state.zCm+" yaw4096="+state.yaw4096+
                         " speed="+state.speedCmps+
                         " reverse="+gearbox.isReverse()+
                         " physicsHz="+physicsHz+" fixedDetail="+selectedFixed+" paused="+paused+
@@ -448,13 +448,13 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     lastHud=now;hud.update(state,paused,fps,width,height,error);
                 }
                 long cost=now-begin;
-                // Measure the complete posted frame, including GPU work. Slow
-                // devices can go below 640 without dropping any XI world state.
+                // HD is explicit. Fluid mode scales only against measured GPU presentation,
+                // never against the CPU cost of preparing the immutable XI scene.
                 if(selectedGpu&&!selected4K&&!selectedFixed&&!paused&&presented){
-                    if(cost>40_000_000L){
+                    if(presentNanos>30_000_000L){
                         gpuFast=0;
-                        if(++gpuSlow>=4&&gpuLevel>0){gpuLevel--;gpuSlow=0;Log.i("ReverseVelocity","GPU_BUDGET width="+gpuWidths[gpuLevel]+" reason=frame_cost");}
-                    }else if(cost<23_000_000L){
+                        if(++gpuSlow>=4&&gpuLevel>0){gpuLevel--;gpuSlow=0;Log.i("ReverseVelocity","GPU_BUDGET width="+gpuWidths[gpuLevel]+" reason=gpu_present_cost");}
+                    }else if(presentNanos<15_000_000L){
                         gpuSlow=0;
                         if(++gpuFast>=120&&gpuLevel<gpuWidths.length-1){gpuLevel++;gpuFast=0;}
                     }else{gpuSlow=0;gpuFast=0;}

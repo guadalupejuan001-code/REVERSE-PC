@@ -113,18 +113,18 @@ function finishScene(content,options={}){
  const groveFaces=[...canopyFaces,trunk(6,7,8),trunk(6,8,9),trunk(9,8,10),trunk(9,10,11),trunk(8,9,12),trunk(8,12,13)];
  if(groveFaces.length!==11)throw Error('Forest grove must cost nine faces');
  const rockFaces=[],grassFaces=[];
- for(let k=0;k<6;k++){
-  const n=(k+1)%6;
-  rockFaces.push(face(ROCK_START,ROCK_START+1+k,ROCK_START+1+n,[3,8,4,3,10,8][k]));
-  rockFaces.push(face(ROCK_START+1+k,ROCK_START+7+k,ROCK_START+1+n,[4,3,8,4,3,8][k]));
-  rockFaces.push(face(ROCK_START+7+k,ROCK_START+7+n,ROCK_START+1+n,[4,3,8,4,3,8][k]));
+ const corners=[0,1,3,5];for(let k=0;k<4;k++){
+  const a=corners[k],b=corners[(k+1)%4];
+  rockFaces.push(face(ROCK_START,ROCK_START+1+a,ROCK_START+1+b,3));
+  rockFaces.push(face(ROCK_START+1+a,ROCK_START+7+a,ROCK_START+1+b,4));
+  rockFaces.push(face(ROCK_START+7+a,ROCK_START+7+b,ROCK_START+1+b,8));
  }
  for(let k=0;k<4;k++){
   const a=GRASS_START+k*3,b=a+1,c=a+2;
   grassFaces.push(k===3?'meshface '+[a,b,c].map(i=>i+CAMERA).join(' ')+' 243 r9 r10 r11 60':face(a,b,c,14+k));
   grassFaces.push(k===3?'meshface '+[c,b,a].map(i=>i+CAMERA).join(' ')+' 243 r9 r10 r11 60':face(c,b,a,12+k));
  }
- if(28*11+8*rockFaces.length+4*grassFaces.length!==484)
+ if(28*11+8*rockFaces.length+4*grassFaces.length!==436)
   throw Error('Forest triangle budget is not bounded');
  const full=['label emit_tree','localget r0 3120','mod r0 10','cmp r0 7','je nature_emit_rock','cmp r0 8',
    'je nature_emit_rock','cmp r0 9','je nature_emit_grass',
@@ -132,12 +132,6 @@ function finishScene(content,options={}){
    ...rockFaces,'jmp next_actor','label nature_emit_grass',
    ...grassFaces].join('\n');
  source=source.slice(0,treeStart)+full+source.slice(next);
- // Irregular peak heights break the old eight-identical-cones skyline.
- source=change(source,
-   'meshtri r1 r3 999990 r4 r5 999990 r2 r3 999990 18',
-   'mov r6 r7\nmul r6 17\nmod r6 5\nmul r6 r0\ndiv r6 140\nsub r5 r6\n'+
-   'meshtri r1 r3 999990 r4 r5 999990 r2 r3 999990 18',
-   'uneven mountain ridge');
  const labels=source.split('\n').filter(s=>s.startsWith('label ')).map(s=>s.slice(6));
  if(new Set(labels).size!==labels.length)throw Error('Landscape produced duplicate XI labels');
  if(source.length>=512*1024)throw Error('Landscape XI exceeds engine source ceiling');
@@ -150,7 +144,7 @@ function run(options={}){
   const before=fs.readFileSync(filename,'utf8'),after=finishScene(before,options);
   if(before!==after)fs.writeFileSync(filename,after);
   changed.push({name,bytes:Buffer.byteLength(after),updated:before!==after,
-    trees:28,rocks:8,grassClumps:4,faces:484});
+    trees:28,rocks:8,grassClumps:4,faces:436});
  }
  return changed;
 }

@@ -44,6 +44,7 @@ cmp r1 77
 jle wetlands_car_pose
 sub r1 14
 label wetlands_car_pose
+${require('./car-ground-frame.cjs').applyXi()}
 load16 r3 508
 sub r3 32768
 mov r4 r3

@@ -14,9 +14,9 @@ mov r14 r0
 add r14 0
 mod r14 4096
 cmp r14 0
-jge sin_negative_0
+jge L0
 add r14 4096
-label sin_negative_0
+label L0
 mov r1 r14
 mod r1 2048
 set r2 2048
@@ -29,9 +29,9 @@ sub r15 r2
 mul r1 262144
 div r1 r15
 cmp r14 2048
-jlt sin_done_1
+jlt L1
 mul r1 -1
-label sin_done_1
+label L1
 mov r14 r1
 mov r2 r14
 mov r9 r2
@@ -41,9 +41,9 @@ mov r15 r0
 add r15 1024
 mod r15 4096
 cmp r15 0
-jge sin_negative_2
+jge L2
 add r15 4096
-label sin_negative_2
+label L2
 mov r1 r15
 mod r1 2048
 set r2 2048
@@ -56,9 +56,9 @@ sub r14 r2
 mul r1 262144
 div r1 r14
 cmp r15 2048
-jlt sin_done_3
+jlt L3
 mul r1 -1
-label sin_done_3
+label L3
 mov r15 r1
 localget r14 58
 sub r14 32768
@@ -310,48 +310,128 @@ mul r9 85
 div r9 100
 meshfacegradient 1794 1795 1796 12 8 r9 r10 r11 60
 meshfacegradient 1794 1796 1797 12 8 r9 r10 r11 60
-load8 r6 108
-load8 r7 109
-mul r7 256
-add r6 r7
-load16 r7 204
-add r6 r7
-mul r6 5
-div r6 16
-mod r6 160
-localset 44 r6
-set r7 0
-label hills
+localset 3960 22
+localset 3961 37
+localset 3962 51
+localset 3963 90
+localset 3964 115
+localset 3965 108
+localset 3966 73
+localset 3967 64
+localset 3968 84
+localset 3969 58
+localset 3970 36
+localset 3971 24
+localset 3972 39
+localset 3973 55
+localset 3974 79
+localset 3975 111
+localset 3976 98
+localset 3977 61
+localset 3978 44
+localset 3979 30
+localset 3980 47
+localset 3981 70
+localset 3982 52
+localset 3983 31
+load16 r0 108
+load16 r1 204
+add r0 r1
+mod r0 4096
+mul r0 24
+localset 3990 r0
+localset 3991 0
+label L4
+localget r7 3991
 localget r0 18
 mov r1 r0
 mul r1 r7
 div r1 5
-mov r2 r0
-div r2 160
-localget r6 44
-mul r6 r2
-sub r1 r6
-mov r2 r0
-div r2 3
-add r2 r1
-mov r4 r1
-add r4 r2
-div r4 2
-localget r3 46
-mov r5 r0
-div r5 20
-mul r5 -1
-add r5 r3
-mov r6 r7
-mul r6 17
-mod r6 5
+localget r6 3990
+mod r6 4096
 mul r6 r0
-div r6 140
-sub r5 r6
-meshtri r1 r3 999990 r4 r5 999990 r2 r3 999990 18
+div r6 20480
+sub r1 r6
+sub r1 0
+mov r2 r0
+div r2 5
+add r2 r1
+localget r6 3990
+div r6 4096
+add r6 r7
+add r6 0
+mod r6 24
+add r6 3960
+localget r4 r6
+sub r6 3960
+add r6 1
+mod r6 24
+add r6 3960
+localget r5 r6
+mul r4 r0
+div r4 550
+mul r5 r0
+div r5 550
+localget r3 46
+sub r4 r3
+mul r4 -1
+sub r5 r3
+mul r5 -1
+mov r6 r3
+add r6 30
+meshtri r1 r6 999990 r1 r4 999990 r2 r5 999990 18
+meshtri r1 r6 999990 r2 r5 999990 r2 r6 999990 18
+localget r7 3991
 add r7 1
+localset 3991 r7
 cmp r7 8
-jlt hills
+jlt L4
+localset 3991 0
+label L5
+localget r7 3991
+localget r0 18
+mov r1 r0
+mul r1 r7
+div r1 5
+localget r6 3990
+mod r6 4096
+mul r6 r0
+div r6 20480
+sub r1 r6
+sub r1 0
+mov r2 r0
+div r2 5
+add r2 r1
+localget r6 3990
+div r6 4096
+add r6 r7
+add r6 9
+mod r6 24
+add r6 3960
+localget r4 r6
+sub r6 3960
+add r6 1
+mod r6 24
+add r6 3960
+localget r5 r6
+mul r4 r0
+div r4 700
+mul r5 r0
+div r5 700
+localget r3 46
+sub r4 r3
+mul r4 -1
+sub r5 r3
+mul r5 -1
+mov r6 r3
+add r6 30
+meshtri r1 r6 999990 r1 r4 999990 r2 r5 999990 17
+meshtri r1 r6 999990 r2 r5 999990 r2 r6 999990 17
+localget r7 3991
+add r7 1
+localset 3991 r7
+cmp r7 8
+jlt L5
 load32 r12 100
 sub r12 2000000000
 load32 r13 104
@@ -377,6 +457,12 @@ jlt terrain_next
 add r3 52000
 cmp r1 r3
 jgt terrain_next
+sub r0 12
+load32 r5 $r0
+add r0 8
+load32 r6 $r0
+sub r5 65536
+sub r6 65536
 localget r0 3740
 mul r0 2
 add r0 5800
@@ -397,6 +483,8 @@ set r2 0
 label terrain_before_end
 set r3 0
 set r4 0
+set r5 0
+set r6 0
 jmp terrain_bounds
 label terrain_after
 load32 r2 4740
@@ -413,21 +501,68 @@ cmp r2 r1
 jle terrain_next
 set r3 0
 set r4 0
+set r5 0
+set r6 0
 label terrain_bounds
 localset 3741 r1
 localset 3742 r2
 localset 3743 r3
 localset 3744 r4
+localset 3747 r5
+localset 3748 r6
+add r5 r6
+div r5 2
+sub r5 r12
+cmp r5 0
+jge terrain_side_abs
+mul r5 -1
+label terrain_side_abs
+localset 3751 7
+cmp r5 25000
+jle terrain_cells_ready
+localset 3751 3
+label terrain_cells_ready
 localset 3750 0
 label terrain_cell
-mov r0 r12
-sub r0 30000
-localget r3 3750
-mul r3 20000
-add r0 r3
-add r0 0
+localset 3940 -40000
+localset 3941 1800
+localset 3942 -16000
+localset 3943 1800
+localset 3944 -10000
+localset 3945 700
+localset 3946 -6500
+localset 3947 0
+localset 3948 6500
+localset 3949 0
+localset 3950 10000
+localset 3951 700
+localset 3952 16000
+localset 3953 1800
+localset 3954 40000
+localset 3955 1800
 localget r1 3743
 localget r2 3741
+localget r3 3750
+add r3 0
+localget r4 3751
+cmp r4 3
+je L6
+mul r3 2
+add r3 3940
+localget r0 r3
+add r3 1
+localget r4 r3
+add r1 r4
+localget r3 3747
+add r0 r3
+jmp L7
+label L6
+mov r0 r12
+sub r0 30000
+mul r3 20000
+add r0 r3
+add r1 1800
+label L7
 mov r3 r0
 div r3 60
 mod r3 4096
@@ -472,14 +607,29 @@ localget r3 3745
 localget r4 3746
 meshtexuv 1780 r3 r4
 meshshade 1780 170
-mov r0 r12
-sub r0 30000
-localget r3 3750
-mul r3 20000
-add r0 r3
-add r0 20000
 localget r1 3743
 localget r2 3741
+localget r3 3750
+add r3 1
+localget r4 3751
+cmp r4 3
+je L8
+mul r3 2
+add r3 3940
+localget r0 r3
+add r3 1
+localget r4 r3
+add r1 r4
+localget r3 3747
+add r0 r3
+jmp L9
+label L8
+mov r0 r12
+sub r0 30000
+mul r3 20000
+add r0 r3
+add r1 1800
+label L9
 mov r3 r0
 div r3 60
 mod r3 4096
@@ -524,14 +674,29 @@ localget r3 3745
 localget r4 3746
 meshtexuv 1781 r3 r4
 meshshade 1781 170
-mov r0 r12
-sub r0 30000
-localget r3 3750
-mul r3 20000
-add r0 r3
-add r0 20000
 localget r1 3744
 localget r2 3742
+localget r3 3750
+add r3 1
+localget r4 3751
+cmp r4 3
+je La
+mul r3 2
+add r3 3940
+localget r0 r3
+add r3 1
+localget r4 r3
+add r1 r4
+localget r3 3748
+add r0 r3
+jmp Lb
+label La
+mov r0 r12
+sub r0 30000
+mul r3 20000
+add r0 r3
+add r1 1800
+label Lb
 mov r3 r0
 div r3 60
 mod r3 4096
@@ -576,14 +741,29 @@ localget r3 3745
 localget r4 3746
 meshtexuv 1782 r3 r4
 meshshade 1782 170
-mov r0 r12
-sub r0 30000
-localget r3 3750
-mul r3 20000
-add r0 r3
-add r0 0
 localget r1 3744
 localget r2 3742
+localget r3 3750
+add r3 0
+localget r4 3751
+cmp r4 3
+je Lc
+mul r3 2
+add r3 3940
+localget r0 r3
+add r3 1
+localget r4 r3
+add r1 r4
+localget r3 3748
+add r0 r3
+jmp Ld
+label Lc
+mov r0 r12
+sub r0 30000
+mul r3 20000
+add r0 r3
+add r1 1800
+label Ld
 mov r3 r0
 div r3 60
 mod r3 4096
@@ -641,7 +821,8 @@ meshfacegradienttex 1780 1782 1783 12 8 6 2 r9 r10 r11 60
 localget r0 3750
 add r0 1
 localset 3750 r0
-cmp r0 3
+localget r1 3751
+cmp r0 r1
 jlt terrain_cell
 label terrain_next
 localget r0 3740
@@ -649,6 +830,200 @@ add r0 1
 localset 3740 r0
 cmp r0 81
 jlt terrain_row
+localset 3920 0
+localset 3921 0
+label trail_ribbon
+localget r3 3920
+mul r3 48
+add r3 23000
+localset 3922 r3
+load32 r0 $r3
+sub r0 2000000000
+add r3 4
+load32 r2 $r3
+sub r2 2000000000
+sub r0 r12
+mul r0 r0
+sub r2 r13
+mul r2 r2
+add r0 r2
+cmp r0 49000000
+jgt trail_ribbon_next
+localget r3 3922
+add r3 0
+load32 r0 $r3
+sub r0 2000000000
+add r3 4
+load32 r2 $r3
+sub r2 2000000000
+add r3 4
+load16 r1 $r3
+add r3 2
+load16 r4 $r3
+localset 3923 r4
+add r3 2
+load16 r4 $r3
+localset 3924 r4
+sub r0 r12
+sub r2 r13
+mov r9 r0
+mul r9 r15
+mov r10 r2
+mul r10 r14
+sub r9 r10
+div r9 16384
+mov r10 r0
+mul r10 r14
+mov r11 r2
+mul r11 r15
+add r10 r11
+div r10 16384
+mov r0 r9
+localget r11 0
+add r10 r11
+localget r11 2
+sub r1 r11
+localget r11 4
+mul r11 r1
+localget r9 6
+mov r2 r10
+mul r2 r9
+sub r2 r11
+div r2 1000
+mul r1 r9
+localget r11 4
+mul r11 r10
+add r1 r11
+div r1 1000
+meshvertex 1810 r0 r1 r2
+localget r3 3923
+localget r4 3924
+meshtexuv 1810 r3 r4
+meshshade 1810 170
+localget r3 3922
+add r3 16
+load32 r0 $r3
+sub r0 2000000000
+add r3 4
+load32 r2 $r3
+sub r2 2000000000
+add r3 4
+load16 r1 $r3
+add r3 2
+load16 r4 $r3
+localset 3923 r4
+add r3 2
+load16 r4 $r3
+localset 3924 r4
+sub r0 r12
+sub r2 r13
+mov r9 r0
+mul r9 r15
+mov r10 r2
+mul r10 r14
+sub r9 r10
+div r9 16384
+mov r10 r0
+mul r10 r14
+mov r11 r2
+mul r11 r15
+add r10 r11
+div r10 16384
+mov r0 r9
+localget r11 0
+add r10 r11
+localget r11 2
+sub r1 r11
+localget r11 4
+mul r11 r1
+localget r9 6
+mov r2 r10
+mul r2 r9
+sub r2 r11
+div r2 1000
+mul r1 r9
+localget r11 4
+mul r11 r10
+add r1 r11
+div r1 1000
+meshvertex 1811 r0 r1 r2
+localget r3 3923
+localget r4 3924
+meshtexuv 1811 r3 r4
+meshshade 1811 170
+localget r3 3922
+add r3 32
+load32 r0 $r3
+sub r0 2000000000
+add r3 4
+load32 r2 $r3
+sub r2 2000000000
+add r3 4
+load16 r1 $r3
+add r3 2
+load16 r4 $r3
+localset 3923 r4
+add r3 2
+load16 r4 $r3
+localset 3924 r4
+sub r0 r12
+sub r2 r13
+mov r9 r0
+mul r9 r15
+mov r10 r2
+mul r10 r14
+sub r9 r10
+div r9 16384
+mov r10 r0
+mul r10 r14
+mov r11 r2
+mul r11 r15
+add r10 r11
+div r10 16384
+mov r0 r9
+localget r11 0
+add r10 r11
+localget r11 2
+sub r1 r11
+localget r11 4
+mul r11 r1
+localget r9 6
+mov r2 r10
+mul r2 r9
+sub r2 r11
+div r2 1000
+mul r1 r9
+localget r11 4
+mul r11 r10
+add r1 r11
+div r1 1000
+meshvertex 1812 r0 r1 r2
+localget r3 3923
+localget r4 3924
+meshtexuv 1812 r3 r4
+meshshade 1812 170
+localget r9 18
+mov r10 r9
+div r10 2
+mov r11 r10
+mul r11 9
+div r11 16
+mul r9 85
+div r9 100
+meshfacegradienttex 1810 1811 1812 9 3 7 4 r9 r10 r11 60
+localget r0 3921
+add r0 1
+localset 3921 r0
+cmp r0 112
+jge trail_ribbons_done
+label trail_ribbon_next
+localget r0 3920
+add r0 1
+localset 3920 r0
+load16 r1 910
+cmp r0 r1
+jlt trail_ribbon
+label trail_ribbons_done
 load32 r0 342
 cmp r0 1600000000
 jgt distant_road_ready
@@ -726,9 +1101,9 @@ mov r1 r0
 add r1 0
 mod r1 4096
 cmp r1 0
-jge sin_negative_4
+jge Le
 add r1 4096
-label sin_negative_4
+label Le
 mov r3 r1
 mod r3 2048
 set r4 2048
@@ -741,9 +1116,9 @@ sub r2 r4
 mul r3 262144
 div r3 r2
 cmp r1 2048
-jlt sin_done_5
+jlt Lf
 mul r3 -1
-label sin_done_5
+label Lf
 mov r1 r3
 mov r4 r1
 mov r9 r4
@@ -753,9 +1128,9 @@ mov r2 r0
 add r2 1024
 mod r2 4096
 cmp r2 0
-jge sin_negative_6
+jge Lg
 add r2 4096
-label sin_negative_6
+label Lg
 mov r3 r2
 mod r3 2048
 set r4 2048
@@ -768,9 +1143,9 @@ sub r1 r4
 mul r3 262144
 div r3 r1
 cmp r2 2048
-jlt sin_done_7
+jlt Lh
 mul r3 -1
-label sin_done_7
+label Lh
 mov r2 r3
 localget r1 58
 sub r1 32768
@@ -1060,9 +1435,9 @@ div r10 1000
 sub r8 r10
 localget r9 28
 cmp r9 78
-je road_verge_10
+je Ll
 cmp r9 108
-jne road_plain_8
+jne Lp
 meshvertex 1770 r0 r1 r2
 meshvertex 1771 r3 r4 r5
 meshvertex 1772 r6 r7 r8
@@ -1101,23 +1476,23 @@ div r9 100
 localget r12 8
 mod r12 7
 cmp r12 3
-jle asphalt_darker_12
+jle Li
 set r12 42
-jmp asphalt_tone_done_13
-label asphalt_darker_12
+jmp Lj
+label Li
 set r12 40
-label asphalt_tone_done_13
+label Lj
 localget r0 8
 add r0 5500
 load8 r0 $r0
 cmp r0 4
-jge wet_road_14
+jge Lk
 meshfacegradienttex 1770 1771 1772 r12 12 5 3 r9 r10 r11 60
-jmp road_done_9
-label wet_road_14
+jmp Lw
+label Lk
 meshfacegradienttex 1770 1771 1772 9 3 7 2 r9 r10 r11 60
-jmp road_done_9
-label road_verge_10
+jmp Lw
+label Ll
 meshvertex 1770 r0 r1 r2
 meshvertex 1771 r3 r4 r5
 meshvertex 1772 r6 r7 r8
@@ -1132,9 +1507,9 @@ meshread r0 r1 r2 1770
 div r2 350
 add r2 90
 cmp r2 220
-jle road_verge_plain_11_1770
+jle Lm
 set r2 220
-label road_verge_plain_11_1770
+label Lm
 meshshade 1770 r2
 localget r0 8
 add r0 1
@@ -1147,9 +1522,9 @@ meshread r0 r1 r2 1771
 div r2 350
 add r2 90
 cmp r2 220
-jle road_verge_plain_11_1771
+jle Ln
 set r2 220
-label road_verge_plain_11_1771
+label Ln
 meshshade 1771 r2
 localget r0 8
 add r0 1
@@ -1162,9 +1537,9 @@ meshread r0 r1 r2 1772
 div r2 350
 add r2 90
 cmp r2 220
-jle road_verge_plain_11_1772
+jle Lo
 set r2 220
-label road_verge_plain_11_1772
+label Lo
 meshshade 1772 r2
 localget r9 18
 mov r10 r9
@@ -1175,8 +1550,8 @@ div r11 16
 mul r9 85
 div r9 100
 meshfacegradienttex 1770 1771 1772 12 8 6 3 r9 r10 r11 60
-jmp road_done_9
-label road_plain_8
+jmp Lw
+label Lp
 localget r9 18
 mov r10 r9
 div r10 2
@@ -1187,47 +1562,47 @@ mul r9 85
 div r9 100
 localget r9 28
 cmp r9 78
-jne material_skip_23
+jne Lq
 mov r9 r10
 mul r9 170
 div r9 100
 meshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 4 r9 r10 r11 60
-jmp triangle_emitted_22
-label material_skip_23
+jmp Lv
+label Lq
 cmp r9 208
-jne material_skip_24
+jne Lr
 mov r9 r10
 mul r9 170
 div r9 100
 meshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 9 r9 r10 r11 60
-jmp triangle_emitted_22
-label material_skip_24
+jmp Lv
+label Lr
 cmp r9 108
-jne material_skip_25
+jne Ls
 mov r9 r10
 mul r9 170
 div r9 100
 meshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 6 r9 r10 r11 60
-jmp triangle_emitted_22
-label material_skip_25
+jmp Lv
+label Ls
 cmp r9 206
-jne material_skip_26
+jne Lt
 mov r9 r10
 mul r9 170
 div r9 100
 meshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 7 r9 r10 r11 60
-jmp triangle_emitted_22
-label material_skip_26
+jmp Lv
+label Lt
 cmp r9 204
-jne material_skip_27
+jne Lu
 mov r9 r10
 mul r9 170
 div r9 100
 meshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 8 r9 r10 r11 60
-jmp triangle_emitted_22
-label material_skip_27
-label triangle_emitted_22
-label road_done_9
+jmp Lv
+label Lu
+label Lv
+label Lw
 localget r9 8
 add r9 0
 mul r9 2
@@ -1311,9 +1686,9 @@ div r10 1000
 sub r8 r10
 localget r9 28
 cmp r9 78
-je road_verge_17
+je L10
 cmp r9 108
-jne road_plain_15
+jne L14
 meshvertex 1770 r0 r1 r2
 meshvertex 1771 r3 r4 r5
 meshvertex 1772 r6 r7 r8
@@ -1352,23 +1727,23 @@ div r9 100
 localget r12 8
 mod r12 7
 cmp r12 3
-jle asphalt_darker_19
+jle Lx
 set r12 42
-jmp asphalt_tone_done_20
-label asphalt_darker_19
+jmp Ly
+label Lx
 set r12 40
-label asphalt_tone_done_20
+label Ly
 localget r0 8
 add r0 5500
 load8 r0 $r0
 cmp r0 4
-jge wet_road_21
+jge Lz
 meshfacegradienttex 1770 1771 1772 r12 12 5 3 r9 r10 r11 60
-jmp road_done_16
-label wet_road_21
+jmp L1b
+label Lz
 meshfacegradienttex 1770 1771 1772 9 3 7 2 r9 r10 r11 60
-jmp road_done_16
-label road_verge_17
+jmp L1b
+label L10
 meshvertex 1770 r0 r1 r2
 meshvertex 1771 r3 r4 r5
 meshvertex 1772 r6 r7 r8
@@ -1383,9 +1758,9 @@ meshread r0 r1 r2 1770
 div r2 350
 add r2 90
 cmp r2 220
-jle road_verge_plain_18_1770
+jle L11
 set r2 220
-label road_verge_plain_18_1770
+label L11
 meshshade 1770 r2
 localget r0 8
 add r0 1
@@ -1398,9 +1773,9 @@ meshread r0 r1 r2 1771
 div r2 350
 add r2 90
 cmp r2 220
-jle road_verge_plain_18_1771
+jle L12
 set r2 220
-label road_verge_plain_18_1771
+label L12
 meshshade 1771 r2
 localget r0 8
 add r0 0
@@ -1413,9 +1788,9 @@ meshread r0 r1 r2 1772
 div r2 350
 add r2 90
 cmp r2 220
-jle road_verge_plain_18_1772
+jle L13
 set r2 220
-label road_verge_plain_18_1772
+label L13
 meshshade 1772 r2
 localget r9 18
 mov r10 r9
@@ -1426,8 +1801,8 @@ div r11 16
 mul r9 85
 div r9 100
 meshfacegradienttex 1770 1771 1772 12 8 6 3 r9 r10 r11 60
-jmp road_done_16
-label road_plain_15
+jmp L1b
+label L14
 localget r9 18
 mov r10 r9
 div r10 2
@@ -1438,47 +1813,47 @@ mul r9 85
 div r9 100
 localget r9 28
 cmp r9 78
-jne material_skip_29
+jne L15
 mov r9 r10
 mul r9 170
 div r9 100
 meshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 4 r9 r10 r11 60
-jmp triangle_emitted_28
-label material_skip_29
+jmp L1a
+label L15
 cmp r9 208
-jne material_skip_30
+jne L16
 mov r9 r10
 mul r9 170
 div r9 100
 meshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 9 r9 r10 r11 60
-jmp triangle_emitted_28
-label material_skip_30
+jmp L1a
+label L16
 cmp r9 108
-jne material_skip_31
+jne L17
 mov r9 r10
 mul r9 170
 div r9 100
 meshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 6 r9 r10 r11 60
-jmp triangle_emitted_28
-label material_skip_31
+jmp L1a
+label L17
 cmp r9 206
-jne material_skip_32
+jne L18
 mov r9 r10
 mul r9 170
 div r9 100
 meshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 7 r9 r10 r11 60
-jmp triangle_emitted_28
-label material_skip_32
+jmp L1a
+label L18
 cmp r9 204
-jne material_skip_33
+jne L19
 mov r9 r10
 mul r9 170
 div r9 100
 meshtri3 r0 r1 r2 r3 r4 r5 r6 r7 r8 8 r9 r10 r11 60
-jmp triangle_emitted_28
-label material_skip_33
-label triangle_emitted_28
-label road_done_16
+jmp L1a
+label L19
+label L1a
+label L1b
 label next_band
 localget r0 9
 add r0 1
@@ -1517,11 +1892,11 @@ label grass_z_floor
 div r4 300
 localget r5 3760
 mov r6 r5
-mod r6 8
-sub r6 4
+mod r6 6
+sub r6 3
 add r3 r6
-div r5 8
-sub r5 4
+div r5 6
+sub r5 3
 add r4 r5
 mov r5 r3
 mul r5 37
@@ -1546,7 +1921,9 @@ mod r5 140
 add r2 r5
 localset 3763 r0
 localset 3764 r2
-# Shared terrain query: r2=world z, r1=height cm; r3..r7 scratch.
+# Shared terrain query: r0/r2=world x/z, r1=height cm; r3..r7 scratch.
+localset 3790 r0
+set r0 0
 set r1 0
 cmp r2 0
 jle grass_support_done
@@ -1610,7 +1987,196 @@ div r6 r7
 add r5 r6
 mov r0 r5
 label grass_support_done
+localget r3 3790
+sub r3 r0
+cmp r3 0
+jge grass_support_abs
+mul r3 -1
+label grass_support_abs
+cmp r3 6500
+jle grass_support_ridge_done
+cmp r3 10000
+jge grass_support_upper
+sub r3 6500
+mul r3 700
+div r3 3500
+add r1 r3
+jmp grass_support_ridge_done
+label grass_support_upper
+cmp r3 16000
+jge grass_support_plateau
+sub r3 10000
+mul r3 1100
+div r3 6000
+add r3 700
+add r1 r3
+jmp grass_support_ridge_done
+label grass_support_plateau
+add r1 1800
+label grass_support_ridge_done
+
 localset 3765 r1
+load32 r3 900
+cmp r3 4000000
+jgt grass_trail_clear
+load16 r3 904
+cmp r3 65535
+je grass_trail_clear
+mul r3 24
+add r3 12000
+localset 3910 r0
+localset 3911 r2
+load32 r6 $r3
+sub r6 2000000000
+add r3 4
+load32 r7 $r3
+sub r7 2000000000
+add r3 4
+load32 r8 $r3
+sub r8 2000000000
+sub r8 r6
+add r3 4
+load32 r9 $r3
+sub r9 2000000000
+sub r9 r7
+mov r10 r8
+mul r10 r8
+mov r11 r9
+mul r11 r9
+add r10 r11
+sub r0 r6
+sub r2 r7
+mul r0 r8
+mul r2 r9
+add r0 r2
+mul r0 1000000
+div r0 r10
+cmp r0 0
+jge grass_trail_distance_positive
+set r0 0
+label grass_trail_distance_positive
+cmp r0 1000000
+jle grass_trail_distance_bounded
+set r0 1000000
+label grass_trail_distance_bounded
+mov r5 r0
+mul r8 r0
+div r8 1000000
+add r6 r8
+mul r9 r0
+div r9 1000000
+add r7 r9
+localget r4 3910
+sub r4 r6
+mul r4 r4
+localget r2 3911
+sub r2 r7
+mul r2 r2
+add r4 r2
+add r3 4
+load16 r5 $r3
+div r5 2
+add r5 20
+mul r5 r5
+cmp r4 r5
+jle grass_next
+label grass_trail_clear
+localget r0 3763
+localget r2 3764
+# Shared terrain query: r0/r2=world x/z, r1=height cm; r3..r7 scratch.
+localset 3790 r0
+set r0 0
+set r1 0
+cmp r2 0
+jle grass_road_center_done
+set r3 0
+set r4 80
+label grass_road_center_search
+mov r5 r3
+add r5 1
+cmp r5 r4
+jge grass_road_center_found
+mov r5 r3
+add r5 r4
+div r5 2
+mov r6 r5
+mul r6 8
+add r6 4100
+load32 r7 $r6
+sub r7 65536
+cmp r2 r7
+jle grass_road_center_lower
+mov r3 r5
+jmp grass_road_center_search
+label grass_road_center_lower
+mov r4 r5
+jmp grass_road_center_search
+label grass_road_center_found
+mov r6 r3
+mul r6 8
+add r6 4100
+load32 r5 $r6
+add r6 8
+load32 r7 $r6
+sub r5 65536
+sub r7 65536
+cmp r2 r7
+jgt grass_road_center_done
+sub r7 r5
+mul r3 2
+add r3 5800
+load16 r1 $r3
+add r3 2
+load16 r6 $r3
+sub r6 r1
+mov r4 r2
+sub r4 r5
+mul r6 r4
+div r6 r7
+add r1 r6
+sub r3 5802
+div r3 2
+mul r3 8
+add r3 4096
+load32 r5 $r3
+add r3 8
+load32 r6 $r3
+sub r5 65536
+sub r6 65536
+sub r6 r5
+mul r6 r4
+div r6 r7
+add r5 r6
+mov r0 r5
+label grass_road_center_done
+localget r3 3790
+sub r3 r0
+cmp r3 0
+jge grass_road_center_abs
+mul r3 -1
+label grass_road_center_abs
+cmp r3 6500
+jle grass_road_center_ridge_done
+cmp r3 10000
+jge grass_road_center_upper
+sub r3 6500
+mul r3 700
+div r3 3500
+add r1 r3
+jmp grass_road_center_ridge_done
+label grass_road_center_upper
+cmp r3 16000
+jge grass_road_center_plateau
+sub r3 10000
+mul r3 1100
+div r3 6000
+add r3 700
+add r1 r3
+jmp grass_road_center_ridge_done
+label grass_road_center_plateau
+add r1 1800
+label grass_road_center_ridge_done
+
 cmp r2 0
 jlt grass_road_clear
 load32 r5 4740
@@ -1999,16 +2565,16 @@ label grass_next
 localget r0 3760
 add r0 1
 localset 3760 r0
-cmp r0 64
+cmp r0 36
 jlt living_grass
 load16 r0 108
 mov r3 r0
 add r3 0
 mod r3 4096
 cmp r3 0
-jge sin_negative_34
+jge L1c
 add r3 4096
-label sin_negative_34
+label L1c
 mov r5 r3
 mod r5 2048
 set r6 2048
@@ -2021,9 +2587,9 @@ sub r4 r6
 mul r5 262144
 div r5 r4
 cmp r3 2048
-jlt sin_done_35
+jlt L1d
 mul r5 -1
-label sin_done_35
+label L1d
 mov r3 r5
 mov r6 r3
 mov r9 r6
@@ -2033,9 +2599,9 @@ mov r4 r0
 add r4 1024
 mod r4 4096
 cmp r4 0
-jge sin_negative_36
+jge L1e
 add r4 4096
-label sin_negative_36
+label L1e
 mov r5 r4
 mod r5 2048
 set r6 2048
@@ -2048,14 +2614,32 @@ sub r3 r6
 mul r5 262144
 div r5 r3
 cmp r4 2048
-jlt sin_done_37
+jlt L1f
 mul r5 -1
-label sin_done_37
+label L1f
 mov r4 r5
 localget r3 58
 sub r3 32768
 localset 3330 r3
 localset 3331 r4
+load16 r3 912
+sub r3 32768
+load16 r4 914
+sub r4 32768
+localget r5 3331
+mul r5 r3
+localget r6 3330
+mul r6 r4
+sub r5 r6
+div r5 16384
+localset 3332 r5
+localget r5 3330
+mul r5 r3
+localget r6 3331
+mul r6 r4
+add r5 r6
+div r5 16384
+localset 3333 r5
 localset 3300 0
 jmp open_object_dispatch
 label open_object_transform
@@ -2166,6 +2750,13 @@ cmp r1 77
 jle wetlands_car_pose
 sub r1 14
 label wetlands_car_pose
+localget r3 3332
+mul r3 r0
+localget r4 3333
+mul r4 r2
+add r3 r4
+div r3 4096
+add r1 r3
 load16 r3 508
 sub r3 32768
 mov r4 r3
@@ -2253,8 +2844,639 @@ jlt open_object_vertex
 jmp open_object_draw
 label open_object_dispatch
 localget r0 3300
-cmp r0 0
-jne open_object_skip_38
+cmp r0 158
+jge open_objects_done
+cmp r0 79
+jlt L3m
+cmp r0 118
+jlt L2j
+cmp r0 138
+jlt L1z
+cmp r0 148
+jlt L1p
+cmp r0 153
+jlt L1k
+cmp r0 155
+jlt L1i
+cmp r0 156
+jlt L1h
+cmp r0 157
+jlt L1g
+jmp Lfe
+label L1g
+jmp Lfc
+label L1h
+jmp Lfa
+label L1i
+cmp r0 154
+jlt L1j
+jmp Lf8
+label L1j
+jmp Lf6
+label L1k
+cmp r0 150
+jlt L1n
+cmp r0 151
+jlt L1m
+cmp r0 152
+jlt L1l
+jmp Lf4
+label L1l
+jmp Lf2
+label L1m
+jmp Lf0
+label L1n
+cmp r0 149
+jlt L1o
+jmp Ley
+label L1o
+jmp Lew
+label L1p
+cmp r0 143
+jlt L1u
+cmp r0 145
+jlt L1s
+cmp r0 146
+jlt L1r
+cmp r0 147
+jlt L1q
+jmp Leu
+label L1q
+jmp Les
+label L1r
+jmp Leq
+label L1s
+cmp r0 144
+jlt L1t
+jmp Leo
+label L1t
+jmp Lem
+label L1u
+cmp r0 140
+jlt L1x
+cmp r0 141
+jlt L1w
+cmp r0 142
+jlt L1v
+jmp Lek
+label L1v
+jmp Lei
+label L1w
+jmp Leg
+label L1x
+cmp r0 139
+jlt L1y
+jmp Lee
+label L1y
+jmp Leb
+label L1z
+cmp r0 128
+jlt L29
+cmp r0 133
+jlt L24
+cmp r0 135
+jlt L22
+cmp r0 136
+jlt L21
+cmp r0 137
+jlt L20
+jmp Le8
+label L20
+jmp Le5
+label L21
+jmp Le2
+label L22
+cmp r0 134
+jlt L23
+jmp Ldz
+label L23
+jmp Ldw
+label L24
+cmp r0 130
+jlt L27
+cmp r0 131
+jlt L26
+cmp r0 132
+jlt L25
+jmp Ldt
+label L25
+jmp Ldq
+label L26
+jmp Ldn
+label L27
+cmp r0 129
+jlt L28
+jmp Ldk
+label L28
+jmp Ldh
+label L29
+cmp r0 123
+jlt L2e
+cmp r0 125
+jlt L2c
+cmp r0 126
+jlt L2b
+cmp r0 127
+jlt L2a
+jmp Lde
+label L2a
+jmp Ldb
+label L2b
+jmp Ld8
+label L2c
+cmp r0 124
+jlt L2d
+jmp Ld5
+label L2d
+jmp Ld2
+label L2e
+cmp r0 120
+jlt L2h
+cmp r0 121
+jlt L2g
+cmp r0 122
+jlt L2f
+jmp Lcz
+label L2f
+jmp Lcw
+label L2g
+jmp Lcu
+label L2h
+cmp r0 119
+jlt L2i
+jmp Lcs
+label L2i
+jmp Lcq
+label L2j
+cmp r0 98
+jlt L33
+cmp r0 108
+jlt L2t
+cmp r0 113
+jlt L2o
+cmp r0 115
+jlt L2m
+cmp r0 116
+jlt L2l
+cmp r0 117
+jlt L2k
+jmp Lco
+label L2k
+jmp Lcm
+label L2l
+jmp Lck
+label L2m
+cmp r0 114
+jlt L2n
+jmp Lci
+label L2n
+jmp Lcg
+label L2o
+cmp r0 110
+jlt L2r
+cmp r0 111
+jlt L2q
+cmp r0 112
+jlt L2p
+jmp Lce
+label L2p
+jmp Lcc
+label L2q
+jmp Lca
+label L2r
+cmp r0 109
+jlt L2s
+jmp Lc8
+label L2s
+jmp Lc6
+label L2t
+cmp r0 103
+jlt L2y
+cmp r0 105
+jlt L2w
+cmp r0 106
+jlt L2v
+cmp r0 107
+jlt L2u
+jmp Lc4
+label L2u
+jmp Lc2
+label L2v
+jmp Lc0
+label L2w
+cmp r0 104
+jlt L2x
+jmp Lby
+label L2x
+jmp Lbw
+label L2y
+cmp r0 100
+jlt L31
+cmp r0 101
+jlt L30
+cmp r0 102
+jlt L2z
+jmp Lbu
+label L2z
+jmp Lbs
+label L30
+jmp Lbq
+label L31
+cmp r0 99
+jlt L32
+jmp Lbo
+label L32
+jmp Lbm
+label L33
+cmp r0 88
+jlt L3d
+cmp r0 93
+jlt L38
+cmp r0 95
+jlt L36
+cmp r0 96
+jlt L35
+cmp r0 97
+jlt L34
+jmp Lbk
+label L34
+jmp Lbi
+label L35
+jmp Lbg
+label L36
+cmp r0 94
+jlt L37
+jmp Lbe
+label L37
+jmp Lbc
+label L38
+cmp r0 90
+jlt L3b
+cmp r0 91
+jlt L3a
+cmp r0 92
+jlt L39
+jmp Lba
+label L39
+jmp Lb8
+label L3a
+jmp Lb6
+label L3b
+cmp r0 89
+jlt L3c
+jmp Lb4
+label L3c
+jmp Lb2
+label L3d
+cmp r0 83
+jlt L3i
+cmp r0 85
+jlt L3g
+cmp r0 86
+jlt L3f
+cmp r0 87
+jlt L3e
+jmp Lb0
+label L3e
+jmp Lay
+label L3f
+jmp Law
+label L3g
+cmp r0 84
+jlt L3h
+jmp Lau
+label L3h
+jmp Las
+label L3i
+cmp r0 81
+jlt L3k
+cmp r0 82
+jlt L3j
+jmp Laq
+label L3j
+jmp Lao
+label L3k
+cmp r0 80
+jlt L3l
+jmp Lam
+label L3l
+jmp Lak
+label L3m
+cmp r0 39
+jlt L4q
+cmp r0 59
+jlt L46
+cmp r0 69
+jlt L3w
+cmp r0 74
+jlt L3r
+cmp r0 76
+jlt L3p
+cmp r0 77
+jlt L3o
+cmp r0 78
+jlt L3n
+jmp Lai
+label L3n
+jmp Lag
+label L3o
+jmp Lae
+label L3p
+cmp r0 75
+jlt L3q
+jmp Lac
+label L3q
+jmp Laa
+label L3r
+cmp r0 71
+jlt L3u
+cmp r0 72
+jlt L3t
+cmp r0 73
+jlt L3s
+jmp La8
+label L3s
+jmp La6
+label L3t
+jmp La4
+label L3u
+cmp r0 70
+jlt L3v
+jmp La2
+label L3v
+jmp La0
+label L3w
+cmp r0 64
+jlt L41
+cmp r0 66
+jlt L3z
+cmp r0 67
+jlt L3y
+cmp r0 68
+jlt L3x
+jmp L9x
+label L3x
+jmp L9u
+label L3y
+jmp L9r
+label L3z
+cmp r0 65
+jlt L40
+jmp L9o
+label L40
+jmp L9l
+label L41
+cmp r0 61
+jlt L44
+cmp r0 62
+jlt L43
+cmp r0 63
+jlt L42
+jmp L9i
+label L42
+jmp L9f
+label L43
+jmp L9c
+label L44
+cmp r0 60
+jlt L45
+jmp L99
+label L45
+jmp L96
+label L46
+cmp r0 49
+jlt L4g
+cmp r0 54
+jlt L4b
+cmp r0 56
+jlt L49
+cmp r0 57
+jlt L48
+cmp r0 58
+jlt L47
+jmp L93
+label L47
+jmp L90
+label L48
+jmp L8x
+label L49
+cmp r0 55
+jlt L4a
+jmp L8v
+label L4a
+jmp L8t
+label L4b
+cmp r0 51
+jlt L4e
+cmp r0 52
+jlt L4d
+cmp r0 53
+jlt L4c
+jmp L8r
+label L4c
+jmp L8p
+label L4d
+jmp L8n
+label L4e
+cmp r0 50
+jlt L4f
+jmp L8l
+label L4f
+jmp L8j
+label L4g
+cmp r0 44
+jlt L4l
+cmp r0 46
+jlt L4j
+cmp r0 47
+jlt L4i
+cmp r0 48
+jlt L4h
+jmp L8h
+label L4h
+jmp L8f
+label L4i
+jmp L8d
+label L4j
+cmp r0 45
+jlt L4k
+jmp L8b
+label L4k
+jmp L89
+label L4l
+cmp r0 41
+jlt L4o
+cmp r0 42
+jlt L4n
+cmp r0 43
+jlt L4m
+jmp L87
+label L4m
+jmp L85
+label L4n
+jmp L83
+label L4o
+cmp r0 40
+jlt L4p
+jmp L81
+label L4p
+jmp L7z
+label L4q
+cmp r0 19
+jlt L5a
+cmp r0 29
+jlt L50
+cmp r0 34
+jlt L4v
+cmp r0 36
+jlt L4t
+cmp r0 37
+jlt L4s
+cmp r0 38
+jlt L4r
+jmp L7x
+label L4r
+jmp L7v
+label L4s
+jmp L7t
+label L4t
+cmp r0 35
+jlt L4u
+jmp L7r
+label L4u
+jmp L7p
+label L4v
+cmp r0 31
+jlt L4y
+cmp r0 32
+jlt L4x
+cmp r0 33
+jlt L4w
+jmp L7n
+label L4w
+jmp L7l
+label L4x
+jmp L7j
+label L4y
+cmp r0 30
+jlt L4z
+jmp L7h
+label L4z
+jmp L7f
+label L50
+cmp r0 24
+jlt L55
+cmp r0 26
+jlt L53
+cmp r0 27
+jlt L52
+cmp r0 28
+jlt L51
+jmp L7d
+label L51
+jmp L7b
+label L52
+jmp L79
+label L53
+cmp r0 25
+jlt L54
+jmp L77
+label L54
+jmp L75
+label L55
+cmp r0 21
+jlt L58
+cmp r0 22
+jlt L57
+cmp r0 23
+jlt L56
+jmp L73
+label L56
+jmp L71
+label L57
+jmp L6z
+label L58
+cmp r0 20
+jlt L59
+jmp L6x
+label L59
+jmp L6v
+label L5a
+cmp r0 9
+jlt L5k
+cmp r0 14
+jlt L5f
+cmp r0 16
+jlt L5d
+cmp r0 17
+jlt L5c
+cmp r0 18
+jlt L5b
+jmp L6t
+label L5b
+jmp L6r
+label L5c
+jmp L6p
+label L5d
+cmp r0 15
+jlt L5e
+jmp L6n
+label L5e
+jmp L6l
+label L5f
+cmp r0 11
+jlt L5i
+cmp r0 12
+jlt L5h
+cmp r0 13
+jlt L5g
+jmp L6j
+label L5g
+jmp L6h
+label L5h
+jmp L6f
+label L5i
+cmp r0 10
+jlt L5j
+jmp L6d
+label L5j
+jmp L6b
+label L5k
+cmp r0 4
+jlt L5p
+cmp r0 6
+jlt L5n
+cmp r0 7
+jlt L5m
+cmp r0 8
+jlt L5l
+jmp L69
+label L5l
+jmp L67
+label L5m
+jmp L65
+label L5n
+cmp r0 5
+jlt L5o
+jmp L63
+label L5o
+jmp L61
+label L5p
+cmp r0 2
+jlt L5r
+cmp r0 3
+jlt L5q
+jmp L5z
+label L5q
+jmp L5x
+label L5r
+cmp r0 1
+jlt L5s
+jmp L5v
+label L5s
+jmp L5t
+label L5t
+localset 3319 0
 load32 r0 100
 sub r0 2000000000
 mul r0 r0
@@ -2279,11 +3501,10 @@ localset 3316 -650
 localset 3317 1
 localset 3318 -1200
 localset 3301 4
-jmp open_model_0
-label open_object_skip_38
-localget r0 3300
-cmp r0 1
-jne open_object_skip_40
+jmp Lfg
+label L5u
+label L5v
+localset 3319 1
 load32 r0 100
 sub r0 1999998116
 mul r0 r0
@@ -2316,11 +3537,10 @@ localset 3316 -7704
 localset 3317 82
 localset 3318 129696
 localset 3301 4
-jmp open_model_1
-label open_object_skip_40
-localget r0 3300
-cmp r0 2
-jne open_object_skip_42
+jmp Lfh
+label L5w
+label L5x
+localset 3319 1
 load32 r0 100
 sub r0 1999994764
 mul r0 r0
@@ -2353,11 +3573,10 @@ localset 3316 -4335
 localset 3317 196
 localset 3318 97037
 localset 3301 4
-jmp open_model_2
-label open_object_skip_42
-localget r0 3300
-cmp r0 3
-jne open_object_skip_44
+jmp Lfi
+label L5y
+label L5z
+localset 3319 2
 load32 r0 100
 sub r0 1999994764
 mul r0 r0
@@ -2382,11 +3601,10 @@ localset 3316 -4795
 localset 3317 187
 localset 3318 96942
 localset 3301 4
-jmp open_model_3
-label open_object_skip_44
-localget r0 3300
-cmp r0 4
-jne open_object_skip_46
+jmp Lfj
+label L60
+label L61
+localset 3319 1
 load32 r0 100
 sub r0 1999994359
 mul r0 r0
@@ -2419,11 +3637,10 @@ localset 3316 -4826
 localset 3317 192
 localset 3318 98944
 localset 3301 4
-jmp open_model_4
-label open_object_skip_46
-localget r0 3300
-cmp r0 5
-jne open_object_skip_48
+jmp Lfk
+label L62
+label L63
+localset 3319 2
 load32 r0 100
 sub r0 1999994359
 mul r0 r0
@@ -2448,11 +3665,10 @@ localset 3316 -5197
 localset 3317 183
 localset 3318 98883
 localset 3301 4
-jmp open_model_5
-label open_object_skip_48
-localget r0 3300
-cmp r0 6
-jne open_object_skip_50
+jmp Lfl
+label L64
+label L65
+localset 3319 1
 load32 r0 100
 sub r0 1999994035
 mul r0 r0
@@ -2485,11 +3701,10 @@ localset 3316 -5190
 localset 3317 186
 localset 3318 100874
 localset 3301 4
-jmp open_model_6
-label open_object_skip_50
-localget r0 3300
-cmp r0 7
-jne open_object_skip_52
+jmp Lfm
+label L66
+label L67
+localset 3319 2
 load32 r0 100
 sub r0 1999994035
 mul r0 r0
@@ -2514,11 +3729,10 @@ localset 3316 -5518
 localset 3317 177
 localset 3318 100835
 localset 3301 4
-jmp open_model_7
-label open_object_skip_52
-localget r0 3300
-cmp r0 8
-jne open_object_skip_54
+jmp Lfn
+label L68
+label L69
+localset 3319 1
 load32 r0 100
 sub r0 1999993803
 mul r0 r0
@@ -2551,11 +3765,10 @@ localset 3316 -5387
 localset 3317 179
 localset 3318 102821
 localset 3301 4
-jmp open_model_8
-label open_object_skip_54
-localget r0 3300
-cmp r0 9
-jne open_object_skip_56
+jmp Lfo
+label L6a
+label L6b
+localset 3319 2
 load32 r0 100
 sub r0 1999993803
 mul r0 r0
@@ -2580,11 +3793,10 @@ localset 3316 -5748
 localset 3317 170
 localset 3318 102798
 localset 3301 4
-jmp open_model_9
-label open_object_skip_56
-localget r0 3300
-cmp r0 10
-jne open_object_skip_58
+jmp Lfp
+label L6c
+label L6d
+localset 3319 1
 load32 r0 100
 sub r0 1999993673
 mul r0 r0
@@ -2617,11 +3829,10 @@ localset 3316 -5426
 localset 3317 169
 localset 3318 104776
 localset 3301 4
-jmp open_model_10
-label open_object_skip_58
-localget r0 3300
-cmp r0 11
-jne open_object_skip_60
+jmp Lfq
+label L6e
+label L6f
+localset 3319 2
 load32 r0 100
 sub r0 1999993673
 mul r0 r0
@@ -2646,11 +3857,10 @@ localset 3316 -5877
 localset 3317 160
 localset 3318 104771
 localset 3301 4
-jmp open_model_11
-label open_object_skip_60
-localget r0 3300
-cmp r0 12
-jne open_object_skip_62
+jmp Lfr
+label L6g
+label L6h
+localset 3319 1
 load32 r0 100
 sub r0 1999993650
 mul r0 r0
@@ -2683,11 +3893,10 @@ localset 3316 -5362
 localset 3317 158
 localset 3318 106723
 localset 3301 4
-jmp open_model_12
-label open_object_skip_62
-localget r0 3300
-cmp r0 13
-jne open_object_skip_64
+jmp Lfs
+label L6i
+label L6j
+localset 3319 2
 load32 r0 100
 sub r0 1999993650
 mul r0 r0
@@ -2712,11 +3921,10 @@ localset 3316 -5900
 localset 3317 149
 localset 3318 106745
 localset 3301 4
-jmp open_model_13
-label open_object_skip_64
-localget r0 3300
-cmp r0 14
-jne open_object_skip_66
+jmp Lft
+label L6k
+label L6l
+localset 3319 1
 load32 r0 100
 sub r0 1999993733
 mul r0 r0
@@ -2749,11 +3957,10 @@ localset 3316 -5252
 localset 3317 147
 localset 3318 108667
 localset 3301 4
-jmp open_model_14
-label open_object_skip_66
-localget r0 3300
-cmp r0 15
-jne open_object_skip_68
+jmp Lfu
+label L6m
+label L6n
+localset 3319 2
 load32 r0 100
 sub r0 1999993733
 mul r0 r0
@@ -2778,11 +3985,10 @@ localset 3316 -5819
 localset 3317 138
 localset 3318 108720
 localset 3301 4
-jmp open_model_15
-label open_object_skip_68
-localget r0 3300
-cmp r0 16
-jne open_object_skip_70
+jmp Lfv
+label L6o
+label L6p
+localset 3319 1
 load32 r0 100
 sub r0 1999993919
 mul r0 r0
@@ -2815,11 +4021,10 @@ localset 3316 -5118
 localset 3317 135
 localset 3318 110619
 localset 3301 4
-jmp open_model_16
-label open_object_skip_70
-localget r0 3300
-cmp r0 17
-jne open_object_skip_72
+jmp Lfw
+label L6q
+label L6r
+localset 3319 2
 load32 r0 100
 sub r0 1999993919
 mul r0 r0
@@ -2844,11 +4049,10 @@ localset 3316 -5635
 localset 3317 126
 localset 3318 110691
 localset 3301 4
-jmp open_model_17
-label open_object_skip_72
-localget r0 3300
-cmp r0 18
-jne open_object_skip_74
+jmp Lfx
+label L6s
+label L6t
+localset 3319 1
 load32 r0 100
 sub r0 1999994197
 mul r0 r0
@@ -2881,11 +4085,10 @@ localset 3316 -4939
 localset 3317 124
 localset 3318 112576
 localset 3301 4
-jmp open_model_18
-label open_object_skip_74
-localget r0 3300
-cmp r0 19
-jne open_object_skip_76
+jmp Lfy
+label L6u
+label L6v
+localset 3319 2
 load32 r0 100
 sub r0 1999994197
 mul r0 r0
@@ -2910,11 +4113,10 @@ localset 3316 -5360
 localset 3317 115
 localset 3318 112653
 localset 3301 4
-jmp open_model_19
-label open_object_skip_76
-localget r0 3300
-cmp r0 20
-jne open_object_skip_78
+jmp Lfz
+label L6w
+label L6x
+localset 3319 1
 load32 r0 100
 sub r0 1999994557
 mul r0 r0
@@ -2947,11 +4149,10 @@ localset 3316 -4663
 localset 3317 114
 localset 3318 114531
 localset 3301 4
-jmp open_model_20
-label open_object_skip_78
-localget r0 3300
-cmp r0 21
-jne open_object_skip_80
+jmp Lg0
+label L6y
+label L6z
+localset 3319 2
 load32 r0 100
 sub r0 1999994557
 mul r0 r0
@@ -2976,11 +4177,10 @@ localset 3316 -5003
 localset 3317 105
 localset 3318 114605
 localset 3301 4
-jmp open_model_21
-label open_object_skip_80
-localget r0 3300
-cmp r0 22
-jne open_object_skip_82
+jmp Lg1
+label L70
+label L71
+localset 3319 1
 load32 r0 100
 sub r0 1999994984
 mul r0 r0
@@ -3013,11 +4213,10 @@ localset 3316 -4254
 localset 3317 105
 localset 3318 116467
 localset 3301 4
-jmp open_model_22
-label open_object_skip_82
-localget r0 3300
-cmp r0 23
-jne open_object_skip_84
+jmp Lg2
+label L72
+label L73
+localset 3319 2
 load32 r0 100
 sub r0 1999994984
 mul r0 r0
@@ -3042,11 +4241,10 @@ localset 3316 -4579
 localset 3317 96
 localset 3318 116547
 localset 3301 4
-jmp open_model_23
-label open_object_skip_84
-localget r0 3300
-cmp r0 24
-jne open_object_skip_86
+jmp Lg3
+label L74
+label L75
+localset 3319 1
 load32 r0 100
 sub r0 1999995464
 mul r0 r0
@@ -3079,11 +4277,10 @@ localset 3316 -3719
 localset 3317 97
 localset 3318 118379
 localset 3301 4
-jmp open_model_24
-label open_object_skip_86
-localget r0 3300
-cmp r0 25
-jne open_object_skip_88
+jmp Lg4
+label L76
+label L77
+localset 3319 2
 load32 r0 100
 sub r0 1999995464
 mul r0 r0
@@ -3108,11 +4305,10 @@ localset 3316 -4101
 localset 3317 88
 localset 3318 118481
 localset 3301 4
-jmp open_model_25
-label open_object_skip_88
-localget r0 3300
-cmp r0 26
-jne open_object_skip_90
+jmp Lg5
+label L78
+label L79
+localset 3319 1
 load32 r0 100
 sub r0 1999995979
 mul r0 r0
@@ -3145,11 +4341,10 @@ localset 3316 -3113
 localset 3317 91
 localset 3318 120275
 localset 3301 4
-jmp open_model_26
-label open_object_skip_90
-localget r0 3300
-cmp r0 27
-jne open_object_skip_92
+jmp Lg6
+label L7a
+label L7b
+localset 3319 2
 load32 r0 100
 sub r0 1999995979
 mul r0 r0
@@ -3174,11 +4369,10 @@ localset 3316 -3588
 localset 3317 82
 localset 3318 120408
 localset 3301 4
-jmp open_model_27
-label open_object_skip_92
-localget r0 3300
-cmp r0 28
-jne open_object_skip_94
+jmp Lg7
+label L7c
+label L7d
+localset 3319 1
 load32 r0 100
 sub r0 1999996517
 mul r0 r0
@@ -3211,11 +4405,10 @@ localset 3316 -2509
 localset 3317 87
 localset 3318 122179
 localset 3301 4
-jmp open_model_28
-label open_object_skip_94
-localget r0 3300
-cmp r0 29
-jne open_object_skip_96
+jmp Lg8
+label L7e
+label L7f
+localset 3319 2
 load32 r0 100
 sub r0 1999996517
 mul r0 r0
@@ -3240,11 +4433,10 @@ localset 3316 -3050
 localset 3317 78
 localset 3318 122332
 localset 3301 4
-jmp open_model_29
-label open_object_skip_96
-localget r0 3300
-cmp r0 30
-jne open_object_skip_98
+jmp Lg9
+label L7g
+label L7h
+localset 3319 3
 load32 r0 100
 sub r0 1999994359
 mul r0 r0
@@ -3269,11 +4461,10 @@ localset 3316 -4911
 localset 3317 61
 localset 3318 98931
 localset 3301 9
-jmp open_model_30
-label open_object_skip_98
-localget r0 3300
-cmp r0 31
-jne open_object_skip_100
+jmp Lga
+label L7i
+label L7j
+localset 3319 3
 load32 r0 100
 sub r0 1999993650
 mul r0 r0
@@ -3298,11 +4489,10 @@ localset 3316 -5611
 localset 3317 50
 localset 3318 106733
 localset 3301 9
-jmp open_model_30
-label open_object_skip_100
-localget r0 3300
-cmp r0 32
-jne open_object_skip_102
+jmp Lga
+label L7k
+label L7l
+localset 3319 3
 load32 r0 100
 sub r0 1999995464
 mul r0 r0
@@ -3327,11 +4517,10 @@ localset 3316 -3821
 localset 3317 29
 localset 3318 118404
 localset 3301 9
-jmp open_model_30
-label open_object_skip_102
-localget r0 3300
-cmp r0 33
-jne open_object_skip_104
+jmp Lga
+label L7m
+label L7n
+localset 3319 4
 load32 r0 100
 sub r0 1999998116
 mul r0 r0
@@ -3356,11 +4545,10 @@ localset 3316 -2136
 localset 3317 232
 localset 3318 128301
 localset 3301 8
-jmp open_model_31
-label open_object_skip_104
-localget r0 3300
-cmp r0 34
-jne open_object_skip_106
+jmp Lgb
+label L7o
+label L7p
+localset 3319 5
 load32 r0 100
 sub r0 1999998116
 mul r0 r0
@@ -3385,11 +4573,10 @@ localset 3316 -2143
 localset 3317 253
 localset 3318 128303
 localset 3301 8
-jmp open_model_32
-label open_object_skip_106
-localget r0 3300
-cmp r0 35
-jne open_object_skip_108
+jmp Lgc
+label L7q
+label L7r
+localset 3319 5
 load32 r0 100
 sub r0 1999998116
 mul r0 r0
@@ -3414,11 +4601,10 @@ localset 3316 -1982
 localset 3317 253
 localset 3318 128943
 localset 3301 8
-jmp open_model_33
-label open_object_skip_108
-localget r0 3300
-cmp r0 36
-jne open_object_skip_110
+jmp Lgd
+label L7s
+label L7t
+localset 3319 5
 load32 r0 100
 sub r0 1999998116
 mul r0 r0
@@ -3443,11 +4629,10 @@ localset 3316 -1822
 localset 3317 252
 localset 3318 129583
 localset 3301 8
-jmp open_model_34
-label open_object_skip_110
-localget r0 3300
-cmp r0 37
-jne open_object_skip_112
+jmp Lge
+label L7u
+label L7v
+localset 3319 5
 load32 r0 100
 sub r0 1999998116
 mul r0 r0
@@ -3472,11 +4657,10 @@ localset 3316 -1657
 localset 3317 252
 localset 3318 130243
 localset 3301 8
-jmp open_model_32
-label open_object_skip_112
-localget r0 3300
-cmp r0 38
-jne open_object_skip_114
+jmp Lgc
+label L7w
+label L7x
+localset 3319 6
 load32 r0 100
 sub r0 1999998116
 mul r0 r0
@@ -3501,11 +4685,10 @@ localset 3316 -2141
 localset 3317 286
 localset 3318 128302
 localset 3301 8
-jmp open_model_35
-label open_object_skip_114
-localget r0 3300
-cmp r0 39
-jne open_object_skip_116
+jmp Lgf
+label L7y
+label L7z
+localset 3319 6
 load32 r0 100
 sub r0 1999998116
 mul r0 r0
@@ -3530,11 +4713,10 @@ localset 3316 -2141
 localset 3317 334
 localset 3318 128302
 localset 3301 8
-jmp open_model_35
-label open_object_skip_116
-localget r0 3300
-cmp r0 40
-jne open_object_skip_118
+jmp Lgf
+label L80
+label L81
+localset 3319 4
 load32 r0 100
 sub r0 1999998116
 mul r0 r0
@@ -3559,11 +4741,10 @@ localset 3316 -2092
 localset 3317 70
 localset 3318 128414
 localset 3301 8
-jmp open_model_36
-label open_object_skip_118
-localget r0 3300
-cmp r0 41
-jne open_object_skip_120
+jmp Lgg
+label L82
+label L83
+localset 3319 4
 load32 r0 100
 sub r0 1999998116
 mul r0 r0
@@ -3588,11 +4769,10 @@ localset 3316 -1665
 localset 3317 70
 localset 3318 130121
 localset 3301 8
-jmp open_model_37
-label open_object_skip_120
-localget r0 3300
-cmp r0 42
-jne open_object_skip_122
+jmp Lgh
+label L84
+label L85
+localset 3319 5
 load32 r0 100
 sub r0 1999998116
 mul r0 r0
@@ -3617,11 +4797,10 @@ localset 3316 -1638
 localset 3317 253
 localset 3318 128176
 localset 3301 8
-jmp open_model_38
-label open_object_skip_122
-localget r0 3300
-cmp r0 43
-jne open_object_skip_124
+jmp Lgi
+label L86
+label L87
+localset 3319 5
 load32 r0 100
 sub r0 1999998116
 mul r0 r0
@@ -3646,11 +4825,10 @@ localset 3316 -1478
 localset 3317 253
 localset 3318 128817
 localset 3301 8
-jmp open_model_39
-label open_object_skip_124
-localget r0 3300
-cmp r0 44
-jne open_object_skip_126
+jmp Lgj
+label L88
+label L89
+localset 3319 5
 load32 r0 100
 sub r0 1999998116
 mul r0 r0
@@ -3675,11 +4853,10 @@ localset 3316 -1317
 localset 3317 252
 localset 3318 129457
 localset 3301 8
-jmp open_model_33
-label open_object_skip_126
-localget r0 3300
-cmp r0 45
-jne open_object_skip_128
+jmp Lgd
+label L8a
+label L8b
+localset 3319 5
 load32 r0 100
 sub r0 1999998116
 mul r0 r0
@@ -3704,11 +4881,10 @@ localset 3316 -1152
 localset 3317 252
 localset 3318 130116
 localset 3301 8
-jmp open_model_38
-label open_object_skip_128
-localget r0 3300
-cmp r0 46
-jne open_object_skip_130
+jmp Lgi
+label L8c
+label L8d
+localset 3319 6
 load32 r0 100
 sub r0 1999998116
 mul r0 r0
@@ -3733,11 +4909,10 @@ localset 3316 -1637
 localset 3317 286
 localset 3318 128176
 localset 3301 8
-jmp open_model_35
-label open_object_skip_130
-localget r0 3300
-cmp r0 47
-jne open_object_skip_132
+jmp Lgf
+label L8e
+label L8f
+localset 3319 6
 load32 r0 100
 sub r0 1999998116
 mul r0 r0
@@ -3762,11 +4937,10 @@ localset 3316 -1637
 localset 3317 334
 localset 3318 128176
 localset 3301 8
-jmp open_model_35
-label open_object_skip_132
-localget r0 3300
-cmp r0 48
-jne open_object_skip_134
+jmp Lgf
+label L8g
+label L8h
+localset 3319 4
 load32 r0 100
 sub r0 1999998116
 mul r0 r0
@@ -3791,11 +4965,10 @@ localset 3316 -1656
 localset 3317 70
 localset 3318 128305
 localset 3301 8
-jmp open_model_40
-label open_object_skip_134
-localget r0 3300
-cmp r0 49
-jne open_object_skip_136
+jmp Lgk
+label L8i
+label L8j
+localset 3319 4
 load32 r0 100
 sub r0 1999998116
 mul r0 r0
@@ -3820,11 +4993,10 @@ localset 3316 -1228
 localset 3317 70
 localset 3318 130012
 localset 3301 8
-jmp open_model_41
-label open_object_skip_136
-localget r0 3300
-cmp r0 50
-jne open_object_skip_138
+jmp Lgl
+label L8k
+label L8l
+localset 3319 0
 load32 r0 100
 sub r0 2000002858
 mul r0 r0
@@ -3849,11 +5021,10 @@ localset 3316 670
 localset 3317 68
 localset 3318 24033
 localset 3301 4
-jmp open_model_42
-label open_object_skip_138
-localget r0 3300
-cmp r0 51
-jne open_object_skip_140
+jmp Lgm
+label L8m
+label L8n
+localset 3319 0
 load32 r0 100
 sub r0 2000003067
 mul r0 r0
@@ -3878,11 +5049,10 @@ localset 3316 874
 localset 3317 69
 localset 3318 25972
 localset 3301 4
-jmp open_model_43
-label open_object_skip_140
-localget r0 3300
-cmp r0 52
-jne open_object_skip_142
+jmp Lgn
+label L8o
+label L8p
+localset 3319 0
 load32 r0 100
 sub r0 1999998094
 mul r0 r0
@@ -3907,11 +5077,10 @@ localset 3316 -1715
 localset 3317 176
 localset 3318 85385
 localset 3301 4
-jmp open_model_44
-label open_object_skip_142
-localget r0 3300
-cmp r0 53
-jne open_object_skip_144
+jmp Lgo
+label L8q
+label L8r
+localset 3319 0
 load32 r0 100
 sub r0 1999997503
 mul r0 r0
@@ -3936,11 +5105,10 @@ localset 3316 -2306
 localset 3317 179
 localset 3318 87297
 localset 3301 4
-jmp open_model_45
-label open_object_skip_144
-localget r0 3300
-cmp r0 54
-jne open_object_skip_146
+jmp Lgp
+label L8s
+label L8t
+localset 3319 0
 load32 r0 100
 sub r0 2000000447
 mul r0 r0
@@ -3965,11 +5133,10 @@ localset 3316 -1751
 localset 3317 18
 localset 3318 149932
 localset 3301 4
-jmp open_model_46
-label open_object_skip_146
-localget r0 3300
-cmp r0 55
-jne open_object_skip_148
+jmp Lgq
+label L8u
+label L8v
+localset 3319 0
 load32 r0 100
 sub r0 2000000363
 mul r0 r0
@@ -3994,11 +5161,10 @@ localset 3316 -1834
 localset 3317 12
 localset 3318 151904
 localset 3301 4
-jmp open_model_47
-label open_object_skip_148
-localget r0 3300
-cmp r0 56
-jne open_object_skip_150
+jmp Lgr
+label L8w
+label L8x
+localset 3319 7
 load32 r0 100
 sub r0 2000003344
 mul r0 r0
@@ -4037,11 +5203,11 @@ localset 3315 0
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_151
+jle L8y
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_151
+label L8y
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -4049,11 +5215,10 @@ localset 3316 4173
 localset 3317 133
 localset 3318 29689
 localset 3301 42
-jmp open_model_48
-label open_object_skip_150
-localget r0 3300
-cmp r0 57
-jne open_object_skip_152
+jmp Lgs
+label L8z
+label L90
+localset 3319 7
 load32 r0 100
 sub r0 1999998094
 mul r0 r0
@@ -4092,11 +5257,11 @@ localset 3315 0
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_153
+jle L91
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_153
+label L91
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -4104,11 +5269,10 @@ localset 3316 -2739
 localset 3317 238
 localset 3318 85009
 localset 3301 42
-jmp open_model_48
-label open_object_skip_152
-localget r0 3300
-cmp r0 58
-jne open_object_skip_154
+jmp Lgs
+label L92
+label L93
+localset 3319 7
 load32 r0 100
 sub r0 2000000514
 mul r0 r0
@@ -4147,11 +5311,11 @@ localset 3315 0
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_155
+jle L94
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_155
+label L94
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -4159,11 +5323,10 @@ localset 3316 1343
 localset 3317 95
 localset 3318 145966
 localset 3301 42
-jmp open_model_48
-label open_object_skip_154
-localget r0 3300
-cmp r0 59
-jne open_object_skip_156
+jmp Lgs
+label L95
+label L96
+localset 3319 8
 load32 r0 100
 sub r0 2000001060
 mul r0 r0
@@ -4193,11 +5356,11 @@ localset 3315 0
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_157
+jle L97
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_157
+label L97
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -4205,11 +5368,10 @@ localset 3316 -26
 localset 3317 735
 localset 3318 12097
 localset 3301 4
-jmp open_model_49
-label open_object_skip_156
-localget r0 3300
-cmp r0 60
-jne open_object_skip_158
+jmp Lgt
+label L98
+label L99
+localset 3319 8
 load32 r0 100
 sub r0 2000003158
 mul r0 r0
@@ -4239,11 +5401,11 @@ localset 3315 0
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_159
+jle L9a
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_159
+label L9a
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -4251,11 +5413,10 @@ localset 3316 2060
 localset 3317 796
 localset 3318 41695
 localset 3301 4
-jmp open_model_49
-label open_object_skip_158
-localget r0 3300
-cmp r0 61
-jne open_object_skip_160
+jmp Lgt
+label L9b
+label L9c
+localset 3319 8
 load32 r0 100
 sub r0 2000000192
 mul r0 r0
@@ -4285,11 +5446,11 @@ localset 3315 0
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_161
+jle L9d
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_161
+label L9d
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -4297,11 +5458,10 @@ localset 3316 -878
 localset 3317 874
 localset 3318 77335
 localset 3301 4
-jmp open_model_49
-label open_object_skip_160
-localget r0 3300
-cmp r0 62
-jne open_object_skip_162
+jmp Lgt
+label L9e
+label L9f
+localset 3319 8
 load32 r0 100
 sub r0 1999999045
 mul r0 r0
@@ -4331,11 +5491,11 @@ localset 3315 0
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_163
+jle L9g
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_163
+label L9g
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -4343,11 +5503,10 @@ localset 3316 -2034
 localset 3317 771
 localset 3318 132327
 localset 3301 4
-jmp open_model_49
-label open_object_skip_162
-localget r0 3300
-cmp r0 63
-jne open_object_skip_164
+jmp Lgt
+label L9h
+label L9i
+localset 3319 9
 load32 r0 100
 sub r0 1999994035
 mul r0 r0
@@ -4383,11 +5542,11 @@ localset 3315 0
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_165
+jle L9j
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_165
+label L9j
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -4395,11 +5554,10 @@ localset 3316 -4781
 localset 3317 180
 localset 3318 100899
 localset 3301 6
-jmp open_model_50
-label open_object_skip_164
-localget r0 3300
-cmp r0 64
-jne open_object_skip_166
+jmp Lgu
+label L9k
+label L9l
+localset 3319 9
 load32 r0 100
 sub r0 1999993919
 mul r0 r0
@@ -4435,11 +5593,11 @@ localset 3315 0
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_167
+jle L9m
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_167
+label L9m
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -4447,11 +5605,10 @@ localset 3316 -4901
 localset 3317 131
 localset 3318 110563
 localset 3301 6
-jmp open_model_50
-label open_object_skip_166
-localget r0 3300
-cmp r0 65
-jne open_object_skip_168
+jmp Lgu
+label L9n
+label L9o
+localset 3319 9
 load32 r0 100
 sub r0 1999995464
 mul r0 r0
@@ -4487,11 +5644,11 @@ localset 3315 0
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_169
+jle L9p
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_169
+label L9p
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -4499,11 +5656,10 @@ localset 3316 -3385
 localset 3317 93
 localset 3318 118264
 localset 3301 6
-jmp open_model_50
-label open_object_skip_168
-localget r0 3300
-cmp r0 66
-jne open_object_skip_170
+jmp Lgu
+label L9q
+label L9r
+localset 3319 10
 load32 r0 100
 sub r0 2000002609
 mul r0 r0
@@ -4542,11 +5698,11 @@ localset 3315 0
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_171
+jle L9s
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_171
+label L9s
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -4554,11 +5710,10 @@ localset 3316 3204
 localset 3317 132
 localset 3318 21742
 localset 3301 4
-jmp open_model_51
-label open_object_skip_170
-localget r0 3300
-cmp r0 67
-jne open_object_skip_172
+jmp Lgv
+label L9t
+label L9u
+localset 3319 10
 load32 r0 100
 sub r0 1999998668
 mul r0 r0
@@ -4597,11 +5752,11 @@ localset 3315 0
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_173
+jle L9v
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_173
+label L9v
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -4609,11 +5764,10 @@ localset 3316 -757
 localset 3317 240
 localset 3318 83578
 localset 3301 4
-jmp open_model_51
-label open_object_skip_172
-localget r0 3300
-cmp r0 68
-jne open_object_skip_174
+jmp Lgv
+label L9w
+label L9x
+localset 3319 10
 load32 r0 100
 sub r0 2000000500
 mul r0 r0
@@ -4652,11 +5806,11 @@ localset 3315 0
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_175
+jle L9y
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_175
+label L9y
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -4664,11 +5818,10 @@ localset 3316 1100
 localset 3317 92
 localset 3318 148036
 localset 3301 4
-jmp open_model_51
-label open_object_skip_174
-localget r0 3300
-cmp r0 69
-jne open_object_skip_176
+jmp Lgv
+label L9z
+label La0
+localset 3319 11
 load32 r0 100
 sub r0 2000000508
 mul r0 r0
@@ -4701,11 +5854,10 @@ localset 3316 598
 localset 3317 27
 localset 3318 8976
 localset 3301 9
-jmp open_model_52
-label open_object_skip_176
-localget r0 3300
-cmp r0 70
-jne open_object_skip_178
+jmp Lgw
+label La1
+label La2
+localset 3319 11
 load32 r0 100
 sub r0 2000001697
 mul r0 r0
@@ -4738,11 +5890,10 @@ localset 3316 1818
 localset 3317 59
 localset 3318 16882
 localset 3301 9
-jmp open_model_53
-label open_object_skip_178
-localget r0 3300
-cmp r0 71
-jne open_object_skip_180
+jmp Lgx
+label La3
+label La4
+localset 3319 11
 load32 r0 100
 sub r0 2000003067
 mul r0 r0
@@ -4775,11 +5926,10 @@ localset 3316 3189
 localset 3317 76
 localset 3318 26787
 localset 3301 9
-jmp open_model_54
-label open_object_skip_180
-localget r0 3300
-cmp r0 72
-jne open_object_skip_182
+jmp Lgy
+label La5
+label La6
+localset 3319 11
 load32 r0 100
 sub r0 2000003407
 mul r0 r0
@@ -4812,11 +5962,10 @@ localset 3316 3339
 localset 3317 84
 localset 3318 36780
 localset 3301 9
-jmp open_model_55
-label open_object_skip_182
-localget r0 3300
-cmp r0 73
-jne open_object_skip_184
+jmp Lgz
+label La7
+label La8
+localset 3319 11
 load32 r0 100
 sub r0 2000003158
 mul r0 r0
@@ -4849,11 +5998,10 @@ localset 3316 3139
 localset 3317 105
 localset 3318 42777
 localset 3301 9
-jmp open_model_56
-label open_object_skip_184
-localget r0 3300
-cmp r0 74
-jne open_object_skip_186
+jmp Lh0
+label La9
+label Laa
+localset 3319 11
 load32 r0 100
 sub r0 2000002797
 mul r0 r0
@@ -4886,11 +6034,10 @@ localset 3316 2700
 localset 3317 136
 localset 3318 48762
 localset 3301 9
-jmp open_model_57
-label open_object_skip_186
-localget r0 3300
-cmp r0 75
-jne open_object_skip_188
+jmp Lh1
+label Lab
+label Lac
+localset 3319 11
 load32 r0 100
 sub r0 2000002577
 mul r0 r0
@@ -4923,11 +6070,10 @@ localset 3316 2490
 localset 3317 138
 localset 3318 52756
 localset 3301 9
-jmp open_model_58
-label open_object_skip_188
-localget r0 3300
-cmp r0 76
-jne open_object_skip_190
+jmp Lh2
+label Lad
+label Lae
+localset 3319 11
 load32 r0 100
 sub r0 2000002034
 mul r0 r0
@@ -4960,11 +6106,10 @@ localset 3316 1929
 localset 3317 192
 localset 3318 64742
 localset 3301 9
-jmp open_model_59
-label open_object_skip_190
-localget r0 3300
-cmp r0 77
-jne open_object_skip_192
+jmp Lh3
+label Laf
+label Lag
+localset 3319 11
 load32 r0 100
 sub r0 2000001738
 mul r0 r0
@@ -4997,11 +6142,10 @@ localset 3316 1595
 localset 3317 190
 localset 3318 68726
 localset 3301 9
-jmp open_model_60
-label open_object_skip_192
-localget r0 3300
-cmp r0 78
-jne open_object_skip_194
+jmp Lh4
+label Lah
+label Lai
+localset 3319 11
 load32 r0 100
 sub r0 2000001277
 mul r0 r0
@@ -5034,11 +6178,10 @@ localset 3316 1084
 localset 3317 184
 localset 3318 72690
 localset 3301 9
-jmp open_model_61
-label open_object_skip_194
-localget r0 3300
-cmp r0 79
-jne open_object_skip_196
+jmp Lh5
+label Laj
+label Lak
+localset 3319 11
 load32 r0 100
 sub r0 1999999726
 mul r0 r0
@@ -5071,11 +6214,10 @@ localset 3316 -567
 localset 3317 178
 localset 3318 80509
 localset 3301 9
-jmp open_model_62
-label open_object_skip_196
-localget r0 3300
-cmp r0 80
-jne open_object_skip_198
+jmp Lh6
+label Lal
+label Lam
+localset 3319 11
 load32 r0 100
 sub r0 1999997503
 mul r0 r0
@@ -5108,11 +6250,10 @@ localset 3316 -2832
 localset 3317 187
 localset 3318 88180
 localset 3301 9
-jmp open_model_63
-label open_object_skip_198
-localget r0 3300
-cmp r0 81
-jne open_object_skip_200
+jmp Lh7
+label Lan
+label Lao
+localset 3319 11
 load32 r0 100
 sub r0 1999995761
 mul r0 r0
@@ -5145,11 +6286,10 @@ localset 3316 -4462
 localset 3317 192
 localset 3318 93953
 localset 3301 9
-jmp open_model_64
-label open_object_skip_200
-localget r0 3300
-cmp r0 82
-jne open_object_skip_202
+jmp Lh8
+label Lap
+label Laq
+localset 3319 11
 load32 r0 100
 sub r0 1999994035
 mul r0 r0
@@ -5182,11 +6322,10 @@ localset 3316 -6041
 localset 3317 178
 localset 3318 101780
 localset 3301 9
-jmp open_model_65
-label open_object_skip_202
-localget r0 3300
-cmp r0 83
-jne open_object_skip_204
+jmp Lh9
+label Lar
+label Las
+localset 3319 11
 load32 r0 100
 sub r0 1999993733
 mul r0 r0
@@ -5219,11 +6358,10 @@ localset 3316 -6134
 localset 3317 136
 localset 3318 109753
 localset 3301 9
-jmp open_model_66
-label open_object_skip_204
-localget r0 3300
-cmp r0 84
-jne open_object_skip_206
+jmp Lha
+label Lat
+label Lau
+localset 3319 11
 load32 r0 100
 sub r0 1999994984
 mul r0 r0
@@ -5256,11 +6394,10 @@ localset 3316 -4737
 localset 3317 96
 localset 3318 117616
 localset 3301 9
-jmp open_model_67
-label open_object_skip_206
-localget r0 3300
-cmp r0 85
-jne open_object_skip_208
+jmp Lhb
+label Lav
+label Law
+localset 3319 11
 load32 r0 100
 sub r0 1999997061
 mul r0 r0
@@ -5293,11 +6430,10 @@ localset 3316 -2631
 localset 3317 79
 localset 3318 125333
 localset 3301 9
-jmp open_model_68
-label open_object_skip_208
-localget r0 3300
-cmp r0 86
-jne open_object_skip_210
+jmp Lhc
+label Lax
+label Lay
+localset 3319 11
 load32 r0 100
 sub r0 1999999045
 mul r0 r0
@@ -5330,11 +6466,10 @@ localset 3316 -720
 localset 3317 75
 localset 3318 133102
 localset 3301 9
-jmp open_model_69
-label open_object_skip_210
-localget r0 3300
-cmp r0 87
-jne open_object_skip_212
+jmp Lhd
+label Laz
+label Lb0
+localset 3319 11
 load32 r0 100
 sub r0 2000000251
 mul r0 r0
@@ -5367,11 +6502,10 @@ localset 3316 364
 localset 3317 59
 localset 3318 141027
 localset 3301 9
-jmp open_model_70
-label open_object_skip_212
-localget r0 3300
-cmp r0 88
-jne open_object_skip_214
+jmp Lhe
+label Lb1
+label Lb2
+localset 3319 11
 load32 r0 100
 sub r0 2000000500
 mul r0 r0
@@ -5404,11 +6538,10 @@ localset 3316 514
 localset 3317 27
 localset 3318 149025
 localset 3301 9
-jmp open_model_71
-label open_object_skip_214
-localget r0 3300
-cmp r0 89
-jne open_object_skip_216
+jmp Lhf
+label Lb3
+label Lb4
+localset 3319 0
 load32 r0 100
 sub r0 2000002395
 mul r0 r0
@@ -5433,11 +6566,10 @@ localset 3316 -3600
 localset 3317 77
 localset 3318 55507
 localset 3301 4
-jmp open_model_72
-label open_object_skip_216
-localget r0 3300
-cmp r0 90
-jne open_object_skip_218
+jmp Lhg
+label Lb5
+label Lb6
+localset 3319 1
 load32 r0 100
 sub r0 2000002395
 mul r0 r0
@@ -5470,11 +6602,10 @@ localset 3316 -3600
 localset 3317 82
 localset 3318 55507
 localset 3301 4
-jmp open_model_73
-label open_object_skip_218
-localget r0 3300
-cmp r0 91
-jne open_object_skip_220
+jmp Lhh
+label Lb7
+label Lb8
+localset 3319 0
 load32 r0 100
 sub r0 2000002313
 mul r0 r0
@@ -5499,11 +6630,10 @@ localset 3316 -3682
 localset 3317 67
 localset 3318 57505
 localset 3301 4
-jmp open_model_74
-label open_object_skip_220
-localget r0 3300
-cmp r0 92
-jne open_object_skip_222
+jmp Lhi
+label Lb9
+label Lba
+localset 3319 1
 load32 r0 100
 sub r0 2000002313
 mul r0 r0
@@ -5536,11 +6666,10 @@ localset 3316 -3682
 localset 3317 82
 localset 3318 57505
 localset 3301 4
-jmp open_model_75
-label open_object_skip_222
-localget r0 3300
-cmp r0 93
-jne open_object_skip_224
+jmp Lhj
+label Lbb
+label Lbc
+localset 3319 1
 load32 r0 100
 sub r0 2000003158
 mul r0 r0
@@ -5573,11 +6702,10 @@ localset 3316 962
 localset 3317 99
 localset 3318 41648
 localset 3301 4
-jmp open_model_76
-label open_object_skip_224
-localget r0 3300
-cmp r0 94
-jne open_object_skip_226
+jmp Lhk
+label Lbd
+label Lbe
+localset 3319 12
 load32 r0 100
 sub r0 2000003158
 mul r0 r0
@@ -5602,11 +6730,10 @@ localset 3316 2400
 localset 3317 100
 localset 3318 41732
 localset 3301 12
-jmp open_model_77
-label open_object_skip_226
-localget r0 3300
-cmp r0 95
-jne open_object_skip_228
+jmp Lhl
+label Lbf
+label Lbg
+localset 3319 1
 load32 r0 100
 sub r0 2000003158
 mul r0 r0
@@ -5639,11 +6766,10 @@ localset 3316 3517
 localset 3317 99
 localset 3318 41797
 localset 3301 4
-jmp open_model_78
-label open_object_skip_228
-localget r0 3300
-cmp r0 96
-jne open_object_skip_230
+jmp Lhm
+label Lbh
+label Lbi
+localset 3319 12
 load32 r0 100
 sub r0 2000003158
 mul r0 r0
@@ -5668,11 +6794,10 @@ localset 3316 3898
 localset 3317 100
 localset 3318 41820
 localset 3301 12
-jmp open_model_77
-label open_object_skip_230
-localget r0 3300
-cmp r0 97
-jne open_object_skip_232
+jmp Lhl
+label Lbj
+label Lbk
+localset 3319 1
 load32 r0 100
 sub r0 2000002797
 mul r0 r0
@@ -5705,11 +6830,10 @@ localset 3316 601
 localset 3317 129
 localset 3318 47640
 localset 3301 4
-jmp open_model_79
-label open_object_skip_232
-localget r0 3300
-cmp r0 98
-jne open_object_skip_234
+jmp Lhn
+label Lbl
+label Lbm
+localset 3319 12
 load32 r0 100
 sub r0 2000002797
 mul r0 r0
@@ -5734,11 +6858,10 @@ localset 3316 2039
 localset 3317 130
 localset 3318 47722
 localset 3301 12
-jmp open_model_77
-label open_object_skip_234
-localget r0 3300
-cmp r0 99
-jne open_object_skip_236
+jmp Lhl
+label Lbn
+label Lbo
+localset 3319 1
 load32 r0 100
 sub r0 2000002797
 mul r0 r0
@@ -5771,11 +6894,10 @@ localset 3316 3156
 localset 3317 129
 localset 3318 47785
 localset 3301 4
-jmp open_model_80
-label open_object_skip_236
-localget r0 3300
-cmp r0 100
-jne open_object_skip_238
+jmp Lho
+label Lbp
+label Lbq
+localset 3319 12
 load32 r0 100
 sub r0 2000002797
 mul r0 r0
@@ -5800,11 +6922,10 @@ localset 3316 3537
 localset 3317 130
 localset 3318 47808
 localset 3301 12
-jmp open_model_77
-label open_object_skip_238
-localget r0 3300
-cmp r0 101
-jne open_object_skip_240
+jmp Lhl
+label Lbr
+label Lbs
+localset 3319 1
 load32 r0 100
 sub r0 2000001903
 mul r0 r0
@@ -5837,11 +6958,10 @@ localset 3316 -289
 localset 3317 191
 localset 3318 65560
 localset 3301 4
-jmp open_model_81
-label open_object_skip_240
-localget r0 3300
-cmp r0 102
-jne open_object_skip_242
+jmp Lhp
+label Lbt
+label Lbu
+localset 3319 12
 load32 r0 100
 sub r0 2000001903
 mul r0 r0
@@ -5866,11 +6986,10 @@ localset 3316 1147
 localset 3317 192
 localset 3318 65680
 localset 3301 12
-jmp open_model_77
-label open_object_skip_242
-localget r0 3300
-cmp r0 103
-jne open_object_skip_244
+jmp Lhl
+label Lbv
+label Lbw
+localset 3319 1
 load32 r0 100
 sub r0 2000001903
 mul r0 r0
@@ -5903,11 +7022,10 @@ localset 3316 2262
 localset 3317 191
 localset 3318 65772
 localset 3301 4
-jmp open_model_82
-label open_object_skip_244
-localget r0 3300
-cmp r0 104
-jne open_object_skip_246
+jmp Lhq
+label Lbx
+label Lby
+localset 3319 12
 load32 r0 100
 sub r0 2000001903
 mul r0 r0
@@ -5932,11 +7050,10 @@ localset 3316 2641
 localset 3317 192
 localset 3318 65804
 localset 3301 12
-jmp open_model_77
-label open_object_skip_246
-localget r0 3300
-cmp r0 105
-jne open_object_skip_248
+jmp Lhl
+label Lbz
+label Lc0
+localset 3319 1
 load32 r0 100
 sub r0 2000001277
 mul r0 r0
@@ -5969,11 +7086,10 @@ localset 3316 -897
 localset 3317 184
 localset 3318 71372
 localset 3301 4
-jmp open_model_83
-label open_object_skip_248
-localget r0 3300
-cmp r0 106
-jne open_object_skip_250
+jmp Lhr
+label Lc1
+label Lc2
+localset 3319 12
 load32 r0 100
 sub r0 2000001277
 mul r0 r0
@@ -5998,11 +7114,10 @@ localset 3316 527
 localset 3317 185
 localset 3318 71593
 localset 3301 12
-jmp open_model_77
-label open_object_skip_250
-localget r0 3300
-cmp r0 107
-jne open_object_skip_252
+jmp Lhl
+label Lc3
+label Lc4
+localset 3319 1
 load32 r0 100
 sub r0 2000001277
 mul r0 r0
@@ -6035,11 +7150,10 @@ localset 3316 1633
 localset 3317 184
 localset 3318 71763
 localset 3301 4
-jmp open_model_84
-label open_object_skip_252
-localget r0 3300
-cmp r0 108
-jne open_object_skip_254
+jmp Lhs
+label Lc5
+label Lc6
+localset 3319 12
 load32 r0 100
 sub r0 2000001277
 mul r0 r0
@@ -6064,11 +7178,10 @@ localset 3316 2009
 localset 3317 185
 localset 3318 71823
 localset 3301 12
-jmp open_model_77
-label open_object_skip_254
-localget r0 3300
-cmp r0 109
-jne open_object_skip_256
+jmp Lhl
+label Lc7
+label Lc8
+localset 3319 1
 load32 r0 100
 sub r0 1999995761
 mul r0 r0
@@ -6101,11 +7214,10 @@ localset 3316 -6362
 localset 3317 191
 localset 3318 92401
 localset 3301 4
-jmp open_model_85
-label open_object_skip_256
-localget r0 3300
-cmp r0 110
-jne open_object_skip_258
+jmp Lht
+label Lc9
+label Lca
+localset 3319 12
 load32 r0 100
 sub r0 1999995761
 mul r0 r0
@@ -6130,11 +7242,10 @@ localset 3316 -4972
 localset 3317 192
 localset 3318 92781
 localset 3301 12
-jmp open_model_77
-label open_object_skip_258
-localget r0 3300
-cmp r0 111
-jne open_object_skip_260
+jmp Lhl
+label Lcb
+label Lcc
+localset 3319 1
 load32 r0 100
 sub r0 1999995761
 mul r0 r0
@@ -6167,11 +7278,10 @@ localset 3316 -3892
 localset 3317 191
 localset 3318 93072
 localset 3301 4
-jmp open_model_86
-label open_object_skip_260
-localget r0 3300
-cmp r0 112
-jne open_object_skip_262
+jmp Lhu
+label Lcd
+label Lce
+localset 3319 12
 load32 r0 100
 sub r0 1999995761
 mul r0 r0
@@ -6196,11 +7306,10 @@ localset 3316 -3524
 localset 3317 192
 localset 3318 93175
 localset 3301 12
-jmp open_model_77
-label open_object_skip_262
-localget r0 3300
-cmp r0 113
-jne open_object_skip_264
+jmp Lhl
+label Lcf
+label Lcg
+localset 3319 1
 load32 r0 100
 sub r0 1999997061
 mul r0 r0
@@ -6233,11 +7342,10 @@ localset 3316 -5058
 localset 3317 78
 localset 3318 124970
 localset 3301 4
-jmp open_model_87
-label open_object_skip_264
-localget r0 3300
-cmp r0 114
-jne open_object_skip_266
+jmp Lhv
+label Lch
+label Lci
+localset 3319 12
 load32 r0 100
 sub r0 1999997061
 mul r0 r0
@@ -6262,11 +7370,10 @@ localset 3316 -3671
 localset 3317 79
 localset 3318 124581
 localset 3301 12
-jmp open_model_77
-label open_object_skip_266
-localget r0 3300
-cmp r0 115
-jne open_object_skip_268
+jmp Lhl
+label Lcj
+label Lck
+localset 3319 1
 load32 r0 100
 sub r0 1999997061
 mul r0 r0
@@ -6299,11 +7406,10 @@ localset 3316 -2592
 localset 3317 78
 localset 3318 124283
 localset 3301 4
-jmp open_model_88
-label open_object_skip_268
-localget r0 3300
-cmp r0 116
-jne open_object_skip_270
+jmp Lhw
+label Lcl
+label Lcm
+localset 3319 12
 load32 r0 100
 sub r0 1999997061
 mul r0 r0
@@ -6328,11 +7434,10 @@ localset 3316 -2225
 localset 3317 79
 localset 3318 124179
 localset 3301 12
-jmp open_model_77
-label open_object_skip_270
-localget r0 3300
-cmp r0 117
-jne open_object_skip_272
+jmp Lhl
+label Lcn
+label Lco
+localset 3319 1
 load32 r0 100
 sub r0 1999999437
 mul r0 r0
@@ -6365,11 +7470,10 @@ localset 3316 -2732
 localset 3317 73
 localset 3318 134456
 localset 3301 4
-jmp open_model_89
-label open_object_skip_272
-localget r0 3300
-cmp r0 118
-jne open_object_skip_274
+jmp Lhx
+label Lcp
+label Lcq
+localset 3319 12
 load32 r0 100
 sub r0 1999999437
 mul r0 r0
@@ -6394,11 +7498,10 @@ localset 3316 -1312
 localset 3317 74
 localset 3318 134215
 localset 3301 12
-jmp open_model_77
-label open_object_skip_274
-localget r0 3300
-cmp r0 119
-jne open_object_skip_276
+jmp Lhl
+label Lcr
+label Lcs
+localset 3319 1
 load32 r0 100
 sub r0 1999999437
 mul r0 r0
@@ -6431,11 +7534,10 @@ localset 3316 -208
 localset 3317 73
 localset 3318 134030
 localset 3301 4
-jmp open_model_90
-label open_object_skip_276
-localget r0 3300
-cmp r0 120
-jne open_object_skip_278
+jmp Lhy
+label Lct
+label Lcu
+localset 3319 12
 load32 r0 100
 sub r0 1999999437
 mul r0 r0
@@ -6460,11 +7562,10 @@ localset 3316 168
 localset 3317 74
 localset 3318 133965
 localset 3301 12
-jmp open_model_77
-label open_object_skip_278
-localget r0 3300
-cmp r0 121
-jne open_object_skip_280
+jmp Lhl
+label Lcv
+label Lcw
+localset 3319 13
 load32 r0 100
 sub r0 2000000767
 mul r0 r0
@@ -6503,11 +7604,11 @@ localset 3315 1
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_281
+jle Lcx
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_281
+label Lcx
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -6515,11 +7616,10 @@ localset 3316 342
 localset 3317 30
 localset 3318 10023
 localset 3301 52
-jmp open_model_91
-label open_object_skip_280
-localget r0 3300
-cmp r0 122
-jne open_object_skip_282
+jmp Lhz
+label Lcy
+label Lcz
+localset 3319 14
 load32 r0 100
 sub r0 2000000767
 mul r0 r0
@@ -6558,11 +7658,11 @@ localset 3315 1
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_283
+jle Ld0
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_283
+label Ld0
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -6570,11 +7670,10 @@ localset 3316 342
 localset 3317 48
 localset 3318 10051
 localset 3301 6
-jmp open_model_92
-label open_object_skip_282
-localget r0 3300
-cmp r0 123
-jne open_object_skip_284
+jmp Li0
+label Ld1
+label Ld2
+localset 3319 15
 load32 r0 100
 sub r0 2000000767
 mul r0 r0
@@ -6613,11 +7712,11 @@ localset 3315 2
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_285
+jle Ld3
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_285
+label Ld3
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -6625,11 +7724,10 @@ localset 3316 346
 localset 3317 46
 localset 3318 10008
 localset 3301 28
-jmp open_model_93
-label open_object_skip_284
-localget r0 3300
-cmp r0 124
-jne open_object_skip_286
+jmp Li1
+label Ld4
+label Ld5
+localset 3319 13
 load32 r0 100
 sub r0 2000003407
 mul r0 r0
@@ -6668,11 +7766,11 @@ localset 3315 1
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_287
+jle Ld6
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_287
+label Ld6
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -6680,11 +7778,10 @@ localset 3316 3837
 localset 3317 81
 localset 3318 35793
 localset 3301 52
-jmp open_model_91
-label open_object_skip_286
-localget r0 3300
-cmp r0 125
-jne open_object_skip_288
+jmp Lhz
+label Ld7
+label Ld8
+localset 3319 14
 load32 r0 100
 sub r0 2000003407
 mul r0 r0
@@ -6723,11 +7820,11 @@ localset 3315 1
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_289
+jle Ld9
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_289
+label Ld9
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -6735,11 +7832,10 @@ localset 3316 3837
 localset 3317 99
 localset 3318 35821
 localset 3301 6
-jmp open_model_92
-label open_object_skip_288
-localget r0 3300
-cmp r0 126
-jne open_object_skip_290
+jmp Li0
+label Lda
+label Ldb
+localset 3319 15
 load32 r0 100
 sub r0 2000003407
 mul r0 r0
@@ -6778,11 +7874,11 @@ localset 3315 2
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_291
+jle Ldc
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_291
+label Ldc
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -6790,11 +7886,10 @@ localset 3316 3841
 localset 3317 97
 localset 3318 35778
 localset 3301 28
-jmp open_model_93
-label open_object_skip_290
-localget r0 3300
-cmp r0 127
-jne open_object_skip_292
+jmp Li1
+label Ldd
+label Lde
+localset 3319 13
 load32 r0 100
 sub r0 2000002797
 mul r0 r0
@@ -6833,11 +7928,11 @@ localset 3315 1
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_293
+jle Ldf
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_293
+label Ldf
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -6845,11 +7940,10 @@ localset 3316 3226
 localset 3317 129
 localset 3318 47787
 localset 3301 52
-jmp open_model_91
-label open_object_skip_292
-localget r0 3300
-cmp r0 128
-jne open_object_skip_294
+jmp Lhz
+label Ldg
+label Ldh
+localset 3319 14
 load32 r0 100
 sub r0 2000002797
 mul r0 r0
@@ -6888,11 +7982,11 @@ localset 3315 1
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_295
+jle Ldi
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_295
+label Ldi
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -6900,11 +7994,10 @@ localset 3316 3226
 localset 3317 147
 localset 3318 47815
 localset 3301 6
-jmp open_model_92
-label open_object_skip_294
-localget r0 3300
-cmp r0 129
-jne open_object_skip_296
+jmp Li0
+label Ldj
+label Ldk
+localset 3319 15
 load32 r0 100
 sub r0 2000002797
 mul r0 r0
@@ -6943,11 +8036,11 @@ localset 3315 2
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_297
+jle Ldl
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_297
+label Ldl
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -6955,11 +8048,10 @@ localset 3316 3230
 localset 3317 145
 localset 3318 47772
 localset 3301 28
-jmp open_model_93
-label open_object_skip_296
-localget r0 3300
-cmp r0 130
-jne open_object_skip_298
+jmp Li1
+label Ldm
+label Ldn
+localset 3319 13
 load32 r0 100
 sub r0 2000001903
 mul r0 r0
@@ -6998,11 +8090,11 @@ localset 3315 1
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_299
+jle Ldo
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_299
+label Ldo
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -7010,11 +8102,10 @@ localset 3316 1474
 localset 3317 191
 localset 3318 65704
 localset 3301 52
-jmp open_model_91
-label open_object_skip_298
-localget r0 3300
-cmp r0 131
-jne open_object_skip_300
+jmp Lhz
+label Ldp
+label Ldq
+localset 3319 14
 load32 r0 100
 sub r0 2000001903
 mul r0 r0
@@ -7053,11 +8144,11 @@ localset 3315 1
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_301
+jle Ldr
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_301
+label Ldr
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -7065,11 +8156,10 @@ localset 3316 1474
 localset 3317 209
 localset 3318 65732
 localset 3301 6
-jmp open_model_92
-label open_object_skip_300
-localget r0 3300
-cmp r0 132
-jne open_object_skip_302
+jmp Li0
+label Lds
+label Ldt
+localset 3319 15
 load32 r0 100
 sub r0 2000001903
 mul r0 r0
@@ -7108,11 +8198,11 @@ localset 3315 2
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_303
+jle Ldu
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_303
+label Ldu
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -7120,11 +8210,10 @@ localset 3316 1478
 localset 3317 207
 localset 3318 65689
 localset 3301 28
-jmp open_model_93
-label open_object_skip_302
-localget r0 3300
-cmp r0 133
-jne open_object_skip_304
+jmp Li1
+label Ldv
+label Ldw
+localset 3319 13
 load32 r0 100
 sub r0 1999996324
 mul r0 r0
@@ -7163,11 +8252,11 @@ localset 3315 1
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_305
+jle Ldx
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_305
+label Ldx
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -7175,11 +8264,10 @@ localset 3316 -3263
 localset 3317 190
 localset 3318 91178
 localset 3301 52
-jmp open_model_91
-label open_object_skip_304
-localget r0 3300
-cmp r0 134
-jne open_object_skip_306
+jmp Lhz
+label Ldy
+label Ldz
+localset 3319 14
 load32 r0 100
 sub r0 1999996324
 mul r0 r0
@@ -7218,11 +8306,11 @@ localset 3315 1
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_307
+jle Le0
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_307
+label Le0
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -7230,11 +8318,10 @@ localset 3316 -3263
 localset 3317 208
 localset 3318 91206
 localset 3301 6
-jmp open_model_92
-label open_object_skip_306
-localget r0 3300
-cmp r0 135
-jne open_object_skip_308
+jmp Li0
+label Le1
+label Le2
+localset 3319 15
 load32 r0 100
 sub r0 1999996324
 mul r0 r0
@@ -7273,11 +8360,11 @@ localset 3315 2
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_309
+jle Le3
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_309
+label Le3
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -7285,11 +8372,10 @@ localset 3316 -3259
 localset 3317 206
 localset 3318 91163
 localset 3301 28
-jmp open_model_93
-label open_object_skip_308
-localget r0 3300
-cmp r0 136
-jne open_object_skip_310
+jmp Li1
+label Le4
+label Le5
+localset 3319 13
 load32 r0 100
 sub r0 1999999437
 mul r0 r0
@@ -7328,11 +8414,11 @@ localset 3315 1
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_311
+jle Le6
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_311
+label Le6
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -7340,11 +8426,10 @@ localset 3316 -139
 localset 3317 74
 localset 3318 134016
 localset 3301 52
-jmp open_model_91
-label open_object_skip_310
-localget r0 3300
-cmp r0 137
-jne open_object_skip_312
+jmp Lhz
+label Le7
+label Le8
+localset 3319 14
 load32 r0 100
 sub r0 1999999437
 mul r0 r0
@@ -7383,11 +8468,11 @@ localset 3315 1
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_313
+jle Le9
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_313
+label Le9
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -7395,11 +8480,10 @@ localset 3316 -139
 localset 3317 92
 localset 3318 134044
 localset 3301 6
-jmp open_model_92
-label open_object_skip_312
-localget r0 3300
-cmp r0 138
-jne open_object_skip_314
+jmp Li0
+label Lea
+label Leb
+localset 3319 15
 load32 r0 100
 sub r0 1999999437
 mul r0 r0
@@ -7438,11 +8522,11 @@ localset 3315 2
 load32 r0 115
 mod r0 200
 cmp r0 100
-jle open_object_active_315
+jle Lec
 set r1 200
 sub r1 r0
 mov r0 r1
-label open_object_active_315
+label Lec
 sub r0 50
 div r0 2
 localset 3310 r0
@@ -7450,11 +8534,10 @@ localset 3316 -135
 localset 3317 90
 localset 3318 134001
 localset 3301 28
-jmp open_model_93
-label open_object_skip_314
-localget r0 3300
-cmp r0 139
-jne open_object_skip_316
+jmp Li1
+label Led
+label Lee
+localset 3319 16
 localset 3310 0
 localset 3311 150
 localset 3312 0
@@ -7464,11 +8547,10 @@ localset 3316 -92
 localset 3317 97
 localset 3318 -221
 localset 3301 36
-jmp open_model_94
-label open_object_skip_316
-localget r0 3300
-cmp r0 140
-jne open_object_skip_318
+jmp Li2
+label Lef
+label Leg
+localset 3319 17
 localset 3310 0
 localset 3311 150
 localset 3312 0
@@ -7478,11 +8560,10 @@ localset 3316 -50
 localset 3317 26
 localset 3318 -234
 localset 3301 19
-jmp open_model_95
-label open_object_skip_318
-localget r0 3300
-cmp r0 141
-jne open_object_skip_320
+jmp Li3
+label Leh
+label Lei
+localset 3319 17
 localset 3310 0
 localset 3311 150
 localset 3312 0
@@ -7492,11 +8573,10 @@ localset 3316 -12
 localset 3317 26
 localset 3318 -234
 localset 3301 19
-jmp open_model_96
-label open_object_skip_320
-localget r0 3300
-cmp r0 142
-jne open_object_skip_322
+jmp Li4
+label Lej
+label Lek
+localset 3319 17
 localset 3310 0
 localset 3311 150
 localset 3312 0
@@ -7506,11 +8586,10 @@ localset 3316 26
 localset 3317 26
 localset 3318 -234
 localset 3301 19
-jmp open_model_96
-label open_object_skip_322
-localget r0 3300
-cmp r0 143
-jne open_object_skip_324
+jmp Li4
+label Lel
+label Lem
+localset 3319 17
 localset 3310 0
 localset 3311 150
 localset 3312 0
@@ -7520,11 +8599,10 @@ localset 3316 64
 localset 3317 26
 localset 3318 -234
 localset 3301 19
-jmp open_model_95
-label open_object_skip_324
-localget r0 3300
-cmp r0 144
-jne open_object_skip_326
+jmp Li3
+label Len
+label Leo
+localset 3319 18
 localset 3310 0
 localset 3311 150
 localset 3312 0
@@ -7534,11 +8612,10 @@ localset 3316 -79
 localset 3317 52
 localset 3318 223
 localset 3301 40
-jmp open_model_97
-label open_object_skip_326
-localget r0 3300
-cmp r0 145
-jne open_object_skip_328
+jmp Li5
+label Lep
+label Leq
+localset 3319 19
 localset 3310 0
 localset 3311 150
 localset 3312 0
@@ -7548,11 +8625,10 @@ localset 3316 -49
 localset 3317 75
 localset 3318 110
 localset 3301 8
-jmp open_model_98
-label open_object_skip_328
-localget r0 3300
-cmp r0 146
-jne open_object_skip_330
+jmp Li6
+label Ler
+label Les
+localset 3319 20
 localset 3310 0
 localset 3311 150
 localset 3312 0
@@ -7562,11 +8638,10 @@ localset 3316 -25
 localset 3317 45
 localset 3318 -229
 localset 3301 24
-jmp open_model_99
-label open_object_skip_330
-localget r0 3300
-cmp r0 147
-jne open_object_skip_332
+jmp Li7
+label Let
+label Leu
+localset 3319 21
 localset 3310 0
 localset 3311 150
 localset 3312 0
@@ -7576,11 +8651,10 @@ localset 3316 -82
 localset 3317 49
 localset 3318 227
 localset 3301 8
-jmp open_model_100
-label open_object_skip_332
-localget r0 3300
-cmp r0 148
-jne open_object_skip_334
+jmp Li8
+label Lev
+label Lew
+localset 3319 22
 localset 3310 0
 localset 3311 150
 localset 3312 0
@@ -7590,11 +8664,10 @@ localset 3316 -82
 localset 3317 62
 localset 3318 -230
 localset 3301 8
-jmp open_model_101
-label open_object_skip_334
-localget r0 3300
-cmp r0 149
-jne open_object_skip_336
+jmp Li9
+label Lex
+label Ley
+localset 3319 23
 load8 r0 141
 cmp r0 1
 jne open_object_next
@@ -7607,11 +8680,10 @@ localset 3316 0
 localset 3317 52
 localset 3318 230
 localset 3301 3
-jmp open_model_102
-label open_object_skip_336
-localget r0 3300
-cmp r0 150
-jne open_object_skip_338
+jmp Lia
+label Lez
+label Lf0
+localset 3319 24
 load8 r0 141
 cmp r0 1
 jne open_object_next
@@ -7627,11 +8699,10 @@ localset 3316 -54
 localset 3317 52
 localset 3318 230
 localset 3301 12
-jmp open_model_103
-label open_object_skip_338
-localget r0 3300
-cmp r0 151
-jne open_object_skip_340
+jmp Lib
+label Lf1
+label Lf2
+localset 3319 24
 load8 r0 141
 cmp r0 1
 jne open_object_next
@@ -7647,10 +8718,178 @@ localset 3316 58
 localset 3317 52
 localset 3318 230
 localset 3301 12
-jmp open_model_103
-label open_object_skip_340
+jmp Lib
+label Lf3
+label Lf4
+localset 3319 25
+load32 r0 100
+sub r0 2000000000
+mul r0 r0
+load32 r1 104
+sub r1 2000000000
+mul r1 r1
+add r0 r1
+cmp r0 2500000000
+jgt open_object_next
+localget r0 3200
+cmp r0 1
+jgt open_object_next
+localget r0 3201
+cmp r0 0
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+localset 3314 0
+localset 3315 0
+localset 3316 234
+localset 3317 0
+localset 3318 -6
+localset 3301 16
+jmp Lic
+label Lf5
+label Lf6
+localset 3319 25
+load32 r0 100
+sub r0 2000003230
+mul r0 r0
+load32 r1 104
+sub r1 2000027786
+mul r1 r1
+add r0 r1
+cmp r0 2500000000
+jgt open_object_next
+localget r0 3200
+cmp r0 15
+jgt open_object_next
+localget r0 3201
+cmp r0 14
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+localset 3314 0
+localset 3315 0
+localset 3316 15944
+localset 3317 1233
+localset 3318 27071
+localset 3301 16
+jmp Lic
+label Lf7
+label Lf8
+localset 3319 25
+load32 r0 100
+sub r0 2000002395
+mul r0 r0
+load32 r1 104
+sub r1 2000055755
+mul r1 r1
+add r0 r1
+cmp r0 2500000000
+jgt open_object_next
+localget r0 3200
+cmp r0 29
+jgt open_object_next
+localget r0 3201
+cmp r0 28
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+localset 3314 0
+localset 3315 0
+localset 3316 2329
+localset 3317 71
+localset 3318 55737
+localset 3301 16
+jmp Lic
+label Lf9
+label Lfa
+localset 3319 25
+load32 r0 100
+sub r0 1999996909
+mul r0 r0
+load32 r1 104
+sub r1 2000089146
+mul r1 r1
+add r0 r1
+cmp r0 2500000000
+jgt open_object_next
+localget r0 3200
+cmp r0 46
+jgt open_object_next
+localget r0 3201
+cmp r0 45
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+localset 3314 0
+localset 3315 0
+localset 3316 -17032
+localset 3317 1630
+localset 3318 89431
+localset 3301 16
+jmp Lic
+label Lfb
+label Lfc
+localset 3319 25
+load32 r0 100
+sub r0 1999993919
+mul r0 r0
+load32 r1 104
+sub r1 2000110754
+mul r1 r1
+add r0 r1
+cmp r0 2500000000
+jgt open_object_next
+localget r0 3200
+cmp r0 57
+jgt open_object_next
+localget r0 3201
+cmp r0 56
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+localset 3314 0
+localset 3315 0
+localset 3316 -5203
+localset 3317 124
+localset 3318 110658
+localset 3301 16
+jmp Lic
+label Lfd
+label Lfe
+localset 3319 25
+load32 r0 100
+sub r0 1999998116
+mul r0 r0
+load32 r1 104
+sub r1 2000128238
+mul r1 r1
+add r0 r1
+cmp r0 2500000000
+jgt open_object_next
+localget r0 3200
+cmp r0 66
+jgt open_object_next
+localget r0 3201
+cmp r0 65
+jle open_object_next
+localset 3310 0
+localset 3311 150
+localset 3312 0
+localset 3314 0
+localset 3315 0
+localset 3316 -1650
+localset 3317 70
+localset 3318 128232
+localset 3301 16
+jmp Lic
+label Lff
 jmp open_objects_done
-label open_model_0
+label Lfg
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -7664,7 +8903,7 @@ meshvertex 1903 0 0 2200
 localset 3403 0
 meshtexuv 1903 0 88
 jmp open_object_transform
-label open_model_1
+label Lfh
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -7678,7 +8917,7 @@ meshvertex 1903 11640 0 -2916
 localset 3403 0
 meshtexuv 1903 466 -117
 jmp open_object_transform
-label open_model_2
+label Lfi
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -7692,7 +8931,7 @@ meshvertex 1903 4520 0 936
 localset 3403 0
 meshtexuv 1903 181 37
 jmp open_object_transform
-label open_model_3
+label Lfj
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -7706,7 +8945,7 @@ meshvertex 1903 460 -2 95
 localset 3403 0
 meshtexuv 1903 18 4
 jmp open_object_transform
-label open_model_4
+label Lfk
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -7720,7 +8959,7 @@ meshvertex 1903 4773 0 783
 localset 3403 0
 meshtexuv 1903 191 31
 jmp open_object_transform
-label open_model_5
+label Lfl
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -7734,7 +8973,7 @@ meshvertex 1903 371 -2 61
 localset 3403 0
 meshtexuv 1903 15 2
 jmp open_object_transform
-label open_model_6
+label Lfm
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -7748,7 +8987,7 @@ meshvertex 1903 4994 0 585
 localset 3403 0
 meshtexuv 1903 200 23
 jmp open_object_transform
-label open_model_7
+label Lfn
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -7762,7 +9001,7 @@ meshvertex 1903 328 -2 39
 localset 3403 0
 meshtexuv 1903 13 2
 jmp open_object_transform
-label open_model_8
+label Lfo
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -7776,7 +9015,7 @@ meshvertex 1903 5130 0 331
 localset 3403 0
 meshtexuv 1903 205 13
 jmp open_object_transform
-label open_model_9
+label Lfp
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -7790,7 +9029,7 @@ meshvertex 1903 361 -2 23
 localset 3403 0
 meshtexuv 1903 14 1
 jmp open_object_transform
-label open_model_10
+label Lfq
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -7804,7 +9043,7 @@ meshvertex 1903 5175 0 64
 localset 3403 0
 meshtexuv 1903 207 3
 jmp open_object_transform
-label open_model_11
+label Lfr
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -7818,7 +9057,7 @@ meshvertex 1903 451 -2 5
 localset 3403 0
 meshtexuv 1903 18 0
 jmp open_object_transform
-label open_model_12
+label Lfs
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -7832,7 +9071,7 @@ meshvertex 1903 5169 0 -214
 localset 3403 0
 meshtexuv 1903 207 -9
 jmp open_object_transform
-label open_model_13
+label Lft
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -7846,7 +9085,7 @@ meshvertex 1903 538 -2 -22
 localset 3403 0
 meshtexuv 1903 22 -1
 jmp open_object_transform
-label open_model_14
+label Lfu
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -7860,7 +9099,7 @@ meshvertex 1903 5157 0 -484
 localset 3403 0
 meshtexuv 1903 206 -19
 jmp open_object_transform
-label open_model_15
+label Lfv
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -7874,7 +9113,7 @@ meshvertex 1903 567 -2 -53
 localset 3403 0
 meshtexuv 1903 23 -2
 jmp open_object_transform
-label open_model_16
+label Lfw
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -7888,7 +9127,7 @@ meshvertex 1903 5159 0 -725
 localset 3403 0
 meshtexuv 1903 206 -29
 jmp open_object_transform
-label open_model_17
+label Lfx
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -7902,7 +9141,7 @@ meshvertex 1903 517 -2 -72
 localset 3403 0
 meshtexuv 1903 21 -3
 jmp open_object_transform
-label open_model_18
+label Lfy
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -7916,7 +9155,7 @@ meshvertex 1903 5150 0 -943
 localset 3403 0
 meshtexuv 1903 206 -38
 jmp open_object_transform
-label open_model_19
+label Lfz
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -7930,7 +9169,7 @@ meshvertex 1903 421 -2 -77
 localset 3403 0
 meshtexuv 1903 17 -3
 jmp open_object_transform
-label open_model_20
+label Lg0
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -7944,7 +9183,7 @@ meshvertex 1903 5085 0 -1109
 localset 3403 0
 meshtexuv 1903 203 -44
 jmp open_object_transform
-label open_model_21
+label Lg1
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -7958,7 +9197,7 @@ meshvertex 1903 340 -2 -74
 localset 3403 0
 meshtexuv 1903 14 -3
 jmp open_object_transform
-label open_model_22
+label Lg2
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -7972,7 +9211,7 @@ meshvertex 1903 4931 0 -1219
 localset 3403 0
 meshtexuv 1903 197 -49
 jmp open_object_transform
-label open_model_23
+label Lg3
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -7986,7 +9225,7 @@ meshvertex 1903 325 -2 -80
 localset 3403 0
 meshtexuv 1903 13 -3
 jmp open_object_transform
-label open_model_24
+label Lg4
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8000,7 +9239,7 @@ meshvertex 1903 4707 0 -1256
 localset 3403 0
 meshtexuv 1903 188 -50
 jmp open_object_transform
-label open_model_25
+label Lg5
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8014,7 +9253,7 @@ meshvertex 1903 382 -2 -102
 localset 3403 0
 meshtexuv 1903 15 -4
 jmp open_object_transform
-label open_model_26
+label Lg6
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8028,7 +9267,7 @@ meshvertex 1903 4466 0 -1251
 localset 3403 0
 meshtexuv 1903 179 -50
 jmp open_object_transform
-label open_model_27
+label Lg7
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8042,7 +9281,7 @@ meshvertex 1903 475 -2 -133
 localset 3403 0
 meshtexuv 1903 19 -5
 jmp open_object_transform
-label open_model_28
+label Lg8
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8056,7 +9295,7 @@ meshvertex 1903 4294 0 -1217
 localset 3403 0
 meshtexuv 1903 172 -49
 jmp open_object_transform
-label open_model_29
+label Lg9
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8070,7 +9309,7 @@ meshvertex 1903 541 -2 -153
 localset 3403 0
 meshtexuv 1903 22 -6
 jmp open_object_transform
-label open_model_30
+label Lga
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8099,7 +9338,7 @@ meshvertex 1908 41 0 18
 localset 3408 0
 meshtexuv 1908 2 1
 jmp open_object_transform
-label open_model_31
+label Lgb
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8125,7 +9364,7 @@ meshvertex 1907 990 -1 1814
 localset 3407 0
 meshtexuv 1907 40 73
 jmp open_object_transform
-label open_model_32
+label Lgc
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8151,7 +9390,7 @@ meshvertex 1907 17 0 12
 localset 3407 0
 meshtexuv 1907 1 0
 jmp open_object_transform
-label open_model_33
+label Lgd
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8177,7 +9416,7 @@ meshvertex 1907 16 0 12
 localset 3407 0
 meshtexuv 1907 1 0
 jmp open_object_transform
-label open_model_34
+label Lge
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8203,7 +9442,7 @@ meshvertex 1907 17 0 13
 localset 3407 0
 meshtexuv 1907 1 1
 jmp open_object_transform
-label open_model_35
+label Lgf
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8229,7 +9468,7 @@ meshvertex 1907 496 -1 1938
 localset 3407 0
 meshtexuv 1907 20 78
 jmp open_object_transform
-label open_model_36
+label Lgg
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8255,7 +9494,7 @@ meshvertex 1907 50 0 39
 localset 3407 0
 meshtexuv 1907 2 2
 jmp open_object_transform
-label open_model_37
+label Lgh
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8281,7 +9520,7 @@ meshvertex 1907 51 0 39
 localset 3407 0
 meshtexuv 1907 2 2
 jmp open_object_transform
-label open_model_38
+label Lgi
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8307,7 +9546,7 @@ meshvertex 1907 16 0 13
 localset 3407 0
 meshtexuv 1907 1 1
 jmp open_object_transform
-label open_model_39
+label Lgj
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8333,7 +9572,7 @@ meshvertex 1907 17 0 12
 localset 3407 0
 meshtexuv 1907 1 0
 jmp open_object_transform
-label open_model_40
+label Lgk
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8359,7 +9598,7 @@ meshvertex 1907 51 0 38
 localset 3407 0
 meshtexuv 1907 2 2
 jmp open_object_transform
-label open_model_41
+label Lgl
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8385,7 +9624,7 @@ meshvertex 1907 51 0 39
 localset 3407 0
 meshtexuv 1907 2 2
 jmp open_object_transform
-label open_model_42
+label Lgm
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8399,7 +9638,7 @@ meshvertex 1903 1989 0 -208
 localset 3403 0
 meshtexuv 1903 80 -8
 jmp open_object_transform
-label open_model_43
+label Lgn
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8413,7 +9652,7 @@ meshvertex 1903 1994 0 -163
 localset 3403 0
 meshtexuv 1903 80 -7
 jmp open_object_transform
-label open_model_44
+label Lgo
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8427,7 +9666,7 @@ meshvertex 1903 1910 1 593
 localset 3403 0
 meshtexuv 1903 76 24
 jmp open_object_transform
-label open_model_45
+label Lgp
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8441,7 +9680,7 @@ meshvertex 1903 1909 1 595
 localset 3403 0
 meshtexuv 1903 76 24
 jmp open_object_transform
-label open_model_46
+label Lgq
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8455,7 +9694,7 @@ meshvertex 1903 1998 0 83
 localset 3403 0
 meshtexuv 1903 80 3
 jmp open_object_transform
-label open_model_47
+label Lgr
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8469,7 +9708,7 @@ meshvertex 1903 1997 0 107
 localset 3403 0
 meshtexuv 1903 80 4
 jmp open_object_transform
-label open_model_48
+label Lgs
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8597,7 +9836,7 @@ meshvertex 1941 -17 -59 150
 localset 3441 0
 meshtexuv 1941 -1 6
 jmp open_object_transform
-label open_model_49
+label Lgt
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8611,7 +9850,7 @@ meshvertex 1903 65 7 19
 localset 3403 1
 meshtexuv 1903 3 1
 jmp open_object_transform
-label open_model_50
+label Lgu
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8631,7 +9870,7 @@ meshvertex 1905 14 0 53
 localset 3405 0
 meshtexuv 1905 1 2
 jmp open_object_transform
-label open_model_51
+label Lgv
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8645,7 +9884,7 @@ meshvertex 1903 13 9 4
 localset 3403 1
 meshtexuv 1903 1 0
 jmp open_object_transform
-label open_model_52
+label Lgw
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8674,7 +9913,7 @@ meshvertex 1908 44 0 -291
 localset 3408 0
 meshtexuv 1908 2 -12
 jmp open_object_transform
-label open_model_53
+label Lgx
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8703,7 +9942,7 @@ meshvertex 1908 35 0 -292
 localset 3408 0
 meshtexuv 1908 1 -12
 jmp open_object_transform
-label open_model_54
+label Lgy
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8732,7 +9971,7 @@ meshvertex 1908 58 0 -289
 localset 3408 0
 meshtexuv 1908 2 -12
 jmp open_object_transform
-label open_model_55
+label Lgz
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8761,7 +10000,7 @@ meshvertex 1908 90 0 -280
 localset 3408 0
 meshtexuv 1908 4 -11
 jmp open_object_transform
-label open_model_56
+label Lh0
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8790,7 +10029,7 @@ meshvertex 1908 98 0 -278
 localset 3408 0
 meshtexuv 1908 4 -11
 jmp open_object_transform
-label open_model_57
+label Lh1
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8819,7 +10058,7 @@ meshvertex 1908 97 0 -278
 localset 3408 0
 meshtexuv 1908 4 -11
 jmp open_object_transform
-label open_model_58
+label Lh2
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8848,7 +10087,7 @@ meshvertex 1908 95 0 -279
 localset 3408 0
 meshtexuv 1908 4 -11
 jmp open_object_transform
-label open_model_59
+label Lh3
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8877,7 +10116,7 @@ meshvertex 1908 100 0 -277
 localset 3408 0
 meshtexuv 1908 4 -11
 jmp open_object_transform
-label open_model_60
+label Lh4
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8906,7 +10145,7 @@ meshvertex 1908 110 0 -273
 localset 3408 0
 meshtexuv 1908 4 -11
 jmp open_object_transform
-label open_model_61
+label Lh5
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8935,7 +10174,7 @@ meshvertex 1908 124 0 -267
 localset 3408 0
 meshtexuv 1908 5 -11
 jmp open_object_transform
-label open_model_62
+label Lh6
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8964,7 +10203,7 @@ meshvertex 1908 151 0 -253
 localset 3408 0
 meshtexuv 1908 6 -10
 jmp open_object_transform
-label open_model_63
+label Lh7
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -8993,7 +10232,7 @@ meshvertex 1908 162 0 -246
 localset 3408 0
 meshtexuv 1908 6 -10
 jmp open_object_transform
-label open_model_64
+label Lh8
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9022,7 +10261,7 @@ meshvertex 1908 153 0 -252
 localset 3408 0
 meshtexuv 1908 6 -10
 jmp open_object_transform
-label open_model_65
+label Lh9
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9051,7 +10290,7 @@ meshvertex 1908 114 0 -271
 localset 3408 0
 meshtexuv 1908 5 -11
 jmp open_object_transform
-label open_model_66
+label Lha
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9080,7 +10319,7 @@ meshvertex 1908 55 0 -289
 localset 3408 0
 meshtexuv 1908 2 -12
 jmp open_object_transform
-label open_model_67
+label Lhb
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9109,7 +10348,7 @@ meshvertex 1908 11 0 -294
 localset 3408 0
 meshtexuv 1908 0 -12
 jmp open_object_transform
-label open_model_68
+label Lhc
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9138,7 +10377,7 @@ meshvertex 1908 2 0 -294
 localset 3408 0
 meshtexuv 1908 0 -12
 jmp open_object_transform
-label open_model_69
+label Lhd
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9167,7 +10406,7 @@ meshvertex 1908 24 0 -293
 localset 3408 0
 meshtexuv 1908 1 -12
 jmp open_object_transform
-label open_model_70
+label Lhe
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9196,7 +10435,7 @@ meshvertex 1908 61 0 -288
 localset 3408 0
 meshtexuv 1908 2 -12
 jmp open_object_transform
-label open_model_71
+label Lhf
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9225,7 +10464,7 @@ meshvertex 1908 89 0 -281
 localset 3408 0
 meshtexuv 1908 4 -11
 jmp open_object_transform
-label open_model_72
+label Lhg
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9239,7 +10478,7 @@ meshvertex 1903 11990 -6 496
 localset 3403 0
 meshtexuv 1903 480 20
 jmp open_object_transform
-label open_model_73
+label Lhh
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9253,7 +10492,7 @@ meshvertex 1903 11990 0 496
 localset 3403 0
 meshtexuv 1903 480 20
 jmp open_object_transform
-label open_model_74
+label Lhi
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9267,7 +10506,7 @@ meshvertex 1903 11990 2 496
 localset 3403 0
 meshtexuv 1903 480 20
 jmp open_object_transform
-label open_model_75
+label Lhj
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9281,7 +10520,7 @@ meshvertex 1903 11990 0 496
 localset 3403 0
 meshtexuv 1903 480 20
 jmp open_object_transform
-label open_model_76
+label Lhk
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9295,7 +10534,7 @@ meshvertex 1903 1837 0 107
 localset 3403 0
 meshtexuv 1903 73 4
 jmp open_object_transform
-label open_model_77
+label Lhl
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9333,7 +10572,7 @@ meshvertex 1911 56 0 54
 localset 3411 0
 meshtexuv 1911 2 2
 jmp open_object_transform
-label open_model_78
+label Lhm
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9347,7 +10586,7 @@ meshvertex 1903 1837 0 107
 localset 3403 0
 meshtexuv 1903 73 4
 jmp open_object_transform
-label open_model_79
+label Lhn
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9361,7 +10600,7 @@ meshvertex 1903 1837 0 105
 localset 3403 0
 meshtexuv 1903 73 4
 jmp open_object_transform
-label open_model_80
+label Lho
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9375,7 +10614,7 @@ meshvertex 1903 1837 0 105
 localset 3403 0
 meshtexuv 1903 73 4
 jmp open_object_transform
-label open_model_81
+label Lhp
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9389,7 +10628,7 @@ meshvertex 1903 1833 0 152
 localset 3403 0
 meshtexuv 1903 73 6
 jmp open_object_transform
-label open_model_82
+label Lhq
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9403,7 +10642,7 @@ meshvertex 1903 1833 0 152
 localset 3403 0
 meshtexuv 1903 73 6
 jmp open_object_transform
-label open_model_83
+label Lhr
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9417,7 +10656,7 @@ meshvertex 1903 1818 0 281
 localset 3403 0
 meshtexuv 1903 73 11
 jmp open_object_transform
-label open_model_84
+label Lhs
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9431,7 +10670,7 @@ meshvertex 1903 1818 0 281
 localset 3403 0
 meshtexuv 1903 73 11
 jmp open_object_transform
-label open_model_85
+label Lht
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9445,7 +10684,7 @@ meshvertex 1903 1776 0 483
 localset 3403 0
 meshtexuv 1903 71 19
 jmp open_object_transform
-label open_model_86
+label Lhu
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9459,7 +10698,7 @@ meshvertex 1903 1776 0 483
 localset 3403 0
 meshtexuv 1903 71 19
 jmp open_object_transform
-label open_model_87
+label Lhv
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9473,7 +10712,7 @@ meshvertex 1903 1772 0 -493
 localset 3403 0
 meshtexuv 1903 71 -20
 jmp open_object_transform
-label open_model_88
+label Lhw
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9487,7 +10726,7 @@ meshvertex 1903 1772 0 -493
 localset 3403 0
 meshtexuv 1903 71 -20
 jmp open_object_transform
-label open_model_89
+label Lhx
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9501,7 +10740,7 @@ meshvertex 1903 1814 0 -306
 localset 3403 0
 meshtexuv 1903 73 -12
 jmp open_object_transform
-label open_model_90
+label Lhy
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9515,7 +10754,7 @@ meshvertex 1903 1814 0 -306
 localset 3403 0
 meshtexuv 1903 73 -12
 jmp open_object_transform
-label open_model_91
+label Lhz
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9673,7 +10912,7 @@ meshvertex 1951 9 28 23
 localset 3451 0
 meshtexuv 1951 0 1
 jmp open_object_transform
-label open_model_92
+label Li0
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9693,7 +10932,7 @@ meshvertex 1905 0 4 -7
 localset 3405 0
 meshtexuv 1905 0 0
 jmp open_object_transform
-label open_model_93
+label Li1
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9779,7 +11018,7 @@ meshvertex 1927 -3 20 22
 localset 3427 0
 meshtexuv 1927 0 1
 jmp open_object_transform
-label open_model_94
+label Li2
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9889,7 +11128,7 @@ meshvertex 1935 0 6 5
 localset 3435 0
 meshtexuv 1935 0 0
 jmp open_object_transform
-label open_model_95
+label Li3
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -9948,7 +11187,7 @@ meshvertex 1918 -3 -6 8
 localset 3418 0
 meshtexuv 1918 0 0
 jmp open_object_transform
-label open_model_96
+label Li4
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -10007,7 +11246,7 @@ meshvertex 1918 -3 -6 8
 localset 3418 0
 meshtexuv 1918 0 0
 jmp open_object_transform
-label open_model_97
+label Li5
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -10129,7 +11368,7 @@ meshvertex 1939 168 21 -145
 localset 3439 0
 meshtexuv 1939 7 -6
 jmp open_object_transform
-label open_model_98
+label Li6
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -10155,7 +11394,7 @@ meshvertex 1907 109 -9 74
 localset 3407 0
 meshtexuv 1907 4 3
 jmp open_object_transform
-label open_model_99
+label Li7
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -10229,7 +11468,7 @@ meshvertex 1923 92 -14 17
 localset 3423 0
 meshtexuv 1923 4 1
 jmp open_object_transform
-label open_model_100
+label Li8
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -10255,7 +11494,7 @@ meshvertex 1907 164 0 3
 localset 3407 0
 meshtexuv 1907 7 0
 jmp open_object_transform
-label open_model_101
+label Li9
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -10281,7 +11520,7 @@ meshvertex 1907 164 0 3
 localset 3407 0
 meshtexuv 1907 7 0
 jmp open_object_transform
-label open_model_102
+label Lia
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -10292,7 +11531,7 @@ meshvertex 1902 25 0 0
 localset 3402 0
 meshtexuv 1902 1 0
 jmp open_object_transform
-label open_model_103
+label Lib
 meshvertex 1900 0 0 0
 localset 3400 0
 meshtexuv 1900 0 0
@@ -10330,6 +11569,56 @@ meshvertex 1911 78 -187 1870
 localset 3411 0
 meshtexuv 1911 3 75
 jmp open_object_transform
+label Lic
+meshvertex 1900 0 0 0
+localset 3400 0
+meshtexuv 1900 0 0
+meshvertex 1901 12 0 0
+localset 3401 0
+meshtexuv 1901 0 0
+meshvertex 1902 12 140 0
+localset 3402 0
+meshtexuv 1902 0 0
+meshvertex 1903 0 140 0
+localset 3403 0
+meshtexuv 1903 0 0
+meshvertex 1904 0 0 12
+localset 3404 0
+meshtexuv 1904 0 0
+meshvertex 1905 0 140 12
+localset 3405 0
+meshtexuv 1905 0 0
+meshvertex 1906 12 140 12
+localset 3406 0
+meshtexuv 1906 0 0
+meshvertex 1907 12 0 12
+localset 3407 0
+meshtexuv 1907 0 0
+meshvertex 1908 -39 128 1
+localset 3408 0
+meshtexuv 1908 -2 0
+meshvertex 1909 51 128 1
+localset 3409 0
+meshtexuv 1909 2 0
+meshvertex 1910 51 163 1
+localset 3410 0
+meshtexuv 1910 2 0
+meshvertex 1911 -39 163 1
+localset 3411 0
+meshtexuv 1911 -2 0
+meshvertex 1912 -39 128 11
+localset 3412 0
+meshtexuv 1912 -2 0
+meshvertex 1913 -39 163 11
+localset 3413 0
+meshtexuv 1913 -2 0
+meshvertex 1914 51 163 11
+localset 3414 0
+meshtexuv 1914 2 0
+meshvertex 1915 51 128 11
+localset 3415 0
+meshtexuv 1915 2 0
+jmp open_object_transform
 label open_object_draw
 localget r9 18
 mov r10 r9
@@ -10339,162 +11628,130 @@ mul r11 9
 div r11 16
 mul r9 85
 div r9 100
-localget r0 3300
-cmp r0 0
-je open_draw_shared_343
-cmp r0 50
-je open_draw_shared_343
-cmp r0 51
-je open_draw_shared_343
-cmp r0 52
-je open_draw_shared_343
-cmp r0 53
-je open_draw_shared_343
-cmp r0 54
-je open_draw_shared_343
-cmp r0 55
-je open_draw_shared_343
-cmp r0 89
-je open_draw_shared_343
-cmp r0 91
-je open_draw_shared_343
-jmp open_draw_skip_342
-label open_draw_shared_343
+localget r0 3319
+cmp r0 13
+jlt Lip
+cmp r0 19
+jlt Lij
+cmp r0 22
+jlt Lig
+cmp r0 24
+jlt Lie
+cmp r0 25
+jlt Lid
+jmp Lkg
+label Lid
+jmp Lke
+label Lie
+cmp r0 23
+jlt Lif
+jmp Lkc
+label Lif
+jmp Lka
+label Lig
+cmp r0 20
+jlt Lii
+cmp r0 21
+jlt Lih
+jmp Lk8
+label Lih
+jmp Lk6
+label Lii
+jmp Lk4
+label Lij
+cmp r0 16
+jlt Lim
+cmp r0 17
+jlt Lil
+cmp r0 18
+jlt Lik
+jmp Lk2
+label Lik
+jmp Lk0
+label Lil
+jmp Ljy
+label Lim
+cmp r0 14
+jlt Lio
+cmp r0 15
+jlt Lin
+jmp Ljw
+label Lin
+jmp Lju
+label Lio
+jmp Ljs
+label Lip
+cmp r0 6
+jlt Liw
+cmp r0 9
+jlt Lit
+cmp r0 11
+jlt Lir
+cmp r0 12
+jlt Liq
+jmp Ljq
+label Liq
+jmp Ljo
+label Lir
+cmp r0 10
+jlt Lis
+jmp Ljm
+label Lis
+jmp Ljk
+label Lit
+cmp r0 7
+jlt Liv
+cmp r0 8
+jlt Liu
+jmp Lji
+label Liu
+jmp Ljg
+label Liv
+jmp Lje
+label Liw
+cmp r0 3
+jlt Liz
+cmp r0 4
+jlt Liy
+cmp r0 5
+jlt Lix
+jmp Ljc
+label Lix
+jmp Lja
+label Liy
+jmp Lj8
+label Liz
+cmp r0 1
+jlt Lj1
+cmp r0 2
+jlt Lj0
+jmp Lj6
+label Lj0
+jmp Lj4
+label Lj1
+jmp Lj2
+label Lj2
 meshfacegradienttex 2000 2001 2002 9 3 7 2 r9 r10 r11 60
 meshfacegradienttex 2000 2002 2003 9 3 7 2 r9 r10 r11 60
 jmp open_object_next
-label open_draw_skip_342
-localget r0 3300
-cmp r0 1
-je open_draw_shared_345
-cmp r0 2
-je open_draw_shared_345
-cmp r0 4
-je open_draw_shared_345
-cmp r0 6
-je open_draw_shared_345
-cmp r0 8
-je open_draw_shared_345
-cmp r0 10
-je open_draw_shared_345
-cmp r0 12
-je open_draw_shared_345
-cmp r0 14
-je open_draw_shared_345
-cmp r0 16
-je open_draw_shared_345
-cmp r0 18
-je open_draw_shared_345
-cmp r0 20
-je open_draw_shared_345
-cmp r0 22
-je open_draw_shared_345
-cmp r0 24
-je open_draw_shared_345
-cmp r0 26
-je open_draw_shared_345
-cmp r0 28
-je open_draw_shared_345
-cmp r0 90
-je open_draw_shared_345
-cmp r0 92
-je open_draw_shared_345
-cmp r0 93
-je open_draw_shared_345
-cmp r0 95
-je open_draw_shared_345
-cmp r0 97
-je open_draw_shared_345
-cmp r0 99
-je open_draw_shared_345
-cmp r0 101
-je open_draw_shared_345
-cmp r0 103
-je open_draw_shared_345
-cmp r0 105
-je open_draw_shared_345
-cmp r0 107
-je open_draw_shared_345
-cmp r0 109
-je open_draw_shared_345
-cmp r0 111
-je open_draw_shared_345
-cmp r0 113
-je open_draw_shared_345
-cmp r0 115
-je open_draw_shared_345
-cmp r0 117
-je open_draw_shared_345
-cmp r0 119
-je open_draw_shared_345
-jmp open_draw_skip_344
-label open_draw_shared_345
+label Lj3
+label Lj4
 meshfacegradienttex 2000 2001 2002 32 8 0 1 r9 r10 r11 60
 meshfacegradienttex 2000 2002 2003 32 8 0 1 r9 r10 r11 60
 jmp open_object_next
-label open_draw_skip_344
-localget r0 3300
-cmp r0 3
-je open_draw_shared_347
-cmp r0 5
-je open_draw_shared_347
-cmp r0 7
-je open_draw_shared_347
-cmp r0 9
-je open_draw_shared_347
-cmp r0 11
-je open_draw_shared_347
-cmp r0 13
-je open_draw_shared_347
-cmp r0 15
-je open_draw_shared_347
-cmp r0 17
-je open_draw_shared_347
-cmp r0 19
-je open_draw_shared_347
-cmp r0 21
-je open_draw_shared_347
-cmp r0 23
-je open_draw_shared_347
-cmp r0 25
-je open_draw_shared_347
-cmp r0 27
-je open_draw_shared_347
-cmp r0 29
-je open_draw_shared_347
-jmp open_draw_skip_346
-label open_draw_shared_347
+label Lj5
+label Lj6
 meshfacegradienttex 2000 2001 2002 9 3 7 2 r9 r10 r11 60
 meshfacegradienttex 2000 2002 2003 9 3 7 2 r9 r10 r11 60
 jmp open_object_next
-label open_draw_skip_346
-localget r0 3300
-cmp r0 30
-je open_draw_shared_349
-cmp r0 31
-je open_draw_shared_349
-cmp r0 32
-je open_draw_shared_349
-jmp open_draw_skip_348
-label open_draw_shared_349
+label Lj7
+label Lj8
 meshface 2000 2001 2002 14 r9 r10 r11 60
 meshface 2003 2004 2005 14 r9 r10 r11 60
 meshface 2006 2007 2008 14 r9 r10 r11 60
 jmp open_object_next
-label open_draw_skip_348
-localget r0 3300
-cmp r0 33
-je open_draw_shared_351
-cmp r0 40
-je open_draw_shared_351
-cmp r0 41
-je open_draw_shared_351
-cmp r0 48
-je open_draw_shared_351
-cmp r0 49
-je open_draw_shared_351
-jmp open_draw_skip_350
-label open_draw_shared_351
+label Lj9
+label Lja
 meshfacegradienttex 2000 2001 2002 9 3 7 2 r9 r10 r11 60
 meshfacegradienttex 2000 2002 2003 9 3 7 2 r9 r10 r11 60
 meshfacegradienttex 2004 2005 2006 9 3 7 2 r9 r10 r11 60
@@ -10508,26 +11765,8 @@ meshfacegradienttex 2000 2005 2004 9 3 7 2 r9 r10 r11 60
 meshfacegradienttex 2001 2007 2006 9 3 7 2 r9 r10 r11 60
 meshfacegradienttex 2001 2006 2002 9 3 7 2 r9 r10 r11 60
 jmp open_object_next
-label open_draw_skip_350
-localget r0 3300
-cmp r0 34
-je open_draw_shared_353
-cmp r0 35
-je open_draw_shared_353
-cmp r0 36
-je open_draw_shared_353
-cmp r0 37
-je open_draw_shared_353
-cmp r0 42
-je open_draw_shared_353
-cmp r0 43
-je open_draw_shared_353
-cmp r0 44
-je open_draw_shared_353
-cmp r0 45
-je open_draw_shared_353
-jmp open_draw_skip_352
-label open_draw_shared_353
+label Ljb
+label Ljc
 meshface 2000 2001 2002 228 r9 r10 r11 60
 meshface 2000 2002 2003 228 r9 r10 r11 60
 meshface 2004 2005 2006 228 r9 r10 r11 60
@@ -10541,18 +11780,8 @@ meshface 2000 2005 2004 228 r9 r10 r11 60
 meshface 2001 2007 2006 228 r9 r10 r11 60
 meshface 2001 2006 2002 228 r9 r10 r11 60
 jmp open_object_next
-label open_draw_skip_352
-localget r0 3300
-cmp r0 38
-je open_draw_shared_355
-cmp r0 39
-je open_draw_shared_355
-cmp r0 46
-je open_draw_shared_355
-cmp r0 47
-je open_draw_shared_355
-jmp open_draw_skip_354
-label open_draw_shared_355
+label Ljd
+label Lje
 meshface 2000 2001 2002 241 r9 r10 r11 60
 meshface 2000 2002 2003 241 r9 r10 r11 60
 meshface 2004 2005 2006 241 r9 r10 r11 60
@@ -10566,16 +11795,8 @@ meshface 2000 2005 2004 241 r9 r10 r11 60
 meshface 2001 2007 2006 241 r9 r10 r11 60
 meshface 2001 2006 2002 241 r9 r10 r11 60
 jmp open_object_next
-label open_draw_skip_354
-localget r0 3300
-cmp r0 56
-je open_draw_shared_357
-cmp r0 57
-je open_draw_shared_357
-cmp r0 58
-je open_draw_shared_357
-jmp open_draw_skip_356
-label open_draw_shared_357
+label Ljf
+label Ljg
 meshface 2000 2001 2002 10 r9 r10 r11 60
 meshface 2000 2002 2003 10 r9 r10 r11 60
 meshface 2004 2005 2006 10 r9 r10 r11 60
@@ -10613,91 +11834,23 @@ meshface 2035 2036 2037 11 r9 r10 r11 60
 meshface 2038 2039 2040 24 r9 r10 r11 60
 meshface 2038 2040 2041 24 r9 r10 r11 60
 jmp open_object_next
-label open_draw_skip_356
-localget r0 3300
-cmp r0 59
-je open_draw_shared_359
-cmp r0 60
-je open_draw_shared_359
-cmp r0 61
-je open_draw_shared_359
-cmp r0 62
-je open_draw_shared_359
-jmp open_draw_skip_358
-label open_draw_shared_359
+label Ljh
+label Lji
 meshface 2000 2001 2002 226 r9 r10 r11 60
 meshface 2000 2002 2003 226 r9 r10 r11 60
 jmp open_object_next
-label open_draw_skip_358
-localget r0 3300
-cmp r0 63
-je open_draw_shared_361
-cmp r0 64
-je open_draw_shared_361
-cmp r0 65
-je open_draw_shared_361
-jmp open_draw_skip_360
-label open_draw_shared_361
+label Ljj
+label Ljk
 meshface 2000 2001 2002 22 r9 r10 r11 60
 meshface 2003 2004 2005 22 r9 r10 r11 60
 jmp open_object_next
-label open_draw_skip_360
-localget r0 3300
-cmp r0 66
-je open_draw_shared_363
-cmp r0 67
-je open_draw_shared_363
-cmp r0 68
-je open_draw_shared_363
-jmp open_draw_skip_362
-label open_draw_shared_363
+label Ljl
+label Ljm
 meshface 2000 2001 2002 243 r9 r10 r11 60
 meshface 2000 2002 2003 243 r9 r10 r11 60
 jmp open_object_next
-label open_draw_skip_362
-localget r0 3300
-cmp r0 69
-je open_draw_shared_365
-cmp r0 70
-je open_draw_shared_365
-cmp r0 71
-je open_draw_shared_365
-cmp r0 72
-je open_draw_shared_365
-cmp r0 73
-je open_draw_shared_365
-cmp r0 74
-je open_draw_shared_365
-cmp r0 75
-je open_draw_shared_365
-cmp r0 76
-je open_draw_shared_365
-cmp r0 77
-je open_draw_shared_365
-cmp r0 78
-je open_draw_shared_365
-cmp r0 79
-je open_draw_shared_365
-cmp r0 80
-je open_draw_shared_365
-cmp r0 81
-je open_draw_shared_365
-cmp r0 82
-je open_draw_shared_365
-cmp r0 83
-je open_draw_shared_365
-cmp r0 84
-je open_draw_shared_365
-cmp r0 85
-je open_draw_shared_365
-cmp r0 86
-je open_draw_shared_365
-cmp r0 87
-je open_draw_shared_365
-cmp r0 88
-je open_draw_shared_365
-jmp open_draw_skip_364
-label open_draw_shared_365
+label Ljn
+label Ljo
 meshfacegradienttex 2000 2001 2002 32 8 0 1 r9 r10 r11 60
 meshfacegradienttex 2000 2002 2003 32 8 0 1 r9 r10 r11 60
 meshfacegradienttex 2000 2003 2004 32 8 0 1 r9 r10 r11 60
@@ -10707,59 +11860,15 @@ meshfacegradienttex 2000 2006 2007 32 8 0 1 r9 r10 r11 60
 meshfacegradienttex 2000 2007 2008 32 8 0 1 r9 r10 r11 60
 meshfacegradienttex 2000 2008 2001 32 8 0 1 r9 r10 r11 60
 jmp open_object_next
-label open_draw_skip_364
-localget r0 3300
-cmp r0 94
-je open_draw_shared_367
-cmp r0 96
-je open_draw_shared_367
-cmp r0 98
-je open_draw_shared_367
-cmp r0 100
-je open_draw_shared_367
-cmp r0 102
-je open_draw_shared_367
-cmp r0 104
-je open_draw_shared_367
-cmp r0 106
-je open_draw_shared_367
-cmp r0 108
-je open_draw_shared_367
-cmp r0 110
-je open_draw_shared_367
-cmp r0 112
-je open_draw_shared_367
-cmp r0 114
-je open_draw_shared_367
-cmp r0 116
-je open_draw_shared_367
-cmp r0 118
-je open_draw_shared_367
-cmp r0 120
-je open_draw_shared_367
-jmp open_draw_skip_366
-label open_draw_shared_367
+label Ljp
+label Ljq
 meshface 2000 2001 2002 14 r9 r10 r11 60
 meshface 2003 2004 2005 15 r9 r10 r11 60
 meshface 2006 2007 2008 16 r9 r10 r11 60
 meshface 2009 2010 2011 14 r9 r10 r11 60
 jmp open_object_next
-label open_draw_skip_366
-localget r0 3300
-cmp r0 121
-je open_draw_shared_369
-cmp r0 124
-je open_draw_shared_369
-cmp r0 127
-je open_draw_shared_369
-cmp r0 130
-je open_draw_shared_369
-cmp r0 133
-je open_draw_shared_369
-cmp r0 136
-je open_draw_shared_369
-jmp open_draw_skip_368
-label open_draw_shared_369
+label Ljr
+label Ljs
 meshface 2000 2001 2002 10 r9 r10 r11 60
 meshface 2003 2004 2005 11 r9 r10 r11 60
 meshface 2002 2001 2005 10 r9 r10 r11 60
@@ -10811,22 +11920,8 @@ meshface 2045 2046 2047 9 r9 r10 r11 60
 meshface 2045 2047 2048 9 r9 r10 r11 60
 meshface 2049 2050 2051 226 r9 r10 r11 60
 jmp open_object_next
-label open_draw_skip_368
-localget r0 3300
-cmp r0 122
-je open_draw_shared_371
-cmp r0 125
-je open_draw_shared_371
-cmp r0 128
-je open_draw_shared_371
-cmp r0 131
-je open_draw_shared_371
-cmp r0 134
-je open_draw_shared_371
-cmp r0 137
-je open_draw_shared_371
-jmp open_draw_skip_370
-label open_draw_shared_371
+label Ljt
+label Lju
 meshface 2000 2001 2002 11 r9 r10 r11 60
 meshface 2003 2002 2001 11 r9 r10 r11 60
 meshface 2000 2004 2001 11 r9 r10 r11 60
@@ -10836,22 +11931,8 @@ meshface 2003 2004 2005 11 r9 r10 r11 60
 meshface 2000 2002 2005 11 r9 r10 r11 60
 meshface 2003 2005 2002 11 r9 r10 r11 60
 jmp open_object_next
-label open_draw_skip_370
-localget r0 3300
-cmp r0 123
-je open_draw_shared_373
-cmp r0 126
-je open_draw_shared_373
-cmp r0 129
-je open_draw_shared_373
-cmp r0 132
-je open_draw_shared_373
-cmp r0 135
-je open_draw_shared_373
-cmp r0 138
-je open_draw_shared_373
-jmp open_draw_skip_372
-label open_draw_shared_373
+label Ljv
+label Ljw
 meshface 2000 2001 2002 11 r9 r10 r11 60
 meshface 2000 2002 2003 11 r9 r10 r11 60
 meshface 2001 2004 2005 10 r9 r10 r11 60
@@ -10905,12 +11986,8 @@ meshface 2000 2004 2006 10 r9 r10 r11 60
 meshface 2025 2024 2026 10 r9 r10 r11 60
 meshface 2025 2026 2027 10 r9 r10 r11 60
 jmp open_object_next
-label open_draw_skip_372
-localget r0 3300
-cmp r0 139
-je open_draw_shared_375
-jmp open_draw_skip_374
-label open_draw_shared_375
+label Ljx
+label Ljy
 meshfacegradient 2000 2001 2002 228 12 r9 r10 r11 60
 meshfacegradient 2000 2002 2003 228 12 r9 r10 r11 60
 meshfacegradient 2004 2005 2006 228 12 r9 r10 r11 60
@@ -10972,18 +12049,8 @@ mul r0 24
 add r0 64
 meshfacegradient 2032 2034 2035 r0 24 r9 r10 r11 60
 jmp open_object_next
-label open_draw_skip_374
-localget r0 3300
-cmp r0 140
-je open_draw_shared_377
-cmp r0 141
-je open_draw_shared_377
-cmp r0 142
-je open_draw_shared_377
-cmp r0 143
-je open_draw_shared_377
-jmp open_draw_skip_376
-label open_draw_shared_377
+label Ljz
+label Lk0
 meshface 2000 2001 2002 241 r9 r10 r11 60
 meshface 2000 2002 2003 241 r9 r10 r11 60
 meshfacegradient 2004 2005 2001 228 12 r9 r10 r11 60
@@ -11015,12 +12082,8 @@ meshfacegradient 2018 2004 2000 228 12 r9 r10 r11 60
 meshfacegradient 2018 2000 2016 228 12 r9 r10 r11 60
 meshface 2006 2017 2003 226 r9 r10 r11 60
 jmp open_object_next
-label open_draw_skip_376
-localget r0 3300
-cmp r0 144
-je open_draw_shared_379
-jmp open_draw_skip_378
-label open_draw_shared_379
+label Lk1
+label Lk2
 meshface 2000 2001 2002 225 r9 r10 r11 60
 meshface 2000 2002 2003 225 r9 r10 r11 60
 meshface 2004 2005 2006 226 r9 r10 r11 60
@@ -11042,23 +12105,15 @@ meshface 2032 2034 2035 240 r9 r10 r11 60
 meshface 2036 2037 2038 240 r9 r10 r11 60
 meshface 2036 2038 2039 240 r9 r10 r11 60
 jmp open_object_next
-label open_draw_skip_378
-localget r0 3300
-cmp r0 145
-je open_draw_shared_381
-jmp open_draw_skip_380
-label open_draw_shared_381
+label Lk3
+label Lk4
 meshface 2000 2001 2002 240 r9 r10 r11 60
 meshface 2000 2002 2003 240 r9 r10 r11 60
 meshface 2004 2005 2006 240 r9 r10 r11 60
 meshface 2004 2006 2007 240 r9 r10 r11 60
 jmp open_object_next
-label open_draw_skip_380
-localget r0 3300
-cmp r0 146
-je open_draw_shared_383
-jmp open_draw_skip_382
-label open_draw_shared_383
+label Lk5
+label Lk6
 meshface 2000 2001 2002 241 r9 r10 r11 60
 meshface 2000 2002 2003 241 r9 r10 r11 60
 meshfacegradient 2004 2005 2006 228 12 r9 r10 r11 60
@@ -11072,12 +12127,8 @@ meshfacegradient 2016 2018 2019 228 12 r9 r10 r11 60
 meshfacegradient 2020 2021 2022 228 12 r9 r10 r11 60
 meshfacegradient 2020 2022 2023 228 12 r9 r10 r11 60
 jmp open_object_next
-label open_draw_skip_382
-localget r0 3300
-cmp r0 147
-je open_draw_shared_385
-jmp open_draw_skip_384
-label open_draw_shared_385
+label Lk7
+label Lk8
 meshface 2000 2001 2002 223 r9 r10 r11 60
 meshface 2000 2002 2003 223 r9 r10 r11 60
 meshface 2004 2005 2006 223 r9 r10 r11 60
@@ -11091,12 +12142,8 @@ meshface 2000 2005 2004 223 r9 r10 r11 60
 meshface 2001 2007 2006 223 r9 r10 r11 60
 meshface 2001 2006 2002 223 r9 r10 r11 60
 jmp open_object_next
-label open_draw_skip_384
-localget r0 3300
-cmp r0 148
-je open_draw_shared_387
-jmp open_draw_skip_386
-label open_draw_shared_387
+label Lk9
+label Lka
 meshface 2000 2001 2002 221 r9 r10 r11 60
 meshface 2000 2002 2003 221 r9 r10 r11 60
 meshface 2004 2005 2006 221 r9 r10 r11 60
@@ -11110,22 +12157,12 @@ meshface 2000 2005 2004 221 r9 r10 r11 60
 meshface 2001 2007 2006 221 r9 r10 r11 60
 meshface 2001 2006 2002 221 r9 r10 r11 60
 jmp open_object_next
-label open_draw_skip_386
-localget r0 3300
-cmp r0 149
-je open_draw_shared_389
-jmp open_draw_skip_388
-label open_draw_shared_389
+label Lkb
+label Lkc
 meshface 2000 2001 2002 57 r9 r10 r11 60
 jmp open_object_next
-label open_draw_skip_388
-localget r0 3300
-cmp r0 150
-je open_draw_shared_391
-cmp r0 151
-je open_draw_shared_391
-jmp open_draw_skip_390
-label open_draw_shared_391
+label Lkd
+label Lke
 meshfacegradienttex 2000 2001 2002 58 2 0 1 r9 r10 r11 60
 meshfacegradienttex 2000 2002 2003 58 2 0 1 r9 r10 r11 60
 meshfacegradienttex 2001 2004 2005 58 2 0 1 r9 r10 r11 60
@@ -11139,7 +12176,34 @@ meshfacegradienttex 2008 2011 2009 58 2 0 1 r9 r10 r11 60
 meshfacegradienttex 2010 2000 2003 58 2 0 1 r9 r10 r11 60
 meshfacegradienttex 2010 2003 2011 58 2 0 1 r9 r10 r11 60
 jmp open_object_next
-label open_draw_skip_390
+label Lkf
+label Lkg
+meshface 2000 2001 2002 9 r9 r10 r11 60
+meshface 2000 2002 2003 9 r9 r10 r11 60
+meshface 2004 2005 2006 9 r9 r10 r11 60
+meshface 2004 2006 2007 9 r9 r10 r11 60
+meshface 2000 2004 2007 9 r9 r10 r11 60
+meshface 2000 2007 2001 9 r9 r10 r11 60
+meshface 2003 2002 2006 9 r9 r10 r11 60
+meshface 2003 2006 2005 9 r9 r10 r11 60
+meshface 2000 2003 2005 9 r9 r10 r11 60
+meshface 2000 2005 2004 9 r9 r10 r11 60
+meshface 2001 2007 2006 9 r9 r10 r11 60
+meshface 2001 2006 2002 9 r9 r10 r11 60
+meshface 2008 2009 2010 11 r9 r10 r11 60
+meshface 2008 2010 2011 11 r9 r10 r11 60
+meshface 2012 2013 2014 11 r9 r10 r11 60
+meshface 2012 2014 2015 11 r9 r10 r11 60
+meshface 2008 2012 2015 11 r9 r10 r11 60
+meshface 2008 2015 2009 11 r9 r10 r11 60
+meshface 2011 2010 2014 11 r9 r10 r11 60
+meshface 2011 2014 2013 11 r9 r10 r11 60
+meshface 2008 2011 2013 11 r9 r10 r11 60
+meshface 2008 2013 2012 11 r9 r10 r11 60
+meshface 2009 2015 2014 11 r9 r10 r11 60
+meshface 2009 2014 2010 11 r9 r10 r11 60
+jmp open_object_next
+label Lkh
 label open_object_next
 localget r0 3300
 add r0 1
@@ -14078,6 +15142,9 @@ add r9 64
 localset 126 r9
 jmp actor_ready
 label tree_actor
+localget r5 11
+cmp r5 104
+jge next_actor
 mov r3 r12
 cmp r3 0
 jge forest_x_floor
@@ -14097,8 +15164,26 @@ mod r6 10
 sub r6 5
 add r3 r6
 div r5 10
-sub r5 6
+sub r5 5
 add r4 r5
+cmp r4 0
+jlt trail_forest_clear
+cmp r4 80
+jge trail_forest_clear
+mov r6 r3
+add r6 16
+cmp r6 0
+jlt trail_forest_clear
+cmp r6 32
+jge trail_forest_clear
+mov r7 r4
+mul r7 32
+add r7 r6
+add r7 18000
+load8 r7 $r7
+cmp r7 1
+je next_actor
+label trail_forest_clear
 mov r5 r3
 mul r5 73
 mov r6 r4
@@ -14131,7 +15216,9 @@ add r2 500
 add r2 r6
 localset 3120 r5
 localset 3747 r0
-# Shared terrain query: r2=world z, r1=height cm; r3..r7 scratch.
+# Shared terrain query: r0/r2=world x/z, r1=height cm; r3..r7 scratch.
+localset 3790 r0
+set r0 0
 set r1 0
 cmp r2 0
 jle forest_support_done
@@ -14195,6 +15282,34 @@ div r6 r7
 add r5 r6
 mov r0 r5
 label forest_support_done
+localget r3 3790
+sub r3 r0
+cmp r3 0
+jge forest_support_abs
+mul r3 -1
+label forest_support_abs
+cmp r3 6500
+jle forest_support_ridge_done
+cmp r3 10000
+jge forest_support_upper
+sub r3 6500
+mul r3 700
+div r3 3500
+add r1 r3
+jmp forest_support_ridge_done
+label forest_support_upper
+cmp r3 16000
+jge forest_support_plateau
+sub r3 10000
+mul r3 1100
+div r3 6000
+add r3 700
+add r1 r3
+jmp forest_support_ridge_done
+label forest_support_plateau
+add r1 1800
+label forest_support_ridge_done
+
 localset 3104 r1
 cmp r2 0
 jlt forest_clear
@@ -14271,7 +15386,11 @@ sub r2 2000000000
 add r7 4
 load16 r8 $r7
 add r7 3
-load8 r5 $r7
+localget r7 11
+sub r7 124
+mul r7 2
+add r7 960
+load16 r5 $r7
 localset 3104 r5
 label actor_ready
 mov r5 r0
@@ -14299,9 +15418,9 @@ mov r3 r8
 add r3 0
 mod r3 4096
 cmp r3 0
-jge sin_negative_392
+jge Lki
 add r3 4096
-label sin_negative_392
+label Lki
 mov r5 r3
 mod r5 2048
 set r6 2048
@@ -14314,9 +15433,9 @@ sub r4 r6
 mul r5 262144
 div r5 r4
 cmp r3 2048
-jlt sin_done_393
+jlt Lkj
 mul r5 -1
-label sin_done_393
+label Lkj
 mov r3 r5
 mov r6 r3
 mov r9 r6
@@ -14326,9 +15445,9 @@ mov r4 r8
 add r4 1024
 mod r4 4096
 cmp r4 0
-jge sin_negative_394
+jge Lkk
 add r4 4096
-label sin_negative_394
+label Lkk
 mov r5 r4
 mod r5 2048
 set r6 2048
@@ -14341,9 +15460,9 @@ sub r3 r6
 mul r5 262144
 div r5 r3
 cmp r4 2048
-jlt sin_done_395
+jlt Lkl
 mul r5 -1
-label sin_done_395
+label Lkl
 mov r4 r5
 localget r3 58
 sub r3 32768
@@ -14431,38 +15550,38 @@ add r8 r9
 set r9 0
 mov r10 r5
 cmp r10 0
-jge norm_component_400
+jge Lkm
 mul r10 -1
-label norm_component_400
+label Lkm
 add r9 r10
 mov r10 r6
 cmp r10 0
-jge norm_component_401
+jge Lkn
 mul r10 -1
-label norm_component_401
+label Lkn
 add r9 r10
 mov r10 r7
 cmp r10 0
-jge norm_component_402
+jge Lko
 mul r10 -1
-label norm_component_402
+label Lko
 add r9 r10
 cmp r9 0
-jgt norm_nonzero_399
+jgt Lkp
 set r9 1
-label norm_nonzero_399
-label norm_sqrt_397
+label Lkp
+label Lkq
 mov r10 r8
 div r10 r9
 add r10 r9
 div r10 2
 cmp r10 r9
-jge norm_done_398
+jge Lkr
 mov r9 r10
 cmp r9 0
-jgt norm_sqrt_397
+jgt Lkq
 set r9 1
-label norm_done_398
+label Lkr
 mul r5 16384
 div r5 r9
 mul r6 16384
@@ -14489,38 +15608,38 @@ add r8 r9
 set r9 0
 mov r10 r5
 cmp r10 0
-jge norm_component_407
+jge Lks
 mul r10 -1
-label norm_component_407
+label Lks
 add r9 r10
 mov r10 r6
 cmp r10 0
-jge norm_component_408
+jge Lkt
 mul r10 -1
-label norm_component_408
+label Lkt
 add r9 r10
 mov r10 r7
 cmp r10 0
-jge norm_component_409
+jge Lku
 mul r10 -1
-label norm_component_409
+label Lku
 add r9 r10
 cmp r9 0
-jgt norm_nonzero_406
+jgt Lkv
 set r9 1
-label norm_nonzero_406
-label norm_sqrt_404
+label Lkv
+label Lkw
 mov r10 r8
 div r10 r9
 add r10 r9
 div r10 2
 cmp r10 r9
-jge norm_done_405
+jge Lkx
 mov r9 r10
 cmp r9 0
-jgt norm_sqrt_404
+jgt Lkw
 set r9 1
-label norm_done_405
+label Lkx
 mul r5 16384
 div r5 r9
 mul r6 16384
@@ -14726,9 +15845,9 @@ mul r1 -16380
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_412
+jge Lky
 set r0 0
-label diffuse_positive_412
+label Lky
 mul r0 128
 div r0 16384
 add r0 66
@@ -14747,9 +15866,9 @@ mul r2 -16380
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_413
+jge Lkz
 set r1 0
-label highlight_positive_413
+label Lkz
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -14772,13 +15891,13 @@ mul r2 -16380
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_0
+jge Ll0
 set r1 0
-label fresnel_positive_0
+label Ll0
 cmp r1 16384
-jle fresnel_bounded_0
+jle Ll1
 set r1 16384
-label fresnel_bounded_0
+label Ll1
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -14795,24 +15914,24 @@ div r2 16384
 localget r1 2816
 add r2 r1
 cmp r2 255
-jle metal_bounded_0
+jle Ll2
 set r2 255
-label metal_bounded_0
+label Ll2
 localset 2688 r2
 cmp r0 255
-jle intensity_bounded_414
+jle Ll3
 set r0 255
-label intensity_bounded_414
+label Ll3
 localset 2304 r0
 localget r1 2816
 mul r1 3
 add r1 r0
 div r1 4
 localset 2816 r1
-label body_lighting_done_410
+label Ll4
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_415
+jne Llb
 localget r0 3000
 mul r0 -15205
 localget r1 3001
@@ -14823,9 +15942,9 @@ mul r1 -4574
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_417
+jge Ll5
 set r0 0
-label diffuse_positive_417
+label Ll5
 mul r0 128
 div r0 16384
 add r0 71
@@ -14844,9 +15963,9 @@ mul r2 -4574
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_418
+jge Ll6
 set r1 0
-label highlight_positive_418
+label Ll6
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -14869,13 +15988,13 @@ mul r2 -4574
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_1
+jge Ll7
 set r1 0
-label fresnel_positive_1
+label Ll7
 cmp r1 16384
-jle fresnel_bounded_1
+jle Ll8
 set r1 16384
-label fresnel_bounded_1
+label Ll8
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -14892,24 +16011,24 @@ div r2 16384
 localget r1 2817
 add r2 r1
 cmp r2 255
-jle metal_bounded_1
+jle Ll9
 set r2 255
-label metal_bounded_1
+label Ll9
 localset 2689 r2
 cmp r0 255
-jle intensity_bounded_419
+jle Lla
 set r0 255
-label intensity_bounded_419
+label Lla
 localset 2305 r0
 localget r1 2817
 mul r1 3
 add r1 r0
 div r1 4
 localset 2817 r1
-label body_lighting_done_415
+label Llb
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_420
+jne Lli
 localget r0 3000
 mul r0 79
 localget r1 3001
@@ -14920,9 +16039,9 @@ mul r1 -6156
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_422
+jge Llc
 set r0 0
-label diffuse_positive_422
+label Llc
 mul r0 128
 div r0 16384
 add r0 86
@@ -14941,9 +16060,9 @@ mul r2 -6156
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_423
+jge Lld
 set r1 0
-label highlight_positive_423
+label Lld
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -14966,13 +16085,13 @@ mul r2 -6156
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_2
+jge Lle
 set r1 0
-label fresnel_positive_2
+label Lle
 cmp r1 16384
-jle fresnel_bounded_2
+jle Llf
 set r1 16384
-label fresnel_bounded_2
+label Llf
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -14989,21 +16108,21 @@ div r2 16384
 localget r1 2818
 add r2 r1
 cmp r2 255
-jle metal_bounded_2
+jle Llg
 set r2 255
-label metal_bounded_2
+label Llg
 localset 2690 r2
 cmp r0 255
-jle intensity_bounded_424
+jle Llh
 set r0 255
-label intensity_bounded_424
+label Llh
 localset 2306 r0
 localget r1 2818
 mul r1 3
 add r1 r0
 div r1 4
 localset 2818 r1
-label body_lighting_done_420
+label Lli
 localget r0 3006
 mul r0 79
 localget r1 3007
@@ -15022,18 +16141,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_425
+jge Llj
 set r0 0
-label glass_low_425
+label Llj
 cmp r0 255
-jle glass_high_426
+jle Llk
 set r0 255
-label glass_high_426
+label Llk
 localset 2434 r0
-label glass_lighting_done_421
+label Lll
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_427
+jne Lls
 localget r0 3000
 mul r0 4
 localget r1 3001
@@ -15044,9 +16163,9 @@ mul r1 -15524
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_429
+jge Llm
 set r0 0
-label diffuse_positive_429
+label Llm
 mul r0 128
 div r0 16384
 add r0 73
@@ -15065,9 +16184,9 @@ mul r2 -15524
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_430
+jge Lln
 set r1 0
-label highlight_positive_430
+label Lln
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -15090,13 +16209,13 @@ mul r2 -15524
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_3
+jge Llo
 set r1 0
-label fresnel_positive_3
+label Llo
 cmp r1 16384
-jle fresnel_bounded_3
+jle Llp
 set r1 16384
-label fresnel_bounded_3
+label Llp
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -15113,24 +16232,24 @@ div r2 16384
 localget r1 2819
 add r2 r1
 cmp r2 255
-jle metal_bounded_3
+jle Llq
 set r2 255
-label metal_bounded_3
+label Llq
 localset 2691 r2
 cmp r0 255
-jle intensity_bounded_431
+jle Llr
 set r0 255
-label intensity_bounded_431
+label Llr
 localset 2307 r0
 localget r1 2819
 mul r1 3
 add r1 r0
 div r1 4
 localset 2819 r1
-label body_lighting_done_427
+label Lls
 localget r3 3030
 cmp r3 0
-jne glass_lighting_done_428
+jne Llv
 localget r0 3006
 mul r0 4
 localget r1 3007
@@ -15149,15 +16268,15 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_432
+jge Llt
 set r0 0
-label glass_low_432
+label Llt
 cmp r0 255
-jle glass_high_433
+jle Llu
 set r0 255
-label glass_high_433
+label Llu
 localset 2435 r0
-label glass_lighting_done_428
+label Llv
 localget r0 3000
 mul r0 20
 localget r1 3001
@@ -15168,9 +16287,9 @@ mul r1 -12166
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_436
+jge Llw
 set r0 0
-label diffuse_positive_436
+label Llw
 mul r0 128
 div r0 16384
 add r0 81
@@ -15189,9 +16308,9 @@ mul r2 -12166
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_437
+jge Llx
 set r1 0
-label highlight_positive_437
+label Llx
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -15214,13 +16333,13 @@ mul r2 -12166
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_4
+jge Lly
 set r1 0
-label fresnel_positive_4
+label Lly
 cmp r1 16384
-jle fresnel_bounded_4
+jle Llz
 set r1 16384
-label fresnel_bounded_4
+label Llz
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -15237,24 +16356,24 @@ div r2 16384
 localget r1 2820
 add r2 r1
 cmp r2 255
-jle metal_bounded_4
+jle Lm0
 set r2 255
-label metal_bounded_4
+label Lm0
 localset 2692 r2
 cmp r0 255
-jle intensity_bounded_438
+jle Lm1
 set r0 255
-label intensity_bounded_438
+label Lm1
 localset 2308 r0
 localget r1 2820
 mul r1 3
 add r1 r0
 div r1 4
 localset 2820 r1
-label body_lighting_done_434
+label Lm2
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_439
+jne Lm9
 localget r0 3000
 mul r0 14114
 localget r1 3001
@@ -15265,9 +16384,9 @@ mul r1 -6211
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_441
+jge Lm3
 set r0 0
-label diffuse_positive_441
+label Lm3
 mul r0 128
 div r0 16384
 add r0 73
@@ -15286,9 +16405,9 @@ mul r2 -6211
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_442
+jge Lm4
 set r1 0
-label highlight_positive_442
+label Lm4
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -15311,13 +16430,13 @@ mul r2 -6211
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_5
+jge Lm5
 set r1 0
-label fresnel_positive_5
+label Lm5
 cmp r1 16384
-jle fresnel_bounded_5
+jle Lm6
 set r1 16384
-label fresnel_bounded_5
+label Lm6
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -15334,24 +16453,24 @@ div r2 16384
 localget r1 2821
 add r2 r1
 cmp r2 255
-jle metal_bounded_5
+jle Lm7
 set r2 255
-label metal_bounded_5
+label Lm7
 localset 2693 r2
 cmp r0 255
-jle intensity_bounded_443
+jle Lm8
 set r0 255
-label intensity_bounded_443
+label Lm8
 localset 2309 r0
 localget r1 2821
 mul r1 3
 add r1 r0
 div r1 4
 localset 2821 r1
-label body_lighting_done_439
+label Lm9
 localget r3 3030
 cmp r3 2
-je body_lighting_done_444
+je Lmg
 localget r0 3000
 mul r0 -15872
 localget r1 3001
@@ -15362,9 +16481,9 @@ mul r1 -4061
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_446
+jge Lma
 set r0 0
-label diffuse_positive_446
+label Lma
 mul r0 128
 div r0 16384
 add r0 66
@@ -15383,9 +16502,9 @@ mul r2 -4061
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_447
+jge Lmb
 set r1 0
-label highlight_positive_447
+label Lmb
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -15408,13 +16527,13 @@ mul r2 -4061
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_6
+jge Lmc
 set r1 0
-label fresnel_positive_6
+label Lmc
 cmp r1 16384
-jle fresnel_bounded_6
+jle Lmd
 set r1 16384
-label fresnel_bounded_6
+label Lmd
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -15431,24 +16550,24 @@ div r2 16384
 localget r1 2822
 add r2 r1
 cmp r2 255
-jle metal_bounded_6
+jle Lme
 set r2 255
-label metal_bounded_6
+label Lme
 localset 2694 r2
 cmp r0 255
-jle intensity_bounded_448
+jle Lmf
 set r0 255
-label intensity_bounded_448
+label Lmf
 localset 2310 r0
 localget r1 2822
 mul r1 3
 add r1 r0
 div r1 4
 localset 2822 r1
-label body_lighting_done_444
+label Lmg
 localget r3 3030
 cmp r3 2
-je body_lighting_done_449
+je Lmn
 localget r0 3000
 mul r0 15915
 localget r1 3001
@@ -15459,9 +16578,9 @@ mul r1 -3891
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_451
+jge Lmh
 set r0 0
-label diffuse_positive_451
+label Lmh
 mul r0 128
 div r0 16384
 add r0 66
@@ -15480,9 +16599,9 @@ mul r2 -3891
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_452
+jge Lmi
 set r1 0
-label highlight_positive_452
+label Lmi
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -15505,13 +16624,13 @@ mul r2 -3891
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_7
+jge Lmj
 set r1 0
-label fresnel_positive_7
+label Lmj
 cmp r1 16384
-jle fresnel_bounded_7
+jle Lmk
 set r1 16384
-label fresnel_bounded_7
+label Lmk
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -15528,24 +16647,24 @@ div r2 16384
 localget r1 2823
 add r2 r1
 cmp r2 255
-jle metal_bounded_7
+jle Lml
 set r2 255
-label metal_bounded_7
+label Lml
 localset 2695 r2
 cmp r0 255
-jle intensity_bounded_453
+jle Lmm
 set r0 255
-label intensity_bounded_453
+label Lmm
 localset 2311 r0
 localget r1 2823
 mul r1 3
 add r1 r0
 div r1 4
 localset 2823 r1
-label body_lighting_done_449
+label Lmn
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_454
+jne Lmu
 localget r0 3000
 mul r0 -3216
 localget r1 3001
@@ -15556,9 +16675,9 @@ mul r1 -3305
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_456
+jge Lmo
 set r0 0
-label diffuse_positive_456
+label Lmo
 mul r0 128
 div r0 16384
 add r0 87
@@ -15577,9 +16696,9 @@ mul r2 -3305
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_457
+jge Lmp
 set r1 0
-label highlight_positive_457
+label Lmp
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -15602,13 +16721,13 @@ mul r2 -3305
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_8
+jge Lmq
 set r1 0
-label fresnel_positive_8
+label Lmq
 cmp r1 16384
-jle fresnel_bounded_8
+jle Lmr
 set r1 16384
-label fresnel_bounded_8
+label Lmr
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -15625,24 +16744,24 @@ div r2 16384
 localget r1 2824
 add r2 r1
 cmp r2 255
-jle metal_bounded_8
+jle Lms
 set r2 255
-label metal_bounded_8
+label Lms
 localset 2696 r2
 cmp r0 255
-jle intensity_bounded_458
+jle Lmt
 set r0 255
-label intensity_bounded_458
+label Lmt
 localset 2312 r0
 localget r1 2824
 mul r1 3
 add r1 r0
 div r1 4
 localset 2824 r1
-label body_lighting_done_454
+label Lmu
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_459
+jne Ln1
 localget r0 3000
 mul r0 -5031
 localget r1 3001
@@ -15653,9 +16772,9 @@ mul r1 -1850
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_461
+jge Lmv
 set r0 0
-label diffuse_positive_461
+label Lmv
 mul r0 128
 div r0 16384
 add r0 87
@@ -15674,9 +16793,9 @@ mul r2 -1850
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_462
+jge Lmw
 set r1 0
-label highlight_positive_462
+label Lmw
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -15699,13 +16818,13 @@ mul r2 -1850
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_9
+jge Lmx
 set r1 0
-label fresnel_positive_9
+label Lmx
 cmp r1 16384
-jle fresnel_bounded_9
+jle Lmy
 set r1 16384
-label fresnel_bounded_9
+label Lmy
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -15722,21 +16841,21 @@ div r2 16384
 localget r1 2825
 add r2 r1
 cmp r2 255
-jle metal_bounded_9
+jle Lmz
 set r2 255
-label metal_bounded_9
+label Lmz
 localset 2697 r2
 cmp r0 255
-jle intensity_bounded_463
+jle Ln0
 set r0 255
-label intensity_bounded_463
+label Ln0
 localset 2313 r0
 localget r1 2825
 mul r1 3
 add r1 r0
 div r1 4
 localset 2825 r1
-label body_lighting_done_459
+label Ln1
 localget r0 3000
 mul r0 10
 localget r1 3001
@@ -15747,9 +16866,9 @@ mul r1 247
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_466
+jge Ln2
 set r0 0
-label diffuse_positive_466
+label Ln2
 mul r0 128
 div r0 16384
 add r0 88
@@ -15768,9 +16887,9 @@ mul r2 247
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_467
+jge Ln3
 set r1 0
-label highlight_positive_467
+label Ln3
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -15793,13 +16912,13 @@ mul r2 247
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_10
+jge Ln4
 set r1 0
-label fresnel_positive_10
+label Ln4
 cmp r1 16384
-jle fresnel_bounded_10
+jle Ln5
 set r1 16384
-label fresnel_bounded_10
+label Ln5
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -15816,21 +16935,21 @@ div r2 16384
 localget r1 2826
 add r2 r1
 cmp r2 255
-jle metal_bounded_10
+jle Ln6
 set r2 255
-label metal_bounded_10
+label Ln6
 localset 2698 r2
 cmp r0 255
-jle intensity_bounded_468
+jle Ln7
 set r0 255
-label intensity_bounded_468
+label Ln7
 localset 2314 r0
 localget r1 2826
 mul r1 3
 add r1 r0
 div r1 4
 localset 2826 r1
-label body_lighting_done_464
+label Ln8
 localget r0 3006
 mul r0 10
 localget r1 3007
@@ -15849,15 +16968,15 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_469
+jge Ln9
 set r0 0
-label glass_low_469
+label Ln9
 cmp r0 255
-jle glass_high_470
+jle Lna
 set r0 255
-label glass_high_470
+label Lna
 localset 2442 r0
-label glass_lighting_done_465
+label Lnb
 localget r0 3000
 mul r0 54
 localget r1 3001
@@ -15868,9 +16987,9 @@ mul r1 11434
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_473
+jge Lnc
 set r0 0
-label diffuse_positive_473
+label Lnc
 mul r0 128
 div r0 16384
 add r0 82
@@ -15889,9 +17008,9 @@ mul r2 11434
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_474
+jge Lnd
 set r1 0
-label highlight_positive_474
+label Lnd
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -15914,13 +17033,13 @@ mul r2 11434
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_11
+jge Lne
 set r1 0
-label fresnel_positive_11
+label Lne
 cmp r1 16384
-jle fresnel_bounded_11
+jle Lnf
 set r1 16384
-label fresnel_bounded_11
+label Lnf
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -15937,21 +17056,21 @@ div r2 16384
 localget r1 2827
 add r2 r1
 cmp r2 255
-jle metal_bounded_11
+jle Lng
 set r2 255
-label metal_bounded_11
+label Lng
 localset 2699 r2
 cmp r0 255
-jle intensity_bounded_475
+jle Lnh
 set r0 255
-label intensity_bounded_475
+label Lnh
 localset 2315 r0
 localget r1 2827
 mul r1 3
 add r1 r0
 div r1 4
 localset 2827 r1
-label body_lighting_done_471
+label Lni
 localget r0 3000
 mul r0 -120
 localget r1 3001
@@ -15962,9 +17081,9 @@ mul r1 6373
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_478
+jge Lnj
 set r0 0
-label diffuse_positive_478
+label Lnj
 mul r0 128
 div r0 16384
 add r0 86
@@ -15983,9 +17102,9 @@ mul r2 6373
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_479
+jge Lnk
 set r1 0
-label highlight_positive_479
+label Lnk
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -16008,13 +17127,13 @@ mul r2 6373
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_12
+jge Lnl
 set r1 0
-label fresnel_positive_12
+label Lnl
 cmp r1 16384
-jle fresnel_bounded_12
+jle Lnm
 set r1 16384
-label fresnel_bounded_12
+label Lnm
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -16031,21 +17150,21 @@ div r2 16384
 localget r1 2828
 add r2 r1
 cmp r2 255
-jle metal_bounded_12
+jle Lnn
 set r2 255
-label metal_bounded_12
+label Lnn
 localset 2700 r2
 cmp r0 255
-jle intensity_bounded_480
+jle Lno
 set r0 255
-label intensity_bounded_480
+label Lno
 localset 2316 r0
 localget r1 2828
 mul r1 3
 add r1 r0
 div r1 4
 localset 2828 r1
-label body_lighting_done_476
+label Lnp
 localget r0 3006
 mul r0 -120
 localget r1 3007
@@ -16064,18 +17183,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_481
+jge Lnq
 set r0 0
-label glass_low_481
+label Lnq
 cmp r0 255
-jle glass_high_482
+jle Lnr
 set r0 255
-label glass_high_482
+label Lnr
 localset 2444 r0
-label glass_lighting_done_477
+label Lns
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_483
+jne Lnz
 localget r0 3000
 mul r0 5537
 localget r1 3001
@@ -16086,9 +17205,9 @@ mul r1 277
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_485
+jge Lnt
 set r0 0
-label diffuse_positive_485
+label Lnt
 mul r0 128
 div r0 16384
 add r0 87
@@ -16107,9 +17226,9 @@ mul r2 277
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_486
+jge Lnu
 set r1 0
-label highlight_positive_486
+label Lnu
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -16132,13 +17251,13 @@ mul r2 277
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_13
+jge Lnv
 set r1 0
-label fresnel_positive_13
+label Lnv
 cmp r1 16384
-jle fresnel_bounded_13
+jle Lnw
 set r1 16384
-label fresnel_bounded_13
+label Lnw
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -16155,24 +17274,24 @@ div r2 16384
 localget r1 2829
 add r2 r1
 cmp r2 255
-jle metal_bounded_13
+jle Lnx
 set r2 255
-label metal_bounded_13
+label Lnx
 localset 2701 r2
 cmp r0 255
-jle intensity_bounded_487
+jle Lny
 set r0 255
-label intensity_bounded_487
+label Lny
 localset 2317 r0
 localget r1 2829
 mul r1 3
 add r1 r0
 div r1 4
 localset 2829 r1
-label body_lighting_done_483
+label Lnz
 localget r3 3030
 cmp r3 2
-je glass_lighting_done_484
+je Lo2
 localget r0 3006
 mul r0 5537
 localget r1 3007
@@ -16191,18 +17310,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_488
+jge Lo0
 set r0 0
-label glass_low_488
+label Lo0
 cmp r0 255
-jle glass_high_489
+jle Lo1
 set r0 255
-label glass_high_489
+label Lo1
 localset 2445 r0
-label glass_lighting_done_484
+label Lo2
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_490
+jne Lo9
 localget r0 3000
 mul r0 2016
 localget r1 3001
@@ -16213,9 +17332,9 @@ mul r1 -5748
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_492
+jge Lo3
 set r0 0
-label diffuse_positive_492
+label Lo3
 mul r0 128
 div r0 16384
 add r0 86
@@ -16234,9 +17353,9 @@ mul r2 -5748
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_493
+jge Lo4
 set r1 0
-label highlight_positive_493
+label Lo4
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -16259,13 +17378,13 @@ mul r2 -5748
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_14
+jge Lo5
 set r1 0
-label fresnel_positive_14
+label Lo5
 cmp r1 16384
-jle fresnel_bounded_14
+jle Lo6
 set r1 16384
-label fresnel_bounded_14
+label Lo6
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -16282,21 +17401,21 @@ div r2 16384
 localget r1 2830
 add r2 r1
 cmp r2 255
-jle metal_bounded_14
+jle Lo7
 set r2 255
-label metal_bounded_14
+label Lo7
 localset 2702 r2
 cmp r0 255
-jle intensity_bounded_494
+jle Lo8
 set r0 255
-label intensity_bounded_494
+label Lo8
 localset 2318 r0
 localget r1 2830
 mul r1 3
 add r1 r0
 div r1 4
 localset 2830 r1
-label body_lighting_done_490
+label Lo9
 localget r0 3006
 mul r0 2016
 localget r1 3007
@@ -16315,15 +17434,15 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_495
+jge Loa
 set r0 0
-label glass_low_495
+label Loa
 cmp r0 255
-jle glass_high_496
+jle Lob
 set r0 255
-label glass_high_496
+label Lob
 localset 2446 r0
-label glass_lighting_done_491
+label Loc
 localget r0 3000
 mul r0 16384
 localget r1 3001
@@ -16334,9 +17453,9 @@ mul r1 18
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_499
+jge Lod
 set r0 0
-label diffuse_positive_499
+label Lod
 mul r0 128
 div r0 16384
 add r0 66
@@ -16355,9 +17474,9 @@ mul r2 18
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_500
+jge Loe
 set r1 0
-label highlight_positive_500
+label Loe
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -16380,13 +17499,13 @@ mul r2 18
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_15
+jge Lof
 set r1 0
-label fresnel_positive_15
+label Lof
 cmp r1 16384
-jle fresnel_bounded_15
+jle Log
 set r1 16384
-label fresnel_bounded_15
+label Log
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -16403,24 +17522,24 @@ div r2 16384
 localget r1 2831
 add r2 r1
 cmp r2 255
-jle metal_bounded_15
+jle Loh
 set r2 255
-label metal_bounded_15
+label Loh
 localset 2703 r2
 cmp r0 255
-jle intensity_bounded_501
+jle Loi
 set r0 255
-label intensity_bounded_501
+label Loi
 localset 2319 r0
 localget r1 2831
 mul r1 3
 add r1 r0
 div r1 4
 localset 2831 r1
-label body_lighting_done_497
+label Loj
 localget r3 3030
 cmp r3 2
-je body_lighting_done_502
+je Loq
 localget r0 3000
 mul r0 -15542
 localget r1 3001
@@ -16431,9 +17550,9 @@ mul r1 152
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_504
+jge Lok
 set r0 0
-label diffuse_positive_504
+label Lok
 mul r0 128
 div r0 16384
 add r0 73
@@ -16452,9 +17571,9 @@ mul r2 152
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_505
+jge Lol
 set r1 0
-label highlight_positive_505
+label Lol
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -16477,13 +17596,13 @@ mul r2 152
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_16
+jge Lom
 set r1 0
-label fresnel_positive_16
+label Lom
 cmp r1 16384
-jle fresnel_bounded_16
+jle Lon
 set r1 16384
-label fresnel_bounded_16
+label Lon
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -16500,21 +17619,21 @@ div r2 16384
 localget r1 2832
 add r2 r1
 cmp r2 255
-jle metal_bounded_16
+jle Loo
 set r2 255
-label metal_bounded_16
+label Loo
 localset 2704 r2
 cmp r0 255
-jle intensity_bounded_506
+jle Lop
 set r0 255
-label intensity_bounded_506
+label Lop
 localset 2320 r0
 localget r1 2832
 mul r1 3
 add r1 r0
 div r1 4
 localset 2832 r1
-label body_lighting_done_502
+label Loq
 localget r0 3006
 mul r0 -15542
 localget r1 3007
@@ -16533,18 +17652,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_507
+jge Lor
 set r0 0
-label glass_low_507
+label Lor
 cmp r0 255
-jle glass_high_508
+jle Los
 set r0 255
-label glass_high_508
+label Los
 localset 2448 r0
-label glass_lighting_done_503
+label Lot
 localget r3 3030
 cmp r3 2
-je body_lighting_done_509
+je Lp0
 localget r0 3000
 mul r0 15486
 localget r1 3001
@@ -16555,9 +17674,9 @@ mul r1 111
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_511
+jge Lou
 set r0 0
-label diffuse_positive_511
+label Lou
 mul r0 128
 div r0 16384
 add r0 73
@@ -16576,9 +17695,9 @@ mul r2 111
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_512
+jge Lov
 set r1 0
-label highlight_positive_512
+label Lov
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -16601,13 +17720,13 @@ mul r2 111
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_17
+jge Low
 set r1 0
-label fresnel_positive_17
+label Low
 cmp r1 16384
-jle fresnel_bounded_17
+jle Lox
 set r1 16384
-label fresnel_bounded_17
+label Lox
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -16624,21 +17743,21 @@ div r2 16384
 localget r1 2833
 add r2 r1
 cmp r2 255
-jle metal_bounded_17
+jle Loy
 set r2 255
-label metal_bounded_17
+label Loy
 localset 2705 r2
 cmp r0 255
-jle intensity_bounded_513
+jle Loz
 set r0 255
-label intensity_bounded_513
+label Loz
 localset 2321 r0
 localget r1 2833
 mul r1 3
 add r1 r0
 div r1 4
 localset 2833 r1
-label body_lighting_done_509
+label Lp0
 localget r0 3006
 mul r0 15486
 localget r1 3007
@@ -16657,15 +17776,15 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_514
+jge Lp1
 set r0 0
-label glass_low_514
+label Lp1
 cmp r0 255
-jle glass_high_515
+jle Lp2
 set r0 255
-label glass_high_515
+label Lp2
 localset 2449 r0
-label glass_lighting_done_510
+label Lp3
 localget r0 3000
 mul r0 -16384
 localget r1 3001
@@ -16676,9 +17795,9 @@ mul r1 40
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_518
+jge Lp4
 set r0 0
-label diffuse_positive_518
+label Lp4
 mul r0 128
 div r0 16384
 add r0 66
@@ -16697,9 +17816,9 @@ mul r2 40
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_519
+jge Lp5
 set r1 0
-label highlight_positive_519
+label Lp5
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -16722,13 +17841,13 @@ mul r2 40
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_18
+jge Lp6
 set r1 0
-label fresnel_positive_18
+label Lp6
 cmp r1 16384
-jle fresnel_bounded_18
+jle Lp7
 set r1 16384
-label fresnel_bounded_18
+label Lp7
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -16745,24 +17864,24 @@ div r2 16384
 localget r1 2834
 add r2 r1
 cmp r2 255
-jle metal_bounded_18
+jle Lp8
 set r2 255
-label metal_bounded_18
+label Lp8
 localset 2706 r2
 cmp r0 255
-jle intensity_bounded_520
+jle Lp9
 set r0 255
-label intensity_bounded_520
+label Lp9
 localset 2322 r0
 localget r1 2834
 mul r1 3
 add r1 r0
 div r1 4
 localset 2834 r1
-label body_lighting_done_516
+label Lpa
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_521
+jne Lph
 localget r0 3000
 mul r0 -12536
 localget r1 3001
@@ -16773,9 +17892,9 @@ mul r1 109
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_523
+jge Lpb
 set r0 0
-label diffuse_positive_523
+label Lpb
 mul r0 128
 div r0 16384
 add r0 80
@@ -16794,9 +17913,9 @@ mul r2 109
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_524
+jge Lpc
 set r1 0
-label highlight_positive_524
+label Lpc
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -16819,13 +17938,13 @@ mul r2 109
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_19
+jge Lpd
 set r1 0
-label fresnel_positive_19
+label Lpd
 cmp r1 16384
-jle fresnel_bounded_19
+jle Lpe
 set r1 16384
-label fresnel_bounded_19
+label Lpe
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -16842,21 +17961,21 @@ div r2 16384
 localget r1 2835
 add r2 r1
 cmp r2 255
-jle metal_bounded_19
+jle Lpf
 set r2 255
-label metal_bounded_19
+label Lpf
 localset 2707 r2
 cmp r0 255
-jle intensity_bounded_525
+jle Lpg
 set r0 255
-label intensity_bounded_525
+label Lpg
 localset 2323 r0
 localget r1 2835
 mul r1 3
 add r1 r0
 div r1 4
 localset 2835 r1
-label body_lighting_done_521
+label Lph
 localget r0 3006
 mul r0 -12536
 localget r1 3007
@@ -16875,18 +17994,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_526
+jge Lpi
 set r0 0
-label glass_low_526
+label Lpi
 cmp r0 255
-jle glass_high_527
+jle Lpj
 set r0 255
-label glass_high_527
+label Lpj
 localset 2451 r0
-label glass_lighting_done_522
+label Lpk
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_528
+jne Lpr
 localget r0 3000
 mul r0 12291
 localget r1 3001
@@ -16897,9 +18016,9 @@ mul r1 168
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_530
+jge Lpl
 set r0 0
-label diffuse_positive_530
+label Lpl
 mul r0 128
 div r0 16384
 add r0 81
@@ -16918,9 +18037,9 @@ mul r2 168
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_531
+jge Lpm
 set r1 0
-label highlight_positive_531
+label Lpm
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -16943,13 +18062,13 @@ mul r2 168
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_20
+jge Lpn
 set r1 0
-label fresnel_positive_20
+label Lpn
 cmp r1 16384
-jle fresnel_bounded_20
+jle Lpo
 set r1 16384
-label fresnel_bounded_20
+label Lpo
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -16966,21 +18085,21 @@ div r2 16384
 localget r1 2836
 add r2 r1
 cmp r2 255
-jle metal_bounded_20
+jle Lpp
 set r2 255
-label metal_bounded_20
+label Lpp
 localset 2708 r2
 cmp r0 255
-jle intensity_bounded_532
+jle Lpq
 set r0 255
-label intensity_bounded_532
+label Lpq
 localset 2324 r0
 localget r1 2836
 mul r1 3
 add r1 r0
 div r1 4
 localset 2836 r1
-label body_lighting_done_528
+label Lpr
 localget r0 3006
 mul r0 12291
 localget r1 3007
@@ -16999,18 +18118,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_533
+jge Lps
 set r0 0
-label glass_low_533
+label Lps
 cmp r0 255
-jle glass_high_534
+jle Lpt
 set r0 255
-label glass_high_534
+label Lpt
 localset 2452 r0
-label glass_lighting_done_529
+label Lpu
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_535
+jne Lq1
 localget r0 3000
 mul r0 -11041
 localget r1 3001
@@ -17021,9 +18140,9 @@ mul r1 4856
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_537
+jge Lpv
 set r0 0
-label diffuse_positive_537
+label Lpv
 mul r0 128
 div r0 16384
 add r0 81
@@ -17042,9 +18161,9 @@ mul r2 4856
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_538
+jge Lpw
 set r1 0
-label highlight_positive_538
+label Lpw
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -17067,13 +18186,13 @@ mul r2 4856
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_21
+jge Lpx
 set r1 0
-label fresnel_positive_21
+label Lpx
 cmp r1 16384
-jle fresnel_bounded_21
+jle Lpy
 set r1 16384
-label fresnel_bounded_21
+label Lpy
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -17090,24 +18209,24 @@ div r2 16384
 localget r1 2837
 add r2 r1
 cmp r2 255
-jle metal_bounded_21
+jle Lpz
 set r2 255
-label metal_bounded_21
+label Lpz
 localset 2709 r2
 cmp r0 255
-jle intensity_bounded_539
+jle Lq0
 set r0 255
-label intensity_bounded_539
+label Lq0
 localset 2325 r0
 localget r1 2837
 mul r1 3
 add r1 r0
 div r1 4
 localset 2837 r1
-label body_lighting_done_535
+label Lq1
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_540
+jne Lq8
 localget r0 3000
 mul r0 11383
 localget r1 3001
@@ -17118,9 +18237,9 @@ mul r1 5082
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_542
+jge Lq2
 set r0 0
-label diffuse_positive_542
+label Lq2
 mul r0 128
 div r0 16384
 add r0 80
@@ -17139,9 +18258,9 @@ mul r2 5082
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_543
+jge Lq3
 set r1 0
-label highlight_positive_543
+label Lq3
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -17164,13 +18283,13 @@ mul r2 5082
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_22
+jge Lq4
 set r1 0
-label fresnel_positive_22
+label Lq4
 cmp r1 16384
-jle fresnel_bounded_22
+jle Lq5
 set r1 16384
-label fresnel_bounded_22
+label Lq5
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -17187,24 +18306,24 @@ div r2 16384
 localget r1 2838
 add r2 r1
 cmp r2 255
-jle metal_bounded_22
+jle Lq6
 set r2 255
-label metal_bounded_22
+label Lq6
 localset 2710 r2
 cmp r0 255
-jle intensity_bounded_544
+jle Lq7
 set r0 255
-label intensity_bounded_544
+label Lq7
 localset 2326 r0
 localget r1 2838
 mul r1 3
 add r1 r0
 div r1 4
 localset 2838 r1
-label body_lighting_done_540
+label Lq8
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_545
+jne Lqf
 localget r0 3000
 mul r0 -14031
 localget r1 3001
@@ -17215,9 +18334,9 @@ mul r1 5443
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_547
+jge Lq9
 set r0 0
-label diffuse_positive_547
+label Lq9
 mul r0 128
 div r0 16384
 add r0 75
@@ -17236,9 +18355,9 @@ mul r2 5443
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_548
+jge Lqa
 set r1 0
-label highlight_positive_548
+label Lqa
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -17261,13 +18380,13 @@ mul r2 5443
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_23
+jge Lqb
 set r1 0
-label fresnel_positive_23
+label Lqb
 cmp r1 16384
-jle fresnel_bounded_23
+jle Lqc
 set r1 16384
-label fresnel_bounded_23
+label Lqc
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -17284,24 +18403,24 @@ div r2 16384
 localget r1 2839
 add r2 r1
 cmp r2 255
-jle metal_bounded_23
+jle Lqd
 set r2 255
-label metal_bounded_23
+label Lqd
 localset 2711 r2
 cmp r0 255
-jle intensity_bounded_549
+jle Lqe
 set r0 255
-label intensity_bounded_549
+label Lqe
 localset 2327 r0
 localget r1 2839
 mul r1 3
 add r1 r0
 div r1 4
 localset 2839 r1
-label body_lighting_done_545
+label Lqf
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_550
+jne Lqm
 localget r0 3000
 mul r0 14057
 localget r1 3001
@@ -17312,9 +18431,9 @@ mul r1 5819
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_552
+jge Lqg
 set r0 0
-label diffuse_positive_552
+label Lqg
 mul r0 128
 div r0 16384
 add r0 74
@@ -17333,9 +18452,9 @@ mul r2 5819
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_553
+jge Lqh
 set r1 0
-label highlight_positive_553
+label Lqh
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -17358,13 +18477,13 @@ mul r2 5819
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_24
+jge Lqi
 set r1 0
-label fresnel_positive_24
+label Lqi
 cmp r1 16384
-jle fresnel_bounded_24
+jle Lqj
 set r1 16384
-label fresnel_bounded_24
+label Lqj
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -17381,24 +18500,24 @@ div r2 16384
 localget r1 2840
 add r2 r1
 cmp r2 255
-jle metal_bounded_24
+jle Lqk
 set r2 255
-label metal_bounded_24
+label Lqk
 localset 2712 r2
 cmp r0 255
-jle intensity_bounded_554
+jle Lql
 set r0 255
-label intensity_bounded_554
+label Lql
 localset 2328 r0
 localget r1 2840
 mul r1 3
 add r1 r0
 div r1 4
 localset 2840 r1
-label body_lighting_done_550
+label Lqm
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_555
+jne Lqt
 localget r0 3000
 mul r0 -3668
 localget r1 3001
@@ -17409,9 +18528,9 @@ mul r1 1457
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_557
+jge Lqn
 set r0 0
-label diffuse_positive_557
+label Lqn
 mul r0 128
 div r0 16384
 add r0 87
@@ -17430,9 +18549,9 @@ mul r2 1457
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_558
+jge Lqo
 set r1 0
-label highlight_positive_558
+label Lqo
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -17455,13 +18574,13 @@ mul r2 1457
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_25
+jge Lqp
 set r1 0
-label fresnel_positive_25
+label Lqp
 cmp r1 16384
-jle fresnel_bounded_25
+jle Lqq
 set r1 16384
-label fresnel_bounded_25
+label Lqq
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -17478,24 +18597,24 @@ div r2 16384
 localget r1 2841
 add r2 r1
 cmp r2 255
-jle metal_bounded_25
+jle Lqr
 set r2 255
-label metal_bounded_25
+label Lqr
 localset 2713 r2
 cmp r0 255
-jle intensity_bounded_559
+jle Lqs
 set r0 255
-label intensity_bounded_559
+label Lqs
 localset 2329 r0
 localget r1 2841
 mul r1 3
 add r1 r0
 div r1 4
 localset 2841 r1
-label body_lighting_done_555
+label Lqt
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_560
+jne Lr0
 localget r0 3000
 mul r0 3588
 localget r1 3001
@@ -17506,9 +18625,9 @@ mul r1 1526
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_562
+jge Lqu
 set r0 0
-label diffuse_positive_562
+label Lqu
 mul r0 128
 div r0 16384
 add r0 87
@@ -17527,9 +18646,9 @@ mul r2 1526
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_563
+jge Lqv
 set r1 0
-label highlight_positive_563
+label Lqv
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -17552,13 +18671,13 @@ mul r2 1526
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_26
+jge Lqw
 set r1 0
-label fresnel_positive_26
+label Lqw
 cmp r1 16384
-jle fresnel_bounded_26
+jle Lqx
 set r1 16384
-label fresnel_bounded_26
+label Lqx
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -17575,24 +18694,24 @@ div r2 16384
 localget r1 2842
 add r2 r1
 cmp r2 255
-jle metal_bounded_26
+jle Lqy
 set r2 255
-label metal_bounded_26
+label Lqy
 localset 2714 r2
 cmp r0 255
-jle intensity_bounded_564
+jle Lqz
 set r0 255
-label intensity_bounded_564
+label Lqz
 localset 2330 r0
 localget r1 2842
 mul r1 3
 add r1 r0
 div r1 4
 localset 2842 r1
-label body_lighting_done_560
+label Lr0
 localget r3 3030
 cmp r3 0
-jne glass_lighting_done_561
+jne Lr3
 localget r0 3006
 mul r0 3588
 localget r1 3007
@@ -17611,18 +18730,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_565
+jge Lr1
 set r0 0
-label glass_low_565
+label Lr1
 cmp r0 255
-jle glass_high_566
+jle Lr2
 set r0 255
-label glass_high_566
+label Lr2
 localset 2458 r0
-label glass_lighting_done_561
+label Lr3
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_567
+jne Lra
 localget r0 3000
 mul r0 -2808
 localget r1 3001
@@ -17633,9 +18752,9 @@ mul r1 2272
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_569
+jge Lr4
 set r0 0
-label diffuse_positive_569
+label Lr4
 mul r0 128
 div r0 16384
 add r0 87
@@ -17654,9 +18773,9 @@ mul r2 2272
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_570
+jge Lr5
 set r1 0
-label highlight_positive_570
+label Lr5
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -17679,13 +18798,13 @@ mul r2 2272
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_27
+jge Lr6
 set r1 0
-label fresnel_positive_27
+label Lr6
 cmp r1 16384
-jle fresnel_bounded_27
+jle Lr7
 set r1 16384
-label fresnel_bounded_27
+label Lr7
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -17702,24 +18821,24 @@ div r2 16384
 localget r1 2843
 add r2 r1
 cmp r2 255
-jle metal_bounded_27
+jle Lr8
 set r2 255
-label metal_bounded_27
+label Lr8
 localset 2715 r2
 cmp r0 255
-jle intensity_bounded_571
+jle Lr9
 set r0 255
-label intensity_bounded_571
+label Lr9
 localset 2331 r0
 localget r1 2843
 mul r1 3
 add r1 r0
 div r1 4
 localset 2843 r1
-label body_lighting_done_567
+label Lra
 localget r3 3030
 cmp r3 0
-jne glass_lighting_done_568
+jne Lrd
 localget r0 3006
 mul r0 -2808
 localget r1 3007
@@ -17738,18 +18857,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_572
+jge Lrb
 set r0 0
-label glass_low_572
+label Lrb
 cmp r0 255
-jle glass_high_573
+jle Lrc
 set r0 255
-label glass_high_573
+label Lrc
 localset 2459 r0
-label glass_lighting_done_568
+label Lrd
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_574
+jne Lrk
 localget r0 3000
 mul r0 -2008
 localget r1 3001
@@ -17760,9 +18879,9 @@ mul r1 6638
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_576
+jge Lre
 set r0 0
-label diffuse_positive_576
+label Lre
 mul r0 128
 div r0 16384
 add r0 86
@@ -17781,9 +18900,9 @@ mul r2 6638
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_577
+jge Lrf
 set r1 0
-label highlight_positive_577
+label Lrf
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -17806,13 +18925,13 @@ mul r2 6638
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_28
+jge Lrg
 set r1 0
-label fresnel_positive_28
+label Lrg
 cmp r1 16384
-jle fresnel_bounded_28
+jle Lrh
 set r1 16384
-label fresnel_bounded_28
+label Lrh
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -17829,21 +18948,21 @@ div r2 16384
 localget r1 2844
 add r2 r1
 cmp r2 255
-jle metal_bounded_28
+jle Lri
 set r2 255
-label metal_bounded_28
+label Lri
 localset 2716 r2
 cmp r0 255
-jle intensity_bounded_578
+jle Lrj
 set r0 255
-label intensity_bounded_578
+label Lrj
 localset 2332 r0
 localget r1 2844
 mul r1 3
 add r1 r0
 div r1 4
 localset 2844 r1
-label body_lighting_done_574
+label Lrk
 localget r0 3006
 mul r0 -2008
 localget r1 3007
@@ -17862,18 +18981,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_579
+jge Lrl
 set r0 0
-label glass_low_579
+label Lrl
 cmp r0 255
-jle glass_high_580
+jle Lrm
 set r0 255
-label glass_high_580
+label Lrm
 localset 2460 r0
-label glass_lighting_done_575
+label Lrn
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_581
+jne Lru
 localget r0 3000
 mul r0 3130
 localget r1 3001
@@ -17884,9 +19003,9 @@ mul r1 2376
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_583
+jge Lro
 set r0 0
-label diffuse_positive_583
+label Lro
 mul r0 128
 div r0 16384
 add r0 87
@@ -17905,9 +19024,9 @@ mul r2 2376
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_584
+jge Lrp
 set r1 0
-label highlight_positive_584
+label Lrp
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -17930,13 +19049,13 @@ mul r2 2376
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_29
+jge Lrq
 set r1 0
-label fresnel_positive_29
+label Lrq
 cmp r1 16384
-jle fresnel_bounded_29
+jle Lrr
 set r1 16384
-label fresnel_bounded_29
+label Lrr
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -17953,24 +19072,24 @@ div r2 16384
 localget r1 2845
 add r2 r1
 cmp r2 255
-jle metal_bounded_29
+jle Lrs
 set r2 255
-label metal_bounded_29
+label Lrs
 localset 2717 r2
 cmp r0 255
-jle intensity_bounded_585
+jle Lrt
 set r0 255
-label intensity_bounded_585
+label Lrt
 localset 2333 r0
 localget r1 2845
 mul r1 3
 add r1 r0
 div r1 4
 localset 2845 r1
-label body_lighting_done_581
+label Lru
 localget r3 3030
 cmp r3 1
-je body_lighting_done_586
+je Ls1
 localget r0 3000
 mul r0 2076
 localget r1 3001
@@ -17981,9 +19100,9 @@ mul r1 6701
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_588
+jge Lrv
 set r0 0
-label diffuse_positive_588
+label Lrv
 mul r0 128
 div r0 16384
 add r0 86
@@ -18002,9 +19121,9 @@ mul r2 6701
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_589
+jge Lrw
 set r1 0
-label highlight_positive_589
+label Lrw
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -18027,13 +19146,13 @@ mul r2 6701
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_30
+jge Lrx
 set r1 0
-label fresnel_positive_30
+label Lrx
 cmp r1 16384
-jle fresnel_bounded_30
+jle Lry
 set r1 16384
-label fresnel_bounded_30
+label Lry
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -18050,24 +19169,24 @@ div r2 16384
 localget r1 2846
 add r2 r1
 cmp r2 255
-jle metal_bounded_30
+jle Lrz
 set r2 255
-label metal_bounded_30
+label Lrz
 localset 2718 r2
 cmp r0 255
-jle intensity_bounded_590
+jle Ls0
 set r0 255
-label intensity_bounded_590
+label Ls0
 localset 2334 r0
 localget r1 2846
 mul r1 3
 add r1 r0
 div r1 4
 localset 2846 r1
-label body_lighting_done_586
+label Ls1
 localget r3 3030
 cmp r3 2
-je glass_lighting_done_587
+je Ls4
 localget r0 3006
 mul r0 2076
 localget r1 3007
@@ -18086,18 +19205,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_591
+jge Ls2
 set r0 0
-label glass_low_591
+label Ls2
 cmp r0 255
-jle glass_high_592
+jle Ls3
 set r0 255
-label glass_high_592
+label Ls3
 localset 2462 r0
-label glass_lighting_done_587
+label Ls4
 localget r3 3030
 cmp r3 2
-je body_lighting_done_593
+je Lsb
 localget r0 3000
 mul r0 -15833
 localget r1 3001
@@ -18108,9 +19227,9 @@ mul r1 4211
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_595
+jge Ls5
 set r0 0
-label diffuse_positive_595
+label Ls5
 mul r0 128
 div r0 16384
 add r0 66
@@ -18129,9 +19248,9 @@ mul r2 4211
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_596
+jge Ls6
 set r1 0
-label highlight_positive_596
+label Ls6
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -18154,13 +19273,13 @@ mul r2 4211
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_31
+jge Ls7
 set r1 0
-label fresnel_positive_31
+label Ls7
 cmp r1 16384
-jle fresnel_bounded_31
+jle Ls8
 set r1 16384
-label fresnel_bounded_31
+label Ls8
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -18177,24 +19296,24 @@ div r2 16384
 localget r1 2847
 add r2 r1
 cmp r2 255
-jle metal_bounded_31
+jle Ls9
 set r2 255
-label metal_bounded_31
+label Ls9
 localset 2719 r2
 cmp r0 255
-jle intensity_bounded_597
+jle Lsa
 set r0 255
-label intensity_bounded_597
+label Lsa
 localset 2335 r0
 localget r1 2847
 mul r1 3
 add r1 r0
 div r1 4
 localset 2847 r1
-label body_lighting_done_593
+label Lsb
 localget r3 3030
 cmp r3 2
-je body_lighting_done_598
+je Lsi
 localget r0 3000
 mul r0 15833
 localget r1 3001
@@ -18205,9 +19324,9 @@ mul r1 4211
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_600
+jge Lsc
 set r0 0
-label diffuse_positive_600
+label Lsc
 mul r0 128
 div r0 16384
 add r0 66
@@ -18226,9 +19345,9 @@ mul r2 4211
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_601
+jge Lsd
 set r1 0
-label highlight_positive_601
+label Lsd
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -18251,13 +19370,13 @@ mul r2 4211
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_32
+jge Lse
 set r1 0
-label fresnel_positive_32
+label Lse
 cmp r1 16384
-jle fresnel_bounded_32
+jle Lsf
 set r1 16384
-label fresnel_bounded_32
+label Lsf
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -18274,24 +19393,24 @@ div r2 16384
 localget r1 2848
 add r2 r1
 cmp r2 255
-jle metal_bounded_32
+jle Lsg
 set r2 255
-label metal_bounded_32
+label Lsg
 localset 2720 r2
 cmp r0 255
-jle intensity_bounded_602
+jle Lsh
 set r0 255
-label intensity_bounded_602
+label Lsh
 localset 2336 r0
 localget r1 2848
 mul r1 3
 add r1 r0
 div r1 4
 localset 2848 r1
-label body_lighting_done_598
+label Lsi
 localget r3 3030
 cmp r3 2
-je body_lighting_done_603
+je Lsp
 localget r0 3000
 mul r0 11
 localget r1 3001
@@ -18302,9 +19421,9 @@ mul r1 16384
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_605
+jge Lsj
 set r0 0
-label diffuse_positive_605
+label Lsj
 mul r0 128
 div r0 16384
 add r0 66
@@ -18323,9 +19442,9 @@ mul r2 16384
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_606
+jge Lsk
 set r1 0
-label highlight_positive_606
+label Lsk
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -18348,13 +19467,13 @@ mul r2 16384
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_33
+jge Lsl
 set r1 0
-label fresnel_positive_33
+label Lsl
 cmp r1 16384
-jle fresnel_bounded_33
+jle Lsm
 set r1 16384
-label fresnel_bounded_33
+label Lsm
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -18371,24 +19490,24 @@ div r2 16384
 localget r1 2849
 add r2 r1
 cmp r2 255
-jle metal_bounded_33
+jle Lsn
 set r2 255
-label metal_bounded_33
+label Lsn
 localset 2721 r2
 cmp r0 255
-jle intensity_bounded_607
+jle Lso
 set r0 255
-label intensity_bounded_607
+label Lso
 localset 2337 r0
 localget r1 2849
 mul r1 3
 add r1 r0
 div r1 4
 localset 2849 r1
-label body_lighting_done_603
+label Lsp
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_608
+jne Lsw
 localget r0 3000
 mul r0 -38
 localget r1 3001
@@ -18399,9 +19518,9 @@ mul r1 15342
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_610
+jge Lsq
 set r0 0
-label diffuse_positive_610
+label Lsq
 mul r0 128
 div r0 16384
 add r0 74
@@ -18420,9 +19539,9 @@ mul r2 15342
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_611
+jge Lsr
 set r1 0
-label highlight_positive_611
+label Lsr
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -18445,13 +19564,13 @@ mul r2 15342
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_34
+jge Lss
 set r1 0
-label fresnel_positive_34
+label Lss
 cmp r1 16384
-jle fresnel_bounded_34
+jle Lst
 set r1 16384
-label fresnel_bounded_34
+label Lst
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -18468,21 +19587,21 @@ div r2 16384
 localget r1 2850
 add r2 r1
 cmp r2 255
-jle metal_bounded_34
+jle Lsu
 set r2 255
-label metal_bounded_34
+label Lsu
 localset 2722 r2
 cmp r0 255
-jle intensity_bounded_612
+jle Lsv
 set r0 255
-label intensity_bounded_612
+label Lsv
 localset 2338 r0
 localget r1 2850
 mul r1 3
 add r1 r0
 div r1 4
 localset 2850 r1
-label body_lighting_done_608
+label Lsw
 localget r0 3000
 mul r0 -6445
 localget r1 3001
@@ -18493,9 +19612,9 @@ mul r1 15063
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_615
+jge Lsx
 set r0 0
-label diffuse_positive_615
+label Lsx
 mul r0 128
 div r0 16384
 add r0 66
@@ -18514,9 +19633,9 @@ mul r2 15063
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_616
+jge Lsy
 set r1 0
-label highlight_positive_616
+label Lsy
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -18539,13 +19658,13 @@ mul r2 15063
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_35
+jge Lsz
 set r1 0
-label fresnel_positive_35
+label Lsz
 cmp r1 16384
-jle fresnel_bounded_35
+jle Lt0
 set r1 16384
-label fresnel_bounded_35
+label Lt0
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -18562,21 +19681,21 @@ div r2 16384
 localget r1 2851
 add r2 r1
 cmp r2 255
-jle metal_bounded_35
+jle Lt1
 set r2 255
-label metal_bounded_35
+label Lt1
 localset 2723 r2
 cmp r0 255
-jle intensity_bounded_617
+jle Lt2
 set r0 255
-label intensity_bounded_617
+label Lt2
 localset 2339 r0
 localget r1 2851
 mul r1 3
 add r1 r0
 div r1 4
 localset 2851 r1
-label body_lighting_done_613
+label Lt3
 localget r0 3000
 mul r0 5670
 localget r1 3001
@@ -18587,9 +19706,9 @@ mul r1 15372
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_620
+jge Lt4
 set r0 0
-label diffuse_positive_620
+label Lt4
 mul r0 128
 div r0 16384
 add r0 66
@@ -18608,9 +19727,9 @@ mul r2 15372
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_621
+jge Lt5
 set r1 0
-label highlight_positive_621
+label Lt5
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -18633,13 +19752,13 @@ mul r2 15372
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_36
+jge Lt6
 set r1 0
-label fresnel_positive_36
+label Lt6
 cmp r1 16384
-jle fresnel_bounded_36
+jle Lt7
 set r1 16384
-label fresnel_bounded_36
+label Lt7
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -18656,24 +19775,24 @@ div r2 16384
 localget r1 2852
 add r2 r1
 cmp r2 255
-jle metal_bounded_36
+jle Lt8
 set r2 255
-label metal_bounded_36
+label Lt8
 localset 2724 r2
 cmp r0 255
-jle intensity_bounded_622
+jle Lt9
 set r0 255
-label intensity_bounded_622
+label Lt9
 localset 2340 r0
 localget r1 2852
 mul r1 3
 add r1 r0
 div r1 4
 localset 2852 r1
-label body_lighting_done_618
+label Lta
 localget r3 3030
 cmp r3 2
-je body_lighting_done_623
+je Lth
 localget r0 3000
 mul r0 0
 localget r1 3001
@@ -18684,9 +19803,9 @@ mul r1 158
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_625
+jge Ltb
 set r0 0
-label diffuse_positive_625
+label Ltb
 mul r0 128
 div r0 16384
 add r0 44
@@ -18705,9 +19824,9 @@ mul r2 158
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_626
+jge Ltc
 set r1 0
-label highlight_positive_626
+label Ltc
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -18730,13 +19849,13 @@ mul r2 158
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_37
+jge Ltd
 set r1 0
-label fresnel_positive_37
+label Ltd
 cmp r1 16384
-jle fresnel_bounded_37
+jle Lte
 set r1 16384
-label fresnel_bounded_37
+label Lte
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -18753,24 +19872,24 @@ div r2 16384
 localget r1 2853
 add r2 r1
 cmp r2 255
-jle metal_bounded_37
+jle Ltf
 set r2 255
-label metal_bounded_37
+label Ltf
 localset 2725 r2
 cmp r0 255
-jle intensity_bounded_627
+jle Ltg
 set r0 255
-label intensity_bounded_627
+label Ltg
 localset 2341 r0
 localget r1 2853
 mul r1 3
 add r1 r0
 div r1 4
 localset 2853 r1
-label body_lighting_done_623
+label Lth
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_628
+jne Lto
 localget r0 3000
 mul r0 -1968
 localget r1 3001
@@ -18781,9 +19900,9 @@ mul r1 -5370
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_630
+jge Lti
 set r0 0
-label diffuse_positive_630
+label Lti
 mul r0 128
 div r0 16384
 add r0 87
@@ -18802,9 +19921,9 @@ mul r2 -5370
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_631
+jge Ltj
 set r1 0
-label highlight_positive_631
+label Ltj
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -18827,13 +19946,13 @@ mul r2 -5370
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_38
+jge Ltk
 set r1 0
-label fresnel_positive_38
+label Ltk
 cmp r1 16384
-jle fresnel_bounded_38
+jle Ltl
 set r1 16384
-label fresnel_bounded_38
+label Ltl
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -18850,21 +19969,21 @@ div r2 16384
 localget r1 2854
 add r2 r1
 cmp r2 255
-jle metal_bounded_38
+jle Ltm
 set r2 255
-label metal_bounded_38
+label Ltm
 localset 2726 r2
 cmp r0 255
-jle intensity_bounded_632
+jle Ltn
 set r0 255
-label intensity_bounded_632
+label Ltn
 localset 2342 r0
 localget r1 2854
 mul r1 3
 add r1 r0
 div r1 4
 localset 2854 r1
-label body_lighting_done_628
+label Lto
 localget r0 3006
 mul r0 -1968
 localget r1 3007
@@ -18883,18 +20002,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_633
+jge Ltp
 set r0 0
-label glass_low_633
+label Ltp
 cmp r0 255
-jle glass_high_634
+jle Ltq
 set r0 255
-label glass_high_634
+label Ltq
 localset 2470 r0
-label glass_lighting_done_629
+label Ltr
 localget r3 3030
 cmp r3 0
-jne glass_lighting_done_636
+jne Ltu
 localget r0 3006
 mul r0 2111
 localget r1 3007
@@ -18913,18 +20032,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_637
+jge Lts
 set r0 0
-label glass_low_637
+label Lts
 cmp r0 255
-jle glass_high_638
+jle Ltt
 set r0 255
-label glass_high_638
+label Ltt
 localset 2471 r0
-label glass_lighting_done_636
+label Ltu
 localget r3 3030
 cmp r3 2
-je glass_lighting_done_640
+je Ltx
 localget r0 3006
 mul r0 -6369
 localget r1 3007
@@ -18943,18 +20062,18 @@ mul r0 100
 div r0 16384
 add r0 128
 cmp r0 0
-jge glass_low_641
+jge Ltv
 set r0 0
-label glass_low_641
+label Ltv
 cmp r0 255
-jle glass_high_642
+jle Ltw
 set r0 255
-label glass_high_642
+label Ltw
 localset 2472 r0
-label glass_lighting_done_640
+label Ltx
 localget r3 3030
 cmp r3 2
-je body_lighting_done_643
+je Lu4
 localget r0 3000
 mul r0 -3689
 localget r1 3001
@@ -18965,9 +20084,9 @@ mul r1 -7449
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_645
+jge Lty
 set r0 0
-label diffuse_positive_645
+label Lty
 mul r0 128
 div r0 16384
 add r0 47
@@ -18986,9 +20105,9 @@ mul r2 -7449
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_646
+jge Ltz
 set r1 0
-label highlight_positive_646
+label Ltz
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -19011,13 +20130,13 @@ mul r2 -7449
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_41
+jge Lu0
 set r1 0
-label fresnel_positive_41
+label Lu0
 cmp r1 16384
-jle fresnel_bounded_41
+jle Lu1
 set r1 16384
-label fresnel_bounded_41
+label Lu1
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -19034,24 +20153,24 @@ div r2 16384
 localget r1 2857
 add r2 r1
 cmp r2 255
-jle metal_bounded_41
+jle Lu2
 set r2 255
-label metal_bounded_41
+label Lu2
 localset 2729 r2
 cmp r0 255
-jle intensity_bounded_647
+jle Lu3
 set r0 255
-label intensity_bounded_647
+label Lu3
 localset 2345 r0
 localget r1 2857
 mul r1 3
 add r1 r0
 div r1 4
 localset 2857 r1
-label body_lighting_done_643
+label Lu4
 localget r3 3030
 cmp r3 2
-je body_lighting_done_648
+je Lub
 localget r0 3000
 mul r0 3689
 localget r1 3001
@@ -19062,9 +20181,9 @@ mul r1 -7449
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_650
+jge Lu5
 set r0 0
-label diffuse_positive_650
+label Lu5
 mul r0 128
 div r0 16384
 add r0 47
@@ -19083,9 +20202,9 @@ mul r2 -7449
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_651
+jge Lu6
 set r1 0
-label highlight_positive_651
+label Lu6
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -19108,13 +20227,13 @@ mul r2 -7449
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_42
+jge Lu7
 set r1 0
-label fresnel_positive_42
+label Lu7
 cmp r1 16384
-jle fresnel_bounded_42
+jle Lu8
 set r1 16384
-label fresnel_bounded_42
+label Lu8
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -19131,24 +20250,24 @@ div r2 16384
 localget r1 2858
 add r2 r1
 cmp r2 255
-jle metal_bounded_42
+jle Lu9
 set r2 255
-label metal_bounded_42
+label Lu9
 localset 2730 r2
 cmp r0 255
-jle intensity_bounded_652
+jle Lua
 set r0 255
-label intensity_bounded_652
+label Lua
 localset 2346 r0
 localget r1 2858
 mul r1 3
 add r1 r0
 div r1 4
 localset 2858 r1
-label body_lighting_done_648
+label Lub
 localget r3 3030
 cmp r3 1
-je body_lighting_done_653
+je Lui
 localget r0 3000
 mul r0 -2574
 localget r1 3001
@@ -19159,9 +20278,9 @@ mul r1 10619
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_655
+jge Luc
 set r0 0
-label diffuse_positive_655
+label Luc
 mul r0 128
 div r0 16384
 add r0 82
@@ -19180,9 +20299,9 @@ mul r2 10619
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_656
+jge Lud
 set r1 0
-label highlight_positive_656
+label Lud
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -19205,13 +20324,13 @@ mul r2 10619
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_43
+jge Lue
 set r1 0
-label fresnel_positive_43
+label Lue
 cmp r1 16384
-jle fresnel_bounded_43
+jle Luf
 set r1 16384
-label fresnel_bounded_43
+label Luf
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -19228,24 +20347,24 @@ div r2 16384
 localget r1 2859
 add r2 r1
 cmp r2 255
-jle metal_bounded_43
+jle Lug
 set r2 255
-label metal_bounded_43
+label Lug
 localset 2731 r2
 cmp r0 255
-jle intensity_bounded_657
+jle Luh
 set r0 255
-label intensity_bounded_657
+label Luh
 localset 2347 r0
 localget r1 2859
 mul r1 3
 add r1 r0
 div r1 4
 localset 2859 r1
-label body_lighting_done_653
+label Lui
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_658
+jne Lup
 localget r0 3000
 mul r0 -2759
 localget r1 3001
@@ -19256,9 +20375,9 @@ mul r1 -10463
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_660
+jge Luj
 set r0 0
-label diffuse_positive_660
+label Luj
 mul r0 128
 div r0 16384
 add r0 83
@@ -19277,9 +20396,9 @@ mul r2 -10463
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_661
+jge Luk
 set r1 0
-label highlight_positive_661
+label Luk
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -19302,13 +20421,13 @@ mul r2 -10463
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_44
+jge Lul
 set r1 0
-label fresnel_positive_44
+label Lul
 cmp r1 16384
-jle fresnel_bounded_44
+jle Lum
 set r1 16384
-label fresnel_bounded_44
+label Lum
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -19325,24 +20444,24 @@ div r2 16384
 localget r1 2860
 add r2 r1
 cmp r2 255
-jle metal_bounded_44
+jle Lun
 set r2 255
-label metal_bounded_44
+label Lun
 localset 2732 r2
 cmp r0 255
-jle intensity_bounded_662
+jle Luo
 set r0 255
-label intensity_bounded_662
+label Luo
 localset 2348 r0
 localget r1 2860
 mul r1 3
 add r1 r0
 div r1 4
 localset 2860 r1
-label body_lighting_done_658
+label Lup
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_663
+jne Luw
 localget r0 3000
 mul r0 0
 localget r1 3001
@@ -19353,9 +20472,9 @@ mul r1 -15218
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_665
+jge Luq
 set r0 0
-label diffuse_positive_665
+label Luq
 mul r0 128
 div r0 16384
 add r0 58
@@ -19374,9 +20493,9 @@ mul r2 -15218
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_666
+jge Lur
 set r1 0
-label highlight_positive_666
+label Lur
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -19399,13 +20518,13 @@ mul r2 -15218
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_45
+jge Lus
 set r1 0
-label fresnel_positive_45
+label Lus
 cmp r1 16384
-jle fresnel_bounded_45
+jle Lut
 set r1 16384
-label fresnel_bounded_45
+label Lut
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -19422,24 +20541,24 @@ div r2 16384
 localget r1 2861
 add r2 r1
 cmp r2 255
-jle metal_bounded_45
+jle Luu
 set r2 255
-label metal_bounded_45
+label Luu
 localset 2733 r2
 cmp r0 255
-jle intensity_bounded_667
+jle Luv
 set r0 255
-label intensity_bounded_667
+label Luv
 localset 2349 r0
 localget r1 2861
 mul r1 3
 add r1 r0
 div r1 4
 localset 2861 r1
-label body_lighting_done_663
+label Luw
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_668
+jne Lv3
 localget r0 3000
 mul r0 -2759
 localget r1 3001
@@ -19450,9 +20569,9 @@ mul r1 -12302
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_670
+jge Lux
 set r0 0
-label diffuse_positive_670
+label Lux
 mul r0 128
 div r0 16384
 add r0 52
@@ -19471,9 +20590,9 @@ mul r2 -12302
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_671
+jge Luy
 set r1 0
-label highlight_positive_671
+label Luy
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -19496,13 +20615,13 @@ mul r2 -12302
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_46
+jge Luz
 set r1 0
-label fresnel_positive_46
+label Luz
 cmp r1 16384
-jle fresnel_bounded_46
+jle Lv0
 set r1 16384
-label fresnel_bounded_46
+label Lv0
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -19519,21 +20638,21 @@ div r2 16384
 localget r1 2862
 add r2 r1
 cmp r2 255
-jle metal_bounded_46
+jle Lv1
 set r2 255
-label metal_bounded_46
+label Lv1
 localset 2734 r2
 cmp r0 255
-jle intensity_bounded_672
+jle Lv2
 set r0 255
-label intensity_bounded_672
+label Lv2
 localset 2350 r0
 localget r1 2862
 mul r1 3
 add r1 r0
 div r1 4
 localset 2862 r1
-label body_lighting_done_668
+label Lv3
 localget r0 3000
 mul r0 0
 localget r1 3001
@@ -19544,9 +20663,9 @@ mul r1 -11567
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_675
+jge Lv4
 set r0 0
-label diffuse_positive_675
+label Lv4
 mul r0 128
 div r0 16384
 add r0 50
@@ -19565,9 +20684,9 @@ mul r2 -11567
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_676
+jge Lv5
 set r1 0
-label highlight_positive_676
+label Lv5
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -19590,13 +20709,13 @@ mul r2 -11567
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_47
+jge Lv6
 set r1 0
-label fresnel_positive_47
+label Lv6
 cmp r1 16384
-jle fresnel_bounded_47
+jle Lv7
 set r1 16384
-label fresnel_bounded_47
+label Lv7
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -19613,24 +20732,24 @@ div r2 16384
 localget r1 2863
 add r2 r1
 cmp r2 255
-jle metal_bounded_47
+jle Lv8
 set r2 255
-label metal_bounded_47
+label Lv8
 localset 2735 r2
 cmp r0 255
-jle intensity_bounded_677
+jle Lv9
 set r0 255
-label intensity_bounded_677
+label Lv9
 localset 2351 r0
 localget r1 2863
 mul r1 3
 add r1 r0
 div r1 4
 localset 2863 r1
-label body_lighting_done_673
+label Lva
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_678
+jne Lvh
 localget r0 3000
 mul r0 0
 localget r1 3001
@@ -19641,9 +20760,9 @@ mul r1 -6305
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_680
+jge Lvb
 set r0 0
-label diffuse_positive_680
+label Lvb
 mul r0 128
 div r0 16384
 add r0 46
@@ -19662,9 +20781,9 @@ mul r2 -6305
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_681
+jge Lvc
 set r1 0
-label highlight_positive_681
+label Lvc
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -19687,13 +20806,13 @@ mul r2 -6305
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_48
+jge Lvd
 set r1 0
-label fresnel_positive_48
+label Lvd
 cmp r1 16384
-jle fresnel_bounded_48
+jle Lve
 set r1 16384
-label fresnel_bounded_48
+label Lve
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -19710,24 +20829,24 @@ div r2 16384
 localget r1 2864
 add r2 r1
 cmp r2 255
-jle metal_bounded_48
+jle Lvf
 set r2 255
-label metal_bounded_48
+label Lvf
 localset 2736 r2
 cmp r0 255
-jle intensity_bounded_682
+jle Lvg
 set r0 255
-label intensity_bounded_682
+label Lvg
 localset 2352 r0
 localget r1 2864
 mul r1 3
 add r1 r0
 div r1 4
 localset 2864 r1
-label body_lighting_done_678
+label Lvh
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_683
+jne Lvo
 localget r0 3000
 mul r0 0
 localget r1 3001
@@ -19738,9 +20857,9 @@ mul r1 6305
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_685
+jge Lvi
 set r0 0
-label diffuse_positive_685
+label Lvi
 mul r0 128
 div r0 16384
 add r0 46
@@ -19759,9 +20878,9 @@ mul r2 6305
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_686
+jge Lvj
 set r1 0
-label highlight_positive_686
+label Lvj
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -19784,13 +20903,13 @@ mul r2 6305
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_49
+jge Lvk
 set r1 0
-label fresnel_positive_49
+label Lvk
 cmp r1 16384
-jle fresnel_bounded_49
+jle Lvl
 set r1 16384
-label fresnel_bounded_49
+label Lvl
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -19807,24 +20926,24 @@ div r2 16384
 localget r1 2865
 add r2 r1
 cmp r2 255
-jle metal_bounded_49
+jle Lvm
 set r2 255
-label metal_bounded_49
+label Lvm
 localset 2737 r2
 cmp r0 255
-jle intensity_bounded_687
+jle Lvn
 set r0 255
-label intensity_bounded_687
+label Lvn
 localset 2353 r0
 localget r1 2865
 mul r1 3
 add r1 r0
 div r1 4
 localset 2865 r1
-label body_lighting_done_683
+label Lvo
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_688
+jne Lvv
 localget r0 3000
 mul r0 -2759
 localget r1 3001
@@ -19835,9 +20954,9 @@ mul r1 10463
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_690
+jge Lvp
 set r0 0
-label diffuse_positive_690
+label Lvp
 mul r0 128
 div r0 16384
 add r0 49
@@ -19856,9 +20975,9 @@ mul r2 10463
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_691
+jge Lvq
 set r1 0
-label highlight_positive_691
+label Lvq
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -19881,13 +21000,13 @@ mul r2 10463
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_50
+jge Lvr
 set r1 0
-label fresnel_positive_50
+label Lvr
 cmp r1 16384
-jle fresnel_bounded_50
+jle Lvs
 set r1 16384
-label fresnel_bounded_50
+label Lvs
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -19904,24 +21023,24 @@ div r2 16384
 localget r1 2866
 add r2 r1
 cmp r2 255
-jle metal_bounded_50
+jle Lvt
 set r2 255
-label metal_bounded_50
+label Lvt
 localset 2738 r2
 cmp r0 255
-jle intensity_bounded_692
+jle Lvu
 set r0 255
-label intensity_bounded_692
+label Lvu
 localset 2354 r0
 localget r1 2866
 mul r1 3
 add r1 r0
 div r1 4
 localset 2866 r1
-label body_lighting_done_688
+label Lvv
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_693
+jne Lw2
 localget r0 3000
 mul r0 -2700
 localget r1 3001
@@ -19932,9 +21051,9 @@ mul r1 5514
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_695
+jge Lvw
 set r0 0
-label diffuse_positive_695
+label Lvw
 mul r0 128
 div r0 16384
 add r0 46
@@ -19953,9 +21072,9 @@ mul r2 5514
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_696
+jge Lvx
 set r1 0
-label highlight_positive_696
+label Lvx
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -19978,13 +21097,13 @@ mul r2 5514
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_51
+jge Lvy
 set r1 0
-label fresnel_positive_51
+label Lvy
 cmp r1 16384
-jle fresnel_bounded_51
+jle Lvz
 set r1 16384
-label fresnel_bounded_51
+label Lvz
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -20001,21 +21120,21 @@ div r2 16384
 localget r1 2867
 add r2 r1
 cmp r2 255
-jle metal_bounded_51
+jle Lw0
 set r2 255
-label metal_bounded_51
+label Lw0
 localset 2739 r2
 cmp r0 255
-jle intensity_bounded_697
+jle Lw1
 set r0 255
-label intensity_bounded_697
+label Lw1
 localset 2355 r0
 localget r1 2867
 mul r1 3
 add r1 r0
 div r1 4
 localset 2867 r1
-label body_lighting_done_693
+label Lw2
 localget r0 3000
 mul r0 0
 localget r1 3001
@@ -20026,9 +21145,9 @@ mul r1 11604
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_700
+jge Lw3
 set r0 0
-label diffuse_positive_700
+label Lw3
 mul r0 128
 div r0 16384
 add r0 50
@@ -20047,9 +21166,9 @@ mul r2 11604
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_701
+jge Lw4
 set r1 0
-label highlight_positive_701
+label Lw4
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -20072,13 +21191,13 @@ mul r2 11604
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_52
+jge Lw5
 set r1 0
-label fresnel_positive_52
+label Lw5
 cmp r1 16384
-jle fresnel_bounded_52
+jle Lw6
 set r1 16384
-label fresnel_bounded_52
+label Lw6
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -20095,24 +21214,24 @@ div r2 16384
 localget r1 2868
 add r2 r1
 cmp r2 255
-jle metal_bounded_52
+jle Lw7
 set r2 255
-label metal_bounded_52
+label Lw7
 localset 2740 r2
 cmp r0 255
-jle intensity_bounded_702
+jle Lw8
 set r0 255
-label intensity_bounded_702
+label Lw8
 localset 2356 r0
 localget r1 2868
 mul r1 3
 add r1 r0
 div r1 4
 localset 2868 r1
-label body_lighting_done_698
+label Lw9
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_703
+jne Lwg
 localget r0 3000
 mul r0 0
 localget r1 3001
@@ -20123,9 +21242,9 @@ mul r1 15122
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_705
+jge Lwa
 set r0 0
-label diffuse_positive_705
+label Lwa
 mul r0 128
 div r0 16384
 add r0 58
@@ -20144,9 +21263,9 @@ mul r2 15122
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_706
+jge Lwb
 set r1 0
-label highlight_positive_706
+label Lwb
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -20169,13 +21288,13 @@ mul r2 15122
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_53
+jge Lwc
 set r1 0
-label fresnel_positive_53
+label Lwc
 cmp r1 16384
-jle fresnel_bounded_53
+jle Lwd
 set r1 16384
-label fresnel_bounded_53
+label Lwd
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -20192,24 +21311,24 @@ div r2 16384
 localget r1 2869
 add r2 r1
 cmp r2 255
-jle metal_bounded_53
+jle Lwe
 set r2 255
-label metal_bounded_53
+label Lwe
 localset 2741 r2
 cmp r0 255
-jle intensity_bounded_707
+jle Lwf
 set r0 255
-label intensity_bounded_707
+label Lwf
 localset 2357 r0
 localget r1 2869
 mul r1 3
 add r1 r0
 div r1 4
 localset 2869 r1
-label body_lighting_done_703
+label Lwg
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_708
+jne Lwn
 localget r0 3000
 mul r0 -10412
 localget r1 3001
@@ -20220,9 +21339,9 @@ mul r1 10622
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_710
+jge Lwh
 set r0 0
-label diffuse_positive_710
+label Lwh
 mul r0 128
 div r0 16384
 add r0 75
@@ -20241,9 +21360,9 @@ mul r2 10622
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_711
+jge Lwi
 set r1 0
-label highlight_positive_711
+label Lwi
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -20266,13 +21385,13 @@ mul r2 10622
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_54
+jge Lwj
 set r1 0
-label fresnel_positive_54
+label Lwj
 cmp r1 16384
-jle fresnel_bounded_54
+jle Lwk
 set r1 16384
-label fresnel_bounded_54
+label Lwk
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -20289,24 +21408,24 @@ div r2 16384
 localget r1 2870
 add r2 r1
 cmp r2 255
-jle metal_bounded_54
+jle Lwl
 set r2 255
-label metal_bounded_54
+label Lwl
 localset 2742 r2
 cmp r0 255
-jle intensity_bounded_712
+jle Lwm
 set r0 255
-label intensity_bounded_712
+label Lwm
 localset 2358 r0
 localget r1 2870
 mul r1 3
 add r1 r0
 div r1 4
 localset 2870 r1
-label body_lighting_done_708
+label Lwn
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_713
+jne Lwu
 localget r0 3000
 mul r0 -12050
 localget r1 3001
@@ -20317,9 +21436,9 @@ mul r1 -5555
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_715
+jge Lwo
 set r0 0
-label diffuse_positive_715
+label Lwo
 mul r0 128
 div r0 16384
 add r0 79
@@ -20338,9 +21457,9 @@ mul r2 -5555
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_716
+jge Lwp
 set r1 0
-label highlight_positive_716
+label Lwp
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -20363,13 +21482,13 @@ mul r2 -5555
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_55
+jge Lwq
 set r1 0
-label fresnel_positive_55
+label Lwq
 cmp r1 16384
-jle fresnel_bounded_55
+jle Lwr
 set r1 16384
-label fresnel_bounded_55
+label Lwr
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -20386,24 +21505,24 @@ div r2 16384
 localget r1 2871
 add r2 r1
 cmp r2 255
-jle metal_bounded_55
+jle Lws
 set r2 255
-label metal_bounded_55
+label Lws
 localset 2743 r2
 cmp r0 255
-jle intensity_bounded_717
+jle Lwt
 set r0 255
-label intensity_bounded_717
+label Lwt
 localset 2359 r0
 localget r1 2871
 mul r1 3
 add r1 r0
 div r1 4
 localset 2871 r1
-label body_lighting_done_713
+label Lwu
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_718
+jne Lx1
 localget r0 3000
 mul r0 -8564
 localget r1 3001
@@ -20414,9 +21533,9 @@ mul r1 -8045
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_720
+jge Lwv
 set r0 0
-label diffuse_positive_720
+label Lwv
 mul r0 128
 div r0 16384
 add r0 81
@@ -20435,9 +21554,9 @@ mul r2 -8045
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_721
+jge Lww
 set r1 0
-label highlight_positive_721
+label Lww
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -20460,13 +21579,13 @@ mul r2 -8045
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_56
+jge Lwx
 set r1 0
-label fresnel_positive_56
+label Lwx
 cmp r1 16384
-jle fresnel_bounded_56
+jle Lwy
 set r1 16384
-label fresnel_bounded_56
+label Lwy
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -20483,24 +21602,24 @@ div r2 16384
 localget r1 2872
 add r2 r1
 cmp r2 255
-jle metal_bounded_56
+jle Lwz
 set r2 255
-label metal_bounded_56
+label Lwz
 localset 2744 r2
 cmp r0 255
-jle intensity_bounded_722
+jle Lx0
 set r0 255
-label intensity_bounded_722
+label Lx0
 localset 2360 r0
 localget r1 2872
 mul r1 3
 add r1 r0
 div r1 4
 localset 2872 r1
-label body_lighting_done_718
+label Lx1
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_723
+jne Lx8
 localget r0 3000
 mul r0 -11892
 localget r1 3001
@@ -20511,9 +21630,9 @@ mul r1 -9279
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_725
+jge Lx2
 set r0 0
-label diffuse_positive_725
+label Lx2
 mul r0 128
 div r0 16384
 add r0 75
@@ -20532,9 +21651,9 @@ mul r2 -9279
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_726
+jge Lx3
 set r1 0
-label highlight_positive_726
+label Lx3
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -20557,13 +21676,13 @@ mul r2 -9279
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_57
+jge Lx4
 set r1 0
-label fresnel_positive_57
+label Lx4
 cmp r1 16384
-jle fresnel_bounded_57
+jle Lx5
 set r1 16384
-label fresnel_bounded_57
+label Lx5
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -20580,24 +21699,24 @@ div r2 16384
 localget r1 2873
 add r2 r1
 cmp r2 255
-jle metal_bounded_57
+jle Lx6
 set r2 255
-label metal_bounded_57
+label Lx6
 localset 2745 r2
 cmp r0 255
-jle intensity_bounded_727
+jle Lx7
 set r0 255
-label intensity_bounded_727
+label Lx7
 localset 2361 r0
 localget r1 2873
 mul r1 3
 add r1 r0
 div r1 4
 localset 2873 r1
-label body_lighting_done_723
+label Lx8
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_728
+jne Lxf
 localget r0 3000
 mul r0 -10412
 localget r1 3001
@@ -20608,9 +21727,9 @@ mul r1 -10622
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_730
+jge Lx9
 set r0 0
-label diffuse_positive_730
+label Lx9
 mul r0 128
 div r0 16384
 add r0 57
@@ -20629,9 +21748,9 @@ mul r2 -10622
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_731
+jge Lxa
 set r1 0
-label highlight_positive_731
+label Lxa
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -20654,13 +21773,13 @@ mul r2 -10622
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_58
+jge Lxb
 set r1 0
-label fresnel_positive_58
+label Lxb
 cmp r1 16384
-jle fresnel_bounded_58
+jle Lxc
 set r1 16384
-label fresnel_bounded_58
+label Lxc
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -20677,24 +21796,24 @@ div r2 16384
 localget r1 2874
 add r2 r1
 cmp r2 255
-jle metal_bounded_58
+jle Lxd
 set r2 255
-label metal_bounded_58
+label Lxd
 localset 2746 r2
 cmp r0 255
-jle intensity_bounded_732
+jle Lxe
 set r0 255
-label intensity_bounded_732
+label Lxe
 localset 2362 r0
 localget r1 2874
 mul r1 3
 add r1 r0
 div r1 4
 localset 2874 r1
-label body_lighting_done_728
+label Lxf
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_733
+jne Lxm
 localget r0 3000
 mul r0 -11892
 localget r1 3001
@@ -20705,9 +21824,9 @@ mul r1 -6396
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_735
+jge Lxg
 set r0 0
-label diffuse_positive_735
+label Lxg
 mul r0 128
 div r0 16384
 add r0 54
@@ -20726,9 +21845,9 @@ mul r2 -6396
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_736
+jge Lxh
 set r1 0
-label highlight_positive_736
+label Lxh
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -20751,13 +21870,13 @@ mul r2 -6396
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_59
+jge Lxi
 set r1 0
-label fresnel_positive_59
+label Lxi
 cmp r1 16384
-jle fresnel_bounded_59
+jle Lxj
 set r1 16384
-label fresnel_bounded_59
+label Lxj
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -20774,24 +21893,24 @@ div r2 16384
 localget r1 2875
 add r2 r1
 cmp r2 255
-jle metal_bounded_59
+jle Lxk
 set r2 255
-label metal_bounded_59
+label Lxk
 localset 2747 r2
 cmp r0 255
-jle intensity_bounded_737
+jle Lxl
 set r0 255
-label intensity_bounded_737
+label Lxl
 localset 2363 r0
 localget r1 2875
 mul r1 3
 add r1 r0
 div r1 4
 localset 2875 r1
-label body_lighting_done_733
+label Lxm
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_738
+jne Lxt
 localget r0 3000
 mul r0 -15907
 localget r1 3001
@@ -20802,9 +21921,9 @@ mul r1 -55
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_740
+jge Lxn
 set r0 0
-label diffuse_positive_740
+label Lxn
 mul r0 128
 div r0 16384
 add r0 61
@@ -20823,9 +21942,9 @@ mul r2 -55
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_741
+jge Lxo
 set r1 0
-label highlight_positive_741
+label Lxo
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -20848,13 +21967,13 @@ mul r2 -55
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_60
+jge Lxp
 set r1 0
-label fresnel_positive_60
+label Lxp
 cmp r1 16384
-jle fresnel_bounded_60
+jle Lxq
 set r1 16384
-label fresnel_bounded_60
+label Lxq
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -20871,24 +21990,24 @@ div r2 16384
 localget r1 2876
 add r2 r1
 cmp r2 255
-jle metal_bounded_60
+jle Lxr
 set r2 255
-label metal_bounded_60
+label Lxr
 localset 2748 r2
 cmp r0 255
-jle intensity_bounded_742
+jle Lxs
 set r0 255
-label intensity_bounded_742
+label Lxs
 localset 2364 r0
 localget r1 2876
 mul r1 3
 add r1 r0
 div r1 4
 localset 2876 r1
-label body_lighting_done_738
+label Lxt
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_743
+jne Ly0
 localget r0 3000
 mul r0 -12050
 localget r1 3001
@@ -20899,9 +22018,9 @@ mul r1 5555
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_745
+jge Lxu
 set r0 0
-label diffuse_positive_745
+label Lxu
 mul r0 128
 div r0 16384
 add r0 53
@@ -20920,9 +22039,9 @@ mul r2 5555
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_746
+jge Lxv
 set r1 0
-label highlight_positive_746
+label Lxv
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -20945,13 +22064,13 @@ mul r2 5555
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_61
+jge Lxw
 set r1 0
-label fresnel_positive_61
+label Lxw
 cmp r1 16384
-jle fresnel_bounded_61
+jle Lxx
 set r1 16384
-label fresnel_bounded_61
+label Lxx
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -20968,24 +22087,24 @@ div r2 16384
 localget r1 2877
 add r2 r1
 cmp r2 255
-jle metal_bounded_61
+jle Lxy
 set r2 255
-label metal_bounded_61
+label Lxy
 localset 2749 r2
 cmp r0 255
-jle intensity_bounded_747
+jle Lxz
 set r0 255
-label intensity_bounded_747
+label Lxz
 localset 2365 r0
 localget r1 2877
 mul r1 3
 add r1 r0
 div r1 4
 localset 2877 r1
-label body_lighting_done_743
+label Ly0
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_748
+jne Ly7
 localget r0 3000
 mul r0 -8564
 localget r1 3001
@@ -20996,9 +22115,9 @@ mul r1 8045
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_750
+jge Ly1
 set r0 0
-label diffuse_positive_750
+label Ly1
 mul r0 128
 div r0 16384
 add r0 51
@@ -21017,9 +22136,9 @@ mul r2 8045
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_751
+jge Ly2
 set r1 0
-label highlight_positive_751
+label Ly2
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -21042,13 +22161,13 @@ mul r2 8045
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_62
+jge Ly3
 set r1 0
-label fresnel_positive_62
+label Ly3
 cmp r1 16384
-jle fresnel_bounded_62
+jle Ly4
 set r1 16384
-label fresnel_bounded_62
+label Ly4
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -21065,24 +22184,24 @@ div r2 16384
 localget r1 2878
 add r2 r1
 cmp r2 255
-jle metal_bounded_62
+jle Ly5
 set r2 255
-label metal_bounded_62
+label Ly5
 localset 2750 r2
 cmp r0 255
-jle intensity_bounded_752
+jle Ly6
 set r0 255
-label intensity_bounded_752
+label Ly6
 localset 2366 r0
 localget r1 2878
 mul r1 3
 add r1 r0
 div r1 4
 localset 2878 r1
-label body_lighting_done_748
+label Ly7
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_753
+jne Lye
 localget r0 3000
 mul r0 -11892
 localget r1 3001
@@ -21093,9 +22212,9 @@ mul r1 9279
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_755
+jge Ly8
 set r0 0
-label diffuse_positive_755
+label Ly8
 mul r0 128
 div r0 16384
 add r0 57
@@ -21114,9 +22233,9 @@ mul r2 9279
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_756
+jge Ly9
 set r1 0
-label highlight_positive_756
+label Ly9
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -21139,13 +22258,13 @@ mul r2 9279
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_63
+jge Lya
 set r1 0
-label fresnel_positive_63
+label Lya
 cmp r1 16384
-jle fresnel_bounded_63
+jle Lyb
 set r1 16384
-label fresnel_bounded_63
+label Lyb
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -21162,24 +22281,24 @@ div r2 16384
 localget r1 2879
 add r2 r1
 cmp r2 255
-jle metal_bounded_63
+jle Lyc
 set r2 255
-label metal_bounded_63
+label Lyc
 localset 2751 r2
 cmp r0 255
-jle intensity_bounded_757
+jle Lyd
 set r0 255
-label intensity_bounded_757
+label Lyd
 localset 2367 r0
 localget r1 2879
 mul r1 3
 add r1 r0
 div r1 4
 localset 2879 r1
-label body_lighting_done_753
+label Lye
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_758
+jne Lyl
 localget r0 3000
 mul r0 2343
 localget r1 3001
@@ -21190,9 +22309,9 @@ mul r1 10429
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_760
+jge Lyf
 set r0 0
-label diffuse_positive_760
+label Lyf
 mul r0 128
 div r0 16384
 add r0 83
@@ -21211,9 +22330,9 @@ mul r2 10429
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_761
+jge Lyg
 set r1 0
-label highlight_positive_761
+label Lyg
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -21236,13 +22355,13 @@ mul r2 10429
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_64
+jge Lyh
 set r1 0
-label fresnel_positive_64
+label Lyh
 cmp r1 16384
-jle fresnel_bounded_64
+jle Lyi
 set r1 16384
-label fresnel_bounded_64
+label Lyi
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -21259,24 +22378,24 @@ div r2 16384
 localget r1 2880
 add r2 r1
 cmp r2 255
-jle metal_bounded_64
+jle Lyj
 set r2 255
-label metal_bounded_64
+label Lyj
 localset 2752 r2
 cmp r0 255
-jle intensity_bounded_762
+jle Lyk
 set r0 255
-label intensity_bounded_762
+label Lyk
 localset 2368 r0
 localget r1 2880
 mul r1 3
 add r1 r0
 div r1 4
 localset 2880 r1
-label body_lighting_done_758
+label Lyl
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_763
+jne Lys
 localget r0 3000
 mul r0 2759
 localget r1 3001
@@ -21287,9 +22406,9 @@ mul r1 -10463
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_765
+jge Lym
 set r0 0
-label diffuse_positive_765
+label Lym
 mul r0 128
 div r0 16384
 add r0 83
@@ -21308,9 +22427,9 @@ mul r2 -10463
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_766
+jge Lyn
 set r1 0
-label highlight_positive_766
+label Lyn
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -21333,13 +22452,13 @@ mul r2 -10463
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_65
+jge Lyo
 set r1 0
-label fresnel_positive_65
+label Lyo
 cmp r1 16384
-jle fresnel_bounded_65
+jle Lyp
 set r1 16384
-label fresnel_bounded_65
+label Lyp
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -21356,24 +22475,24 @@ div r2 16384
 localget r1 2881
 add r2 r1
 cmp r2 255
-jle metal_bounded_65
+jle Lyq
 set r2 255
-label metal_bounded_65
+label Lyq
 localset 2753 r2
 cmp r0 255
-jle intensity_bounded_767
+jle Lyr
 set r0 255
-label intensity_bounded_767
+label Lyr
 localset 2369 r0
 localget r1 2881
 mul r1 3
 add r1 r0
 div r1 4
 localset 2881 r1
-label body_lighting_done_763
+label Lys
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_768
+jne Lyz
 localget r0 3000
 mul r0 2759
 localget r1 3001
@@ -21384,9 +22503,9 @@ mul r1 -12302
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_770
+jge Lyt
 set r0 0
-label diffuse_positive_770
+label Lyt
 mul r0 128
 div r0 16384
 add r0 52
@@ -21405,9 +22524,9 @@ mul r2 -12302
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_771
+jge Lyu
 set r1 0
-label highlight_positive_771
+label Lyu
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -21430,13 +22549,13 @@ mul r2 -12302
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_66
+jge Lyv
 set r1 0
-label fresnel_positive_66
+label Lyv
 cmp r1 16384
-jle fresnel_bounded_66
+jle Lyw
 set r1 16384
-label fresnel_bounded_66
+label Lyw
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -21453,24 +22572,24 @@ div r2 16384
 localget r1 2882
 add r2 r1
 cmp r2 255
-jle metal_bounded_66
+jle Lyx
 set r2 255
-label metal_bounded_66
+label Lyx
 localset 2754 r2
 cmp r0 255
-jle intensity_bounded_772
+jle Lyy
 set r0 255
-label intensity_bounded_772
+label Lyy
 localset 2370 r0
 localget r1 2882
 mul r1 3
 add r1 r0
 div r1 4
 localset 2882 r1
-label body_lighting_done_768
+label Lyz
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_773
+jne Lz6
 localget r0 3000
 mul r0 2700
 localget r1 3001
@@ -21481,9 +22600,9 @@ mul r1 5514
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_775
+jge Lz0
 set r0 0
-label diffuse_positive_775
+label Lz0
 mul r0 128
 div r0 16384
 add r0 46
@@ -21502,9 +22621,9 @@ mul r2 5514
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_776
+jge Lz1
 set r1 0
-label highlight_positive_776
+label Lz1
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -21527,13 +22646,13 @@ mul r2 5514
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_67
+jge Lz2
 set r1 0
-label fresnel_positive_67
+label Lz2
 cmp r1 16384
-jle fresnel_bounded_67
+jle Lz3
 set r1 16384
-label fresnel_bounded_67
+label Lz3
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -21550,24 +22669,24 @@ div r2 16384
 localget r1 2883
 add r2 r1
 cmp r2 255
-jle metal_bounded_67
+jle Lz4
 set r2 255
-label metal_bounded_67
+label Lz4
 localset 2755 r2
 cmp r0 255
-jle intensity_bounded_777
+jle Lz5
 set r0 255
-label intensity_bounded_777
+label Lz5
 localset 2371 r0
 localget r1 2883
 mul r1 3
 add r1 r0
 div r1 4
 localset 2883 r1
-label body_lighting_done_773
+label Lz6
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_778
+jne Lzd
 localget r0 3000
 mul r0 2759
 localget r1 3001
@@ -21578,9 +22697,9 @@ mul r1 10463
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_780
+jge Lz7
 set r0 0
-label diffuse_positive_780
+label Lz7
 mul r0 128
 div r0 16384
 add r0 49
@@ -21599,9 +22718,9 @@ mul r2 10463
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_781
+jge Lz8
 set r1 0
-label highlight_positive_781
+label Lz8
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -21624,13 +22743,13 @@ mul r2 10463
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_68
+jge Lz9
 set r1 0
-label fresnel_positive_68
+label Lz9
 cmp r1 16384
-jle fresnel_bounded_68
+jle Lza
 set r1 16384
-label fresnel_bounded_68
+label Lza
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -21647,24 +22766,24 @@ div r2 16384
 localget r1 2884
 add r2 r1
 cmp r2 255
-jle metal_bounded_68
+jle Lzb
 set r2 255
-label metal_bounded_68
+label Lzb
 localset 2756 r2
 cmp r0 255
-jle intensity_bounded_782
+jle Lzc
 set r0 255
-label intensity_bounded_782
+label Lzc
 localset 2372 r0
 localget r1 2884
 mul r1 3
 add r1 r0
 div r1 4
 localset 2884 r1
-label body_lighting_done_778
+label Lzd
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_783
+jne Lzk
 localget r0 3000
 mul r0 10412
 localget r1 3001
@@ -21675,9 +22794,9 @@ mul r1 10622
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_785
+jge Lze
 set r0 0
-label diffuse_positive_785
+label Lze
 mul r0 128
 div r0 16384
 add r0 75
@@ -21696,9 +22815,9 @@ mul r2 10622
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_786
+jge Lzf
 set r1 0
-label highlight_positive_786
+label Lzf
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -21721,13 +22840,13 @@ mul r2 10622
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_69
+jge Lzg
 set r1 0
-label fresnel_positive_69
+label Lzg
 cmp r1 16384
-jle fresnel_bounded_69
+jle Lzh
 set r1 16384
-label fresnel_bounded_69
+label Lzh
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -21744,24 +22863,24 @@ div r2 16384
 localget r1 2885
 add r2 r1
 cmp r2 255
-jle metal_bounded_69
+jle Lzi
 set r2 255
-label metal_bounded_69
+label Lzi
 localset 2757 r2
 cmp r0 255
-jle intensity_bounded_787
+jle Lzj
 set r0 255
-label intensity_bounded_787
+label Lzj
 localset 2373 r0
 localget r1 2885
 mul r1 3
 add r1 r0
 div r1 4
 localset 2885 r1
-label body_lighting_done_783
+label Lzk
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_788
+jne Lzr
 localget r0 3000
 mul r0 12050
 localget r1 3001
@@ -21772,9 +22891,9 @@ mul r1 -5555
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_790
+jge Lzl
 set r0 0
-label diffuse_positive_790
+label Lzl
 mul r0 128
 div r0 16384
 add r0 79
@@ -21793,9 +22912,9 @@ mul r2 -5555
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_791
+jge Lzm
 set r1 0
-label highlight_positive_791
+label Lzm
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -21818,13 +22937,13 @@ mul r2 -5555
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_70
+jge Lzn
 set r1 0
-label fresnel_positive_70
+label Lzn
 cmp r1 16384
-jle fresnel_bounded_70
+jle Lzo
 set r1 16384
-label fresnel_bounded_70
+label Lzo
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -21841,24 +22960,24 @@ div r2 16384
 localget r1 2886
 add r2 r1
 cmp r2 255
-jle metal_bounded_70
+jle Lzp
 set r2 255
-label metal_bounded_70
+label Lzp
 localset 2758 r2
 cmp r0 255
-jle intensity_bounded_792
+jle Lzq
 set r0 255
-label intensity_bounded_792
+label Lzq
 localset 2374 r0
 localget r1 2886
 mul r1 3
 add r1 r0
 div r1 4
 localset 2886 r1
-label body_lighting_done_788
+label Lzr
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_793
+jne Lzy
 localget r0 3000
 mul r0 8564
 localget r1 3001
@@ -21869,9 +22988,9 @@ mul r1 -8045
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_795
+jge Lzs
 set r0 0
-label diffuse_positive_795
+label Lzs
 mul r0 128
 div r0 16384
 add r0 81
@@ -21890,9 +23009,9 @@ mul r2 -8045
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_796
+jge Lzt
 set r1 0
-label highlight_positive_796
+label Lzt
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -21915,13 +23034,13 @@ mul r2 -8045
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_71
+jge Lzu
 set r1 0
-label fresnel_positive_71
+label Lzu
 cmp r1 16384
-jle fresnel_bounded_71
+jle Lzv
 set r1 16384
-label fresnel_bounded_71
+label Lzv
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -21938,24 +23057,24 @@ div r2 16384
 localget r1 2887
 add r2 r1
 cmp r2 255
-jle metal_bounded_71
+jle Lzw
 set r2 255
-label metal_bounded_71
+label Lzw
 localset 2759 r2
 cmp r0 255
-jle intensity_bounded_797
+jle Lzx
 set r0 255
-label intensity_bounded_797
+label Lzx
 localset 2375 r0
 localget r1 2887
 mul r1 3
 add r1 r0
 div r1 4
 localset 2887 r1
-label body_lighting_done_793
+label Lzy
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_798
+jne L105
 localget r0 3000
 mul r0 11892
 localget r1 3001
@@ -21966,9 +23085,9 @@ mul r1 -9279
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_800
+jge Lzz
 set r0 0
-label diffuse_positive_800
+label Lzz
 mul r0 128
 div r0 16384
 add r0 75
@@ -21987,9 +23106,9 @@ mul r2 -9279
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_801
+jge L100
 set r1 0
-label highlight_positive_801
+label L100
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -22012,13 +23131,13 @@ mul r2 -9279
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_72
+jge L101
 set r1 0
-label fresnel_positive_72
+label L101
 cmp r1 16384
-jle fresnel_bounded_72
+jle L102
 set r1 16384
-label fresnel_bounded_72
+label L102
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -22035,24 +23154,24 @@ div r2 16384
 localget r1 2888
 add r2 r1
 cmp r2 255
-jle metal_bounded_72
+jle L103
 set r2 255
-label metal_bounded_72
+label L103
 localset 2760 r2
 cmp r0 255
-jle intensity_bounded_802
+jle L104
 set r0 255
-label intensity_bounded_802
+label L104
 localset 2376 r0
 localget r1 2888
 mul r1 3
 add r1 r0
 div r1 4
 localset 2888 r1
-label body_lighting_done_798
+label L105
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_803
+jne L10c
 localget r0 3000
 mul r0 10412
 localget r1 3001
@@ -22063,9 +23182,9 @@ mul r1 -10622
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_805
+jge L106
 set r0 0
-label diffuse_positive_805
+label L106
 mul r0 128
 div r0 16384
 add r0 57
@@ -22084,9 +23203,9 @@ mul r2 -10622
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_806
+jge L107
 set r1 0
-label highlight_positive_806
+label L107
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -22109,13 +23228,13 @@ mul r2 -10622
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_73
+jge L108
 set r1 0
-label fresnel_positive_73
+label L108
 cmp r1 16384
-jle fresnel_bounded_73
+jle L109
 set r1 16384
-label fresnel_bounded_73
+label L109
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -22132,24 +23251,24 @@ div r2 16384
 localget r1 2889
 add r2 r1
 cmp r2 255
-jle metal_bounded_73
+jle L10a
 set r2 255
-label metal_bounded_73
+label L10a
 localset 2761 r2
 cmp r0 255
-jle intensity_bounded_807
+jle L10b
 set r0 255
-label intensity_bounded_807
+label L10b
 localset 2377 r0
 localget r1 2889
 mul r1 3
 add r1 r0
 div r1 4
 localset 2889 r1
-label body_lighting_done_803
+label L10c
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_808
+jne L10j
 localget r0 3000
 mul r0 11892
 localget r1 3001
@@ -22160,9 +23279,9 @@ mul r1 -6396
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_810
+jge L10d
 set r0 0
-label diffuse_positive_810
+label L10d
 mul r0 128
 div r0 16384
 add r0 54
@@ -22181,9 +23300,9 @@ mul r2 -6396
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_811
+jge L10e
 set r1 0
-label highlight_positive_811
+label L10e
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -22206,13 +23325,13 @@ mul r2 -6396
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_74
+jge L10f
 set r1 0
-label fresnel_positive_74
+label L10f
 cmp r1 16384
-jle fresnel_bounded_74
+jle L10g
 set r1 16384
-label fresnel_bounded_74
+label L10g
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -22229,24 +23348,24 @@ div r2 16384
 localget r1 2890
 add r2 r1
 cmp r2 255
-jle metal_bounded_74
+jle L10h
 set r2 255
-label metal_bounded_74
+label L10h
 localset 2762 r2
 cmp r0 255
-jle intensity_bounded_812
+jle L10i
 set r0 255
-label intensity_bounded_812
+label L10i
 localset 2378 r0
 localget r1 2890
 mul r1 3
 add r1 r0
 div r1 4
 localset 2890 r1
-label body_lighting_done_808
+label L10j
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_813
+jne L10q
 localget r0 3000
 mul r0 15907
 localget r1 3001
@@ -22257,9 +23376,9 @@ mul r1 -55
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_815
+jge L10k
 set r0 0
-label diffuse_positive_815
+label L10k
 mul r0 128
 div r0 16384
 add r0 61
@@ -22278,9 +23397,9 @@ mul r2 -55
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_816
+jge L10l
 set r1 0
-label highlight_positive_816
+label L10l
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -22303,13 +23422,13 @@ mul r2 -55
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_75
+jge L10m
 set r1 0
-label fresnel_positive_75
+label L10m
 cmp r1 16384
-jle fresnel_bounded_75
+jle L10n
 set r1 16384
-label fresnel_bounded_75
+label L10n
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -22326,24 +23445,24 @@ div r2 16384
 localget r1 2891
 add r2 r1
 cmp r2 255
-jle metal_bounded_75
+jle L10o
 set r2 255
-label metal_bounded_75
+label L10o
 localset 2763 r2
 cmp r0 255
-jle intensity_bounded_817
+jle L10p
 set r0 255
-label intensity_bounded_817
+label L10p
 localset 2379 r0
 localget r1 2891
 mul r1 3
 add r1 r0
 div r1 4
 localset 2891 r1
-label body_lighting_done_813
+label L10q
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_818
+jne L10x
 localget r0 3000
 mul r0 12050
 localget r1 3001
@@ -22354,9 +23473,9 @@ mul r1 5555
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_820
+jge L10r
 set r0 0
-label diffuse_positive_820
+label L10r
 mul r0 128
 div r0 16384
 add r0 53
@@ -22375,9 +23494,9 @@ mul r2 5555
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_821
+jge L10s
 set r1 0
-label highlight_positive_821
+label L10s
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -22400,13 +23519,13 @@ mul r2 5555
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_76
+jge L10t
 set r1 0
-label fresnel_positive_76
+label L10t
 cmp r1 16384
-jle fresnel_bounded_76
+jle L10u
 set r1 16384
-label fresnel_bounded_76
+label L10u
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -22423,24 +23542,24 @@ div r2 16384
 localget r1 2892
 add r2 r1
 cmp r2 255
-jle metal_bounded_76
+jle L10v
 set r2 255
-label metal_bounded_76
+label L10v
 localset 2764 r2
 cmp r0 255
-jle intensity_bounded_822
+jle L10w
 set r0 255
-label intensity_bounded_822
+label L10w
 localset 2380 r0
 localget r1 2892
 mul r1 3
 add r1 r0
 div r1 4
 localset 2892 r1
-label body_lighting_done_818
+label L10x
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_823
+jne L114
 localget r0 3000
 mul r0 8564
 localget r1 3001
@@ -22451,9 +23570,9 @@ mul r1 8045
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_825
+jge L10y
 set r0 0
-label diffuse_positive_825
+label L10y
 mul r0 128
 div r0 16384
 add r0 51
@@ -22472,9 +23591,9 @@ mul r2 8045
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_826
+jge L10z
 set r1 0
-label highlight_positive_826
+label L10z
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -22497,13 +23616,13 @@ mul r2 8045
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_77
+jge L110
 set r1 0
-label fresnel_positive_77
+label L110
 cmp r1 16384
-jle fresnel_bounded_77
+jle L111
 set r1 16384
-label fresnel_bounded_77
+label L111
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -22520,24 +23639,24 @@ div r2 16384
 localget r1 2893
 add r2 r1
 cmp r2 255
-jle metal_bounded_77
+jle L112
 set r2 255
-label metal_bounded_77
+label L112
 localset 2765 r2
 cmp r0 255
-jle intensity_bounded_827
+jle L113
 set r0 255
-label intensity_bounded_827
+label L113
 localset 2381 r0
 localget r1 2893
 mul r1 3
 add r1 r0
 div r1 4
 localset 2893 r1
-label body_lighting_done_823
+label L114
 localget r3 3030
 cmp r3 0
-jne body_lighting_done_828
+jne L11b
 localget r0 3000
 mul r0 11892
 localget r1 3001
@@ -22548,9 +23667,9 @@ mul r1 9279
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_830
+jge L115
 set r0 0
-label diffuse_positive_830
+label L115
 mul r0 128
 div r0 16384
 add r0 57
@@ -22569,9 +23688,9 @@ mul r2 9279
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_831
+jge L116
 set r1 0
-label highlight_positive_831
+label L116
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -22594,13 +23713,13 @@ mul r2 9279
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_78
+jge L117
 set r1 0
-label fresnel_positive_78
+label L117
 cmp r1 16384
-jle fresnel_bounded_78
+jle L118
 set r1 16384
-label fresnel_bounded_78
+label L118
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -22617,24 +23736,24 @@ div r2 16384
 localget r1 2894
 add r2 r1
 cmp r2 255
-jle metal_bounded_78
+jle L119
 set r2 255
-label metal_bounded_78
+label L119
 localset 2766 r2
 cmp r0 255
-jle intensity_bounded_832
+jle L11a
 set r0 255
-label intensity_bounded_832
+label L11a
 localset 2382 r0
 localget r1 2894
 mul r1 3
 add r1 r0
 div r1 4
 localset 2894 r1
-label body_lighting_done_828
+label L11b
 localget r3 3030
 cmp r3 2
-jne body_lighting_done_833
+jne L11i
 localget r0 3000
 mul r0 -11211
 localget r1 3001
@@ -22645,9 +23764,9 @@ mul r1 11948
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_835
+jge L11c
 set r0 0
-label diffuse_positive_835
+label L11c
 mul r0 128
 div r0 16384
 add r0 66
@@ -22666,9 +23785,9 @@ mul r2 11948
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_836
+jge L11d
 set r1 0
-label highlight_positive_836
+label L11d
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -22691,13 +23810,13 @@ mul r2 11948
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_79
+jge L11e
 set r1 0
-label fresnel_positive_79
+label L11e
 cmp r1 16384
-jle fresnel_bounded_79
+jle L11f
 set r1 16384
-label fresnel_bounded_79
+label L11f
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -22714,24 +23833,24 @@ div r2 16384
 localget r1 2895
 add r2 r1
 cmp r2 255
-jle metal_bounded_79
+jle L11g
 set r2 255
-label metal_bounded_79
+label L11g
 localset 2767 r2
 cmp r0 255
-jle intensity_bounded_837
+jle L11h
 set r0 255
-label intensity_bounded_837
+label L11h
 localset 2383 r0
 localget r1 2895
 mul r1 3
 add r1 r0
 div r1 4
 localset 2895 r1
-label body_lighting_done_833
+label L11i
 localget r3 3030
 cmp r3 2
-jne body_lighting_done_840
+jne L11p
 localget r0 3000
 mul r0 11794
 localget r1 3001
@@ -22742,9 +23861,9 @@ mul r1 11373
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_842
+jge L11j
 set r0 0
-label diffuse_positive_842
+label L11j
 mul r0 128
 div r0 16384
 add r0 66
@@ -22763,9 +23882,9 @@ mul r2 11373
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_843
+jge L11k
 set r1 0
-label highlight_positive_843
+label L11k
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -22788,13 +23907,13 @@ mul r2 11373
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_81
+jge L11l
 set r1 0
-label fresnel_positive_81
+label L11l
 cmp r1 16384
-jle fresnel_bounded_81
+jle L11m
 set r1 16384
-label fresnel_bounded_81
+label L11m
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -22811,24 +23930,24 @@ div r2 16384
 localget r1 2897
 add r2 r1
 cmp r2 255
-jle metal_bounded_81
+jle L11n
 set r2 255
-label metal_bounded_81
+label L11n
 localset 2769 r2
 cmp r0 255
-jle intensity_bounded_844
+jle L11o
 set r0 255
-label intensity_bounded_844
+label L11o
 localset 2385 r0
 localget r1 2897
 mul r1 3
 add r1 r0
 div r1 4
 localset 2897 r1
-label body_lighting_done_840
+label L11p
 localget r3 3030
 cmp r3 1
-jne body_lighting_done_847
+jne L11w
 localget r0 3000
 mul r0 -3028
 localget r1 3001
@@ -22839,9 +23958,9 @@ mul r1 13295
 add r0 r1
 div r0 16384
 cmp r0 0
-jge diffuse_positive_849
+jge L11q
 set r0 0
-label diffuse_positive_849
+label L11q
 mul r0 128
 div r0 16384
 add r0 78
@@ -22860,9 +23979,9 @@ mul r2 13295
 add r1 r2
 div r1 16384
 cmp r1 0
-jge highlight_positive_850
+jge L11r
 set r1 0
-label highlight_positive_850
+label L11r
 mul r1 r1
 div r1 16384
 mul r1 r1
@@ -22885,13 +24004,13 @@ mul r2 13295
 add r1 r2
 div r1 16384
 cmp r1 0
-jge fresnel_positive_83
+jge L11s
 set r1 0
-label fresnel_positive_83
+label L11s
 cmp r1 16384
-jle fresnel_bounded_83
+jle L11t
 set r1 16384
-label fresnel_bounded_83
+label L11t
 set r2 16384
 sub r2 r1
 mov r1 r2
@@ -22908,21 +24027,21 @@ div r2 16384
 localget r1 2899
 add r2 r1
 cmp r2 255
-jle metal_bounded_83
+jle L11u
 set r2 255
-label metal_bounded_83
+label L11u
 localset 2771 r2
 cmp r0 255
-jle intensity_bounded_851
+jle L11v
 set r0 255
-label intensity_bounded_851
+label L11v
 localset 2387 r0
 localget r1 2899
 mul r1 3
 add r1 r0
 div r1 4
 localset 2899 r1
-label body_lighting_done_847
+label L11w
 label lighting_table_ready
 localget r0 11
 cmp r0 4
@@ -22965,9 +24084,9 @@ mov r5 r0
 add r5 0
 mod r5 4096
 cmp r5 0
-jge sin_negative_852
+jge L11x
 add r5 4096
-label sin_negative_852
+label L11x
 mov r7 r5
 mod r7 2048
 set r8 2048
@@ -22980,9 +24099,9 @@ sub r6 r8
 mul r7 262144
 div r7 r6
 cmp r5 2048
-jlt sin_done_853
+jlt L11y
 mul r7 -1
-label sin_done_853
+label L11y
 mov r5 r7
 mov r8 r5
 mov r9 r8
@@ -22992,9 +24111,9 @@ mov r6 r0
 add r6 1024
 mod r6 4096
 cmp r6 0
-jge sin_negative_854
+jge L11z
 add r6 4096
-label sin_negative_854
+label L11z
 mov r7 r6
 mod r7 2048
 set r8 2048
@@ -23007,9 +24126,9 @@ sub r5 r8
 mul r7 262144
 div r7 r5
 cmp r6 2048
-jlt sin_done_855
+jlt L120
 mul r7 -1
-label sin_done_855
+label L120
 mov r6 r7
 localget r5 58
 sub r5 32768
@@ -23028,9 +24147,9 @@ mov r5 r0
 add r5 0
 mod r5 4096
 cmp r5 0
-jge sin_negative_856
+jge L121
 add r5 4096
-label sin_negative_856
+label L121
 mov r7 r5
 mod r7 2048
 set r8 2048
@@ -23043,9 +24162,9 @@ sub r6 r8
 mul r7 262144
 div r7 r6
 cmp r5 2048
-jlt sin_done_857
+jlt L122
 mul r7 -1
-label sin_done_857
+label L122
 mov r5 r7
 mov r8 r5
 mov r9 r8
@@ -23055,9 +24174,9 @@ mov r6 r0
 add r6 1024
 mod r6 4096
 cmp r6 0
-jge sin_negative_858
+jge L123
 add r6 4096
-label sin_negative_858
+label L123
 mov r7 r6
 mod r7 2048
 set r8 2048
@@ -23070,9 +24189,9 @@ sub r5 r8
 mul r7 262144
 div r7 r5
 cmp r6 2048
-jlt sin_done_859
+jlt L124
 mul r7 -1
-label sin_done_859
+label L124
 mov r6 r7
 localget r5 58
 sub r5 32768
@@ -23106,9 +24225,9 @@ label vertex_transform_position
 meshread r0 r1 r2 r8
 localget r9 11
 cmp r9 4
-jlt nature_pose_done_860
+jlt L125
 cmp r9 124
-jge nature_pose_done_860
+jge L125
 localget r9 3120
 localset 3091 r1
 mov r5 r9
@@ -23150,75 +24269,75 @@ div r5 3000
 add r0 r5
 localget r9 3104
 add r1 r9
-label nature_pose_done_860
+label L125
 cmp r8 279
-jlt wheel_next_model_863
+jlt L12a
 cmp r8 795
-jge wheel_next_model_863
+jge L12a
 cmp r8 408
-jge wheel_next_wheel_864
+jge L126
 localset 3044 -88
 localset 3045 -142
 localset 3046 0
-jmp wheel_transform_861
-label wheel_next_wheel_864
+jmp L12g
+label L126
 cmp r8 537
-jge wheel_next_wheel_865
+jge L127
 localset 3044 88
 localset 3045 -142
 localset 3046 0
-jmp wheel_transform_861
-label wheel_next_wheel_865
+jmp L12g
+label L127
 cmp r8 666
-jge wheel_next_wheel_866
+jge L128
 localset 3044 -88
 localset 3045 138
 localset 3046 1
-jmp wheel_transform_861
-label wheel_next_wheel_866
+jmp L12g
+label L128
 cmp r8 795
-jge wheel_next_wheel_867
+jge L129
 localset 3044 88
 localset 3045 138
 localset 3046 1
-jmp wheel_transform_861
-label wheel_next_wheel_867
-label wheel_next_model_863
+jmp L12g
+label L129
+label L12a
 cmp r8 1109
-jlt wheel_next_model_868
+jlt L12f
 cmp r8 1309
-jge wheel_next_model_868
+jge L12f
 cmp r8 1159
-jge wheel_next_wheel_869
+jge L12b
 localset 3044 -88
 localset 3045 -142
 localset 3046 0
-jmp wheel_transform_861
-label wheel_next_wheel_869
+jmp L12g
+label L12b
 cmp r8 1209
-jge wheel_next_wheel_870
+jge L12c
 localset 3044 88
 localset 3045 -142
 localset 3046 0
-jmp wheel_transform_861
-label wheel_next_wheel_870
+jmp L12g
+label L12c
 cmp r8 1259
-jge wheel_next_wheel_871
+jge L12d
 localset 3044 -88
 localset 3045 138
 localset 3046 1
-jmp wheel_transform_861
-label wheel_next_wheel_871
+jmp L12g
+label L12d
 cmp r8 1309
-jge wheel_next_wheel_872
+jge L12e
 localset 3044 88
 localset 3045 138
 localset 3046 1
-jmp wheel_transform_861
-label wheel_next_wheel_872
-label wheel_next_model_868
-jmp wheel_transform_done_862
-label wheel_transform_861
+jmp L12g
+label L12e
+label L12f
+jmp L12i
+label L12g
 sub r1 34
 localget r9 3045
 sub r2 r9
@@ -23241,7 +24360,7 @@ mov r1 r7
 add r1 34
 localget r9 3046
 cmp r9 0
-je wheel_rear_873
+je L12h
 localget r9 3044
 sub r0 r9
 localget r9 3045
@@ -23266,49 +24385,49 @@ add r0 r10
 mov r2 r9
 localget r10 3045
 add r2 r10
-label wheel_rear_873
-label wheel_transform_done_862
+label L12h
+label L12i
 localget r9 3070
 cmp r9 1
-je garage_gt_874
+je L12j
 cmp r9 2
-je garage_track_875
-jmp garage_morph_done_876
-label garage_gt_874
+je L12k
+jmp L12l
+label L12j
 mul r0 96
 div r0 100
 mul r2 113
 div r2 100
 cmp r1 74
-jle garage_morph_done_876
+jle L12l
 add r1 18
-jmp garage_morph_done_876
-label garage_track_875
+jmp L12l
+label L12k
 mul r0 114
 div r0 100
 mul r2 92
 div r2 100
 cmp r1 77
-jle garage_morph_done_876
+jle L12l
 sub r1 14
-label garage_morph_done_876
+label L12l
 localget r9 11
 cmp r9 0
-jne suspension_done_877
+jne L12n
 cmp r8 1535
-jge suspension_done_877
+jge L12n
 localget r9 3103
 add r0 r9
 cmp r8 279
-jlt suspension_body_878
+jlt L12m
 cmp r8 795
-jge suspension_body_878
+jge L12m
 load16 r9 384
 cmp r9 0
-je suspension_done_877
+je L12n
 sub r1 4
-jmp suspension_done_877
-label suspension_body_878
+jmp L12n
+label L12m
 mov r5 r1
 sub r5 34
 localget r6 3101
@@ -23329,67 +24448,78 @@ div r9 35840
 sub r2 r9
 localget r9 3100
 add r1 r9
-label suspension_done_877
+label L12n
+localget r3 11
+cmp r3 0
+jne car_ground_plane_done
+localget r3 3332
+mul r3 r0
+localget r4 3333
+mul r4 r2
+add r3 r4
+div r3 4096
+add r1 r3
+label car_ground_plane_done
 localget r9 11
 cmp r9 0
-jne fx_transform_done_879
+jne L12q
 cmp r8 1591
-jlt smoke_transform_done_880
+jlt L12o
 cmp r8 1607
-jge smoke_transform_done_880
+jge L12o
 load8 r9 395
 mul r1 r9
 div r1 16
-label smoke_transform_done_880
+label L12o
 cmp r8 1607
-jlt nitro_transform_done_881
+jlt L12p
 cmp r8 1639
-jge nitro_transform_done_881
+jge L12p
 load32 r9 115
 mod r9 7
 sub r9 3
 add r2 r9
-label nitro_transform_done_881
-label fx_transform_done_879
+label L12p
+label L12q
 localget r9 11
 cmp r9 0
-jne pressure_length_done_882
+jne L12r
 cmp r8 1511
-jlt pressure_length_done_882
+jlt L12r
 cmp r8 1535
-jge pressure_length_done_882
+jge L12r
 sub r1 24
 load16 r9 384
 add r9 24
 mul r1 r9
 div r1 99
 add r1 24
-label pressure_length_done_882
+label L12r
 localget r9 11
 cmp r9 0
-jne vertex_no_pneumatic_rise_883
+jne L12t
 cmp r8 1535
-jlt vertex_pneumatic_rise_884
+jlt L12s
 cmp r8 1607
-jlt vertex_no_pneumatic_rise_883
+jlt L12t
 cmp r8 1639
-jge vertex_no_pneumatic_rise_883
-label vertex_pneumatic_rise_884
+jge L12t
+label L12s
 load16 r9 384
 add r1 r9
-label vertex_no_pneumatic_rise_883
+label L12t
 localget r9 11
 cmp r9 0
-je open_player_ground_886
+je L12u
 cmp r9 124
-jlt open_ground_rise_done_885
+jlt L12v
 localget r9 3104
 add r1 r9
-jmp open_ground_rise_done_885
-label open_player_ground_886
+jmp L12v
+label L12u
 load16 r9 520
 add r1 r9
-label open_ground_rise_done_885
+label L12v
 localget r9 118
 sub r9 32768
 mul r9 r0
@@ -25370,6 +26500,12 @@ meshface 2899 2900 2901 225 r9 r10 r11 60
 meshface 2899 2901 2902 225 r9 r10 r11 60
 localget r0 11
 cmp r0 0
+jne L12w
+load8 r0 129
+cmp r0 1
+jne L12w
+localget r0 11
+cmp r0 0
 jne brake_dim_2903_2904_2905
 load8 r0 129
 cmp r0 1
@@ -25379,6 +26515,16 @@ jmp brake_done_2903_2904_2905
 label brake_dim_2903_2904_2905
 meshface 2903 2904 2905 242 r9 r10 r11 60
 label brake_done_2903_2904_2905
+jmp L12x
+label L12w
+meshface 2903 2904 2905 242 r9 r10 r11 60
+label L12x
+localget r0 11
+cmp r0 0
+jne L12y
+load8 r0 129
+cmp r0 1
+jne L12y
 localget r0 11
 cmp r0 0
 jne brake_dim_2903_2906_2904
@@ -25390,6 +26536,10 @@ jmp brake_done_2903_2906_2904
 label brake_dim_2903_2906_2904
 meshface 2903 2906 2904 242 r9 r10 r11 60
 label brake_done_2903_2906_2904
+jmp L12z
+label L12y
+meshface 2903 2906 2904 242 r9 r10 r11 60
+label L12z
 set r12 228
 meshfacegradienttex 2907 2908 2909 r12 12 1 3 r9 r10 r11 60
 set r12 228
@@ -25482,7 +26632,7 @@ meshface 3019 3020 3021 241 r9 r10 r11 60
 meshface 3019 3022 3020 241 r9 r10 r11 60
 load8 r0 388
 cmp r0 0
-jle air_jet_pulse_done_887
+jle L130
 meshfacegradienttex 3559 3561 3560 244 12 0 1 r9 r10 r11 60
 meshfacegradienttex 3559 3560 3562 244 12 0 1 r9 r10 r11 60
 meshfacegradienttex 3559 3563 3560 244 12 0 1 r9 r10 r11 60
@@ -25499,16 +26649,16 @@ meshfacegradienttex 3577 3579 3578 244 12 0 1 r9 r10 r11 60
 meshfacegradienttex 3577 3578 3580 244 12 0 1 r9 r10 r11 60
 meshfacegradienttex 3577 3581 3578 244 12 0 1 r9 r10 r11 60
 meshfacegradienttex 3577 3578 3582 244 12 0 1 r9 r10 r11 60
-label air_jet_pulse_done_887
+label L130
 load8 r0 395
 cmp r0 0
-jle smoke_done_888
+jle L133
 load16 r0 384
 cmp r0 0
-jne smoke_done_888
+jne L133
 load16 r0 544
 cmp r0 0
-je spray_dry_889
+je L131
 meshfacegradient 3639 3640 3641 32 8 r9 r10 r11 60
 meshfacegradient 3639 3641 3642 32 8 r9 r10 r11 60
 meshfacegradient 3643 3644 3645 32 8 r9 r10 r11 60
@@ -25517,8 +26667,8 @@ meshfacegradient 3647 3648 3649 32 8 r9 r10 r11 60
 meshfacegradient 3647 3649 3650 32 8 r9 r10 r11 60
 meshfacegradient 3651 3652 3653 32 8 r9 r10 r11 60
 meshfacegradient 3651 3653 3654 32 8 r9 r10 r11 60
-jmp spray_done_890
-label spray_dry_889
+jmp L132
+label L131
 meshfacegradient 3639 3640 3641 244 12 r9 r10 r11 60
 meshfacegradient 3639 3641 3642 244 12 r9 r10 r11 60
 meshfacegradient 3643 3644 3645 244 12 r9 r10 r11 60
@@ -25527,11 +26677,11 @@ meshfacegradient 3647 3648 3649 244 12 r9 r10 r11 60
 meshfacegradient 3647 3649 3650 244 12 r9 r10 r11 60
 meshfacegradient 3651 3652 3653 244 12 r9 r10 r11 60
 meshfacegradient 3651 3653 3654 244 12 r9 r10 r11 60
-label spray_done_890
-label smoke_done_888
+label L132
+label L133
 load8 r0 382
 cmp r0 1
-jne nitro_done_891
+jne L134
 meshfacegradienttex 3655 3656 3657 56 8 0 1 r9 r10 r11 60
 meshfacegradienttex 3655 3657 3658 56 8 0 1 r9 r10 r11 60
 meshfacegradienttex 3659 3660 3661 56 8 0 1 r9 r10 r11 60
@@ -25548,7 +26698,7 @@ meshfacegradienttex 3679 3680 3681 56 8 0 1 r9 r10 r11 60
 meshfacegradienttex 3679 3681 3682 56 8 0 1 r9 r10 r11 60
 meshfacegradienttex 3683 3684 3685 56 8 0 1 r9 r10 r11 60
 meshfacegradienttex 3683 3685 3686 56 8 0 1 r9 r10 r11 60
-label nitro_done_891
+label L134
 jmp emit_shadow
 label emit_medium
 localget r12 126
@@ -26111,6 +27261,12 @@ meshface 3363 3364 3365 225 r9 r10 r11 60
 meshface 3363 3365 3366 225 r9 r10 r11 60
 localget r0 11
 cmp r0 0
+jne L135
+load8 r0 129
+cmp r0 1
+jne L135
+localget r0 11
+cmp r0 0
 jne brake_dim_3367_3368_3369
 load8 r0 129
 cmp r0 1
@@ -26120,6 +27276,16 @@ jmp brake_done_3367_3368_3369
 label brake_dim_3367_3368_3369
 meshface 3367 3368 3369 242 r9 r10 r11 60
 label brake_done_3367_3368_3369
+jmp L136
+label L135
+meshface 3367 3368 3369 242 r9 r10 r11 60
+label L136
+localget r0 11
+cmp r0 0
+jne L137
+load8 r0 129
+cmp r0 1
+jne L137
 localget r0 11
 cmp r0 0
 jne brake_dim_3367_3370_3368
@@ -26131,6 +27297,10 @@ jmp brake_done_3367_3370_3368
 label brake_dim_3367_3370_3368
 meshface 3367 3370 3368 242 r9 r10 r11 60
 label brake_done_3367_3370_3368
+jmp L138
+label L137
+meshface 3367 3370 3368 242 r9 r10 r11 60
+label L138
 set r12 228
 meshfacegradienttex 3371 3372 3373 r12 12 1 3 r9 r10 r11 60
 set r12 228
@@ -26363,6 +27533,12 @@ meshface 3547 3548 3549 225 r9 r10 r11 60
 meshface 3547 3549 3550 225 r9 r10 r11 60
 localget r0 11
 cmp r0 0
+jne L139
+load8 r0 129
+cmp r0 1
+jne L139
+localget r0 11
+cmp r0 0
 jne brake_dim_3551_3552_3553
 load8 r0 129
 cmp r0 1
@@ -26372,6 +27548,16 @@ jmp brake_done_3551_3552_3553
 label brake_dim_3551_3552_3553
 meshface 3551 3552 3553 242 r9 r10 r11 60
 label brake_done_3551_3552_3553
+jmp L13a
+label L139
+meshface 3551 3552 3553 242 r9 r10 r11 60
+label L13a
+localget r0 11
+cmp r0 0
+jne L13b
+load8 r0 129
+cmp r0 1
+jne L13b
 localget r0 11
 cmp r0 0
 jne brake_dim_3551_3554_3552
@@ -26383,6 +27569,10 @@ jmp brake_done_3551_3554_3552
 label brake_dim_3551_3554_3552
 meshface 3551 3554 3552 242 r9 r10 r11 60
 label brake_done_3551_3554_3552
+jmp L13c
+label L13b
+meshface 3551 3554 3552 242 r9 r10 r11 60
+label L13c
 set r12 228
 meshfacegradienttex 3555 3556 3557 r12 12 1 3 r9 r10 r11 60
 set r12 228
@@ -26458,18 +27648,12 @@ label nature_emit_rock
 meshfacegradienttex 3614 3615 3616 22 2 7 3 r9 r10 r11 60
 meshfacegradienttex 3615 3621 3616 22 2 7 3 r9 r10 r11 60
 meshfacegradienttex 3621 3622 3616 22 2 7 3 r9 r10 r11 60
-meshfacegradienttex 3614 3616 3617 22 2 7 3 r9 r10 r11 60
-meshfacegradienttex 3616 3622 3617 22 2 7 3 r9 r10 r11 60
-meshfacegradienttex 3622 3623 3617 22 2 7 3 r9 r10 r11 60
-meshfacegradienttex 3614 3617 3618 22 2 7 3 r9 r10 r11 60
-meshfacegradienttex 3617 3623 3618 22 2 7 3 r9 r10 r11 60
-meshfacegradienttex 3623 3624 3618 22 2 7 3 r9 r10 r11 60
-meshfacegradienttex 3614 3618 3619 22 2 7 3 r9 r10 r11 60
-meshfacegradienttex 3618 3624 3619 22 2 7 3 r9 r10 r11 60
-meshfacegradienttex 3624 3625 3619 22 2 7 3 r9 r10 r11 60
-meshfacegradienttex 3614 3619 3620 22 2 7 3 r9 r10 r11 60
-meshfacegradienttex 3619 3625 3620 22 2 7 3 r9 r10 r11 60
-meshfacegradienttex 3625 3626 3620 22 2 7 3 r9 r10 r11 60
+meshfacegradienttex 3614 3616 3618 22 2 7 3 r9 r10 r11 60
+meshfacegradienttex 3616 3622 3618 22 2 7 3 r9 r10 r11 60
+meshfacegradienttex 3622 3624 3618 22 2 7 3 r9 r10 r11 60
+meshfacegradienttex 3614 3618 3620 22 2 7 3 r9 r10 r11 60
+meshfacegradienttex 3618 3624 3620 22 2 7 3 r9 r10 r11 60
+meshfacegradienttex 3624 3626 3620 22 2 7 3 r9 r10 r11 60
 meshfacegradienttex 3614 3620 3615 22 2 7 3 r9 r10 r11 60
 meshfacegradienttex 3620 3626 3615 22 2 7 3 r9 r10 r11 60
 meshfacegradienttex 3626 3621 3615 22 2 7 3 r9 r10 r11 60
