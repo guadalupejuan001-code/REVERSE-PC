@@ -55,7 +55,6 @@ public final class PrismaTestRunner extends Instrumentation {
             ActivityMonitor monitor=addMonitor(RxeGraphicsActivity.class.getName(),null,false);gameMonitor=monitor;
             startActivitySync(new Intent(getTargetContext(),PrismaLauncherActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             game=(RxeGraphicsActivity)monitor.waitForActivityWithTimeout(20000);require(game!=null,"Standalone entry did not open the game");
-            boolean[] ready={false};for(int i=0;i<150;i++){runOnMainSync(()->ready[0]=game.testingWebView()!=null);if(ready[0])break;SystemClock.sleep(100);}require(ready[0],"Game WebView unavailable");
             until("!!document.getElementById('startBtn')&&document.getElementById('game').dataset.speakers==='2'",30);
             if(phase.equals("seed")){
                 until("(()=>{localStorage.setItem('prisma.upgrade-proof','2.5-to-2.6');localStorage.setItem('prisma.records',JSON.stringify([{track:'Récord conservado',level:'flow',score:137,accuracy:83,combo:4,date:1}]));return localStorage.getItem('prisma.upgrade-proof')==='2.5-to-2.6'})()",15);
