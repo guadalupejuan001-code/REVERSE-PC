@@ -79,13 +79,13 @@ public final class PrismaTestRunner extends Instrumentation {
             game=(RxeGraphicsActivity)monitor.waitForActivityWithTimeout(20000);require(game!=null,"Standalone entry did not open the game");
             until("!!document.getElementById('startBtn')&&document.getElementById('game').dataset.speakers==='2'",30);
             if(phase.equals("seed")){
-                until("(()=>{localStorage.setItem('prisma.upgrade-proof','2.8-to-2.9');localStorage.setItem('prisma.records',JSON.stringify([{track:'Récord conservado',level:'flow',score:137,accuracy:83,combo:4,date:1}]));return localStorage.getItem('prisma.upgrade-proof')==='2.8-to-2.9'})()",15);
+                until("(()=>{localStorage.setItem('prisma.upgrade-proof','2.9-to-3.0');localStorage.setItem('prisma.records',JSON.stringify([{track:'Récord conservado',level:'flow',rules:'flow-2.9',score:137,accuracy:83,combo:4,date:1}]));return localStorage.getItem('prisma.upgrade-proof')==='2.9-to-3.0'})()",15);
                 // WebView commits DOM storage asynchronously. Do not kill its
                 // process immediately after writing the upgrade fixture.
                 runOnMainSync(()->game.moveTaskToBack(true));SystemClock.sleep(6500);
                 result.putString("stream","PRISMA_UPGRADE_SEEDED\n");finish(Activity.RESULT_OK,result);return;
             }
-            until("localStorage.getItem('prisma.upgrade-proof')==='2.8-to-2.9'&&JSON.parse(localStorage.getItem('prisma.records')||'[]').some(r=>r.score===137)",10);
+            until("localStorage.getItem('prisma.upgrade-proof')==='2.9-to-3.0'&&JSON.parse(localStorage.getItem('prisma.records')||'[]').some(r=>r.score===137)",10);
             require("true".equals(js("document.documentElement.classList.contains('native-xrender')&&!document.querySelector('.gpu-canvas')")),"Native X Render was replaced");
             js("window.__errors=[];addEventListener('error',e=>__errors.push(e.message));window.__musicSources=0;const originalSource=AudioContext.prototype.createBufferSource;AudioContext.prototype.createBufferSource=function(){__musicSources++;const ctx=this,node=originalSource.call(this),start=node.start;node.start=function(when=0,offset=0){window.__audio={ctx,when,offset};return start.apply(this,arguments)};return node;};import(location.origin+'/audio.js').then(m=>window.__clock=m.outputClock).catch(e=>window.__clockError=String(e));true");
             until("typeof __clock==='function'",10);
@@ -103,7 +103,7 @@ public final class PrismaTestRunner extends Instrumentation {
             require(render.optInt("depth_bits")>=24&&render.optInt("world_uploads")==5,"GPU depth buffer/model cache missing");
             require("true".equals(js("document.getElementById('game').dataset.mesh3d==='true'&&+document.getElementById('game').dataset.lookAhead>=3.6")),"3D mode/read-ahead not active");
             File folder=new File(getTargetContext().getExternalFilesDir(null),"prisma-evidence");folder.mkdirs();
-            Bitmap image=getUiAutomation().takeScreenshot();try(FileOutputStream out=new FileOutputStream(new File(folder,"PRISMA-2.9-Android.png"))){image.compress(Bitmap.CompressFormat.PNG,100,out);}image.recycle();
+            Bitmap image=getUiAutomation().takeScreenshot();try(FileOutputStream out=new FileOutputStream(new File(folder,"PRISMA-3.0-Android.png"))){image.compress(Bitmap.CompressFormat.PNG,100,out);}image.recycle();
             JSONObject report=new JSONObject().put("android_gameplay",true).put("speakers",2).put("cut_audio_sources",0).put("music_sources",1).put("native_render",render).put("ui",new JSONObject(js("(()=>{const c=document.getElementById('game');return {width:c.width,height:c.height,ratio:c.width/c.getBoundingClientRect().width,lasers:+c.dataset.laserCount}})()")));
             JSONArray visited=new JSONArray();
             for(String id:new String[]{"neon","aurora","abyss","volcano","galaxy"}){
@@ -127,10 +127,14 @@ public final class PrismaTestRunner extends Instrumentation {
             js(RhythmFixture.prepareScript());until("window.__fixtureReady===true",15);
             js("document.getElementById('precise').checked=true;document.getElementById('precise').dispatchEvent(new Event('change'));true");
             tap("#startBtn");until("document.body.classList.contains('is-playing')",30);
-            until("__audio.offset+__clock(__audio.ctx,performance.now(),true).time-__audio.when>3.3",15);
-            require("true".equals(js("Math.abs(+document.getElementById('game').dataset.firstNoteTime-1.025)<.03&&document.getElementById('game').dataset.misses==='0'&&document.getElementById('game').dataset.holdCount==='0'&&document.getElementById('game').dataset.chainCount==='0'&&+document.getElementById('game').dataset.noteCount<=4")),"Flow deleted its first cube, added a hold or flooded the viewport");
+            until("Math.abs(+document.getElementById('game').dataset.firstNoteTime-1.025)<.03",6);
+            until("__audio.offset+__clock(__audio.ctx,performance.now(),true).time-__audio.when>1.4",15);
+            require("true".equals(js("__testScene.visibleNotes.some(n=>Math.abs(n.t-1.025)<.03)&&document.getElementById('game').dataset.misses==='0'&&document.getElementById('game').dataset.holdCount==='0'&&document.getElementById('game').dataset.chainCount==='0'&&+document.getElementById('game').dataset.noteCount<=32")),"Flow grace or simple cuts are missing");
             tap("!nextCube");until("+document.getElementById('game').dataset.hits===1",8);
             report.put("flow_late_native_touch",true).put("flow_no_holds",true).put("ordered_first_note",true);
+            until("__audio.offset+__clock(__audio.ctx,performance.now(),true).time-__audio.when>5.55",10);
+            require("true".equals(js("+document.getElementById('game').dataset.deferredNotes>0&&+document.getElementById('game').dataset.firstNoteTime>5&&__testScene.visibleNotes.some(n=>Math.abs(n.t-5.525)<.03)&&__testScene.visibleNotes.every(n=>Math.abs(__testScene.flowPositions.get(n)-(n.t-__testSceneTime))<.00001)")),"Missed notes block the stream or frame time slows musical arrivals");
+            report.put("flow_live_stream_unblocked",true).put("flow_audio_clock",new JSONObject(js("(()=>({frameTime:__testSceneTime,deferred:+document.getElementById('game').dataset.deferredNotes,notes:__testScene.visibleNotes.map(n=>({onset:n.t,remaining:__testScene.flowPositions.get(n)}))}))()")));
             until("document.getElementById('game').dataset.flowCoda==='true'",30);
             require("true".equals(js("document.getElementById('game').dataset.misses==='0'&&!document.getElementById('flowFinishBtn').hidden")),"Flow failed or hid its pending notes at song end");
             tap("#pauseBtn");tap("#resumeBtn");require("3".equals(js("__musicSources")),"Resuming the end-of-song recovery created another music source");
@@ -148,8 +152,8 @@ public final class PrismaTestRunner extends Instrumentation {
             js("document.getElementById('effects').checked=true;document.getElementById('effects').dispatchEvent(new Event('change'));true");
             until("document.getElementById('game').dataset.fireworks==='0'",5);
             report.put("soft_effects_disable_fireworks",true);
-            require("true".equals(js("JSON.parse(localStorage.getItem('prisma.records')||'[]').some(r=>r.score===137&&!r.rules)")),"Saving forgiving Flow erased the old record");
-            report.put("upgrade_2_8_records_preserved",true);
+            require("true".equals(js("JSON.parse(localStorage.getItem('prisma.records')||'[]').some(r=>r.score===137&&r.rules==='flow-2.9')")),"Saving forgiving Flow erased the old record");
+            report.put("upgrade_2_9_records_preserved",true);
             Files.write(new File(folder,"android-validation.json").toPath(),report.toString(2).getBytes(StandardCharsets.UTF_8));
             result.putString("stream","PRISMA_ANDROID_OK music=1 cut-sounds=0 speakers=2 native=Ether-Render-X\n");finish(Activity.RESULT_OK,result);
         }catch(Throwable e){result.putString("stream","PRISMA_ANDROID_FAILED "+e+"\n");finish(Activity.RESULT_CANCELED,result);}

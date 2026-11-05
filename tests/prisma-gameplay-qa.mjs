@@ -14,7 +14,7 @@ const demo=readFileSync(new URL('../apps/prisma/web/audio.js',import.meta.url),'
   .replace(/^export \{.*$/gm,'').replace(/^export /gm,'');
 const {RhythmAudio}=new Function(demo+';return {RhythmAudio};')();
 
-test(Math.abs(qa.hitWindowFor('flow')-.45)<1e-8,'Flow scoring grace changed');
+test(Math.abs(qa.hitWindowFor('flow')-1.05)<1e-8,'Flow scoring grace changed');
 test(Math.abs(qa.hitWindowFor('pulse')-.19)<1e-8,'Pulse timing contract changed');
 test(Math.abs(qa.hitWindowFor('vertigo')-.16)<1e-8,'Vertigo timing contract changed');
 test(qa.segmentDistance(0,0,-10,0,10,0)===0,'Segment crossing wrong');

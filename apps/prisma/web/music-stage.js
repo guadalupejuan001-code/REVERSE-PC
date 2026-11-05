@@ -112,9 +112,9 @@ export function makeIntelligentChart(peaks, level = 'flow', seed = 7721, map = n
   for (let index=0;index<inputs.length;index++) {
     const p=inputs[index];
     const localPeriod = 60 / musicBpmAt(map, p.t);
-    // Follow a readable whole-beat subdivision in Flow. The opening gives a
-    // beginner even more breathing room; no new musical attacks are invented.
-    const flowGap=localPeriod*Math.ceil((chart.length<6?1.15:.85)/localPeriod);
+    // One detected beat at ordinary tempos; every other beat at fast tempos.
+    // Tolerance preserves measured attacks without a fixed one-second throttle.
+    const flowGap=localPeriod*(localPeriod<.36?2:1)*.82;
     const adjustedSpacing = level==='flow'?flowGap:spacing * clamp(Math.sqrt(localPeriod / 0.5), 0.79, 1.26);
     if (p.t - previousTime < adjustedSpacing) continue;
     {

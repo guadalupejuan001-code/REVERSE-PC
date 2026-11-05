@@ -26,7 +26,7 @@ final class RhythmFixture {
         const ctx=new AudioContext(),buffer=await ctx.decodeAudioData(__fixtureBytes.slice(0)),a=await analyseMusicBuffer(buffer);
         const map=makeMusicStage(a.peaks,{bpm:a.bpm,duration:buffer.duration,energy:a.energy,tempoSegments:a.tempoSegments,fallback:a.fallback});map.mechanics=true;
         window.__fixturePulseNotes=makeChart(a.peaks,'pulse',Math.round(buffer.duration*173),map);await ctx.close();
-        if(!window.__sceneCaptureInstalled){const render=Scene.prototype.render;Scene.prototype.render=function(t,dt,chart,...rest){window.__testScene=this;return render.call(this,t,dt,chart,...rest)};window.__sceneCaptureInstalled=true;}
+        if(!window.__sceneCaptureInstalled){const render=Scene.prototype.render;Scene.prototype.render=function(t,dt,chart,...rest){window.__testScene=this;window.__testSceneTime=t;return render.call(this,t,dt,chart,...rest)};window.__sceneCaptureInstalled=true;}
         window.__fixtureReady=true;
       })().catch(e=>window.__fixtureError=String(e))
       """;}
