@@ -16,6 +16,9 @@
 #include <string>
 #include <utility>
 #include <vector>
+#if defined(REVERSE_PC_COMPACT_INDEX_LOOKASIDE) && REVERSE_PC_COMPACT_INDEX_LOOKASIDE
+#include <atomic>
+#endif
 
 namespace mundo_x::memory_detail {
 class AdaptiveOverrideMap {
@@ -96,6 +99,25 @@ class AdaptiveOverrideMap {
     std::map<std::uint64_t,std::shared_ptr<Page>> pages;
     CowShardedMap<std::uint8_t> large_addresses;
     std::size_t size=0;
+#if defined(REVERSE_PC_COMPACT_INDEX_LOOKASIDE) && REVERSE_PC_COMPACT_INDEX_LOOKASIDE
+    // Only dictionary lookup metadata. Values still come from the original
+    // authoritative COW Page; neither bytes nor projections are cached.
+    static std::uint64_t new_lookup_identity() noexcept {
+      static std::atomic<std::uint64_t> next{1};
+      auto id=next.load(std::memory_order_relaxed);
+      while(id!=UINT64_MAX){
+        if(next.compare_exchange_weak(id,id+1,std::memory_order_relaxed))return id;
+      }
+      return 0; // Exhaustion disables lookasides instead of reusing an identity.
+    }
+    const std::uint64_t lookup_identity=new_lookup_identity();
+    std::uint64_t lookup_epoch=0;
+    State()=default;
+    State(const State& other):pages(other.pages),large_addresses(other.large_addresses),size(other.size){}
+    void invalidate_lookups() noexcept {if(lookup_epoch!=UINT64_MAX)++lookup_epoch;}
+#else
+    void invalidate_lookups() noexcept {}
+#endif
   };
  public:
   std::size_t size() const noexcept{return state_->size;}
@@ -108,6 +130,19 @@ class AdaptiveOverrideMap {
   // A numeric spelling of the same canonical address in the same index.
   // It does not retain a projection or add another byte authority.
   const std::uint8_t* get(std::uint64_t numeric) const {
+#if defined(REVERSE_PC_COMPACT_INDEX_LOOKASIDE) && REVERSE_PC_COMPACT_INDEX_LOOKASIDE
+    if(state_->lookup_identity&&state_->lookup_epoch!=UINT64_MAX){
+      struct Lookup {std::uint64_t identity=0,epoch=0,number=0;const Page* page=nullptr;};
+      static thread_local std::array<Lookup,16> lookups{};
+      const auto number=numeric>>12;
+      auto& entry=lookups[(number^(number>>4))&15];
+      if(entry.identity!=state_->lookup_identity||entry.epoch!=state_->lookup_epoch||entry.number!=number){
+        const auto it=state_->pages.find(number);
+        entry={state_->lookup_identity,state_->lookup_epoch,number,it==state_->pages.end()?nullptr:it->second.get()};
+      }
+      return entry.page?entry.page->get(std::size_t(numeric&4095)):nullptr;
+    }
+#endif
     const auto it=state_->pages.find(numeric>>12);
     return it==state_->pages.end()?nullptr:it->second->get(std::size_t(numeric&4095));
   }
@@ -142,7 +177,7 @@ class AdaptiveOverrideMap {
     }
     auto& s=writable();const auto page_number=numeric>>12;
     auto& page=writable_page(s,page_number);page.erase(std::size_t(numeric&4095));
-    --s.size;if(!page.size())s.pages.erase(page_number);
+    --s.size;if(!page.size()){s.invalidate_lookups();s.pages.erase(page_number);}
     return true;
   }
   // Numeric entry points address the same canonical keys and COW pages.
@@ -158,7 +193,7 @@ class AdaptiveOverrideMap {
   bool erase(std::uint64_t address){
     if(!get(address))return false;
     auto& s=writable();const auto page_number=address>>12;auto& page=writable_page(s,page_number);page.erase(std::size_t(address&4095));--s.size;
-    if(!page.size())s.pages.erase(page_number);return true;
+    if(!page.size()){s.invalidate_lookups();s.pages.erase(page_number);}return true;
   }
   template<class Fn>void for_each_sorted(Fn&& emit) const {
     for(const auto& entry:state_->pages){
@@ -218,7 +253,7 @@ class AdaptiveOverrideMap {
     if(s.pages.count(page_number))throw std::invalid_argument("Duplicate adaptive Ether page");
     if(s.size>std::numeric_limits<std::size_t>::max()-page.size())
       throw std::length_error("Ether override count overflow");
-    s.size+=page.size();s.pages.emplace(page_number,std::make_shared<Page>(std::move(page)));
+    s.size+=page.size();s.invalidate_lookups();s.pages.emplace(page_number,std::make_shared<Page>(std::move(page)));
   }
   std::size_t allocated_pages() const noexcept{return state_->pages.size();}
  private:
@@ -234,8 +269,8 @@ class AdaptiveOverrideMap {
   }
   static Page& writable_page(State& s,std::uint64_t page_number){
     auto it=s.pages.find(page_number);
-    if(it==s.pages.end())return *s.pages.emplace(page_number,std::make_shared<Page>()).first->second;
-    if(!it->second.unique())it->second=std::make_shared<Page>(*it->second);
+    if(it==s.pages.end()){s.invalidate_lookups();return *s.pages.emplace(page_number,std::make_shared<Page>()).first->second;}
+    if(!it->second.unique()){s.invalidate_lookups();it->second=std::make_shared<Page>(*it->second);}
     return *it->second;
   }
 };
