@@ -26,10 +26,19 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
     private final Object mailbox=new Object();
     private volatile boolean ready,failed,suspended;
     private Request queued,active;
-    private int sceneProgram,postProgram,vao,vbo,paletteTexture,atlasTexture,photoTexture;
+    private int postProgram,depthProgram,depthProjection,depthAspect,vao,vbo,paletteTexture,atlasTexture,photoTexture;
+    private final SceneShader[] sceneShaders=new SceneShader[1];
     private int framebuffer,colorTexture,depthBuffer,targetWidth,targetHeight;
-    private int projectionU,aspectU,timeU,dayU,yawU,wetU,depthU,paletteU,atlasU;
-    private int imageU,texelU,photoU,lampOriginU,lampDirectionU,lampPowerU;
+    private int imageU,texelU,photoU;
+    private static final class SceneShader {
+        final int program,projection,aspect,time,day,sun,wet,water,palette,atlas,lampOrigin,lampDirection,lampPower;
+        SceneShader(int p){
+            program=p;projection=glGetUniformLocation(p,"uProjection");aspect=glGetUniformLocation(p,"uAspect");
+            time=glGetUniformLocation(p,"uTime");day=glGetUniformLocation(p,"uDay");sun=glGetUniformLocation(p,"uSunDirection");
+            wet=glGetUniformLocation(p,"uWet");water=glGetUniformLocation(p,"uWaterDepth");palette=glGetUniformLocation(p,"uPalette");atlas=glGetUniformLocation(p,"uAtlas");
+            lampOrigin=glGetUniformLocation(p,"uLampOrigin");lampDirection=glGetUniformLocation(p,"uLampDirection");lampPower=glGetUniformLocation(p,"uLampPower");
+        }
+    }
     private final float[] lampFrame=new float[6];
     private volatile boolean firstFrame;
     private boolean hdVerified;
@@ -93,9 +102,10 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
     @Override public void onSurfaceCreated(GL10 ignored,EGLConfig config){
         ready=false;firstFrame=false;hdVerified=false;framebuffer=colorTexture=depthBuffer=0;targetWidth=targetHeight=0;
         try{
-            sceneProgram=program("gpu-scene.vert","gpu-scene.frag");postProgram=program("gpu-post.vert","gpu-post.frag");
-            projectionU=uniform(sceneProgram,"uProjection");aspectU=uniform(sceneProgram,"uAspect");timeU=uniform(sceneProgram,"uTime");dayU=uniform(sceneProgram,"uDay");yawU=uniform(sceneProgram,"uSunDirection");wetU=uniform(sceneProgram,"uWet");depthU=uniform(sceneProgram,"uWaterDepth");paletteU=uniform(sceneProgram,"uPalette");atlasU=uniform(sceneProgram,"uAtlas");
-            lampOriginU=uniform(sceneProgram,"uLampOrigin");lampDirectionU=uniform(sceneProgram,"uLampDirection");lampPowerU=uniform(sceneProgram,"uLampPower");
+            sceneShaders[0]=new SceneShader(program("gpu-scene.vert","gpu-scene.frag"));
+            depthProgram=program("gpu-depth.vert","gpu-depth.frag");
+            depthProjection=uniform(depthProgram,"uProjection");depthAspect=uniform(depthProgram,"uAspect");
+            postProgram=program("gpu-post.vert","gpu-post.frag");
             imageU=uniform(postProgram,"uImage");texelU=uniform(postProgram,"uTexel");photoU=uniform(postProgram,"uPhoto");
             paletteTexture=texture();glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA8,256,1,0,GL_RGBA,GL_UNSIGNED_BYTE,null);
             atlasTexture=texture();glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);glTexImage2D(GL_TEXTURE_2D,0,GL_R8,128,16,0,GL_RED,GL_UNSIGNED_BYTE,null);
@@ -153,12 +163,18 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
         int fx=(r.state.nitroActive?1:0)|(r.state.airPulse>0?2:0)|(r.state.waterDepthCm>0?4:0);
         if(fx!=lastFx){lastFx=fx;Log.i("ReverseVelocity","GPU_FX_STATE nitro="+r.state.nitroActive+" air="+(r.state.airPulse>0)+" waterDepth="+r.state.waterDepthCm+" emittedNitro="+g.categoryFaces(5)+" emittedAir="+g.categoryFaces(4));}
         glBindVertexArray(vao);glBindBuffer(GL_ARRAY_BUFFER,vbo);glBufferSubData(GL_ARRAY_BUFFER,0,vertices.remaining()*4,vertices);
-        glUseProgram(sceneProgram);boolean lamp=g.lightFrame(lampFrame);glUniform3f(lampOriginU,lampFrame[0],lampFrame[1],lampFrame[2]);glUniform3f(lampDirectionU,lampFrame[3]-lampFrame[0],lampFrame[4]-lampFrame[1],lampFrame[5]-lampFrame[2]);glUniform1f(lampPowerU,lamp?(r.state.ambientMode==0?0:r.state.ambientMode==1?.6f:1):0);glUniform2f(projectionU,g.width,g.height);glUniform1f(aspectU,(float)w/h);glUniform1f(timeU,r.state.ticks*.02f);glUniform1f(dayU,r.state.ambientMode==0?1:r.state.ambientMode==1?.48f:.12f);double sunAngle=(r.state.yaw4096+r.yaw)*(Math.PI/2048);float sunCos=(float)Math.cos(sunAngle),sunSin=(float)Math.sin(sunAngle),sunNorm=(float)(1/Math.sqrt(1.1525));glUniform3f(yawU,(-.55f*sunCos+.38f*sunSin)*sunNorm,.84f*sunNorm,(-.55f*sunSin-.38f*sunCos)*sunNorm);glUniform1f(wetU,r.state.wetness/1000f);glUniform1f(depthU,r.state.waterDepthCm);
-        paletteBytes.clear();for(int c:r.palette)paletteBytes.put((byte)(c>>16)).put((byte)(c>>8)).put((byte)c).put((byte)255);paletteBytes.flip();glActiveTexture(GL_TEXTURE0);glBindTexture(GL_TEXTURE_2D,paletteTexture);glTexSubImage2D(GL_TEXTURE_2D,0,0,0,256,1,GL_RGBA,GL_UNSIGNED_BYTE,paletteBytes);glUniform1i(paletteU,0);
-        atlasBytes.clear();for(int y=0;y<16;y++)for(int tile=0;tile<8;tile++)for(int x=0;x<16;x++)atlasBytes.put(g.bytes[16+tile*256+y*16+x]);atlasBytes.flip();glActiveTexture(GL_TEXTURE1);glBindTexture(GL_TEXTURE_2D,atlasTexture);glTexSubImage2D(GL_TEXTURE_2D,0,0,0,128,16,GL_RED,GL_UNSIGNED_BYTE,atlasBytes);glUniform1i(atlasU,1);
-        glDisable(GL_DEPTH_TEST);glDepthMask(false);glDisable(GL_BLEND);glDrawArrays(GL_TRIANGLES,g.starts[0],g.counts[0]);
-        glEnable(GL_DEPTH_TEST);glDepthFunc(GL_LEQUAL);glDepthMask(true);glDrawArrays(GL_TRIANGLES,g.starts[1],g.counts[1]);
-        glDepthMask(false);glEnable(GL_BLEND);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);glDrawArrays(GL_TRIANGLES,g.starts[2],g.counts[2]);
+        paletteBytes.clear();for(int c:r.palette)paletteBytes.put((byte)(c>>16)).put((byte)(c>>8)).put((byte)c).put((byte)255);paletteBytes.flip();glActiveTexture(GL_TEXTURE0);glBindTexture(GL_TEXTURE_2D,paletteTexture);glTexSubImage2D(GL_TEXTURE_2D,0,0,0,256,1,GL_RGBA,GL_UNSIGNED_BYTE,paletteBytes);
+        atlasBytes.clear();for(int y=0;y<16;y++)for(int tile=0;tile<8;tile++)for(int x=0;x<16;x++)atlasBytes.put(g.bytes[16+tile*256+y*16+x]);atlasBytes.flip();glActiveTexture(GL_TEXTURE1);glBindTexture(GL_TEXTURE_2D,atlasTexture);glTexSubImage2D(GL_TEXTURE_2D,0,0,0,128,16,GL_RED,GL_UNSIGNED_BYTE,atlasBytes);
+        // Resolve visibility with the exact same vertex transform before doing
+        // material work. Sky and hidden opaque surfaces then cost no shading.
+        glDisable(GL_BLEND);glEnable(GL_DEPTH_TEST);glDepthFunc(GL_LEQUAL);glDepthMask(true);
+        glUseProgram(depthProgram);glUniform2f(depthProjection,g.width,g.height);glUniform1f(depthAspect,(float)w/h);
+        glColorMask(false,false,false,false);glDrawArrays(GL_TRIANGLES,g.starts[1],g.counts[1]);
+        glColorMask(true,true,true,true);glDepthMask(false);
+        useScene(sceneShaders[0],r,g,w,h);glDrawArrays(GL_TRIANGLES,g.starts[0],g.counts[0]);
+        glDepthFunc(GL_EQUAL);glDrawArrays(GL_TRIANGLES,g.starts[1],g.counts[1]);
+        glDepthFunc(GL_LEQUAL);glEnable(GL_BLEND);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
+        glDrawArrays(GL_TRIANGLES,g.starts[2],g.counts[2]);
         glBlendFunc(GL_SRC_ALPHA,GL_ONE);glDrawArrays(GL_TRIANGLES,g.starts[3],g.counts[3]);
         glDepthMask(true);glDisable(GL_BLEND);glDisable(GL_DEPTH_TEST);glBindVertexArray(0);
         if(nativePhoto||(!hdVerified&&w==1280&&h==720)){
@@ -171,6 +187,10 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
         glBindFramebuffer(GL_FRAMEBUFFER,0);glViewport(0,0,getWidth(),getHeight());
         if(nativePhoto||w==1280){float fit=Math.min((float)getWidth()/w,(float)getHeight()/h);int shownW=Math.round(w*fit),shownH=Math.round(h*fit);glClearColor(.025f,.04f,.06f,1);glClear(GL_COLOR_BUFFER_BIT);glViewport((getWidth()-shownW)/2,(getHeight()-shownH)/2,shownW,shownH);}
         post(colorTexture,w,h,false);
+    }
+    private void useScene(SceneShader shader,Request r,RegraphicsGeometry g,int w,int h){
+        glUseProgram(shader.program);boolean lamp=g.lightFrame(lampFrame);glUniform3f(shader.lampOrigin,lampFrame[0],lampFrame[1],lampFrame[2]);glUniform3f(shader.lampDirection,lampFrame[3]-lampFrame[0],lampFrame[4]-lampFrame[1],lampFrame[5]-lampFrame[2]);glUniform1f(shader.lampPower,lamp?(r.state.ambientMode==0?0:r.state.ambientMode==1?.6f:1):0);glUniform2f(shader.projection,g.width,g.height);glUniform1f(shader.aspect,(float)w/h);glUniform1f(shader.time,r.state.ticks*.02f);glUniform1f(shader.day,r.state.ambientMode==0?1:r.state.ambientMode==1?.48f:.12f);double sunAngle=(r.state.yaw4096+r.yaw)*(Math.PI/2048);float sunCos=(float)Math.cos(sunAngle),sunSin=(float)Math.sin(sunAngle),sunNorm=(float)(1/Math.sqrt(1.1525));glUniform3f(shader.sun,(-.55f*sunCos+.38f*sunSin)*sunNorm,.84f*sunNorm,(-.55f*sunSin-.38f*sunCos)*sunNorm);glUniform1f(shader.wet,r.state.wetness/1000f);glUniform1f(shader.water,r.state.waterDepthCm);
+        glUniform1i(shader.palette,0);glUniform1i(shader.atlas,1);
     }
     private void image(Request r){
         if(r.photo==null||r.photo.isRecycled())throw new IllegalStateException("Photo bitmap unavailable");

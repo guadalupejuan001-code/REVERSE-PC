@@ -4,7 +4,7 @@
 const fs=require('node:fs'),assert=require('node:assert/strict');
 const java='reverse-os-android/app/src/main/java/com/reversepc/os/';
 const read=n=>fs.readFileSync(java+n,'utf8'),engine=read('VelocityXiEngine.java'),surface=read('VelocityXSurface.java'),gpu=read('VelocityGpuSurface.java'),geometry=read('RegraphicsGeometry.java');
-assert(engine.includes('NativeRuntime.observeGeometry(')&&engine.includes('render4k.xi'),'GPU geometry must execute XI from an immutable Ether state');
+assert(engine.includes('NativeRuntime.sessionObserve(')&&engine.includes('render4k.xi'),'GPU geometry must execute XI from an immutable Ether state');
 assert(surface.includes('game.observeGpuFrame(')&&surface.includes('selectedGpuSurface.draw(observation.geometry,observation.colors,state'),'GPU may only consume the observed XI packet');
 assert(gpu.includes('g.vertices(vertices)')&&gpu.includes('gpu-scene.frag'),'own REgraphics shaders consume XI triangles');
 assert(geometry.includes('XFG4')&&geometry.includes('face budget or length')&&geometry.includes('vertex bounds'),'strict bounded geometry validation required');

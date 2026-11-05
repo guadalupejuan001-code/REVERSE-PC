@@ -10,6 +10,8 @@ import os
 import pathlib
 import struct
 import sys
+import time
+import statistics
 import numpy as np
 from PIL import Image
 
@@ -51,6 +53,8 @@ def program(vert,frag):
     return p
 root=pathlib.Path(__file__).resolve().parents[1]/'reverse-os-android/app/src/main/assets/velocity'
 scene=program(root/'gpu-scene.vert',root/'gpu-scene.frag');post=program(root/'gpu-post.vert',root/'gpu-post.frag')
+prepass=os.getenv('VELOCITY_DEPTH_PREPASS','1')=='1'
+depthProgram=program(root/'gpu-depth.vert',root/'gpu-depth.frag') if prepass else None
 packet=pathlib.Path(sys.argv[1]).read_bytes();magic,width,height,revision,faces=struct.unpack_from('<4sHHII',packet)
 assert (magic,width,height,revision)==(b'XFG4',3840,2160,4) and len(packet)==2064+60*faces
 buckets=[[],[],[],[]];lamp=None
@@ -83,9 +87,9 @@ def texture(unit,internal,tw,th,form,pixels,nearest=False):
     gl('glTexImage2D',None,U,I,I,I,I,I,U,U,P)(0x0DE1,0,internal,tw,th,0,form,0x1401,data)
     return n
 palette=bytes(sum([list(bytes.fromhex(line.strip()))+[255] for line in pathlib.Path(sys.argv[2]).read_text().splitlines() if line.strip()],[]))
-texture(0,0x8058,256,1,0x1908,palette)
+paletteTexture=texture(0,0x8058,256,1,0x1908,palette)
 atlas=bytes(packet[16+tile*256+y*16+x] for y in range(16) for tile in range(8) for x in range(16))
-texture(1,0x8229,128,16,0x1903,atlas,False)
+atlasTexture=texture(1,0x8229,128,16,0x1903,atlas,False)
 color=texture(2,0x8058,w,h,0x1908,None)
 fbo=U();depth=U();gl('glGenFramebuffers',None,I,P)(1,C.byref(fbo));gl('glBindFramebuffer',None,U,U)(0x8D40,fbo)
 gl('glFramebufferTexture2D',None,U,U,U,U,I)(0x8D40,0x8CE0,0x0DE1,color,0)
@@ -103,20 +107,49 @@ for name,values in [('uLampOrigin',lamp[:3]),('uLampDirection',[lamp[3+i]-lamp[i
 gl('glUniform1f',None,I,F)(loc('uLampPower'),1 if 'night' in sys.argv[2] else .6 if 'dusk' in sys.argv[2] else 0)
 gl('glUniform2f',None,I,F,F)(loc('uProjection'),width,height)
 for name,val in [('uPalette',0),('uAtlas',1)]:gl('glUniform1i',None,I,I)(loc(name),val)
-gl('glViewport',None,I,I,I,I)(0,0,w,h);gl('glClearColor',None,F,F,F,F)(.08,.12,.14,1);gl('glClear',None,U)(0x4000|0x0100)
-gl('glDisable',None,U)(0x0B44);gl('glDisable',None,U)(0x0B71);gl('glDepthMask',None,B)(0);start=0
-for index,bucket in enumerate(buckets):
-    if index==1:gl('glEnable',None,U)(0x0B71);gl('glDepthFunc',None,U)(0x0203);gl('glDepthMask',None,B)(1)
-    if index==2:gl('glDepthMask',None,B)(0);gl('glEnable',None,U)(0x0BE2);gl('glBlendFunc',None,U,U)(0x0302,0x0303)
-    if index==3:gl('glBlendFunc',None,U,U)(0x0302,1)
-    gl('glDrawArrays',None,U,I,I)(4,start,len(bucket));start+=len(bucket)
-gl('glBindFramebuffer',None,U,U)(0x8D40,0);gl('glBindVertexArray',None,U)(0);gl('glDisable',None,U)(0x0B71);gl('glDisable',None,U)(0x0BE2)
-gl('glUseProgram',None,U)(post);gl('glActiveTexture',None,U)(0x84C0);gl('glBindTexture',None,U,U)(0x0DE1,color)
-gl('glUniform1i',None,I,I)(loc('uImage',post),0);gl('glUniform1i',None,I,I)(loc('uPhoto',post),0);gl('glUniform2f',None,I,F,F)(loc('uTexel',post),1/w,1/h)
-gl('glDrawArrays',None,U,I,I)(4,0,3)
+def draw_frame():
+    gl('glBindFramebuffer',None,U,U)(0x8D40,fbo);gl('glBindVertexArray',None,U)(vao)
+    gl('glViewport',None,I,I,I,I)(0,0,w,h);gl('glDepthMask',None,B)(1)
+    gl('glClearColor',None,F,F,F,F)(.08,.12,.14,1);gl('glClear',None,U)(0x4000|0x0100)
+    gl('glDisable',None,U)(0x0B44);gl('glDisable',None,U)(0x0BE2)
+    for unit,tex in [(0,paletteTexture),(1,atlasTexture)]:
+        gl('glActiveTexture',None,U)(0x84C0+unit);gl('glBindTexture',None,U,U)(0x0DE1,tex)
+    if prepass:
+        gl('glUseProgram',None,U)(depthProgram)
+        gl('glUniform2f',None,I,F,F)(loc('uProjection',depthProgram),width,height)
+        gl('glUniform1f',None,I,F)(loc('uAspect',depthProgram),w/h)
+        gl('glEnable',None,U)(0x0B71);gl('glDepthFunc',None,U)(0x0203)
+        gl('glColorMask',None,B,B,B,B)(0,0,0,0)
+        gl('glDrawArrays',None,U,I,I)(4,len(buckets[0]),len(buckets[1]))
+        gl('glColorMask',None,B,B,B,B)(1,1,1,1)
+    gl('glUseProgram',None,U)(scene)
+    gl('glDepthMask',None,B)(0)
+    if not prepass:gl('glDisable',None,U)(0x0B71)
+    start=0
+    for index,bucket in enumerate(buckets):
+        if index==1:
+            gl('glEnable',None,U)(0x0B71);gl('glDepthFunc',None,U)(0x0202 if prepass else 0x0203)
+            gl('glDepthMask',None,B)(0 if prepass else 1)
+        if index==2:
+            gl('glDepthFunc',None,U)(0x0203);gl('glDepthMask',None,B)(0)
+            gl('glEnable',None,U)(0x0BE2);gl('glBlendFunc',None,U,U)(0x0302,0x0303)
+        if index==3:gl('glBlendFunc',None,U,U)(0x0302,1)
+        gl('glDrawArrays',None,U,I,I)(4,start,len(bucket));start+=len(bucket)
+    gl('glBindFramebuffer',None,U,U)(0x8D40,0);gl('glBindVertexArray',None,U)(0)
+    gl('glDisable',None,U)(0x0B71);gl('glDisable',None,U)(0x0BE2)
+    gl('glUseProgram',None,U)(post);gl('glActiveTexture',None,U)(0x84C0)
+    gl('glBindTexture',None,U,U)(0x0DE1,color)
+    gl('glUniform1i',None,I,I)(loc('uImage',post),0);gl('glUniform1i',None,I,I)(loc('uPhoto',post),0)
+    gl('glUniform2f',None,I,F,F)(loc('uTexel',post),1/w,1/h)
+    gl('glDrawArrays',None,U,I,I)(4,0,3)
+    gl('glFinish',None)()
+samples=int(os.getenv('VELOCITY_BENCH_SAMPLES','1'));timings=[]
+for iteration in range(samples+2):
+    start=time.perf_counter();draw_frame();elapsed=(time.perf_counter()-start)*1000
+    if iteration>=2:timings.append(elapsed)
 pixels=(B*(w*h*4))();gl('glReadPixels',None,I,I,I,I,U,U,P)(0,0,w,h,0x1908,0x1401,pixels)
 error=gl('glGetError',U)();assert error==0,hex(error)
 image=Image.frombytes('RGBA',(w,h),bytes(pixels)).transpose(Image.Transpose.FLIP_TOP_BOTTOM)
 output=pathlib.Path(sys.argv[3]);output.parent.mkdir(parents=True,exist_ok=True);image.save(output)
 renderer=gl('glGetString',C.c_char_p,U)(0x1F01).decode()
-print(json.dumps({'passed':True,'hostOnly':True,'renderer':renderer,'faces':faces,'width':w,'height':h,'output':str(output)}))
+print(json.dumps({'passed':True,'hostOnly':True,'renderer':renderer,'faces':faces,'width':w,'height':h,'depthPrepass':prepass,'samples':samples,'frameP50Ms':statistics.median(timings),'output':str(output)}))

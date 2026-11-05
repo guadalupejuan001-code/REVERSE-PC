@@ -52,6 +52,10 @@ jobs:
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/forest-trails-drive.cpp -o build/open-forest/trails-drive
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/velocity-pipeline-profile.cpp -o build/open-forest/pipeline-profile
           build/open-forest/pipeline-profile reverse-os-android/app/src/main/assets/velocity build/open-forest
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/velocity-live-session.cpp -o build/open-forest/live-session
+          build/open-forest/live-session reverse-os-android/app/src/main/assets/velocity build/open-forest
+          javac -d build/open-forest/java reverse-os-android/app/src/main/java/com/reversepc/os/XiObservationPacket.java reverse-os-android/tests/XiObservationPacketTest.java
+          java -cp build/open-forest/java com.reversepc.os.XiObservationPacketTest
           build/open-forest/trails-drive reverse-os-android/app/src/main/assets/velocity build/open-forest
           build/open-forest/open-terrain-test reverse-os-android/app/src/main/assets/velocity build/open-forest
           build/open-forest/gpu-observation reverse-os-android/app/src/main/assets/velocity build/open-forest

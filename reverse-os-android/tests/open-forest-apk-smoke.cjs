@@ -343,7 +343,9 @@ try{
   const stopped=waitProfileFrame(beforeShift,s=>s.reverse===true&&s.speed===0&&s.physicsHz>0,'brake then engage reverse');
   check(/GEAR_APPLIED reverse=true ticks=/.test(logs()),'actual reverse applies after XI braking');
   const beforeReverse=frameRecords(logs()).length;
-  tapNode(findText(ui,'ACELERAR'),1800);
+  // Hold a real touch long enough to observe physical reverse on a slow AVD.
+  // Still require >1 metre of posted XI displacement; elapsed time is no proof.
+  tapNode(findText(ui,'ACELERAR'),4000);
   const backwards=waitProfileFrame(beforeReverse,s=>s.reverse===true&&s.speed>0&&s.zCm<stopped.zCm-100,'backward displacement');
   check(backwards.zCm<stopped.zCm-100,'reverse pedal moves the physical car backwards by more than one metre');
   report.reverseMotion={before:stopped,after:backwards,physicalBackwardCm:stopped.zCm-backwards.zCm};

@@ -1,5 +1,6 @@
 #version 300 es
 precision highp float;
+invariant gl_Position;
 layout(location=0) in vec3 aScreen;
 layout(location=1) in vec2 aUv;
 layout(location=2) in float aShade;

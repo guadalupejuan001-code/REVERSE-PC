@@ -1,5 +1,12 @@
 package com.reversepc.os;
 public final class NativeRuntime {
+    // Generic compact XI sessions. Candidates commit only after validation.
+    public static native long sessionOpen(byte[] state);
+    public static native void sessionClose(long session);
+    public static native byte[] sessionStage(long session,String source);
+    public static native void sessionCommit(long session);
+    public static native void sessionDiscard(long session);
+    public static native byte[] sessionObserve(long session,String source,int[] addresses,byte[] values);
     static { System.loadLibrary("reverse_os"); }
     private NativeRuntime() {}
     public static native byte[] initialize();

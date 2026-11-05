@@ -222,6 +222,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     void closeLoop(){
         physicsLifecycle.close();lifecycle.close();
         physicsLifecycle.awaitStopped(250);lifecycle.awaitStopped(250);
+        game.close();
     }
     @Override public void surfaceCreated(SurfaceHolder holder){
         repaintRequested.set(true);
