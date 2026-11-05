@@ -5,6 +5,14 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
   auto scalar=[&](unsigned index){return floating_.v[index].lane(0,bits);};
   auto valid_float=[&](){return bits==32||bits==64;};
   auto word_size=[&](){const auto opcode=(i>>22)&3,size=i>>30;return opcode&2?(size==0?16u:0u):(1u<<size);};
+  if((i&0xbf3ffc00u)==0x2e213800u){ // SHLL/SHLL2: widen B/H/S and shift by the original element width.
+    const unsigned size=(i>>22)&3;if(size==3)return false;
+    const unsigned lane_bits=8u<<size,count=64/lane_bits,first=(i&0x40000000u)?count:0;
+    fp_access();const auto source=floating_.v[rn];Vector128 output;
+    for(unsigned lane=0;lane<count;++lane)
+      output.lane(lane,2*lane_bits,source.lane(first+lane,lane_bits)<<lane_bits);
+    floating_.v[rd]=output;return true;
+  }
   if((i&0xffe0fc00u)==0x5e000400u){ // DUP element to scalar B/H/S/D, including MOV Dd,Vn.D[index].
     const unsigned immediate=(i>>16)&31;if(!immediate)return false;
     unsigned size=0;while(!(immediate&(1u<<size)))++size;if(size>3)return false;
