@@ -42,7 +42,7 @@ public final class PrismaTestRunner extends Instrumentation {
     private void until(String condition,int seconds)throws Exception{
         long deadline=SystemClock.uptimeMillis()+seconds*1000L;
         while(SystemClock.uptimeMillis()<deadline){if("true".equals(js(condition)))return;SystemClock.sleep(100);}
-        throw new AssertionError("Timed out: "+condition);
+        throw new AssertionError("Timed out: "+condition+"; diagnostic="+js("(()=>{const d=document.getElementById('game')?.dataset;return {playing:document.body.classList.contains('is-playing'),holds:d?.holdCompletions,phrases:d?.phrasesCompleted,constellations:d?.constellations,score:document.getElementById('score')?.textContent,inputs:window.__fixtureEvents,errors:window.__errors}})()"));
     }
     private void tap(String selector)throws Exception{
         long deadline=SystemClock.uptimeMillis()+15000;
@@ -134,7 +134,7 @@ public final class PrismaTestRunner extends Instrumentation {
             require("true".equals(js("+document.getElementById('game').dataset.holdCompletions>=3&&+document.getElementById('game').dataset.phrasesCompleted>=2&&+document.getElementById('game').dataset.constellations>=1")),"Actual gameplay never completed holds, phrases and a precision constellation");
             require("3".equals(js("__musicSources")),"Mechanics created non-musical audio sources");
             require("0".equals(js("__errors.length")),"Mechanics raised a JavaScript error");
-            report.put("mechanics_fixture",new JSONObject(js("(()=>{const d=document.getElementById('game').dataset;return {holds:+d.holdCompletions,phrases:+d.phrasesCompleted,constellations:+d.constellations,maxFireworks:__festivalMaxShells,maxSparks:__festivalMaxSparks,rewardFireworks:__festivalMaxRewards,sync:d.syncMode,musicSources:__musicSources}})()")));
+            report.put("mechanics_fixture",new JSONObject(js("(()=>{const d=document.getElementById('game').dataset;return {holds:+d.holdCompletions,phrases:+d.phrasesCompleted,constellations:+d.constellations,maxFireworks:__festivalMaxShells,maxSparks:__festivalMaxSparks,rewardFireworks:__festivalMaxRewards,sync:d.syncMode,musicSources:__musicSources,inputs:__fixtureEvents}})()")));
             require("true".equals(js("__festivalMaxShells>0&&__festivalMaxSparks>0&&__festivalMaxRewards>0")),"Native Android never displayed a firework");
             js("document.getElementById('effects').checked=true;document.getElementById('effects').dispatchEvent(new Event('change'));true");
             until("document.getElementById('game').dataset.fireworks==='0'",5);
