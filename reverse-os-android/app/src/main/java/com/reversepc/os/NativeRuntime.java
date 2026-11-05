@@ -11,6 +11,8 @@ public final class NativeRuntime {
      * owned-frame decoder without another 8.3 MiB defensive copy.
      */
     public static native byte[] observeFrame(byte[] state,String source);
+    /** XI-owned geometry on a private snapshot with at most 32 byte inputs. */
+    public static native byte[] observeGeometry(byte[] state,String source,int[] addresses,byte[] values);
     public static native String inspect(byte[] state);
     public static native byte[] compileRxe(byte[] sourceUtf8,byte[] titleUtf8);
     public static native byte[] inspectRxe(byte[] executable);
