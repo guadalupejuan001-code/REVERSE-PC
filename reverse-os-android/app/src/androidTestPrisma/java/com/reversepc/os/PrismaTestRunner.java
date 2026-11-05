@@ -81,13 +81,17 @@ public final class PrismaTestRunner extends Instrumentation {
             // must not assume a previously measured moving cube is still there.
             attempt[0]=()->{
                 if(SystemClock.uptimeMillis()>deadline){error[0]=new AssertionError("No late target became ready");done.countDown();return;}
-                w.evaluateJavascript("(()=>{const a=__audio,t=a.offset+__clock(a.ctx,performance.now(),true).time-a.when,n=__testScene.visibleNotes.find(n=>!n.hit&&t-n.t>.28&&t-n.t<.60);if(!n)return null;const p=__testScene.noteProjection(n,t),r=document.getElementById('game').getBoundingClientRect();return [r.x+p.x,r.y+p.y,innerWidth]})()",value->{
+                w.evaluateJavascript("(()=>{const a=__audio,t=a.offset+__clock(a.ctx,performance.now(),true).time-a.when,n=__testScene.visibleNotes.find(n=>!n.hit&&t-n.t>.28&&t-n.t<.60);if(!n)return null;const p=__testScene.noteProjection(n,t),r=document.getElementById('game').getBoundingClientRect();return [r.x+p.x,r.y+p.y,innerWidth,Date.now()]})()",value->{
                     if(value==null||value.equals("null")){w.postDelayed(attempt[0],20);return;}
                     try{
-                        JSONArray p=new JSONArray(value);float scale=w.getWidth()/(float)p.getDouble(2),x=(float)p.getDouble(0)*scale,y=(float)p.getDouble(1)*scale;
-                        long at=SystemClock.uptimeMillis();MotionEvent down=MotionEvent.obtain(at,at,MotionEvent.ACTION_DOWN,x,y,0);down.setSource(android.view.InputDevice.SOURCE_TOUCHSCREEN);
+                        JSONArray p=new JSONArray(value);long age=System.currentTimeMillis()-p.getLong(3);
+                        if(age<0||age>800){w.postDelayed(attempt[0],20);return;}
+                        float scale=w.getWidth()/(float)p.getDouble(2),x=(float)p.getDouble(0)*scale,y=(float)p.getDouble(1)*scale;
+                        // The gesture happened when JS measured this point, not
+                        // after the measurement callback waited in Android's UI queue.
+                        long at=SystemClock.uptimeMillis()-age;MotionEvent down=MotionEvent.obtain(at,at,MotionEvent.ACTION_DOWN,x,y,0);down.setSource(android.view.InputDevice.SOURCE_TOUCHSCREEN);
                         try{w.dispatchTouchEvent(down);}finally{down.recycle();}
-                        w.postDelayed(()->{MotionEvent up=MotionEvent.obtain(at,SystemClock.uptimeMillis(),MotionEvent.ACTION_UP,x,y,0);up.setSource(android.view.InputDevice.SOURCE_TOUCHSCREEN);try{w.dispatchTouchEvent(up);}catch(Throwable e){error[0]=e;}finally{up.recycle();done.countDown();}},35);
+                        w.postDelayed(()->{MotionEvent up=MotionEvent.obtain(at,at+35,MotionEvent.ACTION_UP,x,y,0);up.setSource(android.view.InputDevice.SOURCE_TOUCHSCREEN);try{w.dispatchTouchEvent(up);}catch(Throwable e){error[0]=e;}finally{up.recycle();done.countDown();}},35);
                     }catch(Throwable e){error[0]=e;done.countDown();}
                 });
             };attempt[0].run();
