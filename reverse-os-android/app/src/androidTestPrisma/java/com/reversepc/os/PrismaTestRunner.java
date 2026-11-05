@@ -57,15 +57,16 @@ public final class PrismaTestRunner extends Instrumentation {
             game=(RxeGraphicsActivity)monitor.waitForActivityWithTimeout(20000);require(game!=null,"Standalone entry did not open the game");
             until("!!document.getElementById('startBtn')&&document.getElementById('game').dataset.speakers==='2'",30);
             if(phase.equals("seed")){
-                until("(()=>{localStorage.setItem('prisma.upgrade-proof','2.5-to-2.6');localStorage.setItem('prisma.records',JSON.stringify([{track:'Récord conservado',level:'flow',score:137,accuracy:83,combo:4,date:1}]));return localStorage.getItem('prisma.upgrade-proof')==='2.5-to-2.6'})()",15);
+                until("(()=>{localStorage.setItem('prisma.upgrade-proof','2.6-to-2.7');localStorage.setItem('prisma.records',JSON.stringify([{track:'Récord conservado',level:'flow',score:137,accuracy:83,combo:4,date:1}]));return localStorage.getItem('prisma.upgrade-proof')==='2.6-to-2.7'})()",15);
                 // WebView commits DOM storage asynchronously. Do not kill its
                 // process immediately after writing the upgrade fixture.
                 runOnMainSync(()->game.moveTaskToBack(true));SystemClock.sleep(6500);
                 result.putString("stream","PRISMA_UPGRADE_SEEDED\n");finish(Activity.RESULT_OK,result);return;
             }
-            until("localStorage.getItem('prisma.upgrade-proof')==='2.5-to-2.6'&&JSON.parse(localStorage.getItem('prisma.records')||'[]').some(r=>r.score===137)",10);
+            until("localStorage.getItem('prisma.upgrade-proof')==='2.6-to-2.7'&&JSON.parse(localStorage.getItem('prisma.records')||'[]').some(r=>r.score===137)",10);
             require("true".equals(js("document.documentElement.classList.contains('native-xrender')&&!document.querySelector('.gpu-canvas')")),"Native X Render was replaced");
-            js("window.__errors=[];addEventListener('error',e=>__errors.push(e.message));window.__musicSources=0;const originalSource=AudioContext.prototype.createBufferSource;AudioContext.prototype.createBufferSource=function(){__musicSources++;return originalSource.call(this)};true");
+            js("window.__errors=[];addEventListener('error',e=>__errors.push(e.message));window.__musicSources=0;const originalSource=AudioContext.prototype.createBufferSource;AudioContext.prototype.createBufferSource=function(){__musicSources++;const ctx=this,node=originalSource.call(this),start=node.start;node.start=function(when=0,offset=0){window.__audio={ctx,when,offset};return start.apply(this,arguments)};return node;};import(location.origin+'/audio.js').then(m=>window.__clock=m.outputClock).catch(e=>window.__clockError=String(e));true");
+            until("typeof __clock==='function'",10);
             tap("#startBtn");until("document.body.classList.contains('is-playing')",50);
             until("+document.getElementById('game').dataset.laserCount>0",10);
             js("window.__playTest=setInterval(()=>['ArrowUp','ArrowRight','ArrowDown','ArrowLeft'].forEach(code=>document.dispatchEvent(new KeyboardEvent('keydown',{code,bubbles:true}))),55);true");
@@ -77,8 +78,15 @@ public final class PrismaTestRunner extends Instrumentation {
             JSONObject render=new JSONObject(new JSONArray("["+js("ReverseGraphics.xRenderInfo()")+"]").getString(0));
             require(render.optLong("frames")>30,"Native renderer did not advance");
             File folder=new File(getTargetContext().getExternalFilesDir(null),"prisma-evidence");folder.mkdirs();
-            Bitmap image=getUiAutomation().takeScreenshot();try(FileOutputStream out=new FileOutputStream(new File(folder,"PRISMA-2.5-Android.png"))){image.compress(Bitmap.CompressFormat.PNG,100,out);}image.recycle();
+            Bitmap image=getUiAutomation().takeScreenshot();try(FileOutputStream out=new FileOutputStream(new File(folder,"PRISMA-2.7-Android.png"))){image.compress(Bitmap.CompressFormat.PNG,100,out);}image.recycle();
             JSONObject report=new JSONObject().put("android_gameplay",true).put("speakers",2).put("cut_audio_sources",0).put("music_sources",1).put("native_render",render).put("ui",new JSONObject(js("(()=>{const c=document.getElementById('game');return {width:c.width,height:c.height,ratio:c.width/c.getBoundingClientRect().width,lasers:+c.dataset.laserCount}})()")));
+            JSONArray visited=new JSONArray();
+            for(String id:new String[]{"neon","aurora","abyss","volcano","galaxy"}){
+                js("document.getElementById('world').value='"+id+"';document.getElementById('world').dispatchEvent(new Event('change'));true");
+                until("document.getElementById('game').dataset.world==='"+id+"'",5);visited.put(id);
+            }
+            report.put("worlds_rendered",visited);
+            js("document.getElementById('world').value='journey';document.getElementById('world').dispatchEvent(new Event('change'));true");
             require("true".equals(js("document.body.classList.contains('is-playing')")),"Session ended before pause test");
             tap("#pauseBtn");until("!document.getElementById('pauseOverlay').hidden",5);
             tap("#resumeBtn");until("document.body.classList.contains('is-playing')",5);
@@ -87,14 +95,18 @@ public final class PrismaTestRunner extends Instrumentation {
             until("document.getElementById('trackName').textContent==='PRISMA-ritmo-prueba'&&document.getElementById('loadingOverlay').hidden",30);
             tap("#startBtn");until("document.body.classList.contains('is-playing')",30);
             require("true".equals(js("+document.getElementById('game').dataset.holdCount>=3&&+document.getElementById('game').dataset.chainCount>=2")),"Decoded tones did not create real hold/phrase mechanics");
-            js("window.__playTest=setInterval(()=>['ArrowUp','ArrowRight','ArrowDown','ArrowLeft'].forEach(code=>document.dispatchEvent(new KeyboardEvent('keydown',{code,bubbles:true}))),45);true");
-            until("+document.getElementById('game').dataset.holdCompletions>=1&&+document.getElementById('game').dataset.phrasesCompleted>=1",35);
+            js(RhythmFixture.playScript());
+            until("+document.getElementById('game').dataset.holdCompletions>=3&&+document.getElementById('game').dataset.phrasesCompleted>=2&&+document.getElementById('game').dataset.constellations>=1",35);
             js("clearInterval(__playTest);true");
-            require("true".equals(js("+document.getElementById('game').dataset.holdCompletions>=1&&+document.getElementById('game').dataset.phrasesCompleted>=1")),"Actual gameplay never completed a sustain and phrase");
+            require("true".equals(js("+document.getElementById('game').dataset.holdCompletions>=3&&+document.getElementById('game').dataset.phrasesCompleted>=2&&+document.getElementById('game').dataset.constellations>=1")),"Actual gameplay never completed holds, phrases and a precision constellation");
             require("3".equals(js("__musicSources")),"Mechanics created non-musical audio sources");
             require("0".equals(js("__errors.length")),"Mechanics raised a JavaScript error");
-            report.put("mechanics_fixture",new JSONObject(js("(()=>{const d=document.getElementById('game').dataset;return {holds:+d.holdCompletions,phrases:+d.phrasesCompleted,sync:d.syncMode,musicSources:__musicSources}})()")));
-            report.put("upgrade_2_5_records_preserved",true);
+            report.put("mechanics_fixture",new JSONObject(js("(()=>{const d=document.getElementById('game').dataset;return {holds:+d.holdCompletions,phrases:+d.phrasesCompleted,constellations:+d.constellations,maxFireworks:__festivalMaxShells,maxSparks:__festivalMaxSparks,rewardFireworks:__festivalMaxRewards,sync:d.syncMode,musicSources:__musicSources}})()")));
+            require("true".equals(js("__festivalMaxShells>0&&__festivalMaxSparks>0&&__festivalMaxRewards>0")),"Native Android never displayed a firework");
+            js("document.getElementById('effects').checked=true;document.getElementById('effects').dispatchEvent(new Event('change'));true");
+            until("document.getElementById('game').dataset.fireworks==='0'",5);
+            report.put("soft_effects_disable_fireworks",true);
+            report.put("upgrade_2_6_records_preserved",true);
             Files.write(new File(folder,"android-validation.json").toPath(),report.toString(2).getBytes(StandardCharsets.UTF_8));
             result.putString("stream","PRISMA_ANDROID_OK music=1 cut-sounds=0 speakers=2 native=Ether-Render-X\n");finish(Activity.RESULT_OK,result);
         }catch(Throwable e){result.putString("stream","PRISMA_ANDROID_FAILED "+e+"\n");finish(Activity.RESULT_CANCELED,result);}

@@ -70,7 +70,7 @@ export function makeMusicStage(peaks, { bpm = 120, duration = 60, energy = null,
     .sort((a, b) => a.t - b.t);
   if (!cleanSegments.length || cleanSegments[0].t > 0) cleanSegments.unshift({ t: 0, bpm: safeBpm });
   const map = { bpm: safeBpm, duration: safeDuration, period, tempoSegments: cleanSegments,
-    energyStep: safeDuration / length, energyBins, accents, fallback: !!fallback };
+    energyStep: safeDuration / length, energyBins, accents, onsets, fallback: !!fallback };
   map.accents = accents.map(p => {
     const major = p.strength + 1e-6 >= majorThreshold;
     const now = musicLevelAt(map, p.t);

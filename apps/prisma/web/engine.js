@@ -7,6 +7,7 @@ import { createSpectacleEvent, pruneSpectacles, spectacleEnvelope, spectacleGeom
 import { nextVisualQuality, visualBudget } from './performance-policy.js';
 import { livingGalaxyFrame, drawLivingGalaxy, overlayPixelRatio } from './living-galaxy.js';
 import { approachSeconds, noteMotion, decorateNotes, NOTE_SIZE } from './note-flow.js';
+import { makeFestivalProgram, worldFrame, drawWorld, fireworkFrame, drawFireworks, rewardFirework } from './festival-worlds.js';
 export const PALETTES = { coral: ['#63ffb4','#ff5074'], violet: ['#63ffb4','#bd8bff'], ice: ['#7aeaff','#ff5074'] };
 export const DIRECTIONS = [{x:0,y:-1},{x:1,y:0},{x:0,y:1},{x:-1,y:0}];
 export function makeChart(peaks, level, seed = 7721, music = null) {
@@ -28,6 +29,7 @@ export class Scene {
     this.width = 0; this.height = 0; this.particles = []; this.shards = []; this.cutRings = []; this.trails = new Map(); this.pulse = 0; this.energy = 0; this.flash = 0; this.shake = 0; this.musicStage = null; this.stageExplosions = []; this.concertProgram = makeConcertProgram(null); this.rigPose = null; this.stageShow = null;
     const random = seeded(6631); this.stars = Array.from({length:100}, () => ({x:random(),y:random(),a:.15+random()*.5,s:random()>.9?1.4:.6}));
     this.qualityScale=1;this.frameTotal=0;this.frameCount=0;this.cooldown=0;this.visualState={quality:'balanced',slowFrames:0,fastFrames:0,cooldownUntil:0};this.view=new Float32Array(4);this.paletteKey='';this.rgb=[];this.diagnostics=new URLSearchParams(location.search).has('diagnostics');this.cpuTimes=[];
+    this.festivalProgram=makeFestivalProgram(null);this.rewardShells=[];
     this.gpu=NativeXRender.create()||(new URLSearchParams(location.search).get('renderer')==='canvas'?null:CubeGPU.create(canvas.parentElement));
     canvas.dataset.renderer=this.gpu?.native?'ether-render-x-cpu':this.gpu?'graphics-cosmic-webgl2':'canvas';
     if(this.gpu)this.gpu.onFailure=()=>{this.gpu.canvas.remove();this.gpu=null;canvas.dataset.renderer='canvas';this.resize();};
@@ -37,13 +39,15 @@ export class Scene {
     this.musicStage = new MusicStageDirector(map);
     this.travel=approachSeconds(map.bpm,level);this.phraseGlow=0;
     this.concertProgram = makeConcertProgram(map);
+    this.festivalProgram=makeFestivalProgram(map,this.concertProgram);this.rewardShells=[];
     this.rigPose = null;
     this.stageExplosions = [];
     this.stageShow = null;
   }
   armCombo(combo, time) { return this.musicStage?.armCombo(combo, time-(this.settings().latency||0)/1000) || false; }
   cancelCombo() { this.musicStage?.cancelCombo(); }
-  clearMusicStage() { this.musicStage = null; this.stageExplosions = []; this.concertProgram = makeConcertProgram(null); this.rigPose = null; this.stageShow = null; }
+  celebrateConstellation(time,serial){const e=rewardFirework(this.festivalProgram,time,serial);if(e){this.rewardShells.push(e);this.rewardShells=this.rewardShells.slice(-4);}return !!e;}
+  clearMusicStage() { this.musicStage = null; this.stageExplosions = []; this.concertProgram = makeConcertProgram(null); this.festivalProgram=makeFestivalProgram(null);this.rewardShells=[];this.rigPose = null; this.stageShow = null; }
   resize() {
     const r=this.canvas.getBoundingClientRect(),quality=this.settings().quality||'auto';
     const budget=this.gpu?(quality==='high'?3000000:1600000):850000;
@@ -402,6 +406,9 @@ export class Scene {
     const quality=this.settings().quality==='auto'?(this.qualityScale<.78?'battery':this.visualState.quality==='high'?'high':'auto'):this.settings().quality;
     const rigPose=concertPose(this.concertProgram,musicTime,stageCue,{quality,reduced:this.settings().effects,style:this.settings().stageStyle||'galaxy'});
     this.rigPose=rigPose;
+    const world=worldFrame(this.festivalProgram,preview?0:musicTime,this.settings().world||'journey',this.settings().effects);
+    drawWorld(ctx,w,h,world,musicTime,{preview,reduced:this.settings().effects,battery:quality==='battery',energy:rigPose.energy,beat:stageCue.beat});
+    this.canvas.dataset.world=world.current.id;this.canvas.dataset.chapter=String(world.index+1);this.canvas.dataset.chapterCount=String(this.festivalProgram.chapters.length);
     if(preview){
       const mobile=w<580,drift=this.settings().effects?0:Math.sin(time*.65)*.1;
       const blocks=[{x:.15,y:-.8,z:7,size:.78,c:0,d:1,r:.3},{x:-1.4,y:.3,z:5.5,size:.78,c:1,d:0,r:-.27},{x:1.3,y:-1.0,z:3.3,size:.88,c:0,d:3,r:.25},{x:.86,y:.74,z:1.65,size:1.03,c:1,d:2,r:-.22},{x:-.8,y:-.15,z:0,size:1.12,c:0,d:0,r:.22}];
@@ -423,7 +430,13 @@ export class Scene {
     }
     // Notes are added before decorations: decorative parts never reserve 3D slots.
     this.stageRig(rigPose);
-    this.gpu?.flush();this.drawStageFX(ctx,musicTime,preview,stageCue,rigPose);if(!preview)this.drawNoteGuides(ctx,time,chart,latency);this.drawEffects(animate?dt:0);ctx.restore();
+    this.gpu?.flush();this.drawStageFX(ctx,musicTime,preview,stageCue,rigPose);
+    this.rewardShells=this.rewardShells.filter(e=>musicTime-e.t<2);
+    const shells=fireworkFrame(this.festivalProgram,preview?-1:musicTime,{quality,reduced:this.settings().effects,enabled:this.settings().fireworks!==false,rewards:this.rewardShells});
+    drawFireworks(ctx,w,h,shells,world.current,{preview,battery:quality==='battery'});
+    this.canvas.dataset.fireworks=String(shells.length);this.canvas.dataset.fireworkSparks=String(shells.reduce((n,e)=>n+e.sparks.length,0));
+    this.canvas.dataset.rewardFireworks=String(shells.filter(e=>e.source==='constellation').length);
+    if(!preview)this.drawNoteGuides(ctx,time,chart,latency);this.drawEffects(animate?dt:0);ctx.restore();
     if(this.diagnostics){this.cpuTimes.push(performance.now()-started);if(this.cpuTimes.length>240)this.cpuTimes.shift();if(this.cpuTimes.length%30===0){const sorted=[...this.cpuTimes].sort((a,b)=>a-b);this.canvas.dataset.renderMs=(sorted.reduce((a,b)=>a+b,0)/sorted.length).toFixed(3);this.canvas.dataset.renderP95=sorted[Math.floor(sorted.length*.95)].toFixed(3);this.canvas.dataset.visibleCubes=String(this.gpu?.count||0);this.canvas.dataset.pixelRatio=this.dpr.toFixed(2);}}
     if(this.gpu)return;
     if(!this.vignette){this.vignette=ctx.createRadialGradient(w*.5,h*.5,h*.2,w*.5,h*.5,Math.max(w,h)*.72);this.vignette.addColorStop(0,'#0000');this.vignette.addColorStop(1,'#0009');}ctx.fillStyle=this.vignette;ctx.fillRect(0,0,w,h);
@@ -457,6 +470,6 @@ export class Scene {
       ctx.restore();
     }
   }
-  clearEffects(){this.particles=[];this.shards=[];this.cutRings=[];this.holdNotes=[];this.phraseGlow=0;this.trails.clear();this.stageExplosions=[];this.stageShow=null;this.cancelCombo();}
+  clearEffects(){this.particles=[];this.shards=[];this.cutRings=[];this.holdNotes=[];this.phraseGlow=0;this.rewardShells=[];this.trails.clear();this.stageExplosions=[];this.stageShow=null;this.cancelCombo();}
 }
 export function hexRGB(hex){return `${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(3,5),16)},${parseInt(hex.slice(5,7),16)}`;}
