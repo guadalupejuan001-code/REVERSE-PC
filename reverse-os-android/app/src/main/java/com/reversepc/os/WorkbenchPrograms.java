@@ -34,7 +34,8 @@ final class WorkbenchPrograms {
         // Confirmed RXE hash from the integrated PRISMA 2.3.0 Android artifact.
         "9332f95a8405d248bd52a13d4669c301c81793aeef3f1d7b20d85ee7374fc543",
         // Original PRISMA Galactica 2.4 released to the owner.
-        "9288f2705ba4269d28b338123f40c23533eb7729256db0b38de27b3e3af34a6b"
+        "9288f2705ba4269d28b338123f40c23533eb7729256db0b38de27b3e3af34a6b",
+        "b2c45bb146e8e3cbc2887036c023636907cd5a81136881334835229c1341bbee"
     };
     static boolean trustedOldPrisma(String hash){
         if(hash==null)return false;
@@ -66,18 +67,18 @@ final class WorkbenchPrograms {
     }
     static void seedGraphics(Context context,WorkspaceFiles files,android.content.SharedPreferences prefs)throws Exception{
         // Each release uses its own flag. A previous 1.2 seed must not prevent
-        // PRISMA 2.5 from being published into an existing REVERSE installation.
+        // PRISMA 2.6 from being published into an existing REVERSE installation.
         // Each official PRISMA release has a different trusted content identity.
         // Older 2.3 flags cannot suppress the one-time 2.5 upgrade.
-        if(prefs.getBoolean("prisma-2.5-living-seeded",false))return;
+        if(prefs.getBoolean("prisma-2.6-rhythm-seeded",false))return;
         final byte[] image;
         try(InputStream in=context.getAssets().open("native-apps/PRISMA.rxe")){image=read(in);}
         catch(java.io.FileNotFoundException optional){return;}
         JSONObject metadata=info(image);
         if(!"graphics".equals(metadata.optString("ui"))||
             !"org.reverse.prisma".equals(metadata.optString("app_id"))||
-            !"2.5.0".equals(metadata.optString("app_version")))
-            throw new IOException("El paquete PRISMA 2.5 no coincide con el perfil esperado");
+            !"2.6.0".equals(metadata.optString("app_version")))
+            throw new IOException("El paquete PRISMA 2.6 no coincide con el perfil esperado");
         final String bundledHash=identity(image);
         boolean present=false;
         for(WorkspaceFiles.Entry entry:files.list("Aplicaciones"))
@@ -115,7 +116,7 @@ final class WorkbenchPrograms {
              .putBoolean("prisma-2.2-seeded",true)
              .putBoolean("prisma-2.3-seeded",true)
              .putBoolean("prisma-2.3-main-seeded",true)
-             .putBoolean("prisma-2.5-living-seeded",true).apply();
+             .putBoolean("prisma-2.6-rhythm-seeded",true).apply();
     }
     JSONObject graphicsLaunch(JSONObject request)throws Exception{
         byte[] image=checked(request);JSONObject metadata=info(image);

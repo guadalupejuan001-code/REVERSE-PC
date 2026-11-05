@@ -6,10 +6,12 @@ import { makeConcertProgram, concertPose, concertNativeParts, RIG_MAX_CUBOIDS } 
 import { createSpectacleEvent, pruneSpectacles, spectacleEnvelope, spectacleGeometry, SPECTACLE_MAX_EVENTS } from './combo-spectacle.js';
 import { nextVisualQuality, visualBudget } from './performance-policy.js';
 import { livingGalaxyFrame, drawLivingGalaxy, overlayPixelRatio } from './living-galaxy.js';
+import { approachSeconds, noteMotion, decorateNotes, NOTE_SIZE } from './note-flow.js';
 export const PALETTES = { coral: ['#63ffb4','#ff5074'], violet: ['#63ffb4','#bd8bff'], ice: ['#7aeaff','#ff5074'] };
 export const DIRECTIONS = [{x:0,y:-1},{x:1,y:0},{x:0,y:1},{x:-1,y:0}];
 export function makeChart(peaks, level, seed = 7721, music = null) {
-  return makeIntelligentChart(peaks, level, seed, music);
+  const chart=makeIntelligentChart(peaks, level, seed, music);
+  return music?.mechanics?decorateNotes(chart,level):chart;
 }
 export function segmentDistance(px, py, ax, ay, bx, by) {
   const dx = bx - ax, dy = by - ay, l = dx * dx + dy * dy;
@@ -31,14 +33,15 @@ export class Scene {
     if(this.gpu)this.gpu.onFailure=()=>{this.gpu.canvas.remove();this.gpu=null;canvas.dataset.renderer='canvas';this.resize();};
     this.resize(); this.observer = new ResizeObserver(() => this.resize()); this.observer.observe(canvas);
   }
-  setMusicStage(map) {
+  setMusicStage(map,level='flow') {
     this.musicStage = new MusicStageDirector(map);
+    this.travel=approachSeconds(map.bpm,level);this.phraseGlow=0;
     this.concertProgram = makeConcertProgram(map);
     this.rigPose = null;
     this.stageExplosions = [];
     this.stageShow = null;
   }
-  armCombo(combo, time) { return this.musicStage?.armCombo(combo, time) || false; }
+  armCombo(combo, time) { return this.musicStage?.armCombo(combo, time-(this.settings().latency||0)/1000) || false; }
   cancelCombo() { this.musicStage?.cancelCombo(); }
   clearMusicStage() { this.musicStage = null; this.stageExplosions = []; this.concertProgram = makeConcertProgram(null); this.rigPose = null; this.stageShow = null; }
   resize() {
@@ -68,7 +71,43 @@ export class Scene {
     const scale = f / Math.max(.7, z + 4.8);
     return {x:cx + x * scale,y:cy + y * scale,s:scale};
   }
-  noteProjection(note,t,latency=0) { return this.projection((note.lane-1)*1.13,(note.row-.5)*1.33,(note.t+latency-t)*10.6); }
+  noteProjection(note,t,latency=0) { const motion=noteMotion(note,t,latency,this.travel||2.25);return {...this.projection((note.lane-1)*1.13,(note.row-.5)*1.33,motion.z),size:motion.size}; }
+  celebratePhrase(time){this.phraseGlow=time+1.2;}
+  drawNoteGuides(ctx,time,chart,latency){
+    const colors=PALETTES[this.settings().palette];ctx.save();ctx.lineCap='round';
+    for(let lane=0;lane<3;lane++)for(let row=0;row<2;row++){
+      const p=this.projection((lane-1)*1.13,(row-.5)*1.33,0),r=p.s*NOTE_SIZE*.58;
+      ctx.strokeStyle='rgba(163,219,225,.30)';ctx.lineWidth=1.2;
+      for(const [x,y]of [[-1,-1],[1,-1],[1,1],[-1,1]]){
+        ctx.beginPath();ctx.moveTo(p.x+x*r,p.y+y*r*.6);ctx.lineTo(p.x+x*r,p.y+y*r);ctx.lineTo(p.x+x*r*.6,p.y+y*r);ctx.stroke();
+      }
+    }
+    const [a,b]=visibleRange(chart,time,latency);
+    const nearby=chart.slice(a,b);
+    for(const n of this.holdNotes||[])if(n.holding&&!nearby.includes(n))nearby.push(n);
+    for(const n of nearby){
+      if(n.hit||n.missed)continue;
+      const motion=noteMotion(n,time,latency,this.travel||2.25);
+      if(motion.delta>(this.travel||2.25)||motion.delta<-.25&&!n.holding)continue;
+      const p=this.noteProjection(n,time,latency),color=colors[n.color];
+      ctx.globalAlpha=motion.alpha;
+      if(n.kind==='hold'){
+        const tail={...n,t:n.t+n.duration,holding:false},end=this.noteProjection(tail,time,latency);
+        ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(end.x,end.y);
+        ctx.strokeStyle=color;ctx.globalAlpha*=.28;ctx.lineWidth=Math.max(3,p.s*.16);ctx.stroke();ctx.globalAlpha=motion.alpha;
+        ctx.beginPath();ctx.arc(p.x,p.y,p.s*.39,-Math.PI/2,-Math.PI/2+Math.PI*2*(n.holdProgress||.025));ctx.strokeStyle=color;ctx.lineWidth=3;ctx.stroke();
+        ctx.font='600 11px sans-serif';ctx.textAlign='center';ctx.fillStyle='#e7fff7';
+        ctx.fillText(n.holding?'MANTÉN':'SOSTÉN',p.x,p.y-p.s*.47);
+      }
+      if(Number.isInteger(n.chainIndex)){
+        ctx.font='600 11px sans-serif';ctx.textAlign='center';ctx.fillStyle=color;
+        ctx.fillText((n.chainIndex+1)+'/'+n.chainLength,p.x,p.y+p.s*.48);
+        const next=nearby.find(v=>v.phrase===n.phrase&&v.chainIndex===n.chainIndex+1&&!v.hit&&!v.missed);
+        if(next){const q=this.noteProjection(next,time,latency);ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.strokeStyle=color;ctx.lineWidth=1.3;ctx.globalAlpha=.2*motion.alpha;ctx.stroke();}
+      }
+    }
+    ctx.restore();
+  }
   addTrail(id,x,y,color) { let trail = this.trails.get(id); if (!trail) { trail = {points:[],color,active:true}; this.trails.set(id,trail); } trail.active = true; trail.points.push({x,y,life:1}); if (trail.points.length > 22) trail.points.shift(); }
   endTrail(id) { const trail = this.trails.get(id); if(trail) trail.active=false; }
   burst(note,p,dx,dy,quality=1) {
@@ -346,20 +385,22 @@ export class Scene {
     ctx.setTransform(this.dpr,0,0,this.dpr,0,0);this.energy+=(audioEnergy-this.energy)*.12;this.pulse=Math.max(0,this.pulse-dt*2.7);this.shake=Math.max(0,this.shake-dt*22);
     ctx.save();if(this.shake&&!this.settings().effects)ctx.translate((Math.random()-.5)*this.shake,(Math.random()-.5)*this.shake);
     if(!this.gpu)this.background(time,preview,this.energy);
-    const stageCue = this.musicStage ? this.musicStage.step(time) : { beat: Math.exp(-((time % (60 / 122) + (60 / 122)) % (60 / 122)) * 8) * .55, energy: .28, charge:null, explosion:null };
+    const musicTime=time-latency;
+    const stageCue = this.musicStage ? this.musicStage.step(musicTime) : { beat: Math.exp(-((time % (60 / 122) + (60 / 122)) % (60 / 122)) * 8) * .55, energy: .28, charge:null, explosion:null };
     if(stageCue.explosion){
       const event=createSpectacleEvent(stageCue.explosion);
       if(event)this.stageExplosions.push(event);
       if(this.stageExplosions.length>SPECTACLE_MAX_EVENTS)
         this.stageExplosions=this.stageExplosions.slice(-SPECTACLE_MAX_EVENTS);
     }
-    this.stageExplosions=pruneSpectacles(this.stageExplosions,time);
-    stageCue.show=spectacleEnvelope(this.stageExplosions,time,this.settings().effects);
+    this.stageExplosions=pruneSpectacles(this.stageExplosions,musicTime);
+    stageCue.show=spectacleEnvelope(this.stageExplosions,musicTime,this.settings().effects);
+    if(musicTime<(this.phraseGlow||0))stageCue.show=Math.max(stageCue.show,.4*(this.phraseGlow-musicTime)/1.2);
     this.stageShow={charge:stageCue.charge||null,
       release:stageCue.explosion?stageCue.explosion.combo:null,
       active:this.stageExplosions.length?this.stageExplosions[this.stageExplosions.length-1].tier:null};
     const quality=this.settings().quality==='auto'?(this.qualityScale<.78?'battery':this.visualState.quality==='high'?'high':'auto'):this.settings().quality;
-    const rigPose=concertPose(this.concertProgram,time,stageCue,{quality,reduced:this.settings().effects,style:this.settings().stageStyle||'galaxy'});
+    const rigPose=concertPose(this.concertProgram,musicTime,stageCue,{quality,reduced:this.settings().effects,style:this.settings().stageStyle||'galaxy'});
     this.rigPose=rigPose;
     if(preview){
       const mobile=w<580,drift=this.settings().effects?0:Math.sin(time*.65)*.1;
@@ -371,11 +412,18 @@ export class Scene {
       const [first,last]=visibleRange(chart,time,latency);
       // Native packets have a strict 64-body cap: submit imminent notes first.
       // Browser WebGL retains far-to-near ordering for alpha blending.
-      for(let slot=0;slot<last-first;slot++){const i=this.gpu?.native?first+slot:last-1-slot;const n=chart[i],delta=n.t+latency-time;if(n.hit||n.missed||delta>3.5||delta<-.35)continue;const z=delta*10.6;const alpha=Math.min(1,(3.5-delta)*1.5);this.cube((n.lane-1)*1.13,(n.row-.5)*1.33,z,.73,n.color,n.dir,Math.sin(n.t*4)*.065,false,Math.abs(delta)<.22,alpha);}
+      const held=(this.holdNotes||[]).filter(n=>n.holding&&!n.hit&&!n.missed);
+      const incoming=chart.slice(first,last).filter(n=>!n.hit&&!n.missed&&!n.holding);
+      const notes=this.gpu?.native?[...held,...incoming]:[...incoming.reverse(),...held];
+      for(const n of notes){
+        const m=noteMotion(n,time,latency,this.travel||2.25);
+        if(!n.holding&&(m.delta>(this.travel||2.25)||m.delta<-.25))continue;
+        this.cube((n.lane-1)*1.13,(n.row-.5)*1.33,m.z,m.size,n.color,n.dir,0,false,m.hot,m.alpha);
+      }
     }
     // Notes are added before decorations: decorative parts never reserve 3D slots.
     this.stageRig(rigPose);
-    this.gpu?.flush();this.drawStageFX(ctx,time,preview,stageCue,rigPose);this.drawEffects(animate?dt:0);ctx.restore();
+    this.gpu?.flush();this.drawStageFX(ctx,musicTime,preview,stageCue,rigPose);if(!preview)this.drawNoteGuides(ctx,time,chart,latency);this.drawEffects(animate?dt:0);ctx.restore();
     if(this.diagnostics){this.cpuTimes.push(performance.now()-started);if(this.cpuTimes.length>240)this.cpuTimes.shift();if(this.cpuTimes.length%30===0){const sorted=[...this.cpuTimes].sort((a,b)=>a-b);this.canvas.dataset.renderMs=(sorted.reduce((a,b)=>a+b,0)/sorted.length).toFixed(3);this.canvas.dataset.renderP95=sorted[Math.floor(sorted.length*.95)].toFixed(3);this.canvas.dataset.visibleCubes=String(this.gpu?.count||0);this.canvas.dataset.pixelRatio=this.dpr.toFixed(2);}}
     if(this.gpu)return;
     if(!this.vignette){this.vignette=ctx.createRadialGradient(w*.5,h*.5,h*.2,w*.5,h*.5,Math.max(w,h)*.72);this.vignette.addColorStop(0,'#0000');this.vignette.addColorStop(1,'#0009');}ctx.fillStyle=this.vignette;ctx.fillRect(0,0,w,h);
@@ -409,6 +457,6 @@ export class Scene {
       ctx.restore();
     }
   }
-  clearEffects(){this.particles=[];this.shards=[];this.cutRings=[];this.trails.clear();this.stageExplosions=[];this.stageShow=null;this.cancelCombo();}
+  clearEffects(){this.particles=[];this.shards=[];this.cutRings=[];this.holdNotes=[];this.phraseGlow=0;this.trails.clear();this.stageExplosions=[];this.stageShow=null;this.cancelCombo();}
 }
 export function hexRGB(hex){return `${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(3,5),16)},${parseInt(hex.slice(5,7),16)}`;}

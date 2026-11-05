@@ -14,9 +14,9 @@ const demo=readFileSync(new URL('../apps/prisma/web/audio.js',import.meta.url),'
   .replace(/^export \{.*$/gm,'').replace(/^export /gm,'');
 const {RhythmAudio}=new Function(demo+';return {RhythmAudio};')();
 
-test(Math.abs(qa.hitWindowFor('flow')-.32)<1e-8,'Flow timing contract changed');
-test(Math.abs(qa.hitWindowFor('pulse')-.265)<1e-8,'Pulse timing contract changed');
-test(Math.abs(qa.hitWindowFor('vertigo')-.225)<1e-8,'Vertigo timing contract changed');
+test(Math.abs(qa.hitWindowFor('flow')-.24)<1e-8,'Flow timing contract changed');
+test(Math.abs(qa.hitWindowFor('pulse')-.19)<1e-8,'Pulse timing contract changed');
+test(Math.abs(qa.hitWindowFor('vertigo')-.16)<1e-8,'Vertigo timing contract changed');
 test(qa.segmentDistance(0,0,-10,0,10,0)===0,'Segment crossing wrong');
 test(qa.segmentDistance(5,5,5,5,5,5)===0,'Degenerate touch point wrong');
 const p=n=>({x:n.lane===0?100:220,y:100,s:90});

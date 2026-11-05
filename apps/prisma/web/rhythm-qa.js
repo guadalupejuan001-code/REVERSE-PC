@@ -2,7 +2,7 @@
 // Screen-space picking chooses the best playable note, not the first note in
 // chart order, when overlapping events share a hit window.
 const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
-const windows=Object.freeze({flow:.32,pulse:.265,vertigo:.225});
+const windows=Object.freeze({flow:.24,pulse:.19,vertigo:.16});
 export const hitWindowFor=level=>windows[level]||windows.flow;
 export const isEndOfSong=(audioTime,duration,level,latencySeconds=0)=>
  Number.isFinite(audioTime)&&Number.isFinite(duration)&&
@@ -24,21 +24,21 @@ export function nearestSwipeNote(chart,time,latency,level,
  ax,ay,bx,by,project,{precise=false,isTap=false}={}) {
  if(!Array.isArray(chart)||!chart.length||typeof project!=='function')return null;
  const window=hitWindowFor(level),length=Math.hypot(bx-ax,by-ay);
- if(isTap && (level!=='flow'||precise))return null;
  if(!isTap&&length<3)return null;
  const [first,last]=range(chart,time,latency,window);
  let winner=null,best=Infinity;
  for(let i=first;i<last;i++){
   const n=chart[i];
-  if(n.hit||n.missed||!Number.isFinite(n.t))continue;
+  if(n.hit||n.missed||n.holding||!Number.isFinite(n.t))continue;
+  if(isTap&&n.kind!=='hold'&&(level!=='flow'||precise))continue;
   const delta=n.t+latency-time;
   if(Math.abs(delta)>window)continue;
-  const p=project(n,time,latency),radius=p.s*.73*.62;
+  const p=project(n,time,latency),radius=Math.max(18,p.s*.64*.66);
   if(!(radius>0))continue;
   const distance=segmentDistance(p.x,p.y,ax,ay,bx,by);
   if(distance>radius)continue;
   const directions=[[0,-1],[1,0],[0,1],[-1,0]],dir=directions[n.dir];
-  if(precise && (!dir||!length||((bx-ax)*dir[0]+(by-ay)*dir[1])/length<=.43))continue;
+  if(precise && n.kind!=='hold' && (!dir||!length||((bx-ax)*dir[0]+(by-ay)*dir[1])/length<=.43))continue;
   // Timing is dominant; when notes are simultaneous choose the closer cube.
   const grade=Math.abs(delta)/window+distance/radius*.20;
   if(grade<best){best=grade;winner=n;}
@@ -51,7 +51,7 @@ export function nearestKeyNote(chart,time,latency,level,direction) {
  let note=null,best=Infinity;
  for(let i=first;i<last;i++){
   const n=chart[i],error=Math.abs(n.t+latency-time);
-  if(!n.hit&&!n.missed&&n.dir===direction&&error<=window&&error<best){
+  if(!n.hit&&!n.missed&&!n.holding&&n.dir===direction&&error<=window&&error<best){
    best=error;note=n;
   }
  }
@@ -60,8 +60,12 @@ export function nearestKeyNote(chart,time,latency,level,direction) {
 export function timingLabel(delta,perfect,validDirection,isTap=false) {
  if(perfect)return 'PERFECTO';
  if(!validDirection && !isTap)return 'FLUIDO';
- if(isTap)return 'FLUIDO';
- if(delta>.145)return 'ANTICIPADO';
- if(delta<-.145)return 'TARDE';
+ if(delta>.11)return 'ANTICIPADO';
+ if(delta<-.11)return 'TARDE';
  return 'A RITMO';
+}
+export function timingGrade(delta,validDirection=true){
+ const error=Math.abs(delta),perfect=error<=.055&&validDirection;
+ return {delta,perfect,base:perfect?150:error<=.11?120:error<=.17?90:65,
+   label:timingLabel(delta,perfect,validDirection)};
 }
