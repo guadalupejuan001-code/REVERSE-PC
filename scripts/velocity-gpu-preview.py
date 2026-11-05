@@ -58,7 +58,7 @@ for i in range(faces):
     values=struct.unpack_from('<9i6h3H6B',packet,2064+60*i)
     positions=values[:9];uv=values[9:15];shade=values[15:18];base,count,tile,strength,reserved0,reserved1=values[18:]
     assert not reserved0 and not reserved1
-    category=0 if min(positions[2::3])>900000 else 2 if 24<=base<32 else (3 if strength else 6) if base==32 and count==8 else 4 if base==244 else 5 if base==56 else 1
+    category=0 if min(positions[2::3])>900000 else 2 if 24<=base<32 else (3 if strength else 6) if base==32 and count==8 else (4 if strength else 7) if base==244 else 5 if base==56 else 1
     bucket=0 if category==0 else 1 if category==1 else 2 if category<=3 else 3
     for v in range(3):buckets[bucket].append([*positions[v*3:v*3+3],*uv[v*2:v*2+2],shade[v]/65280,base,count,tile,strength,category])
 vertices=np.array([v for bucket in buckets for v in bucket],dtype=np.float32)

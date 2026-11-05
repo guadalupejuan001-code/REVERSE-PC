@@ -117,13 +117,14 @@ function finishScene(content,options={}){
   const n=(k+1)%6;
   rockFaces.push(face(ROCK_START,ROCK_START+1+k,ROCK_START+1+n,[3,8,4,3,10,8][k]));
   rockFaces.push(face(ROCK_START+1+k,ROCK_START+7+k,ROCK_START+1+n,[4,3,8,4,3,8][k]));
+  rockFaces.push(face(ROCK_START+7+k,ROCK_START+7+n,ROCK_START+1+n,[4,3,8,4,3,8][k]));
  }
  for(let k=0;k<4;k++){
   const a=GRASS_START+k*3,b=a+1,c=a+2;
   grassFaces.push(k===3?'meshface '+[a,b,c].map(i=>i+CAMERA).join(' ')+' 243 r9 r10 r11 60':face(a,b,c,14+k));
   grassFaces.push(k===3?'meshface '+[c,b,a].map(i=>i+CAMERA).join(' ')+' 243 r9 r10 r11 60':face(c,b,a,12+k));
  }
- if(28*9+8*rockFaces.length+4*grassFaces.length!==380)
+ if(28*9+8*rockFaces.length+4*grassFaces.length!==428)
   throw Error('Forest triangle budget is not bounded');
  const full=['label emit_tree','localget r0 11','mod r0 10','cmp r0 7','je nature_emit_rock','cmp r0 8',
    'je nature_emit_rock','cmp r0 9','je nature_emit_grass',
@@ -149,7 +150,7 @@ function run(options={}){
   const before=fs.readFileSync(filename,'utf8'),after=finishScene(before,options);
   if(before!==after)fs.writeFileSync(filename,after);
   changed.push({name,bytes:Buffer.byteLength(after),updated:before!==after,
-    trees:28,rocks:8,grassClumps:4,faces:380});
+    trees:28,rocks:8,grassClumps:4,faces:428});
  }
  return changed;
 }

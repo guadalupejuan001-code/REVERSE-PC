@@ -72,8 +72,15 @@ void main(){
         rgb=vec3(.018,.029,.027);alpha=.10+vShade*.42;
     }else if(vCategory>=4.0){
         float flow=.72+.28*sin(vUv.y*.7+uTime*24.0);
-        if(vCategory==5.0){rgb=mix(vec3(.02,.24,.9),vec3(.55,.96,1.0),vShade)*1.9;alpha=(.10+vShade*.44)*flow;}
-        else {rgb=vCategory==6.0?mix(vec3(.35,.3,.2),vec3(.7,.86,.9),step(.5,uWaterDepth)):vec3(.55,.79,.9);alpha=(.04+vShade*.34)*flow;}
+        if(vCategory==5.0){
+            float side=sin(clamp(vUv.x/16.0,0.0,1.0)*3.14159265),tail=1.0-smoothstep(.55,1.0,vUv.y/64.0);
+            rgb=mix(vec3(.02,.18,.9),vec3(.45,.88,1.0),vShade)*1.65;
+            alpha=pow(max(0.0,side),.8)*tail*vShade*.68*flow;
+        }else if(vCategory==4.0){
+            float side=sin(clamp(vUv.x/16.0,0.0,1.0)*3.14159265),tail=1.0-smoothstep(.70,1.0,vUv.y/64.0);
+            rgb=vec3(.55,.79,.95);alpha=max(0.0,side)*tail*(.06+vShade*.42)*flow;
+        }
+        else {rgb=vCategory==6.0?mix(vec3(.35,.3,.2),vec3(.7,.86,.9),step(.5,uWaterDepth)):vec3(.43,.36,.26);alpha=(.04+vShade*.34)*flow;}
     }else{
         rgb*=.76+.24*diffuse;
         if(base>=12.0&&base<20.0){
@@ -87,7 +94,8 @@ void main(){
         }
         if(base>=40.0&&base<56.0)rgb+=environment(R)*(.035+uWet*.12)*pow(max(dot(N,normalize(L+V)),0.0),55.0);
     }
-    if(base==224.0||base==225.0||base==242.0)rgb*=base==242.0?1.35:2.3;
+    if(base==242.0)rgb=vec3(.88,.035,.065);
+    if(base==224.0||base==225.0)rgb*=2.3;
     float fog=1.0-exp(-max(0.0,vPosition.z-70.0)*.0036);
     if(vCategory<4.0)rgb=mix(rgb,palette(4.0),fog*.68);
     color=vec4(max(rgb,vec3(0.0)),alpha);

@@ -118,7 +118,9 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label,open
  if(groups.length>128)throw Error('Normal-group scalar encoding exceeded');
  const groupNormals=groups.map(g=>norm(g.sum).map(x=>Math.round(x*16384)));
  out('# Original detailed car meshes; all world transforms and lighting execute in XI.');
- vertices.forEach((p,i)=>{if(openWorld&&i>=models.medium.start&&i<models.far.end)return;if(canonical[i]===i){const uv=carUV(p,normalKinds[i]);out(`meshvertex ${i} ${p.join(' ')}\nmeshtexuv ${i} ${uv.join(' ')}`);}});
+ vertices.forEach((p,i)=>{if(openWorld&&i>=models.medium.start&&i<models.far.end)return;if(canonical[i]===i){let uv=carUV(p,normalKinds[i]);
+  if(i>=nitroStart&&i<nitroEnd)uv=[[0,0],[16,0],[16,64],[0,64]][(i-nitroStart)%4];
+  if(i>=airJetStart&&i<airJetEnd)uv=[[8,0],[8,64],[0,40],[16,40],[0,40],[16,40]][(i-airJetStart)%6];out(`meshvertex ${i} ${p.join(' ')}\nmeshtexuv ${i} ${uv.join(' ')}`);}});
  // Material lighting indices share the existing local descriptor. No new vertices,
  // persistent memory or per-pixel lighting is introduced.
  normalIds.forEach((g,i)=>{if(canonical[i]<0||(openWorld&&i>=models.medium.start&&i<models.far.end))return;const n=g-(normalKinds[i]==='glass'?128:0),base={glass:384,tire:512,rim:640,aero:768}[normalKinds[i]]||256;const code=g>=0?base+n:-g-1;if(code<0||code>=896)throw Error('Scalar metadata range');out(`localset ${512+i} ${canonical[i]*2048+code}`);});
@@ -332,7 +334,7 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label,open
    const airSkip=label('air_jet_pulse_done');
    out('load8 r0 388\ncmp r0 0\njle '+airSkip);
    for(const f of airJetFaces)
-    out('meshfacegradient '+f.map(i=>i+CAMERA).join(' ')+' 244 12 r9 r10 r11 60');
+    out('meshfacegradienttex '+f.map(i=>i+CAMERA).join(' ')+' 244 12 0 1 r9 r10 r11 60');
    out('label '+airSkip);
    const smokeSkip=label('smoke_done');
    out('load8 r0 395\ncmp r0 0\njle '+smokeSkip+
@@ -347,7 +349,7 @@ module.exports=function emitCarScene({out,load,store,trig,pitch,focus,label,open
    const nitroSkip=label('nitro_done');
    out('load8 r0 382\ncmp r0 1\njne '+nitroSkip);
    for(const f of nitroFaces)
-    out('meshfacegradient '+f.map(i=>i+CAMERA).join(' ')+' 56 8 r9 r10 r11 60');
+    out('meshfacegradienttex '+f.map(i=>i+CAMERA).join(' ')+' 56 8 0 1 r9 r10 r11 60');
    out('label '+nitroSkip);
   }
   out('jmp emit_shadow');

@@ -38,7 +38,7 @@ final class RegraphicsGeometry {
         if(i32(bytes,at+8)>900000&&i32(bytes,at+20)>900000&&i32(bytes,at+32)>900000)return 0;
         if(base>=24&&base<32)return 2;
         if(base==32&&count==8)return strength>0?3:6;
-        if(base==244)return 4;
+        if(base==244)return strength>0?4:7;
         if(base==56)return 5;
         return 1;
     }

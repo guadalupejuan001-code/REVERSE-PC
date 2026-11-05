@@ -10533,53 +10533,53 @@ meshtexuv 973 11 -32
 meshvertex 974 70 49 -227
 meshtexuv 974 10 -32
 meshvertex 1511 -91 24 -142
-meshtexuv 1511 -13 -20
+meshtexuv 1511 8 0
 meshvertex 1512 -91 -75 -142
-meshtexuv 1512 -13 -20
+meshtexuv 1512 8 64
 meshvertex 1513 -105 -40 -142
-meshtexuv 1513 -15 -20
+meshtexuv 1513 0 40
 meshvertex 1514 -77 -40 -142
-meshtexuv 1514 -11 -20
+meshtexuv 1514 16 40
 meshvertex 1515 -91 -40 -125
-meshtexuv 1515 -13 -18
+meshtexuv 1515 0 40
 meshvertex 1516 -91 -40 -159
-meshtexuv 1516 -13 -23
+meshtexuv 1516 16 40
 meshvertex 1517 -91 24 138
-meshtexuv 1517 -13 20
+meshtexuv 1517 8 0
 meshvertex 1518 -91 -75 138
-meshtexuv 1518 -13 20
+meshtexuv 1518 8 64
 meshvertex 1519 -105 -40 138
-meshtexuv 1519 -15 20
+meshtexuv 1519 0 40
 meshvertex 1520 -77 -40 138
-meshtexuv 1520 -11 20
+meshtexuv 1520 16 40
 meshvertex 1521 -91 -40 155
-meshtexuv 1521 -13 22
+meshtexuv 1521 0 40
 meshvertex 1522 -91 -40 121
-meshtexuv 1522 -13 17
+meshtexuv 1522 16 40
 meshvertex 1523 91 24 -142
-meshtexuv 1523 13 -20
+meshtexuv 1523 8 0
 meshvertex 1524 91 -75 -142
-meshtexuv 1524 13 -20
+meshtexuv 1524 8 64
 meshvertex 1525 77 -40 -142
-meshtexuv 1525 11 -20
+meshtexuv 1525 0 40
 meshvertex 1526 105 -40 -142
-meshtexuv 1526 15 -20
+meshtexuv 1526 16 40
 meshvertex 1527 91 -40 -125
-meshtexuv 1527 13 -18
+meshtexuv 1527 0 40
 meshvertex 1528 91 -40 -159
-meshtexuv 1528 13 -23
+meshtexuv 1528 16 40
 meshvertex 1529 91 24 138
-meshtexuv 1529 13 20
+meshtexuv 1529 8 0
 meshvertex 1530 91 -75 138
-meshtexuv 1530 13 20
+meshtexuv 1530 8 64
 meshvertex 1531 77 -40 138
-meshtexuv 1531 11 20
+meshtexuv 1531 0 40
 meshvertex 1532 105 -40 138
-meshtexuv 1532 15 20
+meshtexuv 1532 16 40
 meshvertex 1533 91 -40 155
-meshtexuv 1533 13 22
+meshtexuv 1533 0 40
 meshvertex 1534 91 -40 121
-meshtexuv 1534 13 17
+meshtexuv 1534 16 40
 meshvertex 1535 12 4 12
 meshtexuv 1535 2 2
 meshvertex 1536 123 3 12
@@ -10675,69 +10675,69 @@ meshtexuv 1605 13 -28
 meshvertex 1606 91 90 -124
 meshtexuv 1606 13 -18
 meshvertex 1607 -62 26 -234
-meshtexuv 1607 -9 -33
+meshtexuv 1607 0 0
 meshvertex 1608 -52 26 -234
-meshtexuv 1608 -7 -33
+meshtexuv 1608 16 0
 meshvertex 1609 -43 26 -350
-meshtexuv 1609 -6 -50
+meshtexuv 1609 16 64
 meshvertex 1610 -71 26 -350
-meshtexuv 1610 -10 -50
+meshtexuv 1610 0 64
 meshvertex 1611 -57 21 -234
-meshtexuv 1611 -8 -33
+meshtexuv 1611 0 0
 meshvertex 1612 -57 31 -234
-meshtexuv 1612 -8 -33
+meshtexuv 1612 16 0
 meshvertex 1613 -57 40 -350
-meshtexuv 1613 -8 -50
+meshtexuv 1613 16 64
 meshvertex 1614 -57 12 -350
-meshtexuv 1614 -8 -50
+meshtexuv 1614 0 64
 meshvertex 1615 -24 26 -234
-meshtexuv 1615 -3 -33
+meshtexuv 1615 0 0
 meshvertex 1616 -14 26 -234
-meshtexuv 1616 -2 -33
+meshtexuv 1616 16 0
 meshvertex 1617 -5 26 -350
-meshtexuv 1617 -1 -50
+meshtexuv 1617 16 64
 meshvertex 1618 -33 26 -350
-meshtexuv 1618 -5 -50
+meshtexuv 1618 0 64
 meshvertex 1619 -19 21 -234
-meshtexuv 1619 -3 -33
+meshtexuv 1619 0 0
 meshvertex 1620 -19 31 -234
-meshtexuv 1620 -3 -33
+meshtexuv 1620 16 0
 meshvertex 1621 -19 40 -350
-meshtexuv 1621 -3 -50
+meshtexuv 1621 16 64
 meshvertex 1622 -19 12 -350
-meshtexuv 1622 -3 -50
+meshtexuv 1622 0 64
 meshvertex 1623 14 26 -234
-meshtexuv 1623 2 -33
+meshtexuv 1623 0 0
 meshvertex 1624 24 26 -234
-meshtexuv 1624 3 -33
+meshtexuv 1624 16 0
 meshvertex 1625 33 26 -350
-meshtexuv 1625 5 -50
+meshtexuv 1625 16 64
 meshvertex 1626 5 26 -350
-meshtexuv 1626 1 -50
+meshtexuv 1626 0 64
 meshvertex 1627 19 21 -234
-meshtexuv 1627 3 -33
+meshtexuv 1627 0 0
 meshvertex 1628 19 31 -234
-meshtexuv 1628 3 -33
+meshtexuv 1628 16 0
 meshvertex 1629 19 40 -350
-meshtexuv 1629 3 -50
+meshtexuv 1629 16 64
 meshvertex 1630 19 12 -350
-meshtexuv 1630 3 -50
+meshtexuv 1630 0 64
 meshvertex 1631 52 26 -234
-meshtexuv 1631 7 -33
+meshtexuv 1631 0 0
 meshvertex 1632 62 26 -234
-meshtexuv 1632 9 -33
+meshtexuv 1632 16 0
 meshvertex 1633 71 26 -350
-meshtexuv 1633 10 -50
+meshtexuv 1633 16 64
 meshvertex 1634 43 26 -350
-meshtexuv 1634 6 -50
+meshtexuv 1634 0 64
 meshvertex 1635 57 21 -234
-meshtexuv 1635 8 -33
+meshtexuv 1635 0 0
 meshvertex 1636 57 31 -234
-meshtexuv 1636 8 -33
+meshtexuv 1636 16 0
 meshvertex 1637 57 40 -350
-meshtexuv 1637 8 -50
+meshtexuv 1637 16 64
 meshvertex 1638 57 12 -350
-meshtexuv 1638 8 -50
+meshtexuv 1638 0 64
 meshvertex 1639 -101 3 -250
 meshtexuv 1639 -14 -36
 meshvertex 1640 -83 3 -250
@@ -23292,22 +23292,22 @@ meshface 3019 3022 3020 241 r9 r10 r11 60
 load8 r0 388
 cmp r0 0
 jle air_jet_pulse_done_809
-meshfacegradient 3559 3561 3560 244 12 r9 r10 r11 60
-meshfacegradient 3559 3560 3562 244 12 r9 r10 r11 60
-meshfacegradient 3559 3563 3560 244 12 r9 r10 r11 60
-meshfacegradient 3559 3560 3564 244 12 r9 r10 r11 60
-meshfacegradient 3565 3567 3566 244 12 r9 r10 r11 60
-meshfacegradient 3565 3566 3568 244 12 r9 r10 r11 60
-meshfacegradient 3565 3569 3566 244 12 r9 r10 r11 60
-meshfacegradient 3565 3566 3570 244 12 r9 r10 r11 60
-meshfacegradient 3571 3573 3572 244 12 r9 r10 r11 60
-meshfacegradient 3571 3572 3574 244 12 r9 r10 r11 60
-meshfacegradient 3571 3575 3572 244 12 r9 r10 r11 60
-meshfacegradient 3571 3572 3576 244 12 r9 r10 r11 60
-meshfacegradient 3577 3579 3578 244 12 r9 r10 r11 60
-meshfacegradient 3577 3578 3580 244 12 r9 r10 r11 60
-meshfacegradient 3577 3581 3578 244 12 r9 r10 r11 60
-meshfacegradient 3577 3578 3582 244 12 r9 r10 r11 60
+meshfacegradienttex 3559 3561 3560 244 12 0 1 r9 r10 r11 60
+meshfacegradienttex 3559 3560 3562 244 12 0 1 r9 r10 r11 60
+meshfacegradienttex 3559 3563 3560 244 12 0 1 r9 r10 r11 60
+meshfacegradienttex 3559 3560 3564 244 12 0 1 r9 r10 r11 60
+meshfacegradienttex 3565 3567 3566 244 12 0 1 r9 r10 r11 60
+meshfacegradienttex 3565 3566 3568 244 12 0 1 r9 r10 r11 60
+meshfacegradienttex 3565 3569 3566 244 12 0 1 r9 r10 r11 60
+meshfacegradienttex 3565 3566 3570 244 12 0 1 r9 r10 r11 60
+meshfacegradienttex 3571 3573 3572 244 12 0 1 r9 r10 r11 60
+meshfacegradienttex 3571 3572 3574 244 12 0 1 r9 r10 r11 60
+meshfacegradienttex 3571 3575 3572 244 12 0 1 r9 r10 r11 60
+meshfacegradienttex 3571 3572 3576 244 12 0 1 r9 r10 r11 60
+meshfacegradienttex 3577 3579 3578 244 12 0 1 r9 r10 r11 60
+meshfacegradienttex 3577 3578 3580 244 12 0 1 r9 r10 r11 60
+meshfacegradienttex 3577 3581 3578 244 12 0 1 r9 r10 r11 60
+meshfacegradienttex 3577 3578 3582 244 12 0 1 r9 r10 r11 60
 label air_jet_pulse_done_809
 load8 r0 395
 cmp r0 0
@@ -23341,22 +23341,22 @@ label smoke_done_810
 load8 r0 382
 cmp r0 1
 jne nitro_done_813
-meshfacegradient 3655 3656 3657 56 8 r9 r10 r11 60
-meshfacegradient 3655 3657 3658 56 8 r9 r10 r11 60
-meshfacegradient 3659 3660 3661 56 8 r9 r10 r11 60
-meshfacegradient 3659 3661 3662 56 8 r9 r10 r11 60
-meshfacegradient 3663 3664 3665 56 8 r9 r10 r11 60
-meshfacegradient 3663 3665 3666 56 8 r9 r10 r11 60
-meshfacegradient 3667 3668 3669 56 8 r9 r10 r11 60
-meshfacegradient 3667 3669 3670 56 8 r9 r10 r11 60
-meshfacegradient 3671 3672 3673 56 8 r9 r10 r11 60
-meshfacegradient 3671 3673 3674 56 8 r9 r10 r11 60
-meshfacegradient 3675 3676 3677 56 8 r9 r10 r11 60
-meshfacegradient 3675 3677 3678 56 8 r9 r10 r11 60
-meshfacegradient 3679 3680 3681 56 8 r9 r10 r11 60
-meshfacegradient 3679 3681 3682 56 8 r9 r10 r11 60
-meshfacegradient 3683 3684 3685 56 8 r9 r10 r11 60
-meshfacegradient 3683 3685 3686 56 8 r9 r10 r11 60
+meshfacegradienttex 3655 3656 3657 56 8 0 1 r9 r10 r11 60
+meshfacegradienttex 3655 3657 3658 56 8 0 1 r9 r10 r11 60
+meshfacegradienttex 3659 3660 3661 56 8 0 1 r9 r10 r11 60
+meshfacegradienttex 3659 3661 3662 56 8 0 1 r9 r10 r11 60
+meshfacegradienttex 3663 3664 3665 56 8 0 1 r9 r10 r11 60
+meshfacegradienttex 3663 3665 3666 56 8 0 1 r9 r10 r11 60
+meshfacegradienttex 3667 3668 3669 56 8 0 1 r9 r10 r11 60
+meshfacegradienttex 3667 3669 3670 56 8 0 1 r9 r10 r11 60
+meshfacegradienttex 3671 3672 3673 56 8 0 1 r9 r10 r11 60
+meshfacegradienttex 3671 3673 3674 56 8 0 1 r9 r10 r11 60
+meshfacegradienttex 3675 3676 3677 56 8 0 1 r9 r10 r11 60
+meshfacegradienttex 3675 3677 3678 56 8 0 1 r9 r10 r11 60
+meshfacegradienttex 3679 3680 3681 56 8 0 1 r9 r10 r11 60
+meshfacegradienttex 3679 3681 3682 56 8 0 1 r9 r10 r11 60
+meshfacegradienttex 3683 3684 3685 56 8 0 1 r9 r10 r11 60
+meshfacegradienttex 3683 3685 3686 56 8 0 1 r9 r10 r11 60
 label nitro_done_813
 jmp emit_shadow
 label emit_medium
@@ -24264,16 +24264,22 @@ jmp next_actor
 label nature_emit_rock
 meshfacegradienttex 3614 3615 3616 22 2 7 3 r9 r10 r11 60
 meshfacegradienttex 3615 3621 3616 22 2 7 3 r9 r10 r11 60
+meshfacegradienttex 3621 3622 3616 22 2 7 3 r9 r10 r11 60
 meshfacegradienttex 3614 3616 3617 22 2 7 3 r9 r10 r11 60
 meshfacegradienttex 3616 3622 3617 22 2 7 3 r9 r10 r11 60
+meshfacegradienttex 3622 3623 3617 22 2 7 3 r9 r10 r11 60
 meshfacegradienttex 3614 3617 3618 22 2 7 3 r9 r10 r11 60
 meshfacegradienttex 3617 3623 3618 22 2 7 3 r9 r10 r11 60
+meshfacegradienttex 3623 3624 3618 22 2 7 3 r9 r10 r11 60
 meshfacegradienttex 3614 3618 3619 22 2 7 3 r9 r10 r11 60
 meshfacegradienttex 3618 3624 3619 22 2 7 3 r9 r10 r11 60
+meshfacegradienttex 3624 3625 3619 22 2 7 3 r9 r10 r11 60
 meshfacegradienttex 3614 3619 3620 22 2 7 3 r9 r10 r11 60
 meshfacegradienttex 3619 3625 3620 22 2 7 3 r9 r10 r11 60
+meshfacegradienttex 3625 3626 3620 22 2 7 3 r9 r10 r11 60
 meshfacegradienttex 3614 3620 3615 22 2 7 3 r9 r10 r11 60
 meshfacegradienttex 3620 3626 3615 22 2 7 3 r9 r10 r11 60
+meshfacegradienttex 3626 3621 3615 22 2 7 3 r9 r10 r11 60
 jmp next_actor
 label nature_emit_grass
 meshfacegradienttex 3627 3628 3629 12 8 6 2 r9 r10 r11 60

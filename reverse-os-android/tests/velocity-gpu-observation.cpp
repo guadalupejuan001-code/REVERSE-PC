@@ -35,6 +35,8 @@ int main(int argc,char**argv){try{
  auto geometry=[&](const Runtime& r,const std::string& name){const auto frame=reverse_pc::observe_geometry(reverse_pc::rvpc2::save(r),source,view);std::ofstream f(out/(name+".xfg4"),std::ios::binary);f.write(frame.data(),frame.size());return frame;};
  auto countBase=[](const std::string& frame,int base){int n=0;for(std::size_t at=2064;at+60<=frame.size();at+=60)if((unsigned char)frame[at+54]==base)n++;return n;};
  auto effects=reverse_pc::rvpc2::restore(initial);effects.execute(command(1,0,1));const auto nitro=geometry(effects,"gpu-nitro");
+ bool effectUvs=false;for(std::size_t at=2064;at+60<=nitro.size();at+=60)if((unsigned char)nitro[at+54]==56)for(int k=36;k<48;k++)effectUvs|=nitro[at+k]!=0;
+ check(effectUvs,"GPU jet envelope UVs are transported by XI");
  check(countBase(nitro,56)>=16,"four crossed rear jets generate sixteen XI triangles");
  effects.execute(command(0,1,0));for(int i=0;i<15;i++)effects.execute(command(0,0,0));const auto air=geometry(effects,"gpu-air");
  check(countBase(air,244)>=16,"four wheel nozzles generate visible pneumatic geometry in flight");
