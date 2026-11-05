@@ -6,11 +6,11 @@ final class RhythmFixture {
       (()=>{
         const notes=[[1.025,0,.91],[4.025,3,0],[4.525,1,0],[5.025,1,0],[5.525,3,0],[9.025,0,.91],[12.025,3,0],[12.525,3,0],[13.025,3,0],[13.525,1,0],[15.025,0,.91]];
         let i=0;const releases=[],keys=['ArrowUp','ArrowRight','ArrowDown','ArrowLeft'];
-        window.__festivalMaxShells=0;window.__festivalMaxSparks=0;
+        window.__festivalMaxShells=0;window.__festivalMaxSparks=0;window.__festivalMaxRewards=0;
         window.__playTest=setInterval(()=>{
           const a=__audio,t=a.offset+__clock(a.ctx,performance.now(),true).time-a.when;
           const d=document.getElementById('game').dataset;
-          __festivalMaxShells=Math.max(__festivalMaxShells,+d.fireworks||0);__festivalMaxSparks=Math.max(__festivalMaxSparks,+d.fireworkSparks||0);
+          __festivalMaxShells=Math.max(__festivalMaxShells,+d.fireworks||0);__festivalMaxSparks=Math.max(__festivalMaxSparks,+d.fireworkSparks||0);__festivalMaxRewards=Math.max(__festivalMaxRewards,+d.rewardFireworks||0);
           for(const r of releases)if(!r.done&&t>=r.t){document.dispatchEvent(new KeyboardEvent('keyup',{code:r.code,bubbles:true}));r.done=true;}
           while(i<notes.length&&t>=notes[i][0]){
             const n=notes[i++],code=keys[n[1]];document.dispatchEvent(new KeyboardEvent('keydown',{code,bubbles:true}));releases.push({code,t:n[0]+(n[2]||.035)});

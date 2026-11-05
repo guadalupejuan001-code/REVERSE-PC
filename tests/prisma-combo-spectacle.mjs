@@ -153,6 +153,9 @@ check(scene.stageExplosions.length===1,'active event disappeared too soon');
 check(scene.rigPose.intensity<=firstShow,'lights did not decay with score accent');
 scene.render(2.6,1/60,[],false,0,0,true);
 check(scene.stageExplosions.length===0,'expired event retained');
+check(scene.celebrateConstellation(3.02,1),'Earned constellation did not schedule its real onset');
+scene.render(3.04,1/60,[],false,0,0,true);
+check(scene.canvas.dataset.rewardFireworks==='1','Scheduled constellation never reached the scene renderer');
 scene.clearEffects();scene.clearMusicStage();
 check(scene.stageExplosions.length===0&&scene.musicStage===null,
   'new session must not replay prior celebrations');

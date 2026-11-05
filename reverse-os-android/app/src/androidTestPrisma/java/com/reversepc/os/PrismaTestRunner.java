@@ -101,8 +101,8 @@ public final class PrismaTestRunner extends Instrumentation {
             require("true".equals(js("+document.getElementById('game').dataset.holdCompletions>=3&&+document.getElementById('game').dataset.phrasesCompleted>=2&&+document.getElementById('game').dataset.constellations>=1")),"Actual gameplay never completed holds, phrases and a precision constellation");
             require("3".equals(js("__musicSources")),"Mechanics created non-musical audio sources");
             require("0".equals(js("__errors.length")),"Mechanics raised a JavaScript error");
-            report.put("mechanics_fixture",new JSONObject(js("(()=>{const d=document.getElementById('game').dataset;return {holds:+d.holdCompletions,phrases:+d.phrasesCompleted,constellations:+d.constellations,maxFireworks:__festivalMaxShells,maxSparks:__festivalMaxSparks,sync:d.syncMode,musicSources:__musicSources}})()")));
-            require("true".equals(js("__festivalMaxShells>0&&__festivalMaxSparks>0")),"Native Android never displayed a firework");
+            report.put("mechanics_fixture",new JSONObject(js("(()=>{const d=document.getElementById('game').dataset;return {holds:+d.holdCompletions,phrases:+d.phrasesCompleted,constellations:+d.constellations,maxFireworks:__festivalMaxShells,maxSparks:__festivalMaxSparks,rewardFireworks:__festivalMaxRewards,sync:d.syncMode,musicSources:__musicSources}})()")));
+            require("true".equals(js("__festivalMaxShells>0&&__festivalMaxSparks>0&&__festivalMaxRewards>0")),"Native Android never displayed a firework");
             js("document.getElementById('effects').checked=true;document.getElementById('effects').dispatchEvent(new Event('change'));true");
             until("document.getElementById('game').dataset.fireworks==='0'",5);
             report.put("soft_effects_disable_fireworks",true);

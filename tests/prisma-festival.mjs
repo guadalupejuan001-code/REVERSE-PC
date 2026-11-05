@@ -30,6 +30,8 @@ check(f.fireworkFrame(p,first.t+.1,{reduced:true}).length===0,'Soft effects reta
 check(f.fireworkFrame(p,first.t+.1,{enabled:false}).length===0,'Disabled fireworks remain active');
 const reward=f.rewardFirework(p,5.15,3);
 check(reward?.t===5.5&&reward.source==='constellation','Reward did not choose next real accent');
+check(f.rewardFirework(p,5.52,4)?.t===5.5,'Precise late input lost its actual musical onset');
+check(f.rewardFirework({accents:[{t:2}],rewardAccents:[{t:1},{t:1.5},{t:2}]},1.51)?.t===1.5,'Quiet real note cannot trigger its earned celebration');
 check(f.rewardFirework({accents:[]},4)===null,'Reward invented an accent in silence');
 check(f.rewardFirework({accents:[{t:12}]},4)===null,'Reward scheduled too far from player action');
 const dense={...p,shells:Array.from({length:100},(_,i)=>({...first,t:1+i*.001,id:i}))};

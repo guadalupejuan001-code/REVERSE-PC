@@ -34,7 +34,8 @@ export function makeFestivalProgram(map,concert={bars:[]}){
     if(!a||a.t>target+1.5||a.t-chapters.at(-1).t<10||a.t>(map.duration||60)-4)continue;
     chapters.push({t:a.t,id:WORLD_IDS[chapters.length%WORLD_IDS.length]});
   }
-  return {accents,shells,chapters,duration:map?.duration||60};
+  const rewardAccents=map?.fallback?[]:(map?.onsets||accents).filter(a=>valid(a.t)&&a.t>=0);
+  return {accents,rewardAccents,shells,chapters,duration:map?.duration||60};
 }
 
 export function worldFrame(program,time,selection='journey',reduced=false){
@@ -57,11 +58,13 @@ export class Constellation {
   }
 }
 
-// Rewards may choose a real future accent, never fabricate a beat or XI hit.
+// A precise hit may arrive just after its audible onset. Keep that real mark,
+// or choose a nearby future onset; never fabricate a beat or XI hit.
 export function rewardFirework(program,time,serial=0){
   if(!valid(time)||time<0)return null;
-  const i=upper(program.accents,time-1e-6);
-  const a=program.accents[i];
+  const pool=program.rewardAccents||program.accents;
+  const i=upper(pool,time-.055);
+  const a=pool[i];
   if(!a||a.t-time>.85)return null;
   return {t:a.t,id:100000+serial,kind:'willow',power:1,source:'constellation'};
 }

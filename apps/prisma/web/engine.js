@@ -435,6 +435,7 @@ export class Scene {
     const shells=fireworkFrame(this.festivalProgram,preview?-1:musicTime,{quality,reduced:this.settings().effects,enabled:this.settings().fireworks!==false,rewards:this.rewardShells});
     drawFireworks(ctx,w,h,shells,world.current,{preview,battery:quality==='battery'});
     this.canvas.dataset.fireworks=String(shells.length);this.canvas.dataset.fireworkSparks=String(shells.reduce((n,e)=>n+e.sparks.length,0));
+    this.canvas.dataset.rewardFireworks=String(shells.filter(e=>e.source==='constellation').length);
     if(!preview)this.drawNoteGuides(ctx,time,chart,latency);this.drawEffects(animate?dt:0);ctx.restore();
     if(this.diagnostics){this.cpuTimes.push(performance.now()-started);if(this.cpuTimes.length>240)this.cpuTimes.shift();if(this.cpuTimes.length%30===0){const sorted=[...this.cpuTimes].sort((a,b)=>a-b);this.canvas.dataset.renderMs=(sorted.reduce((a,b)=>a+b,0)/sorted.length).toFixed(3);this.canvas.dataset.renderP95=sorted[Math.floor(sorted.length*.95)].toFixed(3);this.canvas.dataset.visibleCubes=String(this.gpu?.count||0);this.canvas.dataset.pixelRatio=this.dpr.toFixed(2);}}
     if(this.gpu)return;

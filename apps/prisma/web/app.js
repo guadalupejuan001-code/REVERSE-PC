@@ -273,10 +273,10 @@ function selectWorld(id){
   settings.world=id;$('world').value=id;sceneDirty=true;persistSettings();
   const name=id==='journey'?'Viaje de cinco mundos':WORLDS.find(w=>w.id===id).name;
   $('worldPickerName').textContent=name;
-  all('[data-world]').forEach(b=>{const on=b.dataset.world===id;b.classList.toggle('selected',on);b.setAttribute('aria-pressed',String(on));});
+  all('button[data-world]').forEach(b=>{const on=b.dataset.world===id;b.classList.toggle('selected',on);b.setAttribute('aria-pressed',String(on));});
 }
 selectWorld(settings.world);
-all('[data-world]').forEach(b=>b.addEventListener('click',()=>{selectWorld(b.dataset.world);$('worldsDialog').close();}));
+all('button[data-world]').forEach(b=>b.addEventListener('click',()=>{selectWorld(b.dataset.world);$('worldsDialog').close();}));
 $('world').addEventListener('change',e=>selectWorld(e.target.value));
 $('fireworks').addEventListener('change',e=>{settings.fireworks=e.target.checked;sceneDirty=true;persistSettings();});
 $('quality').value=settings.quality;$('palette').value=settings.palette;$('stageStyle').value=settings.stageStyle;$('precise').checked=settings.precise;$('effects').checked=settings.effects;$('latency').value=settings.latency;$('volume').value=settings.volume;$('latencyValue').textContent=`${settings.latency>0?'+':''}${settings.latency} ms`;

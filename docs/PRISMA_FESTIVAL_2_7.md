@@ -20,8 +20,10 @@ tiempos producen la misma pose al pausar, reanudar o repetir.
 
 Ocho aciertos consecutivos con error de hasta 110 ms completan una
 **constelación**. Un fallo o un acierto fuera de ese margen reinicia la carga.
-La celebración elige un acento real dentro de los siguientes 850 ms; sin un
-acento cercano no inventa uno. Las constelaciones no suman aciertos ni puntos
+La celebración usa el ataque real que acaba de sonar (hasta 55 ms después) o
+uno dentro de los siguientes 850 ms; sin un ataque cercano no inventa uno.
+Incluye los ataques suaves que sí fueron jugados aunque no sean grandes
+acentos ambientales. Las constelaciones no suman aciertos ni puntos
 adicionales al motor XI. El resultado final muestra constelaciones, sostenidas
 y frases.
 
