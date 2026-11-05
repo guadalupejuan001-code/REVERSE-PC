@@ -129,6 +129,21 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
     if(mode==1||mode==3)set(rn,updated,64,true);return true;
   }
   ArmFloat fp(floating_);
+  const bool fp_zero_scalar=(i&0xdf000000u)==0x5e000000u;
+  auto fp_zero=i&(fp_zero_scalar?0xffbffc00u:0xbfbffc00u);
+  if(fp_zero_scalar)fp_zero&=~0x50000000u;
+  if(fp_zero==0x0ea0d800u||fp_zero==0x2ea0c800u||fp_zero==0x0ea0c800u||fp_zero==0x2ea0d800u||fp_zero==0x0ea0e800u){ // FCMEQ/FCMGE/FCMGT/FCMLE/FCMLT #0, scalar/vector S/D.
+    const unsigned lane_bits=(i&0x00400000u)?64u:32u,width=(i&0x40000000u)?128u:64u;
+    if(!fp_zero_scalar&&lane_bits==64&&width==64)return false;
+    fp_access();const auto source=floating_.v[rn];Vector128 output;
+    const unsigned lanes=fp_zero_scalar?1u:width/lane_bits;
+    for(unsigned lane=0;lane<lanes;++lane){
+      const auto cc=fp.compare(lane_bits,source.lane(lane,lane_bits),0,fp_zero!=0x0ea0d800u);
+      const bool match=fp_zero==0x0ea0d800u?cc==6:fp_zero==0x2ea0c800u?cc==2||cc==6:fp_zero==0x0ea0c800u?cc==2:fp_zero==0x2ea0d800u?cc==8||cc==6:cc==8;
+      output.lane(lane,lane_bits,match?UINT64_MAX:0);
+    }
+    floating_.v[rd]=output;return true;
+  }
   if((i&0x9f80fc00u)==0x0f00fc00u||(i&0xdf80fc00u)==0x5f00fc00u){ // FCVTZS/FCVTZU SIMD scalar/vector, fixed-point.
     const bool scalar=(i&0xdf80fc00u)==0x5f00fc00u,wide=i&0x40000000u;
     const unsigned encoded=(i>>16)&127u,lane_bits=encoded>=64?64u:32u;
