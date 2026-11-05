@@ -26,7 +26,8 @@ final class RhythmFixture {
         const ctx=new AudioContext(),buffer=await ctx.decodeAudioData(__fixtureBytes.slice(0)),a=await analyseMusicBuffer(buffer);
         const map=makeMusicStage(a.peaks,{bpm:a.bpm,duration:buffer.duration,energy:a.energy,tempoSegments:a.tempoSegments,fallback:a.fallback});map.mechanics=true;
         window.__fixturePulseNotes=makeChart(a.peaks,'pulse',Math.round(buffer.duration*173),map);await ctx.close();
-        if(!window.__sceneCaptureInstalled){const render=Scene.prototype.render;Scene.prototype.render=function(t,dt,chart,...rest){window.__testScene=this;window.__testSceneTime=t;return render.call(this,t,dt,chart,...rest)};window.__sceneCaptureInstalled=true;}
+        if(!window.__sceneCaptureInstalled){const render=Scene.prototype.render;Scene.prototype.render=function(t,dt,chart,...rest){window.__testScene=this;window.__testSceneTime=t;return render.call(this,t,dt,chart,...rest)};const burst=Scene.prototype.burst;Scene.prototype.burst=function(n,p,...rest){const a=__audio;window.__lastNativeCut={onset:n.t,time:a.offset+__clock(a.ctx,performance.now(),true).time-a.when};return burst.call(this,n,p,...rest)};window.__sceneCaptureInstalled=true;}
+        window.__touchProbe=[];document.getElementById('game').addEventListener('pointerdown',e=>{const a=__audio,t=a.offset+__clock(a.ctx,performance.now(),true).time-a.when,r=document.getElementById('game').getBoundingClientRect();__touchProbe.push({time:t,x:e.clientX-r.x,y:e.clientY-r.y,targets:__testScene.visibleNotes.map(n=>{const p=__testScene.noteProjection(n,t);return {onset:n.t,x:p.x,y:p.y,s:p.s}})});},true);
         window.__fixtureReady=true;
       })().catch(e=>window.__fixtureError=String(e))
       """;}

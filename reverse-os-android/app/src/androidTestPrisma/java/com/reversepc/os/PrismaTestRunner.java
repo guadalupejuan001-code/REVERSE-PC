@@ -42,9 +42,10 @@ public final class PrismaTestRunner extends Instrumentation {
     private void until(String condition,int seconds)throws Exception{
         long deadline=SystemClock.uptimeMillis()+seconds*1000L;
         while(SystemClock.uptimeMillis()<deadline){if("true".equals(js(condition)))return;SystemClock.sleep(100);}
-        throw new AssertionError("Timed out: "+condition+"; diagnostic="+js("(()=>{const d=document.getElementById('game')?.dataset;return {playing:document.body.classList.contains('is-playing'),holds:d?.holdCompletions,phrases:d?.phrasesCompleted,constellations:d?.constellations,score:document.getElementById('score')?.textContent,inputs:window.__fixtureEvents,errors:window.__errors}})()"));
+        throw new AssertionError("Timed out: "+condition+"; diagnostic="+js("(()=>{const d=document.getElementById('game')?.dataset;return {playing:document.body.classList.contains('is-playing'),holds:d?.holdCompletions,phrases:d?.phrasesCompleted,constellations:d?.constellations,score:document.getElementById('score')?.textContent,inputs:window.__fixtureEvents,touches:window.__touchProbe,errors:window.__errors}})()"));
     }
     private void tap(String selector)throws Exception{
+        if(selector.equals("!nextCube")){tapMovingCube();return;}
         long deadline=SystemClock.uptimeMillis()+15000;
         while(SystemClock.uptimeMillis()<deadline){
             boolean[] focused={false};
@@ -70,6 +71,25 @@ public final class PrismaTestRunner extends Instrumentation {
             finally{down.recycle();if(up!=null)up.recycle();}
         }
         throw new AssertionError("Game window was not stable for touch: "+selector);
+    }
+    private void tapMovingCube()throws Exception{
+        CountDownLatch done=new CountDownLatch(1);Throwable[] error={null};
+        runOnMainSync(()->{
+            WebView w=game.testingWebView();
+            // Keep coordinate measurement and Android MotionEvent dispatch in
+            // the same UI callback. External injection adds several emulator
+            // round trips, enough for a moving target to leave the old point.
+            w.evaluateJavascript("(()=>{const n=__testScene.visibleNotes[0],p=__testScene.noteProjection(n,__testSceneTime),r=document.getElementById('game').getBoundingClientRect();return [r.x+p.x,r.y+p.y,innerWidth]})()",value->{
+                try{
+                    JSONArray p=new JSONArray(value);float scale=w.getWidth()/(float)p.getDouble(2),x=(float)p.getDouble(0)*scale,y=(float)p.getDouble(1)*scale;
+                    long at=SystemClock.uptimeMillis();MotionEvent down=MotionEvent.obtain(at,at,MotionEvent.ACTION_DOWN,x,y,0);down.setSource(android.view.InputDevice.SOURCE_TOUCHSCREEN);
+                    try{w.dispatchTouchEvent(down);}finally{down.recycle();}
+                    w.postDelayed(()->{MotionEvent up=MotionEvent.obtain(at,SystemClock.uptimeMillis(),MotionEvent.ACTION_UP,x,y,0);up.setSource(android.view.InputDevice.SOURCE_TOUCHSCREEN);try{w.dispatchTouchEvent(up);}catch(Throwable e){error[0]=e;}finally{up.recycle();done.countDown();}},35);
+                }catch(Throwable e){error[0]=e;done.countDown();}
+            });
+        });
+        require(done.await(8,TimeUnit.SECONDS),"Moving-cube touch callback timed out");
+        if(error[0]!=null)throw new AssertionError("Moving-cube native touch failed",error[0]);
     }
     @Override public void onStart(){
         Bundle result=new Bundle();
@@ -128,9 +148,11 @@ public final class PrismaTestRunner extends Instrumentation {
             js("document.getElementById('precise').checked=true;document.getElementById('precise').dispatchEvent(new Event('change'));true");
             tap("#startBtn");until("document.body.classList.contains('is-playing')",30);
             until("Math.abs(+document.getElementById('game').dataset.firstNoteTime-1.025)<.03",6);
-            until("__audio.offset+__clock(__audio.ctx,performance.now(),true).time-__audio.when>1.4",15);
+            until("__audio.offset+__clock(__audio.ctx,performance.now(),true).time-__audio.when>1.3",15);
             require("true".equals(js("__testScene.visibleNotes.some(n=>Math.abs(n.t-1.025)<.03)&&document.getElementById('game').dataset.misses==='0'&&document.getElementById('game').dataset.holdCount==='0'&&document.getElementById('game').dataset.chainCount==='0'&&+document.getElementById('game').dataset.noteCount<=32")),"Flow grace or simple cuts are missing");
             tap("!nextCube");until("+document.getElementById('game').dataset.hits===1",8);
+            require("true".equals(js("__lastNativeCut.time-__lastNativeCut.onset>.24&&__lastNativeCut.time-__lastNativeCut.onset<1.10")),"The native cut was not inside the intended late grace");
+            report.put("flow_native_cut_timing",new JSONObject(js("__lastNativeCut")));
             report.put("flow_late_native_touch",true).put("flow_no_holds",true).put("ordered_first_note",true);
             until("__audio.offset+__clock(__audio.ctx,performance.now(),true).time-__audio.when>5.55",10);
             require("true".equals(js("+document.getElementById('game').dataset.deferredNotes>0&&+document.getElementById('game').dataset.firstNoteTime>5&&__testScene.visibleNotes.some(n=>Math.abs(n.t-5.525)<.03)&&__testScene.visibleNotes.every(n=>Math.abs(__testScene.flowPositions.get(n)-(n.t-__testSceneTime))<.00001)")),"Missed notes block the stream or frame time slows musical arrivals");
