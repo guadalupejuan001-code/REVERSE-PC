@@ -174,6 +174,21 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
     const auto exponent=(std::uint64_t(!repeat)<<(e-1))|(repeat?((UINT64_C(1)<<(e-3))-1)<<2:0)|((imm>>4)&3);
     fp_set(rd,(std::uint64_t(imm>>7)<<(bits-1))|(exponent<<f)|(std::uint64_t(imm&15)<<(f-4)),bits);return true;
   }
+  const auto fp_zero=i&0x8fbffc00u;
+  if(fp_zero==0x0ea0c800u||fp_zero==0x0ea0d800u||fp_zero==0x0ea0e800u){ // FCMEQ/FCMGE/FCMGT/FCMLE/FCMLT #0, S/D and 2S/4S/2D.
+    const bool scalar_form=i&0x10000000u,q=i&0x40000000u,u=i&0x20000000u;
+    const unsigned lane_bits=(i&0x00400000u)?64u:32u;
+    if((scalar_form&&!q)||(!scalar_form&&lane_bits==64&&!q)||(fp_zero==0x0ea0e800u&&u))return false;
+    fp_access();const auto source=floating_.v[rn];Vector128 output;
+    const unsigned lanes=scalar_form?1u:(q?128u:64u)/lane_bits;
+    const bool equal=fp_zero==0x0ea0d800u&&!u;
+    for(unsigned lane=0;lane<lanes;++lane){
+      const auto flags=fp.compare(lane_bits,source.lane(lane,lane_bits),0,!equal);
+      const bool match=fp_zero==0x0ea0c800u?(u?(flags==2||flags==6):flags==2):fp_zero==0x0ea0d800u?(u?(flags==8||flags==6):flags==6):flags==8;
+      output.lane(lane,lane_bits,match?UINT64_MAX:0);
+    }
+    floating_.v[rd]=output;return true;
+  }
   const bool fabd_scalar=(i&0xffa0fc00u)==0x7ea0d400u;
   const bool fabd_vector=(i&0xbfa0fc00u)==0x2ea0d400u;
   if(fabd_scalar||fabd_vector){ // FABD S/D, 2S/4S/2D: rounded subtraction, then absolute value.
