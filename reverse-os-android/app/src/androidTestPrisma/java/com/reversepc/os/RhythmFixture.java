@@ -4,7 +4,7 @@ package com.reversepc.os;
 final class RhythmFixture {
     static String playScript(){return """
       (()=>{
-        const notes=[[1.025,0,.91],[4.025,3,0],[4.525,1,0],[5.025,1,0],[5.525,3,0],[9.025,0,.91],[12.025,3,0],[12.525,3,0],[13.025,3,0],[13.525,1,0],[15.025,0,.91]];
+        const notes=window.__fixturePulseNotes.map(n=>[n.t,n.dir,0]);
         let i=0;const releases=[],keys=['ArrowUp','ArrowRight','ArrowDown','ArrowLeft'];
         window.__fixtureEvents=[];window.__festivalMaxShells=0;window.__festivalMaxSparks=0;window.__festivalMaxRewards=0;
         window.__playTest=setInterval(()=>{
@@ -20,6 +20,16 @@ final class RhythmFixture {
         },4);return true;
       })()
       """;}
+    static String prepareScript(){return """
+      (async()=>{
+        const [{analyseMusicBuffer},{makeMusicStage},{makeChart,Scene}]=await Promise.all([import(location.origin+'/music-analysis.js'),import(location.origin+'/music-stage.js'),import(location.origin+'/engine.js')]);
+        const ctx=new AudioContext(),buffer=await ctx.decodeAudioData(__fixtureBytes.slice(0)),a=await analyseMusicBuffer(buffer);
+        const map=makeMusicStage(a.peaks,{bpm:a.bpm,duration:buffer.duration,energy:a.energy,tempoSegments:a.tempoSegments,fallback:a.fallback});map.mechanics=true;
+        window.__fixturePulseNotes=makeChart(a.peaks,'pulse',Math.round(buffer.duration*173),map);await ctx.close();
+        if(!window.__sceneCaptureInstalled){const render=Scene.prototype.render;Scene.prototype.render=function(t,dt,chart,...rest){window.__testScene=this;return render.call(this,t,dt,chart,...rest)};window.__sceneCaptureInstalled=true;}
+        window.__fixtureReady=true;
+      })().catch(e=>window.__fixtureError=String(e))
+      """;}
     static String uploadScript(){return """
       (()=>{
         const sr=16000,duration=18,b=new ArrayBuffer(44+sr*duration*2),v=new DataView(b);
@@ -34,7 +44,7 @@ final class RhythmFixture {
             v.setInt16(44+(Math.round(t*sr)+i)*2,Math.round(.65*Math.sin(2*Math.PI*440*x)*env*32760),true);
           }
         }
-        const files=new DataTransfer();files.items.add(new File([b],'PRISMA-ritmo-prueba.wav',{type:'audio/wav'}));
+        window.__fixtureBytes=b;const files=new DataTransfer();files.items.add(new File([b],'PRISMA-ritmo-prueba.wav',{type:'audio/wav'}));
         const input=document.getElementById('audioFile');input.files=files.files;input.dispatchEvent(new Event('change',{bubbles:true}));return true;
       })()
       """;}

@@ -14,7 +14,7 @@ const demo=readFileSync(new URL('../apps/prisma/web/audio.js',import.meta.url),'
   .replace(/^export \{.*$/gm,'').replace(/^export /gm,'');
 const {RhythmAudio}=new Function(demo+';return {RhythmAudio};')();
 
-test(Math.abs(qa.hitWindowFor('flow')-.24)<1e-8,'Flow timing contract changed');
+test(Math.abs(qa.hitWindowFor('flow')-.45)<1e-8,'Flow scoring grace changed');
 test(Math.abs(qa.hitWindowFor('pulse')-.19)<1e-8,'Pulse timing contract changed');
 test(Math.abs(qa.hitWindowFor('vertigo')-.16)<1e-8,'Vertigo timing contract changed');
 test(qa.segmentDistance(0,0,-10,0,10,0)===0,'Segment crossing wrong');
@@ -35,8 +35,8 @@ test(qa.nearestSwipeNote(chart,1.17,0,'pulse',220,100,220,100,p,{isTap:true})===
   'Touch taps only allowed in Flow');
 test(qa.nearestSwipeNote(chart,1.17,0,'flow',220,100,220,100,p,{isTap:true})===second,
   'Flow tap gesture no longer works');
-test(qa.nearestSwipeNote(chart,1.17,0,'flow',220,100,220,100,p,{isTap:true,precise:true})===null,
-  'Precise setting must forbid tap shortcuts');
+test(qa.nearestSwipeNote(chart,1.17,0,'flow',220,100,220,100,p,{isTap:true,precise:true})===second,
+  'A saved advanced direction setting must not disable Flow taps');
 test(qa.nearestSwipeNote(chart,1.17,0,'flow',300,300,320,300,p)===null,
   'Touch outside a note should not count');
 test(qa.nearestSwipeNote(chart,1.5,0,'pulse',220,130,220,80,p)===null,

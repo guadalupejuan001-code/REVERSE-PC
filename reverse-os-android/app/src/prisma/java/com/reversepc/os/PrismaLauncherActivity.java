@@ -18,7 +18,7 @@ public final class PrismaLauncherActivity extends Activity {
             try(InputStream in=getAssets().open("native-apps/PRISMA.rxe")){
                 byte[] image=WorkbenchPrograms.read(in);
                 JSONObject info=new JSONObject(new String(NativeRuntime.inspectRxe(image),StandardCharsets.UTF_8));
-                if(!"org.reverse.prisma".equals(info.optString("app_id"))||!"2.8.0".equals(info.optString("app_version")))throw new Exception("Paquete de PRISMA incompatible");
+                if(!"org.reverse.prisma".equals(info.optString("app_id"))||!"2.9.0".equals(info.optString("app_version")))throw new Exception("Paquete de PRISMA incompatible");
                 String identity=RxeGraphicsActivity.identity(image),path="Aplicaciones/PRISMA.rxe";
                 new WorkspaceFiles(getFilesDir()).write(path,image,true);
                 android.content.SharedPreferences prefs=getSharedPreferences("workbench-programs",0);

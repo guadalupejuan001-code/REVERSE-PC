@@ -39,7 +39,11 @@ export function orderBadgePositions(arrivals,project,width){
 }
 
 // Durations are evidence from the decoded envelope, not invented from BPM.
-export function decorateNotes(chart,level='flow'){
+export function decorateNotes(chart,level='flow',{sustains=false}={}){
+  if(level==='flow')return chart.map(n=>{
+    const {phrase,chainIndex,chainLength,...cut}=n;
+    return {...cut,kind:'cut',duration:0,sustain:0};
+  });
   let holdUntil=-Infinity,lastHold=-Infinity;
   const result=[];
   for(let i=0;i<chart.length;i++){
@@ -47,7 +51,7 @@ export function decorateNotes(chart,level='flow'){
     // A beginner can finish the sustain before reading the next gesture.
     if(level==='flow'&&n.t<holdUntil+.10)continue;
     const duration=clamp(Number(n.sustain)||0,0,1.6);
-    if(duration>=.38&&n.t-lastHold>=(level==='flow'?5:3)&&
+    if(sustains&&duration>=.38&&n.t-lastHold>=(level==='flow'?5:3)&&
        !chart.some((p,j)=>j!==i&&Math.abs(p.t-n.t)<.005)){
       n.kind='hold';n.duration=duration;n.dir=0;n.row=1;n.lane=1;
       holdUntil=n.t+duration;lastHold=n.t;

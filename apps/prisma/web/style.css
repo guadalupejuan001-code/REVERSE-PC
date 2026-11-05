@@ -37,3 +37,9 @@ html.native-xrender,html.native-xrender body,.native-xrender .app,.native-xrende
 
 .note-queue{display:none;position:absolute;left:50%;bottom:15%;transform:translateX(-50%);z-index:4;pointer-events:none;text-align:center}.is-playing .note-queue{display:block}.note-queue>span{font-size:7px;letter-spacing:1.8px;color:#a4c5c7;text-shadow:0 1px 5px #000}#noteQueueItems{display:flex;justify-content:center;gap:6px;margin-top:5px}.queue-note{display:flex;align-items:center;gap:7px;min-width:40px;padding:4px 9px;border-radius:7px;background:#071522e8;border:1px solid #59747c94;color:#b4d5d6;box-shadow:0 2px 8px #0005}.queue-note.first{border-color:#d7fff1;color:#f1fff7;background:#173a30ed}.queue-note b{font:700 9px sans-serif;opacity:.8}.queue-note i{font:normal 17px sans-serif}.queue-note small{font-size:6px;text-transform:uppercase}.queue-note.due{box-shadow:0 0 12px #83ffc040;background:#1b4b3deb}
 @media(max-height:500px){.note-queue{bottom:14%}.queue-note{padding:3px 7px;min-width:34px;gap:5px}.queue-note i{font-size:14px}.note-queue>span{font-size:6px}.queue-note b{font-size:8px}#noteQueueItems{gap:5px;margin-top:4px}}
+
+/* Gameplay cues inherit the active world, without a flat white target. */
+.queue-note.first{border-color:var(--cue,#8c89ff);background:linear-gradient(135deg,color-mix(in srgb,var(--cue,#8c89ff) 22%,#071220),color-mix(in srgb,var(--cue2,#ff75cc) 12%,#071220));box-shadow:0 0 13px color-mix(in srgb,var(--cue,#8c89ff) 20%,transparent)}
+.queue-note.first b,.queue-note.first i{color:var(--cue,#8c89ff)}
+.queue-note.due{border-color:var(--cue,#8c89ff);box-shadow:0 0 17px color-mix(in srgb,var(--cue,#8c89ff) 28%,transparent)}
+.flow-finish{position:absolute;right:18px;bottom:18px;z-index:8;padding:10px 14px;font-size:11px;min-height:38px}

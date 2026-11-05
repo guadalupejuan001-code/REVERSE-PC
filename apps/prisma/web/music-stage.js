@@ -108,14 +108,16 @@ export function makeIntelligentChart(peaks, level = 'flow', seed = 7721, map = n
   let previousTime = -Infinity, previousLane = 1;
   let nextPercussionSide = (seed & 1) ? 0 : 2;
   let melodyDirection = (seed & 2) ? 1 : -1;
-  let melodicCount = 0,lastSustain=-Infinity;
+  let melodicCount = 0;
   for (let index=0;index<inputs.length;index++) {
     const p=inputs[index];
-    const holdEligible=!!map?.mechanics&&p.sustain>=.38&&p.strength>=.18&&p.t-lastSustain>=(level==='flow'?5:3);
     const localPeriod = 60 / musicBpmAt(map, p.t);
-    const adjustedSpacing = Math.min(holdEligible?.22:Infinity,spacing * clamp(Math.sqrt(localPeriod / 0.5), 0.79, 1.26));
+    // Follow a readable whole-beat subdivision in Flow. The opening gives a
+    // beginner even more breathing room; no new musical attacks are invented.
+    const flowGap=localPeriod*Math.ceil((chart.length<6?1.15:.85)/localPeriod);
+    const adjustedSpacing = level==='flow'?flowGap:spacing * clamp(Math.sqrt(localPeriod / 0.5), 0.79, 1.26);
     if (p.t - previousTime < adjustedSpacing) continue;
-    if(!holdEligible){
+    {
       let stronger=false;
       for(let j=index+1;j<inputs.length&&inputs[j].t-p.t<adjustedSpacing;j++){
         if(inputs[j].strength>p.strength*1.45&&inputs[j].t-previousTime>=adjustedSpacing){stronger=true;break;}
@@ -125,7 +127,7 @@ export function makeIntelligentChart(peaks, level = 'flow', seed = 7721, map = n
     const energy = hasDynamics ? musicLevelAt(map, p.t) : 0.55;
     const floor = minStrength + (energy < 0.17 ? 0.08 : energy > 0.72 ? -0.065 : 0);
     const source = ['bass', 'percussion', 'melody', 'mixed', 'synthetic'].includes(p.source) ? p.source : 'mixed';
-    if (!holdEligible && source !== 'synthetic' && p.strength < floor - (source === 'percussion' && level !== 'flow' ? 0.045 : 0)) continue;
+    if (source !== 'synthetic' && p.strength < floor - (source === 'percussion' && level !== 'flow' ? 0.045 : 0)) continue;
     const beat = Math.round(p.t / localPeriod);
     let lane, row, dir, color;
     if (source === 'bass') {
@@ -146,12 +148,16 @@ export function makeIntelligentChart(peaks, level = 'flow', seed = 7721, map = n
       dir = lane > previousLane ? 1 : lane < previousLane ? 3 : row ? 2 : 0;
       color = chart.length % 2;
     }
-    const note = { t: p.t, lane, row, color, dir, source, sustain:holdEligible?p.sustain:0,
+    if(level==='flow'){
+      lane=[1,0,1,2][chart.length%4];row=1;
+      dir=lane>previousLane?1:lane<previousLane?3:2;
+    }
+    const note = { t: p.t, lane, row, color, dir, source, sustain:0,
       accent: p.strength >= 0.75, hit: false, missed: false };
-    chart.push(note);if(holdEligible)lastSustain=p.t;
+    chart.push(note);
     // A big musical accent can yield a synchronized two-handed cut in Vertigo;
     // both notes are part of the same detected onset, never an artificial beat.
-    if (!holdEligible && level === 'vertigo' && source !== 'synthetic' && p.strength > 0.82 &&
+    if (level === 'vertigo' && source !== 'synthetic' && p.strength > 0.82 &&
         energy > 0.58 && beat % 4 === 0 && source !== 'melody') {
       chart.push({ t: p.t, lane: lane === 1 ? (seed & 1 ? 0 : 2) : 2 - lane,
         row: 1 - row, color: 1 - color, dir: (dir + 2) % 4,

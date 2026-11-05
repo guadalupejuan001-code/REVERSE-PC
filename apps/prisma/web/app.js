@@ -4,6 +4,7 @@ import { hitWindowFor, isEndOfSong, nearestSwipeNote, nearestKeyNote, timingLabe
 import { makeMusicStage } from './music-stage.js';
 import { SustainController, PhraseController } from './note-flow.js';
 import { WORLDS, WORLD_IDS, Constellation } from './festival-worlds.js';
+import { scoreRules, recordRules, keepRecord } from './flow-gameplay.js';
 const $ = id => document.getElementById(id);
 const all = selector => [...document.querySelectorAll(selector)];
 const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
@@ -11,7 +12,8 @@ const formatTime = seconds => { const s=Math.max(0,Math.floor(seconds));return `
 let saved={};try{saved=JSON.parse(localStorage.getItem('prisma.settings')||'{}')||{};}catch{}
 const settings={quality:['auto','high','battery'].includes(saved.quality)?saved.quality:'auto',palette:['coral','violet','ice'].includes(saved.palette)?saved.palette:'coral',stageStyle:['galaxy','club','classic'].includes(saved.stageStyle)?saved.stageStyle:'galaxy',mechanics:saved.mechanics!==false,autoSync:saved.autoSync!==false,precise:!!saved.precise,effects:saved.effects??matchMedia('(prefers-reduced-motion: reduce)').matches,latency:clamp(Number(saved.latency)||0,-200,200),volume:clamp(saved.volume??65,0,100)};
 settings.world=['journey',...WORLD_IDS].includes(saved.world)?saved.world:'journey';settings.fireworks=saved.fireworks!==false;
-settings.anticipation=clamp(Number(saved.anticipation)||3.6,2.8,5.2);
+settings.anticipation=clamp(saved.gameplayVersion===29?(Number(saved.anticipation)||4.8):Math.max(4.8,Number(saved.anticipation)||0),3.2,6.4);
+settings.gameplayVersion=29;
 const constellation=new Constellation();
 let records=[];try{records=JSON.parse(localStorage.getItem('prisma.records')||'[]');if(!Array.isArray(records))records=[];}catch{}
 const audio=new RhythmAudio();audio.volume=settings.volume/100;audio.outputSync=settings.autoSync;
@@ -24,7 +26,7 @@ let demoEnergyCache=null; // measured from the synthesized audio, not invented l
 let track={name:'Midnight Motion',demo:true,bpm:DEMO_BPM,duration:DEMO_DURATION,peaks:demoPeaks,wave:demoWave,buffer:null,fallback:false};
 let level='flow', chart=[], status='home', frozenTime=0, booting=false, missIndex=0, sceneDirty=true, gameBounds=null, lastScene=0, lastElapsed='';
 const sustains=new SustainController(),phrases=new PhraseController(),activeKeys=new Set();
-let timingPoints=0,holdsDone=0;
+let timingPoints=0,holdsDone=0,timelyHits=0,flowCoda=false;
 let score=0,combo=0,maxCombo=0,hits=0,misses=0,lastFrame=performance.now(),lastUI=0,feedbackUntil=0,toastTimer,activePointers=new Map(),runId=0;
 const nativeGraphics=typeof window.ReverseGraphics?.event==='function'?window.ReverseGraphics:null;
 let nativeSerial=0,nativeFailure=false;
@@ -64,6 +66,7 @@ function setStatus(next){
   $('audioStatus').textContent=next==='playing'?'AUDIO REACTIVO':next==='paused'?'EN PAUSA':'LISTO PARA EL BEAT';
   all('[data-level]').forEach(b=>{b.disabled=next==='playing'||next==='paused';b.title=b.disabled?'Cambia la intensidad desde el inicio':'';});
   $('pauseBtn').hidden=next==='ended';
+  $('flowFinishBtn').hidden=!(flowCoda&&next==='playing');
   $('sceneLabel').textContent=session?track.name.toUpperCase():'UN UNIVERSO. TU RITMO.';
 }
 function updateTrack(){
@@ -73,7 +76,8 @@ function updateTrack(){
 }
 function updateScores(){
   $('score').textContent=String(score).padStart(6,'0');$('combo').textContent=combo;
-  $('accuracy').textContent=`${hits+misses?Math.round(timingPoints/(hits+misses)*100):100}% A TIEMPO`;
+  $('accuracy').textContent=level==='flow'?`${hits} CORTES · ${timelyHits} A RITMO`:`${hits+misses?Math.round(timingPoints/(hits+misses)*100):100}% A TIEMPO`;
+  $('game').dataset.hits=String(hits);$('game').dataset.misses=String(misses);
 }
 function updateConstellation(){
   $('constellationCount').textContent=constellation.charge+'/8';$('constellationTotal').textContent=String(constellation.completed);
@@ -82,6 +86,8 @@ function updateConstellation(){
 }
 let queueKey='';
 function updateArrivalHUD(){
+  const theme=scene.guidance;
+  if(theme){$('noteQueue').style.setProperty('--cue',theme.colors[0]);$('noteQueue').style.setProperty('--cue2',theme.colors[1]);}
   const arrivals=(scene.arrivals||[]).filter(a=>a.rank<=4),groups=[];
   for(const a of arrivals){let group=groups.find(g=>g.rank===a.rank);if(!group){group={rank:a.rank,t:a.note.t,delta:a.delta,notes:[]};groups.push(group);}group.notes.push(a.note);}
   const key=groups.map(g=>g.t+':'+g.notes.map(n=>n.dir+'/'+n.kind).join(',')).join('|');
@@ -93,7 +99,7 @@ function updateArrivalHUD(){
   const first=$('noteQueueItems').firstElementChild;if(first)first.classList.toggle('due',!!groups.length&&groups[0].delta<=.13);
   $('game').dataset.firstNoteTime=groups.length?String(groups[0].t):'';$('game').dataset.nextOrder=groups.map(g=>g.rank+':'+g.notes.map(n=>n.dir).join('+')).join(',');
 }
-function bestForTrack(){return Math.max(0,...records.filter(r=>r.track===track.name&&r.level===level).map(r=>r.score));}
+function bestForTrack(){return Math.max(0,...records.filter(r=>r.track===track.name&&r.level===level&&recordRules(r)===scoreRules(level)).map(r=>r.score));}
 async function startGame(){
   if(booting)return;booting=true;const thisRun=++runId;
   try{
@@ -122,34 +128,37 @@ async function startGame(){
     musicMap.mechanics=settings.mechanics;
     chart=makeChart(peaks,level,track.demo?7721:Math.round(track.duration*173),musicMap);
     if(!chart.length)throw new Error('No hay suficientes golpes para una partida. Prueba con una canción más larga.');
-    score=combo=maxCombo=hits=misses=missIndex=timingPoints=holdsDone=0;activePointers.clear();activeKeys.clear();sustains.clear();phrases.reset();scene.clearEffects();
+    score=combo=maxCombo=hits=misses=missIndex=timingPoints=holdsDone=timelyHits=0;flowCoda=false;activePointers.clear();activeKeys.clear();sustains.clear();phrases.reset();scene.clearEffects();
     constellation.reset();updateConstellation();
      scene.setMusicStage(musicMap,level);frozenTime=0;
     $('game').dataset.holdCount=String(chart.filter(n=>n.kind==='hold').length);
     $('game').dataset.chainCount=String(new Set(chart.filter(n=>Number.isInteger(n.phrase)).map(n=>n.phrase)).size);
     $('game').dataset.holdCompletions='0';$('game').dataset.phrasesCompleted='0';
+    $('game').dataset.level=level;$('game').dataset.retainedNotes=level==='flow'?'true':'false';$('game').dataset.flowCoda='false';
     $('bestInGame').textContent=`RÉCORD ${bestForTrack().toLocaleString('es')}`;updateScores();
-    $('hitHelp').style.opacity='1';$('feedback').classList.remove('show');
+    $('hitHelp').textContent=level==='flow'?'TOCA O CORTA. LOS CUBOS TE ESPERAN.':'SIGUE LAS FLECHAS. ENCUENTRA TU FLOW.';$('hitHelp').style.opacity='1';$('feedback').classList.remove('show');
     nativeFailure=false;if(nativeGraphics&&!await nativeEvent(0,0,thisRun))throw new Error('No se pudo iniciar la sesión XI.');
     setStatus('playing');audio.play(0,Math.max(3.2,scene.travel));$('game').focus({preventScroll:true});
   }catch(error){setLoading(false);setStatus('home');toast(error.message||'No se pudo iniciar la pista. Inténtalo otra vez.');}
   finally{booting=false;}
 }
 function pauseGame(){if(status!=='playing')return;frozenTime=audio.pause();sustains.suspend();activeKeys.clear();activePointers.clear();for(const id of scene.trails.keys())scene.endTrail(id);setStatus('paused');$('resumeBtn').focus({preventScroll:true});}
-async function resumeGame(){if(status!=='paused')return;try{await audio.init();sustains.resume(frozenTime);audio.play(frozenTime,sustains.active.size?.9:0);setStatus('playing');if(sustains.active.size)toast('Vuelve a sostener la nota iluminada.');$('game').focus({preventScroll:true});}catch{toast('Toca Continuar para reactivar el audio.');}}
-function goHome(){runId++;audio.stop();sustains.clear();phrases.reset();activeKeys.clear();audio.offset=0;activePointers.clear();scene.clearEffects();scene.clearMusicStage();setLoading(false);setStatus('home');$('elapsed').textContent='0:00';$('feedback').classList.remove('show');drawWave(0);}
+async function resumeGame(){if(status!=='paused')return;try{if(!flowCoda){await audio.init();sustains.resume(frozenTime);audio.play(frozenTime,sustains.active.size?.9:0);}setStatus('playing');if(sustains.active.size)toast('Vuelve a sostener la nota iluminada.');$('game').focus({preventScroll:true});}catch{toast('Toca Continuar para reactivar el audio.');}}
+function goHome(){runId++;flowCoda=false;audio.stop();sustains.clear();phrases.reset();activeKeys.clear();audio.offset=0;activePointers.clear();scene.clearEffects();scene.clearMusicStage();setLoading(false);setStatus('home');$('elapsed').textContent='0:00';$('feedback').classList.remove('show');drawWave(0);}
 async function finishGame(){
   if(status!=='playing')return;audio.stop();frozenTime=track.duration;
   const finishRun=runId;
   if(nativeGraphics){setStatus('finishing');setLoading(true,'Guardando tu sesión…');await Promise.all([...nativePending.values()].filter(item=>item.run===finishRun).map(item=>item.promise));if(finishRun!==runId)return;setLoading(false);if(nativeFailure){setStatus('paused');return;}}
   setStatus('ended');
   const accuracy=chart.length?Math.round(timingPoints/chart.length*100):0,previous=bestForTrack();
-  $('resultRank').textContent=accuracy>=97?'S':accuracy>=85?'A':accuracy>=65?'B':accuracy>=40?'C':'D';
-  $('resultTitle').textContent=accuracy>=85?'Ese es tu flow.':accuracy>=40?'El ritmo está en ti.':'Tu próximo flow te espera.';
-  $('resultScore').textContent=score.toLocaleString('es');$('resultHits').textContent=hits;$('resultAccuracy').textContent=`${accuracy}%`;$('resultCombo').textContent=maxCombo;
-  $('festivalResult').textContent=`${constellation.completed} ${constellation.completed===1?'constelación':'constelaciones'} · ${holdsDone} sostenidas · ${phrases.completed} frases`;
+  const completion=chart.length?Math.round(hits/chart.length*100):0,rankValue=level==='flow'?completion:accuracy;
+  $('resultRank').textContent=rankValue>=97?'S':rankValue>=85?'A':rankValue>=65?'B':rankValue>=40?'C':'D';
+  $('resultTitle').textContent=level==='flow'?(completion===100?'Encontraste tu flow.':'A tu ritmo.'):accuracy>=85?'Ese es tu flow.':accuracy>=40?'El ritmo está en ti.':'Tu próximo flow te espera.';
+  $('resultScore').textContent=score.toLocaleString('es');$('resultHits').textContent=hits;$('resultAccuracy').textContent=`${level==='flow'?completion:accuracy}%`;$('resultCombo').textContent=maxCombo;
+  $('resultMetricLabel').textContent=level==='flow'?'COMPLETADO':'PRECISIÓN';
+  $('festivalResult').textContent=level==='flow'?`${hits} de ${chart.length} cubos · ${timelyHits} a ritmo · ${constellation.completed} constelaciones`:`${constellation.completed} constelaciones · ${phrases.completed} frases`;
   $('recordNotice').textContent=score>previous?'NUEVO RÉCORD PERSONAL':hits?'Cada sesión te lleva un poco más lejos.':'Sigue las flechas o toca los cubos en modo Flow.';
-  if(score>0){const r={track:track.name,level,score,accuracy,combo:maxCombo,date:Date.now()};records=records.filter(item=>!(item.track===r.track&&item.level===r.level&&item.score<=score));records.push(r);records.sort((a,b)=>b.score-a.score);records=records.slice(0,30);try{localStorage.setItem('prisma.records',JSON.stringify(records));}catch{}}
+  if(score>0){const r={track:track.name,level,rules:scoreRules(level),score,accuracy,combo:maxCombo,date:Date.now()};records=keepRecord(records,r);try{localStorage.setItem('prisma.records',JSON.stringify(records));}catch{}}
   $('elapsed').textContent=formatTime(Math.round(track.duration));drawWave(1);$('replayBtn').focus({preventScroll:true});
 }
 const hitWindow=()=>hitWindowFor(level);
@@ -160,7 +169,7 @@ function failNote(note){
 }
 function completeNote(note,t,grade,dx=0,dy=-35,isKey=false){
   if(note.hit||note.missed)return false;
-  note.hit=true;note.holding=false;hits++;combo++;timingPoints+=grade.base/150;maxCombo=Math.max(combo,maxCombo);
+  note.hit=true;note.holding=false;hits++;if(grade.base>=120)timelyHits++;combo++;timingPoints+=grade.base/150;maxCombo=Math.max(combo,maxCombo);
   scene.armCombo(combo,t);
   const multiplier=Math.min(4,1+Math.floor(combo/12));score+=grade.base*multiplier;
   if(nativeGraphics)nativeEvent(1,grade.base);
@@ -187,10 +196,12 @@ function withinHold(note,input){
 }
 function cut(note,t,dx,dy,isTap=false,isKey=false,input=null){
   if(note.hit||note.missed||note.holding)return false;
-  const delta=note.t+settings.latency/1000-t;if(Math.abs(delta)>hitWindow())return false;
+  const delta=note.t+settings.latency/1000-t;
+  if(level==='flow'?!scene.visibleNotes?.includes(note):Math.abs(delta)>hitWindow())return false;
   const dir=DIRECTIONS[note.dir],length=Math.hypot(dx,dy),correct=length?(dx*dir.x+dy*dir.y)/length>.43:false;
-  if(settings.precise&&note.kind!=='hold'&&(!correct||isTap))return false;
+  if(level!=='flow'&&settings.precise&&note.kind!=='hold'&&(!correct||isTap))return false;
   const grade=timingGrade(delta,correct||isKey||isTap||note.kind==='hold');
+  if(level==='flow'&&!grade.perfect)grade.label=delta<-.45?'RECUPERADO':grade.base>=120?'A RITMO':'BUEN CORTE';
   if(note.kind==='hold'){
     if(!sustains.begin(note,t,input,grade,settings.latency/1000))return false;
     scene.holdNotes=[...sustains.active.keys()];feedback('MANTÉN',PALETTES[settings.palette][note.color]);return true;
@@ -201,8 +212,8 @@ function processSwipe(ax,ay,bx,by,isTap=false,input=null,eventStamp){
   if(status!=='playing')return false;const t=audio.inputTime(eventStamp);if(t<0)return false;
   const dx=bx-ax,dy=by-ay;if(!isTap&&Math.hypot(dx,dy)<3)return false;
   if(scene.diagnostics)$('game').dataset.lastInputTime=t.toFixed(4);
-  const note=nearestSwipeNote(chart,t,settings.latency/1000,level,ax,ay,bx,by,
-    (n,at,latency)=>scene.noteProjection(n,at,latency),{precise:settings.precise,isTap});
+  const note=nearestSwipeNote(level==='flow'?scene.visibleNotes||[]:chart,t,settings.latency/1000,level,ax,ay,bx,by,
+    (n,at,latency)=>scene.noteProjection(n,at,latency),{precise:settings.precise,isTap,lookAhead:scene.travel});
   return note?cut(note,t,dx,dy,isTap,false,input):false;
 }
 const point=e=>{const rect=gameBounds||(gameBounds=$('game').getBoundingClientRect());return{x:e.clientX-rect.left,y:e.clientY-rect.top};};
@@ -216,7 +227,7 @@ $('game').addEventListener('pointerdown',e=>{
 $('game').addEventListener('pointermove',e=>{
   const prev=activePointers.get(e.pointerId);if(!prev||status!=='playing')return;e.preventDefault();
   const events=e.getCoalescedEvents?.()||[e];
-  for(const sample of events.length?events:[e]){const p=point(sample);scene.addTrail(e.pointerId,p.x,p.y,prev.color);if(!inputOwnsHold({kind:'pointer',id:e.pointerId}))processSwipe(prev.x,prev.y,p.x,p.y,false,{kind:'pointer',id:e.pointerId},sample.timeStamp);if(Math.hypot(p.x-prev.startX,p.y-prev.startY)>8)prev.moved=true;prev.x=p.x;prev.y=p.y;}
+  for(const sample of events.length?events:[e]){const p=point(sample);scene.addTrail(e.pointerId,p.x,p.y,prev.color);if(!(level==='flow'&&prev.activated)&&!inputOwnsHold({kind:'pointer',id:e.pointerId})){const hit=processSwipe(prev.x,prev.y,p.x,p.y,false,{kind:'pointer',id:e.pointerId},sample.timeStamp);prev.activated=prev.activated||hit;}if(Math.hypot(p.x-prev.startX,p.y-prev.startY)>8)prev.moved=true;prev.x=p.x;prev.y=p.y;}
 });
 function releasePointer(e){
   const p=activePointers.get(e.pointerId);if(!p)return;
@@ -236,7 +247,7 @@ document.addEventListener('keydown',e=>{
   if(sustains.regrab(input,audio.time(),n=>n.dir===keyIndex))return;
   if(inputOwnsHold(input))return;
   const t=audio.inputTime(e.timeStamp);
-  const note=nearestKeyNote(chart,t,settings.latency/1000,level,keyIndex);
+  const note=nearestKeyNote(level==='flow'?scene.visibleNotes||[]:chart,t,settings.latency/1000,level,keyIndex,scene.travel);
   if(note){const n=note,d=DIRECTIONS[keyIndex],p=scene.noteProjection(n,t,settings.latency/1000),id='key-'+performance.now();scene.addTrail(id,p.x-d.x*50,p.y-d.y*50,PALETTES[settings.palette][n.color]);scene.addTrail(id,p.x+d.x*50,p.y+d.y*50,PALETTES[settings.palette][n.color]);scene.endTrail(id);cut(n,t,d.x*100,d.y*100,false,true,input);}
 
 });
@@ -264,9 +275,10 @@ all('[data-upload]').forEach(b=>b.addEventListener('click',()=>{if(status==='pla
 $('demoBtn').addEventListener('click',()=>{if(booting)return;goHome();track={name:'Midnight Motion',demo:true,bpm:DEMO_BPM,duration:DEMO_DURATION,peaks:demoPeaks,wave:audio.demoBuffer?waveformOf(audio.demoBuffer):demoWave,buffer:audio.demoBuffer||null};updateTrack();toast('Midnight Motion · pista original seleccionada');});
 $('startBtn').addEventListener('click',startGame);$('replayBtn').addEventListener('click',startGame);$('restartBtn').addEventListener('click',startGame);
 $('pauseBtn').addEventListener('click',pauseGame);$('resumeBtn').addEventListener('click',resumeGame);$('exitBtn').addEventListener('click',goHome);$('homeBtn').addEventListener('click',goHome);
+$('flowFinishBtn').addEventListener('click',finishGame);
 $('navPlay').addEventListener('click',()=>{if(status==='paused')resumeGame();else if(status==='home')$('startBtn').focus({preventScroll:true});else $('game').focus({preventScroll:true});});
 document.querySelector('.brand').addEventListener('click',e=>{e.preventDefault();if(!booting)goHome();});
-all('[data-level]').forEach(b=>b.addEventListener('click',()=>{level=b.dataset.level;all('[data-level]').forEach(x=>{const selected=x===b;x.classList.toggle('selected',selected);x.setAttribute('aria-pressed',String(selected));});if(status==='ended')goHome();toast({flow:'Flow · un golpe a la vez. También admite toques.',pulse:'Pulso · más notas y cortes más rápidos.',vertigo:'Vértigo · dobles cubos y máxima intensidad.'}[level]);}));
+all('[data-level]').forEach(b=>b.addEventListener('click',()=>{level=b.dataset.level;all('[data-level]').forEach(x=>{const selected=x===b;x.classList.toggle('selected',selected);x.setAttribute('aria-pressed',String(selected));});if(status==='ended')goHome();toast({flow:'Flow · un corte por cubo. Los cubos te esperan.',pulse:'Pulso · más notas y cortes más rápidos.',vertigo:'Vértigo · dobles cubos y máxima intensidad.'}[level]);}));
 function updateRendererStatus(){
   $('rendererStatus').textContent='Motor gráfico: '+(scene.gpu?.mesh3D?(scene.gpu.native?'Ether Render X · GPU 3D':'Graphics/COSMIC · GPU 3D'):scene.gpu?.native?'Ether Render X nativo':
     scene.gpu?'Graphics/COSMIC WebGL':'Canvas de reserva');
@@ -280,11 +292,11 @@ function openDialog(id){
 all('[data-dialog]').forEach(b=>b.addEventListener('click',()=>openDialog(b.dataset.dialog)));
 all('.close-dialog').forEach(b=>b.addEventListener('click',()=>b.closest('dialog').close()));
 all('dialog').forEach(dialog=>dialog.addEventListener('click',e=>{if(e.target===dialog){const r=dialog.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)dialog.close();}}));
-function renderRecords(){const list=$('recordList');list.replaceChildren();if(!records.length){const p=document.createElement('p');p.className='dialog-lead';p.textContent='Tu primera marca todavía está por escribirse. Completa una pista y vuelve aquí.';list.append(p);return;}for(const r of records.slice(0,8)){const row=document.createElement('div'),meta=document.createElement('span'),small=document.createElement('small'),value=document.createElement('strong');meta.textContent=r.track;small.textContent=`${levelNames[r.level]||'Flow'} · ${r.accuracy}% precisión · ${r.combo} combo`;meta.append(small);value.textContent=r.score.toLocaleString('es');row.append(meta,value);list.append(row);}}
+function renderRecords(){const list=$('recordList');list.replaceChildren();if(!records.length){const p=document.createElement('p');p.className='dialog-lead';p.textContent='Tu primera marca todavía está por escribirse. Completa una pista y vuelve aquí.';list.append(p);return;}for(const r of records.slice(0,8)){const row=document.createElement('div'),meta=document.createElement('span'),small=document.createElement('small'),value=document.createElement('strong');meta.textContent=r.track;small.textContent=`${r.level==='flow'&&recordRules(r)==='flow-legacy'?'Flow anterior':levelNames[r.level]||'Flow'} · ${r.accuracy}% precisión · ${r.combo} combo`;meta.append(small);value.textContent=r.score.toLocaleString('es');row.append(meta,value);list.append(row);}}
 $('mechanics').checked=settings.mechanics;$('autoSync').checked=settings.autoSync;
 $('world').value=settings.world;$('fireworks').checked=settings.fireworks;
 $('anticipation').value=settings.anticipation;$('anticipationValue').textContent=settings.anticipation.toFixed(1)+' s';
-$('anticipation').addEventListener('input',e=>{settings.anticipation=clamp(Number(e.target.value),2.8,5.2);$('anticipationValue').textContent=settings.anticipation.toFixed(1)+' s';persistSettings();});
+$('anticipation').addEventListener('input',e=>{settings.anticipation=clamp(Number(e.target.value),3.2,6.4);$('anticipationValue').textContent=settings.anticipation.toFixed(1)+' s';persistSettings();});
 function selectWorld(id){
   if(!['journey',...WORLD_IDS].includes(id))return;
   settings.world=id;$('world').value=id;sceneDirty=true;persistSettings();
@@ -346,17 +358,24 @@ function frame(now){
   let t=status==='playing'?audio.time():frozenTime;
   if(status==='playing'){
     const missAfter=hitWindow();let changed=false;
-    while(missIndex<chart.length&&chart[missIndex].t+settings.latency/1000<t-missAfter){const n=chart[missIndex++];if(!n.hit&&!n.missed&&!n.holding){failNote(n);changed=true;}}
+    if(level!=='flow')while(missIndex<chart.length&&chart[missIndex].t+settings.latency/1000<t-missAfter){const n=chart[missIndex++];if(!n.hit&&!n.missed&&!n.holding){failNote(n);changed=true;}}
     if(changed){updateScores();feedback('PASÓ EL GOLPE','#9eb9bc');}
     holdResults(sustains.step(t,input=>input.kind==='key'?activeKeys.has(input.id):activePointers.has(input.id),withinHold),t);
     scene.holdNotes=[...sustains.active.keys()];$('game').dataset.syncMode=audio.syncMode;
     if(scene.diagnostics){$('game').dataset.audioTime=t.toFixed(4);$('game').dataset.activeHolds=String(sustains.active.size);}
-    const hint=sustains.active.size?'MANTÉN HASTA COMPLETAR EL ARO':settings.mechanics?'ENLAZA LOS CUBOS NUMERADOS':'';
+    const hint=level==='flow'&&flowCoda?'CORTA LOS PENDIENTES O FINALIZA LA SESIÓN':'';
     if($('mechanicStatus').textContent!==hint)$('mechanicStatus').textContent=hint;
     $('countdown').hidden=t>=0;
     if(t<0){const count=Math.ceil(-t);if($('countdown').dataset.count!==String(count)){$('countdown').dataset.count=count;$('countdown').replaceChildren();$('countdown').append(String(count));const small=document.createElement('small');small.textContent='ENCUENTRA EL RITMO';$('countdown').append(small);}}
     if(t>7)$('hitHelp').style.opacity='0';
-    if(isEndOfSong(t,track.duration,level,settings.latency/1000)){finishGame();t=track.duration;}
+    if(flowCoda){if(chart.every(n=>n.hit))finishGame();}
+    else if(isEndOfSong(t,track.duration,level,settings.latency/1000)){
+      if(level==='flow'&&chart.some(n=>!n.hit)){
+        audio.pause();audio.offset=track.duration;frozenTime=t=track.duration;flowCoda=true;
+        $('flowFinishBtn').hidden=false;$('game').dataset.flowCoda='true';
+        feedback('TERMINA A TU RITMO',scene.guidance?.colors[0]);
+      }else{finishGame();t=track.duration;}
+    }
   }
   if(now>feedbackUntil)$('feedback').classList.remove('show');
   const preview=!['playing','paused','ended','finishing'].includes(status);

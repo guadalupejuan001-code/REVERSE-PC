@@ -28,9 +28,9 @@ check(Math.abs(audio.outputClock({...c,getOutputTimestamp:()=>({contextTime:0,pe
 check(audio.outputClock({...c,getOutputTimestamp:()=>({contextTime:50,performanceTime:1000})},1050).mode==='latency','Invalid device timestamp accepted');
 
 const peaks=Array.from({length:10},(_,i)=>({t:1+i*.5,lane:1,row:0,color:0,dir:0,source:'melody',sustain:i===0?.9:0}));
-const notes=flow.decorateNotes(peaks,'flow');
-check(notes[0].kind==='hold'&&notes[0].duration===.9,'Measured sustain did not become a held note');
-check(!notes.some(n=>n.t>1&&n.t<2),'Beginner hold overlaps a forced second gesture');
+const beginner=flow.decorateNotes(peaks,'flow'),notes=flow.decorateNotes(peaks,'pulse');
+check(beginner.length===peaks.length&&beginner.every(n=>n.kind==='cut'&&!n.duration&&!Number.isInteger(n.phrase)),'Flow added a sustain or an extra sequence mechanic');
+check(notes.every(n=>n.kind==='cut'&&!n.duration),'A held tone still forces a hold in ordinary gameplay');
 check(notes.some(n=>n.chainLength===4),'Musical sequence missing');
 check(notes.every(n=>peaks.some(p=>p.t===n.t)),'A mechanic moved an onset off the music');
 const phrase=new flow.PhraseController(),sequence=notes.filter(n=>n.phrase===0);
@@ -64,4 +64,4 @@ check(detected[0].sustain>=.9,'A sustained tone was treated as a short click');
 mid.fill(0);for(let i=100;i<110;i++)mid[i]=.6;
 detected=analysis.detectSustains([{t:1,strength:1,source:'melody'}],{bass,mid,treble,hopSeconds:hop},5);
 check(!detected[0].sustain,'A short click became an invented sustain');
-console.log(JSON.stringify({suite:'prisma-note-flow',passed,noteSize:flow.NOTE_SIZE,perfectWindowMs:55,mechanics:['hold','phrase'],outputClock:'verified'}));
+console.log(JSON.stringify({suite:'prisma-note-flow',passed,noteSize:flow.NOTE_SIZE,perfectWindowMs:55,mechanics:['single-cut','phrase'],legacySustainController:'verified',outputClock:'verified'}));
