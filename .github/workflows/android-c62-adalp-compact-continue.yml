@@ -18,6 +18,7 @@ name: Android C62 pairwise long accumulation and live Zygote identity
     - tools/android_live_property.mjs
     - tools/android_c40_zygote_stage.mjs
     - tools/android_c42_zygote_progress.mjs
+    - tools/android_c27_sequence.mjs
 permissions:
   contents: read
   actions: read
@@ -46,7 +47,7 @@ jobs:
       run: |
         set -euo pipefail
         mkdir -p evidence/c62-native build
-        git diff --exit-code b152a8017ae9995fe89ef7c4c6063400876cbd7e HEAD -- src scripts patches third_party tools ':(exclude)src/minimal_guest_simd.inc' ':(exclude)tools/android_framework_evidence.mjs' ':(exclude)tools/android_kernel_observer.mjs' ':(exclude)tools/android_live_property.mjs' ':(exclude)tools/android_c40_zygote_stage.mjs' ':(exclude)tools/android_c42_zygote_progress.mjs'
+        git diff --exit-code b152a8017ae9995fe89ef7c4c6063400876cbd7e HEAD -- src scripts patches third_party tools ':(exclude)src/minimal_guest_simd.inc' ':(exclude)tools/android_framework_evidence.mjs' ':(exclude)tools/android_kernel_observer.mjs' ':(exclude)tools/android_live_property.mjs' ':(exclude)tools/android_c40_zygote_stage.mjs' ':(exclude)tools/android_c42_zygote_progress.mjs' ':(exclude)tools/android_c27_sequence.mjs'
         python3 - <<'PYCODE'
         import pathlib,subprocess
         p='src/minimal_guest_simd.inc';old=subprocess.check_output(['git','show','b152a8017ae9995fe89ef7c4c6063400876cbd7e:'+p]).decode();new=pathlib.Path(p).read_text()
@@ -294,6 +295,9 @@ jobs:
         proof={'opcode':'0x2e606801','source_v0_4h':[7,11,8,0],'old_v1_2s':[8,8],'destination_v1_2s':[26,16],'instructions':32707013374,'pc':'0x70f4851188','counter_subtick_before':0,'counter_subtick_after':1,'all_other_bytes_unchanged_except_final_checksum':True,'checkpoint_sha256':r['checkpoint_sha256']}
         pathlib.Path('evidence/c62-source/adalp-crossing.json').write_text(json.dumps(proof,indent=2)+'\n')
         PYCODE
+        node --input-type=module <<'NODE'
+        import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';const r=JSON.parse(readFileSync('evidence/c62-2/runtime-evidence.json'));const z=r.processes.find(p=>p.name==='zygote64');assert.equal(z.verified,true);assert.equal(z.observed_comm,'main');assert.equal(r.reasons.includes('live_process_missing:zygote64'),false);assert.equal(r.framework_runtime_verified,false);
+        NODE
     - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
       if: steps.s2.outcome == 'success'
       with:

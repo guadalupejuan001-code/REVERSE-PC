@@ -37,7 +37,7 @@ export async function continueAndObserve({contract,source,native,disk,frameNativ
  if(existsSync(join(output,'current.rvg'))&&existsSync(join(output,'current.json'))){
   const report=json(join(output,'current.json')),digest=sha(read(join(output,'current.rvg')));assert.equal(digest,report.checkpoint_sha256);summary.checkpoint_sha256=digest;summary.instructions=report.guest.instructions;
   const frame=observe(frameNative,[join(output,'current.rvg'),disk,digest,DISK_SHA,String(DISK_BYTES),join(output,'checkpoint-frame.ppm')],join(output,'checkpoint-frame.json'),600000);
-  const kernel=observe(process.execPath,[new URL('./android_kernel_observer.mjs',import.meta.url).pathname,join(output,'current.rvg'),digest,String(maxTransportBytes),'--live-properties'],join(output,'kernel-observation.json'),300000);
+  const kernel=observe(process.execPath,[new URL('./android_kernel_observer.mjs',import.meta.url).pathname,join(output,'current.rvg'),digest,String(maxTransportBytes),'--live-properties','--zygote-probe'],join(output,'kernel-observation.json'),300000);
   write(join(output,'observation-outcomes.json'),JSON.stringify({frame,kernel},null,2)+'\n');
   if([0,3].includes(frame.exit_code)&&kernel.exit_code===0){
    const evidence=evaluateFrameworkEvidence({checkpointSha:digest,report,result:json(join(output,'result.json')),host:json(join(output,'process-outcome.json')),kernel:json(join(output,'kernel-observation.json')),frame:json(join(output,'checkpoint-frame.json')),ppm:frame.exit_code===0?read(join(output,'checkpoint-frame.ppm')):undefined});
