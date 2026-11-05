@@ -45,12 +45,31 @@ public final class PrismaTestRunner extends Instrumentation {
         throw new AssertionError("Timed out: "+condition);
     }
     private void tap(String selector)throws Exception{
-        JSONArray p=new JSONArray(js("(()=>{const r=document.querySelector('"+selector+"').getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2,innerWidth]})()"));
-        int[] location=new int[2];float[] scale={1};
-        runOnMainSync(()->{WebView w=game.testingWebView();w.getLocationOnScreen(location);scale[0]=w.getWidth()/(float)p.optDouble(2);});
-        float x=location[0]+(float)p.getDouble(0)*scale[0],y=location[1]+(float)p.getDouble(1)*scale[0];
-        long now=SystemClock.uptimeMillis();MotionEvent down=MotionEvent.obtain(now,now,0,x,y,0),up=MotionEvent.obtain(now,now+70,1,x,y,0);
-        try{sendPointerSync(down);sendPointerSync(up);}finally{down.recycle();up.recycle();}
+        long deadline=SystemClock.uptimeMillis()+15000;
+        while(SystemClock.uptimeMillis()<deadline){
+            boolean[] focused={false};
+            runOnMainSync(()->{
+                Activity current=gameMonitor==null?null:gameMonitor.getLastActivity();
+                if(current instanceof RxeGraphicsActivity&&!current.isDestroyed())game=(RxeGraphicsActivity)current;
+                WebView w=game==null||game.isDestroyed()?null:game.testingWebView();
+                focused[0]=w!=null&&w.isAttachedToWindow()&&w.isShown()&&game.hasWindowFocus()&&w.getWidth()>w.getHeight();
+            });
+            if(!focused[0]){SystemClock.sleep(100);continue;}
+            String bounds=js("(()=>{const r=document.querySelector('"+selector+"').getBoundingClientRect();return [r.x+r.width/2,r.y+r.height/2,innerWidth,innerHeight]})()");
+            if(!bounds.startsWith("[")){SystemClock.sleep(100);continue;}
+            JSONArray p=new JSONArray(bounds);int[] location=new int[2];float[] scale={0};
+            runOnMainSync(()->{
+                WebView w=game==null||game.isDestroyed()?null:game.testingWebView();
+                if(w!=null&&w.isAttachedToWindow()&&game.hasWindowFocus()&&p.optDouble(3)>0&&Math.abs(w.getWidth()/(double)w.getHeight()-p.optDouble(2)/p.optDouble(3))<.05){w.getLocationOnScreen(location);scale[0]=w.getWidth()/(float)p.optDouble(2);}
+            });
+            if(scale[0]<=0||p.optDouble(0)<0||p.optDouble(1)<0||p.optDouble(0)>p.optDouble(2)||p.optDouble(1)>p.optDouble(3)){SystemClock.sleep(100);continue;}
+            float x=location[0]+(float)p.getDouble(0)*scale[0],y=location[1]+(float)p.getDouble(1)*scale[0];
+            long now=SystemClock.uptimeMillis();MotionEvent down=MotionEvent.obtain(now,now,0,x,y,0),up=null;
+            try{sendPointerSync(down);SystemClock.sleep(50);up=MotionEvent.obtain(now,SystemClock.uptimeMillis(),1,x,y,0);sendPointerSync(up);return;}
+            catch(IllegalArgumentException transition){if(!String.valueOf(transition.getMessage()).contains("Targeted input event injection"))throw transition;SystemClock.sleep(180);}
+            finally{down.recycle();if(up!=null)up.recycle();}
+        }
+        throw new AssertionError("Game window was not stable for touch: "+selector);
     }
     @Override public void onStart(){
         Bundle result=new Bundle();
