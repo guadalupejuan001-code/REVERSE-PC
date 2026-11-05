@@ -266,7 +266,7 @@ class MinimalGuest {
     require(size==1 || size==2 || size==4 || size==8, "Invalid guest word size"); range(address,size);
     invalidate_translation_hints();clear_code_cache();
     auto store=[&](mundo_x::QuantumRuntime::ByteAccess& bytes){
-      for(unsigned i=0;i<size;++i)bytes.store(std::to_string(address+i),std::uint8_t(value>>(i*8))^backing(address+i));
+      for(unsigned i=0;i<size;++i)store_inverse_byte(bytes,address+i,std::uint8_t(value>>(i*8))^backing(address+i));
     };
     // The whole execution block owns a private native-byte transaction. Public
     // standalone stores still receive their own all-or-nothing transaction.
@@ -831,7 +831,14 @@ class MinimalGuest {
   void pci_notify(unsigned device,unsigned queue);
   void dma_write(std::uint64_t address,std::uint64_t value,unsigned size);
   std::uint8_t logical_device_byte(std::uint64_t address) const {const auto r=byte_transaction_?byte_transaction_->read(address):runtime_.memory().read_numeric(address,runtime_.core());require(r.deterministic,"Device read reached unresolved quantum state; explicit observation required");return r.value;}
-  void logical_device_store(std::uint64_t address,std::uint8_t value){require(byte_transaction_,"Device write outside XI transaction");invalidate_data_byte(address);byte_transaction_->store(std::to_string(address),value);}
+  static void store_inverse_byte(mundo_x::QuantumRuntime::ByteAccess& bytes,std::uint64_t address,std::uint8_t value){
+#if defined(REVERSE_PC_NUMERIC_BYTE_STORES) && REVERSE_PC_NUMERIC_BYTE_STORES
+    bytes.store(address,value);
+#else
+    bytes.store(std::to_string(address),value);
+#endif
+  }
+  void logical_device_store(std::uint64_t address,std::uint8_t value){require(byte_transaction_,"Device write outside XI transaction");invalidate_data_byte(address);store_inverse_byte(*byte_transaction_,address,value);}
  public:
   Bytes display_rgb() const;
  private:
@@ -1094,7 +1101,7 @@ inline void MinimalGuest::step(RunResult& result) {
         auto store=[&](mundo_x::QuantumRuntime::ByteAccess& bytes){
           for(unsigned i=0;i<total;++i){
             const auto value=std::uint8_t((i<size?first:last)>>(8*(i%size)));
-            bytes.store(std::to_string(physical[i]),value^backing(physical[i]));
+            store_inverse_byte(bytes,physical[i],value^backing(physical[i]));
           }
         };
         if(byte_transaction_)store(*byte_transaction_);else runtime_.transact_bytes(store);

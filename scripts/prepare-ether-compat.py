@@ -54,6 +54,9 @@ replacements['quantum_runtime.hpp'].append((
     void store(const std::string& address, std::uint8_t value) {
       memory_.store(address, value, core_);
     }
+    void store(std::uint64_t address, std::uint8_t value) {
+      memory_.store_numeric(address, value, core_);
+    }
    private:
     friend class QuantumRuntime;
     ByteAccess(InfiniteCore& core, InverseMemory& memory):core_(core),memory_(memory) {}
@@ -125,6 +128,12 @@ replacements['inverse_memory.hpp'] += [
      ' #include "integration/inverse_memory_adaptive.inc"\n'
      ' private:\n  using AddressMap = memory_detail::AdaptiveOverrideMap;'),
 ]
+
+# Numeric host stores retain the same InverseMemory authority and serialized
+# format. Restricted digit budgets and all quantum views use the original API.
+replacements['inverse_memory.hpp'].append((
+    '  // A binding is an explicit view, not a global address formula.',
+    '  void store_numeric(std::uint64_t address,std::uint8_t value,InfiniteCore& core) {\n    if(limits_.max_address_digits<20||!bindings_->empty()) {store(std::to_string(address),value,core);return;}\n    const auto* old=overrides_->get(address);\n    if(value==background_) {\n      if(!old)return;require_revision();writable_overrides().erase(address);++revision_;return;\n    }\n    if(old) {\n      if(*old==value)return;require_revision();writable_overrides().assign_existing(address,value);++revision_;return;\n    }\n    if(limits_.max_overrides&&overrides_->size()==limits_.max_overrides)throw std::length_error("Inverse Memory classical override budget exceeded");\n    require_revision();writable_overrides().insert(address,value);++revision_;\n  }\n\n  // A binding is an explicit view, not a global address formula.'))
 
 diffs=[]
 for name,digest in expected.items():

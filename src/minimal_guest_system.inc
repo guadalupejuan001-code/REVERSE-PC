@@ -128,7 +128,7 @@ inline void MinimalGuest::cpu_write(std::uint64_t address,std::uint64_t value,un
   if(device_address(first)){device_write(first,value&low_mask(size*8),size,result);return;}
   auto store=[&](mundo_x::QuantumRuntime::ByteAccess& bytes){
     for(unsigned i=0;i<size;++i){const auto delta=std::uint8_t(value>>(8*i))^backing(physical[i]);
-      bytes.store(std::to_string(physical[i]),delta);}
+      store_inverse_byte(bytes,physical[i],delta);}
   };
   if(byte_transaction_)store(*byte_transaction_);else runtime_.transact_bytes(store);
 }
