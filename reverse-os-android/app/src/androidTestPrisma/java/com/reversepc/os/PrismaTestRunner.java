@@ -58,9 +58,12 @@ public final class PrismaTestRunner extends Instrumentation {
             until("!!document.getElementById('startBtn')&&document.getElementById('game').dataset.speakers==='2'",30);
             if(phase.equals("seed")){
                 until("(()=>{localStorage.setItem('prisma.upgrade-proof','2.5-to-2.6');localStorage.setItem('prisma.records',JSON.stringify([{track:'Récord conservado',level:'flow',score:137,accuracy:83,combo:4,date:1}]));return localStorage.getItem('prisma.upgrade-proof')==='2.5-to-2.6'})()",15);
+                // WebView commits DOM storage asynchronously. Do not kill its
+                // process immediately after writing the upgrade fixture.
+                runOnMainSync(()->game.moveTaskToBack(true));SystemClock.sleep(6500);
                 result.putString("stream","PRISMA_UPGRADE_SEEDED\n");finish(Activity.RESULT_OK,result);return;
             }
-            require("true".equals(js("localStorage.getItem('prisma.upgrade-proof')==='2.5-to-2.6'&&JSON.parse(localStorage.getItem('prisma.records')).some(r=>r.score===137)")),"Upgrade lost WebView origin or records");
+            until("localStorage.getItem('prisma.upgrade-proof')==='2.5-to-2.6'&&JSON.parse(localStorage.getItem('prisma.records')||'[]').some(r=>r.score===137)",10);
             require("true".equals(js("document.documentElement.classList.contains('native-xrender')&&!document.querySelector('.gpu-canvas')")),"Native X Render was replaced");
             js("window.__errors=[];addEventListener('error',e=>__errors.push(e.message));window.__musicSources=0;const originalSource=AudioContext.prototype.createBufferSource;AudioContext.prototype.createBufferSource=function(){__musicSources++;return originalSource.call(this)};true");
             tap("#startBtn");until("document.body.classList.contains('is-playing')",50);
