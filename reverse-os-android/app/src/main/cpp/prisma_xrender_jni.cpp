@@ -2,6 +2,7 @@
 #include <GLES3/gl3.h>
 #include "prisma_xrender.hpp"
 #include "prisma_xrender_present.hpp"
+#include "prisma_gpu.hpp"
 #include <map>
 #include <mutex>
 
@@ -27,9 +28,11 @@ class Presenter {
     for(const char* name:{"resolution","view","green","coral","time","energy","quiet","surfaces"})uniform_[name]=glGetUniformLocation(program_,name);
   }
   ~Presenter(){glDeleteTextures(1,&texture_);glDeleteVertexArrays(1,&vao_);glDeleteProgram(program_);}
-  void abandon(){texture_=0;vao_=0;program_=0;}
-  void resize(int w,int h){engine_.resize(w,h);width_=w;height_=h;glViewport(0,0,w,h);glClearColor(0,0,0,1);glClear(GL_COLOR_BUFFER_BIT);}
+  void abandon(){texture_=0;vao_=0;program_=0;if(gpu_)gpu_->abandon();}
+  void resize(int w,int h){engine_.resize(w,h);width_=w;height_=h;if(gpu_)gpu_->resize(w,h);glViewport(0,0,w,h);glClearColor(0,0,0,1);glClear(GL_COLOR_BUFFER_BIT);}
+  void model(int id,const std::vector<float>& data){gpu().model(id,data);}
   std::string frame(Engine::Frame f){
+    if(f.data[0]==3.f)return gpu().frame(f);
     const auto& stats=engine_.render(f);glBindTexture(GL_TEXTURE_2D,texture_);glPixelStorei(GL_UNPACK_ALIGNMENT,1);
     if(texture_w_!=stats.width||texture_h_!=stats.height){
       texture_w_=stats.width;texture_h_=stats.height;
@@ -45,6 +48,8 @@ class Presenter {
   }
  private:
   Engine engine_;
+  std::unique_ptr<reverse_pc::PrismaGpuRenderer> gpu_;
+  reverse_pc::PrismaGpuRenderer& gpu(){if(!gpu_){gpu_=std::make_unique<reverse_pc::PrismaGpuRenderer>();gpu_->resize(width_,height_);}return *gpu_;}
   GLuint texture_=0,vao_=0,program_=0;
   int width_=0,height_=0;
   std::size_t texture_w_=0,texture_h_=0;
@@ -67,11 +72,18 @@ extern "C" JNIEXPORT void JNICALL Java_com_reversepc_os_NativeRuntime_xRenderRes
 extern "C" JNIEXPORT jstring JNICALL Java_com_reversepc_os_NativeRuntime_xRenderFrame(JNIEnv* env,jclass,jlong handle,jfloatArray packet){
   try{
     if(!packet)throw std::invalid_argument("missing X Render frame");const auto length=env->GetArrayLength(packet);
-    if(length<16||length>16+64*12)throw std::invalid_argument("invalid X Render frame size");
+    if(length<16||length>16+128*12)throw std::invalid_argument("invalid X Render frame size");
     std::vector<float> values(length);env->GetFloatArrayRegion(packet,0,length,values.data());if(env->ExceptionCheck())return nullptr;
     Engine::Frame frame(std::move(values));std::lock_guard<std::mutex> lock(registry_mutex);
     const auto info=lookup(handle).frame(std::move(frame));return env->NewStringUTF(info.c_str());
   }catch(const std::exception& e){error(env,e);return nullptr;}
+}
+extern "C" JNIEXPORT void JNICALL Java_com_reversepc_os_NativeRuntime_xRenderModel(JNIEnv* env,jclass,jlong handle,jint id,jfloatArray model){
+  try{if(!model||id<0||id>4)throw std::invalid_argument("missing GPU world");const auto length=env->GetArrayLength(model);
+    if(length<36||length>384000||length%36)throw std::invalid_argument("invalid GPU model length");
+    std::vector<float> values(length);env->GetFloatArrayRegion(model,0,length,values.data());if(env->ExceptionCheck())return;
+    std::lock_guard<std::mutex> lock(registry_mutex);lookup(handle).model(id,values);
+  }catch(const std::exception& e){error(env,e);}
 }
 extern "C" JNIEXPORT void JNICALL Java_com_reversepc_os_NativeRuntime_xRenderDestroy(JNIEnv*,jclass,jlong handle,jboolean release_gl){
   std::lock_guard<std::mutex> lock(registry_mutex);const auto it=registry.find(handle);

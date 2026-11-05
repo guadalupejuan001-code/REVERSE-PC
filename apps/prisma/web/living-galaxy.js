@@ -100,7 +100,7 @@ function speaker(ctx,s,w,h,reduced,battery){
   }
 }
 
-export function drawLivingGalaxy(ctx,w,h,frame,{preview=false,reduced=false,battery=false,intensity=1}={}){
+export function drawLivingGalaxy(ctx,w,h,frame,{preview=false,reduced=false,battery=false,intensity=1,drawSpeakers=true}={}){
   ctx.save();ctx.globalAlpha=clamp(intensity,0,1);ctx.lineCap='round';
   ctx.globalCompositeOperation='lighter';
   for(const side of [-1,1]){
@@ -143,6 +143,6 @@ export function drawLivingGalaxy(ctx,w,h,frame,{preview=false,reduced=false,batt
     }
   }
   ctx.restore();ctx.globalCompositeOperation='source-over';
-  for(const s of frame.speakers)speaker(ctx,s,w,h,reduced,battery);
+  if(drawSpeakers)for(const s of frame.speakers)speaker(ctx,s,w,h,reduced,battery);
   ctx.restore();
 }

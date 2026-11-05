@@ -2,14 +2,27 @@
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 export const NOTE_SIZE=.64;
 export function approachSeconds(bpm=120,level='flow'){
-  return clamp(({flow:4.5,pulse:4,vertigo:3.5}[level]||4.5)*60/clamp(bpm||120,40,260),1.7,3.2);
+  const minimum={flow:3.2,pulse:2.9,vertigo:2.7}[level]||3.2;
+  return clamp(({flow:6.5,pulse:6,vertigo:5.5}[level]||6.5)*60/clamp(bpm||120,40,260),minimum,4.8);
 }
 export function noteMotion(note,time,latency=0,travel=2.25){
   const delta=note.t+latency-time,remaining=clamp(Math.max(0,delta)/travel,0,1);
   // Near-linear apparent growth instead of the former near-camera explosion.
-  const scale=.23+.77*(1-remaining),z=4.8*(1/scale-1);
-  const alpha=note.holding?1:delta>=0?clamp((travel-delta)/.22,0,1):clamp(1+delta/.25,.12,1);
+  const scale=.30+.70*(1-remaining),z=4.8*(1/scale-1);
+  const alpha=note.holding?1:delta>=0?.55+.45*clamp((travel-delta)/.12,0,1):clamp(1+delta/.6,.35,1);
   return {z:note.holding?0:z,size:NOTE_SIZE,delta,alpha,hot:note.holding||Math.abs(delta)<.095};
+}
+
+export function arrivalQueue(chart,time,latency=0,travel=3.6){
+  const start=time-latency-.36,end=time-latency+travel;
+  let lo=0,hi=chart.length;while(lo<hi){const m=(lo+hi)>>>1;if(chart[m].t<start)lo=m+1;else hi=m;}
+  const result=[];let rank=0,last=-Infinity;
+  for(let i=lo;i<chart.length&&chart[i].t<=end;i++){
+    const n=chart[i];if(n.hit||n.missed||n.holding)continue;
+    if(n.t-last>.012){rank++;last=n.t;}
+    result.push({note:n,rank,delta:n.t+latency-time});
+  }
+  return result;
 }
 
 // Durations are evidence from the decoded envelope, not invented from BPM.

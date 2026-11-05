@@ -98,10 +98,16 @@ int main(){try{
     need(rejected,"v1 reserved field accepted nonzero material");
   }
   {
-    auto bad=packet;bad[0]=3.f;
+    auto bad=packet;bad[0]=4.f;
     bool rejected=false;
     try{P::Frame invalid(bad);}catch(const std::invalid_argument&){rejected=true;}
     need(rejected,"unsupported future packet version was accepted");
+  }
+  {
+    auto gpu=packet;gpu[0]=3.f;gpu[14]=65280.f;
+    auto frame=P::Frame(gpu);need(frame.count==1,"valid GPU frame rejected");
+    bool rejected=false;try{render.render(frame);}catch(const std::invalid_argument&){rejected=true;}
+    need(rejected,"GPU frame silently ran on the CPU observer");
   }
   for(float wrong:{-2.f,4.f,.5f}){
     auto invalidDirection=packet;invalidDirection[P::header+9]=wrong;

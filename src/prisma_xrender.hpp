@@ -8,20 +8,23 @@ namespace reverse_pc {
 class PrismaXRender {
  public:
   using Spatial=mundo_x::EtherRenderSpatial;
-  static constexpr std::size_t header=16,stride=12,max_cubes=64;
+  static constexpr std::size_t header=16,stride=12,max_cubes=64,max_gpu_cubes=128;
   struct Frame {
     std::vector<float> data;
     std::size_t count=0;
     explicit Frame(std::vector<float> values):data(std::move(values)){
-      if(data.size()<header||data.size()>header+stride*max_cubes)
+      if(data.size()<header||data.size()>header+stride*max_gpu_cubes)
         throw std::invalid_argument("invalid X Render frame length");
       for(float value:data)if(!std::isfinite(value))throw std::invalid_argument("nonfinite X Render frame");
       auto in=[&](std::size_t i,float low,float high){if(data[i]<low||data[i]>high)throw std::invalid_argument("X Render frame field outside range");};
-      if((data[0]!=1.f&&data[0]!=2.f)||data[15]!=std::floor(data[15]))throw std::invalid_argument("unsupported X Render frame");
+      if((data[0]!=1.f&&data[0]!=2.f&&data[0]!=3.f)||data[15]!=std::floor(data[15]))throw std::invalid_argument("unsupported X Render frame");
       in(1,-1000000.f,1000000.f);in(2,0,2);in(3,0,1);in(4,0,1);in(5,0,1);
       in(6,.01f,8);in(7,.01f,8);for(unsigned i=8;i<14;++i)in(i,0,1);
-      if(data[14]!=0.f&&data[14]!=1.f&&data[14]!=2.f)throw std::invalid_argument("invalid X Render quality");
-      in(15,0,max_cubes);count=static_cast<std::size_t>(data[15]);
+      if(data[0]==3.f){
+        in(14,0,65535);const auto code=static_cast<unsigned>(data[14]);
+        if(data[14]!=std::floor(data[14])||(code&3)>2||((code>>2)&7)>4||((code>>5)&7)>5)throw std::invalid_argument("invalid GPU world descriptor");
+      }else if(data[14]!=0.f&&data[14]!=1.f&&data[14]!=2.f)throw std::invalid_argument("invalid X Render quality");
+      in(15,0,data[0]==3.f?max_gpu_cubes:max_cubes);count=static_cast<std::size_t>(data[15]);
       if(data.size()!=header+count*stride)throw std::invalid_argument("X Render frame count mismatch");
       for(std::size_t n=0;n<count;++n){const auto i=header+n*stride;
         in(i,-100,100);in(i+1,-100,100);in(i+2,-4,100);in(i+3,.05f,5);
@@ -53,6 +56,7 @@ class PrismaXRender {
     display_w_=width;display_h_=height;
   }
   const Metrics& render(const Frame& f){
+    if(f.data[0]==3.f)throw std::invalid_argument("GPU frame requires the GPU renderer");
     if(!display_w_||!display_h_)throw std::logic_error("X Render display not sized");
     const auto start=std::chrono::steady_clock::now();
     const auto quality=static_cast<unsigned>(f.data[14]);
