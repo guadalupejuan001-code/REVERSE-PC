@@ -271,6 +271,8 @@ try{
   check(!ui.some(n=>/^VUELTA |^POSICIÓN /.test(n.text||'')),'no closed-race HUD remains');
   check(!!findText(ui,'ACELERAR')&&!!findText(ui,'FRENO')&&!!findText(ui,'NITRO')&&!!findText(ui,'SALTO'),'real driving controls remain usable');
   screenshot('open-world-entry');
+  const frozenReuse=frameRecords(logs()).some(s=>s.paused&&s.frames===0&&s.cacheHits>0&&s.xiRenders===0);
+  check(frozenReuse,'paused world reuses posted pixels without executing XI or drawing again');
   check(/GPU_SHADERS_READY owner=REgraphics geometry=XI_XFG4/.test(logs()),'own REgraphics shaders compiled on Android GPU');
   check(/GPU_FRAME_READY source=XI_XFG4 shaders=REgraphics/.test(logs()),'actual XI geometry rendered through GPU');
   tapNode(findText(ui,'Reversa R'));ui=waitText(/^Avance D$/);tapNode(findText(ui,'Avance D'));ui=waitText(/^Reversa R$/);
@@ -334,9 +336,16 @@ try{
   check(/GPU_FX_STATE nitro=true.*emittedNitro=[1-9]/.test(logs()),'rear nitro emits actual XI triangles on GPU');
   check(/GPU_FX_STATE .*air=true.*emittedAir=[1-9]/.test(logs()),'wheel air jets emit actual XI triangles on GPU');
   stage='braking and physical reverse';
+  // Screenshot/UI capture can let the car coast to rest before pause. Establish
+  // a new real moving state, then freeze it before inspecting the gear control.
+  adbText(['shell','input','keyevent','KEYCODE_P']);
+  adbText(['shell','input','keycombination','-t','1500','KEYCODE_W','KEYCODE_SHIFT_LEFT']);
+  adbText(['shell','input','keyevent','KEYCODE_P']);ui=waitText(/EN PAUSA/);
+  check(ui.some(n=>/^[1-9]\d* km\/h$/.test(n.text||'')),'reverse test starts with a genuinely moving paused car');
   // Request reverse from a paused, genuinely moving XI car. The input adapter
   // must brake it before selecting R; the accelerator then drives it backwards.
   tapNode(findText(ui,'Reversa R'));ui=waitText(/^Frenando · R$/);
+  check(/GEAR_REQUEST reverse=true pending=true speed=[1-9]\d*/.test(logs()),'XI receives a moving gear request that requires braking');
   check(true,'moving reverse request visibly waits for braking');
   const beforeShift=frameRecords(logs()).length;
   adbText(['shell','input','keyevent','KEYCODE_P']);

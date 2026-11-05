@@ -9,15 +9,17 @@ import java.util.Arrays;
 final class XiObservationPacket {
     final String output;
     final byte[] frame;
-    private XiObservationPacket(String output,byte[] frame){this.output=output;this.frame=frame;}
+    final long publication;
+    private XiObservationPacket(String output,byte[] frame,long publication){this.output=output;this.frame=frame;this.publication=publication;}
     static XiObservationPacket parse(byte[] bytes){
-        if(bytes==null||bytes.length<12||bytes[0]!='X'||bytes[1]!='I'||bytes[2]!='O'||bytes[3]!='1')
+        if(bytes==null||bytes.length<20||bytes[0]!='X'||bytes[1]!='I'||bytes[2]!='O'||bytes[3]!='2')
             throw new IllegalArgumentException("XI observation signature");
         ByteBuffer header=ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
         int text=header.getInt(4),frame=header.getInt(8);
-        if(text<0||text>65536||frame<4||frame>40*1024*1024||12L+text+frame!=bytes.length)
+        long publication=header.getLong(12);
+        if(publication<0||text<0||text>65536||frame<4||frame>40*1024*1024||20L+text+frame!=bytes.length)
             throw new IllegalArgumentException("XI observation dimensions");
-        return new XiObservationPacket(new String(bytes,12,text,StandardCharsets.UTF_8),
-            Arrays.copyOfRange(bytes,12+text,bytes.length));
+        return new XiObservationPacket(new String(bytes,20,text,StandardCharsets.UTF_8),
+            Arrays.copyOfRange(bytes,20+text,bytes.length),publication);
     }
 }

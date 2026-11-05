@@ -134,9 +134,10 @@ Java_com_reversepc_os_NativeRuntime_sessionStage(JNIEnv* e,jclass,jlong handle,j
   try{return output_frame(e,session(handle)->stage(source(e,text)));}
   catch(const std::exception& x){throw_java(e,x);return nullptr;}
 }
-extern "C" JNIEXPORT void JNICALL
+extern "C" JNIEXPORT jlong JNICALL
 Java_com_reversepc_os_NativeRuntime_sessionCommit(JNIEnv* e,jclass,jlong handle){
-  try{session(handle)->commit();}catch(const std::exception& x){throw_java(e,x);}
+  try{return static_cast<jlong>(session(handle)->commit());}
+  catch(const std::exception& x){throw_java(e,x);return 0;}
 }
 extern "C" JNIEXPORT void JNICALL
 Java_com_reversepc_os_NativeRuntime_sessionDiscard(JNIEnv* e,jclass,jlong handle){
@@ -163,8 +164,9 @@ Java_com_reversepc_os_NativeRuntime_sessionObserve(JNIEnv* e,jclass,jlong handle
       throw std::invalid_argument("XI session observation requires original frame bytes");
     if(frame.size()>40u*1024*1024||observed.output.size()>64u*1024)
       throw std::length_error("XI observation packet budget");
-    std::vector<std::uint8_t> packet{'X','I','O','1'};
+    std::vector<std::uint8_t> packet{'X','I','O','2'};
     reverse_os::put32(packet,observed.output.size());reverse_os::put32(packet,frame.size());
+    reverse_os::put64(packet,observed.generation);
     packet.insert(packet.end(),observed.output.begin(),observed.output.end());
     packet.insert(packet.end(),frame.begin(),frame.end());
     return output(e,packet);

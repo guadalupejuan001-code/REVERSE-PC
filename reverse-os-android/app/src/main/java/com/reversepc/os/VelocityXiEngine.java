@@ -17,6 +17,8 @@ import org.json.JSONObject;
  */
 final class VelocityXiEngine {
     static final class Snapshot {
+        // Assigned once before the immutable observation is published.
+        long publication;
         final long xCm,zCm,ticks,totalProgress;
         final int yaw4096,speedCmps,slideCmps,checkpoint,position,laps,trackS,segment,countdown;
         final boolean finished,offRoad,wallContact,nitroActive,landingPulse;
@@ -235,7 +237,7 @@ final class VelocityXiEngine {
         byte[] raw=NativeRuntime.sessionObserve(liveSession,xiGpuRenderer,addresses,inputs);
         long execute=System.nanoTime()-start;start=System.nanoTime();
         XiObservationPacket packet=XiObservationPacket.parse(raw);
-        Snapshot state=parseState(packet.output);
+        Snapshot state=observedState(packet);
         RegraphicsGeometry geometry=RegraphicsGeometry.decodeOwned(packet.frame);
         int[] colors=VelocityWorldLight.palette(palette,paletteDusk,paletteNight,state.dayPhase);
         return new Observation(geometry,colors,state,execute,System.nanoTime()-start,raw.length);
@@ -268,8 +270,8 @@ final class VelocityXiEngine {
             }
             source=renderProgramCache;
         }
-        // No UTF-8 conversion or JSON records on the frame path.
-        // Returned RVPC2 is discarded: frames observe the private game state.
+        // Original binary frame plus a small coherent register observation.
+        // Compact RVPC2 is retained natively instead of crossing JNI per frame.
 
         // Native observations execute on a private immutable copy. The physics
         // transaction can advance independently while this image is produced.
@@ -278,7 +280,7 @@ final class VelocityXiEngine {
         final long executeElapsed=System.nanoTime()-executeStart;
         final long decodeStart=System.nanoTime();
         final XiObservationPacket packet=XiObservationPacket.parse(packetBytes);
-        final Snapshot observedState=parseState(packet.output);
+        final Snapshot observedState=observedState(packet);
         final byte[] frameBytes=packet.frame;
         final RegraphicsFrame frame=RegraphicsFrame.decodeLiveNativeOwned(frameBytes,stride,VelocityWorldLight.palette(palette,paletteDusk,paletteNight,observedState.dayPhase));
         final long decodeElapsed=System.nanoTime()-decodeStart;
@@ -315,7 +317,7 @@ final class VelocityXiEngine {
         final long executeElapsed=System.nanoTime()-executeStart;
         final long decodeStart=System.nanoTime();
         final XiObservationPacket packet=XiObservationPacket.parse(packetBytes);
-        final Snapshot observed=parseState(packet.output);
+        final Snapshot observed=observedState(packet);
         final byte[] frameBytes=packet.frame;
         final RegraphicsFrame frame=RegraphicsFrame.decodeNative4KOwned(frameBytes,VelocityWorldLight.palette(palette,paletteDusk,paletteNight,observed.dayPhase));
         final long decodeElapsed=System.nanoTime()-decodeStart;
@@ -342,13 +344,18 @@ final class VelocityXiEngine {
         byte[] output=NativeRuntime.sessionStage(liveSession,source);
         try {
             Snapshot candidate=parseState(new String(output,StandardCharsets.UTF_8));
-            NativeRuntime.sessionCommit(liveSession);
+            candidate.publication=NativeRuntime.sessionCommit(liveSession);
             snapshot=candidate;return candidate;
         } catch(Exception rejected) {
             NativeRuntime.sessionDiscard(liveSession);throw rejected;
         }
     }
     synchronized void close(){if(!closed){closed=true;NativeRuntime.sessionClose(liveSession);}}
+    private Snapshot observedState(XiObservationPacket packet)throws Exception{
+        Snapshot current=snapshot;
+        if(current!=null&&current.publication==packet.publication)return current;
+        Snapshot observed=parseState(packet.output);observed.publication=packet.publication;return observed;
+    }
     int environmentMode(){return environmentMode;}
     Snapshot current(){return snapshot;}
     float[] track(){return worldPoints.clone();} // Read-only circuit samples for HUD.

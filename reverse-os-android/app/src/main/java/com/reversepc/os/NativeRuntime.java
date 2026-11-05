@@ -4,7 +4,7 @@ public final class NativeRuntime {
     public static native long sessionOpen(byte[] state);
     public static native void sessionClose(long session);
     public static native byte[] sessionStage(long session,String source);
-    public static native void sessionCommit(long session);
+    public static native long sessionCommit(long session);
     public static native void sessionDiscard(long session);
     public static native byte[] sessionObserve(long session,String source,int[] addresses,byte[] values);
     static { System.loadLibrary("reverse_os"); }

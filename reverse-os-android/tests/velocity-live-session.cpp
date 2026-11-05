@@ -23,7 +23,8 @@ int main(int argc,char**argv){try{
  for(int i=0;i<90;i++){
    auto source=command(i);auto a=Clock::now();auto old=reverse_pc::rvpc2::restore(state);
    auto text=old.execute(source);state=reverse_pc::rvpc2::save(old);auto b=Clock::now();
-   auto observed=live.stage(source);live.commit();auto c=Clock::now();
+   auto observed=live.stage(source);auto generation=live.commit();auto c=Clock::now();
+   check(generation==static_cast<std::uint64_t>(i+1),"publication identity advances once per committed transaction");
    check(text==observed,"live XI observation equals original RVPC2 transaction");
    if(i%15==0||i==89)check(live.checkpoint()==state,"compact RVPC2 bytes remain exact");
    if(i>10){baselineTimes.push_back(ms(a,b));liveTimes.push_back(ms(b,c));}
@@ -41,6 +42,7 @@ int main(int argc,char**argv){try{
    auto packet=live.observe(render,inputs);auto c=Clock::now();
    check(reference==packet.frame,"live XFG4 geometry equals original XI byte for byte");
    check(packet.output==live.retain()->output,"observed state and geometry share one publication");
+   check(packet.generation==live.retain()->generation,"frame retains exact publication identity for paused reuse");
    if(i>1){geometryBefore.push_back(ms(a,b));geometryAfter.push_back(ms(b,c));}
    expected=packet.frame;
  }
