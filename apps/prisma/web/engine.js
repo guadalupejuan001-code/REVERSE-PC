@@ -6,7 +6,7 @@ import { makeConcertProgram, concertPose, concertNativeParts, RIG_MAX_CUBOIDS } 
 import { createSpectacleEvent, pruneSpectacles, spectacleEnvelope, spectacleGeometry, SPECTACLE_MAX_EVENTS } from './combo-spectacle.js';
 import { nextVisualQuality, visualBudget } from './performance-policy.js';
 import { livingGalaxyFrame, drawLivingGalaxy, overlayPixelRatio } from './living-galaxy.js';
-import { approachSeconds, noteMotion, decorateNotes, NOTE_SIZE, arrivalQueue } from './note-flow.js';
+import { approachSeconds, noteMotion, decorateNotes, NOTE_SIZE, arrivalQueue, orderBadgePositions } from './note-flow.js';
 import { makeFestivalProgram, worldFrame, drawWorld, fireworkFrame, drawFireworks, rewardFirework } from './festival-worlds.js';
 import { worldModel } from './world-model.js';
 export const PALETTES = { coral: ['#63ffb4','#ff5074'], violet: ['#63ffb4','#bd8bff'], ice: ['#7aeaff','#ff5074'] };
@@ -93,15 +93,18 @@ export class Scene {
     const [a,b]=visibleRange(chart,time,latency,this.travel||3.6);
     const nearby=chart.slice(a,b);
     for(const n of this.holdNotes||[])if(n.holding&&!nearby.includes(n))nearby.push(n);
+    const badges=orderBadgePositions(this.arrivals||[],n=>this.noteProjection(n,time,latency),this.width);
+    nearby.sort((a,b)=>b.t-a.t);
     for(const n of nearby){
       if(n.hit)continue;
       if(n.missed){const age=time-(n.missedAt??-Infinity);if(age>=0&&age<.28){const p=this.noteProjection(n,time,latency),r=p.s*NOTE_SIZE*.52;ctx.globalAlpha=(1-age/.28)*.45;ctx.strokeStyle='#9cb7c3';ctx.lineWidth=1;ctx.strokeRect(p.x-r,p.y-r,r*2,r*2);ctx.font='700 13px sans-serif';ctx.fillStyle='#aec1c8';ctx.textAlign='center';ctx.fillText('×',p.x,p.y+4);}continue;}
       const motion=noteMotion(n,time,latency,this.travel||3.6);
       if(motion.delta>(this.travel||3.6))continue;
       const p=this.noteProjection(n,time,latency),color=colors[n.color];
-      const order=this.noteRanks?.get(n);
+      const badge=badges.get(n),order=badge?.rank;
       if(order&&order<=4){
-        const bx=p.x+p.s*.39,by=p.y-p.s*.40;
+        const bx=badge.x,by=badge.y;
+        if(Math.hypot(bx-badge.bx,by-badge.by)>3){ctx.beginPath();ctx.moveTo(badge.bx,badge.by);ctx.lineTo(bx,by);ctx.strokeStyle=color;ctx.lineWidth=1;ctx.globalAlpha=.35;ctx.stroke();}
         ctx.globalAlpha=1;ctx.beginPath();ctx.arc(bx,by,9,0,Math.PI*2);ctx.fillStyle=order===1?'#e8fff5':'#0c1929';ctx.fill();ctx.strokeStyle=order===1?'#fff':color;ctx.lineWidth=1.4;ctx.stroke();ctx.fillStyle=order===1?'#09241b':'#e6fff6';ctx.font='700 11px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(String(order),bx,by+.5);ctx.textBaseline='alphabetic';
         if(order===1){const r=p.s*NOTE_SIZE*.58;ctx.strokeStyle='#ebfff5';ctx.lineWidth=1.8;ctx.strokeRect(p.x-r,p.y-r,r*2,r*2);}
       }

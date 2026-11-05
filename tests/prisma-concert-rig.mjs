@@ -73,10 +73,10 @@ const text=readFileSync(new URL('../apps/prisma/web/engine.js',import.meta.url),
 const Scene=new Function('makeConcertProgram','concertPose','concertNativeParts',
   'RIG_MAX_CUBOIDS','MusicStageDirector','makeIntelligentChart','seeded','CubeGPU','NativeXRender',
   'createSpectacleEvent','pruneSpectacles','spectacleEnvelope','spectacleGeometry','SPECTACLE_MAX_EVENTS',
-  'livingGalaxyFrame','drawLivingGalaxy','overlayPixelRatio','approachSeconds','noteMotion','decorateNotes','NOTE_SIZE','arrivalQueue','makeFestivalProgram','worldFrame','drawWorld','fireworkFrame','drawFireworks','rewardFirework',text+';return Scene;')(makeConcertProgram,concertPose,concertNativeParts,RIG_MAX_CUBOIDS,
+  'livingGalaxyFrame','drawLivingGalaxy','overlayPixelRatio','approachSeconds','noteMotion','decorateNotes','NOTE_SIZE','arrivalQueue','orderBadgePositions','makeFestivalProgram','worldFrame','drawWorld','fireworkFrame','drawFireworks','rewardFirework',text+';return Scene;')(makeConcertProgram,concertPose,concertNativeParts,RIG_MAX_CUBOIDS,
   class{},()=>[],()=>()=>.5,{},{},
   combo.createSpectacleEvent,combo.pruneSpectacles,combo.spectacleEnvelope,
-  combo.spectacleGeometry,combo.SPECTACLE_MAX_EVENTS,live.livingGalaxyFrame,live.drawLivingGalaxy,live.overlayPixelRatio,flow.approachSeconds,flow.noteMotion,flow.decorateNotes,flow.NOTE_SIZE,flow.arrivalQueue,festival.makeFestivalProgram,festival.worldFrame,festival.drawWorld,festival.fireworkFrame,festival.drawFireworks,festival.rewardFirework); // Constructor intentionally bypassed.
+  combo.spectacleGeometry,combo.SPECTACLE_MAX_EVENTS,live.livingGalaxyFrame,live.drawLivingGalaxy,live.overlayPixelRatio,flow.approachSeconds,flow.noteMotion,flow.decorateNotes,flow.NOTE_SIZE,flow.arrivalQueue,flow.orderBadgePositions,festival.makeFestivalProgram,festival.worldFrame,festival.drawWorld,festival.fireworkFrame,festival.drawFireworks,festival.rewardFirework); // Constructor intentionally bypassed.
 const scene=Object.create(Scene.prototype);
 const drawn=[],canvas={dataset:{}};
 scene.gpu={native:true,count:63,cube:(...p)=>{drawn.push(p);scene.gpu.count++;}};

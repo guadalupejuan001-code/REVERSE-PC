@@ -34,7 +34,10 @@ public final class PrismaTestRunner extends Instrumentation {
             try{view.evaluateJavascript(source,v->{out[0]=v;done.countDown();});}
             catch(IllegalStateException closed){done.countDown();}
         });
-        require(done.await(10,TimeUnit.SECONDS),"WebView did not answer");return out[0];
+        // Android may replace the WebView during the initial landscape relaunch;
+        // callbacks belonging to its destroyed document are never delivered.
+        // Readiness polls retry the current activity instead of killing setup.
+        if(!done.await(10,TimeUnit.SECONDS))return "null";return out[0];
     }
     private void until(String condition,int seconds)throws Exception{
         long deadline=SystemClock.uptimeMillis()+seconds*1000L;

@@ -25,6 +25,19 @@ export function arrivalQueue(chart,time,latency=0,travel=3.6){
   return result;
 }
 
+export function orderBadgePositions(arrivals,project,width){
+  const result=new Map(),occupied=[];
+  for(const a of arrivals.filter(a=>a.rank<=4)){
+    const p=project(a.note),side=a.note.lane===0?-1:1,bx=p.x+side*p.s*.39,by=p.y-p.s*.40;
+    let x=clamp(bx,14,width-14),y=by;
+    for(let attempts=0;attempts<16&&occupied.some(q=>Math.hypot(q.x-x,q.y-y)<21);attempts++){
+      x+=side*22;if(x<14||x>width-14){x=clamp(bx,14,width-14);y-=22;}
+    }
+    const point={x,y,bx,by,rank:a.rank};occupied.push(point);result.set(a.note,point);
+  }
+  return result;
+}
+
 // Durations are evidence from the decoded envelope, not invented from BPM.
 export function decorateNotes(chart,level='flow'){
   let holdUntil=-Infinity,lastHold=-Infinity;

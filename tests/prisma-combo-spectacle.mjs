@@ -110,13 +110,13 @@ const sceneSource=readFileSync(
 const Scene=new Function('CubeGPU','NativeXRender','seeded','MusicStageDirector','makeIntelligentChart',
   'makeConcertProgram','concertPose','concertNativeParts','RIG_MAX_CUBOIDS',
   'createSpectacleEvent','pruneSpectacles','spectacleEnvelope','spectacleGeometry',
-  'SPECTACLE_MAX_EVENTS','livingGalaxyFrame','drawLivingGalaxy','overlayPixelRatio','approachSeconds','noteMotion','decorateNotes','NOTE_SIZE','arrivalQueue','makeFestivalProgram','worldFrame','drawWorld','fireworkFrame','drawFireworks','rewardFirework',
+  'SPECTACLE_MAX_EVENTS','livingGalaxyFrame','drawLivingGalaxy','overlayPixelRatio','approachSeconds','noteMotion','decorateNotes','NOTE_SIZE','arrivalQueue','orderBadgePositions','makeFestivalProgram','worldFrame','drawWorld','fireworkFrame','drawFireworks','rewardFirework',
   sceneSource+';return Scene;')(
     {},{},()=>()=>.5,MusicStageDirector,()=>[],
     concert.makeConcertProgram,concert.concertPose,concert.concertNativeParts,
     concert.RIG_MAX_CUBOIDS,
     createSpectacleEvent,pruneSpectacles,spectacleEnvelope,spectacleGeometry,
-    SPECTACLE_MAX_EVENTS,live.livingGalaxyFrame,live.drawLivingGalaxy,live.overlayPixelRatio,flow.approachSeconds,flow.noteMotion,flow.decorateNotes,flow.NOTE_SIZE,flow.arrivalQueue,festival.makeFestivalProgram,festival.worldFrame,festival.drawWorld,festival.fireworkFrame,festival.drawFireworks,festival.rewardFirework
+    SPECTACLE_MAX_EVENTS,live.livingGalaxyFrame,live.drawLivingGalaxy,live.overlayPixelRatio,flow.approachSeconds,flow.noteMotion,flow.decorateNotes,flow.NOTE_SIZE,flow.arrivalQueue,flow.orderBadgePositions,festival.makeFestivalProgram,festival.worldFrame,festival.drawWorld,festival.fireworkFrame,festival.drawFireworks,festival.rewardFirework
   );
 const metrics={strokes:0,fills:0},gradient={addColorStop:()=>{}};
 const ctx={
