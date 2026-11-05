@@ -174,6 +174,16 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
     const auto exponent=(std::uint64_t(!repeat)<<(e-1))|(repeat?((UINT64_C(1)<<(e-3))-1)<<2:0)|((imm>>4)&3);
     fp_set(rd,(std::uint64_t(imm>>7)<<(bits-1))|(exponent<<f)|(std::uint64_t(imm&15)<<(f-4)),bits);return true;
   }
+  const bool fabd_scalar=(i&0xffa0fc00u)==0x7ea0d400u;
+  const bool fabd_vector=(i&0xbfa0fc00u)==0x2ea0d400u;
+  if(fabd_scalar||fabd_vector){ // FABD S/D, 2S/4S/2D: rounded subtraction, then absolute value.
+    const unsigned lane_bits=(i&0x00400000u)?64u:32u,width=(i&0x40000000u)?128u:64u;
+    if(fabd_vector&&lane_bits==64&&width==64)return false;
+    fp_access();const auto left=floating_.v[rn],right=floating_.v[rm];Vector128 output;
+    const unsigned lanes=fabd_scalar?1u:width/lane_bits;
+    for(unsigned lane=0;lane<lanes;++lane)output.lane(lane,lane_bits,fp.binary(3,lane_bits,left.lane(lane,lane_bits),right.lane(lane,lane_bits))&~ArmFloat::sign(lane_bits));
+    floating_.v[rd]=output;return true;
+  }
   const auto fixed_gpr=i&0x7f3f0000u;
   if(fixed_gpr==0x1e180000u||fixed_gpr==0x1e190000u||fixed_gpr==0x1e020000u||fixed_gpr==0x1e030000u){ // Fixed-point FCVTZS/FCVTZU and SCVTF/UCVTF, GPR <-> S/D.
     const unsigned integer_bits=(i&0x80000000u)?64u:32u,scale=(i>>10)&63u;
