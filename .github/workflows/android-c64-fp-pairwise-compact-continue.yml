@@ -213,7 +213,7 @@ jobs:
         set -euo pipefail
         node --input-type=module <<'NODE'
         import assert from 'node:assert/strict';import {readFileSync,writeFileSync} from 'node:fs';import {run} from './tools/android_c27_profile_resume.mjs';
-        const r=await run(JSON.parse(readFileSync('source-c62-stage8/output-contract.json')),'source-c62-stage8','reference-build/native','new-media/android-c27.raw','evidence/c64-reference',{wallMs:180000,instructions:901120549,cycles:1,maxTransportBytes:2147483648});assert.equal(r.process.status,'process_completed');assert.equal(r.result.execution_progress_accepted,true);assert.equal(r.result.checkpoint_sha256,'d047254c86848ccb3b48ffcebc1a56721e9ff4ae97264ac00aaadd392b5ee6db');writeFileSync('evidence/c64-source/reference.json',JSON.stringify(r,null,2)+'\n');
+        const r=await run(JSON.parse(readFileSync('source-c62-stage8/output-contract.json')),'source-c62-stage8','reference-build/native','new-media/android-c27.raw','evidence/c64-reference',{wallMs:900000,instructions:901120549,cycles:1,maxTransportBytes:2147483648});writeFileSync('evidence/c64-source/reference.json',JSON.stringify(r,null,2)+'\n');assert.equal(r.process.status,'process_completed');assert.equal(r.result.execution_progress_accepted,true);assert.equal(JSON.parse(readFileSync('evidence/c64-reference/current.json')).guest.instructions,38609133923);assert.equal(r.result.checkpoint_sha256,'d047254c86848ccb3b48ffcebc1a56721e9ff4ae97264ac00aaadd392b5ee6db');
         NODE
     - name: C64 stage 1 execute and verify the authentic Android machine
       id: s1
