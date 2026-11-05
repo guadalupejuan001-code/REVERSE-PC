@@ -34,12 +34,14 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
     private volatile boolean firstFrame;
     private boolean hdVerified;
     private int lastFx=-1;
+    private long measuredFrom,measuredFrames,queueNanos,commandNanos,swapNanos;
     private ByteBuffer photoReadback;
     private final FloatBuffer vertices=ByteBuffer.allocateDirect(RegraphicsGeometry.MAX_FACES*3*RegraphicsGeometry.FLOATS*4).order(ByteOrder.nativeOrder()).asFloatBuffer();
     private final ByteBuffer paletteBytes=ByteBuffer.allocateDirect(1024),atlasBytes=ByteBuffer.allocateDirect(2048);
     static final class Request {
         final RegraphicsGeometry geometry;final Bitmap photo;final int[] palette;
         final VelocityXiEngine.Snapshot state;final int yaw,width;
+        final long submittedNanos=System.nanoTime();
         final CountDownLatch done=new CountDownLatch(1);volatile RuntimeException error;
         Request(RegraphicsGeometry g,Bitmap photo,int[] palette,VelocityXiEngine.Snapshot s,int yaw,int width){this.geometry=g;this.photo=photo;this.palette=palette;state=s;this.yaw=yaw;this.width=width;}
     }
@@ -118,12 +120,29 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
         Request r;synchronized(mailbox){r=queued;queued=null;active=r;}
         if(!ready){ready=true;invalidated.run();}
         if(r==null){glBindFramebuffer(GL_FRAMEBUFFER,0);glViewport(0,0,getWidth(),getHeight());glClearColor(.025f,.045f,.06f,1);glClear(GL_COLOR_BUFFER_BIT);if(colorTexture!=0)post(colorTexture,targetWidth,targetHeight,false);return;}
+        final long entered=System.nanoTime();
         try{
             if(r.geometry!=null)scene(r);else image(r);
             checked("REgraphics GPU frame");
+            final long recorded=System.nanoTime();
             // GLSurfaceView swaps after onDrawFrame. Its next queued event runs
             // after that swap, so the caller only marks an actually posted view.
-            queueEvent(()->{if(!firstFrame&&r.geometry!=null){firstFrame=true;Log.i("ReverseVelocity","GPU_FRAME_READY source=XI_XFG4 shaders=REgraphics faces="+r.geometry.faces+" width="+targetWidth+" height="+targetHeight);}r.done.countDown();synchronized(mailbox){if(active==r)active=null;}});
+            queueEvent(()->{
+                long posted=System.nanoTime();
+                if(r.width!=3840){
+                    if(measuredFrom==0)measuredFrom=r.submittedNanos;
+                    measuredFrames++;queueNanos+=entered-r.submittedNanos;commandNanos+=recorded-entered;swapNanos+=posted-recorded;
+                    if(posted-measuredFrom>=1_000_000_000L){
+                        double scale=1.0/(measuredFrames*1_000_000.0);
+                        Log.i("ReverseVelocity",String.format(java.util.Locale.ROOT,
+                            "GPU_PIPELINE timing=wall_not_gpu_timestamp samples=%d queueMeanMs=%.3f commandsMeanMs=%.3f swapMeanMs=%.3f width=%d height=%d",
+                            measuredFrames,queueNanos*scale,commandNanos*scale,swapNanos*scale,targetWidth,targetHeight));
+                        measuredFrames=queueNanos=commandNanos=swapNanos=0;measuredFrom=posted;
+                    }
+                }
+                if(!firstFrame&&r.geometry!=null){firstFrame=true;Log.i("ReverseVelocity","GPU_FRAME_READY source=XI_XFG4 shaders=REgraphics faces="+r.geometry.faces+" width="+targetWidth+" height="+targetHeight);}
+                r.done.countDown();synchronized(mailbox){if(active==r)active=null;}
+            });
         }catch(RuntimeException error){r.error=error;r.done.countDown();disable(error);}
     }
     private void scene(Request r){

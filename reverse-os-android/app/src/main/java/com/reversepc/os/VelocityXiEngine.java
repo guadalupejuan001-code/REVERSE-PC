@@ -75,6 +75,7 @@ final class VelocityXiEngine {
     }
 
     private byte[] privateState;
+    private final VelocityStateExchange<Snapshot> published=new VelocityStateExchange<>();
     private final String driveXi;
     private final String xiRenderer;
     private final String xiNative4KRenderer;
@@ -88,7 +89,7 @@ final class VelocityXiEngine {
     private final float[] worldPoints; // read-only XI generated geometry samples
     private final int[] palette,paletteDusk,paletteNight;
     private final String environmentXi;
-    private int environmentMode;
+    private volatile int environmentMode;
     private Snapshot snapshot;
     static final class Observation {
         final RegraphicsFrame frame;
@@ -218,6 +219,7 @@ final class VelocityXiEngine {
         Snapshot observed=parseState(result.output);
         privateState=result.state;
         snapshot=observed;
+        published.publish(privateState,snapshot);
         return observed;
     }
     /**
@@ -231,11 +233,11 @@ final class VelocityXiEngine {
     Observation observeGpuFrame(int camera,int paint,int car,int yaw,int pitch)throws Exception{
         if(camera<0||camera>2||paint<0||paint>4||car<0||car>=3||yaw<0||yaw>=4096||pitch<0||pitch>=512)
             throw new IllegalArgumentException("XI GPU view controls outside range");
-        final byte[] retained;final Snapshot state;
-        synchronized(this){retained=privateState.clone();state=snapshot;}
+        final VelocityStateExchange.Entry<Snapshot> retained=published.read();
+        final Snapshot state=retained.observation;
         final int[] addresses={200,201,202,203,204,205,206,207,141};
         final byte[] inputs={1,(byte)camera,(byte)paint,(byte)car,(byte)yaw,(byte)(yaw>>>8),(byte)pitch,(byte)(pitch>>>8),1};
-        long start=System.nanoTime();byte[] raw=NativeRuntime.observeGeometry(retained,xiGpuRenderer,addresses,inputs);
+        long start=System.nanoTime();byte[] raw=NativeRuntime.observeGeometry(retained.state,xiGpuRenderer,addresses,inputs);
         long execute=System.nanoTime()-start;start=System.nanoTime();
         RegraphicsGeometry geometry=RegraphicsGeometry.decodeOwned(raw);
         int[] colors=VelocityWorldLight.palette(palette,paletteDusk,paletteNight,state.dayPhase);
@@ -271,13 +273,12 @@ final class VelocityXiEngine {
         }
         // No UTF-8 conversion or JSON records on the frame path.
         // Returned RVPC2 is discarded: frames observe the private game state.
-        final byte[] observation;
-        final Snapshot observedState;
-        synchronized(this){observation=privateState.clone();observedState=snapshot;}
+        final VelocityStateExchange.Entry<Snapshot> retained=published.read();
+        final Snapshot observedState=retained.observation;
         // Native observations execute on a private immutable copy. The physics
         // transaction can advance independently while this image is produced.
         final long executeStart=System.nanoTime();
-        final byte[] frameBytes=NativeRuntime.observeFrame(observation,source);
+        final byte[] frameBytes=NativeRuntime.observeFrame(retained.state,source);
         final long executeElapsed=System.nanoTime()-executeStart;
         final long decodeStart=System.nanoTime();
         final RegraphicsFrame frame=RegraphicsFrame.decodeLiveNativeOwned(frameBytes,stride,VelocityWorldLight.palette(palette,paletteDusk,paletteNight,observedState.dayPhase));
@@ -309,11 +310,10 @@ final class VelocityXiEngine {
             }
             program=native4KProgramCache;
         }
-        final byte[] observedState;
-        final Snapshot observed;
-        synchronized(this){observedState=privateState.clone();observed=snapshot;}
+        final VelocityStateExchange.Entry<Snapshot> retained=published.read();
+        final Snapshot observed=retained.observation;
         final long executeStart=System.nanoTime();
-        final byte[] frameBytes=NativeRuntime.observeFrame(observedState,program);
+        final byte[] frameBytes=NativeRuntime.observeFrame(retained.state,program);
         final long executeElapsed=System.nanoTime()-executeStart;
         final long decodeStart=System.nanoTime();
         final RegraphicsFrame frame=RegraphicsFrame.decodeNative4KOwned(frameBytes,VelocityWorldLight.palette(palette,paletteDusk,paletteNight,observed.dayPhase));
@@ -336,9 +336,10 @@ final class VelocityXiEngine {
             XI_HEADER+"store8 137 "+mode+"\n"+environmentXi.substring(XI_HEADER.length())));
         Snapshot candidate=parseState(result.output);
         privateState=result.state;snapshot=candidate;environmentMode=mode;
+        published.publish(privateState,snapshot);
         return candidate;
     }
-    synchronized int environmentMode(){return environmentMode;}
-    synchronized Snapshot current(){return snapshot;}
+    int environmentMode(){return environmentMode;}
+    Snapshot current(){return published.read().observation;}
     float[] track(){return worldPoints.clone();} // Read-only circuit samples for HUD.
 }

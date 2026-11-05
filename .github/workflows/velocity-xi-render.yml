@@ -50,6 +50,8 @@ jobs:
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/velocity-gpu-observation.cpp -o build/open-forest/gpu-observation
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/open-terrain-contract.cpp -o build/open-forest/open-terrain-test
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/forest-trails-drive.cpp -o build/open-forest/trails-drive
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/velocity-pipeline-profile.cpp -o build/open-forest/pipeline-profile
+          build/open-forest/pipeline-profile reverse-os-android/app/src/main/assets/velocity build/open-forest
           build/open-forest/trails-drive reverse-os-android/app/src/main/assets/velocity build/open-forest
           build/open-forest/open-terrain-test reverse-os-android/app/src/main/assets/velocity build/open-forest
           build/open-forest/gpu-observation reverse-os-android/app/src/main/assets/velocity build/open-forest
@@ -57,6 +59,9 @@ jobs:
           javac -d build/open-forest/java reverse-os-android/app/src/main/java/com/reversepc/os/VelocityOrbitMath.java reverse-os-android/app/src/main/java/com/reversepc/os/VelocityChaseCamera.java reverse-os-android/app/src/main/java/com/reversepc/os/RegraphicsGeometry.java reverse-os-android/tests/VelocityChaseCameraTest.java reverse-os-android/tests/RegraphicsGeometryTest.java
           java -cp build/open-forest/java com.reversepc.os.VelocityChaseCameraTest
           java -cp build/open-forest/java com.reversepc.os.RegraphicsGeometryTest build/open-forest/gpu-0-0.xfg4
+          javac -d build/open-forest/java reverse-os-android/app/src/main/java/com/reversepc/os/VelocityStateExchange.java reverse-os-android/app/src/main/java/com/reversepc/os/VelocityFrameProfiler.java reverse-os-android/tests/VelocityStateExchangeTest.java reverse-os-android/tests/VelocityFrameProfilerTest.java
+          java -cp build/open-forest/java com.reversepc.os.VelocityStateExchangeTest
+          java -cp build/open-forest/java com.reversepc.os.VelocityFrameProfilerTest
       - name: Execute all sectors, reverse, time and real XI raster
         run: |
           build/open-forest/gameplay-test reverse-os-android/app/src/main/assets/velocity build/open-forest/gameplay

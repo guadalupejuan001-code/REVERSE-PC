@@ -246,15 +246,16 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     private void runPhysics(){
         long next=SystemClock.elapsedRealtimeNanos();
         long measuredFrom=next;int measuredSteps=0;
+        long stepNanos=0,maxStepNanos=0;
         boolean previousReverse=gearbox.isReverse();
         try{
             while(physicsLifecycle.shouldRun()){
                 if(resetRequested.getAndSet(false)){
                     game.step(0,0,1,0,false,true);next=SystemClock.elapsedRealtimeNanos();
-                    measuredFrom=next;measuredSteps=0;
+                    measuredFrom=next;measuredSteps=0;stepNanos=maxStepNanos=0;
                 }
                 if(paused){
-                    physicsHz=0;measuredFrom=SystemClock.elapsedRealtimeNanos();measuredSteps=0;
+                    physicsHz=0;measuredFrom=SystemClock.elapsedRealtimeNanos();measuredSteps=0;stepNanos=maxStepNanos=0;
                     next=measuredFrom+20_000_000L;Thread.sleep(10);continue;
                 }
                 long now=SystemClock.elapsedRealtimeNanos(),wait=next-now;
@@ -266,8 +267,11 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                         " ticks="+game.current().ticks);
                     previousReverse=reverse;
                 }
+                long stepStart=SystemClock.elapsedRealtimeNanos();
                 game.step(current&1,(current>>>1)&1,(current>>>2)&3,(current>>>4)&1,
                      (current&32)!=0,(current&64)!=0,reverse,false,assistMode,analogSteering);
+                long stepCost=SystemClock.elapsedRealtimeNanos()-stepStart;
+                stepNanos+=stepCost;maxStepNanos=Math.max(maxStepNanos,stepCost);
                 measuredSteps++;
                 next+=20_000_000L;
                 // Keep fixed XI steps; a slow host does not invent simulation ticks.
@@ -276,8 +280,10 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 if(now-measuredFrom>=1_000_000_000L){
                     physicsHz=(int)Math.round(measuredSteps*1_000_000_000.0/(now-measuredFrom));
                     Log.i("ReverseVelocity","PHYSICS_STATS steps="+measuredSteps+
-                        " elapsedNanos="+(now-measuredFrom)+" physicsHz="+physicsHz);
-                    measuredFrom=now;measuredSteps=0;
+                        " elapsedNanos="+(now-measuredFrom)+" physicsHz="+physicsHz+
+                        " stepMeanMs="+(stepNanos/(measuredSteps*1_000_000.0))+
+                        " stepMaxMs="+(maxStepNanos/1_000_000.0));
+                    measuredFrom=now;measuredSteps=0;stepNanos=maxStepNanos=0;
                 }
             }
         }catch(InterruptedException interrupted){
