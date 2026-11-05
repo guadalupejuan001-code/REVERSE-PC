@@ -128,6 +128,36 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
     else{fp_store(address,floating_.v[rd],bytes,result);fp_store(address+bytes,floating_.v[second],bytes,result);}
     if(mode==1||mode==3)set(rn,updated,64,true);return true;
   }
+  const auto indexed_integer=i&0xbf00f400u;
+  if(indexed_integer==0x0f008000u||indexed_integer==0x2f000000u||indexed_integer==0x2f004000u){ // MUL/MLA/MLS, vector by element, H/S.
+    if(type!=1&&type!=2)return false;
+    const unsigned lane_bits=8u<<type,vector_bits=(i&0x40000000u)?128u:64u;
+    const unsigned h=(i>>11)&1u,l=(i>>21)&1u,m=(i>>20)&1u;
+    const unsigned index=type==1?(h<<2)|(l<<1)|m:(h<<1)|l,source_register=type==1?rm&15u:rm;
+    fp_access();const auto source=floating_.v[rn],accumulator=floating_.v[rd];
+    const auto factor=floating_.v[source_register].lane(index,lane_bits);Vector128 output{};
+    for(unsigned lane=0;lane<vector_bits/lane_bits;++lane){
+      const auto product=source.lane(lane,lane_bits)*factor,old=accumulator.lane(lane,lane_bits);
+      output.lane(lane,lane_bits,indexed_integer==0x0f008000u?product:indexed_integer==0x2f000000u?old+product:old-product);
+    }
+    floating_.v[rd]=output;return true; // Snapshot all aliases before writes; Q=0 clears the upper half.
+  }
+  const auto indexed_widening=indexed_integer&~0x20000000u;
+  if(indexed_widening==0x0f00a000u||indexed_widening==0x0f002000u||indexed_widening==0x0f006000u){ // S/U MULL, MLAL, MLSL by element, including upper-half variants.
+    if(type!=1&&type!=2)return false;
+    const unsigned lane_bits=8u<<type,destination_bits=2*lane_bits,start=(i&0x40000000u)?64u/lane_bits:0u;
+    const unsigned h=(i>>11)&1u,l=(i>>21)&1u,m=(i>>20)&1u;
+    const unsigned index=type==1?(h<<2)|(l<<1)|m:(h<<1)|l,source_register=type==1?rm&15u:rm;
+    const bool unsigned_form=i&0x20000000u;
+    const auto extended=[&](std::uint64_t value){return !unsigned_form&&(value&(UINT64_C(1)<<(lane_bits-1)))?value|(UINT64_MAX<<lane_bits):value;};
+    fp_access();const auto source=floating_.v[rn],accumulator=floating_.v[rd];
+    const auto factor=extended(floating_.v[source_register].lane(index,lane_bits));Vector128 output{};
+    for(unsigned lane=0;lane<64u/lane_bits;++lane){
+      const auto product=extended(source.lane(start+lane,lane_bits))*factor,old=accumulator.lane(lane,destination_bits);
+      output.lane(lane,destination_bits,indexed_widening==0x0f00a000u?product:indexed_widening==0x0f002000u?old+product:old-product);
+    }
+    floating_.v[rd]=output;return true; // Unsigned two's-complement arithmetic gives exact modular signed results.
+  }
   ArmFloat fp(floating_);
   const auto scalar_pairwise_fp=i&0xff3ffc00u;
   if(scalar_pairwise_fp==0x7e30d800u||scalar_pairwise_fp==0x7e30f800u||scalar_pairwise_fp==0x7e30c800u){ // FADDP/FMAXP/FMINP/FMAXNMP/FMINNMP, scalar S/D.
