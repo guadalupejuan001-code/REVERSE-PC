@@ -7,7 +7,7 @@ import {spawnSync} from 'node:child_process';
 import {preflight} from './android_c27_profile_resume.mjs';
 import {continueAndObserve} from './android_c27_sequence.mjs';
 import {classifyZygoteStage} from './android_c40_zygote_stage.mjs';
-import {isLiveUserspaceTask} from './android_framework_evidence.mjs';
+import {isLiveUserspaceTask,verifiedMainZygoteProcesses} from './android_framework_evidence.mjs';
 
 const json=p=>JSON.parse(readFileSync(p,'utf8'));
 const save=(p,v)=>writeFileSync(p,JSON.stringify(v,null,2)+'\n');
@@ -18,10 +18,11 @@ export function summarizeZygoteProgress(kernel,previous=null){
  const stage=classifyZygoteStage(kernel);
  assert.ok(Number.isSafeInteger(kernel.instructions)&&kernel.instructions>0);
  const tasks=kernel.tasks??[],processes=kernel.zygote_launch.processes;
+ const mainZygotes=new Set(verifiedMainZygoteProcesses(kernel).map(item=>item.process));
  const taskFor=p=>tasks.find(t=>t.pid===p.pid&&t.name===p.comm&&isLiveUserspaceTask(t));
  const zygotes=processes.filter(p=>p.argv_verified===true&&p.exe_path==='/system/bin/app_process64'&&
    p.parent_pid===1&&isLiveUserspaceTask(p)&&taskFor(p)&&
-   (['zygote64','zygote'].includes(p.comm)||(p.comm==='app_process64'&&p.launch_signature_verified===true)));
+   (['zygote64','zygote'].includes(p.comm)||(p.comm==='app_process64'&&p.launch_signature_verified===true)||mainZygotes.has(p)));
  const servers=processes.filter(p=>p.comm==='system_server'&&isLiveUserspaceTask(p)&&taskFor(p));
  const matching=servers.filter(p=>p.argv_verified===true&&p.exe_path==='/system/bin/app_process64'&&
    zygotes.some(z=>z.pid===p.parent_pid));

@@ -2,6 +2,7 @@
 // app_process64 with --zygote is the launcher; it does NOT establish a
 // registered, responsive Zygote socket or a booted Android framework.
 import assert from 'node:assert/strict';
+import {verifiedMainZygoteProcesses} from './android_framework_evidence.mjs';
 const HEX=/^[0-9a-f]{64}$/;
 const live=t=>t&&Number.isSafeInteger(t.pid)&&t.pid>0&&
   t.exit_state===0&&t.has_user_mm===true&&
@@ -29,8 +30,10 @@ export function classifyZygoteStage(kernel){
  const server=kernel.tasks?.find(p=>p.name==='system_server'&&live(p))??null;
  const surface=kernel.tasks?.find(p=>p.name==='surfaceflinger'&&live(p))??null;
  const initZygote=observedProperty(kernel,'init.svc.zygote');
+ const main=verifiedMainZygoteProcesses(kernel)[0]?.process??null;
  const stage=server?'system_server_process_observed':
    named?'zygote_process_renamed':
+   main?'zygote_main_thread_observed':
    launch?'zygote_launcher_executing':
    initZygote==='running'?'zygote_init_service_running_no_verified_argv':
    'zygote_not_observed';
@@ -41,7 +44,8 @@ export function classifyZygoteStage(kernel){
    launcher_pid:launch?.pid??null,launcher_argv:launch?.argv??null,
    named_zygote_pid:named?.pid??null,system_server_pid:server?.pid??null,
    surfaceflinger_pid:surface?.pid??null,
-   zygote_exec_confirmed:!!launch||!!named,
+   zygote_exec_confirmed:!!launch||!!named||!!main,
+   ...(main?{verified_zygote_pid:main.pid,observed_zygote_comm:'main',identity_basis:'live_argv_executable_parent_and_pid1_service_pid'}:{}),
    zygote_socket_responsive_verified:false,
    zygote_boot_completed_verified:false,
    android_boot_completed_verified:false,
