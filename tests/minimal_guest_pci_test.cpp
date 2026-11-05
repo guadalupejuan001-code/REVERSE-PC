@@ -67,6 +67,126 @@ int main(int argc,char** argv){try{
  auto tiny=create;field(tiny,24,2,4);field(tiny,32,1,4);field(tiny,36,1,4);check(gpu.gpu(tiny)==0x1100,"Second GPU resource allocation failed");
  auto many=command(0x106,32+1000*16);field(many,24,2,4);field(many,28,1000,4);for(unsigned i=0;i<1000;i++){field(many,32+i*16,pixels,8);field(many,40+i*16,4096,4);}check(gpu.gpu(many)==0x1100,"Page-granular framebuffer backing was rejected");
  const auto pagewise=g.snapshot();check(MinimalGuest::from_snapshot(pagewise,disk).snapshot()==pagewise,"Large scatter-gather device state did not restore");
+
+ // C54: reproduce Android's two queued CREATE/ATTACH commands in one MMIO
+ // instruction, with its actual 65 DMA extents and 1,179,648-byte segment.
+ MinimalGuest large(2147483648ULL,0);large.load_linux_image(kernel,{},"console=ttyAMA0",disk,true);Client real(large,1);
+ const std::vector<GuestGpuResource::Entry> actual{
+  {UINT64_C(1641480192),4096},
+  {UINT64_C(1641385984),4096},
+  {UINT64_C(1641504768),4096},
+  {UINT64_C(1641500672),4096},
+  {UINT64_C(1643343872),4096},
+  {UINT64_C(1580965888),4096},
+  {UINT64_C(1642643456),4096},
+  {UINT64_C(1608712192),4096},
+  {UINT64_C(1641472000),4096},
+  {UINT64_C(1607864320),4096},
+  {UINT64_C(1643282432),4096},
+  {UINT64_C(1608564736),4096},
+  {UINT64_C(1608552448),4096},
+  {UINT64_C(1641099264),4096},
+  {UINT64_C(1608105984),4096},
+  {UINT64_C(1608540160),8192},
+  {UINT64_C(1641885696),4096},
+  {UINT64_C(1641357312),4096},
+  {UINT64_C(1608556544),4096},
+  {UINT64_C(1642745856),4096},
+  {UINT64_C(1608785920),4096},
+  {UINT64_C(1691365376),4096},
+  {UINT64_C(1641615360),4096},
+  {UINT64_C(1641508864),4096},
+  {UINT64_C(1641771008),4096},
+  {UINT64_C(1578950656),4096},
+  {UINT64_C(1608101888),4096},
+  {UINT64_C(1640448000),4096},
+  {UINT64_C(1643470848),4096},
+  {UINT64_C(1578205184),4096},
+  {UINT64_C(1529044992),4096},
+  {UINT64_C(1529171968),4096},
+  {UINT64_C(1579667456),4096},
+  {UINT64_C(1643298816),4096},
+  {UINT64_C(1495425024),4096},
+  {UINT64_C(1642917888),4096},
+  {UINT64_C(1578508288),4096},
+  {UINT64_C(1606500352),4096},
+  {UINT64_C(1643134976),4096},
+  {UINT64_C(1606578176),4096},
+  {UINT64_C(1579671552),4096},
+  {UINT64_C(1643462656),4096},
+  {UINT64_C(1641029632),4096},
+  {UINT64_C(1643429888),4096},
+  {UINT64_C(1578287104),4096},
+  {UINT64_C(1580560384),4096},
+  {UINT64_C(1606574080),4096},
+  {UINT64_C(1606529024),4096},
+  {UINT64_C(1643192320),4096},
+  {UINT64_C(1641074688),4096},
+  {UINT64_C(1606561792),4096},
+  {UINT64_C(1606533120),4096},
+  {UINT64_C(1607376896),4096},
+  {UINT64_C(1428414464),4096},
+  {UINT64_C(1530892288),4096},
+  {UINT64_C(1577746432),4096},
+  {UINT64_C(1691373568),4096},
+  {UINT64_C(1609453568),4096},
+  {UINT64_C(1640243200),4096},
+  {UINT64_C(1610231808),4096},
+  {UINT64_C(1643335680),4096},
+  {UINT64_C(1607897088),4096},
+  {UINT64_C(1607856128),4096},
+  {UINT64_C(1692479488),1179648},
+  {UINT64_C(1693663232),479232}
+ };
+ auto realCreate=command(0x101,40);field(realCreate,24,2,4);field(realCreate,28,2,4);field(realCreate,32,800,4);field(realCreate,36,600,4);
+ auto realAttach=command(0x106,32+unsigned(actual.size())*16);field(realAttach,24,2,4);field(realAttach,28,actual.size(),4);
+ for(unsigned i=0;i<actual.size();++i){field(realAttach,32+i*16,actual[i].address,8);field(realAttach,40+i*16,actual[i].length,4);}
+ for(unsigned i=0;i<realCreate.size();++i)large.write(real.input+i,realCreate[i],1);
+ for(unsigned i=0;i<realAttach.size();++i)large.write(real.input+4096+i,realAttach[i],1);
+ real.descriptor(0,real.input,40,1,1);real.descriptor(1,real.output,24,2);
+ real.descriptor(2,real.input+4096,32,1,3);real.descriptor(3,real.input+4096+32,1040,1,4);real.descriptor(4,real.output+256,24,2);
+ large.write(real.avail+4,0,2);large.write(real.avail+6,2,2);large.write(real.avail+2,2,2);real.available=2;
+ Bytes notify;mov(notify,0,real.bar+0x1000);mov(notify,1,0);for(unsigned i=0;i<4;++i)notify.push_back(std::uint8_t(0x79000001u>>(8*i)));
+ auto prepareNotify=[&]{const auto pc=large.registers().pc;for(unsigned i=0;i<notify.size();i+=4)large.write(pc+i,get(notify,i,4),4);large.run(8);};
+ prepareNotify();const auto beforeAttach=large.snapshot();const auto memoryBefore=large.runtime().memory_persistent_snapshot();const auto cpuBefore=large.registers();large.run(1);
+ const auto& backing=large.machine().pci.resources[0].backing;
+ check(large.registers().instructions==cpuBefore.instructions+1&&large.registers().pc==cpuBefore.pc+4,"C54 notification did not execute exactly one guest instruction");
+ check(large.read(real.output,4)==0x1100&&large.read(real.output+256,4)==0x1100&&large.read(real.used+2,2)==2,"C54 actual batched GPU requests did not complete");
+ check(large.machine().pci.resources[0].id==2&&large.machine().pci.resources[0].width==800&&large.machine().pci.resources[0].height==600,"C54 actual GPU resource geometry differs");
+ check(backing.size()==66,"C54 actual extent normalization must add exactly one metadata entry");
+ for(unsigned i=0;i<63;++i)check(backing[i].address==actual[i].address&&backing[i].length==actual[i].length,"C54 changed an original small DMA extent");
+ check(backing[63].address==actual[63].address&&backing[63].length==1048576&&backing[64].address==actual[63].address+1048576&&backing[64].length==131072,"C54 contiguous split lost or reordered bytes");
+ check(backing[65].address==actual[64].address&&backing[65].length==479232,"C54 final noncontiguous DMA extent changed");
+ check(large.runtime().memory_persistent_snapshot().size()<memoryBefore.size()+65536,"C54 materialized a flat framebuffer in place of compact XI memory");
+ auto normalized=large.snapshot();auto replay=MinimalGuest::from_snapshot(beforeAttach,disk);replay.run(1);check(replay.snapshot()==normalized,"C54 original checkpoint replay differs at the real batched GPU notification");check(MinimalGuest::from_snapshot(normalized,disk).snapshot()==normalized,"C54 normalized state fails the original unchanged decoder");
+ auto verifyEdge=[&](std::uint64_t offset,std::uint64_t first,std::uint64_t second){
+  large.write(first,0x00a1b2c3,4);large.write(second,0x00112233,4);
+  auto cmd=command(0x105,56);setrect(cmd,2,1);field(cmd,40,offset,8);field(cmd,48,2,4);check(real.gpu(cmd)==0x1100,"C54 transfer crossing an extent boundary failed");
+  auto show=command(0x103,48);setrect(show,2,1);field(show,44,2,4);check(real.gpu(show)==0x1100,"C54 edge scanout failed");
+  check(large.display_rgb()==Bytes({0xa1,0xb2,0xc3,0x11,0x22,0x33}),"C54 split or scatter transition changed real DMA pixel order");
+  const auto checkpoint=large.snapshot();check(MinimalGuest::from_snapshot(checkpoint,disk).display_rgb()==large.display_rgb(),"C54 DMA pixels changed after original checkpoint decoding");
+ };
+ std::uint64_t prior=0;for(unsigned i=0;i<63;++i)prior+=actual[i].length;
+ verifyEdge(prior+1048576-4,actual[63].address+1048576-4,actual[63].address+1048576);
+ verifyEdge(prior+actual[63].length-4,actual[63].address+actual[63].length-4,actual[64].address);
+ // Every legacy-sized input keeps its exact original representation. Larger
+ // legal spans, including the original total budget, remain bounded metadata.
+ auto smallResource=realCreate;field(smallResource,24,3,4);field(smallResource,32,1,4);field(smallResource,36,1,4);check(real.gpu(smallResource)==0x1100,"C54 boundary fixture resource creation failed");
+ for(const std::uint64_t size:{UINT64_C(1048576),UINT64_C(1048577),UINT64_C(1179648),UINT64_C(2097152),UINT64_C(5242881),UINT64_C(2147483648)}){
+  auto cmd=command(0x106,48);field(cmd,24,3,4);field(cmd,28,1,4);field(cmd,32,0x40000000,8);field(cmd,40,size,4);check(real.gpu(cmd)==0x1100,"C54 legal contiguous backing span rejected");
+  const auto& rr=large.machine().pci.resources[1];std::uint64_t total=0;for(const auto& e:rr.backing){check(e.address==0x40000000+total&&e.length&&e.length<=1048576,"C54 normalized mapping exceeds original decoder constraints");total+=e.length;}
+  check(total==size&&rr.backing.size()<=2048,"C54 bounded backing changed total byte coverage");
+  const auto point=large.snapshot();check(MinimalGuest::from_snapshot(point,disk).snapshot()==point,"C54 original decoder rejected a normalized boundary case");
+ }
+ // Prepare the faulting MMIO instruction first; an invalid request must leave
+ // the complete guest transaction unchanged, including the old resource.
+ for(unsigned failure=0;failure<3;++failure){
+  auto badAttach=command(0x106,failure==2?64:48);field(badAttach,24,3,4);field(badAttach,28,failure==2?2:1,4);field(badAttach,32,failure==1?UINT64_MAX-1024:0x40000000,8);field(badAttach,40,failure==0?0:failure==1?4096:2147483648u,4);
+  if(failure==2){field(badAttach,48,0x40000000,8);field(badAttach,56,1,4);}
+  for(unsigned i=0;i<badAttach.size();++i)large.write(real.input+i,badAttach[i],1);real.descriptor(0,real.input,unsigned(badAttach.size()),1,1);real.descriptor(1,real.output,24,2);
+  large.write(real.avail+4+2*(real.available%8),0,2);large.write(real.avail+2,real.available+1,2);prepareNotify();const auto before=large.snapshot();rejected([&]{large.run(1);},"C54 accepted zero, invalid-RAM or excessive normalized GPU backing");check(large.snapshot()==before,"C54 invalid backing changed the authoritative transaction");
+ }
+
  // A malformed descriptor loop must roll back the complete native run.
  gpu.descriptor(0,gpu.input,24,1,0);g.write(gpu.avail+4+2*(gpu.available%8),0,2);g.write(gpu.avail+2,gpu.available+1,2);
  Bytes code;mov(code,0,gpu.bar+0x1000);mov(code,1,0);for(unsigned j=0;j<4;j++)code.push_back(std::uint8_t(0x79000001u>>(8*j)));const auto pc=g.registers().pc;for(unsigned i=0;i<code.size();i+=4)g.write(pc+i,get(code,i,4),4);const auto bad=g.snapshot();rejected([&]{g.run(code.size()/4);},"Cyclic DMA chain accepted");check(g.snapshot()==bad,"Malformed DMA changed authoritative state");
