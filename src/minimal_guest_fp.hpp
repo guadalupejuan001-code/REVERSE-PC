@@ -134,7 +134,7 @@ class ArmFloat {
       (is_signed?std::uint64_t(f64_to_i64(x,std::uint_fast8_t(mode),true)):f64_to_ui64(x,std::uint_fast8_t(mode),true));}
     flags(unsigned(softfloat_exceptionFlags));return integer_bits==32?result&0xffffffff:result;
   }
-  std::uint64_t to_fixed(unsigned bits,std::uint64_t value,bool is_signed,unsigned fracbits){
+  std::uint64_t to_fixed(unsigned bits,std::uint64_t value,bool is_signed,unsigned fracbits,unsigned integer_bits=0){
     // FPToFixed scales the exact real value, without an intermediate floating
     // multiply or its overflow/inexact flags. Apply FZ to the original input.
     value=input(value,bits);const unsigned shift=bits==32?23u:52u;
@@ -145,7 +145,15 @@ class ArmFloat {
       exp+=fracbits;
       value=signbit|(exp>=maximum?exponent(bits):(exp<<shift)|mantissa);
     }
-    return to_int(bits,value,is_signed,bits,softfloat_round_minMag);
+    return to_int(bits,value,is_signed,integer_bits?integer_bits:bits,softfloat_round_minMag);
+  }
+  std::uint64_t from_fixed(unsigned bits,std::uint64_t value,bool is_signed,unsigned integer_bits,unsigned fracbits){
+    const auto converted=from_int(bits,value,is_signed,integer_bits);
+    if(!(converted&~sign(bits)))return converted;
+    // An integer divided by at most 2^64 stays normal in FP32/FP64.
+    // Scaling is exact, so the existing integer conversion rounds only once.
+    const unsigned shift=bits==32?23u:52u;const auto mask=exponent(bits);
+    return (converted&~mask)|((((converted&mask)>>shift)-fracbits)<<shift);
   }
   std::uint64_t convert(unsigned source_bits,unsigned destination_bits,std::uint64_t value){
     begin();if(source_bits!=16)value=input(value,source_bits);std::uint64_t result=0;
