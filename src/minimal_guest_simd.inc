@@ -179,6 +179,21 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
     }
     floating_.v[rd]=output;return true; // Capture aliases first; clear unwritten scalar/Q=0 bits.
   }
+  if((i&0x9f20dc00u)==0x0e204000u){ // ADDHN/RADDHN, SUBHN/RSUBHN and upper-half variants.
+    if(type==3)return false;
+    const unsigned narrow_bits=8u<<type,source_bits=2*narrow_bits;
+    const bool upper=i&0x40000000u,rounded=i&0x20000000u,subtract=i&0x2000u;
+    const auto mask=source_bits==64?UINT64_MAX:(UINT64_C(1)<<source_bits)-1;
+    const auto bias=rounded?UINT64_C(1)<<(narrow_bits-1):UINT64_C(0);
+    fp_access();const auto a=floating_.v[rn],b=floating_.v[rm],old=floating_.v[rd];
+    Vector128 output=upper?old:Vector128{};const unsigned first=upper?64u/narrow_bits:0;
+    for(unsigned lane=0;lane<128u/source_bits;++lane){
+      const auto x=a.lane(lane,source_bits),y=b.lane(lane,source_bits);
+      const auto temporary=((subtract?x-y:x+y)+bias)&mask;
+      output.lane(first+lane,narrow_bits,temporary>>narrow_bits);
+    }
+    floating_.v[rd]=output;return true; // Sources precede aliased writes; *2 preserves the lower half.
+  }
   ArmFloat fp(floating_);
   const auto scalar_pairwise_fp=i&0xff3ffc00u;
   if(scalar_pairwise_fp==0x7e30d800u||scalar_pairwise_fp==0x7e30f800u||scalar_pairwise_fp==0x7e30c800u){ // FADDP/FMAXP/FMINP/FMAXNMP/FMINNMP, scalar S/D.
