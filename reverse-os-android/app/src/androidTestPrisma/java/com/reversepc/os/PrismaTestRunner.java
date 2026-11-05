@@ -20,12 +20,20 @@ import org.json.JSONObject;
 /** Actual Android WebView, touch, music source and XI/native renderer smoke test. */
 public final class PrismaTestRunner extends Instrumentation {
     private RxeGraphicsActivity game;
+    private ActivityMonitor gameMonitor;
     private String phase="full";
     @Override public void onCreate(Bundle args){super.onCreate(args);phase=args==null?"full":args.getString("phase","full");start();}
     private static void require(boolean v,String why){if(!v)throw new AssertionError(why);}
     private String js(String source)throws Exception{
         CountDownLatch done=new CountDownLatch(1);String[] out={"null"};
-        runOnMainSync(()->game.testingWebView().evaluateJavascript(source,v->{out[0]=v;done.countDown();}));
+        runOnMainSync(()->{
+            Activity current=gameMonitor==null?null:gameMonitor.getLastActivity();
+            if(current instanceof RxeGraphicsActivity&&!current.isDestroyed())game=(RxeGraphicsActivity)current;
+            WebView view=game==null||game.isDestroyed()?null:game.testingWebView();
+            if(view==null){done.countDown();return;}
+            try{view.evaluateJavascript(source,v->{out[0]=v;done.countDown();});}
+            catch(IllegalStateException closed){done.countDown();}
+        });
         require(done.await(10,TimeUnit.SECONDS),"WebView did not answer");return out[0];
     }
     private void until(String condition,int seconds)throws Exception{
@@ -44,13 +52,13 @@ public final class PrismaTestRunner extends Instrumentation {
     @Override public void onStart(){
         Bundle result=new Bundle();
         try{
-            ActivityMonitor monitor=addMonitor(RxeGraphicsActivity.class.getName(),null,false);
+            ActivityMonitor monitor=addMonitor(RxeGraphicsActivity.class.getName(),null,false);gameMonitor=monitor;
             startActivitySync(new Intent(getTargetContext(),PrismaLauncherActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             game=(RxeGraphicsActivity)monitor.waitForActivityWithTimeout(20000);require(game!=null,"Standalone entry did not open the game");
             boolean[] ready={false};for(int i=0;i<150;i++){runOnMainSync(()->ready[0]=game.testingWebView()!=null);if(ready[0])break;SystemClock.sleep(100);}require(ready[0],"Game WebView unavailable");
             until("!!document.getElementById('startBtn')&&document.getElementById('game').dataset.speakers==='2'",30);
             if(phase.equals("seed")){
-                js("localStorage.setItem('prisma.upgrade-proof','2.5-to-2.6');localStorage.setItem('prisma.records',JSON.stringify([{track:'Récord conservado',level:'flow',score:137,accuracy:83,combo:4,date:1}]));true");
+                until("(()=>{localStorage.setItem('prisma.upgrade-proof','2.5-to-2.6');localStorage.setItem('prisma.records',JSON.stringify([{track:'Récord conservado',level:'flow',score:137,accuracy:83,combo:4,date:1}]));return localStorage.getItem('prisma.upgrade-proof')==='2.5-to-2.6'})()",15);
                 result.putString("stream","PRISMA_UPGRADE_SEEDED\n");finish(Activity.RESULT_OK,result);return;
             }
             require("true".equals(js("localStorage.getItem('prisma.upgrade-proof')==='2.5-to-2.6'&&JSON.parse(localStorage.getItem('prisma.records')).some(r=>r.score===137)")),"Upgrade lost WebView origin or records");
