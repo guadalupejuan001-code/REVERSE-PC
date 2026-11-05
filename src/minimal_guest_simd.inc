@@ -174,6 +174,15 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
     const auto exponent=(std::uint64_t(!repeat)<<(e-1))|(repeat?((UINT64_C(1)<<(e-3))-1)<<2:0)|((imm>>4)&3);
     fp_set(rd,(std::uint64_t(imm>>7)<<(bits-1))|(exponent<<f)|(std::uint64_t(imm&15)<<(f-4)),bits);return true;
   }
+  const auto fixed_gpr=i&0x7f3f0000u;
+  if(fixed_gpr==0x1e180000u||fixed_gpr==0x1e190000u||fixed_gpr==0x1e020000u||fixed_gpr==0x1e030000u){ // Fixed-point FCVTZS/FCVTZU and SCVTF/UCVTF, GPR <-> S/D.
+    const unsigned integer_bits=(i&0x80000000u)?64u:32u,scale=(i>>10)&63u;
+    if(!valid_float()||(integer_bits==32&&scale<32))return false;
+    fp_access();const unsigned fracbits=64-scale;const bool signed_value=!(i&0x10000u);
+    if(fixed_gpr==0x1e180000u||fixed_gpr==0x1e190000u)set(rd,fp.to_fixed(bits,scalar(rn),signed_value,fracbits,integer_bits),integer_bits);
+    else fp_set(rd,fp.from_fixed(bits,reg(rn,integer_bits),signed_value,integer_bits,fracbits),bits);
+    return true;
+  }
   if((i&0x7f20fc00)==0x1e200000){ // Integer/FP transfers and conversions
     const auto op=(i>>16)&7,mode=(i>>19)&3,integer_bits=(i>>31)?64u:32u;fp_access();
     if(op==6||op==7){
