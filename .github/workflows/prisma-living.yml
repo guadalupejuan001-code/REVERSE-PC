@@ -88,11 +88,25 @@ jobs:
           adb shell settings put system accelerometer_rotation 0
           adb shell settings put system user_rotation 1
           adb shell settings put secure immersive_mode_confirmations confirmed
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
           adb shell input keyevent 82
+          # Let cold-boot display/configuration changes settle before opening
+          # the previous version's WebView for the real upgrade fixture.
+          sleep 5
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" sign --ks "$REVERSE_SIGNING_KEYSTORE" --ks-key-alias reverse-desktop --ks-pass pass:android --key-pass pass:android --out build/prisma-previous.apk build/previous-prisma/dist/PRISMA-2.7-Festival.apk
           adb install -r build/prisma-previous.apk
           adb install -r reverse-os-android/app/build/outputs/apk/androidTest/prisma/debug/app-prisma-debug-androidTest.apk
           timeout 90s adb shell am instrument -w -e phase seed org.reverse.prisma.test/com.reversepc.os.PrismaTestRunner | tee evidence/android-upgrade-seed.txt
+          if ! grep -q 'PRISMA_UPGRADE_SEEDED' evidence/android-upgrade-seed.txt && grep -q 'keyDispatchingTimedOut' evidence/android-upgrade-seed.txt; then
+            # Retry only the old-version cold-boot focus ANR, once. Never
+            # retry a gameplay assertion or suppress an application failure.
+            cp evidence/android-upgrade-seed.txt evidence/android-upgrade-seed-cold-start.txt
+            adb shell am force-stop org.reverse.prisma
+            sleep 3
+            timeout 90s adb shell am instrument -w -e phase seed org.reverse.prisma.test/com.reversepc.os.PrismaTestRunner | tee evidence/android-upgrade-seed.txt
+          fi
           grep 'PRISMA_UPGRADE_SEEDED' evidence/android-upgrade-seed.txt
           adb install -r dist/PRISMA-2.8-GPU-3D.apk
           timeout 210s adb shell am instrument -w org.reverse.prisma.test/com.reversepc.os.PrismaTestRunner | tee evidence/android-tests.txt
