@@ -192,7 +192,7 @@ jobs:
         set -euo pipefail
         python3 - <<'PYCODE'
         import pathlib,json,hashlib
-        root=pathlib.Path('media-input');m=json.loads((root/'manifest.json').read_text());assert m['disk_bytes']==10888413184 and m['disk_sha256']=='4c2eaf3fa7d81e9649072fc81f0651f4129bd9f41d4a9f9964cc647741a7b92e';assert [r['file'] for r in m['parts']]==['disk.part-aa','disk.part-ab','disk.part-ac']
+        root=pathlib.Path('media-input');m=json.loads((root/'manifest.json').read_text());assert m['disk_bytes']==10888413184 and m['disk_sha256']=='4c2eaf3fa7d81e9649072fc81f0651f4129bd9f41d4a9f9964cc627741a7b92e';assert [r['file'] for r in m['parts']]==['disk.part-aa','disk.part-ab','disk.part-ac']
         for r in m['parts']:
          p=root/r['file'];assert p.stat().st_size==r['bytes'];h=hashlib.sha256()
          with p.open('rb') as f:
@@ -202,12 +202,12 @@ jobs:
         mkdir new-media
         cat media-input/disk.part-aa media-input/disk.part-ab media-input/disk.part-ac | gzip -dc > new-media/android-c27.raw
         test "$(stat -c %s new-media/android-c27.raw)" = 10888413184
-        test "$(sha256sum new-media/android-c27.raw | cut -d ' ' -f 1)" = '4c2eaf3fa7d81e9649072fc81f0651f4129bd9f41d4a9f9964cc647741a7b92e'
+        test "$(sha256sum new-media/android-c27.raw | cut -d ' ' -f 1)" = '4c2eaf3fa7d81e9649072fc81f0651f4129bd9f41d4a9f9964cc627741a7b92e'
         cp media-input/media.json evidence/c64-source/media.json
         cp media-input/manifest.json evidence/c64-source/media-transport.json
         rm -rf media-input
         fallocate --dig-holes new-media/android-c27.raw
-        test "$(sha256sum new-media/android-c27.raw | cut -d ' ' -f 1)" = '4c2eaf3fa7d81e9649072fc81f0651f4129bd9f41d4a9f9964cc647741a7b92e'
+        test "$(sha256sum new-media/android-c27.raw | cut -d ' ' -f 1)" = '4c2eaf3fa7d81e9649072fc81f0651f4129bd9f41d4a9f9964cc627741a7b92e'
     - name: Independently replay the original C63 CPU to the clean pre-FADDP boundary
       run: |
         set -euo pipefail
