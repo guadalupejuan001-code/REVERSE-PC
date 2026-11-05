@@ -364,12 +364,13 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
     // destination half, not the source half; XTN2 preserves the old low 64 bits.
     if(q)floating_.v[rd].high=value.low;else floating_.v[rd]={value.low,0};return true;
   }
-  if((i&0x9f3ffc00u)==0x0e202800u){ // SADDLP/UADDLP, widening pairwise addition.
-    if(size==3)return false;fp_access();const auto source=floating_.v[rn];Vector128 value;
+  const auto pairwise_long=i&0x9f3ffc00u;
+  if(pairwise_long==0x0e202800u||pairwise_long==0x0e206800u){ // S/UADDLP and S/UADALP, widening pairwise addition, optionally accumulated.
+    if(size==3)return false;fp_access();const auto source=floating_.v[rn],accumulator=floating_.v[rd];Vector128 value;
     for(unsigned n=0;n<width/(2*element);n++){
       auto x=source.lane(2*n,element),y=source.lane(2*n+1,element);
       if(!u){const auto sign=UINT64_C(1)<<(element-1);if(x&sign)x|=~low_mask(element);if(y&sign)y|=~low_mask(element);}
-      value.lane(n,element*2,x+y);
+      value.lane(n,element*2,x+y+(pairwise_long==0x0e206800u?accumulator.lane(n,element*2):0));
     }commit(value);return true;
   }
   if(shift_immediate&&(i&0xbf80f400u)==0x0f008400u){ // SHRN/RSHRN and upper-half variants.

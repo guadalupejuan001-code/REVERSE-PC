@@ -236,7 +236,7 @@ export function observeAndroidKernel(bytes,expectedCheckpointSha,options){
   // mm_struct, process page table and pinned GKI BTF. Never infer argv from
   // a process name or reuse the stale startup console as live process data.
   if(options?.zygoteProbe&&item.has_user_mm&&item.exit_state===0&&
-      /^(app_process64|zygote64|zygote|system_server|surfaceflinger)$/.test(item.name)){
+      /^(app_process64|zygote64|zygote|system_server|surfaceflinger|main)$/.test(item.name)){
    item.zygote_startup={read_only:true,pid,comm:item.name,argv_verified:false};
    try{
     const mm=read(pointer+BigInt(task.mm.offset)),mml=members(type('mm_struct'));
