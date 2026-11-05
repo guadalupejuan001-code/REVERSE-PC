@@ -336,9 +336,10 @@ try{
   check(/GPU_FX_STATE nitro=true.*emittedNitro=[1-9]/.test(logs()),'rear nitro emits actual XI triangles on GPU');
   check(/GPU_FX_STATE .*air=true.*emittedAir=[1-9]/.test(logs()),'wheel air jets emit actual XI triangles on GPU');
   stage='braking and physical reverse';
-  // Screenshot/UI capture can let the car coast to rest before pause. Establish
-  // a new real moving state, then freeze it before inspecting the gear control.
-  adbText(['shell','input','keyevent','KEYCODE_P']);
+  // Use the real restart control to isolate this check from the preceding
+  // 230 km/h nitro/jump trajectory and its off-road landing. No state injection.
+  // Then establish actual acceleration and freeze it before inspecting gears.
+  adbText(['shell','input','keyevent','KEYCODE_R']);
   adbText(['shell','input','keycombination','-t','1500','KEYCODE_W','KEYCODE_SHIFT_LEFT']);
   adbText(['shell','input','keyevent','KEYCODE_P']);ui=waitText(/EN PAUSA/);
   check(ui.some(n=>/^[1-9]\d* km\/h$/.test(n.text||'')),'reverse test starts with a genuinely moving paused car');
