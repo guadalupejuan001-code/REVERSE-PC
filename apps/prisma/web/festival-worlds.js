@@ -104,12 +104,14 @@ export function drawWorld(ctx,w,h,frame,time,{preview=false,reduced=false,batter
   const render=(spec,alpha)=>{
     if(alpha<=0)return;ctx.save();ctx.globalAlpha=alpha;protectPlayfield(ctx,w,h,preview);
     const t=reduced?0:Math.max(0,time),motion=reduced?0:clamp(energy,0,1),pulse=reduced?0:clamp(beat,0,1);
-    const [a,b]=spec.colors;ctx.fillStyle=spec.base;ctx.globalAlpha=alpha*.84;ctx.fillRect(0,0,w,h);ctx.globalAlpha=alpha;
-    const glow=ctx.createLinearGradient(0,0,w,h);glow.addColorStop(0,a+'20');glow.addColorStop(.5,spec.base+'00');glow.addColorStop(1,b+'20');ctx.fillStyle=glow;ctx.fillRect(0,0,w,h);
+    // Transparent scenery shares the underlying stage sky. An opaque exterior
+    // would expose the playfield's protective clip as a pasted-on rectangle.
+    const [a,b]=spec.colors;
     if(spec.id==='neon'){
       // Layered architecture, independently lit windows and wet reflections.
       for(let layer=0;layer<2;layer++)for(let i=0;i<(battery?9:17);i++){
         const bw=w/(layer?18:11),x=(i/(layer?16:10))*w,bh=h*(.12+hash(i+layer*43)*.35),y=h*.78-bh;
+        if(!preview&&x<w*.715&&x+bw*.8>w*.285)continue;
         ctx.fillStyle=layer?'#081023':'#0d2440';ctx.fillRect(x,y,bw*.8,bh);
         stroke(ctx,[[x,y+bh],[x,y],[x+bw*.8,y]],i%2?a+'80':b+'80',1);
         for(let k=0;k<(battery?4:9);k++){
@@ -125,13 +127,13 @@ export function drawWorld(ctx,w,h,frame,time,{preview=false,reduced=false,batter
       stroke(ctx,[[0,h*.8],[w,h*.8]],a+'55',1.5);
     }else if(spec.id==='aurora'){
       for(let ribbon=0;ribbon<(battery?2:4);ribbon++){
-        ctx.beginPath();for(let k=0;k<=28;k++){const x=k*w/28,y=h*(.17+ribbon*.035+Math.sin(k*.25+t*.14+ribbon)*.08);k?ctx.lineTo(x,y):ctx.moveTo(x,y);}
+        ctx.beginPath();for(let k=0;k<=28;k++){const x=k*w/28,y=h*(.07+ribbon*.023+Math.sin(k*.25+t*.14+ribbon)*.034);k?ctx.lineTo(x,y):ctx.moveTo(x,y);}
         ctx.strokeStyle=(ribbon%2?a:b)+(ribbon%2?'40':'55');ctx.lineWidth=h*(.025+motion*.015);ctx.stroke();
       }
-      for(let i=0;i<12;i++){
-        const x=i*w/11,y=h*(.59+hash(i)*.18),r=h*(.08+hash(i+40)*.19);
-        polygon(ctx,[[x-r,y+r],[x,y-r],[x+r,y+r]],'#132f42',a+'60');
-        polygon(ctx,[[x,y-r],[x+r*.2,y-r*.3],[x-r*.16,y-r*.13]],'#aff7ec70');
+      for(let i=0;i<8;i++){
+        const side=i%2?-1:1,x=w*(.5+side*(.34+Math.floor(i/2)*.07)),y=h*(.67+hash(i)*.14),r=h*(.13+hash(i+40)*.17),rw=Math.min(r,w*.052);
+        polygon(ctx,[[x-rw,y+r*.4],[x,y-r],[x+rw,y+r*.4]],'#132f42',a+'60');
+        polygon(ctx,[[x,y-r],[x+rw*.2,y-r*.3],[x-rw*.16,y-r*.13]],'#aff7ec70');
       }
       for(const side of [-1,1])for(let i=0;i<3;i++){
         const x=w*(.5+side*(.34+i*.055)),y=h*.85,r=h*(.04+hash(i)*.09);
@@ -155,7 +157,7 @@ export function drawWorld(ctx,w,h,frame,time,{preview=false,reduced=false,batter
         const x=hash(i+40)*w,y=h*(1-((hash(i)+t*.025)%1));ctx.beginPath();ctx.arc(x,y,1+hash(i+7)*2,0,TAU);ctx.strokeStyle=a+'40';ctx.lineWidth=.8;ctx.stroke();
       }
     }else if(spec.id==='volcano'){
-      const x=w*.5,y=h*.16,r=h*.105;
+      const x=w*.5,y=h*.105,r=h*.067;
       for(let k=3;k>0;k--){ctx.beginPath();ctx.arc(x,y,r+k*5+pulse*3,0,TAU);ctx.strokeStyle=(k%2?a:b)+(k===1?'aa':'40');ctx.lineWidth=k===1?3:1.2;ctx.stroke();}
       ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fillStyle='#080710';ctx.fill();
       for(const side of [-1,1])for(let i=0;i<5;i++){
@@ -168,7 +170,7 @@ export function drawWorld(ctx,w,h,frame,time,{preview=false,reduced=false,batter
       }
     }else{
       for(let k=0;k<3;k++){
-        ctx.beginPath();ctx.ellipse(w*.5,h*.27,h*(.18+k*.08),h*(.06+k*.025),-.24+t*.008,0,TAU);ctx.strokeStyle=(k%2?a:b)+'45';ctx.lineWidth=1.2;ctx.stroke();
+        ctx.beginPath();ctx.ellipse(w*.5,h*.10,h*(.16+k*.055),h*(.025+k*.008),-.12+Math.sin(t*.04)*.08,0,TAU);ctx.strokeStyle=(k%2?a:b)+'45';ctx.lineWidth=1.2;ctx.stroke();
       }
       for(let i=0;i<(battery?24:65);i++){ctx.fillStyle=i%4?a+'90':'#d1dfff65';ctx.fillRect(hash(i+61)*w,hash(i+89)*h,hash(i)> .8?1.7:1,1);}
     }
