@@ -174,6 +174,16 @@ inline bool MinimalGuest::fp_instruction(std::uint32_t i,std::uint64_t pc,RunRes
     const auto exponent=(std::uint64_t(!repeat)<<(e-1))|(repeat?((UINT64_C(1)<<(e-3))-1)<<2:0)|((imm>>4)&3);
     fp_set(rd,(std::uint64_t(imm>>7)<<(bits-1))|(exponent<<f)|(std::uint64_t(imm&15)<<(f-4)),bits);return true;
   }
+  const bool indexed_scalar_mul=(i&0xff80f400u)==0x5f809000u;
+  if(indexed_scalar_mul||(i&0xbf80f400u)==0x0f809000u){ // FMUL S/D and 2S/4S/2D, by indexed S/D element.
+    const bool scalar_form=indexed_scalar_mul,q=i&0x40000000u;const unsigned size=(i>>22)&3u;
+    if((!scalar_form&&size==3&&!q)||(size==3&&(i&0x00200000u)))return false;
+    const unsigned lane_bits=size==2?32u:64u,index=size==2?(((i>>21)&1u)|((i>>10)&2u)):((i>>11)&1u);
+    fp_access();const auto source=floating_.v[rn];const auto element=floating_.v[rm].lane(index,lane_bits);Vector128 output;
+    const unsigned lanes=scalar_form?1u:(q?128u:64u)/lane_bits;
+    for(unsigned lane=0;lane<lanes;++lane)output.lane(lane,lane_bits,fp.binary(0,lane_bits,source.lane(lane,lane_bits),element));
+    floating_.v[rd]=output;return true;
+  }
   const auto fp_zero=i&0x8fbffc00u;
   if(fp_zero==0x0ea0c800u||fp_zero==0x0ea0d800u||fp_zero==0x0ea0e800u){ // FCMEQ/FCMGE/FCMGT/FCMLE/FCMLT #0, S/D and 2S/4S/2D.
     const bool scalar_form=i&0x10000000u,q=i&0x40000000u,u=i&0x20000000u;
