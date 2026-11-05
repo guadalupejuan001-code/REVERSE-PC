@@ -12,11 +12,11 @@ const CAMERA=2048,TREE_START=1552,ROCK_START=1566,GRASS_START=1579,END=1591;
 // Main tree uses the 5-face volumetric canopy. The 4 old trunk faces become
 // paired low-poly pine silhouettes, keeping shader IDs and triangle budget.
 const treeShape=[
- [14,1150,-16],[246,315,33],[100,364,209],[-161,288,205],
- [-258,330,-61],[-101,292,-217],
+ [14,970,-16],[246,440,33],[100,565,209],[-161,388,205],
+ [-258,475,-61],[-101,412,-217],
  [-18,0,0],[18,0,0],[18,390,0],
- [-18,390,0],[0,0,-18],[0,0,18],
- [0,390,18],[0,390,-18]
+ [-18,390,0],[-170,680,35],[-50,540,12],
+ [170,720,-30],[50,550,-12]
 ];
 const rock=[
  [24,105,-8],[-183,48,-93],[-72,85,-153],[126,64,-142],
@@ -88,7 +88,7 @@ function finishScene(content,options={}){
    newMetadata+'\nlocalset 11 0',
    'XI vertex metadata extension');
  // Dense roadside grove: 32 cedars, 4 boulders and 4 underbrush clusters.
- const choose=['localget r0 11','mod r0 10','cmp r0 7','je nature_rock_model','cmp r0 8','je nature_rock_model',
+ const choose=['localget r0 3120','mod r0 10','cmp r0 7','je nature_rock_model','cmp r0 8','je nature_rock_model',
    'cmp r0 9','je nature_grass_model',
    'set r0 '+TREE_START,'mov r9 r0','localset 132 r9',
    'set r0 '+ROCK_START,'mov r9 r0','localset 134 r9','jmp nature_model_ready',
@@ -100,8 +100,8 @@ function finishScene(content,options={}){
    'set r0 '+END,'mov r9 r0','localset 134 r9',
    'label nature_model_ready'].join('\n');
  source=change(source,
-   'label tree_actor\nset r0 '+TREE_START+'\nmov r9 r0\nlocalset 132 r9\nset r0 '+ROCK_START+'\nmov r9 r0\nlocalset 134 r9',
-   'label tree_actor\n'+choose,'roadside model dispatch');
+   'label forest_choose_model\nset r0 '+TREE_START+'\nmov r9 r0\nlocalset 132 r9\nset r0 '+ROCK_START+'\nmov r9 r0\nlocalset 134 r9',
+   'label forest_choose_model\n'+choose,'roadside model dispatch');
  const treeStart=source.indexOf('label emit_tree\n');
  const next=source.indexOf('\nlabel next_actor',treeStart);
  if(treeStart<0||next<0)throw Error('Existing tree face emission not located');
@@ -110,8 +110,8 @@ function finishScene(content,options={}){
  if(originalFaces.length!==9)throw Error('Tree triangle count changed');
  const trunk=(a,b,c)=>'meshfacegradienttex '+[a,b,c].map(i=>TREE_START+i+CAMERA).join(' ')+' 9 3 7 2 r9 r10 r11 60';
  const canopyFaces=originalFaces.slice(0,5).map(s=>s.replace(/^meshface (\d+) (\d+) (\d+) \d+/, 'meshfacegradienttex $1 $2 $3 12 8 6 2'));
- const groveFaces=[...canopyFaces,trunk(6,7,8),trunk(6,8,9),trunk(10,11,12),trunk(10,12,13)];
- if(groveFaces.length!==9)throw Error('Forest grove must cost nine faces');
+ const groveFaces=[...canopyFaces,trunk(6,7,8),trunk(6,8,9),trunk(9,8,10),trunk(9,10,11),trunk(8,9,12),trunk(8,12,13)];
+ if(groveFaces.length!==11)throw Error('Forest grove must cost nine faces');
  const rockFaces=[],grassFaces=[];
  for(let k=0;k<6;k++){
   const n=(k+1)%6;
@@ -124,9 +124,9 @@ function finishScene(content,options={}){
   grassFaces.push(k===3?'meshface '+[a,b,c].map(i=>i+CAMERA).join(' ')+' 243 r9 r10 r11 60':face(a,b,c,14+k));
   grassFaces.push(k===3?'meshface '+[c,b,a].map(i=>i+CAMERA).join(' ')+' 243 r9 r10 r11 60':face(c,b,a,12+k));
  }
- if(28*9+8*rockFaces.length+4*grassFaces.length!==428)
+ if(28*11+8*rockFaces.length+4*grassFaces.length!==484)
   throw Error('Forest triangle budget is not bounded');
- const full=['label emit_tree','localget r0 11','mod r0 10','cmp r0 7','je nature_emit_rock','cmp r0 8',
+ const full=['label emit_tree','localget r0 3120','mod r0 10','cmp r0 7','je nature_emit_rock','cmp r0 8',
    'je nature_emit_rock','cmp r0 9','je nature_emit_grass',
    ...canopyFaces,'localget r0 112','sub r0 1000000','cmp r0 12000','jgt next_actor',...groveFaces.slice(5),'jmp next_actor','label nature_emit_rock',
    ...rockFaces,'jmp next_actor','label nature_emit_grass',
@@ -150,7 +150,7 @@ function run(options={}){
   const before=fs.readFileSync(filename,'utf8'),after=finishScene(before,options);
   if(before!==after)fs.writeFileSync(filename,after);
   changed.push({name,bytes:Buffer.byteLength(after),updated:before!==after,
-    trees:28,rocks:8,grassClumps:4,faces:428});
+    trees:28,rocks:8,grassClumps:4,faces:484});
  }
  return changed;
 }

@@ -54,11 +54,11 @@ label initialize
 store8 133 0
 set r0 0
 mov r14 r0
-add r14 2000000
+add r14 2000000000
 store32 100 r14
 set r0 0
 mov r14 r0
-add r14 2000000
+add r14 2000000000
 store32 104 r14
 set r0 0
 store16 108 r0
@@ -96,8 +96,9 @@ add r14 32768
 store16 263 r14
 set r0 0
 mov r14 r0
-add r14 300000
+add r14 4000000
 store32 265 r14
+store32 564 300000
 set r0 0
 store8 273 r0
 set r0 0
@@ -137,6 +138,7 @@ store16 524 0
 store8 526 0
 store8 527 0
 store32 528 0
+store8 138 255
 store16 544 0
 store16 546 0
 store8 548 0
@@ -180,6 +182,9 @@ cmp r0 2
 jne rank
 # Assisted controls are sensor-driven XI commands, never Java driving math.
 # Steering tracks a point 40m ahead; the road tangents govern corner speed.
+load8 r0 138
+cmp r0 200
+jle assisted_input_done
 load8 r0 136
 cmp r0 0
 je assisted_input_done
@@ -214,10 +219,10 @@ add r12 4
 load32 r4 $r12
 sub r4 65536
 load32 r5 100
-sub r5 2000000
+sub r5 2000000000
 sub r3 r5
 load32 r5 104
-sub r5 2000000
+sub r5 2000000000
 sub r4 r5
 load16 r5 306
 sub r5 32768
@@ -403,6 +408,9 @@ jle wetlands_air_ready
 load8 r3 388
 cmp r3 6
 jge wetlands_air_ready
+load8 r3 389
+cmp r3 0
+je wetlands_air_ready
 store8 388 6
 label wetlands_air_ready
 store16 384 r1
@@ -411,18 +419,26 @@ store16 386 r0
 label jump_complete
 load16 r0 256
 sub r0 1000
+load8 r1 138
+cmp r1 200
+jle analog_steering_target
 load8 r1 130
 sub r1 1
 mul r1 1000
+jmp steering_target_ready
+label analog_steering_target
+sub r1 100
+mul r1 10
+label steering_target_ready
 cmp r0 r1
 jge steer_down
-add r0 100
+add r0 160
 cmp r0 r1
 jle steer_ready
 mov r0 r1
 jmp steer_ready
 label steer_down
-sub r0 100
+sub r0 200
 cmp r0 r1
 jge steer_ready
 mov r0 r1
@@ -432,6 +448,19 @@ add r14 1000
 store16 256 r14
 load16 r1 110
 mul r0 r1
+set r7 300000
+load8 r6 138
+cmp r6 200
+jle steering_manual_ratio
+load8 r6 136
+cmp r6 0
+jne steering_ratio_ready
+label steering_manual_ratio
+mov r7 r1
+mul r7 r1
+div r7 40
+add r7 50000
+label steering_ratio_ready
 # Reduced steering response while airborne.
 load16 r6 384
 cmp r6 0
@@ -445,14 +474,21 @@ jne reverse_steering_ready
 mul r0 -1
 label reverse_steering_ready
 load32 r3 265
-sub r3 300000
+sub r3 4000000
+load32 r6 564
+cmp r6 0
+jle steering_remainder_ready
+mul r3 r7
+div r3 r6
+label steering_remainder_ready
+store32 564 r7
 add r0 r3
 mov r3 r0
-mod r3 300000
+mod r3 r7
 mov r14 r3
-add r14 300000
+add r14 4000000
 store32 265 r14
-div r0 300000
+div r0 r7
 load16 r2 108
 add r2 r0
 mod r2 4096
@@ -563,7 +599,7 @@ add r1 r6
 load8 r6 489
 cmp r6 1
 jne curb_drag
-add r1 900
+add r1 450
 jmp paved_drag
 label curb_drag
 cmp r6 2
@@ -578,7 +614,7 @@ label no_drift_drag
 load8 r6 489
 cmp r6 3
 jne wetlands_ford_drag
-add r1 650
+add r1 350
 jmp open_dry_drag
 label wetlands_ford_drag
 cmp r6 4
@@ -619,11 +655,11 @@ cmp r4 1400
 jle wetlands_speed_ready
 set r4 1400
 label wetlands_speed_ready
-set r6 24
+set r6 38
 load8 r0 489
 cmp r0 1
 jne curb_grip
-set r6 10
+set r6 22
 jmp paved_grip
 label curb_grip
 cmp r0 2
@@ -633,12 +669,12 @@ label paved_grip
 load8 r0 489
 cmp r0 3
 jne wetlands_ford_grip
-set r6 12
+set r6 28
 jmp open_dry_grip
 label wetlands_ford_grip
 cmp r0 4
 jne open_dry_grip
-set r6 9
+set r6 18
 label open_dry_grip
 load8 r0 131
 cmp r0 1
@@ -703,10 +739,10 @@ add r14 1000
 store16 312 r14
 div r0 1000
 load32 r1 100
-sub r1 2000000
+sub r1 2000000000
 add r1 r0
 mov r14 r1
-add r14 2000000
+add r14 2000000000
 store32 100 r14
 load16 r0 263
 sub r0 32768
@@ -721,26 +757,44 @@ add r14 1000
 store16 314 r14
 div r0 1000
 load32 r1 104
-sub r1 2000000
+sub r1 2000000000
 add r1 r0
 mov r14 r1
-add r14 2000000
+add r14 2000000000
 store32 104 r14
 label skip_ground_contacts
 load32 r0 274
 store32 300 r0
-set r0 4294967295
-store32 342 r0
+load8 r0 128
+localset 3725 r0
+localset 3730 9223372036854775807
+localset 3731 9
+localset 3732 0
+load32 r0 342
+cmp r0 25000000
+jle nearest_search_ready
+load32 r0 115
+mod r0 10
+cmp r0 0
+jne nearest_search_ready
+localset 3731 80
+localset 3732 1
+label nearest_search_ready
 store8 328 0
 label nearest_loop
 load32 r0 100
-sub r0 2000000
+sub r0 2000000000
 load32 r1 104
-sub r1 2000000
+sub r1 2000000000
+load8 r2 328
+localget r13 3732
+cmp r13 1
+je nearest_candidate_ready
 load8 r2 273
 load8 r13 328
 sub r13 4
 add r2 r13
+label nearest_candidate_ready
 cmp r2 79
 jle open_nearest_upper
 set r2 79
@@ -796,32 +850,39 @@ mul r10 r8
 div r10 1000000
 add r10 r4
 load32 r0 100
-sub r0 2000000
+sub r0 2000000000
 load32 r1 104
-sub r1 2000000
+sub r1 2000000000
 sub r0 r9
 sub r1 r10
 mul r0 r0
 mul r1 r1
 add r0 r1
-load32 r1 342
+localget r1 3730
 cmp r0 r1
 jge nearest_next
-store32 342 r0
+localset 3730 r0
 store8 329 r2
 store32 330 r8
 mov r14 r9
-add r14 2000000
+add r14 2000000000
 store32 334 r14
 mov r14 r10
-add r14 2000000
+add r14 2000000000
 store32 338 r14
 label nearest_next
 load8 r0 328
 add r0 1
 store8 328 r0
-cmp r0 9
+localget r1 3731
+cmp r0 r1
 jlt nearest_loop
+localget r0 3730
+cmp r0 4294967295
+jle nearest_distance_fits
+set r0 4294967295
+label nearest_distance_fits
+store32 342 r0
 load8 r0 329
 store8 273 r0
 mul r0 2000
@@ -845,82 +906,6 @@ cmp r0 90000
 jle inside_road
 store8 489 1
 label inside_road
-cmp r0 25000000
-jle after_wall
-load16 r3 384
-cmp r3 0
-jgt after_wall
-store8 283 1
-load32 r1 100
-sub r1 2000000
-load32 r2 104
-sub r2 2000000
-load32 r3 334
-sub r3 2000000
-load32 r4 338
-sub r4 2000000
-sub r1 r3
-sub r2 r4
-mov r5 r1
-cmp r5 0
-jge wall_absx
-mul r5 -1
-label wall_absx
-mov r6 r2
-cmp r6 0
-jge wall_absz
-mul r6 -1
-label wall_absz
-add r5 r6
-set r7 5
-label wall_sqrt
-mov r6 r0
-div r6 r5
-add r5 r6
-div r5 2
-sub r7 1
-cmp r7 0
-jgt wall_sqrt
-mov r6 r1
-mul r6 5000
-div r6 r5
-add r6 r3
-mov r7 r2
-mul r7 5000
-div r7 r5
-add r7 r4
-mov r14 r6
-add r14 2000000
-store32 100 r14
-mov r14 r7
-add r14 2000000
-store32 104 r14
-load16 r6 261
-sub r6 32768
-load16 r7 263
-sub r7 32768
-mov r8 r6
-mul r8 r1
-mov r9 r7
-mul r9 r2
-add r8 r9
-div r8 r5
-cmp r8 0
-jle after_wall
-mul r8 13
-div r8 10
-mul r1 r8
-div r1 r5
-sub r6 r1
-mul r2 r8
-div r2 r5
-sub r7 r2
-mov r14 r6
-add r14 32768
-store16 261 r14
-mov r14 r7
-add r14 32768
-store16 263 r14
 label after_wall
 load16 r0 261
 sub r0 32768
@@ -975,7 +960,7 @@ store32 278 r0
 store8 119 0
 store8 114 0
 # BEGIN OPEN GROUND
-# Road elevation and finite biome; no closed-circuit distance arithmetic.
+# Terrain support uses the same height field as the streamed ground mesh.
 load8 r0 273
 mov r1 r0
 div r1 10
@@ -994,12 +979,7 @@ load32 r3 330
 mul r2 r3
 div r2 1000000
 add r1 r2
-store16 520 r1
-load8 r0 273
-mul r0 2
-add r0 5000
-load16 r0 $r0
-store16 540 r0
+localset 3726 r1
 load32 r1 100
 load32 r2 334
 sub r1 r2
@@ -1023,35 +1003,114 @@ mul r2 r5
 sub r1 r2
 div r1 2000
 mov r2 r1
-add r2 65536
+add r2 2000000000
 store32 532 r2
-load8 r0 523
-cmp r0 3
-jne open_turnout_ready
-mov r2 r1
+load16 r0 520
+localset 3728 r0
+load32 r2 104
+sub r2 2000000000
+# Shared terrain query: r2=world z, r1=height cm; r3..r7 scratch.
+set r1 0
 cmp r2 0
-jge open_turnout_abs
-mul r2 -1
-label open_turnout_abs
-cmp r2 250
-jle open_turnout_ready
-cmp r2 2200
-jgt open_turnout_ready
-store8 489 2
-label open_turnout_ready
+jle support_height_done
+set r3 0
+set r4 80
+label support_height_search
+mov r5 r3
+add r5 1
+cmp r5 r4
+jge support_height_found
+mov r5 r3
+add r5 r4
+div r5 2
+mov r6 r5
+mul r6 8
+add r6 4100
+load32 r7 $r6
+sub r7 65536
+cmp r2 r7
+jle support_height_lower
+mov r3 r5
+jmp support_height_search
+label support_height_lower
+mov r4 r5
+jmp support_height_search
+label support_height_found
+mov r6 r3
+mul r6 8
+add r6 4100
+load32 r5 $r6
+add r6 8
+load32 r7 $r6
+sub r5 65536
+sub r7 65536
+cmp r2 r7
+jgt support_height_done
+sub r7 r5
+mul r3 2
+add r3 5800
+load16 r1 $r3
+add r3 2
+load16 r6 $r3
+sub r6 r1
+mov r4 r2
+sub r4 r5
+mul r6 r4
+div r6 r7
+add r1 r6
+
+label support_height_done
+# Ordinary road differs by only a 2cm anti-z-fighting offset. A raised bridge
+# supports a car from above; it cannot pull a car up from the river below.
+load32 r3 342
+cmp r3 90000
+jgt open_surface_ready
+load8 r3 273
+cmp r3 64
+jlt open_road_support
+cmp r3 66
+jgt open_road_support
+localget r3 3728
+load16 r4 384
+add r3 r4
+add r3 30
+localget r4 3726
+cmp r3 r4
+jlt open_surface_ready
+mov r1 r4
+jmp open_surface_ready
+label open_road_support
+localget r1 3726
+label open_surface_ready
+store16 520 r1
+load32 r0 342
+cmp r0 90000
+jgt open_mud_ready
 load8 r0 523
 cmp r0 4
 jne open_mud_ready
 store8 489 3
 label open_mud_ready
-# WETLANDS PHYSICS
 # Wetlands: physically shallow water, retained wetness and wheel splash.
 store16 544 0
+load32 r0 532
+sub r0 2000000000
+cmp r0 -6000
+jlt wetlands_wetness
+cmp r0 6000
+jgt wetlands_wetness
 load8 r0 523
 cmp r0 4
 jne wetlands_check_ford
+load32 r1 342
+cmp r1 90000
+jgt wetlands_check_puddle
 store8 489 3
 label wetlands_check_ford
+cmp r0 2
+je wetlands_lake
+cmp r0 1
+je wetlands_bridge_water
 cmp r0 5
 jne wetlands_check_puddle
 store8 489 4
@@ -1068,6 +1127,31 @@ set r1 40
 label wetlands_depth_bounded
 store16 544 r1
 jmp wetlands_wetness
+label wetlands_lake
+load32 r1 532
+sub r1 2000000000
+cmp r1 900
+jlt wetlands_wetness
+cmp r1 5800
+jgt wetlands_wetness
+localget r1 3726
+add r1 9
+jmp wetlands_lake_depth
+label wetlands_bridge_water
+localget r1 3726
+sub r1 171
+label wetlands_lake_depth
+load16 r2 520
+sub r1 r2
+cmp r1 0
+jle wetlands_wetness
+cmp r1 40
+jle wetlands_lake_bounded
+set r1 40
+label wetlands_lake_bounded
+store16 544 r1
+store8 489 4
+jmp wetlands_wetness
 label wetlands_check_puddle
 load32 r1 330
 cmp r1 300000
@@ -1075,7 +1159,7 @@ jlt wetlands_wetness
 cmp r1 700000
 jgt wetlands_wetness
 load32 r1 532
-sub r1 65536
+sub r1 2000000000
 load8 r0 273
 mod r0 2
 mul r0 80
@@ -1135,8 +1219,8 @@ load16 r0 546
 load16 r1 544
 cmp r1 0
 jgt wetlands_wet
-load8 r1 523
-cmp r1 4
+load8 r1 489
+cmp r1 3
 je wetlands_muddy
 sub r0 1
 jmp wetlands_wetness_bound
@@ -1169,217 +1253,39 @@ jle wetlands_splash_ready
 store8 395 16
 label wetlands_splash_ready
 load32 r1 532
-sub r1 65536
-load16 r0 384
-cmp r0 0
-jgt open_water_ready
-load8 r0 523
-cmp r0 5
-je wetlands_ford_limit
-cmp r0 1
-je open_bridge_limit
-cmp r0 2
+sub r1 2000000000
+# Only the actual elevated bridge rails collide. There are no road-corridor,
+# lake-bank, ford-bank or end-of-world clamps.
+load8 r0 273
+cmp r0 65
 jne open_water_ready
-cmp r1 450
-jle open_water_ready
-store8 489 3
-mov r2 r1
-cmp r2 800
-jle open_lake_height
-set r2 800
-label open_lake_height
-set r3 900
-sub r3 r2
-load16 r4 520
-mul r4 r3
-div r4 450
-store16 520 r4
-cmp r1 800
-jle open_water_ready
-set r5 800
-jmp open_water_contact
-label open_bridge_limit
-set r5 120
-cmp r1 120
-jgt open_water_contact
-cmp r1 -120
-jge open_water_ready
-set r5 -120
-jmp open_water_contact
-label wetlands_ford_limit
-set r5 450
-cmp r1 450
-jgt open_water_contact
-cmp r1 -450
-jge open_water_ready
-set r5 -450
-label open_water_contact
-load8 r0 273
-mul r0 2
-add r0 5000
-load16 r0 $r0
-# Reuse the road's authored right normal via its tangent; sine/cos are calculated below.
-mov r6 r5
-add r6 32768
-store16 542 r6
-mov r6 r0
-add r6 1024
-mod r6 4096
-set r7 1
-cmp r6 2048
-jlt open_cos_half
-sub r6 2048
-set r7 -1
-label open_cos_half
-set r8 2048
-sub r8 r6
-mul r8 r6
-mov r9 r8
-mul r9 4
-set r10 20971520
-sub r10 r9
-mul r8 262144
-div r8 r10
-mul r8 r7
-mul r8 r5
-div r8 16384
-load32 r9 334
-add r9 r8
-store32 100 r9
-mov r6 r0
-set r7 1
-cmp r6 2048
-jlt open_sin_half
-sub r6 2048
-set r7 -1
-label open_sin_half
-set r8 2048
-sub r8 r6
-mul r8 r6
-mov r9 r8
-mul r9 4
-set r10 20971520
-sub r10 r9
-mul r8 262144
-div r8 r10
-mul r8 r7
-mul r8 r5
-div r8 16384
-load32 r9 338
-sub r9 r8
-store32 104 r9
-store16 261 32768
-store16 263 32768
-store16 110 0
-store16 112 32768
-store8 283 1
-label open_water_ready
-store8 527 0
-load32 r0 274
-cmp r0 158000
-jlt open_end_ready
-store8 527 1
-label open_end_ready
-# END OPEN GROUND
-# BEGIN OPEN PROP COLLISION
-load8 r0 273
-sub r0 1
-localset 3500 r0
-localset 3501 0
-label open_prop_row
-localget r0 3500
-cmp r0 0
-jlt open_prop_next_row
-cmp r0 79
-jgt open_props_collision_done
-mov r1 r0
-add r1 5500
-load8 r1 $r1
-cmp r1 1
-je open_prop_next_row
-cmp r1 5
-je open_prop_next_row
-localset 3504 r1
-localset 3502 0
-label open_prop_slot
-localget r0 3500
-mul r0 4
-localget r1 3502
-add r0 r1
-add r0 4
-mov r1 r0
-mod r1 10
-cmp r1 9
-je open_prop_next_slot
-set r2 270
-cmp r1 7
-je wetlands_rock_collision
-cmp r1 8
-jne open_prop_radius_ready
-label wetlands_rock_collision
-load16 r1 384
-cmp r1 140
-jgt open_prop_next_slot
-set r2 500
-label open_prop_radius_ready
-localset 3503 r2
-localget r1 3504
-cmp r1 2
-jne open_prop_bank_ready
-mov r1 r0
-mod r1 2
-cmp r1 1
-je open_prop_next_slot
-label open_prop_bank_ready
-mul r0 73
-mod r0 2500
-add r0 470
-localget r1 3503
-cmp r1 500
-jne wetlands_rock_offset_ready
-add r0 250
-label wetlands_rock_offset_ready
-localget r1 3502
-mod r1 2
-mul r1 2
-sub r1 1
-mul r0 r1
-localset 3505 r0
-localget r1 3500
-mul r1 8
-add r1 4096
-load32 r2 $r1
-sub r2 65536
-add r1 4
-load32 r3 $r1
-sub r3 65536
-add r1 4
-load32 r4 $r1
-sub r4 65536
-add r1 4
-load32 r5 $r1
-sub r5 65536
-sub r4 r2
-sub r5 r3
-mul r5 r0
-div r5 2000
-add r2 r5
-mul r4 r0
-div r4 2000
-sub r3 r4
-load32 r4 100
-sub r4 2000000
-sub r4 r2
-mul r4 r4
-load32 r5 104
-sub r5 2000000
-sub r5 r3
-mul r5 r5
-add r4 r5
-localget r5 3503
-mul r5 r5
-cmp r4 r5
-jge open_prop_next_slot
+load32 r1 532
+sub r1 2000000000
+cmp r1 0
+jge open_bridge_abs
+mul r1 -1
+label open_bridge_abs
+cmp r1 110
+jlt open_water_ready
+cmp r1 340
+jgt open_water_ready
+load16 r2 520
+load16 r3 384
+add r2 r3
+localget r3 3726
+sub r3 30
+cmp r2 r3
+jlt open_bridge_piers
+cmp r1 155
+jlt open_water_ready
+jmp open_bridge_impact
+label open_bridge_piers
+load32 r0 330
+cmp r0 200000
+jle open_bridge_impact
+cmp r0 800000
+jlt open_water_ready
+label open_bridge_impact
 load32 r0 552
 store32 100 r0
 load32 r0 556
@@ -1389,23 +1295,224 @@ store16 263 32768
 store16 110 0
 store16 112 32768
 store8 283 1
-jmp open_props_collision_done
-label open_prop_next_slot
-localget r0 3502
+label open_water_ready
+# Preserve world-space altitude when the support plane changes in mid-air.
+# Driving off a deck starts a fall instead of snapping into the river bed.
+localget r0 3728
+load16 r1 520
+sub r0 r1
+load16 r2 384
+cmp r2 0
+jgt open_air_support
+cmp r0 6
+jle open_floor_ready
+store16 386 10000
+label open_air_support
+add r2 r0
+cmp r2 0
+jgt open_air_above_floor
+set r2 0
+store16 386 10000
+store8 391 1
+label open_air_above_floor
+cmp r2 600
+jle open_air_height_bounded
+set r2 600
+label open_air_height_bounded
+store16 384 r2
+label open_floor_ready
+store8 527 0
+load32 r0 274
+cmp r0 158000
+jlt open_end_ready
+store8 527 1
+label open_end_ready
+# END OPEN GROUND
+# BEGIN OPEN PROP COLLISION
+load32 r3 100
+sub r3 2000000000
+cmp r3 0
+jge forest_collision_x_floor
+sub r3 2499
+label forest_collision_x_floor
+div r3 2500
+load32 r4 104
+sub r4 2000000000
+cmp r4 0
+jge forest_collision_z_floor
+sub r4 2499
+label forest_collision_z_floor
+div r4 2500
+localset 3800 r3
+localset 3801 r4
+localset 3802 0
+label forest_contact_cell
+localget r3 3800
+localget r4 3801
+localget r5 3802
+mov r6 r5
+mod r6 3
+sub r6 1
+add r3 r6
+div r5 3
+sub r5 1
+add r4 r5
+mov r5 r3
+mul r5 73
+mov r6 r4
+mul r6 151
+add r5 r6
+mod r5 4000
+add r5 4000
+mod r5 4000
+mul r5 10
+mov r6 r4
+mul r6 3
+add r6 r3
+mod r6 10
+add r6 10
+mod r6 10
+add r5 r6
+mov r6 r5
+mul r6 73
+mod r6 1500
+mov r0 r3
+mul r0 2500
+add r0 500
+add r0 r6
+mov r6 r5
+mul r6 47
+mod r6 1500
+mov r2 r4
+mul r2 2500
+add r2 500
+add r2 r6
+mov r6 r5
+mod r6 10
+cmp r6 9
+je forest_contact_next
+set r7 140
+cmp r6 7
+jlt forest_contact_radius
+load16 r7 384
+cmp r7 140
+jgt forest_contact_next
+set r7 360
+label forest_contact_radius
+localset 3803 r7
+localset 3804 r0
+localset 3805 r2
+# Shared terrain query: r2=world z, r1=height cm; r3..r7 scratch.
+set r1 0
+cmp r2 0
+jle forest_contact_support_done
+set r3 0
+set r4 80
+label forest_contact_support_search
+mov r5 r3
+add r5 1
+cmp r5 r4
+jge forest_contact_support_found
+mov r5 r3
+add r5 r4
+div r5 2
+mov r6 r5
+mul r6 8
+add r6 4100
+load32 r7 $r6
+sub r7 65536
+cmp r2 r7
+jle forest_contact_support_lower
+mov r3 r5
+jmp forest_contact_support_search
+label forest_contact_support_lower
+mov r4 r5
+jmp forest_contact_support_search
+label forest_contact_support_found
+mov r6 r3
+mul r6 8
+add r6 4100
+load32 r5 $r6
+add r6 8
+load32 r7 $r6
+sub r5 65536
+sub r7 65536
+cmp r2 r7
+jgt forest_contact_support_done
+sub r7 r5
+mul r3 2
+add r3 5800
+load16 r1 $r3
+add r3 2
+load16 r6 $r3
+sub r6 r1
+mov r4 r2
+sub r4 r5
+mul r6 r4
+div r6 r7
+add r1 r6
+sub r3 5802
+div r3 2
+mul r3 8
+add r3 4096
+load32 r5 $r3
+add r3 8
+load32 r6 $r3
+sub r5 65536
+sub r6 65536
+sub r6 r5
+mul r6 r4
+div r6 r7
+add r5 r6
+mov r0 r5
+label forest_contact_support_done
+cmp r2 0
+jlt forest_contact_clear
+load32 r5 4740
+sub r5 65536
+cmp r2 r5
+jgt forest_contact_clear
+localget r5 3804
+sub r5 r0
+cmp r5 0
+jge forest_contact_road_abs
+mul r5 -1
+label forest_contact_road_abs
+cmp r5 750
+jlt forest_contact_next
+label forest_contact_clear
+load32 r0 100
+sub r0 2000000000
+localget r1 3804
+sub r0 r1
+mul r0 r0
+load32 r1 104
+sub r1 2000000000
+localget r2 3805
+sub r1 r2
+mul r1 r1
+add r0 r1
+localget r1 3803
+mul r1 r1
+cmp r0 r1
+jge forest_contact_next
+load32 r0 552
+store32 100 r0
+load32 r0 556
+store32 104 r0
+store16 261 32768
+store16 263 32768
+store16 110 0
+store16 112 32768
+store8 283 1
+jmp forest_contacts_done
+label forest_contact_next
+localget r0 3802
 add r0 1
-localset 3502 r0
-cmp r0 4
-jlt open_prop_slot
-label open_prop_next_row
-localget r0 3500
-add r0 1
-localset 3500 r0
-localget r0 3501
-add r0 1
-localset 3501 r0
-cmp r0 3
-jlt open_prop_row
-label open_props_collision_done
+localset 3802 r0
+cmp r0 9
+jlt forest_contact_cell
+label forest_contacts_done
 # END OPEN PROP COLLISION
 # BEGIN V23 RIG UPDATE
 # V2.3 distance-independent wheel phase and damped body motion.
@@ -1849,10 +1956,10 @@ store8 282 1
 jmp publish
 label publish
 load32 r0 100
-sub r0 2000000
+sub r0 2000000000
 print r0
 load32 r1 104
-sub r1 2000000
+sub r1 2000000000
 print r1
 load16 r2 108
 print r2

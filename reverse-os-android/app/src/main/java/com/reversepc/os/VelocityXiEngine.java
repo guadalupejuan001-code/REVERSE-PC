@@ -56,10 +56,10 @@ final class VelocityXiEngine {
                     values[24]<0||values[24]>1||surface<0||surface>4)
                 throw new IllegalArgumentException("XI drift/rebufo/surface state outside limits");
             if(nitroCharge<0||nitroCharge>1000||values[17]<0||values[17]>1||
-                    jumpHeightCm<0||jumpHeightCm>300||airPulse<0||airPulse>30||
+                    jumpHeightCm<0||jumpHeightCm>600||airPulse<0||airPulse>30||
                     jumpCooldown<0||jumpCooldown>90||values[21]<0||values[21]>1)
                 throw new IllegalArgumentException("XI air/nitro state outside physical bounds");
-            if(xCm< -1_500_000||xCm>1_500_000||zCm< -1_500_000||zCm>1_500_000||
+            if(xCm< -1_000_000_000L||xCm>1_000_000_000L||zCm< -1_000_000_000L||zCm>1_000_000_000L||
                     yaw4096<0||yaw4096>=4096||speedCmps<0||speedCmps>6500||
                     slideCmps< -6500||slideCmps>6500||checkpoint<0||checkpoint>12||
                     ticks<0||ticks>Integer.MAX_VALUE||values[7]<0||values[7]>1||
@@ -193,19 +193,23 @@ final class VelocityXiEngine {
         return step(gas,brake,steer,drift,nitro,jump,reverse,reset,0);
     }
     synchronized Snapshot step(int gas,int brake,int steer,int drift,boolean nitro,boolean jump,boolean reverse,boolean reset,int assistMode)throws Exception{
+        return step(gas,brake,steer,drift,nitro,jump,reverse,reset,assistMode,255);
+    }
+    synchronized Snapshot step(int gas,int brake,int steer,int drift,boolean nitro,boolean jump,boolean reverse,boolean reset,int assistMode,int analog)throws Exception{
+        if(analog<0||(analog>200&&analog!=255))throw new IllegalArgumentException("Analog steering protocol");
         if(assistMode<0||assistMode>2)throw new IllegalArgumentException("XI assistant mode outside 0..2");
         if(gas<0||gas>1||brake<0||brake>1||steer<0||steer>2||
            drift<0||drift>1)throw new IllegalArgumentException("XI physical control out of range");
         // Execute the XI source through the *existing* generic runtime.
         // There is no game-specific JNI/C++ renderer, physics or instruction API.
-        final int programKey=gas|(brake<<1)|(steer<<2)|(drift<<4)|(reset?32:0)|(reverse?64:0)|(nitro?128:0)|(jump?256:0)|(assistMode<<10);
+        final int programKey=gas|(brake<<1)|(steer<<2)|(drift<<4)|(reset?32:0)|(reverse?64:0)|(nitro?128:0)|(jump?256:0)|(assistMode<<10)|(analog<<12);
         if(programKey!=driveProgramKey){
             driveProgramCache=XI_HEADER+
                 "store8 128 "+gas+"\nstore8 129 "+brake+
                 "\nstore8 130 "+steer+"\nstore8 131 "+drift+
                 "\nstore8 132 "+(reset?1:0)+"\nstore8 133 "+(reverse?1:0)+
                  "\nstore8 134 "+(nitro?1:0)+"\nstore8 135 "+(jump?1:0)+
-                 "\nstore8 136 "+assistMode+"\n"+
+                 "\nstore8 136 "+assistMode+"\nstore8 138 "+analog+"\n"+
                 driveXi.substring(XI_HEADER.length());
             driveProgramKey=programKey;
         }
@@ -229,8 +233,8 @@ final class VelocityXiEngine {
             throw new IllegalArgumentException("XI GPU view controls outside range");
         final byte[] retained;final Snapshot state;
         synchronized(this){retained=privateState.clone();state=snapshot;}
-        final int[] addresses={200,201,202,203,204,205,206,207};
-        final byte[] inputs={1,(byte)camera,(byte)paint,(byte)car,(byte)yaw,(byte)(yaw>>>8),(byte)pitch,(byte)(pitch>>>8)};
+        final int[] addresses={200,201,202,203,204,205,206,207,141};
+        final byte[] inputs={1,(byte)camera,(byte)paint,(byte)car,(byte)yaw,(byte)(yaw>>>8),(byte)pitch,(byte)(pitch>>>8),1};
         long start=System.nanoTime();byte[] raw=NativeRuntime.observeGeometry(retained,xiGpuRenderer,addresses,inputs);
         long execute=System.nanoTime()-start;start=System.nanoTime();
         RegraphicsGeometry geometry=RegraphicsGeometry.decodeOwned(raw);

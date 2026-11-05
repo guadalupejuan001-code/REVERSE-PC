@@ -332,6 +332,13 @@ try{
   screenshot('actual-reverse');
   const timeOf=items=>(items.find(n=>/^\d{2}:\d{2} · /.test(n.text||''))||{}).text;
   const frozen=timeOf(ui);sleep(700);ui=waitText(/EN PAUSA/);check(frozen&&frozen===timeOf(ui),'paused world clock and distance remain stable');
+  stage='analog steering';
+  ui=hierarchy();const wheel=ui.find(n=>/^Volante analógico/.test(n['content-desc']||''));
+  check(!!wheel,'analog steering wheel is reachable');
+  const wb=/^\[(\d+),(\d+)\]\[(\d+),(\d+)\]$/.exec(wheel.bounds);
+  const wx=(+wb[1]+ +wb[3])/2,wy=(+wb[2]+ +wb[4])/2;
+  adbText(['shell','input','swipe',String(Math.round(wx)),String(Math.round(wy)),String(Math.round(wx+(+wb[3]-wb[1])*.3)),String(Math.round(wy)),'450']);
+  const analog=logs();check(/ANALOG_STEERING value=1[1-9]\d/.test(analog)&&/ANALOG_STEERING value=255/.test(analog),'touch steering emits proportional input and recenters on release');
   stage='touch camera';
   // Android exposes this custom SurfaceView as android.view.View. Its
   // observed accessibility description identifies the actual camera target.

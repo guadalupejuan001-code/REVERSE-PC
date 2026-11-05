@@ -43,6 +43,7 @@ public final class VelocityActivity extends Activity {
     };
     private VelocityActionButton nitroButton,jumpButton;
     private RaceMap map;
+    private int touchSteer=255;
     private boolean gas,brake,left,right,drift,nitro,jump;
     private boolean keyGas,keyBrake,keyLeft,keyRight,keyDrift,keyNitro,keyJump;
     private final List<Set<Integer>> touchPointers=new ArrayList<>();
@@ -101,12 +102,13 @@ public final class VelocityActivity extends Activity {
     private void controls(){
         if(surface==null)return;
         boolean l=left||keyLeft,r=right||keyRight;
+        surface.steering(l||r?255:touchSteer);
         surface.controls(gas||keyGas?1:0,brake||keyBrake?1:0,l==r?1:l?0:2,
             drift||keyDrift,nitro||keyNitro,jump||keyJump);
     }
     private void releaseControls(){
         for(Set<Integer> pointers:touchPointers)pointers.clear();
-        gas=brake=left=right=drift=nitro=jump=false;
+        gas=brake=left=right=drift=nitro=jump=false;touchSteer=255;
         keyGas=keyBrake=keyLeft=keyRight=keyDrift=keyNitro=keyJump=false;
         if(nitroButton!=null)nitroButton.setSelected(false);
         if(jumpButton!=null)jumpButton.setSelected(false);
@@ -167,11 +169,11 @@ public final class VelocityActivity extends Activity {
         if(isCounting)changedText(countdown,Integer.toString((s.countdown+49)/50));
         String roadWarning=s.jumpHeightCm>0?"AIRE · "+s.jumpHeightCm+" cm":
             s.landingPulse?"ATERRIZAJE":s.wallContact?"CONTACTO":
-            s.offRoad?(s.surface==3?"BARRO · POCO AGARRE":s.surface==2?"BORDE · AGARRE MEDIO":"PASTO · POCO AGARRE"):
+            s.offRoad?(s.waterDepthCm>0?"AGUA · "+s.waterDepthCm+" cm":s.surface==3?"BARRO · POCO AGARRE":s.surface==2?"BORDE · AGARRE MEDIO":"PASTO · POCO AGARRE"):
             s.drafting?"REBUFO · NITRO +":
             s.driftComboPct>100?
                 "DERRAPE "+s.driftScore+" PTS · x"+String.format(Locale.ROOT,"%.1f",s.driftComboPct/100f):"";
-        if(s.openWorld&&roadWarning.isEmpty())roadWarning=s.roadEnd?"CLARO FINAL · PUEDES REGRESAR":s.biome==5?"VADO DEL RÍO · "+s.waterDepthCm+" cm":s.biome==4?"LODO · BOSQUE HÚMEDO":s.biome==1?"PUENTE DEL RÍO":s.biome==2?"LAGUNA DE LOS CEDROS":s.ambientMode==2?"NOCHE · FAROS AUTOMÁTICOS":"";
+        if(s.openWorld&&roadWarning.isEmpty())roadWarning=s.roadEnd?"FIN DE CARRETERA · SIGUE EXPLORANDO":s.biome==5?"VADO DEL RÍO · "+s.waterDepthCm+" cm":s.biome==4?"LODO · BOSQUE HÚMEDO":s.biome==1?"PUENTE DEL RÍO":s.biome==2?"LAGUNA DE LOS CEDROS":s.ambientMode==2?"NOCHE · FAROS AUTOMÁTICOS":"";
         if(surface.isGearPending())roadWarning=surface.isReverseRequested()?
             "FRENANDO PARA REVERSA":"FRENANDO PARA AVANZAR";
         else if(roadWarning.isEmpty()&&surface.assistMode()>0)
@@ -281,7 +283,7 @@ public final class VelocityActivity extends Activity {
         engine.setContentDescription("Capacidades y límites actuales del renderizador XI");
         engine.setOnClickListener(v->new AlertDialog.Builder(this)
             .setTitle("REgraphics XI • GPU")
-            .setMessage("Open Forest Road 3.2 — Wetlands\n\nCarretera forestal de 1,6 km: lodo, veinte charcos, un vado transitable, puente, laguna, rocas y ardillas. Las superficies cambian el agarre; cruza el río a velocidad moderada.\n\nXI/Ether controla el mundo, la física y la geometría. Los shaders propios de REgraphics usan la GPU para materiales, reflejos, agua y efectos; hay respaldo por software.\n\nLa cámara se adapta al giro, velocidad y reversa. Arrastra para inspeccionar; vuelve sola al conducir. El nitro sale de los cuatro puertos traseros y el aire junto a las cuatro ruedas al saltar.\n\nReversa R frena antes de cambiar de marcha. Acelera para retroceder. La hora cambia automáticamente. Foto 4K pausa la conducción y renderiza 3840 × 2160 píxeles. Nitidez automática adapta la resolución a la carga.")
+            .setMessage("Open Forest Road 3.3 — Terreno abierto\n\nPuedes salir de la carretera y seguir explorando. El terreno y el bosque se generan alrededor del coche: se eliminó la pared invisible de 50 metros y el suelo visible comparte altura con las ruedas. La carretera principal conserva ocho sectores; el piloto se detiene al final, pero en Manual puedes seguir conduciendo.\n\nEl volante es analógico: desliza el dedo para dosificar el giro y suéltalo para centrar. El giro a baja velocidad es más ágil, con mejor recuperación de agarre.\n\nPuente alineado con el camino, soportes y barandales. Ardillas con cuerpo redondeado y cola curva, ramas y pasto con viento. Lentes transparentes y faros con iluminación suave sobre el terreno y volumen de luz en la GPU.\n\nXI/Ether sigue controlando física, geometría y cámara. REgraphics usa shaders propios en GPU y conserva respaldo por software. Auto adapta resolución; Alta prioriza detalle. Foto 4K pausa la conducción y renderiza 3840 × 2160.")
             .setPositiveButton("Entendido",(dialog,which)->dialog.dismiss())
             .show());
         pauseButton=button("Pausa");pauseButton.setOnClickListener(v->togglePause());
@@ -307,6 +309,7 @@ public final class VelocityActivity extends Activity {
         add(root,tools,-1,44,Gravity.TOP,8,48,8,0);
         // Native Button descendants keep the accessibility and adb touch contract.
         VelocitySteeringFrame steering=new VelocitySteeringFrame(this);
+        steering.setSteeringListener(value->{touchSteer=value;controls();android.util.Log.i("ReverseVelocity","ANALOG_STEERING value="+value);});
         Button bLeft=button("◀");hold(bLeft,0);
         Button bRight=button("▶");hold(bRight,1);
         bLeft.setBackground(background(0x70324a60));bRight.setBackground(background(0x70324a60));

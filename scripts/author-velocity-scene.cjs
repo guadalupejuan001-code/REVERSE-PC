@@ -22,7 +22,7 @@ function trig(angle,sin,cos,t0,t1){
  one(1024,cos);load(sin,8250,2,32768,t0);
 }
 // The camera's reference point remains the actual vehicle, in centimeters.
-load('r12',100,4,2000000);load('r13',104,4,2000000);
+load('r12',100,4,2000000000);load('r13',104,4,2000000000);
 load('r0',108,2,0);
 out('load16 r1 204\nadd r0 r1\nmod r0 4096');
 trig('r0','r14','r15','r1','r2');
@@ -65,6 +65,8 @@ function pitch(x,y,z){
  // Before pitch: x is side, y is height, r10 is forward.
  load('r11',8196,2,0,'r9');out(`mul r11 ${y}`);load('r9',8198,2,0,z);out(`mov ${z} r10\nmul ${z} r9\nsub ${z} r11\ndiv ${z} 1000\nmul ${y} r9`);load('r11',8196,2,0,'r9');out(`mul r11 r10\nadd ${y} r11\ndiv ${y} 1000`);
 }
+require('./emit-streamed-ground.cjs')({out,cameraPoint,focus});
+out('load32 r0 342\ncmp r0 1600000000\njgt distant_road_ready');
 // Pretransform track center and right normal once, then reuse them for road bands.
 out('load8 r0 273\ndiv r0 10\nmul r0 10\nsub r0 10\ncmp r0 0\njge open_sector_start\nset r0 0\nlabel open_sector_start\nlocalset 3200 r0\nmov r1 r0\nadd r1 30\ncmp r1 80\njle open_sector_end\nset r1 80\nlabel open_sector_end\nlocalset 3201 r1\nstore8 8200 r0\nlabel transform_track\nload8 r8 8200\nmov r7 r8\nmul r7 8\nadd r7 4096');load('r0','r7',4,65536);out('add r7 4');load('r2','r7',4,65536);out('load8 r1 8200\nmul r1 2\nadd r1 5300\nload16 r1 $r1');cameraPoint('r0','r1','r2');
 out('load8 r8 8200\nmul r8 2\nadd r8 1600\nmeshvertex r8 r0 r1 r2');
@@ -78,7 +80,7 @@ out('load8 r9 8200\nmul r9 2\nadd r9 1600\nmeshread r0 r1 r2 r9\nadd r9 2\nmeshr
 // Bands are actual geometry, using the same 6m/10m boundaries as physics.
 const bands=[[-6000,-300,300,0,78],[-300,-200,0,0,208],[-200,-180,0,0,206],[-180,180,0,0,108],[180,200,0,0,206],[200,300,0,0,208],[300,6000,0,350,78]];
 for(let b=0;b<bands.length;b++){out(`load8 r0 8201\ncmp r0 ${b}\njne band_${b}_skip`);const[a,c,yl,yr,m]=bands[b];out(`set r0 ${a}\nset r1 ${c}\nset r2 ${yl}\nset r3 ${yr}\nstore8 8220 ${m}\njmp band_ready\nlabel band_${b}_skip`);}
-out('jmp next_segment\nlabel band_ready');
+out('jmp next_segment\nlabel band_ready\nload8 r4 8201\ncmp r4 0\nje next_band\ncmp r4 6\nje next_band');
 store('r0',8214,2,32768);store('r1',8216,2,32768);store('r2',8218,2,0);store('r3',8222,2,0);
 // River and lake cut-outs are driven by the same finite biome table as collision.
 out('load8 r0 8200\nadd r0 5500\nload8 r0 $r0\ncmp r0 1\nje open_river_band\ncmp r0 5\nje open_river_band\ncmp r0 2\njne open_road_band_ready\nload8 r0 8201\ncmp r0 6\nje next_band\njmp open_road_band_ready\nlabel open_river_band\nload8 r0 8201\ncmp r0 0\nje next_band\ncmp r0 6\nje next_band\nlabel open_road_band_ready\nload8 r0 8200\nadd r0 5500\nload8 r0 $r0\ncmp r0 4\njlt open_edge_ready\nload8 r0 8220\ncmp r0 206\njne open_edge_ready\nstore8 8220 208\nlabel open_edge_ready');
@@ -142,9 +144,11 @@ lines=lines.map(line=>{
  if(at>=0&&/^\d+$/.test(words[at]))words[at]=String(worldMaterial(Number(words[at])));
  return words.join(' ');
 });
-load('r12',100,4,2000000);load('r13',104,4,2000000);
-require('./emit-open-forest-world.cjs')({out,load,store,focus,cameraPoint,label,trig});
-const modelStats=require('./emit-velocity-car-scene.cjs')({out,load,store,trig,pitch,focus,label,openWorld:true});
+load('r12',100,4,2000000000);load('r13',104,4,2000000000);
+out('label distant_road_ready');
+require('./emit-living-grass.cjs')({out,cameraPoint,focus});
+const propStats=require('./emit-open-forest-world.cjs')({out,load,store,focus,cameraPoint,label,trig});
+const modelStats=require('./emit-velocity-car-scene.cjs')({out,load,store,trig,pitch,focus,label,openWorld:true,worldBudget:propStats.maxActiveTriangles});
 const destination=path.join(__dirname,'../reverse-os-android/app/src/main/assets/velocity/render.xi');
 // Render temporaries are local VM registers, never durable Ether state.
 // The original world/vehicle addresses continue using InverseMemory.

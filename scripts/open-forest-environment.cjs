@@ -9,7 +9,7 @@ function timeXi(advance){return [
  'set r1 0','cmp r0 1792','jlt open_light_ready','cmp r0 2304','jlt open_light_dusk','cmp r0 3584','jlt open_light_night','jmp open_light_dusk',
  'label open_light_dusk','set r1 1','jmp open_light_ready','label open_light_night','set r1 2','label open_light_ready','store8 526 r1'
 ].join('\n');}
-function groundXi(){return `# Road elevation and finite biome; no closed-circuit distance arithmetic.
+function groundXi(){return `# Terrain support uses the same height field as the streamed ground mesh.
 load8 r0 273
 mov r1 r0
 div r1 10
@@ -28,12 +28,7 @@ load32 r3 330
 mul r2 r3
 div r2 1000000
 add r1 r2
-store16 520 r1
-load8 r0 273
-mul r0 2
-add r0 5000
-load16 r0 $r0
-store16 540 r0
+localset 3726 r1
 load32 r1 100
 load32 r2 334
 sub r1 r2
@@ -57,140 +52,118 @@ mul r2 r5
 sub r1 r2
 div r1 2000
 mov r2 r1
-add r2 65536
+add r2 2000000000
 store32 532 r2
-load8 r0 523
-cmp r0 3
-jne open_turnout_ready
-mov r2 r1
-cmp r2 0
-jge open_turnout_abs
-mul r2 -1
-label open_turnout_abs
-cmp r2 250
-jle open_turnout_ready
-cmp r2 2200
-jgt open_turnout_ready
-store8 489 2
-label open_turnout_ready
+load16 r0 520
+localset 3728 r0
+load32 r2 104
+sub r2 2000000000
+${require('./open-terrain.cjs').heightXi('support_height')}
+# Ordinary road differs by only a 2cm anti-z-fighting offset. A raised bridge
+# supports a car from above; it cannot pull a car up from the river below.
+load32 r3 342
+cmp r3 90000
+jgt open_surface_ready
+load8 r3 273
+cmp r3 64
+jlt open_road_support
+cmp r3 66
+jgt open_road_support
+localget r3 3728
+load16 r4 384
+add r3 r4
+add r3 30
+localget r4 3726
+cmp r3 r4
+jlt open_surface_ready
+mov r1 r4
+jmp open_surface_ready
+label open_road_support
+localget r1 3726
+label open_surface_ready
+store16 520 r1
+load32 r0 342
+cmp r0 90000
+jgt open_mud_ready
 load8 r0 523
 cmp r0 4
 jne open_mud_ready
 store8 489 3
 label open_mud_ready
-# WETLANDS PHYSICS
 ${require('./wetlands-environment.cjs').physicsXi()}
-load16 r0 384
-cmp r0 0
-jgt open_water_ready
-load8 r0 523
-cmp r0 5
-je wetlands_ford_limit
-cmp r0 1
-je open_bridge_limit
-cmp r0 2
-jne open_water_ready
-cmp r1 450
-jle open_water_ready
-store8 489 3
-mov r2 r1
-cmp r2 800
-jle open_lake_height
-set r2 800
-label open_lake_height
-set r3 900
-sub r3 r2
-load16 r4 520
-mul r4 r3
-div r4 450
-store16 520 r4
-cmp r1 800
-jle open_water_ready
-set r5 800
-jmp open_water_contact
-label open_bridge_limit
-set r5 120
-cmp r1 120
-jgt open_water_contact
-cmp r1 -120
-jge open_water_ready
-set r5 -120
-jmp open_water_contact
-label wetlands_ford_limit
-set r5 450
-cmp r1 450
-jgt open_water_contact
-cmp r1 -450
-jge open_water_ready
-set r5 -450
-label open_water_contact
+# Only the actual elevated bridge rails collide. There are no road-corridor,
+# lake-bank, ford-bank or end-of-world clamps.
 load8 r0 273
-mul r0 2
-add r0 5000
-load16 r0 $r0
-# Reuse the road's authored right normal via its tangent; sine/cos are calculated below.
-mov r6 r5
-add r6 32768
-store16 542 r6
-mov r6 r0
-add r6 1024
-mod r6 4096
-set r7 1
-cmp r6 2048
-jlt open_cos_half
-sub r6 2048
-set r7 -1
-label open_cos_half
-set r8 2048
-sub r8 r6
-mul r8 r6
-mov r9 r8
-mul r9 4
-set r10 20971520
-sub r10 r9
-mul r8 262144
-div r8 r10
-mul r8 r7
-mul r8 r5
-div r8 16384
-load32 r9 334
-add r9 r8
-store32 100 r9
-mov r6 r0
-set r7 1
-cmp r6 2048
-jlt open_sin_half
-sub r6 2048
-set r7 -1
-label open_sin_half
-set r8 2048
-sub r8 r6
-mul r8 r6
-mov r9 r8
-mul r9 4
-set r10 20971520
-sub r10 r9
-mul r8 262144
-div r8 r10
-mul r8 r7
-mul r8 r5
-div r8 16384
-load32 r9 338
-sub r9 r8
-store32 104 r9
+cmp r0 65
+jne open_water_ready
+load32 r1 532
+sub r1 2000000000
+cmp r1 0
+jge open_bridge_abs
+mul r1 -1
+label open_bridge_abs
+cmp r1 110
+jlt open_water_ready
+cmp r1 340
+jgt open_water_ready
+load16 r2 520
+load16 r3 384
+add r2 r3
+localget r3 3726
+sub r3 30
+cmp r2 r3
+jlt open_bridge_piers
+cmp r1 155
+jlt open_water_ready
+jmp open_bridge_impact
+label open_bridge_piers
+load32 r0 330
+cmp r0 200000
+jle open_bridge_impact
+cmp r0 800000
+jlt open_water_ready
+label open_bridge_impact
+load32 r0 552
+store32 100 r0
+load32 r0 556
+store32 104 r0
 store16 261 32768
 store16 263 32768
 store16 110 0
 store16 112 32768
 store8 283 1
 label open_water_ready
+# Preserve world-space altitude when the support plane changes in mid-air.
+# Driving off a deck starts a fall instead of snapping into the river bed.
+localget r0 3728
+load16 r1 520
+sub r0 r1
+load16 r2 384
+cmp r2 0
+jgt open_air_support
+cmp r0 6
+jle open_floor_ready
+store16 386 10000
+label open_air_support
+add r2 r0
+cmp r2 0
+jgt open_air_above_floor
+set r2 0
+store16 386 10000
+store8 391 1
+label open_air_above_floor
+cmp r2 600
+jle open_air_height_bounded
+set r2 600
+label open_air_height_bounded
+store16 384 r2
+label open_floor_ready
 store8 527 0
 load32 r0 274
 cmp r0 158000
 jlt open_end_ready
 store8 527 1
-label open_end_ready`;
-}
+label open_end_ready`;}
 function extraObservation(){return `# Open-world ABI v3: legacy 26 observations followed by environment.
 load16 r10 520
 print r10

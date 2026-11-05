@@ -11,6 +11,13 @@ sub r4 r3
 mov r3 r4
 label wetlands_hop_fold
 add r1 r3
+localget r4 3315
+cmp r4 2
+jne wetlands_hop_done
+sub r3 6
+mul r3 r1
+div r3 1200
+add r0 r3
 label wetlands_hop_done
 localget r3 3314
 cmp r3 0
@@ -66,10 +73,10 @@ mul r5 r0
 sub r4 r5
 div r4 16384
 load32 r0 100
-sub r0 2000000
+sub r0 2000000000
 add r0 r3
 load32 r2 104
-sub r2 2000000
+sub r2 2000000000
 add r2 r4
 load16 r3 520
 add r1 r3

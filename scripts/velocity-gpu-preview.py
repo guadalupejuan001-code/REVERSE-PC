@@ -53,14 +53,22 @@ root=pathlib.Path(__file__).resolve().parents[1]/'reverse-os-android/app/src/mai
 scene=program(root/'gpu-scene.vert',root/'gpu-scene.frag');post=program(root/'gpu-post.vert',root/'gpu-post.frag')
 packet=pathlib.Path(sys.argv[1]).read_bytes();magic,width,height,revision,faces=struct.unpack_from('<4sHHII',packet)
 assert (magic,width,height,revision)==(b'XFG4',3840,2160,4) and len(packet)==2064+60*faces
-buckets=[[],[],[],[]]
+buckets=[[],[],[],[]];lamp=None
 for i in range(faces):
     values=struct.unpack_from('<9i6h3H6B',packet,2064+60*i)
     positions=values[:9];uv=values[9:15];shade=values[15:18];base,count,tile,strength,reserved0,reserved1=values[18:]
     assert not reserved0 and not reserved1
     category=0 if min(positions[2::3])>900000 else 2 if 24<=base<32 else (3 if strength else 6) if base==32 and count==8 else (4 if strength else 7) if base==244 else 5 if base==56 else 1
-    bucket=0 if category==0 else 1 if category==1 else 2 if category<=3 else 3
+    if base==57 and count==1:
+        pp=np.array(positions,dtype=np.float32).reshape(3,3);lamp=[]
+        for x,y,z in pp[:2]:lamp.extend([(x-width*.5)*z/(width*.85)*.01,(height*.5-y)*z/(width*.85)*.01,z*.01])
+        continue
+    if base==58 and count==2:category=11
+    if base in (221,223) and count==1:category=9
+    if base==14 and count==3 and strength==1:category=8
+    bucket=0 if category==0 else 1 if category in (1,8) else 2 if category in (2,3,9) else 3
     for v in range(3):buckets[bucket].append([*positions[v*3:v*3+3],*uv[v*2:v*2+2],shade[v]/65280,base,count,tile,strength,category])
+alpha_faces=[buckets[2][i:i+3] for i in range(0,len(buckets[2]),3)];alpha_faces.sort(key=lambda face:-sum(v[2] for v in face));buckets[2]=[v for face in alpha_faces for v in face]
 vertices=np.array([v for bucket in buckets for v in bucket],dtype=np.float32)
 vao=U();gl('glGenVertexArrays',None,I,P)(1,C.byref(vao));gl('glBindVertexArray',None,U)(vao)
 vbo=U();gl('glGenBuffers',None,I,P)(1,C.byref(vbo));gl('glBindBuffer',None,U,U)(0x8892,vbo)
@@ -88,6 +96,9 @@ gl('glUseProgram',None,U)(scene)
 def loc(name,p=scene):
     n=gl('glGetUniformLocation',I,U,C.c_char_p)(p,name.encode());assert n>=0,name;return n
 for name,val in [('uTime',3.4),('uDay',.12 if 'night' in sys.argv[2] else .48 if 'dusk' in sys.argv[2] else 1),('uYaw',float(os.getenv('VELOCITY_VIEW_YAW','0'))),('uWet',.6),('uWaterDepth',float(os.getenv('VELOCITY_WATER_DEPTH','0'))),('uAspect',w/h)]:gl('glUniform1f',None,I,F)(loc(name),val)
+lamp=lamp or [0,0,0,0,0,1]
+for name,values in [('uLampOrigin',lamp[:3]),('uLampDirection',[lamp[3+i]-lamp[i] for i in range(3)])]:gl('glUniform3f',None,I,F,F,F)(loc(name),*values)
+gl('glUniform1f',None,I,F)(loc('uLampPower'),1 if 'night' in sys.argv[2] else .6 if 'dusk' in sys.argv[2] else 0)
 gl('glUniform2f',None,I,F,F)(loc('uProjection'),width,height)
 for name,val in [('uPalette',0),('uAtlas',1)]:gl('glUniform1i',None,I,I)(loc(name),val)
 gl('glViewport',None,I,I,I,I)(0,0,w,h);gl('glClearColor',None,F,F,F,F)(.08,.12,.14,1);gl('glClear',None,U)(0x4000|0x0100)

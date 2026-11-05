@@ -37,10 +37,10 @@ set r1 2
 label open_light_ready
 store8 526 r1
 load32 r0 100
-sub r0 2000000
+sub r0 2000000000
 print r0
 load32 r1 104
-sub r1 2000000
+sub r1 2000000000
 print r1
 load16 r2 108
 print r2

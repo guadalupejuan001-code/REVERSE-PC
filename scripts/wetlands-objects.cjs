@@ -19,17 +19,7 @@ module.exports=function({object,tri,quad,box,strip}){
   const o=object(i,'flora'),c=point(i,side*750,heights[i]+4);
   for(let k=0;k<4;k++)tri(o,[c[0]-9+k*13,c[1],c[2]+k*18],[c[0]+k*13,c[1]+85+k*6,c[2]+k*18],[c[0]+8+k*13,c[1],c[2]+k*18],14+k%3);
  }
- // Squirrels have a head, ears, four legs and a visibly curled bushy tail.
- for(const i of [5,18,24,33,46,68]){
-  const o=object(i,'squirrel'),c=point(i,(i%2?-1:1)*430),at=(x,y,z)=>[c[0]+x,c[1]+y,c[2]+z];
-  box(o,at(0,23,0),[22,24,48],10);box(o,at(0,40,22),[22,22,22],11);
-  box(o,at(0,42,-29),[25,52,20],10);box(o,at(0,72,-15),[25,18,32],11);
-  for(const side of [-1,1]){
-   tri(o,at(side*7,48,21),at(side*9,62,18),at(side*3,49,26),9);
-   for(const z of [-13,15])tri(o,at(side*8-3,15,z),at(side*8+3,15,z),at(side*11,1,z+4),9,[0,0,side*(z>0?2:-2)]);
-   tri(o,at(side*11,43,24),at(side*12,43,28),at(side*11,46,26),226);
-  }
- }
+ require('./forest-squirrels.cjs')({object,tri,quad});
  // Body-mounted details follow the retained chassis pose in the XI transform.
  const car=()=>object(-1,'car');
  const wing=car();box(wing,[0,99,-208],[184,5,27],228);

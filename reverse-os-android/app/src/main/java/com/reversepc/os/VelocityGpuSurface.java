@@ -29,8 +29,9 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
     private int sceneProgram,postProgram,vao,vbo,paletteTexture,atlasTexture,photoTexture;
     private int framebuffer,colorTexture,depthBuffer,targetWidth,targetHeight;
     private int projectionU,aspectU,timeU,dayU,yawU,wetU,depthU,paletteU,atlasU;
-    private int imageU,texelU,photoU;
-    private boolean firstFrame;
+    private int imageU,texelU,photoU,lampOriginU,lampDirectionU,lampPowerU;
+    private final float[] lampFrame=new float[6];
+    private volatile boolean firstFrame;
     private int lastFx=-1;
     private ByteBuffer photoReadback;
     private final FloatBuffer vertices=ByteBuffer.allocateDirect(RegraphicsGeometry.MAX_FACES*3*RegraphicsGeometry.FLOATS*4).order(ByteOrder.nativeOrder()).asFloatBuffer();
@@ -72,7 +73,7 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
         if(!available())throw new IllegalStateException("GPU surface is not ready");
         synchronized(mailbox){if(queued!=null)throw new IllegalStateException("GPU mailbox already occupied");queued=request;}
         requestRender();
-        if(!request.done.await(request.width==3840?15:5,TimeUnit.SECONDS))throw new IllegalStateException("GPU frame timed out");
+        if(!request.done.await(request.width==3840||!firstFrame?15:5,TimeUnit.SECONDS))throw new IllegalStateException("GPU frame timed out");
         if(request.error!=null)throw request.error;
     }
     private String asset(String name){
@@ -90,6 +91,7 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
         try{
             sceneProgram=program("gpu-scene.vert","gpu-scene.frag");postProgram=program("gpu-post.vert","gpu-post.frag");
             projectionU=uniform(sceneProgram,"uProjection");aspectU=uniform(sceneProgram,"uAspect");timeU=uniform(sceneProgram,"uTime");dayU=uniform(sceneProgram,"uDay");yawU=uniform(sceneProgram,"uYaw");wetU=uniform(sceneProgram,"uWet");depthU=uniform(sceneProgram,"uWaterDepth");paletteU=uniform(sceneProgram,"uPalette");atlasU=uniform(sceneProgram,"uAtlas");
+            lampOriginU=uniform(sceneProgram,"uLampOrigin");lampDirectionU=uniform(sceneProgram,"uLampDirection");lampPowerU=uniform(sceneProgram,"uLampPower");
             imageU=uniform(postProgram,"uImage");texelU=uniform(postProgram,"uTexel");photoU=uniform(postProgram,"uPhoto");
             paletteTexture=texture();glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA8,256,1,0,GL_RGBA,GL_UNSIGNED_BYTE,null);
             atlasTexture=texture();glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);glTexImage2D(GL_TEXTURE_2D,0,GL_R8,128,16,0,GL_RED,GL_UNSIGNED_BYTE,null);
@@ -130,7 +132,7 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
         int fx=(r.state.nitroActive?1:0)|(r.state.airPulse>0?2:0)|(r.state.waterDepthCm>0?4:0);
         if(fx!=lastFx){lastFx=fx;Log.i("ReverseVelocity","GPU_FX_STATE nitro="+r.state.nitroActive+" air="+(r.state.airPulse>0)+" waterDepth="+r.state.waterDepthCm+" emittedNitro="+g.categoryFaces(5)+" emittedAir="+g.categoryFaces(4));}
         glBindVertexArray(vao);glBindBuffer(GL_ARRAY_BUFFER,vbo);glBufferSubData(GL_ARRAY_BUFFER,0,vertices.remaining()*4,vertices);
-        glUseProgram(sceneProgram);glUniform2f(projectionU,g.width,g.height);glUniform1f(aspectU,(float)w/h);glUniform1f(timeU,r.state.ticks*.02f);glUniform1f(dayU,r.state.ambientMode==0?1:r.state.ambientMode==1?.48f:.12f);glUniform1f(yawU,(r.state.yaw4096+r.yaw)*(float)(Math.PI/2048));glUniform1f(wetU,r.state.wetness/1000f);glUniform1f(depthU,r.state.waterDepthCm);
+        glUseProgram(sceneProgram);boolean lamp=g.lightFrame(lampFrame);glUniform3f(lampOriginU,lampFrame[0],lampFrame[1],lampFrame[2]);glUniform3f(lampDirectionU,lampFrame[3]-lampFrame[0],lampFrame[4]-lampFrame[1],lampFrame[5]-lampFrame[2]);glUniform1f(lampPowerU,lamp?(r.state.ambientMode==0?0:r.state.ambientMode==1?.6f:1):0);glUniform2f(projectionU,g.width,g.height);glUniform1f(aspectU,(float)w/h);glUniform1f(timeU,r.state.ticks*.02f);glUniform1f(dayU,r.state.ambientMode==0?1:r.state.ambientMode==1?.48f:.12f);glUniform1f(yawU,(r.state.yaw4096+r.yaw)*(float)(Math.PI/2048));glUniform1f(wetU,r.state.wetness/1000f);glUniform1f(depthU,r.state.waterDepthCm);
         paletteBytes.clear();for(int c:r.palette)paletteBytes.put((byte)(c>>16)).put((byte)(c>>8)).put((byte)c).put((byte)255);paletteBytes.flip();glActiveTexture(GL_TEXTURE0);glBindTexture(GL_TEXTURE_2D,paletteTexture);glTexSubImage2D(GL_TEXTURE_2D,0,0,0,256,1,GL_RGBA,GL_UNSIGNED_BYTE,paletteBytes);glUniform1i(paletteU,0);
         atlasBytes.clear();for(int y=0;y<16;y++)for(int tile=0;tile<8;tile++)for(int x=0;x<16;x++)atlasBytes.put(g.bytes[16+tile*256+y*16+x]);atlasBytes.flip();glActiveTexture(GL_TEXTURE1);glBindTexture(GL_TEXTURE_2D,atlasTexture);glTexSubImage2D(GL_TEXTURE_2D,0,0,0,128,16,GL_RED,GL_UNSIGNED_BYTE,atlasBytes);glUniform1i(atlasU,1);
         glDisable(GL_DEPTH_TEST);glDepthMask(false);glDisable(GL_BLEND);glDrawArrays(GL_TRIANGLES,g.starts[0],g.counts[0]);

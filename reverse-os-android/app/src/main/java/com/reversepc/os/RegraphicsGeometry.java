@@ -36,6 +36,10 @@ final class RegraphicsGeometry {
     private int category(int at){
         int base=bytes[at+54]&255,count=bytes[at+55]&255,strength=bytes[at+57]&255;
         if(i32(bytes,at+8)>900000&&i32(bytes,at+20)>900000&&i32(bytes,at+32)>900000)return 0;
+        if(base==57&&count==1)return 10;
+        if(base==58&&count==2)return 11;
+        if((base==223||base==221)&&count==1)return 9;
+        if(base==14&&count==3&&strength==1)return 8;
         if(base>=24&&base<32)return 2;
         if(base==32&&count==8)return strength>0?3:6;
         if(base==244)return strength>0?4:7;
@@ -43,13 +47,22 @@ final class RegraphicsGeometry {
         return 1;
     }
     int categoryFaces(int wanted){int n=0;for(int i=0;i<faces;i++)if(category(HEADER+ATLAS+i*FACE_BYTES)==wanted)n++;return n;}
-    private static int pass(int category){return category==0?0:category==1?1:category<=3?2:3;}
+    private static int pass(int category){return category==10?-1:category==0?0:category==1||category==8?1:category==2||category==3||category==9?2:3;}
+    boolean lightFrame(float[] frame){
+        for(int i=0;i<faces;i++){int at=HEADER+ATLAS+i*FACE_BYTES;if(category(at)!=10)continue;
+            for(int v=0;v<2;v++){float z=i32(bytes,at+v*12+8);frame[v*3]=(i32(bytes,at+v*12)-width*.5f)*z/(width*.85f)*.01f;frame[v*3+1]=(height*.5f-i32(bytes,at+v*12+4))*z/(width*.85f)*.01f;frame[v*3+2]=z*.01f;}return true;
+        }return false;
+    }
+    private int depth(int face){int at=HEADER+ATLAS+face*FACE_BYTES;return i32(bytes,at+8)+i32(bytes,at+20)+i32(bytes,at+32);}
+    private void sort(int[] ids,int low,int high){int l=low,r=high,pivot=depth(ids[(low+high)>>>1]);while(l<=r){while(depth(ids[l])>pivot)l++;while(depth(ids[r])<pivot)r--;if(l<=r){int t=ids[l];ids[l++]=ids[r];ids[r--]=t;}}if(low<r)sort(ids,low,r);if(l<high)sort(ids,l,high);}
     void vertices(FloatBuffer out){
         out.clear();int emitted=0;
         for(int p=0;p<4;p++){
             starts[p]=emitted;
-            for(int i=0;i<faces;i++){
-                int at=HEADER+ATLAS+i*FACE_BYTES,c=category(at);if(pass(c)!=p)continue;
+            int[] order=null;int total=faces;
+            if(p==2){order=new int[faces];total=0;for(int i=0;i<faces;i++)if(pass(category(HEADER+ATLAS+i*FACE_BYTES))==2)order[total++]=i;if(total>1)sort(order,0,total-1);}
+            for(int f=0;f<total;f++){
+                int i=order==null?f:order[f];int at=HEADER+ATLAS+i*FACE_BYTES,c=category(at);if(pass(c)!=p)continue;
                 int base=bytes[at+54]&255,count=bytes[at+55]&255,tile=bytes[at+56]&255,strength=bytes[at+57]&255;
                 for(int v=0;v<3;v++){
                     out.put(i32(bytes,at+v*12)).put(i32(bytes,at+v*12+4)).put(i32(bytes,at+v*12+8));

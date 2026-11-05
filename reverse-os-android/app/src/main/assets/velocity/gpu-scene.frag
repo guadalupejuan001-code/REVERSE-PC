@@ -9,6 +9,8 @@ flat in float vCategory;
 uniform sampler2D uPalette;
 uniform sampler2D uAtlas;
 uniform float uTime,uDay,uYaw,uWet,uWaterDepth;
+uniform vec3 uLampOrigin,uLampDirection;
+uniform float uLampPower;
 out vec4 color;
 vec3 palette(float index){return texelFetch(uPalette,ivec2(int(clamp(index,0.0,255.0)),0),0).rgb;}
 float hash(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
@@ -52,7 +54,9 @@ void main(){
     vec3 R=reflect(-V,N);float alpha=1.0;
     bool paint=base>=64.0&&base<184.0,glass=base>=184.0&&base<208.0;
     bool metal=(base>=212.0&&base<224.0)||base==241.0;
-    if(paint||glass||metal){
+    if(vCategory==9.0){rgb=mix(base==221.0?vec3(.65,.035,.055):vec3(.55,.77,.94),environment(R),.35)+vec3(.15)*fresnel;alpha=.22;}
+    else if(vCategory==11.0){rgb=vec3(.64,.83,1.0);alpha=.014*uLampPower*(1.0-smoothstep(2.0,22.0,length(vPosition-uLampOrigin)));}
+    else if(paint||glass||metal){
         float rough=paint?mix(.24,.12,uWet):glass?.09:.19;
         float spec=pow(max(dot(N,normalize(L+V)),0.0),mix(24.0,160.0,1.0-rough));
         if(paint){
@@ -70,7 +74,7 @@ void main(){
         alpha=.76;
     }else if(vCategory==2.0){
         rgb=vec3(.018,.029,.027);alpha=.10+vShade*.42;
-    }else if(vCategory>=4.0){
+    }else if(vCategory>=4.0&&vCategory<8.0){
         float flow=.72+.28*sin(vUv.y*.7+uTime*24.0);
         if(vCategory==5.0){
             float side=sin(clamp(vUv.x/16.0,0.0,1.0)*3.14159265),tail=1.0-smoothstep(.55,1.0,vUv.y/64.0);
@@ -86,6 +90,7 @@ void main(){
         if(base>=12.0&&base<20.0){
             float patches=fbm(vUv*.025),fine=noise(vUv*.9);
             rgb*=.70+patches*.43+fine*.12;
+            if(abs(N.y)>.7){float fibres=sin(vUv.x*19.0+sin(vUv.y*4.0+uTime*1.6)*.9)*sin(vUv.y*23.0);rgb+=vec3(.018,.035,.009)*smoothstep(.55,.95,fibres);}
             rgb=mix(rgb,rgb*vec3(1.18,1.05,.74),smoothstep(.57,.82,patches)*.32);
         }
         if(base>=9.0&&base<12.0){
@@ -94,9 +99,15 @@ void main(){
         }
         if(base>=40.0&&base<56.0)rgb+=environment(R)*(.035+uWet*.12)*pow(max(dot(N,normalize(L+V)),0.0),55.0);
     }
+    if(uLampPower>0.0&&(vCategory<4.0||vCategory==8.0)){
+        vec3 D=vPosition-uLampOrigin,axis=normalize(uLampDirection);float along=dot(D,axis),radial=length(D-axis*along);
+        float cone=(1.0-smoothstep(.35+max(0.0,along)*.10,.8+max(0.0,along)*.22,radial))*step(0.0,along);
+        float reach=1.0-smoothstep(9.0,42.0,along);
+        rgb+=vec3(.75,.88,1.0)*uLampPower*cone*reach*(.24+.5*abs(dot(N,normalize(-D))));
+    }
     if(base==242.0)rgb=vec3(.88,.035,.065);
     if(base==224.0||base==225.0)rgb*=2.3;
     float fog=1.0-exp(-max(0.0,vPosition.z-70.0)*.0036);
-    if(vCategory<4.0)rgb=mix(rgb,palette(4.0),fog*.68);
+    if(vCategory<4.0||vCategory==8.0||vCategory==9.0)rgb=mix(rgb,palette(4.0),fog*.68);
     color=vec4(max(rgb,vec3(0.0)),alpha);
 }

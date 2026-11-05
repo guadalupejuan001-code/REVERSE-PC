@@ -7,9 +7,9 @@ int main(int argc,char**argv){try{
  const auto source=read(root/"render4k.xi");Runtime seed;seed.execute(read(root/"world.xi"));seed.execute(header+"store8 128 0\nstore8 129 0\nstore8 130 1\nstore8 132 1\n"+read(root/"drive.xi").substr(header.size()));
  const auto initial=reverse_pc::rvpc2::save(seed);int cases=0;
  for(int yaw:{0,700,2048,4095})for(int pitch:{0,450}){
-  const std::vector<std::pair<std::uint32_t,std::uint8_t>> input{{200,1},{201,0},{202,0},{203,0},{204,std::uint8_t(yaw)},{205,std::uint8_t(yaw>>8)},{206,std::uint8_t(pitch)},{207,std::uint8_t(pitch>>8)}};
+  const std::vector<std::pair<std::uint32_t,std::uint8_t>> input{{141,1},{200,1},{201,0},{202,0},{203,0},{204,std::uint8_t(yaw)},{205,std::uint8_t(yaw>>8)},{206,std::uint8_t(pitch)},{207,std::uint8_t(pitch>>8)}};
   const auto actual=reverse_pc::observe_geometry(initial,source,input);
-  auto legacy=reverse_pc::rvpc2::restore(initial);const auto expected=legacy.execute(header+"store8 200 1\nstore8 201 0\nstore8 202 0\nstore8 203 0\nstore16 204 "+std::to_string(yaw)+"\nstore16 206 "+std::to_string(pitch)+"\n"+source.substr(header.size()));
+  auto legacy=reverse_pc::rvpc2::restore(initial);const auto expected=legacy.execute(header+"store8 141 1\nstore8 200 1\nstore8 201 0\nstore8 202 0\nstore8 203 0\nstore16 204 "+std::to_string(yaw)+"\nstore16 206 "+std::to_string(pitch)+"\n"+source.substr(header.size()));
   check(actual==expected,"immutable byte mailbox equals XI-authored control instructions");
   check(reverse_pc::rvpc2::save(seed)==initial,"GPU observation cannot mutate authoritative Ether");
   std::ofstream f(out/("gpu-"+std::to_string(yaw)+"-"+std::to_string(pitch)+".xfg4"),std::ios::binary);f.write(actual.data(),actual.size());cases++;
@@ -22,7 +22,7 @@ int main(int argc,char**argv){try{
   auto r=reverse_pc::rvpc2::restore(initial);double dx=route[2*segment+2]-route[2*segment],dz=route[2*segment+3]-route[2*segment+1],len=std::hypot(dx,dz),a=std::atan2(dx,dz);
   long long x=std::llround((route[2*segment]+route[2*segment+2])/2.+lateral*dz/len),z=std::llround((route[2*segment+1]+route[2*segment+3])/2.-lateral*dx/len);
   int heading=(int(std::llround(a*4096/(2*std::acos(-1.))))+4096)%4096;
-  r.execute(header+"store32 100 "+std::to_string(2000000+x)+"\nstore32 104 "+std::to_string(2000000+z)+"\nstore8 273 "+std::to_string(segment)+"\nstore16 108 "+std::to_string(heading)+"\nstore16 261 "+std::to_string(32768+int(speed*std::sin(a)))+"\nstore16 263 "+std::to_string(32768+int(speed*std::cos(a)))+"\nstore16 110 "+std::to_string(speed)+"\nhalt\n");return r;
+  r.execute(header+"store32 100 "+std::to_string(2000000000+x)+"\nstore32 104 "+std::to_string(2000000000+z)+"\nstore8 273 "+std::to_string(segment)+"\nstore16 108 "+std::to_string(heading)+"\nstore16 261 "+std::to_string(32768+int(speed*std::sin(a)))+"\nstore16 263 "+std::to_string(32768+int(speed*std::cos(a)))+"\nstore16 110 "+std::to_string(speed)+"\nhalt\n");return r;
  };
  auto dry=pose(1,0,1200),mud=pose(21,0,1200),water=pose(28,0,1200),puddle=pose(4,0,1200);State d{},m{},w{},p{};
  for(int i=0;i<4;i++){d=observe(dry.execute(command(0,0,0)));m=observe(mud.execute(command(0,0,0)));w=observe(water.execute(command(0,0,0)));p=observe(puddle.execute(command(0,0,0)));}
@@ -30,8 +30,8 @@ int main(int argc,char**argv){try{
  check(w[25]==4&&w[32]>0&&w[34]>0&&w[3]<d[3],"river has depth, spray and water drag");
  check(p[32]==4&&p[34]>0,"authored standing puddle has a physical wet footprint");
  save(water,out/"gpu-ford.rvp");
- for(int lateral:{-1000,1000}){auto r=pose(28,lateral,0);auto s=observe(r.execute(command(0,0,0)));check(s[14]&&s[3]==0,"both ford banks are bounded without signed16 exceptions");}
- const std::vector<std::pair<std::uint32_t,std::uint8_t>> view{{200,1},{201,0},{202,0},{203,0},{204,188},{205,2},{206,0},{207,0}};
+ for(int lateral:{-1000,1000}){auto r=pose(28,lateral,0);auto s=observe(r.execute(command(0,0,0)));check(!s[14],"ford banks permit open exploration without an artificial clamp");}
+ const std::vector<std::pair<std::uint32_t,std::uint8_t>> view{{141,1},{200,1},{201,0},{202,0},{203,0},{204,188},{205,2},{206,0},{207,0}};
  auto geometry=[&](const Runtime& r,const std::string& name){const auto frame=reverse_pc::observe_geometry(reverse_pc::rvpc2::save(r),source,view);std::ofstream f(out/(name+".xfg4"),std::ios::binary);f.write(frame.data(),frame.size());return frame;};
  auto countBase=[](const std::string& frame,int base){int n=0;for(std::size_t at=2064;at+60<=frame.size();at+=60)if((unsigned char)frame[at+54]==base)n++;return n;};
  auto effects=reverse_pc::rvpc2::restore(initial);effects.execute(command(1,0,1));const auto nitro=geometry(effects,"gpu-nitro");

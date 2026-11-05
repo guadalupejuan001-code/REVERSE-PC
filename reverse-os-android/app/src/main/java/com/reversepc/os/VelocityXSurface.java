@@ -31,6 +31,8 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     private final VelocityLoopLifecycle lifecycle,physicsLifecycle;
     private final AtomicBoolean resetRequested=new AtomicBoolean();
     private final AtomicBoolean repaintRequested=new AtomicBoolean(true);
+    private volatile int analogSteering=255;
+    void steering(int value){analogSteering=value;}
     private volatile int input=4,cameraMode,paintId,carId,assistMode;
     // Packed yaw+elevation is read atomically by the XI render thread.
     private volatile int orbitPacked;
@@ -265,7 +267,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     previousReverse=reverse;
                 }
                 game.step(current&1,(current>>>1)&1,(current>>>2)&3,(current>>>4)&1,
-                     (current&32)!=0,(current&64)!=0,reverse,false,assistMode);
+                     (current&32)!=0,(current&64)!=0,reverse,false,assistMode,analogSteering);
                 measuredSteps++;
                 next+=20_000_000L;
                 // Keep fixed XI steps; a slow host does not invent simulation ticks.

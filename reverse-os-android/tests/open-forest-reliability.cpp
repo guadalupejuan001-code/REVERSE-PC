@@ -30,7 +30,7 @@ int main(int argc,char** argv){int pose=0;try{
   const int heading=(int(std::llround(std::atan2(dx,dz)*4096/(2*std::acos(-1.))))+4096+pose%4*1024)%4096;
   const auto x=std::llround((p[2*segment]+p[2*segment+2])/2.+side*dz/length);
   const auto z=std::llround((p[2*segment+1]+p[2*segment+3])/2.-side*dx/length);
-  r.execute(header+"store32 100 "+std::to_string(2000000+x)+"\nstore32 104 "+std::to_string(2000000+z)+"\nstore8 273 "+std::to_string(segment)+"\nstore16 108 "+std::to_string(heading)+"\nstore8 137 "+std::to_string(1+pose%3)+"\nhalt\n");
+  r.execute(header+"store32 100 "+std::to_string(2000000000+x)+"\nstore32 104 "+std::to_string(2000000000+z)+"\nstore8 273 "+std::to_string(segment)+"\nstore16 108 "+std::to_string(heading)+"\nstore8 137 "+std::to_string(1+pose%3)+"\nhalt\n");
   for(int n=0;n<48;n++){const auto s=observe(r.execute(input(n,direction)));check(std::abs(s[0])<100000&&s[1]>-10000&&s[1]<180000,"manual physics stays in the finite world");ticks++;}
   const auto retained=reverse_pc::rvpc2::save(r);
   const int stride=pose%3==0?4:pose%3==1?2:1;
