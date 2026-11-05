@@ -140,6 +140,8 @@ scene.pulse=scene.energy=scene.shake=0;
 scene.diagnostics=false;scene.qualityScale=1;scene.stageExplosions=[];
 scene.visualState={quality:'balanced',slowFrames:0,fastFrames:0,cooldownUntil:0};
 scene.setMusicStage(map);
+const delayed={t:1,lane:1,row:1,kind:'cut',color:0};scene.flowPositions.set(delayed,-.9);
+check(Math.abs(scene.motion(delayed,1.3).delta+.3)<1e-8,'Live picking uses a newer frame instead of the gesture timestamp');
 check(scene.armCombo(10,1.22),'scene integration did not arm');
 scene.render(1.35,1/60,[],false,0,0,true);
 check(scene.stageShow?.charge?.combo===10,'scene lost charge');

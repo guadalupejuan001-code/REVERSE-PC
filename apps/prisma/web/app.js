@@ -4,7 +4,7 @@ import { hitWindowFor, isEndOfSong, nearestSwipeNote, nearestKeyNote, timingLabe
 import { makeMusicStage } from './music-stage.js';
 import { SustainController, PhraseController } from './note-flow.js';
 import { WORLDS, WORLD_IDS, Constellation } from './festival-worlds.js';
-import { scoreRules, recordRules, keepRecord, FLOW_EARLY_GRACE } from './flow-gameplay.js';
+import { scoreRules, recordRules, keepRecord, FLOW_EARLY_GRACE, flowCandidates } from './flow-gameplay.js';
 const $ = id => document.getElementById(id);
 const all = selector => [...document.querySelectorAll(selector)];
 const clamp = (v,a,b) => Math.max(a,Math.min(b,v));
@@ -197,7 +197,7 @@ function withinHold(note,input){
 function cut(note,t,dx,dy,isTap=false,isKey=false,input=null){
   if(note.hit||note.missed||note.holding)return false;
   const delta=note.t+settings.latency/1000-t;
-  if(level==='flow'?!scene.visibleNotes?.includes(note):Math.abs(delta)>hitWindow())return false;
+  if(level==='flow'?flowCoda&&!scene.visibleNotes?.includes(note):Math.abs(delta)>hitWindow())return false;
   if(level==='flow'&&!flowCoda&&(delta>FLOW_EARLY_GRACE||delta<-hitWindow()))return false;
   const dir=DIRECTIONS[note.dir],length=Math.hypot(dx,dy),correct=length?(dx*dir.x+dy*dir.y)/length>.43:false;
   if(level!=='flow'&&settings.precise&&note.kind!=='hold'&&(!correct||isTap))return false;
@@ -213,7 +213,8 @@ function processSwipe(ax,ay,bx,by,isTap=false,input=null,eventStamp){
   if(status!=='playing')return false;const t=audio.inputTime(eventStamp);if(t<0)return false;
   const dx=bx-ax,dy=by-ay;if(!isTap&&Math.hypot(dx,dy)<3)return false;
   if(scene.diagnostics)$('game').dataset.lastInputTime=t.toFixed(4);
-  const note=nearestSwipeNote(level==='flow'?scene.visibleNotes||[]:chart,t,settings.latency/1000,level,ax,ay,bx,by,
+  const targets=level==='flow'?(flowCoda?scene.visibleNotes||[]:flowCandidates(chart,t,settings.latency/1000,scene.travel)):chart;
+  const note=nearestSwipeNote(targets,t,settings.latency/1000,level,ax,ay,bx,by,
     (n,at,latency)=>scene.noteProjection(n,at,latency),{precise:settings.precise,isTap,lookAhead:scene.travel,recovery:flowCoda});
   if(!note&&isTap&&level==='flow'&&!flowCoda){
     const early=scene.visibleNotes?.some(n=>{if(n.t+settings.latency/1000-t<=FLOW_EARLY_GRACE)return false;const p=scene.noteProjection(n,t,settings.latency/1000);return Math.hypot(bx-p.x,by-p.y)<Math.max(27,p.s*.55);});
@@ -252,7 +253,8 @@ document.addEventListener('keydown',e=>{
   if(sustains.regrab(input,audio.time(),n=>n.dir===keyIndex))return;
   if(inputOwnsHold(input))return;
   const t=audio.inputTime(e.timeStamp);
-  const note=nearestKeyNote(level==='flow'?scene.visibleNotes||[]:chart,t,settings.latency/1000,level,keyIndex,scene.travel,flowCoda);
+  const targets=level==='flow'?(flowCoda?scene.visibleNotes||[]:flowCandidates(chart,t,settings.latency/1000,scene.travel)):chart;
+  const note=nearestKeyNote(targets,t,settings.latency/1000,level,keyIndex,scene.travel,flowCoda);
   if(note){const n=note,d=DIRECTIONS[keyIndex],p=scene.noteProjection(n,t,settings.latency/1000),id='key-'+performance.now();scene.addTrail(id,p.x-d.x*50,p.y-d.y*50,PALETTES[settings.palette][n.color]);scene.addTrail(id,p.x+d.x*50,p.y+d.y*50,PALETTES[settings.palette][n.color]);scene.endTrail(id);cut(n,t,d.x*100,d.y*100,false,true,input);}
 
 });

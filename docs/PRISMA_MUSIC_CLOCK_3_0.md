@@ -23,6 +23,11 @@ cambia el antiguo valor inicial de 4,8 s una vez y conserva otros valores que
 se hubieran elegido. El control modifica la lectura y la velocidad de llegada,
 no el momento musical del golpe.
 
+Los eventos de entrada pueden conservar hasta un segundo de retraso de entrega.
+El corte se evalúa con la hora del gesto y su posición correspondiente, incluso
+si la nota ya salió de la lista del cuadro actual. Las posiciones guardadas para
+la recuperación final no se reutilizan al seleccionar notas durante la música.
+
 ## Margen de Flow y recuperación
 
 - Un toque o corte por cubo, sin sostenidas.

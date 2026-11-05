@@ -82,7 +82,9 @@ export class Scene {
     return {x:cx + x * scale,y:cy + y * scale,s:scale};
   }
   motion(note,t,latency=0){
-    const remaining=this.level==='flow'?this.flowPositions?.get(note):undefined;
+    // Live picking must honor the supplied event time, including a delayed
+    // native pointer. Only end recovery uses a presentation queue/cache.
+    const remaining=this.level==='flow'&&this.flowRecovery?this.flowPositions?.get(note):undefined;
     const m=noteMotion(note,remaining===undefined?t:note.t+latency-remaining,latency,this.travel||4.8);
     if(this.level==='flow'){
       m.alpha=1;

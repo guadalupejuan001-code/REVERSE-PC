@@ -92,6 +92,10 @@ test(Math.abs(audio.time()-.2)<1e-8,'Resuming shifted the hit clock');
 audio.ctx.currentTime=7.15;
 test(Math.abs(audio.time()-.35)<1e-8,'Resumed playback time drift');
 audio.stop();test(!audio.running,'Audio engine failed to stop');
+const originalTime=audio.time;audio.time=()=>8.5;
+test(Math.abs(audio.inputTime(performance.now()-500)-8)<.01,'A delayed native event lost its original musical time');
+test(Math.abs(audio.inputTime(performance.now()-1500)-8.5)<.01,'An obsolete event was backdated across sessions');
+audio.time=originalTime;
 
 const cb=await load('concert-rig.js'),effects=await load('combo-spectacle.js'),
   music=await load('music-stage.js'),policy=await load('performance-policy.js');
