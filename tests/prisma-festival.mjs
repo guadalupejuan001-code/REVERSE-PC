@@ -53,6 +53,9 @@ for(const ch of p.chapters.slice(1)){
 const clips=[];const ctx={beginPath(){},rect(...v){clips.push(v)},clip(){clips.push('clip')}};
 f.protectPlayfield(ctx,1000,500);check(clips.length===5,'Worlds do not protect the playfield');
 check(clips[1][2]===285&&clips[2][0]===715,'Effects invade the central strike zone');
+const heads=[],paint={save(){},restore(){},beginPath(){},rect(){},clip(){},moveTo(){},lineTo(){},stroke(){},fillRect(x,y){heads.push([x+.6,y+.6]);}};
+f.drawFireworks(paint,1000,500,[{id:0,cx:.16,cy:.3,flash:0,sparks:[{x:.26,y:.3,dx:0,dy:0,alpha:1},{x:.16,y:.4,dx:0,dy:0,alpha:1}]}],f.WORLDS[0]);
+check(Math.abs(Math.hypot(heads[0][0]-160,heads[0][1]-150)-Math.hypot(heads[1][0]-160,heads[1][1]-150))<1e-6,'Circular shell became an ellipse on a landscape screen');
 const src=readFileSync(new URL('../apps/prisma/web/festival-worlds.js',import.meta.url),'utf8');
 check(!/Math\.random|setInterval|setTimeout|AudioContext|createBufferSource/.test(src),'Festival owns a timer, RNG or audio source');
 console.log(JSON.stringify({suite:'prisma-festival',passed,worlds:f.WORLD_IDS,chapters:p.chapters.length,shells:p.shells.length,maxSparks:160}));

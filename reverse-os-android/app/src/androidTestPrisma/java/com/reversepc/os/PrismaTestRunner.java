@@ -65,7 +65,7 @@ public final class PrismaTestRunner extends Instrumentation {
             }
             until("localStorage.getItem('prisma.upgrade-proof')==='2.6-to-2.7'&&JSON.parse(localStorage.getItem('prisma.records')||'[]').some(r=>r.score===137)",10);
             require("true".equals(js("document.documentElement.classList.contains('native-xrender')&&!document.querySelector('.gpu-canvas')")),"Native X Render was replaced");
-            js("window.__errors=[];addEventListener('error',e=>__errors.push(e.message));window.__musicSources=0;const originalSource=AudioContext.prototype.createBufferSource;AudioContext.prototype.createBufferSource=function(){__musicSources++;const ctx=this,node=originalSource.call(this),start=node.start;node.start=function(when=0,offset=0){window.__audio={ctx,when,offset};return start.apply(this,arguments)};return node;};import('/audio.js').then(m=>window.__clock=m.outputClock);true");
+            js("window.__errors=[];addEventListener('error',e=>__errors.push(e.message));window.__musicSources=0;const originalSource=AudioContext.prototype.createBufferSource;AudioContext.prototype.createBufferSource=function(){__musicSources++;const ctx=this,node=originalSource.call(this),start=node.start;node.start=function(when=0,offset=0){window.__audio={ctx,when,offset};return start.apply(this,arguments)};return node;};import(location.origin+'/audio.js').then(m=>window.__clock=m.outputClock).catch(e=>window.__clockError=String(e));true");
             until("typeof __clock==='function'",10);
             tap("#startBtn");until("document.body.classList.contains('is-playing')",50);
             until("+document.getElementById('game').dataset.laserCount>0",10);

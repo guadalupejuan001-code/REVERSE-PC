@@ -181,6 +181,7 @@ export function drawWorld(ctx,w,h,frame,time,{preview=false,reduced=false,batter
 
 export function drawFireworks(ctx,w,h,events,spec,{preview=false,battery=false}={}){
   if(!events.length)return;ctx.save();protectPlayfield(ctx,w,h,preview);ctx.globalCompositeOperation='lighter';ctx.lineCap='round';
+  const scale=Math.min(w,h);
   for(const e of events){
     const color=spec.colors[e.id%2],r=e.rocket;
     if(r){
@@ -189,9 +190,9 @@ export function drawFireworks(ctx,w,h,events,spec,{preview=false,battery=false}=
     }
     if(e.flash){ctx.beginPath();ctx.arc(e.cx*w,e.cy*h,7,0,TAU);ctx.fillStyle='#fff6e8';ctx.globalAlpha=e.flash;ctx.fill();}
     for(const p of e.sparks){
-      ctx.globalAlpha=p.alpha;const x=p.x*w,y=p.y*h,col=p.gold?'#ffd684':color;
-      if(!battery){stroke(ctx,[[x-p.dx*w*2,y-p.dy*h*2],[x,y]],col+'38',3);}
-      stroke(ctx,[[x-p.dx*w,y-p.dy*h],[x,y]],col,1.25);ctx.fillStyle='#fff3d8';ctx.fillRect(x-.6,y-.6,1.2,1.2);
+      ctx.globalAlpha=p.alpha;const x=e.cx*w+(p.x-e.cx)*scale,y=e.cy*h+(p.y-e.cy)*scale,col=p.gold?'#ffd684':color;
+      if(!battery){stroke(ctx,[[x-p.dx*scale*2,y-p.dy*scale*2],[x,y]],col+'38',3);}
+      stroke(ctx,[[x-p.dx*scale,y-p.dy*scale],[x,y]],col,1.25);ctx.fillStyle='#fff3d8';ctx.fillRect(x-.6,y-.6,1.2,1.2);
     }
   }
   ctx.restore();
