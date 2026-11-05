@@ -101,7 +101,7 @@ public final class PrismaTestRunner extends Instrumentation {
             require(render.optLong("frames")>30,"Native renderer did not advance");
             require(render.optString("renderer").equals("ether-render-x-gpu")&&render.optInt("world_vertices")>1000,"Geometry is still calculated on CPU or no 3D world was submitted");
             require(render.optInt("depth_bits")>=24&&render.optInt("world_uploads")==5,"GPU depth buffer/model cache missing");
-            require("true".equals(js("document.getElementById('game').dataset.mesh3d==='true'&&+document.getElementById('game').dataset.lookAhead>=3.6")),"3D mode/read-ahead not active");
+            require("true".equals(js("document.getElementById('game').dataset.mesh3d==='true'&&Math.abs(+document.getElementById('game').dataset.lookAhead-3.4)<.001")),"3D mode or the new 3.4-second default is not active");
             File folder=new File(getTargetContext().getExternalFilesDir(null),"prisma-evidence");folder.mkdirs();
             Bitmap image=getUiAutomation().takeScreenshot();try(FileOutputStream out=new FileOutputStream(new File(folder,"PRISMA-3.0-Android.png"))){image.compress(Bitmap.CompressFormat.PNG,100,out);}image.recycle();
             JSONObject report=new JSONObject().put("android_gameplay",true).put("speakers",2).put("cut_audio_sources",0).put("music_sources",1).put("native_render",render).put("ui",new JSONObject(js("(()=>{const c=document.getElementById('game');return {width:c.width,height:c.height,ratio:c.width/c.getBoundingClientRect().width,lasers:+c.dataset.laserCount}})()")));
