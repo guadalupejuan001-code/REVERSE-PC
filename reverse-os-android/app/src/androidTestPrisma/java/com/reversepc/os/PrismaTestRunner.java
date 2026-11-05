@@ -97,8 +97,9 @@ public final class PrismaTestRunner extends Instrumentation {
             js("document.getElementById('world').value='journey';document.getElementById('world').dispatchEvent(new Event('change'));true");
             require("true".equals(js("document.body.classList.contains('is-playing')")),"Session ended before pause test");
             tap("#pauseBtn");until("!document.getElementById('pauseOverlay').hidden",5);
-            js("(()=>{const p=new Array(16+128*12).fill(0);p.splice(0,16,3,0,.5,0,.5,.49,.6,1.2,.4,1,.7,1,.3,.5,65280,128);for(let i=0;i<128;i++){const j=16+i*12;p[j]=(i%16-7.5)*.15;p[j+1]=(Math.floor(i/16)-3.5)*.15;p[j+2]=i*.025;p[j+3]=.10;p[j+4]=.5;p[j+5]=1;p[j+6]=.7;p[j+7]=1;p[j+9]=i%4;p[j+11]=1;}ReverseGraphics.frame(p);return true})()");
+            js("(()=>{const p=new Array(16+128*12).fill(0);p.splice(0,16,3,0,.5,0,.5,.49,.6,1.2,.4,1,.7,1,.3,.5,65280,128);for(let i=0;i<128;i++){const j=16+i*12;p[j]=(i%16-7.5)*.15;p[j+1]=(Math.floor(i/16)-3.5)*.15;p[j+2]=i*.025;p[j+3]=.10;p[j+4]=.5;p[j+5]=1;p[j+6]=.7;p[j+7]=1;p[j+9]=i%4;p[j+11]=1;}window.__gpuStress=setInterval(()=>ReverseGraphics.frame(p),40);ReverseGraphics.frame(p);return true})()");
             until("JSON.parse(ReverseGraphics.xRenderInfo()).note_instances===128",8);
+            js("clearInterval(__gpuStress);true");
             report.put("gpu_note_capacity_128",true);
             tap("#resumeBtn");until("document.body.classList.contains('is-playing')",5);
             report.put("pause_resume",true);

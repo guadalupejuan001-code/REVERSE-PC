@@ -39,6 +39,9 @@ Los shaders compartidos tienen una copia C++ generada y verificada con
 - El nuevo paquete v3 admite 128 cubos. La prueba de entrada densa produce 68
   notas simultáneamente visibles a 5,2 segundos; no se truncan a 64. Las
   versiones anteriores conservan su límite y su contrato.
+- Si dos ataques ocupan el mismo objetivo y admiten el mismo gesto, se corta
+  primero el pendiente más antiguo que aún está dentro de su ventana. Así la
+  selección coincide con el número 1 en lugar de saltar a una nota posterior.
 
 La puntuación continúa en XI. Los escenarios y las celebraciones no inventan
 aciertos. Se preservan el reloj de salida, el ajuste manual, las sostenidas,
