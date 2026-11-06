@@ -38,7 +38,7 @@ public final class VelocityActivity extends Activity {
     private static final String[] CAMERAS={"Seguimiento","Cercana","Capó"};
     private VelocityXSurface surface;
     private VelocityGpuSurface gpu;
-    private FrameLayout root,drawer;
+    private FrameLayout root,hudLayer,drawer;
     private LinearLayout drawerBody;
     private TextView speed,timer,status,warning,renderInfo,sector,countdown;
     private Button gearButton;
@@ -68,7 +68,7 @@ public final class VelocityActivity extends Activity {
         Button b=new Button(this);b.setText(label);b.setTextColor(WHITE);b.setTextSize(12);b.setAllCaps(false);
         b.setTypeface(Typeface.create("sans-serif-medium",Typeface.NORMAL));
         b.setMinWidth(0);b.setMinimumWidth(0);b.setMinHeight(0);b.setMinimumHeight(0);
-        b.setPadding(dp(14),0,dp(14),0);
+        b.setPadding(dp(14),0,dp(14),0);b.setStateListAnimator(null);b.setElevation(0);
         StateListDrawable bg=new StateListDrawable();
         bg.addState(new int[]{android.R.attr.state_pressed},shape(0xff344139,0xff87a563,14));
         bg.addState(new int[]{android.R.attr.state_selected},shape(0xff273326,ACCENT,14));
@@ -154,33 +154,36 @@ public final class VelocityActivity extends Activity {
             gpu=new VelocityGpuSurface(this,()->surface.invalidateGpu());gpu.setOnTouchListener((v,e)->surface.onTouchEvent(e));
             surface.attachGpu(gpu);root.addView(gpu,new FrameLayout.LayoutParams(-1,-1));
         }
-        View wash=new View(this);wash.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,new int[]{0x8c111619,0x00111619}));add(root,wash,-1,102,Gravity.TOP,0,0,0,0);
-        TextView monogram=text("RV",21,ACCENT);monogram.setGravity(Gravity.CENTER);monogram.setTypeface(Typeface.create("sans-serif-condensed",Typeface.BOLD));monogram.setBackground(shape(0xc9141b1c,0x704d6252,12));add(root,monogram,40,40,Gravity.TOP|Gravity.LEFT,16,16,0,0);
-        TextView brand=text("REVERSE\nVELOCITY",15,WHITE);brand.setLetterSpacing(.12f);brand.setTypeface(Typeface.create("sans-serif-condensed",Typeface.BOLD));add(root,brand,132,40,Gravity.TOP|Gravity.LEFT,66,16,0,0);
-        renderInfo=text(surface.graphics().name,9,MUTED);add(root,renderInfo,240,18,Gravity.TOP|Gravity.LEFT,66,59,0,0);
-        speed=text("0 km/h",30,WHITE);speed.setGravity(Gravity.CENTER);speed.setTypeface(Typeface.create("sans-serif-condensed",Typeface.BOLD));speed.setShadowLayer(dp(2),0,dp(1),0xa8000000);add(root,speed,170,39,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,13,0,0);
-        timer=text("12:00 · 0.00 km",10,0xffd4ddd8);timer.setGravity(Gravity.CENTER);add(root,timer,170,18,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,54,0,0);
-        Button menu=new VelocityMenuButton(this);menu.setOnClickListener(v->openMenu(0));add(root,menu,44,44,Gravity.TOP|Gravity.RIGHT,0,15,16,0);
-        sector=text("SECTOR 01 / 08",9,0xffc7d0cb);sector.setGravity(Gravity.RIGHT);add(root,sector,120,18,Gravity.TOP|Gravity.RIGHT,0,65,16,0);
-        status=text("",12,WHITE);status.setGravity(Gravity.CENTER);status.setBackground(shape(0xc9182021,0,12));add(root,status,230,30,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,79,0,0);status.setVisibility(View.GONE);
-        warning=text("",10,0xffffd69b);warning.setGravity(Gravity.CENTER);warning.setShadowLayer(dp(2),0,dp(1),0xcc000000);add(root,warning,290,24,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,112,0,0);
-        countdown=text("",64,ACCENT);countdown.setGravity(Gravity.CENTER);add(root,countdown,104,100,Gravity.CENTER,0,0,0,0);countdown.setVisibility(View.GONE);
+        hudLayer=new FrameLayout(this);hudLayer.setMotionEventSplittingEnabled(true);
+        root.addView(hudLayer,new FrameLayout.LayoutParams(-1,-1));
+        View wash=new View(this);wash.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,new int[]{0x8c111619,0x00111619}));add(hudLayer,wash,-1,102,Gravity.TOP,0,0,0,0);
+        TextView monogram=text("RV",21,ACCENT);monogram.setGravity(Gravity.CENTER);monogram.setTypeface(Typeface.create("sans-serif-condensed",Typeface.BOLD));monogram.setBackground(shape(0xc9141b1c,0x704d6252,12));add(hudLayer,monogram,40,40,Gravity.TOP|Gravity.LEFT,16,16,0,0);
+        TextView brand=text("REVERSE\nVELOCITY",15,WHITE);brand.setLetterSpacing(.12f);brand.setTypeface(Typeface.create("sans-serif-condensed",Typeface.BOLD));add(hudLayer,brand,132,40,Gravity.TOP|Gravity.LEFT,66,16,0,0);
+        renderInfo=text(surface.graphics().name,9,MUTED);add(hudLayer,renderInfo,240,18,Gravity.TOP|Gravity.LEFT,66,59,0,0);
+        speed=text("0 km/h",30,WHITE);speed.setGravity(Gravity.CENTER);speed.setTypeface(Typeface.create("sans-serif-condensed",Typeface.BOLD));speed.setShadowLayer(dp(2),0,dp(1),0xa8000000);add(hudLayer,speed,170,39,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,13,0,0);
+        timer=text("12:00 · 0.00 km",10,0xffd4ddd8);timer.setGravity(Gravity.CENTER);add(hudLayer,timer,170,18,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,54,0,0);
+        Button menu=new VelocityMenuButton(this);menu.setOnClickListener(v->openMenu(0));add(hudLayer,menu,44,44,Gravity.TOP|Gravity.RIGHT,0,15,16,0);
+        sector=text("SECTOR 01 / 08",9,0xffc7d0cb);sector.setGravity(Gravity.RIGHT);add(hudLayer,sector,120,18,Gravity.TOP|Gravity.RIGHT,0,65,16,0);
+        status=text("",12,WHITE);status.setGravity(Gravity.CENTER);status.setBackground(shape(0xc9182021,0,12));add(hudLayer,status,230,30,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,79,0,0);status.setVisibility(View.GONE);
+        warning=text("",10,0xffffd69b);warning.setGravity(Gravity.CENTER);warning.setShadowLayer(dp(2),0,dp(1),0xcc000000);add(hudLayer,warning,290,24,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,112,0,0);
+        countdown=text("",64,ACCENT);countdown.setGravity(Gravity.CENTER);add(hudLayer,countdown,104,100,Gravity.CENTER,0,0,0,0);countdown.setVisibility(View.GONE);
         try{atlas=new VelocityForestAtlas(this,game.track());}catch(Exception e){throw new IllegalStateException("No se pudo cargar el mapa",e);}
-        map=atlas.view(this,false);map.setOnClickListener(v->openMenu(3));add(root,map,94,66,Gravity.TOP|Gravity.LEFT,16,86,0,0);
-        steering=new VelocitySteeringFrame(this);steering.setSteeringListener(value->{touchSteer=value;controls();android.util.Log.i("ReverseVelocity","ANALOG_STEERING value="+value);});add(root,steering,116,116,Gravity.BOTTOM|Gravity.LEFT,16,0,0,12);
-        Button driftButton=button("DERRAPE");driftButton.setTextSize(8);driftButton.setContentDescription("Derrape");hold(driftButton,4);add(root,driftButton,78,44,Gravity.BOTTOM|Gravity.LEFT,34,0,0,138);
-        Button throttle=new VelocityPedalButton(this,"ACELERAR",false);hold(throttle,3);add(root,throttle,76,94,Gravity.BOTTOM|Gravity.RIGHT,0,0,16,12);
-        Button brakePedal=new VelocityPedalButton(this,"FRENO",true);hold(brakePedal,2);add(root,brakePedal,66,76,Gravity.BOTTOM|Gravity.RIGHT,0,0,102,12);
-        nitroButton=new VelocityActionButton(this,"NITRO",false);hold(nitroButton,5);add(root,nitroButton,52,62,Gravity.BOTTOM|Gravity.RIGHT,0,0,18,118);
-        jumpButton=new VelocityActionButton(this,"SALTO",true);hold(jumpButton,6);add(root,jumpButton,52,62,Gravity.BOTTOM|Gravity.RIGHT,0,0,82,118);
-        gearButton=button("D");gearButton.setTextSize(16);gearButton.setTextColor(ACCENT);gearButton.setOnClickListener(v->changeGear());add(root,gearButton,44,44,Gravity.BOTTOM|Gravity.RIGHT,0,0,145,120);
+        map=atlas.view(this,false);map.setOnClickListener(v->openMenu(3));add(hudLayer,map,94,66,Gravity.TOP|Gravity.LEFT,16,86,0,0);
+        steering=new VelocitySteeringFrame(this);steering.setSteeringListener(value->{touchSteer=value;controls();android.util.Log.i("ReverseVelocity","ANALOG_STEERING value="+value);});add(hudLayer,steering,116,116,Gravity.BOTTOM|Gravity.LEFT,16,0,0,12);
+        Button driftButton=button("DERRAPE");driftButton.setTextSize(8);driftButton.setContentDescription("Derrape");hold(driftButton,4);add(hudLayer,driftButton,78,44,Gravity.BOTTOM|Gravity.LEFT,34,0,0,138);
+        Button throttle=new VelocityPedalButton(this,"ACELERAR",false);hold(throttle,3);add(hudLayer,throttle,76,94,Gravity.BOTTOM|Gravity.RIGHT,0,0,16,12);
+        Button brakePedal=new VelocityPedalButton(this,"FRENO",true);hold(brakePedal,2);add(hudLayer,brakePedal,66,76,Gravity.BOTTOM|Gravity.RIGHT,0,0,102,12);
+        nitroButton=new VelocityActionButton(this,"NITRO",false);hold(nitroButton,5);add(hudLayer,nitroButton,52,62,Gravity.BOTTOM|Gravity.RIGHT,0,0,18,118);
+        jumpButton=new VelocityActionButton(this,"SALTO",true);hold(jumpButton,6);add(hudLayer,jumpButton,52,62,Gravity.BOTTOM|Gravity.RIGHT,0,0,82,118);
+        gearButton=button("D");gearButton.setTextSize(16);gearButton.setTextColor(ACCENT);gearButton.setOnClickListener(v->changeGear());add(hudLayer,gearButton,44,44,Gravity.BOTTOM|Gravity.RIGHT,0,0,145,120);
         setContentView(root);if(foreground){if(gpu!=null)gpu.onResume();surface.resumeLoop();}
     }
     private void openMenu(int selectedPage){
         if(surface==null)return;
         if(!menuVisible){
             releaseControls();resumeAfterMenu=!surface.isPaused();if(resumeAfterMenu)surface.togglePause();
-            menuVisible=true;drawer=new FrameLayout(this);drawer.setBackgroundColor(0x9805080a);drawer.setClickable(true);
+            hudLayer.setVisibility(View.INVISIBLE);
+            menuVisible=true;drawer=new FrameLayout(this);drawer.setElevation(dp(32));drawer.setBackgroundColor(0x9805080a);drawer.setClickable(true);
             drawer.setOnClickListener(v->closeMenu(false));root.addView(drawer,new FrameLayout.LayoutParams(-1,-1));
             android.util.Log.i("ReverseVelocity","MENU_OPEN paused=true");
         }
@@ -189,7 +192,7 @@ public final class VelocityActivity extends Activity {
     private void closeMenu(boolean continueDriving){
         if(!menuVisible)return;
         if(menuMap!=null){atlas.release(menuMap);menuMap=null;}
-        root.removeView(drawer);drawer=null;menuVisible=false;
+        root.removeView(drawer);drawer=null;menuVisible=false;hudLayer.setVisibility(View.VISIBLE);
         releaseControls();if((continueDriving||resumeAfterMenu)&&surface.isPaused())surface.togglePause();
         android.util.Log.i("ReverseVelocity","MENU_CLOSE paused="+surface.isPaused());
     }
@@ -217,12 +220,11 @@ public final class VelocityActivity extends Activity {
         add(panel,scroll,-1,-1,Gravity.TOP,0,86,0,82);
         Button resume=button("Continuar");resume.setTextColor(INK);resume.setTypeface(Typeface.DEFAULT_BOLD);resume.setBackground(shape(ACCENT,0,14));resume.setOnClickListener(v->closeMenu(true));add(panel,resume,-1,48,Gravity.BOTTOM,20,0,20,18);
         if(page==1){
-            section("ELIGE TU EQUILIBRIO");
             for(VelocityGraphics g:VelocityGraphics.ALL){
                 Button b=button("");b.setGravity(Gravity.LEFT|Gravity.CENTER_VERTICAL);b.setText(styled(g.name,g.description));b.setSelected(g==surface.graphics());
                 b.setContentDescription("Gráficos: "+g.name+(g==surface.graphics()?", seleccionado":"")+". "+g.width+" por "+g.height);
                 b.setOnClickListener(v->{surface.setGraphics(g);preferences.edit().putInt("graphics",g.id).apply();showPage(1);});
-                LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(62));p.bottomMargin=dp(9);drawerBody.addView(b,p);
+                LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(48));p.bottomMargin=dp(6);drawerBody.addView(b,p);
             }
         }else if(page==2){
             section("TRES FORMAS DE EXPLORAR");

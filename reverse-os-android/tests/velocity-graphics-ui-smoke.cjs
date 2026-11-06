@@ -78,6 +78,7 @@ try{
  check(!/Foto 4K|Salir 4K|HD 720p/.test(lastXml),'old graphics/photo controls are absent');
  key('KEYCODE_P');screenshot('01-driving-medium');openMenu();
  check(frames().some(x=>x.paused),'opening the menu pauses real XI physics');
+ check(!ui().some(n=>['ACELERAR','FRENO','NITRO','SALTO'].includes(n.text)),'driving buttons are hidden behind the modal menu');
  row('Gráficos');
  const profiles=[['Ahorro',480,270],['Bajos',640,360],['Medio',960,540],['Alto',1280,720],['Ultra',1920,1080]];
  for(let id=0;id<profiles.length;id++){

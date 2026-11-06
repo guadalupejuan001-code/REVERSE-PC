@@ -18,7 +18,7 @@ final class VelocityActionButton extends Button {
     private float level=1f;
     private boolean operating;
     VelocityActionButton(Context context,String label,boolean pneumatic){
-        super(context);
+        super(context);setStateListAnimator(null);setElevation(0);
         this.pneumatic=pneumatic;
         setText(label);setAllCaps(false);setTextColor(Color.WHITE);
         setTextSize(8);setGravity(android.view.Gravity.BOTTOM|android.view.Gravity.CENTER_HORIZONTAL);setTypeface(Typeface.create("sans-serif-medium",Typeface.BOLD));

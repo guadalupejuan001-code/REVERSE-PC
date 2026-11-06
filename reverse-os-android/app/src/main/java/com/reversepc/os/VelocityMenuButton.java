@@ -9,7 +9,7 @@ import android.widget.Button;
 final class VelocityMenuButton extends Button {
     private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);
     VelocityMenuButton(Context c){
-        super(c);setText("MENÚ");setTextColor(0xffdfe6df);setTextSize(7);setGravity(Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL);
+        super(c);setStateListAnimator(null);setElevation(0);setText("MENÚ");setTextColor(0xffdfe6df);setTextSize(7);setGravity(Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL);
         setAllCaps(false);setPadding(0,0,0,5);setMinWidth(0);setMinHeight(0);setMinimumWidth(0);setMinimumHeight(0);
         setBackgroundColor(Color.TRANSPARENT);setContentDescription("Abrir menú");
     }

@@ -16,7 +16,7 @@ final class VelocityPedalButton extends Button {
     private final boolean isBrake;
     private final RectF shape=new RectF();
     VelocityPedalButton(Context context,String label,boolean brake) {
-        super(context);
+        super(context);setStateListAnimator(null);setElevation(0);
         isBrake=brake;
         setText(label);setAllCaps(false);setTextColor(Color.WHITE);
         setTextSize(9);setTypeface(Typeface.create("sans-serif-medium",Typeface.BOLD));
