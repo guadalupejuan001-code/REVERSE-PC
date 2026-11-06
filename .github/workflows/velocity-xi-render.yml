@@ -50,6 +50,11 @@ jobs:
           ref: 665742aa9310314242271ea51f9294d07a97b4c4
           path: deps/velocity-qssd-baseline
           persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: c8c224002335586f82343ce6aa0082be008d09e7
+          path: deps/velocity-c01-baseline
+          persist-credentials: false
       - name: Verify XI ownership and reproducible finite world
         run: |
           node scripts/check-velocity-native-only.cjs
@@ -59,6 +64,7 @@ jobs:
           node scripts/forest-trails-contract.cjs build/open-forest
           node scripts/velocity-car-contract.cjs
           node scripts/velocity-textures-contract.cjs
+          node scripts/author-velocity-powertrain.cjs
           node scripts/author-velocity-forest.cjs
           node scripts/author-velocity-scene.cjs
           git diff --exit-code -- reverse-os-android/app/src/main/assets/velocity
@@ -117,6 +123,12 @@ jobs:
           build/open-forest/qssd-guards reverse-os-android/app/src/main/assets/velocity
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/velocity-complete-space.cpp -o build/open-forest/complete-state
           build/open-forest/complete-state reverse-os-android/app/src/main/assets/velocity
+      - name: Measure C01 powertrain against released 3.9
+        run: |
+          mkdir -p build/open-forest/powertrain/baseline
+          cp deps/velocity-c01-baseline/reverse-os-android/app/src/main/assets/velocity/drive.xi build/open-forest/powertrain/baseline/drive.xi
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/velocity-powertrain.cpp -o build/open-forest/powertrain/test
+          build/open-forest/powertrain/test reverse-os-android/app/src/main/assets/velocity build/open-forest/powertrain/baseline build/open-forest/powertrain
       - name: Execute all sectors, reverse, time and real XI raster
         run: |
           build/open-forest/gameplay-test reverse-os-android/app/src/main/assets/velocity build/open-forest/gameplay
@@ -129,6 +141,8 @@ jobs:
           java -cp build/open-forest/java com.reversepc.os.VelocityWorldLightTest reverse-os-android/app/src/main/assets/velocity
           javac -d build/open-forest/java reverse-os-android/app/src/main/java/com/reversepc/os/VelocityGearbox.java reverse-os-android/app/src/main/java/com/reversepc/os/RegraphicsFrame.java reverse-os-android/tests/VelocityGearboxTest.java reverse-os-android/tests/RegraphicsLivePixelsTest.java reverse-os-android/tests/RegraphicsNative4KTest.java reverse-os-android/tests/RegraphicsFrameTest.java
           java -cp build/open-forest/java com.reversepc.os.VelocityGearboxTest
+          javac -d build/open-forest/java reverse-os-android/app/src/main/java/com/reversepc/os/VelocityOrbitMath.java reverse-os-android/app/src/main/java/com/reversepc/os/VelocitySessionState.java reverse-os-android/tests/VelocitySessionStateTest.java
+          java -cp build/open-forest/java com.reversepc.os.VelocitySessionStateTest
           java -cp build/open-forest/java com.reversepc.os.RegraphicsLivePixelsTest
           java -cp build/open-forest/java com.reversepc.os.RegraphicsNative4KTest
           java -cp build/open-forest/java com.reversepc.os.RegraphicsFrameTest

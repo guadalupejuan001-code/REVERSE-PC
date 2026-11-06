@@ -40,7 +40,8 @@ public final class VelocityActivity extends Activity {
     private VelocityGpuSurface gpu;
     private FrameLayout root,hudLayer,drawer;
     private LinearLayout drawerBody;
-    private TextView speed,timer,status,warning,renderInfo,sector,countdown;
+    private TextView speed,timer,status,warning,renderInfo,sector,countdown,transmission;
+    private VelocitySpeedometerView speedometer;
     private Button gearButton;
     private VelocitySteeringFrame steering;
     private VelocityActionButton nitroButton,jumpButton;
@@ -114,6 +115,12 @@ public final class VelocityActivity extends Activity {
         if(s==null||isFinishing()||isDestroyed())return;
         if(!immersiveReady&&((gpu!=null&&gpu.hasPresentedFrame())||(gpu==null&&w>0))){immersiveReady=true;WorkbenchActivity.immersive(this);}
         ambient.update(s);changed(speed,s.speedKmh()+" km/h");
+        speedometer.update(s.speedKmh(),s.engineRpm,brake||keyBrake||surface.isGearPending());
+        changed(transmission,(surface.isReverseGear()?"R":(surface.forwardSelection()==0?"AUTO ":"M ")+s.forwardGear)
+            +"  ·  "+s.engineRpm+" rpm");
+        transmission.setContentDescription("Velocímetro: "+s.speedKmh()+" kilómetros por hora. "+
+            (surface.isReverseGear()?"Reversa":"Marcha "+s.forwardGear+", "+(surface.forwardSelection()==0?"automática":"manual"))+
+            ". "+s.engineRpm+" revoluciones por minuto");
         changed(gearButton,surface.isGearPending()?"…":surface.isReverseGear()?"R":"D");
         gearButton.setContentDescription(surface.isGearPending()?"Frenando para cambiar de marcha":surface.isReverseGear()?"Cambiar a avance":"Cambiar a reversa");
         nitroButton.setStatus(s.nitroPercent()/100f,s.nitroActive);
@@ -125,7 +132,7 @@ public final class VelocityActivity extends Activity {
         changed(status,center);status.setVisibility(center.isEmpty()?View.GONE:View.VISIBLE);
         boolean counting=!paused&&s.countdown>0&&s.countdown<150;
         countdown.setVisibility(counting?View.VISIBLE:View.GONE);if(counting)changed(countdown,""+((s.countdown+49)/50));
-        String road=surface.isGearPending()?"Frenando para cambiar de marcha":s.jumpHeightCm>0?"En el aire · "+s.jumpHeightCm+" cm":
+        String road=surface.isGearPending()?"Frenando para cambiar de marcha":s.gearSelection>0&&s.gearSelection<s.forwardGear?"Reducción pendiente · suelta el acelerador":s.jumpHeightCm>0?"En el aire · "+s.jumpHeightCm+" cm":
             s.landingPulse?"Aterrizaje":s.wallContact?"Contacto":s.waterDepthCm>0?"Agua · "+s.waterDepthCm+" cm":
             s.offRoad?(s.surface==3?"Barro · poco agarre":"Fuera del asfalto"):s.driftComboPct>100?"Derrape · "+s.driftScore+" pts":
             s.roadEnd?"El camino termina. La exploración sigue.":"";
@@ -162,12 +169,14 @@ public final class VelocityActivity extends Activity {
         TextView monogram=text("RV",21,ACCENT);monogram.setGravity(Gravity.CENTER);monogram.setTypeface(Typeface.create("sans-serif-condensed",Typeface.BOLD));monogram.setBackground(shape(0xc9141b1c,0x704d6252,12));add(hudLayer,monogram,40,40,Gravity.TOP|Gravity.LEFT,16,16,0,0);
         TextView brand=text("REVERSE\nVELOCITY",15,WHITE);brand.setLetterSpacing(.12f);brand.setTypeface(Typeface.create("sans-serif-condensed",Typeface.BOLD));add(hudLayer,brand,132,40,Gravity.TOP|Gravity.LEFT,66,16,0,0);
         renderInfo=text(surface.graphics().name,9,MUTED);add(hudLayer,renderInfo,240,18,Gravity.TOP|Gravity.LEFT,66,59,0,0);
-        speed=text("0 km/h",30,WHITE);speed.setGravity(Gravity.CENTER);speed.setTypeface(Typeface.create("sans-serif-condensed",Typeface.BOLD));speed.setShadowLayer(dp(2),0,dp(1),0xa8000000);add(hudLayer,speed,170,39,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,13,0,0);
-        timer=text("12:00 · 0.00 km",10,0xffd4ddd8);timer.setGravity(Gravity.CENTER);add(hudLayer,timer,170,18,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,54,0,0);
+        speedometer=new VelocitySpeedometerView(this);add(hudLayer,speedometer,176,84,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,8,0,0);
+        speed=text("0 km/h",30,WHITE);speed.setGravity(Gravity.CENTER);speed.setTypeface(Typeface.create("sans-serif-condensed",Typeface.BOLD));speed.setShadowLayer(dp(2),0,dp(1),0xa8000000);add(hudLayer,speed,148,37,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,29,0,0);
+        transmission=text("AUTO 1 · 800 rpm",10,ACCENT);transmission.setGravity(Gravity.CENTER);transmission.setOnLongClickListener(v->{surface.automaticGears();return true;});add(hudLayer,transmission,170,17,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,66,0,0);
+        timer=text("12:00 · 0.00 km",10,0xffd4ddd8);timer.setGravity(Gravity.CENTER);add(hudLayer,timer,170,18,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,94,0,0);
         Button menu=new VelocityMenuButton(this);menu.setOnClickListener(v->openMenu(0));add(hudLayer,menu,44,44,Gravity.TOP|Gravity.RIGHT,0,15,16,0);
         sector=text("SECTOR 01 / 08",9,0xffc7d0cb);sector.setGravity(Gravity.RIGHT);add(hudLayer,sector,120,18,Gravity.TOP|Gravity.RIGHT,0,65,16,0);
-        status=text("",12,WHITE);status.setGravity(Gravity.CENTER);status.setBackground(shape(0xc9182021,0,12));add(hudLayer,status,230,30,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,79,0,0);status.setVisibility(View.GONE);
-        warning=text("",10,0xffffd69b);warning.setGravity(Gravity.CENTER);warning.setShadowLayer(dp(2),0,dp(1),0xcc000000);add(hudLayer,warning,290,24,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,112,0,0);
+        status=text("",12,WHITE);status.setGravity(Gravity.CENTER);status.setBackground(shape(0xc9182021,0,12));add(hudLayer,status,230,30,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,117,0,0);status.setVisibility(View.GONE);
+        warning=text("",10,0xffffd69b);warning.setGravity(Gravity.CENTER);warning.setShadowLayer(dp(2),0,dp(1),0xcc000000);add(hudLayer,warning,290,24,Gravity.TOP|Gravity.CENTER_HORIZONTAL,0,150,0,0);
         countdown=text("",64,ACCENT);countdown.setGravity(Gravity.CENTER);add(hudLayer,countdown,104,100,Gravity.CENTER,0,0,0,0);countdown.setVisibility(View.GONE);
         try{atlas=new VelocityForestAtlas(this,game.track());}catch(Exception e){throw new IllegalStateException("No se pudo cargar el mapa",e);}
         map=atlas.view(this,false);map.setOnClickListener(v->openMenu(3));add(hudLayer,map,94,66,Gravity.TOP|Gravity.LEFT,16,86,0,0);
@@ -178,6 +187,12 @@ public final class VelocityActivity extends Activity {
         nitroButton=new VelocityActionButton(this,"NITRO",false);hold(nitroButton,5);add(hudLayer,nitroButton,52,62,Gravity.BOTTOM|Gravity.RIGHT,0,0,18,118);
         jumpButton=new VelocityActionButton(this,"SALTO",true);hold(jumpButton,6);add(hudLayer,jumpButton,52,62,Gravity.BOTTOM|Gravity.RIGHT,0,0,82,118);
         gearButton=button("D");gearButton.setTextSize(16);gearButton.setTextColor(ACCENT);gearButton.setOnClickListener(v->changeGear());add(hudLayer,gearButton,44,44,Gravity.BOTTOM|Gravity.RIGHT,0,0,145,120);
+        LinearLayout shifts=new LinearLayout(this);shifts.setOrientation(LinearLayout.HORIZONTAL);
+        Button down=button("−"),up=button("+");down.setTextSize(22);up.setTextSize(22);
+        down.setContentDescription("Reducir marcha");up.setContentDescription("Subir marcha");
+        down.setOnClickListener(v->surface.shiftGear(-1));up.setOnClickListener(v->surface.shiftGear(1));
+        shifts.addView(down,new LinearLayout.LayoutParams(dp(58),dp(44)));LinearLayout.LayoutParams shiftGap=new LinearLayout.LayoutParams(dp(58),dp(44));shiftGap.leftMargin=dp(8);shifts.addView(up,shiftGap);
+        add(hudLayer,shifts,124,44,Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL,0,0,0,15);
         setContentView(root);if(foreground){if(gpu!=null)gpu.onResume();surface.resumeLoop();}
     }
     private void openMenu(int selectedPage){
@@ -268,6 +283,7 @@ public final class VelocityActivity extends Activity {
             row("Garaje",CARS[surface.selectedCar()],()->showPage(2));
             row("Mapa","Cuatro senderos · seis destinos",()->showPage(3));
             row("Conducción",new String[]{"Manual","Asistida","Piloto"}[surface.assistMode()],()->{surface.cycleAssistMode();showPage(0);});
+            row("Transmisión",surface.forwardSelection()==0?"Automática · seis marchas":"Manual · marcha "+surface.forwardSelection(),()->{surface.automaticGears();showPage(0);});
             row("Cámara",CAMERAS[surface.selectedCamera()],()->{surface.cycleCamera();showPage(0);});
             row("Centrar cámara","Volver detrás del coche",()->surface.centerCamera());
             row("Hora del día",TIMES[surface.worldTime()],()->{surface.cycleWorldTime();showPage(0);});
@@ -289,6 +305,7 @@ public final class VelocityActivity extends Activity {
         if(key==KeyEvent.KEYCODE_C){if(surface!=null)surface.centerCamera();return true;}
         if(key==KeyEvent.KEYCODE_R){if(surface!=null){releaseControls();surface.reset();if(menuVisible)closeMenu(true);}return true;}
         if(menuVisible)return super.onKeyDown(key,event);
+        if(key==KeyEvent.KEYCODE_E||key==KeyEvent.KEYCODE_Q){if(event.getRepeatCount()==0)surface.shiftGear(key==KeyEvent.KEYCODE_E?1:-1);return true;}
         if(key==KeyEvent.KEYCODE_W||key==KeyEvent.KEYCODE_DPAD_UP)keyGas=true;
         else if(key==KeyEvent.KEYCODE_S||key==KeyEvent.KEYCODE_DPAD_DOWN)keyBrake=true;
         else if(key==KeyEvent.KEYCODE_A||key==KeyEvent.KEYCODE_DPAD_LEFT)keyLeft=true;

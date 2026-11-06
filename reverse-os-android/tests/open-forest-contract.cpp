@@ -9,13 +9,13 @@
 #include <stdexcept>
 #include <vector>
 using Runtime=reverse_pc::rvpc2::Runtime;
-using State=std::array<long long,35>;
+using State=std::array<long long,38>;
 const std::string header="#!reverse-pc-machine-v1\n";
 int checks=0;
 void check(bool ok,const std::string& why){if(!ok)throw std::runtime_error(why);checks++;}
 std::string read(const std::filesystem::path& p){std::ifstream f(p,std::ios::binary);check(bool(f),"read "+p.string());return {std::istreambuf_iterator<char>(f),{}};}
 std::vector<long long> numbers(const std::string& text){std::vector<long long> r;std::istringstream s(text);std::string line;while(std::getline(s,line)){auto at=line.find("\"value\":");if(at!=std::string::npos)r.push_back(std::stoll(line.substr(at+8)));}return r;}
-State observe(const std::string& text){auto a=numbers(text);check(a.size()==35,"open environment ABI has 35 integer observations");State r{};std::copy(a.begin(),a.end(),r.begin());check(r[5]==0&&r[7]==0&&r[10]==0,"exploration has neither laps nor finish freeze");check(r[11]>=0&&r[11]<160000&&r[12]>=0&&r[12]<80,"finite route cursor");check(r[25]>=0&&r[25]<=4&&r[26]>=0&&r[26]<4096&&r[27]>=0&&r[27]<8&&r[28]>=0&&r[28]<4096,"bounded environment fields");check(r[30]>=0&&r[30]<=5&&r[32]>=0&&r[32]<=40&&r[33]>=0&&r[33]<=1000&&r[34]>=0&&r[34]<=255,"bounded wetland observations: biome="+std::to_string(r[30])+" depth="+std::to_string(r[32])+" wetness="+std::to_string(r[33])+" splash="+std::to_string(r[34]));return r;}
+State observe(const std::string& text){auto a=numbers(text);check(a.size()==35||a.size()==38,"open environment ABI has 35 or 38 integer observations");State r{};std::copy(a.begin(),a.end(),r.begin());check(r[5]==0&&r[7]==0&&r[10]==0,"exploration has neither laps nor finish freeze");check(r[11]>=0&&r[11]<160000&&r[12]>=0&&r[12]<80,"finite route cursor");check(r[25]>=0&&r[25]<=4&&r[26]>=0&&r[26]<4096&&r[27]>=0&&r[27]<8&&r[28]>=0&&r[28]<4096,"bounded environment fields");check(r[30]>=0&&r[30]<=5&&r[32]>=0&&r[32]<=40&&r[33]>=0&&r[33]<=1000&&r[34]>=0&&r[34]<=255,"bounded wetland observations: biome="+std::to_string(r[30])+" depth="+std::to_string(r[32])+" wetness="+std::to_string(r[33])+" splash="+std::to_string(r[34]));return r;}
 void save(const Runtime& r,const std::filesystem::path& p){auto bytes=reverse_pc::rvpc2::save(r);std::ofstream f(p,std::ios::binary);f.write((const char*)bytes.data(),bytes.size());}
 int main(int argc,char**argv){try{
  const std::filesystem::path root=argc>1?argv[1]:"reverse-os-android/app/src/main/assets/velocity",out=argc>2?argv[2]:"build/open-forest/gameplay";

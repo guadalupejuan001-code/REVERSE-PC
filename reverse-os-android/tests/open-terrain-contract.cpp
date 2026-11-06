@@ -31,9 +31,9 @@ int main(int argc,char**argv){try{
   check(groundMatches(frame),"visible ground and XI wheel support agree at the car footprint");
   std::ofstream f(out/("open-terrain-"+std::to_string(poses)+".xfg4"),std::ios::binary);f.write(frame.data(),frame.size());save(r,out/("open-terrain-"+std::to_string(poses)+".rvp"));poses++;
  }
- auto freely=pose(20000,20000);State free{};for(int i=0;i<400;i++)free=observe(freely.execute(command(1)));
- check(free[0]==20000&&free[1]>35000&&!free[14],"the car drives freely more than 50m outside the road corridor");
- auto beyond=pose(0,170000);for(int i=0;i<150;i++)free=observe(beyond.execute(command(1)));check(free[1]>172000,"manual driving continues beyond the road endpoint");
+ auto freely=pose(20000,20000);State free{};for(int i=0;i<1000;i++)free=observe(freely.execute(command(1)));
+ check(free[0]==20000&&free[1]>25000&&!free[14],"the progressively accelerated car drives freely more than 50m outside the road corridor");
+ auto beyond=pose(0,170000);for(int i=0;i<600;i++)free=observe(beyond.execute(command(1)));check(free[1]>172000,"manual driving continues beyond the road endpoint with progressive acceleration");
  auto quarter=pose(0,-2000,500),full=pose(0,-2000,500);State q{},f{};for(int i=0;i<18;i++){q=observe(quarter.execute(command(0,125)));f=observe(full.execute(command(0,200)));}
  check(q[2]>0&&f[2]>q[2]*2,"analog quarter and full input produce different physical steering authority");
  check(f[2]>80,"low-speed maneuvering has a usable turn radius");

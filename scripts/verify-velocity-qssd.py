@@ -24,7 +24,8 @@ assets=root/'reverse-os-android/app/src/main/assets/velocity'
 inventory={}
 for file in sorted(assets.iterdir()):
     if not file.is_file(): continue
-    assert file.read_bytes()==(baseline/'reverse-os-android/app/src/main/assets/velocity'/file.name).read_bytes(),file.name
+    if file.name not in {'drive.xi','environment.xi'}:
+        assert file.read_bytes()==(baseline/'reverse-os-android/app/src/main/assets/velocity'/file.name).read_bytes(),file.name
     inventory[file.name]=hashlib.sha256(file.read_bytes()).hexdigest()
 java=['java','-m','jdk.compiler/com.sun.tools.javac.Main']
 java_settings=subprocess.run(['java','-XshowSettings:properties','-version'],text=True,capture_output=True,check=True).stderr

@@ -28,8 +28,9 @@ final class VelocityXiEngine {
         final boolean openWorld,roadEnd;
         final int groundHeightCm,sector,dayPhase,ambientMode,biome;
         final int waterDepthCm,wetness,splash;
+        final int forwardGear,engineRpm,gearSelection;
         Snapshot(long[] values){
-            if(values==null||(values.length!=26&&values.length!=32&&values.length!=35))throw new IllegalArgumentException("XI output needs 26, 32 or 35 world registers");
+            if(values==null||(values.length!=26&&values.length!=32&&values.length!=35&&values.length!=38))throw new IllegalArgumentException("XI output needs 26, 32, 35 or 38 world registers");
             for(int i=2;i<values.length;i++)if(values[i]<Integer.MIN_VALUE||values[i]>Integer.MAX_VALUE)
                 throw new IllegalArgumentException("XI race register exceeds integer range");
             xCm=values[0];zCm=values[1];yaw4096=(int)values[2];
@@ -50,6 +51,11 @@ final class VelocityXiEngine {
             biome=openWorld?(int)values[30]:0;roadEnd=openWorld&&values[31]==1;
             waterDepthCm=values.length>=35?(int)values[32]:0;
             wetness=values.length>=35?(int)values[33]:0;splash=values.length>=35?(int)values[34]:0;
+            forwardGear=values.length>=38?(int)values[35]:1;
+            engineRpm=values.length>=38?(int)values[36]:800;
+            gearSelection=values.length>=38?(int)values[37]:0;
+            if(forwardGear<1||forwardGear>6||engineRpm<0||engineRpm>7200||gearSelection<0||gearSelection>6)
+                throw new IllegalArgumentException("XI powertrain observation outside limits");
             if(waterDepthCm<0||waterDepthCm>40||wetness<0||wetness>1000||splash<0||splash>255)
                 throw new IllegalArgumentException("XI wetland observation outside limits");
             if(groundHeightCm<0||groundHeightCm>4096||sector<0||sector>7||dayPhase<0||dayPhase>=4096||ambientMode<0||ambientMode>2||biome<0||biome>5)
@@ -204,17 +210,17 @@ final class VelocityXiEngine {
     }
 
     private static Snapshot parseState(String output)throws Exception{
-        long[] observed=new long[35];int n=0;
+        long[] observed=new long[38];int n=0;
         for(String line:output.split("\n")){
             if(line.trim().isEmpty())continue;
-            if(n>=35)throw new IllegalArgumentException("XI game published too many registers");
+            if(n>=38)throw new IllegalArgumentException("XI game published too many registers");
             JSONObject row=new JSONObject(line);
             if(!"register".equals(row.getString("type"))||
                !("r"+(n%16)).equals(row.getString("register")))
                 throw new IllegalArgumentException("XI game register order mismatch");
             observed[n++]=row.getLong("value");
         }
-        if(n!=26&&n!=32&&n!=35)throw new IllegalArgumentException("Incomplete XI game observation");
+        if(n!=26&&n!=32&&n!=35&&n!=38)throw new IllegalArgumentException("Incomplete XI game observation");
         return new Snapshot(java.util.Arrays.copyOf(observed,n));
     }
 
@@ -228,20 +234,24 @@ final class VelocityXiEngine {
         return step(gas,brake,steer,drift,nitro,jump,reverse,reset,assistMode,255);
     }
     synchronized Snapshot step(int gas,int brake,int steer,int drift,boolean nitro,boolean jump,boolean reverse,boolean reset,int assistMode,int analog)throws Exception{
+        return step(gas,brake,steer,drift,nitro,jump,reverse,reset,assistMode,analog,0);
+    }
+    synchronized Snapshot step(int gas,int brake,int steer,int drift,boolean nitro,boolean jump,boolean reverse,boolean reset,int assistMode,int analog,int gearSelection)throws Exception{
+        if(gearSelection<0||gearSelection>6)throw new IllegalArgumentException("XI forward gear selector");
         if(analog<0||(analog>200&&analog!=255))throw new IllegalArgumentException("Analog steering protocol");
         if(assistMode<0||assistMode>2)throw new IllegalArgumentException("XI assistant mode outside 0..2");
         if(gas<0||gas>1||brake<0||brake>1||steer<0||steer>2||
            drift<0||drift>1)throw new IllegalArgumentException("XI physical control out of range");
         // Execute the XI source through the *existing* generic runtime.
         // There is no game-specific JNI/C++ renderer, physics or instruction API.
-        final int programKey=gas|(brake<<1)|(steer<<2)|(drift<<4)|(reset?32:0)|(reverse?64:0)|(nitro?128:0)|(jump?256:0)|(assistMode<<10)|(analog<<12);
+        final int programKey=gas|(brake<<1)|(steer<<2)|(drift<<4)|(reset?32:0)|(reverse?64:0)|(nitro?128:0)|(jump?256:0)|(assistMode<<10)|(analog<<12)|(gearSelection<<20);
         if(programKey!=driveProgramKey){
             driveProgramCache=XI_HEADER+
                 "store8 128 "+gas+"\nstore8 129 "+brake+
                 "\nstore8 130 "+steer+"\nstore8 131 "+drift+
                 "\nstore8 132 "+(reset?1:0)+"\nstore8 133 "+(reverse?1:0)+
                  "\nstore8 134 "+(nitro?1:0)+"\nstore8 135 "+(jump?1:0)+
-                 "\nstore8 136 "+assistMode+"\nstore8 138 "+analog+"\n"+
+                 "\nstore8 136 "+assistMode+"\nstore8 138 "+analog+"\nstore8 142 "+gearSelection+"\n"+
                 driveXi.substring(XI_HEADER.length());
             driveProgramKey=programKey;
         }

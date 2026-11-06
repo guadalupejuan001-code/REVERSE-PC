@@ -114,4 +114,12 @@ load16 r1 546
 print r1
 load8 r2 548
 print r2
+# BEGIN C01 TELEMETRY
+load8 r3 568
+print r3
+load16 r4 572
+print r4
+load8 r5 569
+print r5
+# END C01 TELEMETRY
 halt

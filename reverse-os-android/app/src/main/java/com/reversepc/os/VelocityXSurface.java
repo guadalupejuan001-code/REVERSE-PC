@@ -148,6 +148,9 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     }
     boolean isReverseGear(){return gearbox.isReverse();}
     boolean isGearPending(){return gearbox.isPending();}
+    int forwardSelection(){return gearbox.forwardSelection();}
+    void automaticGears(){gearbox.automatic();}
+    void shiftGear(int delta){gearbox.shift(delta,game.current().forwardGear);Log.i("ReverseVelocity","FORWARD_GEAR_REQUEST selection="+gearbox.forwardSelection());}
     boolean isReverseRequested(){return gearbox.requestedReverse();}
     boolean isBrakePressed(){return (input&2)!=0;}
     boolean isAccelerating(){return (input&1)!=0;}
@@ -209,7 +212,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     }
     private VelocitySessionState viewState(){
         long now=SystemClock.elapsedRealtimeNanos();int[] gear=gearbox.checkpoint();
-        return new VelocitySessionState(new int[]{graphics.id,cameraMode,paintId,carId,assistMode,orbitPacked,displayedOrbit,gear[0],gear[1],input,analogSteering,paused?1:0,resetRequested.get()?1:0,game.environmentMode()},
+        return new VelocitySessionState(new int[]{graphics.id,cameraMode,paintId,carId,assistMode,orbitPacked,displayedOrbit,gear[0],gear[1],input,analogSteering,paused?1:0,resetRequested.get()?1:0,game.environmentMode(),gear[2]},
             chaseCamera.checkpoint(now),Math.max(0,Math.min(2_600_000_000L,manualCameraUntil-now)));
     }
     void saveState(java.io.File file)throws Exception{
@@ -225,7 +228,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
             while((n=in.read(scratch))>=0){if(out.size()+n>64*1024*1024)throw new IllegalArgumentException("El estado supera el presupuesto de lectura");out.write(scratch,0,n);}bytes=out.toByteArray();
         }
         VelocitySessionState stored=VelocitySessionState.decode(game.restoreSpace(bytes));int[] v=stored.values;
-        graphics=VelocityGraphics.fromId(v[0]);cameraMode=v[1];paintId=v[2];carId=v[3];assistMode=v[4];orbitPacked=v[5];displayedOrbit=v[6];gearbox.restore(v[7],v[8]);
+        graphics=VelocityGraphics.fromId(v[0]);cameraMode=v[1];paintId=v[2];carId=v[3];assistMode=v[4];orbitPacked=v[5];displayedOrbit=v[6];gearbox.restore(v[7],v[8],v[14]);
         input=v[9];analogSteering=v[10];paused=true;resetRequested.set(v[12]==1);
         long now=SystemClock.elapsedRealtimeNanos();manualCameraUntil=now+stored.manualRemaining;chaseCamera.restore(stored.camera,now);
         orbitDragging=false;repaintRequested.set(true);error="";
@@ -276,7 +279,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 }
                 long stepStart=SystemClock.elapsedRealtimeNanos();
                 game.step(current&1,(current>>>1)&1,(current>>>2)&3,(current>>>4)&1,
-                     (current&32)!=0,(current&64)!=0,reverse,false,assistMode,analogSteering);
+                     (current&32)!=0,(current&64)!=0,reverse,false,assistMode,analogSteering,gearbox.forwardSelection());
                 long stepCost=SystemClock.elapsedRealtimeNanos()-stepStart;
                 stepNanos+=stepCost;maxStepNanos=Math.max(maxStepNanos,stepCost);
                 measuredSteps++;
@@ -410,6 +413,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                         " fps="+fps+" width="+width+" height="+height+" ticks="+state.ticks+
                         " xCm="+state.xCm+" zCm="+state.zCm+" yaw4096="+state.yaw4096+
                         " speed="+state.speedCmps+" reverse="+gearbox.isReverse()+" physicsHz="+physicsHz+
+                        " forwardGear="+state.forwardGear+" gearSelection="+state.gearSelection+" rpm="+state.engineRpm+
                         " fixedDetail=true paused="+paused+" preset="+selectedGraphics.id+
                         " backend="+(selectedGpu?"REgraphics_XI_GPU":"REgraphics_XI_NATIVE_LIVE")+
                         " cacheHits="+cacheHits+" xiRenders="+xiRenders);

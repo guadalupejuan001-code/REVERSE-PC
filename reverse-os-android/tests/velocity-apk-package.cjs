@@ -35,8 +35,8 @@ for(const abi of ['arm64-v8a','x86_64']){
 }
 const text=fs.readFileSync(badging,'utf8');
 assert.match(text,/package: name='com\.reversepc\.velocity'/);
-assert.match(text,/versionCode='41'/,'car build must upgrade versionCode');
-assert.match(text,/versionName='3\.9\.0-state-space'/,'car build version mismatch');
+assert.match(text,/versionCode='42'/,'car build must upgrade versionCode');
+assert.match(text,/versionName='4\.0\.0-c01-driving'/,'car build version mismatch');
 assert.match(text,/launchable-activity: name='com\.reversepc\.os\.VelocityActivity'/);
 assert.match(text,/application-label:'REVERSE VELOCITY'/);
 assert.match(text,/sdkVersion:'29'/);
@@ -73,7 +73,7 @@ if(process.env.VELOCITY_EXPECTED_SIGNER_SHA256){
   'APK must keep the signer of the released 0.1 test build for in-place upgrades');
 }
 const report={passed:true,applicationId:'com.reversepc.velocity',launcher:'com.reversepc.os.VelocityActivity',minSdk:29,
- versionCode:41,versionName:'3.9.0-state-space',sourceCommit:process.env.GITHUB_SHA||null,
+ versionCode:42,versionName:'4.0.0-c01-driving',sourceCommit:process.env.GITHUB_SHA||null,
  signerCertificateSha256:expected,signerMatchesCachedIdentity:true,
  abis:['arm64-v8a','x86_64'],nativeElf,assets,apkBytes:fs.statSync(apk).size,
  apkSha256:crypto.createHash('sha256').update(fs.readFileSync(apk)).digest('hex')};

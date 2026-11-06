@@ -73,7 +73,9 @@ try{
  key('KEYCODE_P');let nodes=ui();
  menuControl=nodes.find(n=>n['content-desc']==='Abrir menú');worldControl=nodes.find(n=>n['content-desc']?.startsWith('Cámara 3D'));
  check(nodes.some(n=>/^REVERSE\s+VELOCITY$/.test(n.text||'')),'Reverse Velocity brand is visible');
- check(buttonNodes(nodes).length<=7,'driving view has at most seven essential buttons');
+ check(buttonNodes(nodes).length<=9,'driving view has at most nine essential buttons including two gear paddles');
+ check(nodes.some(n=>n['content-desc']==='Reducir marcha')&&nodes.some(n=>n['content-desc']==='Subir marcha'),'both manual gear paddles are accessible');
+ check(nodes.some(n=>n['content-desc']?.startsWith('Velocímetro: ')),'real speedometer and XI transmission telemetry are accessible');
  check(!buttonNodes(nodes).some(n=>/^(Gráficos|Garaje|Mapa|Hora|Foto|Color|Sonido|Reiniciar)/.test(n.text||'')),'secondary tools are hidden while driving');
  check(!/Foto 4K|Salir 4K|HD 720p/.test(lastXml),'old graphics/photo controls are absent');
  key('KEYCODE_P');screenshot('01-driving-medium');openMenu();
@@ -113,6 +115,13 @@ try{
  check(!!wheel,'analog wheel is accessible');
  const analogMark=logs().length;const [l,t,r,b]=rect(wheel);run(['shell','input','swipe',String(Math.round((l+r)/2)),String(Math.round((t+b)/2)),String(r-10),String(Math.round((t+b)/2)),'900']);
  const analog=[...logs().slice(analogMark).matchAll(/ANALOG_STEERING value=(\d+)/g)].map(m=>Number(m[1]));check(analog.some(x=>x>100&&x<=200)&&analog.at(-1)===255,'analog input turns and recenters after release');
+ stage='C01 transmission';key('KEYCODE_R');key('KEYCODE_E');sleep(500);
+ waitFor(()=>frames().some(x=>x.gearSelection===2&&x.forwardGear===2),'XI applies manual second gear');
+ key('KEYCODE_Q');sleep(500);waitFor(()=>frames().some(x=>x.gearSelection===1&&x.forwardGear===1),'XI applies manual first gear');
+ check(true,'manual inputs change the actual XI transmission');
+ key('KEYCODE_R');run(['shell','input','keycombination','-t','3500','KEYCODE_W','KEYCODE_SHIFT_LEFT'],false,10000);
+ const brakingMark=logs().length;run(['shell','input','keycombination','-t','1600','KEYCODE_W','KEYCODE_S','KEYCODE_N'],false,10000);sleep(500);
+ check(frames(logs().slice(brakingMark)).some(x=>x.speed===0),'service brake stops real driving despite held gas and nitro');
  stage='effects';key('KEYCODE_R');run(['shell','input','keycombination','-t','2500','KEYCODE_W','KEYCODE_N'],false,10000);
  waitFor(()=>/GPU_FX_STATE nitro=true .*emittedNitro=(?:1[6-9]|[2-9]\d)/.test(logs()),'nitro reaches actual GPU geometry');
  run(['shell','input','keycombination','-t','900','KEYCODE_J','KEYCODE_SHIFT_LEFT'],false,8000);waitFor(()=>/GPU_FX_STATE .*air=true .*emittedAir=(?:1[6-9]|[2-9]\d)/.test(logs()),'air jets reach actual GPU geometry');

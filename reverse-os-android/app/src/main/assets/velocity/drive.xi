@@ -146,6 +146,14 @@ store8 138 255
 store16 544 0
 store16 546 0
 store8 548 0
+# BEGIN C01 INITIALIZE
+# C01 powertrain: gear, selector, pedal ramp, wheel-derived RPM, shift timer.
+store8 568 1
+store8 569 0
+store16 570 0
+store16 572 800
+store8 574 0
+# END C01 INITIALIZE
 # BEGIN V23 RIG INITIALIZE
 # V2.3 secondary-motion state, centimetres in Q8.
 store8 496 35
@@ -327,6 +335,13 @@ store8 128 0
 store8 129 1
 label wetlands_pilot_ready
 store8 283 0
+# Service brake has priority over throttle and boost, including multitouch.
+load8 r0 129
+cmp r0 1
+jne pt_pedals_ready
+store8 128 0
+store8 134 0
+label pt_pedals_ready
 # Nitro reservoir: 4 seconds of boost, 10 seconds of normal recharge.
 load16 r0 380
 load8 r1 134
@@ -583,16 +598,254 @@ cmp r4 0
 jge forward_nonnegative
 set r4 0
 label forward_nonnegative
-load8 r0 128
-mul r0 1100
-load8 r6 382
+# BEGIN C01 FORCE
+# C01: r4=longitudinal speed, r5=lateral speed; preserve both.
+load8 r0 142
+cmp r0 6
+jle pt_selector_valid
+set r0 0
+label pt_selector_valid
+store8 569 r0
+load8 r6 568
 cmp r6 1
-jne turbo_acceleration_done
-add r0 2500
-label turbo_acceleration_done
+jge pt_gear_low_valid
+set r6 1
+label pt_gear_low_valid
+cmp r6 6
+jle pt_gear_valid
+set r6 6
+label pt_gear_valid
+load8 r1 133
+cmp r1 1
+jne pt_forward
+set r6 1
+jmp pt_selected
+label pt_forward
+cmp r0 0
+je pt_auto
+cmp r0 r6
+jge pt_manual_apply
+cmp r0 1
+jne pt_safe_0
+cmp r4 1350
+jgt pt_selected
+jmp pt_manual_apply
+label pt_safe_0
+cmp r0 2
+jne pt_safe_1
+cmp r4 2250
+jgt pt_selected
+jmp pt_manual_apply
+label pt_safe_1
+cmp r0 3
+jne pt_safe_2
+cmp r4 3350
+jgt pt_selected
+jmp pt_manual_apply
+label pt_safe_2
+cmp r0 4
+jne pt_safe_3
+cmp r4 4500
+jgt pt_selected
+jmp pt_manual_apply
+label pt_safe_3
+cmp r0 5
+jne pt_safe_4
+cmp r4 5750
+jgt pt_selected
+jmp pt_manual_apply
+label pt_safe_4
+cmp r0 6
+jne pt_safe_5
+cmp r4 6800
+jgt pt_selected
+jmp pt_manual_apply
+label pt_safe_5
+label pt_manual_apply
+mov r6 r0
+jmp pt_selected
+label pt_auto
+cmp r6 1
+jne pt_auto_0
+cmp r4 950
+jlt pt_down_0
+add r6 1
+jmp pt_selected
+label pt_down_0
+jmp pt_selected
+label pt_auto_0
+cmp r6 2
+jne pt_auto_1
+cmp r4 1700
+jlt pt_down_1
+add r6 1
+jmp pt_selected
+label pt_down_1
+cmp r4 700
+jge pt_selected
+sub r6 1
+jmp pt_selected
+label pt_auto_1
+cmp r6 3
+jne pt_auto_2
+cmp r4 2700
+jlt pt_down_2
+add r6 1
+jmp pt_selected
+label pt_down_2
+cmp r4 1400
+jge pt_selected
+sub r6 1
+jmp pt_selected
+label pt_auto_2
+cmp r6 4
+jne pt_auto_3
+cmp r4 3900
+jlt pt_down_3
+add r6 1
+jmp pt_selected
+label pt_down_3
+cmp r4 2300
+jge pt_selected
+sub r6 1
+jmp pt_selected
+label pt_auto_3
+cmp r6 5
+jne pt_auto_4
+cmp r4 5100
+jlt pt_down_4
+add r6 1
+jmp pt_selected
+label pt_down_4
+cmp r4 3400
+jge pt_selected
+sub r6 1
+jmp pt_selected
+label pt_auto_4
+cmp r6 6
+jne pt_auto_5
+cmp r4 4500
+jge pt_selected
+sub r6 1
+jmp pt_selected
+label pt_auto_5
+label pt_selected
+load8 r1 568
+cmp r1 r6
+je pt_same_gear
+store8 574 6
+label pt_same_gear
+store8 568 r6
+# Gear-dependent wheel RPM is telemetry, never a cosmetic timer.
+set r7 6800
+set r0 420
+cmp r6 1
+jne pt_ratio_0
+set r7 1350
+set r0 620
+label pt_ratio_0
+cmp r6 2
+jne pt_ratio_1
+set r7 2250
+set r0 580
+label pt_ratio_1
+cmp r6 3
+jne pt_ratio_2
+set r7 3350
+set r0 540
+label pt_ratio_2
+cmp r6 4
+jne pt_ratio_3
+set r7 4500
+set r0 500
+label pt_ratio_3
+cmp r6 5
+jne pt_ratio_4
+set r7 5750
+set r0 460
+label pt_ratio_4
+cmp r6 6
+jne pt_ratio_5
+set r7 6800
+set r0 420
+label pt_ratio_5
+mov r1 r4
+mul r1 6000
+div r1 r7
+add r1 800
+cmp r1 7200
+jle pt_rpm_ready
+set r1 7200
+label pt_rpm_ready
+store16 572 r1
+# Throttle takes half a second to build; brake always cancels engine torque.
 load8 r1 129
-mul r1 2400
-sub r0 r1
+cmp r1 1
+je pt_brake
+load8 r1 128
+cmp r1 1
+jne pt_coast
+load16 r1 570
+add r1 40
+cmp r1 1000
+jle pt_ramp_ready
+set r1 1000
+label pt_ramp_ready
+store16 570 r1
+mul r0 r1
+div r0 1000
+cmp r4 r7
+jlt pt_power_ready
+set r0 0
+label pt_power_ready
+load8 r1 574
+cmp r1 0
+je pt_shift_ready
+sub r1 1
+store8 574 r1
+div r0 3
+label pt_shift_ready
+load8 r1 382
+cmp r1 1
+jne pt_force_ready
+add r0 1300
+jmp pt_force_ready
+label pt_coast
+store16 570 0
+# Lower gears slow the wheels more when the accelerator is released.
+set r0 7
+sub r0 r6
+mul r0 -45
+sub r0 80
+# An unsafe requested downshift adds gradual retardation until it is safe.
+load8 r1 569
+cmp r1 0
+je pt_force_ready
+cmp r1 r6
+jge pt_force_ready
+sub r0 180
+jmp pt_force_ready
+label pt_brake
+store16 570 0
+set r0 -3600
+load8 r1 489
+cmp r1 1
+jne pt_brake_curb
+set r0 -2400
+label pt_brake_curb
+cmp r1 2
+jne pt_brake_mud
+set r0 -2900
+label pt_brake_mud
+cmp r1 3
+jne pt_brake_water
+set r0 -1900
+label pt_brake_water
+cmp r1 4
+jne pt_force_ready
+set r0 -1600
+label pt_force_ready
+# END C01 FORCE
 set r1 60
 mov r6 r4
 mul r6 r4
@@ -2658,6 +2911,15 @@ load16 r1 546
 print r1
 load8 r2 548
 print r2
+# BEGIN C01 TELEMETRY
+load8 r3 568
+print r3
+load16 r4 572
+print r4
+load8 r5 569
+print r5
+# END C01 TELEMETRY
+
 halt
 label missing_world
 set r0 0

@@ -16,6 +16,11 @@ public final class VelocityGearboxTest {
         g.request(true,700);check(!g.isPending()&&g.isReverse(),"a second request cancels the pending change");
         g.request(false,0);check(!g.isReverse()&&!g.isPending(),"stationary selector is immediate, including while paused");
         g.request(true,100);g.reset();check(!g.isReverse()&&!g.isPending()&&g.prepare(1,0)==1,"restart clears all gear requests");
+        g.shift(-1,4);check(g.forwardSelection()==3,"manual downshift starts from the actual XI gear");
+        g.shift(1,4);check(g.forwardSelection()==4,"subsequent manual shifts use the requested selection");
+        for(int i=0;i<10;i++)g.shift(1,4);check(g.forwardSelection()==6,"upper gear bound");
+        for(int i=0;i<10;i++)g.shift(-1,4);check(g.forwardSelection()==1,"lower gear bound");
+        g.restore(0,-1,3);check(g.checkpoint()[2]==3,"manual selector round trip");g.automatic();check(g.forwardSelection()==0,"automatic return");
         System.out.println("VELOCITY_GEARBOX_PASS requestedBrakeThenReverse=true");
     }
 }
