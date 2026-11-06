@@ -58,8 +58,11 @@ function hold(n,ms){const [x,y]=point(n);run(['shell','input','swipe',String(x),
 try{
  run(['shell','am','force-stop',pkg]);run(['logcat','-c']);run(['shell','am','start','-W','-n',component]);
  waitFor(()=>/GPU_PRESET_PIXELS preset=2 .*width=960 height=540/.test(logs()),'default medium pixels',60000);
- let nodes=ui();for(const label of ['Got it','Entendido','OK']){const n=nodes.find(n=>n.text===label&&n.package==='com.android.systemui');if(n){tap(n);nodes=ui();}}
- check(nodes.some(n=>n.text==='REVERSE\nVELOCITY'),'Reverse Velocity brand is visible');
+ let nodes=ui();
+ if(nodes.some(n=>n['resource-id']==='android:id/immersive_cling_title')){
+  tap(nodes.find(n=>n['resource-id']==='android:id/ok'));nodes=ui();
+ }
+ check(nodes.some(n=>/^REVERSE\s+VELOCITY$/.test(n.text||'')),'Reverse Velocity brand is visible');
  check(buttonNodes(nodes).length<=7,'driving view has at most seven essential buttons');
  check(!buttonNodes(nodes).some(n=>/^(Gráficos|Garaje|Mapa|Hora|Foto|Color|Sonido|Reiniciar)/.test(n.text||'')),'secondary tools are hidden while driving');
  check(!/Foto 4K|Salir 4K|HD 720p/.test(lastXml),'old graphics/photo controls are absent');
