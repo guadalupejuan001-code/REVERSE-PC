@@ -11,6 +11,18 @@ public final class NativeRuntime {
     public static native void sessionSetGeometryProgram(long session,String source);
     public static native byte[] sessionObservePreparedGeometry(long session,int[] addresses,byte[] values);
     static native XiSharedGeometryPacket sessionObserveSharedGeometry(long session,int[] addresses,byte[] values);
+    static native XiSharedGeometryPacket sessionObserveSharedGeometryView(long session,int[] addresses,byte[] values,int quality,byte[] viewState);
+    public static native void sessionRegisterResources(long session,String[] names,byte[][] values);
+    public static native byte[] sessionReadResource(long session,String name);
+    public static native void sessionSetComponent(long session,String name,byte[] bytes);
+    public static native byte[] sessionGetComponent(long session,String name);
+    public static native byte[] sessionStateOutput(long session);
+    public static native byte[] sessionCheckpointSpace(long session);
+    public static native long sessionOpenSpace(byte[] archive);
+    public static native long sessionForkSpace(long session);
+    public static native String sessionInspectSpace(long session);
+    public static native void sessionBookmark(long session,String name);
+    public static native long sessionRewind(long session,String name);
     public static native void releaseThreadScratch();
     static { System.loadLibrary("reverse_os"); }
     private NativeRuntime() {}

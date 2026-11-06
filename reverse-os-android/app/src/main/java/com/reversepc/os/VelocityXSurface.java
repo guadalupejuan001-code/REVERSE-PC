@@ -43,7 +43,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
     private long lastTapUptime;
     private volatile VelocityGraphics graphics=VelocityGraphics.fromId(2);
     private volatile int physicsHz;
-    private volatile boolean paused;
+    private volatile boolean paused,stateTransfer,closed;
     private final VelocityGearbox gearbox=new VelocityGearbox();
     boolean isPaused(){return paused;}
     VelocityGraphics graphics(){return graphics;}
@@ -186,16 +186,49 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
         // A paused preview must also update the selected silhouette.
         repaintRequested.set(true);
     }
-    void resumeLoop(){error="";physicsHz=0;physicsLifecycle.resume();lifecycle.resume();}
+    void resumeLoop(){if(stateTransfer||closed)return;error="";physicsHz=0;physicsLifecycle.resume();lifecycle.resume();}
     void pauseLoop(){
         orbitDragging=false;
         physicsLifecycle.pause();lifecycle.pause();
         physicsLifecycle.awaitStopped(250);lifecycle.awaitStopped(250);
     }
     void closeLoop(){
+        closed=true;
         physicsLifecycle.close();lifecycle.close();
         physicsLifecycle.awaitStopped(250);lifecycle.awaitStopped(250);
         game.close();
+    }
+    void beginStateTransfer(){
+        if(stateTransfer||closed)throw new IllegalStateException("Hay una operación de estado en curso");
+        stateTransfer=true;physicsLifecycle.pause();lifecycle.pause();
+    }
+    void finishStateTransfer(){stateTransfer=false;}
+    private void awaitStateTransfer()throws Exception{
+        if(!stateTransfer||closed)throw new IllegalStateException("El recorrido ya está cerrado");
+        if(!physicsLifecycle.awaitStopped(4000)||!lifecycle.awaitStopped(4000))throw new IllegalStateException("El recorrido todavía está terminando un trabajo");
+    }
+    private VelocitySessionState viewState(){
+        long now=SystemClock.elapsedRealtimeNanos();int[] gear=gearbox.checkpoint();
+        return new VelocitySessionState(new int[]{graphics.id,cameraMode,paintId,carId,assistMode,orbitPacked,displayedOrbit,gear[0],gear[1],input,analogSteering,paused?1:0,resetRequested.get()?1:0,game.environmentMode()},
+            chaseCamera.checkpoint(now),Math.max(0,Math.min(2_600_000_000L,manualCameraUntil-now)));
+    }
+    void saveState(java.io.File file)throws Exception{
+        awaitStateTransfer();byte[] bytes=game.checkpointSpace(viewState().encode());
+        android.util.AtomicFile target=new android.util.AtomicFile(file);java.io.FileOutputStream out=null;
+        try{out=target.startWrite();out.write(bytes);out.getFD().sync();target.finishWrite(out);out=null;}
+        finally{if(out!=null)target.failWrite(out);}
+    }
+    void loadState(java.io.File file)throws Exception{
+        awaitStateTransfer();byte[] bytes;
+        try(java.io.InputStream in=new android.util.AtomicFile(file).openRead();java.io.ByteArrayOutputStream out=new java.io.ByteArrayOutputStream()){
+            byte[] scratch=new byte[8192];int n;
+            while((n=in.read(scratch))>=0){if(out.size()+n>64*1024*1024)throw new IllegalArgumentException("El estado supera el presupuesto de lectura");out.write(scratch,0,n);}bytes=out.toByteArray();
+        }
+        VelocitySessionState stored=VelocitySessionState.decode(game.restoreSpace(bytes));int[] v=stored.values;
+        graphics=VelocityGraphics.fromId(v[0]);cameraMode=v[1];paintId=v[2];carId=v[3];assistMode=v[4];orbitPacked=v[5];displayedOrbit=v[6];gearbox.restore(v[7],v[8]);
+        input=v[9];analogSteering=v[10];paused=true;resetRequested.set(v[12]==1);
+        long now=SystemClock.elapsedRealtimeNanos();manualCameraUntil=now+stored.manualRemaining;chaseCamera.restore(stored.camera,now);
+        orbitDragging=false;repaintRequested.set(true);error="";
     }
     @Override public void surfaceCreated(SurfaceHolder holder){
         repaintRequested.set(true);
@@ -294,6 +327,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 }
                 if(selectedOrbit!=lastCameraOrbit||selectedGraphics.id!=lastPreset)frameReuse.invalidate();
                 int selectedYaw=VelocityOrbitMath.yaw(selectedOrbit),selectedPitch=VelocityOrbitMath.xiPitch(selectedOrbit);
+                final byte[] selectedViewState=viewState().encode();
                 if(repaintRequested.getAndSet(false)){frameReuse.invalidate();ahead.invalidate();}
                 VelocityXiEngine.Snapshot state=game.current();
                 if(frameReuse.canReuse(paused,state,selectedCamera,selectedPaint,stride,false)){
@@ -305,10 +339,10 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                         // native producer retains one coherent XI publication per frame.
                         String key=selectedCamera+":"+selectedPaint+":"+selectedCar+":"+selectedOrbit+":"+
                             selectedGraphics.id+":"+(paused?state.publication:-1);
-                        observation=ahead.acquire(key,()->game.observeGpuFrame(selectedCamera,selectedPaint,selectedCar,selectedYaw,selectedPitch));
+                        observation=ahead.acquire(key,()->game.observeGpuFrame(selectedCamera,selectedPaint,selectedCar,selectedYaw,selectedPitch,selectedGraphics.id,selectedViewState));
                     }else{
                         ahead.invalidate();
-                        observation=selectedGpu?game.observeGpuFrame(selectedCamera,selectedPaint,selectedCar,selectedYaw,selectedPitch):
+                        observation=selectedGpu?game.observeGpuFrame(selectedCamera,selectedPaint,selectedCar,selectedYaw,selectedPitch,selectedGraphics.id,selectedViewState):
                             game.observeFrame(stride,selectedCamera,selectedPaint,selectedCar,selectedYaw,selectedPitch);
                     }
                     xiRenders++;

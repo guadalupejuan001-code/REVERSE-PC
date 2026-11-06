@@ -1,9 +1,27 @@
 {
   "repository": "guadalupejuan001-code/Virtual-qSSD-",
-  "commit": "4ee7c5c8c391c0096867669681700c50aaafea1f",
+  "commit": "c9dc0ebf3370a4468e14df92fcebb2a90954c448",
   "upstreamPath": "include/qssd/shared_projection.hpp",
   "vendoredPath": "src/qssd/shared_projection.hpp",
-  "baselineVelocityCommit": "665742aa9310314242271ea51f9294d07a97b4c4",
-  "scope": "C02 immutable observation sharing; original XI/Ether remains state authority; one explicit VM-owned JNI projection per changed/collected view",
-  "sha256": "0429bafc17ec9dfd346ef1e63376a479fcbd48d77a3751214ed00ef4f0290ad4"
+  "baselineVelocityCommit": "bd2e74779f0fc57e4bb730d32f64bd59e73c6385",
+  "scope": "C03 complete native CPU/resource/component/GPU-dependency state authority, version history, bookmarks, forks and QSB3 archives; JNI projections remain explicit",
+  "sha256": "0429bafc17ec9dfd346ef1e63376a479fcbd48d77a3751214ed00ef4f0290ad4",
+  "files": [
+    {
+      "upstreamPath": "include/qssd/shared_projection.hpp",
+      "vendoredPath": "src/qssd/shared_projection.hpp",
+      "sha256": "0429bafc17ec9dfd346ef1e63376a479fcbd48d77a3751214ed00ef4f0290ad4"
+    },
+    {
+      "upstreamPath": "include/qssd/state_bus.hpp",
+      "vendoredPath": "src/qssd/state_bus.hpp",
+      "sha256": "d24d5accb6809dd7c2149a2327f370b6ee979270766e1eca8d7dc2da0a5bc424"
+    },
+    {
+      "upstreamPath": "include/qssd/state_archive.hpp",
+      "vendoredPath": "src/qssd/state_archive.hpp",
+      "sha256": "fc94842e89776eeef68eee6d016f9f4c2e57435603466fb7eb855cd864ffdd5c"
+    }
+  ],
+  "nativeEquivalenceBaseline": "665742aa9310314242271ea51f9294d07a97b4c4"
 }

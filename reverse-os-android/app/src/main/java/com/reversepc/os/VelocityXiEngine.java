@@ -76,8 +76,9 @@ final class VelocityXiEngine {
         int displayedLap(){return Math.min(3,laps+1);}
     }
 
-    private final long liveSession;
+    private volatile long liveSession;
     private volatile boolean closed;
+    private final String[] resourceNames;
     private final String driveXi;
     private final String xiRenderer;
     private final String xiGpuRenderer;
@@ -118,40 +119,66 @@ final class VelocityXiEngine {
     }
 
     VelocityXiEngine(Context context)throws Exception{
-        driveXi=asset(context,"velocity/drive.xi");
-        String world=asset(context,"velocity/world.xi");
-        xiRenderer=asset(context,"velocity/render-live.xi");
-        xiGpuRenderer=asset(context,"velocity/render4k.xi");
-        palette=parsePalette(asset(context,"velocity/palette.txt"));
-        paletteDusk=parsePalette(asset(context,"velocity/palette-dusk.txt"));
-        paletteNight=parsePalette(asset(context,"velocity/palette-night.txt"));
-        environmentXi=asset(context,"velocity/environment.xi");
-        if(!xiRenderer.startsWith(XI_HEADER))
-            throw new IllegalStateException("XI renderer source header missing");
-        if(!driveXi.startsWith("#!reverse-pc-machine-v1\n")||
-           !world.startsWith("#!reverse-pc-machine-v1\n"))
-            throw new IllegalStateException("XI game code header missing");
+        String[] names=context.getAssets().list("velocity");
+        if(names==null||names.length==0)throw new IllegalStateException("Missing Velocity resources");
+        java.util.Arrays.sort(names);resourceNames=names.clone();byte[][] data=new byte[names.length][];String world=null;
+        for(int i=0;i<names.length;i++){
+            try(InputStream in=context.getAssets().open("velocity/"+names[i]);ByteArrayOutputStream out=new ByteArrayOutputStream()){
+                byte[] scratch=new byte[8192];int count;
+                while((count=in.read(scratch))>=0){if(out.size()+count>1024*1024)throw new IllegalArgumentException("Velocity resource budget");out.write(scratch,0,count);}
+                data[i]=out.toByteArray();
+            }
+            if(names[i].equals("world.xi"))world=new String(data[i],StandardCharsets.UTF_8);
+        }
+        if(world==null||!world.startsWith(XI_HEADER))throw new IllegalStateException("XI world source header missing");
         ResultPacket generated=ResultPacket.parse(NativeRuntime.execute(NativeRuntime.initialize(),world));
-        worldPoints=parseRoute(generated.output);
-        // Preserve world.xi's 81 packed circuit vertices in this isolated RVPC2.
-        // Reinitializing here would discard the renderer's only geometry source.
-        liveSession=NativeRuntime.sessionOpen(generated.state);
-        try {
+        worldPoints=parseRoute(generated.output);liveSession=NativeRuntime.sessionOpen(generated.state);
+        try{
+            NativeRuntime.sessionRegisterResources(liveSession,names,data);
+            driveXi=resourceText("drive.xi");xiRenderer=resourceText("render-live.xi");xiGpuRenderer=resourceText("render4k.xi");
+            palette=parsePalette(resourceText("palette.txt"));paletteDusk=parsePalette(resourceText("palette-dusk.txt"));paletteNight=parsePalette(resourceText("palette-night.txt"));
+            environmentXi=resourceText("environment.xi");
+            if(!driveXi.startsWith(XI_HEADER)||!xiRenderer.startsWith(XI_HEADER)||!xiGpuRenderer.startsWith(XI_HEADER))throw new IllegalStateException("XI program header missing");
             NativeRuntime.sessionSetGeometryProgram(liveSession,xiGpuRenderer);
             step(0,0,1,0,false,true);
             if(snapshot.ticks!=0)throw new IllegalStateException("XI game reset consumed a tick");
-        } catch(Exception failure) {close();throw failure;}
+            NativeRuntime.sessionBookmark(liveSession,"start");
+            android.util.Log.i("ReverseVelocity","QSSD_SPACE_READY "+NativeRuntime.sessionInspectSpace(liveSession));
+        }catch(Exception failure){close();throw failure;}
     }
-
-    private static String asset(Context context,String path)throws Exception{
-        try(InputStream in=context.getAssets().open(path)){
-            ByteArrayOutputStream out=new ByteArrayOutputStream();
-            byte[] buffer=new byte[8192];int n;
-            while((n=in.read(buffer))>=0){
-                if(out.size()+n>512*1024)throw new IllegalArgumentException("Velocity XI source exceeds limit");
-                out.write(buffer,0,n);
-            }
-            return out.toString("UTF-8");
+    synchronized String resourceText(String name){return new String(NativeRuntime.sessionReadResource(liveSession,name),StandardCharsets.UTF_8);}
+    synchronized byte[] checkpointSpace(byte[] view)throws Exception{
+        if(closed)throw new IllegalStateException("XI session closed");
+        synchronized(gpuStateLock){
+            NativeRuntime.sessionSetComponent(liveSession,"view",view);
+            NativeRuntime.sessionSetComponent(liveSession,"environment",new byte[]{(byte)environmentMode});
+            NativeRuntime.sessionBookmark(liveSession,"saved");
+            byte[] bytes=NativeRuntime.sessionCheckpointSpace(liveSession);
+            android.util.Log.i("ReverseVelocity","QSSD_CHECKPOINT bytes="+bytes.length+" ticks="+snapshot.ticks+" space="+NativeRuntime.sessionInspectSpace(liveSession));
+            return bytes;
+        }
+    }
+    synchronized byte[] restoreSpace(byte[] archive)throws Exception{
+        if(closed)throw new IllegalStateException("XI session closed");
+        synchronized(gpuStateLock){
+            long candidate=NativeRuntime.sessionOpenSpace(archive);boolean accepted=false;
+            try{
+                JSONObject info=new JSONObject(NativeRuntime.sessionInspectSpace(candidate));
+                if(info.getInt("resources")!=resourceNames.length)throw new IllegalArgumentException("El inventario de recursos no coincide");
+                for(String name:resourceNames)if(!java.util.Arrays.equals(NativeRuntime.sessionReadResource(liveSession,name),NativeRuntime.sessionReadResource(candidate,name)))
+                    throw new IllegalArgumentException("El estado pertenece a otra versión de los recursos: "+name);
+                byte[] view=NativeRuntime.sessionGetComponent(candidate,"view");VelocitySessionState.decode(view);
+                byte[] environment=NativeRuntime.sessionGetComponent(candidate,"environment");
+                if(environment.length!=1||environment[0]<0||environment[0]>3)throw new IllegalArgumentException("Invalid stored environment mode");
+                Snapshot restored=parseState(new String(NativeRuntime.sessionStateOutput(candidate),StandardCharsets.UTF_8));
+                JSONObject space=new JSONObject(NativeRuntime.sessionInspectSpace(candidate));restored.publication=space.getLong("cpu_generation");
+                long previous=liveSession;liveSession=candidate;snapshot=restored;environmentMode=environment[0];
+                retainedGpuGeometry=null;retainedGpuIdentity=retainedGpuRevision=0;driveProgramKey=renderProgramKey=-1;
+                qssdFrames=qssdExecutions=qssdProjectionBytes=qssdGeometryBytes=qssdSharedDeliveries=0;
+                accepted=true;NativeRuntime.sessionClose(previous);
+                android.util.Log.i("ReverseVelocity","QSSD_RESTORED ticks="+restored.ticks+" space="+NativeRuntime.sessionInspectSpace(candidate));
+                return view;
+            }finally{if(!accepted)NativeRuntime.sessionClose(candidate);}
         }
     }
 
@@ -228,17 +255,18 @@ final class VelocityXiEngine {
     RegraphicsFrame renderFrame(int stride,int camera,int paint)throws Exception{
         return observeFrame(stride,camera,paint).frame;
     }
-    Observation observeGpuFrame(int camera,int paint,int car,int yaw,int pitch)throws Exception{
+    Observation observeGpuFrame(int camera,int paint,int car,int yaw,int pitch)throws Exception{return observeGpuFrame(camera,paint,car,yaw,pitch,2,null);}
+    Observation observeGpuFrame(int camera,int paint,int car,int yaw,int pitch,int quality,byte[] viewState)throws Exception{
         // Lifecycle replacement workers may briefly overlap while native work
         // finishes. Keep wire sequence + Java base atomic, without locking physics.
-        synchronized(gpuStateLock){return observeGpuFrameLocked(camera,paint,car,yaw,pitch);}
+        synchronized(gpuStateLock){return observeGpuFrameLocked(camera,paint,car,yaw,pitch,quality,viewState);}
     }
-    private Observation observeGpuFrameLocked(int camera,int paint,int car,int yaw,int pitch)throws Exception{
+    private Observation observeGpuFrameLocked(int camera,int paint,int car,int yaw,int pitch,int quality,byte[] viewState)throws Exception{
         if(camera<0||camera>2||paint<0||paint>4||car<0||car>=3||yaw<0||yaw>=4096||pitch<0||pitch>=512)
             throw new IllegalArgumentException("XI GPU view controls outside range");
         final byte[] inputs={1,(byte)camera,(byte)paint,(byte)car,(byte)yaw,(byte)(yaw>>>8),(byte)pitch,(byte)(pitch>>>8),1};
         long start=System.nanoTime();
-        XiSharedGeometryPacket packet=NativeRuntime.sessionObserveSharedGeometry(liveSession,GPU_ADDRESSES,inputs);
+        XiSharedGeometryPacket packet=NativeRuntime.sessionObserveSharedGeometryView(liveSession,GPU_ADDRESSES,inputs,quality,viewState);
         long execute=System.nanoTime()-start;start=System.nanoTime();
         Snapshot state=observedState(packet.output,packet.publication);
         RegraphicsGeometry geometry=retainedGpuGeometry!=null&&retainedGpuIdentity==packet.identity&&retainedGpuRevision==packet.revision?

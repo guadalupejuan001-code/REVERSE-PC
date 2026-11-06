@@ -1,7 +1,7 @@
 name: REVERSE VELOCITY REgraphics
 on:
   push:
-    branches: [feature/velocity-v30-open-forest-road-20261104, feature/velocity-v31-reverse-native-live-20261105, feature/velocity-v32-wetlands-gpu-20261105, feature/velocity-v33-open-terrain-20261105, feature/velocity-v34-trails-hd-20261105, feature/velocity-gpu-virtual-20261106, feature/velocity-v36-graphics-ui-20261106, feature/velocity-v37-cpu-gpu-20261106, feature/velocity-v38-qssd-20261106]
+    branches: [feature/velocity-v30-open-forest-road-20261104, feature/velocity-v31-reverse-native-live-20261105, feature/velocity-v32-wetlands-gpu-20261105, feature/velocity-v33-open-terrain-20261105, feature/velocity-v34-trails-hd-20261105, feature/velocity-gpu-virtual-20261106, feature/velocity-v36-graphics-ui-20261106, feature/velocity-v37-cpu-gpu-20261106, feature/velocity-v38-qssd-20261106, feature/velocity-v39-state-bus-20261106]
   pull_request:
     branches: [feature/velocity-regraphics-20261030]
     paths: ['reverse-os-android/**', 'scripts/**', 'src/**', 'docs/*INTEGRATION_LOCK.json', '.github/workflows/velocity-xi-render.yml']
@@ -34,7 +34,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: guadalupejuan001-code/Virtual-qSSD-
-          ref: 4ee7c5c8c391c0096867669681700c50aaafea1f
+          ref: c9dc0ebf3370a4468e14df92fcebb2a90954c448
           path: deps/qssd
           sparse-checkout: include/qssd
           persist-credentials: false
@@ -115,6 +115,8 @@ jobs:
           python3 scripts/verify-velocity-qssd.py --baseline deps/velocity-qssd-baseline --output build/open-forest/qssd
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/velocity-qssd-guards.cpp -o build/open-forest/qssd-guards
           build/open-forest/qssd-guards reverse-os-android/app/src/main/assets/velocity
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/velocity-complete-space.cpp -o build/open-forest/complete-state
+          build/open-forest/complete-state reverse-os-android/app/src/main/assets/velocity
       - name: Execute all sectors, reverse, time and real XI raster
         run: |
           build/open-forest/gameplay-test reverse-os-android/app/src/main/assets/velocity build/open-forest/gameplay

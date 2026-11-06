@@ -13,10 +13,10 @@
 #include <unordered_map>
 #include <cstring>
 namespace {
-std::vector<std::uint8_t> bytes(JNIEnv* e,jbyteArray value) {
+std::vector<std::uint8_t> bytes(JNIEnv* e,jbyteArray value,std::size_t cap=reverse_os::max_state+29) {
   if(!value)return {};
   const jsize n=e->GetArrayLength(value);
-  if(n<0||std::size_t(n)>reverse_os::max_state+29)
+  if(n<0||std::size_t(n)>cap)
     throw std::length_error("Android state exceeds transport budget");
   std::vector<std::uint8_t> out(static_cast<std::size_t>(n));
   if(n)e->GetByteArrayRegion(value,0,n,reinterpret_cast<jbyte*>(out.data()));
@@ -64,7 +64,9 @@ struct LiveSessionEntry {
   jweak projected=nullptr;
   std::uint64_t identity=0,revision=0;
   LiveSessionEntry(JNIEnv* env,const std::vector<std::uint8_t>& initial)
-      :live(std::make_shared<reverse_pc::XiLiveSession>(initial)) {
+      :LiveSessionEntry(env,std::make_shared<reverse_pc::XiLiveSession>(initial)){}
+  LiveSessionEntry(JNIEnv* env,std::shared_ptr<reverse_pc::XiLiveSession> initial)
+      :live(std::move(initial)) {
     if(env->GetJavaVM(&vm)!=JNI_OK)throw std::runtime_error("JNI VM is unavailable");
     try{
       auto buffer=env->FindClass("java/nio/ByteBuffer");
@@ -274,9 +276,7 @@ Java_com_reversepc_os_NativeRuntime_sessionObservePreparedGeometry(JNIEnv* e,jcl
 // Java allocates the physical projection, so the VM owns its lifetime. Native
 // qSSD caches only a weak reference: closing a session cannot free memory still
 // read by an old Java/GPU observation, and the cache cannot pin dead projections.
-extern "C" JNIEXPORT jobject JNICALL
-Java_com_reversepc_os_NativeRuntime_sessionObserveSharedGeometry(JNIEnv* e,jclass,jlong handle,
-    jintArray addresses,jbyteArray values){
+static jobject shared_geometry_packet(JNIEnv* e,jlong handle,jintArray addresses,jbyteArray values,unsigned quality,jbyteArray viewState=nullptr){
   try{
     if(!addresses||!values)throw std::invalid_argument("XI input mailbox missing");
     const auto count=e->GetArrayLength(addresses);
@@ -290,7 +290,8 @@ Java_com_reversepc_os_NativeRuntime_sessionObserveSharedGeometry(JNIEnv* e,jclas
       inputs.emplace_back(std::to_string(indices[i]),static_cast<std::uint8_t>(data[i]));
     }
     auto entry=session_entry(handle);
-    const auto observed=entry->live->observePreparedSharedGeometry(inputs);
+    const auto viewBytes=bytes(e,viewState,65536);
+    const auto observed=entry->live->observePreparedSharedGeometry(inputs,quality,std::string(viewBytes.begin(),viewBytes.end()));
     std::lock_guard<std::mutex> projection(entry->projection_mutex);
     const auto& frame=*observed.geometry.value;
     jobject view=nullptr;jlong materialized=0;
@@ -318,6 +319,94 @@ Java_com_reversepc_os_NativeRuntime_sessionObserveSharedGeometry(JNIEnv* e,jclas
       static_cast<jlong>(observed.geometry.identity),static_cast<jlong>(observed.geometry.revision),
       materialized,observed.executed?JNI_TRUE:JNI_FALSE);
   }catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+
+extern "C" JNIEXPORT jobject JNICALL
+Java_com_reversepc_os_NativeRuntime_sessionObserveSharedGeometry(JNIEnv* e,jclass,jlong handle,jintArray addresses,jbyteArray values){
+  return shared_geometry_packet(e,handle,addresses,values,2);
+}
+extern "C" JNIEXPORT jobject JNICALL
+Java_com_reversepc_os_NativeRuntime_sessionObserveSharedGeometryView(JNIEnv* e,jclass,jlong handle,jintArray addresses,jbyteArray values,jint quality,jbyteArray viewState){
+  return shared_geometry_packet(e,handle,addresses,values,static_cast<unsigned>(quality),viewState);
+}
+extern "C" JNIEXPORT void JNICALL
+Java_com_reversepc_os_NativeRuntime_sessionRegisterResources(JNIEnv* e,jclass,jlong handle,jobjectArray names,jobjectArray data){
+  try{
+    if(!names||!data)throw std::invalid_argument("XI resource collection missing");
+    const auto n=e->GetArrayLength(names);if(n>128||e->GetArrayLength(data)!=n)throw std::length_error("XI resource collection count");
+    std::map<std::string,std::string> values;std::size_t bytesRead=0;
+    for(jsize i=0;i<n;i++){
+      auto name=static_cast<jstring>(e->GetObjectArrayElement(names,i));auto item=static_cast<jbyteArray>(e->GetObjectArrayElement(data,i));
+      const auto key=source(e,name);auto value=bytes(e,item,16u*1024u*1024u);
+      if(value.size()>32u*1024u*1024u-bytesRead)throw std::length_error("XI resource upload byte budget");
+      bytesRead+=value.size();if(!values.emplace(key,std::string(value.begin(),value.end())).second)throw std::invalid_argument("XI duplicate resource upload");
+      e->DeleteLocalRef(name);e->DeleteLocalRef(item);
+    }
+    session(handle)->registerResources(values);
+  }catch(const std::exception& x){throw_java(e,x);}
+}
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_sessionReadResource(JNIEnv* e,jclass,jlong handle,jstring name){
+  try{const auto root=session(handle)->retainSpace();return output_frame(e,*root->value->resources->files.at(source(e,name)));}
+  catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+extern "C" JNIEXPORT void JNICALL
+Java_com_reversepc_os_NativeRuntime_sessionSetComponent(JNIEnv* e,jclass,jlong handle,jstring name,jbyteArray value){
+  try{const auto data=bytes(e,value,65536);session(handle)->setComponent(source(e,name),std::string(data.begin(),data.end()));}
+  catch(const std::exception& x){throw_java(e,x);}
+}
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_sessionGetComponent(JNIEnv* e,jclass,jlong handle,jstring name){
+  try{return output_frame(e,session(handle)->component(source(e,name)));}
+  catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_sessionStateOutput(JNIEnv* e,jclass,jlong handle){
+  try{return output_frame(e,session(handle)->stateOutput());}catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_sessionCheckpointSpace(JNIEnv* e,jclass,jlong handle){
+  try{return output_frame(e,session(handle)->checkpointSpace());}catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_reversepc_os_NativeRuntime_sessionOpenSpace(JNIEnv* e,jclass,jbyteArray archive){
+  try{
+    const auto data=bytes(e,archive,qssd::StateArchive::max_bytes);
+    auto live=std::make_shared<reverse_pc::XiLiveSession>(reverse_pc::xi_restore_graph(std::string(data.begin(),data.end())));
+    auto value=std::make_shared<LiveSessionEntry>(e,std::move(live));
+    std::lock_guard<std::mutex> lock(sessions_mutex);
+    if(sessions.size()>=64||next_session==std::numeric_limits<jlong>::max())throw std::length_error("XI live session budget");
+    const auto handle=next_session++;sessions.emplace(handle,std::move(value));return handle;
+  }catch(const std::exception& x){throw_java(e,x);return 0;}
+}
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_reversepc_os_NativeRuntime_sessionForkSpace(JNIEnv* e,jclass,jlong parent){
+  try{
+    auto value=std::make_shared<LiveSessionEntry>(e,session(parent)->forkSpace());
+    std::lock_guard<std::mutex> lock(sessions_mutex);
+    if(sessions.size()>=64||next_session==std::numeric_limits<jlong>::max())throw std::length_error("XI live session budget");
+    const auto handle=next_session++;sessions.emplace(handle,std::move(value));return handle;
+  }catch(const std::exception& x){throw_java(e,x);return 0;}
+}
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_reversepc_os_NativeRuntime_sessionInspectSpace(JNIEnv* e,jclass,jlong handle){
+  try{
+    const auto live=session(handle);const auto root=live->retainSpace();const auto stats=live->spaceStats();std::ostringstream out;
+    out<<"{\"authority\":"<<stats.authority<<",\"bus_revision\":"<<root->serial<<",\"fork_from\":"<<root->origin<<",\"cpu_generation\":"<<root->value->cpu->generation
+       <<",\"history\":"<<stats.history<<",\"history_capacity\":"<<stats.historyCapacity<<",\"bookmarks\":"<<stats.bookmarks
+       <<",\"resources\":"<<root->value->resources->files.size()<<",\"unique_resource_bytes\":"<<root->value->resources->uniqueBytes
+       <<",\"components\":"<<root->value->components->size()<<",\"gpu_state\":"<<(root->value->gpu?"true":"false")
+       <<",\"gpu_cpu_generation\":"<<(root->value->gpu?root->value->gpu->cpu->generation:0)<<",\"restored_from\":"<<root->value->restoredFrom<<"}";
+    return e->NewStringUTF(out.str().c_str());
+  }catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+extern "C" JNIEXPORT void JNICALL
+Java_com_reversepc_os_NativeRuntime_sessionBookmark(JNIEnv* e,jclass,jlong handle,jstring name){
+  try{session(handle)->bookmark(source(e,name));}catch(const std::exception& x){throw_java(e,x);}
+}
+extern "C" JNIEXPORT jlong JNICALL
+Java_com_reversepc_os_NativeRuntime_sessionRewind(JNIEnv* e,jclass,jlong handle,jstring name){
+  try{return static_cast<jlong>(session(handle)->rewind(source(e,name)));}catch(const std::exception& x){throw_java(e,x);return 0;}
 }
 
 extern "C" JNIEXPORT jstring JNICALL

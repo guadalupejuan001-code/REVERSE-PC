@@ -22,6 +22,7 @@ import static android.opengl.GLES30.*;
 /** REgraphics GPU backend. XI alone supplies every triangle and world state. */
 final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Renderer {
     private final Runnable invalidated;
+    private final VelocityXiEngine game;
     private final Object mailbox=new Object();
     private volatile boolean ready,failed,suspended;
     private Request queued,active;
@@ -68,8 +69,8 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
         ActivityManager manager=(ActivityManager)context.getSystemService(Context.ACTIVITY_SERVICE);
         return manager!=null&&manager.getDeviceConfigurationInfo().reqGlEsVersion>=0x30000;
     }
-    VelocityGpuSurface(Context context,Runnable invalidated){
-        super(context);this.invalidated=invalidated;
+    VelocityGpuSurface(Context context,Runnable invalidated,VelocityXiEngine game){
+        super(context);this.invalidated=invalidated;this.game=game;
         setEGLContextClientVersion(3);setEGLConfigChooser(8,8,8,8,24,0);
         setPreserveEGLContextOnPause(true);setZOrderMediaOverlay(true);
         setRenderer(this);setRenderMode(RENDERMODE_WHEN_DIRTY);
@@ -98,9 +99,8 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
         if(request.error!=null)throw request.error;
     }
     private String asset(String name){
-        try(InputStream in=getContext().getAssets().open("velocity/"+name);ByteArrayOutputStream out=new ByteArrayOutputStream()){
-            byte[] b=new byte[4096];int n;while((n=in.read(b))>=0){if(out.size()+n>65536)throw new IllegalStateException("Shader source budget");out.write(b,0,n);}return out.toString("UTF-8");
-        }catch(Exception error){throw new IllegalStateException("REgraphics shader missing: "+name,error);}
+        String value=game.resourceText(name);
+        if(value.length()>65536)throw new IllegalStateException("Shader source budget");return value;
     }
     private int shader(int kind,String source){int shader=glCreateShader(kind);glShaderSource(shader,source);glCompileShader(shader);int[] ok={0};glGetShaderiv(shader,GL_COMPILE_STATUS,ok,0);if(ok[0]==0){String why=glGetShaderInfoLog(shader);glDeleteShader(shader);throw new IllegalStateException(why);}return shader;}
     private int program(String vertex,String fragment){return program(vertex,fragment,0);}

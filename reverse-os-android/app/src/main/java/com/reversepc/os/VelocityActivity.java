@@ -50,6 +50,8 @@ public final class VelocityActivity extends Activity {
     private SharedPreferences preferences;
     private boolean foreground,immersiveReady,menuVisible,resumeAfterMenu,showMetrics=true;
     private int page;
+    private boolean stateBusy;
+    private String stateNotice="Conserva el recorrido, el coche y la cámara";
     private boolean gas,brake,left,right,drift,nitro,jump;
     private boolean keyGas,keyBrake,keyLeft,keyRight,keyDrift,keyNitro,keyJump;
     private int touchSteer=255;
@@ -151,7 +153,7 @@ public final class VelocityActivity extends Activity {
         surface.setGraphics(VelocityGraphics.fromId(preferences.getInt("graphics",2)));
         root.addView(surface,new FrameLayout.LayoutParams(-1,-1));
         if(VelocityGpuSurface.supported(this)){
-            gpu=new VelocityGpuSurface(this,()->surface.invalidateGpu());gpu.setOnTouchListener((v,e)->surface.onTouchEvent(e));
+            gpu=new VelocityGpuSurface(this,()->surface.invalidateGpu(),game);gpu.setOnTouchListener((v,e)->surface.onTouchEvent(e));
             surface.attachGpu(gpu);root.addView(gpu,new FrameLayout.LayoutParams(-1,-1));
         }
         hudLayer=new FrameLayout(this);hudLayer.setMotionEventSplittingEnabled(true);
@@ -190,15 +192,32 @@ public final class VelocityActivity extends Activity {
         showPage(selectedPage);
     }
     private void closeMenu(boolean continueDriving){
-        if(!menuVisible)return;
+        if(stateBusy||!menuVisible)return;
         if(menuMap!=null){atlas.release(menuMap);menuMap=null;}
         root.removeView(drawer);drawer=null;menuVisible=false;hudLayer.setVisibility(View.VISIBLE);
         releaseControls();if((continueDriving||resumeAfterMenu)&&surface.isPaused())surface.togglePause();
         android.util.Log.i("ReverseVelocity","MENU_CLOSE paused="+surface.isPaused());
     }
+    private void transferState(boolean load){
+        if(stateBusy)return;stateBusy=true;releaseControls();
+        try{surface.beginStateTransfer();}catch(Exception failure){stateBusy=false;stateNotice=failure.getMessage();showPage(0);return;}
+        stateNotice=load?"Recuperando el recorrido…":"Guardando el recorrido…";showPage(0);
+        new Thread(()->{
+            String result;
+            try{
+                java.io.File file=new java.io.File(getFilesDir(),"velocity-complete-state.qss");
+                if(load)surface.loadState(file);else surface.saveState(file);
+                result=load?"Recorrido recuperado":"Recorrido guardado";
+            }catch(Exception failure){result="No se pudo "+(load?"recuperar":"guardar")+": "+failure.getMessage();}
+            final String notice=result;
+            runOnUiThread(()->{surface.finishStateTransfer();stateBusy=false;stateNotice=notice;
+                if(!isFinishing()&&!isDestroyed()){preferences.edit().putInt("graphics",surface.graphics().id).apply();showPage(0);if(foreground)surface.resumeLoop();}
+            });
+        },"Velocity-State-Storage").start();
+    }
     private void section(String title){TextView t=text(title,10,MUTED);t.setLetterSpacing(.12f);LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(28));p.topMargin=dp(10);drawerBody.addView(t,p);}
     private void row(String title,String value,Runnable action){
-        Button b=button(title+"\n"+value);b.setGravity(Gravity.LEFT|Gravity.CENTER_VERTICAL);b.setText(styled(title,value));b.setContentDescription(title+". "+value);b.setOnClickListener(v->action.run());
+        Button b=button(title+"\n"+value);b.setGravity(Gravity.LEFT|Gravity.CENTER_VERTICAL);b.setText(styled(title,value));b.setContentDescription(title+". "+value);b.setOnClickListener(v->{if(!stateBusy)action.run();});
         LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(-1,dp(58));p.bottomMargin=dp(8);drawerBody.addView(b,p);
     }
     private SpannableString styled(String title,String detail){
@@ -251,12 +270,15 @@ public final class VelocityActivity extends Activity {
             row("Sonido",ambient.isEnabled()?"Activado":"Desactivado",()->{ambient.toggle();showPage(0);});
             row("Mostrar FPS",showMetrics?"Activado":"Desactivado",()->{showMetrics=!showMetrics;preferences.edit().putBoolean("metrics",showMetrics).apply();showPage(0);});
             section("RECORRIDO");
+            row("Guardar recorrido",stateNotice,()->transferState(false));
+            row("Recuperar recorrido","Volver al último estado guardado",()->transferState(true));
             row("Reiniciar","Volver al comienzo",()->{releaseControls();surface.reset();closeMenu(true);});
             row("Salir del juego","Cerrar Reverse Velocity",()->finish());
         }
     }
-    @Override public void onBackPressed(){if(menuVisible){if(page==0)closeMenu(false);else showPage(0);}else openMenu(0);}
+    @Override public void onBackPressed(){if(stateBusy)return;if(menuVisible){if(page==0)closeMenu(false);else showPage(0);}else openMenu(0);}
     @Override public boolean onKeyDown(int key,KeyEvent event){
+        if(stateBusy)return true;
         if(key==KeyEvent.KEYCODE_P){if(event.getRepeatCount()==0)togglePause();return true;}
         if(key==KeyEvent.KEYCODE_ESCAPE){if(event.getRepeatCount()==0){if(menuVisible)closeMenu(false);else openMenu(0);}return true;}
         if(key==KeyEvent.KEYCODE_G){if(event.getRepeatCount()==0)changeGear();return true;}

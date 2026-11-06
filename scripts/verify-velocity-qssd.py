@@ -40,8 +40,8 @@ def run(command,log=None):
 common=out/'common-java';common.mkdir(exist_ok=True)
 base_names=['NativeRuntime.java','RegraphicsGeometry.java','XiGeometryDeltaDecoder.java','XiObservationPacket.java']
 java_dir=Path('reverse-os-android/app/src/main/java')
-sources=[root/java_dir/'com/reversepc/os'/name for name in base_names+['XiSharedGeometryPacket.java']]
-sources += [root/java_dir/'x/gpu/virtual/CompactTriangleStream.java',root/'reverse-os-android/tests/VelocityQssdNativeTrace.java']
+sources=[root/java_dir/'com/reversepc/os'/name for name in base_names+['XiSharedGeometryPacket.java','VelocityOrbitMath.java','VelocitySessionState.java']]
+sources += [root/java_dir/'x/gpu/virtual/CompactTriangleStream.java',root/'reverse-os-android/tests/VelocityQssdNativeTrace.java',root/'reverse-os-android/tests/VelocityStateSpaceTest.java']
 run(java+['-d',common]+sources)
 before_java=out/'before-java';before_java.mkdir(exist_ok=True)
 run(java+['-d',before_java]+[baseline/java_dir/'com/reversepc/os'/name for name in base_names]+[baseline/java_dir/'x/gpu/virtual/CompactTriangleStream.java'])
@@ -61,6 +61,7 @@ run(['g++','-std=c++17','-O2','-pthread','-DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPO
      '-I'+str(out/'before/ether'),'-I'+str(mundo/'native/include'),'-I'+str(baseline/'src'),
      root/'reverse-os-android/tests/velocity-cpu-gpu-link.cpp','-o',out/'original-trace'],out/'trace-compile.log')
 fixtures=out/'original-frames';run([out/'original-trace',assets,fixtures],out/'original-trace.log')
+run(['java','-Djava.library.path='+str(out/'after'),'-cp',common,'com.reversepc.os.VelocityStateSpaceTest',assets,out/'complete-state'],out/'complete-state.log')
 trials=[]
 for round_id in range(args.rounds):
     for name in (['before','after'] if round_id%2==0 else ['after','before']):

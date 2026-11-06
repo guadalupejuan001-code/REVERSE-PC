@@ -8,6 +8,11 @@ final class VelocityGearbox {
     synchronized boolean isPending(){return requested>=0;}
     synchronized boolean requestedReverse(){return requested<0?reverse:requested==1;}
     synchronized void reset(){reverse=false;requested=-1;}
+    synchronized int[] checkpoint(){return new int[]{reverse?1:0,requested};}
+    synchronized void restore(int direction,int pending){
+        if(direction<0||direction>1||pending<-1||pending>1)throw new IllegalArgumentException("Stored gear protocol");
+        reverse=direction==1;requested=pending;
+    }
     synchronized void request(boolean direction,int observedSpeedCmps){
         requested=direction==reverse?-1:direction?1:0;
         settle(observedSpeedCmps);

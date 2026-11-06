@@ -8,6 +8,11 @@ final class VelocityChaseCamera {
     private boolean initialized;
     private static int delta(int a,int b){return ((a-b+2048)&4095)-2048;}
     void reset(){initialized=false;previousTime=0;}
+    long[] checkpoint(long now){return new long[]{Double.doubleToRawLongBits(yaw),Double.doubleToRawLongBits(pitch),previousVehicleYaw,initialized?1:0,Math.max(0,Math.min(80_000_000L,now-previousTime))};}
+    void restore(long[] state,long now){
+        if(state.length!=5)throw new IllegalArgumentException("Stored chase camera length");
+        yaw=Double.longBitsToDouble(state[0]);pitch=Double.longBitsToDouble(state[1]);previousVehicleYaw=(int)state[2];initialized=state[3]==1;previousTime=now-state[4];
+    }
     int update(int manualOrbit,boolean manual,boolean frozen,int vehicleYaw,int speed,int jump,boolean reverse,long now){
         if(!initialized){yaw=VelocityOrbitMath.yaw(manualOrbit);pitch=VelocityOrbitMath.pitch(manualOrbit);previousVehicleYaw=vehicleYaw;previousTime=now;initialized=true;}
         double dt=Math.max(.001,Math.min(.08,(now-previousTime)/1e9));

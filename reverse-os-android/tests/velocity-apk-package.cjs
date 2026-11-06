@@ -18,6 +18,7 @@ for(const abi of ['arm64-v8a','x86_64']){
  assert(entries.includes(name),'missing native ABI '+abi);
  const elf=unzip(['-p',apk,name]);
  assert(elf.includes(Buffer.from('Java_com_reversepc_os_NativeRuntime_sessionObserveSharedGeometry')),'native qSSD JNI entry must be present');
+ for(const method of ['sessionCheckpointSpace','sessionOpenSpace','sessionRegisterResources','sessionForkSpace'])assert(elf.includes(Buffer.from('Java_com_reversepc_os_NativeRuntime_'+method)),'full-state JNI entry absent: '+method);
  assert.equal(elf.subarray(0,4).toString('hex'),'7f454c46');
  assert.equal(elf[4],2,'ELF must be 64 bit');assert.equal(elf[5],1,'ELF must be little endian');
  assert.equal(elf.readUInt16LE(18),abi==='arm64-v8a'?183:62,'ELF machine must match packaged ABI');
@@ -34,8 +35,8 @@ for(const abi of ['arm64-v8a','x86_64']){
 }
 const text=fs.readFileSync(badging,'utf8');
 assert.match(text,/package: name='com\.reversepc\.velocity'/);
-assert.match(text,/versionCode='40'/,'car build must upgrade versionCode');
-assert.match(text,/versionName='3\.8\.0-qssd'/,'car build version mismatch');
+assert.match(text,/versionCode='41'/,'car build must upgrade versionCode');
+assert.match(text,/versionName='3\.9\.0-state-space'/,'car build version mismatch');
 assert.match(text,/launchable-activity: name='com\.reversepc\.os\.VelocityActivity'/);
 assert.match(text,/application-label:'REVERSE VELOCITY'/);
 assert.match(text,/sdkVersion:'29'/);
@@ -72,7 +73,7 @@ if(process.env.VELOCITY_EXPECTED_SIGNER_SHA256){
   'APK must keep the signer of the released 0.1 test build for in-place upgrades');
 }
 const report={passed:true,applicationId:'com.reversepc.velocity',launcher:'com.reversepc.os.VelocityActivity',minSdk:29,
- versionCode:40,versionName:'3.8.0-qssd',sourceCommit:process.env.GITHUB_SHA||null,
+ versionCode:41,versionName:'3.9.0-state-space',sourceCommit:process.env.GITHUB_SHA||null,
  signerCertificateSha256:expected,signerMatchesCachedIdentity:true,
  abis:['arm64-v8a','x86_64'],nativeElf,assets,apkBytes:fs.statSync(apk).size,
  apkSha256:crypto.createHash('sha256').update(fs.readFileSync(apk)).digest('hex')};
