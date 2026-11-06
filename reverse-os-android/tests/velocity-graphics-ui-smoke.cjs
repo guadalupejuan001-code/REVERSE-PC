@@ -4,7 +4,7 @@
 const cp=require('node:child_process'),fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const [adb='adb',out='build/velocity-ui']=process.argv.slice(2),pkg='com.reversepc.velocity',component=pkg+'/com.reversepc.os.VelocityActivity';
 fs.mkdirSync(out,{recursive:true});const deadline=Date.now()+420000,children=[];
-let stage='launch',lastXml='',checks=0;
+let stage='launch',lastXml='',checks=0,menuControl=null,worldControl=null;
 const report={passed:false,emulator:true,physicalPhoneVerified:false,checks:[],profiles:[],screens:[]};
 const sleep=ms=>Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,ms);
 function run(args,binary=false,timeout=30000){
@@ -17,8 +17,19 @@ function healthy(){assert(!/GPU_FALLBACK|Race worker failed|FATAL EXCEPTION/.tes
 function waitFor(test,label,ms=40000){const end=Math.min(deadline,Date.now()+ms);while(Date.now()<end){healthy();const v=test();if(v)return v;sleep(250);}throw Error('Timed out: '+label);}
 function decode(s){return s.replace(/&#(\d+);/g,(_,v)=>String.fromCodePoint(Number(v))).replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');}
 function ui(){
- run(['shell','uiautomator','dump','/sdcard/velocity-ui.xml'],false,15000);lastXml=run(['shell','cat','/sdcard/velocity-ui.xml']);
- return [...lastXml.matchAll(/<node\b([^>]+)>/g)].map(m=>Object.fromEntries([...m[1].matchAll(/([\w-]+)="([^"]*)"/g)].map(x=>[x[1],decode(x[2])])));
+ for(let attempt=0;attempt<7;attempt++){
+  const dumped=run(['shell','uiautomator','dump','--compressed','/sdcard/velocity-ui.xml'],false,15000);
+  if(/ERROR|Exception|could not/i.test(dumped)){sleep(350);continue;}
+  lastXml=run(['shell','cat','/sdcard/velocity-ui.xml']);
+  const nodes=[...lastXml.matchAll(/<node\b([^>]+)>/g)].map(m=>Object.fromEntries([...m[1].matchAll(/([\w-]+)="([^"]*)"/g)].map(x=>[x[1],decode(x[2])])));
+  if(nodes.some(n=>n['resource-id']==='android:id/immersive_cling_title')){
+   tap(nodes.find(n=>n['resource-id']==='android:id/ok'));sleep(350);
+   key('KEYCODE_P');continue; // The original pause key was consumed by Android's overlay.
+  }
+  const app=nodes.filter(n=>n.package===pkg);if(app.length)return app;
+  sleep(350);
+ }
+ throw Error('No current app hierarchy after bounded Android retries');
 }
 function rect(n){const m=/\[(\d+),(\d+)\]\[(\d+),(\d+)\]/.exec(n.bounds);assert(m,n.bounds);return m.slice(1).map(Number);}
 function point(n){const [x,y,r,b]=rect(n);return [Math.round((x+r)/2),Math.round((y+b)/2)];}
@@ -31,7 +42,7 @@ function screenshot(name){const bytes=run(['exec-out','screencap','-p'],true);as
 function key(k){run(['shell','input','keyevent',k]);}
 function fields(line){return Object.fromEntries([...line.matchAll(/\b(\w+)=(-?\d+(?:\.\d+)?|true|false)\b/g)].map(m=>[m[1],m[2]==='true'?true:m[2]==='false'?false:Number(m[2])]));}
 function frames(s=logs()){return s.split('\n').filter(l=>l.includes('FRAME_STATS ')).map(fields);}
-function openMenu(){tapDesc('Abrir menú');waitFor(()=>textNode('Tu recorrido'),'main drawer');}
+function openMenu(){tap(menuControl);waitFor(()=>textNode('Tu recorrido'),'main drawer');}
 function row(title){
  for(let i=0;i<9;i++){
   const nodes=ui(),n=nodes.find(n=>n.class?.endsWith('Button')&&n.text?.startsWith(title+'\n'));
@@ -57,16 +68,15 @@ function continueDriving(){tap(waitFor(()=>textNode('Continuar'),'continue'));sl
 function hold(n,ms){const [x,y]=point(n);run(['shell','input','swipe',String(x),String(y),String(x),String(y),String(ms)],false,ms+10000);}
 try{
  run(['shell','am','force-stop',pkg]);run(['logcat','-c']);run(['shell','am','start','-W','-n',component]);
- waitFor(()=>/GPU_PRESET_PIXELS preset=2 .*width=960 height=540/.test(logs()),'default medium pixels',60000);
- let nodes=ui();
- if(nodes.some(n=>n['resource-id']==='android:id/immersive_cling_title')){
-  tap(nodes.find(n=>n['resource-id']==='android:id/ok'));nodes=ui();
- }
+ waitFor(()=>/GPU_PRESET_PIXELS preset=2 .*width=960 height=540/.test(logs())&&/GPU_FRAME_READY source=XI_XFG4/.test(logs()),'default medium pixels',60000);
+ sleep(600); // Let Android finish presenting its first immersive-mode window.
+ key('KEYCODE_P');let nodes=ui();
+ menuControl=nodes.find(n=>n['content-desc']==='Abrir menú');worldControl=nodes.find(n=>n['content-desc']?.startsWith('Cámara 3D'));
  check(nodes.some(n=>/^REVERSE\s+VELOCITY$/.test(n.text||'')),'Reverse Velocity brand is visible');
  check(buttonNodes(nodes).length<=7,'driving view has at most seven essential buttons');
  check(!buttonNodes(nodes).some(n=>/^(Gráficos|Garaje|Mapa|Hora|Foto|Color|Sonido|Reiniciar)/.test(n.text||'')),'secondary tools are hidden while driving');
  check(!/Foto 4K|Salir 4K|HD 720p/.test(lastXml),'old graphics/photo controls are absent');
- screenshot('01-driving-medium');openMenu();
+ key('KEYCODE_P');screenshot('01-driving-medium');openMenu();
  check(frames().some(x=>x.paused),'opening the menu pauses real XI physics');
  row('Gráficos');
  const profiles=[['Ahorro',480,270],['Bajos',640,360],['Medio',960,540],['Alto',1280,720],['Ultra',1920,1080]];
@@ -88,14 +98,14 @@ try{
   report.profiles.push({id,name,width:w,height:h,frames:count,elapsedNanos:nanos,fps,physicsHz:rows.map(x=>x.physicsHz),pssKiB:Number((/TOTAL PSS:\s*(\d+)/.exec(mem)||[])[1])||null});
  }
  stage='persist selection';run(['shell','am','force-stop',pkg]);run(['logcat','-c']);run(['shell','am','start','-W','-n',component]);
- waitFor(()=>/GPU_PRESET_PIXELS preset=4 .*width=1920 height=1080/.test(logs()),'saved Ultra after relaunch',60000);
+ waitFor(()=>/GPU_PRESET_PIXELS preset=4 .*width=1920 height=1080/.test(logs()),'saved Ultra after relaunch',60000);key('KEYCODE_P');
  check(true,'graphics preference survives process restart');openMenu();row('Gráficos');
  check(revealProfile(4).selected==='true','selected preset is restored in the settings');
  selectProfile(2);continueDriving();
- stage='touch controls';key('KEYCODE_R');const touchMark=logs().length;
- hold(waitFor(()=>textNode('ACELERAR'),'accelerator'),3500);sleep(1200);
+ stage='touch controls';key('KEYCODE_R');key('KEYCODE_P');const controls=ui(),pedal=controls.find(n=>n.text==='ACELERAR'),wheel=controls.find(n=>n['content-desc']?.startsWith('Volante analógico'));key('KEYCODE_P');const touchMark=logs().length;
+ hold(pedal,3500);sleep(1200);
  check(frames(logs().slice(touchMark)).some(x=>!x.paused&&x.speed>0&&x.zCm>0),'real accelerator touch moves the car');
- const wheel=ui().find(n=>n['content-desc']?.startsWith('Volante analógico'));check(!!wheel,'analog wheel is accessible');
+ check(!!wheel,'analog wheel is accessible');
  const analogMark=logs().length;const [l,t,r,b]=rect(wheel);run(['shell','input','swipe',String(Math.round((l+r)/2)),String(Math.round((t+b)/2)),String(r-10),String(Math.round((t+b)/2)),'900']);
  const analog=[...logs().slice(analogMark).matchAll(/ANALOG_STEERING value=(\d+)/g)].map(m=>Number(m[1]));check(analog.some(x=>x>100&&x<=200)&&analog.at(-1)===255,'analog input turns and recenters after release');
  stage='effects';key('KEYCODE_R');run(['shell','input','keycombination','-t','2500','KEYCODE_W','KEYCODE_N'],false,10000);
@@ -107,7 +117,7 @@ try{
  tapDesc('Volver al menú');row('Mapa');check(/MAP_OPEN trails=4 places=6/.test(logs()),'map still contains all trails and destinations');
  row('Mirador del Alba');waitFor(()=>/MAP_WAYPOINT index=/.test(logs()),'actual map waypoint');screenshot('05-map');
  continueDriving();
- stage='camera';const image=ui().find(n=>n['content-desc']?.startsWith('Cámara 3D'));
+ stage='camera';const image=worldControl;
  check(!!image,'world camera remains accessible');const [il,it,ir,ib]=rect(image);
  run(['shell','input','swipe',String(Math.round((il+ir)*.5)),String(Math.round((it+ib)*.56)),String(Math.round((il+ir)*.67)),String(Math.round((it+ib)*.48)),'700']);
  waitFor(()=>/ORBIT_INPUT yaw=/.test(logs()),'physical orbit gesture');key('KEYCODE_C');
@@ -121,7 +131,7 @@ try{
  check(frozen&&frozen2&&frozen.ticks===frozen2.ticks,'menu stops simulation time');
  check(frozen2.cacheHits>0&&frozen2.xiRenders===0,'paused menu reuses the presented scene');screenshot('07-menu');continueDriving();
  stage='lifecycle';key('KEYCODE_HOME');sleep(800);run(['shell','am','start','-W','-n',component]);
- waitFor(()=>byDesc('Abrir menú'),'resumed driving UI');healthy();check(true,'game and graphics survive activity pause/resume');
+ key('KEYCODE_P');waitFor(()=>byDesc('Abrir menú'),'resumed driving UI');healthy();check(true,'game and graphics survive activity pause/resume');
  report.passed=true;report.checkCount=checks;console.log('VELOCITY_GRAPHICS_UI_PASS '+JSON.stringify({checks,profiles:report.profiles}));
 }catch(error){report.error=String(error.stack||error);report.failedStage=stage;try{screenshot('failure-'+stage.replace(/\W+/g,'-'));}catch{};throw error;
 }finally{

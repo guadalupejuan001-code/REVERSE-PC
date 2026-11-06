@@ -106,7 +106,7 @@ public final class VelocityActivity extends Activity {
     private void changeGear(){if(surface!=null)surface.setReverseGear(!surface.isReverseRequested());}
     private void togglePause(){
         if(surface==null)return;if(menuVisible){closeMenu(true);return;}
-        if(!surface.isPaused())openMenu(0);else surface.togglePause();
+        releaseControls();surface.togglePause();
     }
     private void raceHud(VelocityXiEngine.Snapshot s,boolean paused,int fps,int w,int h,String error){
         if(s==null||isFinishing()||isDestroyed())return;
@@ -255,7 +255,8 @@ public final class VelocityActivity extends Activity {
     }
     @Override public void onBackPressed(){if(menuVisible){if(page==0)closeMenu(false);else showPage(0);}else openMenu(0);}
     @Override public boolean onKeyDown(int key,KeyEvent event){
-        if(key==KeyEvent.KEYCODE_P||key==KeyEvent.KEYCODE_ESCAPE){if(event.getRepeatCount()==0)togglePause();return true;}
+        if(key==KeyEvent.KEYCODE_P){if(event.getRepeatCount()==0)togglePause();return true;}
+        if(key==KeyEvent.KEYCODE_ESCAPE){if(event.getRepeatCount()==0){if(menuVisible)closeMenu(false);else openMenu(0);}return true;}
         if(key==KeyEvent.KEYCODE_G){if(event.getRepeatCount()==0)changeGear();return true;}
         if(key==KeyEvent.KEYCODE_C){if(surface!=null)surface.centerCamera();return true;}
         if(key==KeyEvent.KEYCODE_R){if(surface!=null){releaseControls();surface.reset();if(menuVisible)closeMenu(true);}return true;}
