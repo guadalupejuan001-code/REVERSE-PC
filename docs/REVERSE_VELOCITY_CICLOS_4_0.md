@@ -68,8 +68,7 @@ y 4.940 pasos; no se cambia el comportamiento del piloto para forzar el test.
 
 ### Cierre verificado
 
-Las pruebas de Android de la APK entregada pasaron 48 comprobaciones gráficas
-/de interfaz y siete de guardado, muerte del proceso y recuperación. El archivo
+Las pruebas de Android de la APK entregada pasaron 48 comprobaciones de gráficos e interfaz y siete de guardado, muerte del proceso y recuperación. El archivo
 recuperó el tick 333 y continuó conduciendo. La reconstrucción posterior, que
 solo cambia una aserción de llegada y esta documentación, produce los mismos
 4.795.374 bytes y el mismo SHA-256 de APK. La regresión nativa final pasó en
