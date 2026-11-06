@@ -173,6 +173,56 @@ Java_com_reversepc_os_NativeRuntime_sessionObserve(JNIEnv* e,jclass,jlong handle
   }catch(const std::exception& x){throw_java(e,x);return nullptr;}
 }
 
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_sessionObserveGeometryDelta(JNIEnv* e,jclass,jlong handle,
+    jstring text,jintArray addresses,jbyteArray values){
+  try{
+    if(!addresses||!values)throw std::invalid_argument("XI input mailbox missing");
+    const auto count=e->GetArrayLength(addresses);
+    if(count>32||e->GetArrayLength(values)!=count)throw std::length_error("XI input mailbox bounds");
+    std::vector<jint> indices(count);std::vector<jbyte> data(count);
+    if(count){e->GetIntArrayRegion(addresses,0,count,indices.data());e->GetByteArrayRegion(values,0,count,data.data());}
+    if(e->ExceptionCheck())throw std::runtime_error("XI inputs could not be read");
+    reverse_pc::XiLiveSession::Inputs inputs;inputs.reserve(count);
+    for(int i=0;i<count;i++){
+      if(indices[i]<0)throw std::invalid_argument("XI input address must be nonnegative");
+      inputs.emplace_back(std::to_string(indices[i]),static_cast<std::uint8_t>(data[i]));
+    }
+    return output(e,session(handle)->observeGeometryDelta(source(e,text),inputs));
+  }catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+
+// A producer moves between bounded workers when the graphics backend changes.
+// Release only this idle thread's immutable parsed instructions, never state.
+extern "C" JNIEXPORT void JNICALL
+Java_com_reversepc_os_NativeRuntime_releaseThreadScratch(JNIEnv*,jclass){
+  mundo_x::infinite_program_detail::machine_parse_cache_state().program.reset();
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_reversepc_os_NativeRuntime_sessionSetGeometryProgram(JNIEnv* e,jclass,jlong handle,jstring text){
+  try{session(handle)->registerGeometryProgram(source(e,text));}
+  catch(const std::exception& x){throw_java(e,x);}
+}
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_sessionObservePreparedGeometry(JNIEnv* e,jclass,jlong handle,
+    jintArray addresses,jbyteArray values){
+  try{
+    if(!addresses||!values)throw std::invalid_argument("XI input mailbox missing");
+    const auto count=e->GetArrayLength(addresses);
+    if(count>32||e->GetArrayLength(values)!=count)throw std::length_error("XI input mailbox bounds");
+    std::vector<jint> indices(count);std::vector<jbyte> data(count);
+    if(count){e->GetIntArrayRegion(addresses,0,count,indices.data());e->GetByteArrayRegion(values,0,count,data.data());}
+    if(e->ExceptionCheck())throw std::runtime_error("XI inputs could not be read");
+    reverse_pc::XiLiveSession::Inputs inputs;inputs.reserve(count);
+    for(int i=0;i<count;i++){
+      if(indices[i]<0)throw std::invalid_argument("XI input address must be nonnegative");
+      inputs.emplace_back(std::to_string(indices[i]),static_cast<std::uint8_t>(data[i]));
+    }
+    return output(e,session(handle)->observePreparedGeometry(inputs));
+  }catch(const std::exception& x){throw_java(e,x);return nullptr;}
+}
+
 extern "C" JNIEXPORT jstring JNICALL
 Java_com_reversepc_os_NativeRuntime_inspect(JNIEnv* e,jclass,jbyteArray state){
   try{

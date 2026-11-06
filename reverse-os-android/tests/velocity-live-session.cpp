@@ -47,6 +47,19 @@ int main(int argc,char**argv){try{
    expected=packet.frame;
  }
  check(saved==live.checkpoint(),"frame observation never mutates compact world");
+ // Reuse requires an identical publication, exact source and every view input.
+ reverse_pc::XiLiveSession retained(state);retained.registerGeometryProgram(render);
+ auto first=retained.observePreparedGeometry(inputs),repeat=retained.observePreparedGeometry(inputs);
+ check(first[36]==0&&repeat[36]==2,"deterministic XI reuses exactly the same logical state");
+ auto otherView=inputs;otherView[2].second=1;
+ check(retained.observePreparedGeometry(otherView)[36]!=2,"view changes invalidate CPU reuse");
+ retained.stage(command(1));retained.commit();
+ check(retained.observePreparedGeometry(otherView)[36]!=2,"physics publications invalidate CPU reuse");
+ retained.registerGeometryProgram(render+"\n# exact source change\n");
+ check(retained.observePreparedGeometry(otherView)[36]!=2,"source changes invalidate CPU reuse");
+ const auto quantum=header+"h 77\n"+render.substr(header.size());retained.registerGeometryProgram(quantum);
+ retained.observePreparedGeometry(otherView);
+ check(retained.observePreparedGeometry(otherView)[36]!=2,"non-machine commands cannot authorize deterministic reuse");
  std::ofstream image(out/"live-session-geometry.xfg4",std::ios::binary);image.write(expected.data(),expected.size());
  // Race the generic publisher against a reader. The pair must always describe
  // one whole transaction, even when the writer commits during observation.

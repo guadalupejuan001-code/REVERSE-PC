@@ -17,7 +17,11 @@ final class VelocityFrameProfiler {
                 long present,long total,int packetBytes){
         if(xi<0||validation<0||expand<0||bitmap<0||present<0||total<0||
                 packetBytes<0)throw new IllegalArgumentException("Invalid XI frame timing");
-        (nativeMode?native4k:normal).add(xi,validation,expand,bitmap,present,total,packetBytes);
+        (nativeMode?native4k:normal).add(xi,validation,expand,bitmap,present,total,packetBytes,false);
+    }
+    void recordOverlapped(long xi,long validation,long present,long total,int packetBytes){
+        if(xi<0||validation<0||present<0||total<0||packetBytes<0)throw new IllegalArgumentException("Invalid XI frame timing");
+        normal.add(xi,validation,0,0,present,total,packetBytes,true);
     }
     /** Returns an empty string if this mode has no completed frames. */
     String drain(boolean nativeMode){
@@ -26,13 +30,17 @@ final class VelocityFrameProfiler {
     private static final class Window{
         private final long[][] nanos=new long[STAGES][CAPACITY];
         private int used,next,lastPacketBytes;
-        void add(long xi,long verify,long expand,long bitmap,long present,long total,int bytes){
+        private boolean overlap;
+        void add(long xi,long verify,long expand,long bitmap,long present,long total,int bytes,boolean overlapped){
             nanos[XI][next]=xi;nanos[VERIFY][next]=verify;
             nanos[EXPAND][next]=expand;nanos[BITMAP][next]=bitmap;
             nanos[PRESENT][next]=present;nanos[TOTAL][next]=total;
             // Compute per frame, before quantiles. A difference of independently
             // aggregated medians would not be a valid stage measurement.
-            nanos[SETUP][next]=Math.max(0,total-xi-verify-expand-bitmap-present);
+            // With one-frame preparation, CPU work overlaps presentation. The
+            // consumer's setup contains its remaining wait, not a negative sum.
+            nanos[SETUP][next]=Math.max(0,total-(overlapped?0:xi+verify)-expand-bitmap-present);
+            overlap|=overlapped;
             next=(next+1)%CAPACITY;used=Math.min(CAPACITY,used+1);
             lastPacketBytes=bytes;
         }
@@ -50,13 +58,13 @@ final class VelocityFrameProfiler {
                 " xiP50Ms=%.3f xiP95Ms=%.3f"+
                 " verifyP50Ms=%.3f expandP50Ms=%.3f"+
                 " bitmapP50Ms=%.3f presentP50Ms=%.3f"+
-                " totalP50Ms=%.3f totalP95Ms=%.3f setupP50Ms=%.3f setupP95Ms=%.3f",
+                " totalP50Ms=%.3f totalP95Ms=%.3f setupP50Ms=%.3f setupP95Ms=%.3f cpuOverlap=%s",
                 mode,used,lastPacketBytes,quantile(XI,.50),quantile(XI,.95),
                 quantile(VERIFY,.50),quantile(EXPAND,.50),
                 quantile(BITMAP,.50),quantile(PRESENT,.50),
-                quantile(TOTAL,.50),quantile(TOTAL,.95),quantile(SETUP,.50),quantile(SETUP,.95));
+                quantile(TOTAL,.50),quantile(TOTAL,.95),quantile(SETUP,.50),quantile(SETUP,.95),overlap);
             // Reset only the logical window; the fixed buffers are reused.
-            used=0;next=0;return value;
+            used=0;next=0;overlap=false;return value;
         }
     }
 }

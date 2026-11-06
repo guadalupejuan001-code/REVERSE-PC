@@ -273,6 +273,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
         int cacheHits=0,xiRenders=0,lastCameraOrbit=Integer.MIN_VALUE,lastPreset=-1;
         final VelocityFrameReuse frameReuse=new VelocityFrameReuse();
         final VelocityFrameProfiler profiler=new VelocityFrameProfiler();
+        final VelocityFrameAhead<VelocityXiEngine.Observation> ahead=new VelocityFrameAhead<>();
         try{
             while(lifecycle.shouldRun()){
                 long begin=SystemClock.elapsedRealtimeNanos();
@@ -286,17 +287,28 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 displayedOrbit=selectedOrbit;
                 final VelocityGpuSurface selectedGpuSurface=gpu;
                 final boolean selectedGpu=selectedGpuSurface!=null&&selectedGpuSurface.available();
-                if(selectedGpu!=previousGpu){frameReuse.invalidate();previousGpu=selectedGpu;lastPreset=-1;}
+                if(selectedGpu!=previousGpu){
+                    frameReuse.invalidate();ahead.invalidate();previousGpu=selectedGpu;lastPreset=-1;
+                    if(selectedGpu)NativeRuntime.releaseThreadScratch();
+                }
                 if(selectedOrbit!=lastCameraOrbit||selectedGraphics.id!=lastPreset)frameReuse.invalidate();
                 int selectedYaw=VelocityOrbitMath.yaw(selectedOrbit),selectedPitch=VelocityOrbitMath.xiPitch(selectedOrbit);
-                if(repaintRequested.getAndSet(false))frameReuse.invalidate();
+                if(repaintRequested.getAndSet(false)){frameReuse.invalidate();ahead.invalidate();}
                 VelocityXiEngine.Snapshot state=game.current();
                 if(frameReuse.canReuse(paused,state,selectedCamera,selectedPaint,stride,false)){
-                    cacheHits++;
+                    cacheHits++;ahead.invalidate();
                 }else{
-                    VelocityXiEngine.Observation observation=selectedGpu?
-                        game.observeGpuFrame(selectedCamera,selectedPaint,selectedCar,selectedYaw,selectedPitch):
-                        game.observeFrame(stride,selectedCamera,selectedPaint,selectedCar,selectedYaw,selectedPitch);
+                    VelocityXiEngine.Observation observation;
+                    if(selectedGpu){
+                        // Camera/profile/pause changes discard the prepared view. The
+                        // native producer retains one coherent XI publication per frame.
+                        String key=selectedCamera+":"+selectedPaint+":"+selectedCar+":"+selectedOrbit+":"+
+                            selectedGraphics.id+":"+(paused?state.publication:-1);
+                        observation=ahead.acquire(key,()->game.observeGpuFrame(selectedCamera,selectedPaint,selectedCar,selectedYaw,selectedPitch));
+                    }else{
+                        ahead.invalidate();
+                        observation=game.observeFrame(stride,selectedCamera,selectedPaint,selectedCar,selectedYaw,selectedPitch);
+                    }
                     xiRenders++;
                     if(selectedCamera!=cameraMode||selectedPaint!=paintId||selectedCar!=carId||
                             selectedGraphics!=graphics||manualOrbit!=orbitPacked)continue;
@@ -335,7 +347,9 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     }
                     if(presented){
                         frameReuse.framePosted(state,selectedCamera,selectedPaint,stride,false);frames++;
-                        profiler.record(false,observation.executeNanos,observation.decodeNanos,
+                        if(selectedGpu)profiler.recordOverlapped(observation.executeNanos,observation.decodeNanos,
+                            presentNanos,SystemClock.elapsedRealtimeNanos()-begin,observation.payloadBytes);
+                        else profiler.record(false,observation.executeNanos,observation.decodeNanos,
                             expandNanos,bitmapNanos,presentNanos,SystemClock.elapsedRealtimeNanos()-begin,observation.payloadBytes);
                         if(!firstFramePosted){
                             firstFramePosted=true;Log.i("ReverseVelocity","FRAME_READY "+width+"x"+height+
@@ -364,6 +378,9 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                         " backend="+(selectedGpu?"REgraphics_XI_GPU":"REgraphics_XI_NATIVE_LIVE")+
                         " cacheHits="+cacheHits+" xiRenders="+xiRenders);
                     String timings=profiler.drain(false);if(!timings.isEmpty())Log.i("ReverseVelocity","FRAME_PIPELINE "+timings);
+                    if(selectedGpu)Log.i("ReverseVelocity","CPU_GPU_COORDINATION acquired="+ahead.acquired+
+                        " discarded="+ahead.discarded+" prepareWaitNanos="+ahead.waitNanos+
+                        " queued="+ahead.queued()+" maxQueued=1 completion=after_swap");
                     frames=cacheHits=xiRenders=0;lastFps=now;
                 }
                 if(now-lastHud>=100_000_000L){lastHud=now;hud.update(state,paused,fps,width,height,error);}
@@ -372,6 +389,6 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
             }
         }catch(InterruptedException interrupted){physicsLifecycle.fail();lifecycle.fail();Thread.currentThread().interrupt();}
         catch(Throwable failure){if(lifecycle.shouldRun())failed(failure);}
-        finally{if(image!=null&&!image.isRecycled())image.recycle();}
+        finally{ahead.close();if(image!=null&&!image.isRecycled())image.recycle();}
     }
 }

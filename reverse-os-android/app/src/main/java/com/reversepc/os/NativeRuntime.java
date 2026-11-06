@@ -7,6 +7,10 @@ public final class NativeRuntime {
     public static native long sessionCommit(long session);
     public static native void sessionDiscard(long session);
     public static native byte[] sessionObserve(long session,String source,int[] addresses,byte[] values);
+    public static native byte[] sessionObserveGeometryDelta(long session,String source,int[] addresses,byte[] values);
+    public static native void sessionSetGeometryProgram(long session,String source);
+    public static native byte[] sessionObservePreparedGeometry(long session,int[] addresses,byte[] values);
+    public static native void releaseThreadScratch();
     static { System.loadLibrary("reverse_os"); }
     private NativeRuntime() {}
     public static native byte[] initialize();

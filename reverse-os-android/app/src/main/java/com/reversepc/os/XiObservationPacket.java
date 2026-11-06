@@ -10,7 +10,7 @@ final class XiObservationPacket {
     final String output;
     final byte[] frame;
     final long publication;
-    private XiObservationPacket(String output,byte[] frame,long publication){this.output=output;this.frame=frame;this.publication=publication;}
+    XiObservationPacket(String output,byte[] frame,long publication){this.output=output;this.frame=frame;this.publication=publication;}
     static XiObservationPacket parse(byte[] bytes){
         if(bytes==null||bytes.length<20||bytes[0]!='X'||bytes[1]!='I'||bytes[2]!='O'||bytes[3]!='2')
             throw new IllegalArgumentException("XI observation signature");

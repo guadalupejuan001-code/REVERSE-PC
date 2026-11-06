@@ -83,6 +83,9 @@ final class VelocityXiEngine {
     private final String xiGpuRenderer;
     private final Object renderSourceLock=new Object();
     private String renderProgramCache,driveProgramCache;
+    private final XiGeometryDeltaDecoder gpuDelta=new XiGeometryDeltaDecoder();
+    private RegraphicsGeometry retainedGpuGeometry;
+    private static final int[] GPU_ADDRESSES={200,201,202,203,204,205,206,207,141};
     private int renderProgramKey=-1,driveProgramKey=-1;
     private static final String XI_HEADER="#!reverse-pc-machine-v1\n";
     private final float[] worldPoints; // read-only XI generated geometry samples
@@ -94,8 +97,8 @@ final class VelocityXiEngine {
         final RegraphicsFrame frame;
         final Snapshot state;
         // Measured using the same monotonic Java clock as the display worker.
-        // executeNanos includes JNI, RVPC2 restore, XI runtime and returned
-        // pixels; decodeNanos covers validation and ownership transfer only.
+        // executeNanos includes native XI preparation and wire transport;
+        // decodeNanos covers exact reconstruction and geometry validation.
         final long executeNanos,decodeNanos;
         final int payloadBytes;
         final RegraphicsGeometry geometry;
@@ -132,6 +135,7 @@ final class VelocityXiEngine {
         // Reinitializing here would discard the renderer's only geometry source.
         liveSession=NativeRuntime.sessionOpen(generated.state);
         try {
+            NativeRuntime.sessionSetGeometryProgram(liveSession,xiGpuRenderer);
             step(0,0,1,0,false,true);
             if(snapshot.ticks!=0)throw new IllegalStateException("XI game reset consumed a tick");
         } catch(Exception failure) {close();throw failure;}
@@ -223,17 +227,26 @@ final class VelocityXiEngine {
         return observeFrame(stride,camera,paint).frame;
     }
     Observation observeGpuFrame(int camera,int paint,int car,int yaw,int pitch)throws Exception{
+        // Lifecycle replacement workers may briefly overlap while native work
+        // finishes. Keep wire sequence + Java base atomic, without locking physics.
+        synchronized(gpuDelta){return observeGpuFrameLocked(camera,paint,car,yaw,pitch);}
+    }
+    private Observation observeGpuFrameLocked(int camera,int paint,int car,int yaw,int pitch)throws Exception{
         if(camera<0||camera>2||paint<0||paint>4||car<0||car>=3||yaw<0||yaw>=4096||pitch<0||pitch>=512)
             throw new IllegalArgumentException("XI GPU view controls outside range");
-        final int[] addresses={200,201,202,203,204,205,206,207,141};
         final byte[] inputs={1,(byte)camera,(byte)paint,(byte)car,(byte)yaw,(byte)(yaw>>>8),(byte)pitch,(byte)(pitch>>>8),1};
         long start=System.nanoTime();
-        byte[] raw=NativeRuntime.sessionObserve(liveSession,xiGpuRenderer,addresses,inputs);
+        byte[] raw=NativeRuntime.sessionObservePreparedGeometry(liveSession,GPU_ADDRESSES,inputs);
         long execute=System.nanoTime()-start;start=System.nanoTime();
-        XiObservationPacket packet=XiObservationPacket.parse(raw);
+        XiObservationPacket packet=gpuDelta.parse(raw);
         Snapshot state=observedState(packet);
-        RegraphicsGeometry geometry=RegraphicsGeometry.decodeOwned(packet.frame);
+        RegraphicsGeometry geometry=retainedGpuGeometry!=null&&retainedGpuGeometry.bytes==packet.frame?
+            retainedGpuGeometry:RegraphicsGeometry.decodeOwned(packet.frame);
+        retainedGpuGeometry=geometry;
         int[] colors=VelocityWorldLight.palette(palette,paletteDusk,paletteNight,state.dayPhase);
+        if(gpuDelta.frames%60==0)android.util.Log.i("ReverseVelocity","CPU_GPU_LINK frames="+gpuDelta.frames+
+            " deltaFrames="+gpuDelta.deltaFrames+" reusedFrames="+gpuDelta.reusedFrames+" unchangedFrames="+gpuDelta.unchangedFrames+" wireBytes="+gpuDelta.wireBytes+
+            " geometryBytes="+gpuDelta.geometryBytes+" retainedBases=1 encoding=exact_word_delta");
         return new Observation(geometry,colors,state,execute,System.nanoTime()-start,raw.length);
     }
     Observation observeFrame(int stride,int camera,int paint)throws Exception{

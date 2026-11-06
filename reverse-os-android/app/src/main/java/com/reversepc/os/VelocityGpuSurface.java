@@ -52,6 +52,8 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
     private int atlasFilter=-1;
     private int[] residentPalette;
     private byte[] residentAtlas;
+    private RegraphicsGeometry residentGeometry;
+    private long reusedGeometryFrames;
     private long vertexUploadBytes,vertexUploadCalls,textureUploadBytes,resourceFrames;
     private final ByteBuffer paletteBytes=ByteBuffer.allocateDirect(1024),atlasBytes=ByteBuffer.allocateDirect(2048);
     static final class Request {
@@ -134,7 +136,7 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
             paletteTexture=texture();glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA8,256,1,0,GL_RGBA,GL_UNSIGNED_BYTE,null);
             atlasTexture=texture();glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);glTexImage2D(GL_TEXTURE_2D,0,GL_R8,128,16,0,GL_RED,GL_UNSIGNED_BYTE,null);
             int[] id={0};glGenVertexArrays(1,id,0);vao=id[0];glBindVertexArray(vao);glGenBuffers(1,id,0);vbo=id[0];glBindBuffer(GL_ARRAY_BUFFER,vbo);glBufferData(GL_ARRAY_BUFFER,4,null,GL_DYNAMIC_DRAW);
-            vertexCapacity=4;vertices.invalidateGpuCopy();residentPalette=null;residentAtlas=null;atlasFilter=-1;
+            vertexCapacity=4;vertices.invalidateGpuCopy();residentPalette=null;residentAtlas=null;residentGeometry=null;atlasFilter=-1;
             int stride=CompactTriangleStream.STRIDE;
             glVertexAttribPointer(0,2,GL_INT,false,stride,0);
             glVertexAttribPointer(1,2,GL_SHORT,false,stride,12);
@@ -188,18 +190,20 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
     private void scene(Request r){
         int w=r.graphics.width,h=r.graphics.height;
         target(w,h);glBindFramebuffer(GL_FRAMEBUFFER,framebuffer);glViewport(0,0,w,h);glDepthMask(true);glClearColor(.08f,.12f,.14f,1);glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-        RegraphicsGeometry g=r.geometry;g.compact(vertices);
+        RegraphicsGeometry g=r.geometry;boolean geometryChanged=g!=residentGeometry;
+        if(geometryChanged)g.compact(vertices);else reusedGeometryFrames++;
         int fx=(r.state.nitroActive?1:0)|(r.state.airPulse>0?2:0)|(r.state.waterDepthCm>0?4:0);
         if(fx!=lastFx){lastFx=fx;Log.i("ReverseVelocity","GPU_FX_STATE nitro="+r.state.nitroActive+" air="+(r.state.airPulse>0)+" waterDepth="+r.state.waterDepthCm+" emittedNitro="+g.categoryFaces(5)+" emittedAir="+g.categoryFaces(4));}
         glBindVertexArray(vao);glBindBuffer(GL_ARRAY_BUFFER,vbo);
         if(vertexCapacity<vertices.capacityBytes()){
             vertexCapacity=vertices.capacityBytes();glBufferData(GL_ARRAY_BUFFER,vertexCapacity,null,GL_DYNAMIC_DRAW);
         }
-        for(int i=0;i<vertices.uploadCount();i++){
+        for(int i=0;geometryChanged&&i<vertices.uploadCount();i++){
             int offset=vertices.uploadOffset(i),length=vertices.uploadLength(i);
             glBufferSubData(GL_ARRAY_BUFFER,offset,length,vertices.view(offset,length));
             vertexUploadBytes+=length;vertexUploadCalls++;
         }
+        residentGeometry=g;
         glActiveTexture(GL_TEXTURE0);glBindTexture(GL_TEXTURE_2D,paletteTexture);
         if(!Arrays.equals(residentPalette,r.palette)){
             paletteBytes.clear();for(int c:r.palette)paletteBytes.put((byte)(c>>16)).put((byte)(c>>8)).put((byte)c).put((byte)255);paletteBytes.flip();
@@ -217,8 +221,8 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
             if(residentAtlas==null)residentAtlas=new byte[2048];System.arraycopy(g.bytes,16,residentAtlas,0,2048);textureUploadBytes+=2048;
         }
         if(++resourceFrames>=60){
-            Log.i("ReverseVelocity","GPU_VIRTUAL_RESOURCES frames="+resourceFrames+" vertexStride=24 stagingCapacityBytes="+vertices.capacityBytes()+" vboCapacityBytes="+vertexCapacity+" liveVertexBytes="+vertices.usedBytes()+" vertexUploadBytes="+vertexUploadBytes+" vertexUploadCalls="+vertexUploadCalls+" textureUploadBytes="+textureUploadBytes+" scope=geometry_transport_not_process_ram");
-            resourceFrames=vertexUploadBytes=vertexUploadCalls=textureUploadBytes=0;
+            Log.i("ReverseVelocity","GPU_VIRTUAL_RESOURCES frames="+resourceFrames+" vertexStride=24 stagingCapacityBytes="+vertices.capacityBytes()+" vboCapacityBytes="+vertexCapacity+" liveVertexBytes="+vertices.usedBytes()+" vertexUploadBytes="+vertexUploadBytes+" vertexUploadCalls="+vertexUploadCalls+" textureUploadBytes="+textureUploadBytes+" reusedGeometryFrames="+reusedGeometryFrames+" scope=geometry_transport_not_process_ram");
+            resourceFrames=vertexUploadBytes=vertexUploadCalls=textureUploadBytes=reusedGeometryFrames=0;
         }
         // Resolve visibility with the exact same vertex transform before doing
         // material work. Sky and hidden opaque surfaces then cost no shading.

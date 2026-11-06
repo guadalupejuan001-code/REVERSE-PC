@@ -20,8 +20,8 @@ function trial(name,apk,round){
  run(['shell','am','force-stop',pkg]);run(['install','-r','-d',path.resolve(apk)],60000);run(['logcat','-c']);
  run(['shell','am','start','-W','-n',pkg+'/com.reversepc.os.VelocityActivity']);
  let ready=false;const deadline=Date.now()+60000;
- while(Date.now()<deadline){const l=logs();assert(!/GPU_FALLBACK|Race worker failed|FATAL EXCEPTION/.test(l),'real APK failed during warm-up');if(/GPU_FRAME_READY .*width=1280 height=720/.test(l)&&/GPU_HD_PIXELS .*pixels=921600/.test(l)){ready=true;break;}sleep(500);}
- assert(ready,'actual HD GPU warm-up timed out');
+ while(Date.now()<deadline){const l=logs();assert(!/GPU_FALLBACK|Race worker failed|FATAL EXCEPTION/.test(l),'real APK failed during warm-up');if(/GPU_FRAME_READY .*width=960 height=540/.test(l)&&/GPU_PRESET_PIXELS preset=2 .*pixels=518400/.test(l)){ready=true;break;}sleep(500);}
+ assert(ready,'actual Medio GPU warm-up timed out');
  const memorySamples=[memory(name,round,'warm')];
  // Fullscreen education was dismissed by the preceding functional smoke.
  // R is the actual restart control, and W is the actual accelerator. Shift
@@ -33,26 +33,36 @@ function trial(name,apk,round){
  assert(!/GPU_FALLBACK|Race worker failed|FATAL EXCEPTION/.test(text),'APK failed during sustained driving');
  const records=text.split(/\r?\n/).filter(l=>l.includes('FRAME_STATS ')).map(fields);
  const active=records.filter(x=>!x.paused&&x.speed>0&&x.physicsHz>0);
- assert(active.length>=3&&active.every(x=>x.width===1280&&x.height===720),'both APKs must retain native HD in sustained driving');
+ assert(active.length>=3&&active.every(x=>x.width===960&&x.height===540&&x.preset===2),'both APKs must retain the same Medio target and effects in sustained driving');
  assert(active.at(-1).ticks>active[0].ticks&&active.at(-1).zCm>active[0].zCm,'accelerator must move the physical car');
  const frames=active.reduce((s,x)=>s+x.frames,0),nanos=active.reduce((s,x)=>s+x.elapsedNanos,0);
  const pipeline=text.split(/\r?\n/).filter(l=>l.includes('FRAME_PIPELINE mode=XI_STANDARD ')).map(fields);
  const gpu=text.split(/\r?\n/).filter(l=>l.includes('GPU_PIPELINE ')).map(fields);
  const physics=text.split(/\r?\n/).filter(l=>l.includes('PHYSICS_STATS ')).map(fields);
  const summarize=(rows,keys)=>Object.fromEntries(keys.filter(k=>rows.some(x=>Number.isFinite(x[k]))).map(k=>[k,med(rows.map(x=>x[k]).filter(Number.isFinite))]));
- const result={name,round,activeWindows:active.length,frames,elapsedNanos:nanos,drawFps:frames*1e9/nanos,physicsHzMedian:med(active.map(x=>x.physicsHz)),width:1280,height:720,memorySamples,
+ const link=text.split(/\r?\n/).filter(l=>l.includes('CPU_GPU_LINK ')).map(fields);
+ const coordination=text.split(/\r?\n/).filter(l=>l.includes('CPU_GPU_COORDINATION ')).map(fields);
+ if(name==='after'){
+  assert(link.length>0&&link.at(-1).deltaFrames>0&&link.at(-1).wireBytes<link.at(-1).geometryBytes,'candidate must execute exact reduced transport');
+  assert(coordination.length>0&&coordination.every(x=>x.maxQueued===1&&x.queued<=1),'candidate preparation must stay bounded');
+ }
+ const result={name,round,activeWindows:active.length,frames,elapsedNanos:nanos,drawFps:frames*1e9/nanos,physicsHzMedian:med(active.map(x=>x.physicsHz)),width:960,height:540,memorySamples,link,coordination,
   gpuVirtualResources:text.split(/\r?\n/).filter(l=>l.includes('GPU_VIRTUAL_RESOURCES ')).map(fields),
   pipelineMedianOfWindowP50Ms:summarize(pipeline,['xiP50Ms','verifyP50Ms','presentP50Ms','totalP50Ms','setupP50Ms']),
   gpuMedianOfWindowMeansMs:summarize(gpu,['queueMeanMs','commandsMeanMs','swapMeanMs']),
   physicsMedianOfWindowMeansMs:summarize(physics,['stepMeanMs','stepMaxMs']),frameStats:active};
  console.log('VELOCITY_PERFORMANCE_TRIAL '+JSON.stringify({...result,frameStats:undefined}));return result;
 }
-const report={passed:false,emulator:true,physicalPhoneVerified:false,scope:'same AVD, real sustained Manual accelerator, real 1280x720 pixels, alternating APK order; free-running physical states, not identical pose replay',trials:[]};
+const report={passed:false,emulator:true,physicalPhoneVerified:false,scope:'same AVD, same Medio effects and real 960x540 target, alternating APK order; free-running physical states, not identical pose replay or thermal-phone certification',trials:[]};
 try{
  for(let round=0;round<3;round++)for(const name of round%2?['after','before']:['before','after'])report.trials.push(trial(name,name==='before'?before:after,round));
  const group=name=>report.trials.filter(t=>t.name===name);
  report.beforeMedianFps=med(group('before').map(x=>x.drawFps));report.afterMedianFps=med(group('after').map(x=>x.drawFps));
  report.medianFpsRatio=report.afterMedianFps/report.beforeMedianFps;
+ report.beforeMedianPssKiB=med(group('before').map(x=>x.memorySamples.at(-1).totalPssKiB));
+ report.afterMedianPssKiB=med(group('after').map(x=>x.memorySamples.at(-1).totalPssKiB));
+ report.beforePhysicsHzMedian=med(group('before').map(x=>x.physicsHzMedian));
+ report.afterPhysicsHzMedian=med(group('after').map(x=>x.physicsHzMedian));
  report.functionalPerformanceProbePassed=true;report.smoothnessVerified=report.afterMedianFps>=30;
  report.passed=true;
  console.log('VELOCITY_PERFORMANCE_AB_PASS '+JSON.stringify({before:report.beforeMedianFps,after:report.afterMedianFps,ratio:report.medianFpsRatio,smoothnessVerified:report.smoothnessVerified}));

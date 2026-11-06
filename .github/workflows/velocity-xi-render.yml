@@ -1,7 +1,7 @@
 name: REVERSE VELOCITY REgraphics
 on:
   push:
-    branches: [feature/velocity-v30-open-forest-road-20261104, feature/velocity-v31-reverse-native-live-20261105, feature/velocity-v32-wetlands-gpu-20261105, feature/velocity-v33-open-terrain-20261105, feature/velocity-v34-trails-hd-20261105, feature/velocity-gpu-virtual-20261106, feature/velocity-v36-graphics-ui-20261106]
+    branches: [feature/velocity-v30-open-forest-road-20261104, feature/velocity-v31-reverse-native-live-20261105, feature/velocity-v32-wetlands-gpu-20261105, feature/velocity-v33-open-terrain-20261105, feature/velocity-v34-trails-hd-20261105, feature/velocity-gpu-virtual-20261106, feature/velocity-v36-graphics-ui-20261106, feature/velocity-v37-cpu-gpu-20261106]
   pull_request:
     branches: [feature/velocity-regraphics-20261030]
     paths: ['reverse-os-android/**', 'scripts/**', '.github/workflows/velocity-xi-render.yml']
@@ -33,6 +33,11 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-java@v4
         with: {distribution: 'temurin', java-version: '17'}
+      - uses: actions/checkout@v4
+        with:
+          ref: 8389252a9014bdf2e46c7230289ead7a3d672984
+          path: deps/velocity-baseline
+          persist-credentials: false
       - name: Verify XI ownership and reproducible finite world
         run: |
           node scripts/check-velocity-native-only.cjs
@@ -81,6 +86,17 @@ jobs:
           sudo apt-get install -y --no-install-recommends libegl1 libgl1-mesa-dri python3-pil python3-numpy
           python3 scripts/verify-velocity-gpu-virtual.py build/open-forest build/open-forest/compact-gpu
           python3 scripts/verify-velocity-presets.py build/open-forest build/open-forest/quality-profiles
+      - name: Verify coordinated CPU and GPU against original 3.6 source
+        run: |
+          python3 deps/velocity-baseline/scripts/prepare-ether-compat.py deps/mundo-x build/ether-before
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -DVELOCITY_REFERENCE=1 -Ibuild/ether-before -Ideps/mundo-x/native/include -Ideps/velocity-baseline/src reverse-os-android/tests/velocity-cpu-gpu-link.cpp -o build/open-forest/cpu-gpu-before
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/velocity-cpu-gpu-link.cpp -o build/open-forest/cpu-gpu-after
+          build/open-forest/cpu-gpu-before reverse-os-android/app/src/main/assets/velocity build/open-forest/link/before
+          build/open-forest/cpu-gpu-after reverse-os-android/app/src/main/assets/velocity build/open-forest/link/after
+          python3 scripts/verify-velocity-cpu-gpu.py build/open-forest/link
+          javac -d build/open-forest/java reverse-os-android/app/src/main/java/com/reversepc/os/XiGeometryDeltaDecoder.java reverse-os-android/app/src/main/java/com/reversepc/os/XiObservationPacket.java reverse-os-android/app/src/main/java/com/reversepc/os/RegraphicsGeometry.java reverse-os-android/app/src/main/java/x/gpu/virtual/CompactTriangleStream.java reverse-os-android/tests/XiGeometryDeltaTest.java reverse-os-android/app/src/main/java/com/reversepc/os/VelocityFrameAhead.java reverse-os-android/tests/VelocityFrameAheadTest.java
+          java -cp build/open-forest/java com.reversepc.os.XiGeometryDeltaTest build/open-forest/link/after
+          java -cp build/open-forest/java com.reversepc.os.VelocityFrameAheadTest
       - name: Execute all sectors, reverse, time and real XI raster
         run: |
           build/open-forest/gameplay-test reverse-os-android/app/src/main/assets/velocity build/open-forest/gameplay
