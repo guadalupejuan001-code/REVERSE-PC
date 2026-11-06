@@ -99,7 +99,11 @@ try{
   report.profiles.push({id,name,width:w,height:h,frames:count,elapsedNanos:nanos,fps,physicsHz:rows.map(x=>x.physicsHz),pssKiB:Number((/TOTAL PSS:\s*(\d+)/.exec(mem)||[])[1])||null});
  }
  stage='persist selection';run(['shell','am','force-stop',pkg]);run(['logcat','-c']);run(['shell','am','start','-W','-n',component]);
- waitFor(()=>/GPU_PRESET_PIXELS preset=4 .*width=1920 height=1080/.test(logs()),'saved Ultra after relaunch',60000);key('KEYCODE_P');
+ waitFor(()=>/GPU_PRESET_PIXELS preset=4 .*width=1920 height=1080/.test(logs())&&/GPU_FRAME_READY source=XI_XFG4/.test(logs()),'saved Ultra after relaunch',60000);
+ sleep(600);key('KEYCODE_P');nodes=ui();
+ // A new Activity enters immersive mode only after its first GPU presentation.
+ // Observe its current bounds instead of tapping coordinates from the old window.
+ menuControl=nodes.find(n=>n['content-desc']==='Abrir menú');worldControl=nodes.find(n=>n['content-desc']?.startsWith('Cámara 3D'));
  check(true,'graphics preference survives process restart');openMenu();row('Gráficos');
  check(revealProfile(4).selected==='true','selected preset is restored in the settings');
  selectProfile(2);continueDriving();
