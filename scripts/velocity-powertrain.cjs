@@ -137,7 +137,14 @@ label pt_brake_water
 cmp r1 4
 jne pt_force_ready
 set r0 -1600
-label pt_force_ready`);
+label pt_force_ready
+# Boost cannot bypass a manually selected gear's torque limit.
+cmp r0 0
+jle pt_force_limited
+cmp r4 r7
+jlt pt_force_limited
+set r0 0
+label pt_force_limited`);
  return a.join('\n');
 }
 const TELEMETRY='load8 r3 568\nprint r3\nload16 r4 572\nprint r4\nload8 r5 569\nprint r5';

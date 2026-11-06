@@ -845,6 +845,13 @@ cmp r1 4
 jne pt_force_ready
 set r0 -1600
 label pt_force_ready
+# Boost cannot bypass a manually selected gear's torque limit.
+cmp r0 0
+jle pt_force_limited
+cmp r4 r7
+jlt pt_force_limited
+set r0 0
+label pt_force_limited
 # END C01 FORCE
 set r1 60
 mov r6 r4

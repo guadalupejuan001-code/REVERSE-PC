@@ -36,6 +36,9 @@ int main(int argc,char**argv){try{
  check(l[3]<c[3],"lower gear provides stronger engine braking");
  auto limit=reverse_pc::rvpc2::restore(initial);State selected{};for(int i=0;i<400;i++)selected=observe(limit.execute(command(current,1,0,1)));
  check(selected[35]==1&&selected[3]<1450,"first gear has real torque/redline limits");
+ auto boosted=reverse_pc::rvpc2::restore(initial);int boostMax=0;
+ for(int i=0;i<400;i++){auto s=observe(boosted.execute(command(current,1,0,1,1)));boostMax=std::max(boostMax,int(s[3]));}
+ check(boostMax<1450,"nitro cannot bypass a manual gear's torque/redline limit");
  auto safe=reverse_pc::rvpc2::restore(initial);velocity(safe,4000);safe.execute(header+"store8 568 5\nhalt\n");
  auto down=observe(safe.execute(command(current,0,0,1)));check(down[35]==5&&down[37]==1&&down[3]>3800,"unsafe downshift stays pending without deleting speed");
  auto bytes=reverse_pc::rvpc2::save(safe);auto copy=reverse_pc::rvpc2::restore(bytes);
