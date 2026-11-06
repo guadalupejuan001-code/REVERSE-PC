@@ -1,0 +1,112 @@
+{
+  "cycle": "C01",
+  "status": "validated",
+  "testedNativeHead": "73ee018626e2fcee79a2e5a9b7af6bd7efda6dd6",
+  "apkOriginalHead": "3efabe90b706ab1c58392879d6dbb8bfb3c7af0d",
+  "apkFinalRebuildHasIdenticalBytes": true,
+  "apk": {
+    "name": "REVERSE-VELOCITY-4.0-C01-CONDUCCION.apk",
+    "sha256": "4a1ce060d0f847c1595b070de7f1cec204df1fdcaa5a4291804b01af55746d08",
+    "bytes": 4795374,
+    "versionCode": 42,
+    "abis": [
+      "arm64-v8a",
+      "x86_64"
+    ],
+    "upgradeFrom": "3.9"
+  },
+  "evidence": {
+    "native": "https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/42285117709",
+    "androidCompleted": "https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/42283243879",
+    "identicalApkRebuild": "https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/42285117686"
+  },
+  "powertrain": {
+    "passed": true,
+    "fixture": "XI straight asphalt dynamometer, 50 Hz",
+    "braking": [
+      {
+        "kmh": 29.988,
+        "oldSeconds": 0.34,
+        "newSeconds": 0.24,
+        "oldMetres": 1.328,
+        "newMetres": 0.8668
+      },
+      {
+        "kmh": 60.012,
+        "oldSeconds": 0.68,
+        "newSeconds": 0.46,
+        "oldMetres": 5.4686,
+        "newMetres": 3.6254
+      },
+      {
+        "kmh": 100.008,
+        "oldSeconds": 1.14,
+        "newSeconds": 0.76,
+        "oldMetres": 15.2786,
+        "newMetres": 10.2074
+      },
+      {
+        "kmh": 200.016,
+        "oldSeconds": 2.22,
+        "newSeconds": 1.5,
+        "oldMetres": 60.0948,
+        "newMetres": 40.6536
+      },
+      {
+        "kmh": 234,
+        "oldSeconds": 2.58,
+        "newSeconds": 1.74,
+        "oldMetres": 81.3598,
+        "newMetres": 55.2818
+      }
+    ],
+    "old0to100Seconds": 2.72,
+    "new0to100Seconds": 6.12,
+    "oldSpeedAfter1sKmh": 37.368,
+    "newSpeedAfter1sKmh": 14.796,
+    "automaticGears": 6,
+    "checks": 25265,
+    "physicalPhoneMeasured": false
+  },
+  "openWorld": {
+    "passed": true,
+    "checks": 26720,
+    "sectors": 8,
+    "traversalTicks": 4940,
+    "contacts": 0,
+    "offroadTicks": 0,
+    "roadLengthM": 1600,
+    "roadWidthM": 3.6,
+    "reverseModes": 3,
+    "bridgeSides": 2,
+    "androidDeviceMeasured": false
+  },
+  "reliability": {
+    "passed": true,
+    "poses": 60,
+    "physicsTicks": 2880,
+    "pixelComparisons": 60,
+    "unsigned16Failures": 0,
+    "phoneMeasured": false
+  },
+  "android": {
+    "graphicsUiChecks": 48,
+    "fullStateChecks": 7,
+    "graphicsPassed": true,
+    "statePassed": true,
+    "processRestart": true,
+    "savedTicks": 333,
+    "physicalPhoneMeasured": false
+  },
+  "emulatorPerformance": {
+    "scope": "same AVD, same Medio effects and real 960x540 target, alternating APK order; free-running physical states, not identical pose replay or thermal-phone certification",
+    "beforeMedianFps": 7.5111349308995194,
+    "afterMedianFps": 8.322251964119106,
+    "beforeMedianPssKiB": 84140,
+    "afterMedianPssKiB": 83389,
+    "beforePhysicsHzMedian": 50,
+    "afterPhysicsHzMedian": 50,
+    "smoothnessVerified": false
+  },
+  "nextCycle": "C02: more world objects and life; begin when X selects next"
+}
