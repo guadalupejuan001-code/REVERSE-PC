@@ -259,6 +259,10 @@ public final class VelocityActivity extends Activity {
             row("Quitar destino","Seguir explorando libremente",()->{atlas.select(-1);destination.setText(atlas.destination());});
             android.util.Log.i("ReverseVelocity","MAP_OPEN trails=4 places=6");
         }else{
+            if(stateBusy||stateNotice.startsWith("Recorrido ")||stateNotice.startsWith("No se pudo")){
+                TextView notice=text(stateNotice,12,stateNotice.startsWith("No se pudo")?0xffffd69b:ACCENT);
+                notice.setPadding(0,dp(8),0,dp(8));drawerBody.addView(notice,new LinearLayout.LayoutParams(-1,-2));
+            }
             section("A TU MANERA");
             row("Gráficos",surface.graphics().name+" · "+surface.graphics().height+"p",()->showPage(1));
             row("Garaje",CARS[surface.selectedCar()],()->showPage(2));
