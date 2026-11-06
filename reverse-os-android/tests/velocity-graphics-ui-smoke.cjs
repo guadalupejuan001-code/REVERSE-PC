@@ -40,14 +40,18 @@ function row(title){
   run(['shell','input','swipe',String(Math.round((l+r)/2)),String(b-20),String(Math.round((l+r)/2)),String(t+20),'300']);sleep(100);
  }throw Error('Missing menu row '+title);
 }
-function selectProfile(id){
- const names=['Ahorro','Bajos','Medio','Alto','Ultra'],name=names[id];
+function revealProfile(id){
+ const name=['Ahorro','Bajos','Medio','Alto','Ultra'][id];
  for(let i=0;i<8;i++){
   const nodes=ui(),n=nodes.find(n=>n['content-desc']?.startsWith('Gráficos: '+name));
-  if(n){const mark=logs().length;tap(n);waitFor(()=>logs().slice(mark).split('\n').find(l=>l.includes('GRAPHICS_FRAME preset='+id+' ')&&l.includes('gpu=true')),'real GPU profile '+name,60000);return;}
+  if(n&&rect(n)[3]-rect(n)[1]>=34)return n;
   const scroll=nodes.find(n=>n.scrollable==='true');assert(scroll,'graphics scroll missing');const [l,t,r,b]=rect(scroll);
-  run(['shell','input','swipe',String(Math.round((l+r)/2)),String(b-24),String(Math.round((l+r)/2)),String(t+22),'300']);sleep(100);
+  run(['shell','input','swipe',String(Math.round((l+r)/2)),String(id<=2?t+24:b-24),String(Math.round((l+r)/2)),String(id<=2?b-24:t+24),'300']);sleep(100);
  }throw Error('Missing graphics profile '+name);
+}
+function selectProfile(id){
+ const n=revealProfile(id),mark=logs().length;tap(n);
+ waitFor(()=>logs().slice(mark).split('\n').find(l=>l.includes('GRAPHICS_FRAME preset='+id+' ')&&l.includes('gpu=true')),'real GPU profile '+id,60000);
 }
 function continueDriving(){tap(waitFor(()=>textNode('Continuar'),'continue'));sleep(150);}
 function hold(n,ms){const [x,y]=point(n);run(['shell','input','swipe',String(x),String(y),String(x),String(y),String(ms)],false,ms+10000);}
@@ -83,17 +87,17 @@ try{
  stage='persist selection';run(['shell','am','force-stop',pkg]);run(['logcat','-c']);run(['shell','am','start','-W','-n',component]);
  waitFor(()=>/GPU_PRESET_PIXELS preset=4 .*width=1920 height=1080/.test(logs()),'saved Ultra after relaunch',60000);
  check(true,'graphics preference survives process restart');openMenu();row('Gráficos');
- check(ui().some(n=>n['content-desc']?.startsWith('Gráficos: Ultra, seleccionado')&&n.selected==='true'),'selected preset is restored in the settings');
+ check(revealProfile(4).selected==='true','selected preset is restored in the settings');
  selectProfile(2);continueDriving();
- stage='touch controls';key('KEYCODE_R');const before=frames().at(-1)?.ticks||0;
+ stage='touch controls';key('KEYCODE_R');const touchMark=logs().length;
  hold(waitFor(()=>textNode('ACELERAR'),'accelerator'),3500);sleep(1200);
- check(frames().some(x=>x.ticks>before&&x.speed>0&&x.zCm>0),'real accelerator touch moves the car');
+ check(frames(logs().slice(touchMark)).some(x=>!x.paused&&x.speed>0&&x.zCm>0),'real accelerator touch moves the car');
  const wheel=ui().find(n=>n['content-desc']?.startsWith('Volante analógico'));check(!!wheel,'analog wheel is accessible');
- const [l,t,r,b]=rect(wheel);run(['shell','input','swipe',String(Math.round((l+r)/2)),String(Math.round((t+b)/2)),String(r-10),String(Math.round((t+b)/2)),'900']);
- check(/ANALOG_STEERING value=255/.test(logs()),'steering recenters after release');
+ const analogMark=logs().length;const [l,t,r,b]=rect(wheel);run(['shell','input','swipe',String(Math.round((l+r)/2)),String(Math.round((t+b)/2)),String(r-10),String(Math.round((t+b)/2)),'900']);
+ const analog=[...logs().slice(analogMark).matchAll(/ANALOG_STEERING value=(\d+)/g)].map(m=>Number(m[1]));check(analog.some(x=>x>100&&x<=200)&&analog.at(-1)===255,'analog input turns and recenters after release');
  stage='effects';key('KEYCODE_R');run(['shell','input','keycombination','-t','2500','KEYCODE_W','KEYCODE_N'],false,10000);
  waitFor(()=>/GPU_FX_STATE nitro=true .*emittedNitro=(?:1[6-9]|[2-9]\d)/.test(logs()),'nitro reaches actual GPU geometry');
- key('KEYCODE_J');waitFor(()=>/GPU_FX_STATE .*air=true .*emittedAir=(?:1[6-9]|[2-9]\d)/.test(logs()),'air jets reach actual GPU geometry');
+ run(['shell','input','keycombination','-t','900','KEYCODE_J','KEYCODE_SHIFT_LEFT'],false,8000);waitFor(()=>/GPU_FX_STATE .*air=true .*emittedAir=(?:1[6-9]|[2-9]\d)/.test(logs()),'air jets reach actual GPU geometry');
  screenshot('04-effects');
  stage='garage and map';openMenu();row('Garaje');tapDesc('Elegir GRAN TURISMO X-02');
  check(ui().some(n=>n['content-desc']==='Elegir GRAN TURISMO X-02'&&n.selected==='true'),'garage selects the real second car');
