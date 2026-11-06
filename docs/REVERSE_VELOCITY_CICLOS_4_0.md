@@ -1,0 +1,84 @@
+# REVERSE VELOCITY 4.0 — ciclos de conducción y mundo
+
+Base: 3.9 probada por X en su teléfono, donde reportó aproximadamente 90 FPS
+estables conduciendo a máxima velocidad. Es una observación del usuario; esta
+campaña no presupone que una actualización nueva conserve ese resultado.
+
+| Ciclo | Trabajo | Estado |
+| --- | --- | --- |
+| C01 | Frenado prioritario, aceleración progresiva, seis marchas, freno motor, velocímetro y persistencia | Completado: conducción, mundo, gráficos y APK verificados |
+| C02 | Más objetos y vida del bosque: conjuntos locales variados, fauna y movimiento ambiental con presupuestos por perfil | Pendiente del siguiente ciclo |
+| C03 | Refinamiento de destinos, orillas, iluminación y detalles de materiales; revisar colisiones y legibilidad al conducir | Pendiente |
+| C04 | Campaña de estabilidad, rendimiento y recorrido completo; APK final de la campaña | Pendiente |
+
+## C01
+
+El freno de servicio cancela acelerador y nitro en la misma transacción XI.
+La aceleración tarda 0,5 segundos en aplicar todo el pedal. Las seis marchas
+cambian el par, el régimen y el freno motor; los cambios automáticos usan
+umbrales distintos de subida y bajada. Una reducción manual insegura queda
+pendiente, sin recortar instantáneamente la velocidad del coche.
+
+El modo inicial es automático. Los botones **−** y **+** seleccionan marchas
+manuales; mantener pulsado el indicador o elegir **Transmisión** en el menú
+restablece el automático. D/R conserva su cambio con detención previa. Las
+teclas Q/E permiten verificar las marchas sin simular coordenadas táctiles.
+
+El velocímetro consume velocidad, marcha y RPM del estado XI confirmado.
+La ABI conserva las primeras 35 observaciones y añade tres de transmisión.
+La selección manual viaja en el componente portátil de QSSD; la versión 2
+del componente admite también la lectura del formato anterior de vista.
+Los archivos completos siguen verificando el inventario exacto de recursos;
+un guardado creado con otros programas no sustituye silenciosamente la sesión.
+
+### Medición controlada frente a 3.9
+
+La prueba nativa ejecuta el programa XI real a 50 pasos por segundo y mantiene
+el punto de contacto en el mismo asfalto para comparar fuerzas. Son tiempos
+de simulación de un juego arcade, no una medición física de neumáticos reales
+ni de FPS en el teléfono.
+
+| Prueba | 3.9 | C01 |
+| --- | ---: | ---: |
+| 0–100 km/h | 2,72 s | 6,12 s |
+| Velocidad tras 1 s de acelerador | 37,37 km/h | 14,80 km/h |
+| 100–0 km/h: tiempo | 1,14 s | 0,76 s |
+| 100–0 km/h: recorrido | 15,28 m | 10,21 m |
+
+Se prueban frenadas desde 30, 60, 100, 200 y 234 km/h, prioridad con ambos
+pedales y nitro, las seis marchas automáticas, límite de primera, freno motor,
+reducción insegura y continuación exacta después de restaurar RVPC2.
+La exploración fuera del asfalto se verifica con más tiempo de aceleración,
+porque la menor entrega de par cambia deliberadamente la distancia a igualdad
+de segundos. Geometría, perfiles, CPU/GPU y autoridad QSSD conservan su ruta.
+
+La comparación de transporte qSSD usa el mismo programa de conducción nuevo
+en ambos runtimes; solo drive.xi y environment.xi están excluidos de la igualdad
+con los recursos 3.7. Los otros recursos mantienen la comparación exacta.
+
+Los ciclos siguientes se ejecutarán en orden cuando X pulse continuar; cada
+cierre conservará su commit, evidencias, limitaciones y enlace de entrega.
+
+La prueba de llegada del piloto usa ahora la zona final de 20 m y exige una
+parada real, los ocho sectores y cero contactos. El freno nuevo detiene el
+coche aproximadamente en 1582 m; el umbral anterior de 1584 m dependía del
+recorrido de frenado antiguo. El recorrido completo pasa 26.720 comprobaciones
+y 4.940 pasos; no se cambia el comportamiento del piloto para forzar el test.
+
+
+### Cierre verificado
+
+Las pruebas de Android de la APK entregada pasaron 48 comprobaciones de gráficos e interfaz y siete de guardado, muerte del proceso y recuperación. El archivo
+recuperó el tick 333 y continuó conduciendo. La reconstrucción posterior, que
+solo cambia una aserción de llegada y esta documentación, produce los mismos
+4.795.374 bytes y el mismo SHA-256 de APK. La regresión nativa final pasó en
+GitHub Actions, incluido el recorrido completo y los controles restantes.
+
+El mismo emulador, Medio 960×540, tres ensayos alternados por APK, midió medianas
+de 7,51 FPS para 3.9 y 8,32 para C01; ambas mantuvieron 50 Hz de física. Son
+estados de conducción libres, no una repetición de poses idénticas, y el equipo
+no acredita fluidez de teléfono. El rendimiento físico de C01 sigue sin medirse.
+
+El detalle reproducible y los enlaces de evidencia están en
+`docs/evidence/velocity-c01-results.json`. El ciclo C02 sigue pendiente de la
+selección de X y añade objetos y vida al mapa.

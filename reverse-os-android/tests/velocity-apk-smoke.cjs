@@ -212,6 +212,26 @@ function hierarchy(){
   throw Error('Actual Android UI hierarchy unavailable: '+why);
 }
 function findText(items,text){return items.find(x=>x.text===text);}
+function revealToolbar(label,forward){
+  // A landscape phone is narrower than the eleven real controls. Navigate
+  // the Android HorizontalScrollView instead of assuming everything fits.
+  let ui=hierarchy();
+  if(findText(ui,label))return ui;
+  for(let attempt=0;attempt<2;attempt++){
+    const scroller=ui.find(n=>n.class==='android.widget.HorizontalScrollView'&&n.bounds);
+    assert(scroller,'physical game options are not in a horizontal scroll view');
+    const b=/^\[(\d+),(\d+)\]\[(\d+),(\d+)\]$/.exec(scroller.bounds);
+    assert(b,'invalid toolbar screen bounds');
+    const xLeft=Number(b[1])+30,xRight=Number(b[3])-30;
+    const y=Math.round((Number(b[2])+Number(b[4]))/2);
+    adbText(['shell','input','swipe',
+       String(forward?xRight:xLeft),String(y),
+       String(forward?xLeft:xRight),String(y),'380']);
+    ui=hierarchy();
+    if(findText(ui,label))return ui;
+  }
+  throw Error('Toolbar did not reveal physical control '+label);
+}
 function tapNode(item,holdMs=0){
   assert(item,'visible physical control is missing');
   const b=/^\[(\d+),(\d+)\]\[(\d+),(\d+)\]$/.exec(item.bounds||'');
@@ -249,9 +269,13 @@ try{
   check(ui.some(x=>/^VUELTA \d+ \/ 3$/.test(x.text||''))&&
     ui.some(x=>/^POSICIÓN \d+ \/ 4$/.test(x.text||'')),'minimal race lap and position HUD');
   check(!!findText(ui,'ACELERAR'),'accelerator physical control');
+   check(!!findText(ui,'NITRO')&&!!findText(ui,'SALTO'),
+     'physical boost and pneumatic jump buttons exist in the installed APK');
   check(!!findText(ui,'FRENO')&&!!findText(ui,'◀')&&!!findText(ui,'▶'),
     'real driving pedal/steering accessibility controls');
   check(!!findText(ui,'Marcha D'),'visible real-world transmission selector');
+  check(!!findText(ui,'Garaje')&&!!findText(ui,'HUD libre'),
+    'compact unobstructed HUD and actual selectable garage are present');
   tapNode(findText(ui,'Marcha D'));
   ui=waitText(/^Marcha R$/);
   check(!!findText(ui,'Marcha R'),'stationary gear selector engages reverse in the APK');
@@ -272,6 +296,19 @@ try{
   check(report.observedSpeedKmh>0,'physical accelerator advances XI speed');
   stage='pause';
   ui=waitText(/EN PAUSA/);check(true,'pause freezes game scheduler and shows HUD');
+  stage='three forest driver modes';
+  check(!!findText(ui,'Manual'),'physical Manual forest driving button exists');
+  tapNode(findText(ui,'Manual'));
+  ui=waitText(/^Asistida$/);
+  check(!!findText(ui,'Asistida'),'assisted mode is selectable in the installed APK');
+  tapNode(findText(ui,'Asistida'));
+  ui=waitText(/^Piloto$/);
+  check(!!findText(ui,'Piloto'),'autonomous XI forest pilot is selectable');
+  tapNode(findText(ui,'Piloto'));
+  ui=waitText(/^Manual$/);
+  check(!!findText(ui,'Manual'),'manual mode can be restored without changing the race');
+  screenshot('forest-assist-menu');
+  stage='pause';
   const timer=items=>(items.find(x=>/^\d{2}:\d{2}\.\d{2}$/.test(x.text||''))||{}).text;
   const pauseTime=timer(ui);
   sleep(1100);ui=waitText(/EN PAUSA/);
@@ -291,6 +328,51 @@ try{
   adbText(['shell','input','keyevent','KEYCODE_P']);
   ui=waitText(/EN PAUSA/);
   check(ticksFromTimer(timer(ui))>ticksFromTimer(pauseTime),'live race timer advanced before second physical pause');
+  stage='garage and clear view';
+  tapNode(findText(ui,'Garaje'));
+  ui=waitText(/GRAN TURISMO X-02/);
+  check(!!findText(ui,'GRAN TURISMO X-02 · más largo y estrecho'),
+    'garage exposes a second physical car silhouette');
+  tapNode(findText(ui,'GRAN TURISMO X-02 · más largo y estrecho'));
+  ui=waitText(/^Coche 2$/);
+  check(!!findText(ui,'Coche 2'),'selecting a car visibly changes the garage choice');
+  screenshot('garage-gt-car');
+  tapNode(findText(ui,'HUD libre'));
+  ui=waitText(/^HUD tablero$/);
+  check(!!findText(ui,'HUD tablero'),'dashboard can be enabled explicitly');
+  tapNode(findText(ui,'HUD tablero'));
+  ui=waitText(/^HUD libre$/);
+  check(!!findText(ui,'HUD libre'),'large animated dashboard can be hidden again');
+  stage='physical touchscreen orbit';
+  const sceneNode=ui.find(x=>x.class==='android.view.SurfaceView')||
+    ui.filter(x=>x.class==='android.widget.FrameLayout'&&x.bounds)
+      .sort((a,b)=>{
+        const area=v=>{const p=/^\[(\d+),(\d+)\]\[(\d+),(\d+)\]$/.exec(v.bounds||'');
+          return p?(Number(p[3])-Number(p[1]))*(Number(p[4])-Number(p[2])):0;};
+        return area(b)-area(a);
+      })[0];
+  check(!!sceneNode,'gesture target visible in native Android hierarchy');
+  const screen=/^\[(\d+),(\d+)\]\[(\d+),(\d+)\]$/.exec(sceneNode.bounds||'');
+  check(!!screen,'landscape scene has valid physical bounds');
+  const sx=Number(screen[1]),sy=Number(screen[2]),
+    sw=Number(screen[3])-sx,sh=Number(screen[4])-sy;
+  check(sw>500&&sh>200,'gesture area is large enough to avoid driving controls');
+  const y=sy+Math.round(sh*.43),startX=sx+Math.round(sw*.38),
+    endX=sx+Math.round(sw*.67);
+  adbText(['shell','input','swipe',String(startX),String(y),
+    String(endX),String(y-28),'400']);
+  let orbitReported=false,orbitRendered=false;
+  for(let k=0;k<15;k++){
+    const lines=logs();
+    orbitReported=/ORBIT_INPUT yaw=[1-9]\d* pitch=/.test(lines);
+    orbitRendered=/ORBIT_FRAME yaw=[1-9]\d* pitch=/.test(lines);
+    if(orbitReported&&orbitRendered)break;
+    sleep(250);
+  }
+  check(orbitReported&&orbitRendered,
+    'real screen drag rotates XI camera and posts an independently rendered view');
+  screenshot('touch-orbit-camera');
+  ui=waitText(/EN PAUSA/);
   stage='camera and paint';tapNode(findText(ui,'Cámara'));
   ui=waitText(/^Cercana$/);check(!!findText(ui,'Cercana'),'physical camera changes to close chase');
   tapNode(findText(ui,'Color'));ui=waitText(/^Color 2$/);
@@ -322,6 +404,7 @@ try{
   ui=waitText(/^Auto$/);check(!!findText(ui,'Auto'),'automatic detail physical control shows Auto');
   check(timer(ui)===detailPauseTime,'automatic detail leaves paused race timer unchanged');
   stage='REgraphics XI renderer ownership';
+  ui=revealToolbar('Motor XI',true);
   tapNode(findText(ui,'Motor XI'));
   ui=waitText(/Resolución habitual: hasta 640/);
   check(ui.some(x=>/XFB5 escala el trabajo por resolución/.test(x.text||'')),
@@ -335,10 +418,11 @@ try{
   ui=waitText(/EN PAUSA/);
   check(true,'native REgraphics-only diagnostics close without modifying physical race');
   stage='true XI 4K native pixel mode';
+  ui=revealToolbar('Foto 4K',false);
   const beforeNativeFrameStats=frameRecords(logs()).length;
-  tapNode(findText(ui,'4K XI'));
-  ui=waitText(/^4K XI activo$/);
-  check(!!findText(ui,'4K XI activo'),'native XI 4K control enabled');
+  tapNode(findText(ui,'Foto 4K'));
+  ui=waitText(/^Salir 4K$/);
+  check(!!findText(ui,'Salir 4K'),'4K is explicitly photo-only and freezes XI physics');
   report.native4K=waitNative4KFrame();
   check(report.native4K.width===3840&&report.native4K.height===2160&&
     report.native4K.pixels===8294400,'actual XI raster computed 8.294.400 pixels');
@@ -349,9 +433,9 @@ try{
     '4K cached XI frame reuse while paused');
   check(report.frozen4KCache.cacheHits>=3&&report.frozen4KCache.xiRenders<=2,
     'native 4K must reuse frozen XI pixels instead of rendering continuously');
-  tapNode(findText(ui,'4K XI activo'));
-  ui=waitText(/^4K XI$/);
-  check(!!findText(ui,'4K XI'),'4K disabled and CPU low-res renderer resumed');
+  tapNode(findText(ui,'Salir 4K'));
+  ui=waitText(/^Foto 4K$/);
+  check(!!findText(ui,'Foto 4K'),'4K photo exited and fluid XI driving profile restored');
     stage='physical steering and driving video';
   const startState=fields(initialMarker);
   check(Number.isFinite(startState.xCm)&&Number.isFinite(startState.zCm)&&Number.isFinite(startState.yaw4096),
