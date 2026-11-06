@@ -1,56 +1,18 @@
 name: REVERSE VELOCITY REgraphics
 on:
   push:
-    branches: [feature/xi-velocity-no-cpp-render-20261029, feature/velocity-regraphics-20261030, feature/regraphics-frame-cache-20261101, feature/regraphics-ether-spatial-kernel-20261101, feature/regraphics-pipeline-cycle1-20261101, feature/regraphics-calc-cycle2-20261101, feature/regraphics-xi-prep-cycle3-20261101, feature/velocity-cockpit-nature-20261031, feature/velocity-xi-renderer-only-20261031, feature/regraphics-tile-native-20261031]
-    paths:
-      - 'reverse-os-android/app/src/main/assets/velocity/**'
-      - 'reverse-os-android/tests/velocity-xi-render-contract.cjs'
-      - 'reverse-os-android/tests/velocity-native4k-contract.cjs'
-      - 'tests/xi_native_tile_raster.cpp'
-      - 'tests/xi_spatial_candidates.cpp'
-      - 'tests/xi_parallel_strips.cpp'
-      - 'scripts/velocity-parallel-ab.cjs'
-      - 'scripts/xi-preparation-ab.cjs'
-      - 'scripts/prepare-ether-compat.py'
-      - 'scripts/velocity-spatial-ab.cjs'
-      - 'reverse-os-android/tests/*Regraphics*'
-      - 'reverse-os-android/tests/VelocityLoopLifecycleTest.java'
-      - 'reverse-os-android/tests/NativeXiDirectFrameTest.java'
-      - 'reverse-os-android/tests/VelocityFrameProfilerTest.java'
-      - 'reverse-os-android/app/src/main/cpp/reverse_os_jni.cpp'
-      - 'reverse-os-android/app/src/main/java/com/reversepc/os/NativeRuntime.java'
-      - 'reverse-os-android/tests/velocity-xi-contract.cjs'
-      - 'reverse-os-android/tests/velocity-gameplay-contract.cpp'
-      - 'reverse-os-android/tests/fixtures/**'
-      - 'reverse-os-android/app/src/main/java/com/reversepc/os/Velocity*'
-      - 'reverse-os-android/app/src/main/java/com/reversepc/os/RegraphicsFrame.java'
-      - 'reverse-os-android/app/src/main/java/com/reversepc/os/ResultPacket.java'
-      - 'src/integration/xi_machine_extension.inc'
-      - 'src/integration/xi_mesh_raster.inc'
-      - 'src/integration/xi_mesh_raster.inc'
-      - 'tests/xi_machine_test.cpp'
-      - 'tests/xi_mesh_raster.cpp'
-      - 'tests/xi_gpu_capture.cpp'
-      - 'scripts/author-velocity-scene.cjs'
-      - 'scripts/check-velocity-native-only.cjs'
-      - 'scripts/velocity-landscape-post.cjs'
-      - 'scripts/velocity-car-contract.cjs'
-      - 'scripts/velocity-car-mesh.cjs'
-      - 'scripts/velocity-materials.cjs'
-      - 'reverse-os-android/tests/velocity-gameplay-contract.cpp'
-      - 'experiments/xi-render/direct-binary-test.cjs'
-      - '.github/workflows/velocity-xi-render.yml'
+    branches: [feature/velocity-v30-open-forest-road-20261104, feature/velocity-v31-reverse-native-live-20261105, feature/velocity-v32-wetlands-gpu-20261105, feature/velocity-v33-open-terrain-20261105, feature/velocity-v34-trails-hd-20261105, feature/velocity-gpu-virtual-20261106, feature/velocity-v36-graphics-ui-20261106, feature/velocity-v37-cpu-gpu-20261106, feature/velocity-v38-qssd-20261106, feature/velocity-v39-state-bus-20261106]
   pull_request:
-    branches: [main, feature/xi-direct-frame-binary-20261030, feature/velocity-regraphics-20261030]
-    paths: ['reverse-os-android/**', 'src/integration/xi_machine_extension.inc', 'src/integration/xi_mesh_raster.inc', 'experiments/xi-render/**', '.github/workflows/velocity-xi-render.yml']
+    branches: [feature/velocity-regraphics-20261030]
+    paths: ['reverse-os-android/**', 'scripts/**', 'src/**', 'docs/*INTEGRATION_LOCK.json', '.github/workflows/velocity-xi-render.yml']
 permissions: {contents: read}
 concurrency:
   group: velocity-regraphics-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 jobs:
-  xi-render:
+  open-forest:
     runs-on: ubuntu-latest
-    timeout-minutes: 18
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with: {persist-credentials: false}
@@ -60,158 +22,118 @@ jobs:
           ref: 1f925786522aba91f72707ad1638a8edcdd31a8f
           path: deps/mundo-x
           persist-credentials: false
-      # Pinned pre-optimization XI 1.5 is an exact executable oracle for
-      # arithmetic, jump/error semantics, camera pixels and Ether snapshots.
-      - uses: actions/checkout@v4
-        with:
-          repository: guadalupejuan001-code/REVERSE-PC
-          ref: 7fa759e937ea2fdb4687e9b2c02f1dd487c7dd2f
-          path: deps/xi15-baseline
-          persist-credentials: false
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/GPU-VIRTUAL
+          ref: 6addb1b60cb825977ffa992127d5189086a9a6c8
+          path: deps/gpu-virtual
+          sparse-checkout: android-graphics/shared
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/Virtual-qSSD-
+          ref: c9dc0ebf3370a4468e14df92fcebb2a90954c448
+          path: deps/qssd
+          sparse-checkout: include/qssd
+          persist-credentials: false
       - uses: actions/setup-java@v4
         with: {distribution: 'temurin', java-version: '17'}
-      - name: Refuse GPU rasterizers outside XI
-        run: node scripts/check-velocity-native-only.cjs
-      - name: Ensure car render is reproducibly authored in XI
+      - uses: actions/checkout@v4
+        with:
+          ref: 8389252a9014bdf2e46c7230289ead7a3d672984
+          path: deps/velocity-baseline
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 665742aa9310314242271ea51f9294d07a97b4c4
+          path: deps/velocity-qssd-baseline
+          persist-credentials: false
+      - name: Verify XI ownership and reproducible finite world
         run: |
-          set -euo pipefail
+          node scripts/check-velocity-native-only.cjs
+          node scripts/check-velocity-gpu-virtual.cjs deps/gpu-virtual
+          node scripts/check-velocity-qssd.cjs deps/qssd
+          node scripts/open-forest-author-contract.cjs
+          node scripts/forest-trails-contract.cjs build/open-forest
           node scripts/velocity-car-contract.cjs
           node scripts/velocity-textures-contract.cjs
+          node scripts/author-velocity-forest.cjs
           node scripts/author-velocity-scene.cjs
-          git diff --exit-code -- reverse-os-android/app/src/main/assets/velocity/render.xi reverse-os-android/app/src/main/assets/velocity/palette.txt reverse-os-android/app/src/main/assets/velocity/render4k.xi reverse-os-android/app/src/main/assets/velocity/render-native4k.xi
-      - name: Build real XI interpreter with unchanged verified Ether overlays
+          git diff --exit-code -- reverse-os-android/app/src/main/assets/velocity
+      - name: Build the pinned interpreter and open-world harness
         run: |
-          set -euo pipefail
-          mkdir -p build/velocity build/ether-compat
+          mkdir -p build/velocity build/open-forest build/ether-compat
           python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
-          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
-            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
-            src/reverse_pc.cpp -o build/velocity/reverse_pc
-          # Verify against the original XI 1.5 interpreter source, with
-          # identical native dependencies, rasterizer and compilation flags.
-          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
-            -Ibuild/ether-compat -Ideps/mundo-x/native/include \
-            -Ideps/xi15-baseline/src -Isrc \
-            src/reverse_pc.cpp -o build/velocity/reverse_pc_xi15
-          # Same XI implementation with parallel workers disabled: exact
-          # bitwise reference and matched end-to-end performance comparison.
-          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
-            -DREGRAPHICS_FORCE_SERIAL_STRIPS=1 \
-            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
-            src/reverse_pc.cpp -o build/velocity/reverse_pc_serial
-          # Bit-exact previous XI kernel: only region candidates are disabled.
-          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
-            -DREGRAPHICS_DISABLE_SPATIAL_CANDIDATES=1 \
-            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
-            src/reverse_pc.cpp -o build/velocity/reverse_pc_baseline
-          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
-            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
-            reverse-os-android/tests/velocity-gameplay-contract.cpp \
-            -o build/velocity/velocity-gameplay-contract
-      - name: Verify generic XI memory, scratch and mesh primitives
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc src/reverse_pc.cpp -o build/velocity/reverse_pc
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/open-forest-contract.cpp -o build/open-forest/gameplay-test
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/open-forest-reliability.cpp -o build/open-forest/reliability-test
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/open-forest-render-ab.cpp -o build/open-forest/render-ab
+          g++ -std=c++17 -O2 -pthread tests/xi_native_tile_raster.cpp -o build/open-forest/native-tile-test
+      - name: Build and test immutable GPU geometry and chase camera
         run: |
-          set -euo pipefail
-          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
-            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
-            tests/xi_machine_test.cpp -o build/velocity/xi-machine-test
-          build/velocity/xi-machine-test
-          g++ -std=c++17 -O2 -fsanitize=undefined -fno-sanitize-recover=all \
-            tests/xi_mesh_raster.cpp -o build/velocity/xi-mesh-test
-          build/velocity/xi-mesh-test
-          g++ -std=c++17 -O2 -fsanitize=undefined -fno-sanitize-recover=all \
-            tests/xi_native_tile_raster.cpp -o build/velocity/xi-native-tile-test
-          build/velocity/xi-native-tile-test
-          g++ -std=c++17 -O2 -fsanitize=undefined -fno-sanitize-recover=all \
-            tests/xi_spatial_candidates.cpp -o build/velocity/xi-spatial-test
-          build/velocity/xi-spatial-test
-          g++ -std=c++17 -O2 -pthread -fsanitize=undefined -fno-sanitize-recover=all \
-            tests/xi_parallel_strips.cpp -o build/velocity/xi-parallel-strips-test
-          build/velocity/xi-parallel-strips-test
-          g++ -std=c++17 -O2 -fsanitize=undefined -fno-sanitize-recover=all \
-            tests/xi_texture_raster.cpp -o build/velocity/xi-texture-test
-          build/velocity/xi-texture-test
-          g++ -std=c++17 -O2 -fsanitize=undefined -fno-sanitize-recover=all \
-            tests/xi_gpu_capture.cpp -o build/velocity/xi-gpu-test
-          build/velocity/xi-gpu-test
-      - name: Execute XI world, XI physics and XI renderer
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/velocity-gpu-observation.cpp -o build/open-forest/gpu-observation
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/open-terrain-contract.cpp -o build/open-forest/open-terrain-test
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/forest-trails-drive.cpp -o build/open-forest/trails-drive
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/velocity-pipeline-profile.cpp -o build/open-forest/pipeline-profile
+          build/open-forest/pipeline-profile reverse-os-android/app/src/main/assets/velocity build/open-forest
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/velocity-live-session.cpp -o build/open-forest/live-session
+          build/open-forest/live-session reverse-os-android/app/src/main/assets/velocity build/open-forest
+          javac -d build/open-forest/java reverse-os-android/app/src/main/java/com/reversepc/os/XiObservationPacket.java reverse-os-android/tests/XiObservationPacketTest.java
+          java -cp build/open-forest/java com.reversepc.os.XiObservationPacketTest
+          build/open-forest/trails-drive reverse-os-android/app/src/main/assets/velocity build/open-forest
+          build/open-forest/open-terrain-test reverse-os-android/app/src/main/assets/velocity build/open-forest
+          build/open-forest/gpu-observation reverse-os-android/app/src/main/assets/velocity build/open-forest
+          mkdir -p build/open-forest/java
+          javac -d build/open-forest/java reverse-os-android/app/src/main/java/x/gpu/virtual/CompactTriangleStream.java reverse-os-android/tests/RegraphicsCompactTest.java reverse-os-android/app/src/main/java/com/reversepc/os/VelocityOrbitMath.java reverse-os-android/app/src/main/java/com/reversepc/os/VelocityChaseCamera.java reverse-os-android/app/src/main/java/com/reversepc/os/RegraphicsGeometry.java reverse-os-android/tests/VelocityChaseCameraTest.java reverse-os-android/tests/RegraphicsGeometryTest.java
+          java -cp build/open-forest/java com.reversepc.os.VelocityChaseCameraTest
+          java -cp build/open-forest/java com.reversepc.os.RegraphicsGeometryTest build/open-forest/gpu-0-0.xfg4
+          java -cp build/open-forest/java com.reversepc.os.RegraphicsCompactTest build/open-forest/*.xfg4
+          javac -d build/open-forest/java reverse-os-android/app/src/main/java/com/reversepc/os/VelocityStateExchange.java reverse-os-android/app/src/main/java/com/reversepc/os/VelocityFrameProfiler.java reverse-os-android/tests/VelocityStateExchangeTest.java reverse-os-android/tests/VelocityFrameProfilerTest.java
+          java -cp build/open-forest/java com.reversepc.os.VelocityStateExchangeTest
+          java -cp build/open-forest/java com.reversepc.os.VelocityFrameProfilerTest
+      - name: Compare actual legacy and compact GPU pixels
         run: |
-          set -euo pipefail
-          VELOCITY_HOST_BUILD_FLAGS='-O2' node reverse-os-android/tests/velocity-xi-contract.cjs build/velocity/reverse_pc build/velocity
-          node reverse-os-android/tests/velocity-xi-render-contract.cjs build/velocity/reverse_pc build/velocity
-          node reverse-os-android/tests/velocity-4k-contract.cjs build/velocity/reverse_pc build/velocity/4k-geometry.json
-          node reverse-os-android/tests/velocity-native4k-contract.cjs build/velocity/reverse_pc build/velocity/4k-native-pixels.json
-          node scripts/velocity-spatial-ab.cjs build/velocity/reverse_pc_baseline build/velocity/reverse_pc build/velocity/spatial-ab.json
-          node scripts/velocity-parallel-ab.cjs build/velocity/reverse_pc_serial build/velocity/reverse_pc build/velocity/parallel-ab.json
-          node scripts/xi-preparation-ab.cjs build/velocity/reverse_pc_xi15 build/velocity/reverse_pc build/velocity/xi-preparation-ab.json
-          node experiments/xi-render/direct-binary-test.cjs build/velocity/reverse_pc build/velocity/direct-regression
-      - name: Validate binary packets and Android presenter without a device
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libegl1 libgl1-mesa-dri python3-pil python3-numpy
+          python3 scripts/verify-velocity-gpu-virtual.py build/open-forest build/open-forest/compact-gpu
+          python3 scripts/verify-velocity-presets.py build/open-forest build/open-forest/quality-profiles
+      - name: Verify coordinated CPU and GPU against original 3.6 source
         run: |
-          set -euo pipefail
-          mkdir -p build/velocity/java
-          javac -d build/velocity/java \
-            reverse-os-android/app/src/main/java/com/reversepc/os/ResultPacket.java \
-            reverse-os-android/app/src/main/java/com/reversepc/os/RegraphicsFrame.java \
-            reverse-os-android/app/src/main/java/com/reversepc/os/NativeRuntime.java \
-            reverse-os-android/app/src/main/java/com/reversepc/os/VelocityLoopLifecycle.java \
-            reverse-os-android/app/src/main/java/com/reversepc/os/VelocityFrameReuse.java \
-            reverse-os-android/app/src/main/java/com/reversepc/os/VelocityFrameProfiler.java \
-            reverse-os-android/tests/RxePacketTest.java \
-            reverse-os-android/tests/RegraphicsFrameTest.java \
-            reverse-os-android/tests/RegraphicsNative4KTest.java \
-            reverse-os-android/tests/VelocityLoopLifecycleTest.java \
-            reverse-os-android/tests/VelocityFrameReuseTest.java \
-            reverse-os-android/tests/VelocityFrameProfilerTest.java \
-            reverse-os-android/tests/NativeXiDirectFrameTest.java \
-            reverse-os-android/tests/NativeRegraphicsTest.java
-          java -cp build/velocity/java com.reversepc.os.RxePacketTest
-          java -cp build/velocity/java com.reversepc.os.RegraphicsFrameTest
-          java -Xmx512m -cp build/velocity/java com.reversepc.os.RegraphicsNative4KTest
-          java -cp build/velocity/java com.reversepc.os.VelocityLoopLifecycleTest
-          java -cp build/velocity/java com.reversepc.os.VelocityFrameReuseTest
-          java -cp build/velocity/java com.reversepc.os.VelocityFrameProfilerTest
-          g++ -std=c++17 -O2 -pthread -shared -fPIC \
-            -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
-            -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc \
-            -I"$JAVA_HOME/include" -I"$JAVA_HOME/include/linux" \
-            reverse-os-android/app/src/main/cpp/reverse_os_jni.cpp \
-            -o build/velocity/libreverse_os.so
-          java -Djava.library.path=build/velocity -cp build/velocity/java \
-            com.reversepc.os.NativeRegraphicsTest reverse-os-android/app/src/main/assets/velocity build/velocity/native-evidence
-          java -Xmx512m -Djava.library.path=build/velocity -cp build/velocity/java \
-            com.reversepc.os.NativeXiDirectFrameTest reverse-os-android/app/src/main/assets/velocity build/velocity/direct-frame-parity.json
+          python3 deps/velocity-baseline/scripts/prepare-ether-compat.py deps/mundo-x build/ether-before
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -DVELOCITY_REFERENCE=1 -Ibuild/ether-before -Ideps/mundo-x/native/include -Ideps/velocity-baseline/src reverse-os-android/tests/velocity-cpu-gpu-link.cpp -o build/open-forest/cpu-gpu-before
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/velocity-cpu-gpu-link.cpp -o build/open-forest/cpu-gpu-after
+          build/open-forest/cpu-gpu-before reverse-os-android/app/src/main/assets/velocity build/open-forest/link/before
+          build/open-forest/cpu-gpu-after reverse-os-android/app/src/main/assets/velocity build/open-forest/link/after
+          python3 scripts/verify-velocity-cpu-gpu.py build/open-forest/link
+          javac -d build/open-forest/java reverse-os-android/app/src/main/java/com/reversepc/os/XiGeometryDeltaDecoder.java reverse-os-android/app/src/main/java/com/reversepc/os/XiObservationPacket.java reverse-os-android/app/src/main/java/com/reversepc/os/RegraphicsGeometry.java reverse-os-android/app/src/main/java/x/gpu/virtual/CompactTriangleStream.java reverse-os-android/tests/XiGeometryDeltaTest.java reverse-os-android/app/src/main/java/com/reversepc/os/VelocityFrameAhead.java reverse-os-android/tests/VelocityFrameAheadTest.java
+          java -cp build/open-forest/java com.reversepc.os.XiGeometryDeltaTest build/open-forest/link/after
+          java -cp build/open-forest/java com.reversepc.os.VelocityFrameAheadTest
+      - name: Compare actual qSSD JNI and GPU vertex bytes against released 3.7
+        run: |
+          python3 scripts/verify-velocity-qssd.py --baseline deps/velocity-qssd-baseline --output build/open-forest/qssd
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/velocity-qssd-guards.cpp -o build/open-forest/qssd-guards
+          build/open-forest/qssd-guards reverse-os-android/app/src/main/assets/velocity
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/velocity-complete-space.cpp -o build/open-forest/complete-state
+          build/open-forest/complete-state reverse-os-android/app/src/main/assets/velocity
+      - name: Execute all sectors, reverse, time and real XI raster
+        run: |
+          build/open-forest/gameplay-test reverse-os-android/app/src/main/assets/velocity build/open-forest/gameplay
+          build/open-forest/reliability-test reverse-os-android/app/src/main/assets/velocity build/open-forest
+          build/open-forest/native-tile-test
+          build/open-forest/render-ab reverse-os-android/app/src/main/assets/velocity build/open-forest
+          node reverse-os-android/tests/open-forest-render-contract.cjs build/velocity/reverse_pc build/open-forest
+          mkdir -p build/open-forest/java
+          javac -d build/open-forest/java reverse-os-android/app/src/main/java/com/reversepc/os/VelocityWorldLight.java reverse-os-android/tests/VelocityWorldLightTest.java
+          java -cp build/open-forest/java com.reversepc.os.VelocityWorldLightTest reverse-os-android/app/src/main/assets/velocity
+          javac -d build/open-forest/java reverse-os-android/app/src/main/java/com/reversepc/os/VelocityGearbox.java reverse-os-android/app/src/main/java/com/reversepc/os/RegraphicsFrame.java reverse-os-android/tests/VelocityGearboxTest.java reverse-os-android/tests/RegraphicsLivePixelsTest.java reverse-os-android/tests/RegraphicsNative4KTest.java reverse-os-android/tests/RegraphicsFrameTest.java
+          java -cp build/open-forest/java com.reversepc.os.VelocityGearboxTest
+          java -cp build/open-forest/java com.reversepc.os.RegraphicsLivePixelsTest
+          java -cp build/open-forest/java com.reversepc.os.RegraphicsNative4KTest
+          java -cp build/open-forest/java com.reversepc.os.RegraphicsFrameTest
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: velocity-regraphics-evidence
-          path: build/velocity
-  android-java:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-        with: {persist-credentials: false}
-      - uses: actions/setup-java@v4
-        with: {distribution: 'temurin', java-version: '17'}
-      - name: Compile Activity, SurfaceView and adapters against Android 35
-        run: |
-          set -euo pipefail
-          mkdir -p build/velocity-android/classes
-          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' \
-            > build/velocity-android/sdk.log
-          find reverse-os-android/app/src/main/java -name '*.java' -print | sort \
-            > build/velocity-android/android-sources.txt
-          javac -encoding UTF-8 -source 17 -target 17 \
-            -classpath "$ANDROID_HOME/platforms/android-35/android.jar" \
-            -d build/velocity-android/classes \
-            @build/velocity-android/android-sources.txt \
-            > build/velocity-android/java-compile.log 2>&1 || {
-              tail -160 build/velocity-android/java-compile.log
-              exit 1
-            }
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: velocity-android-java-evidence
-          path: build/velocity-android
+          name: velocity-open-forest-evidence
+          path: build/open-forest

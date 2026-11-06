@@ -79,6 +79,7 @@ struct MachineParsedProgram {
   std::string source;
   std::vector<MachineInstruction> code;
   std::map<std::string,std::size_t> labels;
+  bool deterministic=true;
 };
 struct MachineParseCacheState {
   std::shared_ptr<const MachineParsedProgram> program;
@@ -138,6 +139,14 @@ inline std::int64_t machine_decoded_value(const MachineInstruction& instruction,
     }
   }
   return machine_value(instruction.words[index],registers);
+}
+
+// Destinations are already checked during operand decoding. Keep invalid and
+// unreachable operands on the original lazy error path, including their line.
+inline unsigned machine_decoded_register(const MachineInstruction& instruction,std::size_t index) {
+  const auto bit=static_cast<std::uint16_t>(1U<<(index-1));
+  if(instruction.register_mask&bit)return static_cast<unsigned>(instruction.decoded_values[index-1]);
+  return machine_register(instruction.words[index]);
 }
 
 inline void machine_decode_operands(MachineInstruction& instruction){
@@ -290,6 +299,11 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
       instruction.line=source_line;
       instruction.opcode=cmd;
       instruction.kind=machine_opcode(cmd);
+      // Unknown XI commands can include quantum measurements or other effects.
+      // Only the bounded deterministic machine subset can reuse an observation.
+      if(instruction.kind==MachineOpcode::other||instruction.kind==MachineOpcode::begin||
+         instruction.kind==MachineOpcode::end||instruction.kind==MachineOpcode::background)
+        candidate->deterministic=false;
       machine_decode_operands(instruction);
       code.push_back(std::move(instruction));
     }
@@ -384,11 +398,11 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
         require_count(words, 2);
       } else if (kind == MachineOpcode::set || kind == MachineOpcode::mov) {
         require_count(words, 3);
-        registers[machine_register(words[1])] = machine_decoded_value(inst,2,registers);
+        registers[machine_decoded_register(inst,1)] = machine_decoded_value(inst,2,registers);
       } else if (kind == MachineOpcode::add || kind == MachineOpcode::sub || kind == MachineOpcode::mul ||
                  kind == MachineOpcode::div || kind == MachineOpcode::mod) {
         require_count(words, 3);
-        const auto index = machine_register(words[1]);
+        const auto index = machine_decoded_register(inst,1);
         const auto new_value = machine_arithmetic_fast(kind, registers[index],
                                                   machine_decoded_value(inst,2,registers));
         registers[index] = new_value;
@@ -398,7 +412,7 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
         const auto b = machine_decoded_value(inst,2,registers);
         comparison = a < b ? -1 : (a > b ? 1 : 0);
         comparison_valid = true;
-      } else if (machine_is_jump(op)) {
+      } else if (kind>=MachineOpcode::jmp&&kind<=MachineOpcode::jge) {
         require_count(words, 2);
         if (op != "jmp" && !comparison_valid)
           throw std::invalid_argument("conditional jump without cmp");
@@ -412,7 +426,7 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
         if (take) { pc = inst.jump_target; first_command = false; continue; }
       } else if (kind == MachineOpcode::localget) {
         require_count(words, 3);
-        const auto destination=machine_register(words[1]);
+        const auto destination=machine_decoded_register(inst,1);
         const auto address=machine_decoded_value(inst,2,registers);
         if(address<0 || address>=static_cast<std::int64_t>(locals.size()))
           throw std::out_of_range("local scratch index must be in 0..4095");
@@ -427,7 +441,7 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
       } else if (kind == MachineOpcode::load8) {
         require_count(words, 3);
         if (!memory) throw std::invalid_argument("Inverse Memory is not enabled");
-        const auto index = machine_register(words[1]);
+        const auto index = machine_decoded_register(inst,1);
         const auto read = memory->read(machine_substitute(words[2], registers), core);
         if (!read.deterministic)
           throw std::runtime_error("load8 requires a deterministic byte; quantum handle " + read.handle);
@@ -435,7 +449,7 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
       } else if (kind == MachineOpcode::load16 || kind == MachineOpcode::load32) {
         require_count(words, 3);
         if (!memory) throw std::invalid_argument("Inverse Memory is not enabled");
-        const auto index = machine_register(words[1]);
+        const auto index = machine_decoded_register(inst,1);
         const unsigned count = kind == MachineOpcode::load16 ? 2U : 4U;
         const auto address = decimal<std::uint64_t>(machine_substitute(words[2],registers),"bulk memory address");
         if (address > std::numeric_limits<std::uint64_t>::max()-(count-1))
@@ -516,7 +530,7 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
       } else if (kind == MachineOpcode::meshread) {
         require_count(words, 5);
         if (!mesh_active) throw std::invalid_argument("meshread without meshbegin");
-        const auto x=machine_register(words[1]),y=machine_register(words[2]),z=machine_register(words[3]);
+        const auto x=machine_decoded_register(inst,1),y=machine_decoded_register(inst,2),z=machine_decoded_register(inst,3);
         if (x==y || y==z || x==z)
           throw std::invalid_argument("meshread requires three distinct destination registers");
         // Resolve and validate the source before assigning any destination;
@@ -600,7 +614,7 @@ inline ProgramResult run_machine(InfiniteCore& core, InverseMemory* memory,
         frame_active = false;
       } else if (kind == MachineOpcode::print) {
         require_count(words, 2);
-        const auto index = machine_register(words[1]);
+        const auto index = machine_decoded_register(inst,1);
         output_line("{\"type\":\"register\",\"register\":\"r" + std::to_string(index) +
                     "\",\"value\":" + std::to_string(registers[index]) + "}\n");
       } else if (kind == MachineOpcode::halt) {
