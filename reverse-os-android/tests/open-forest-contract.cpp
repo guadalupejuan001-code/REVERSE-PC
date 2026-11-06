@@ -31,7 +31,9 @@ int main(int argc,char**argv){try{
   if(s[30]==5&&!capturedFord){save(pilot,out/"ford.rvp");check(s[32]>0&&s[25]==4,"river ford has physical water depth and water grip");capturedFord=true;}
   if(s[30]==1&&!capturedBridge){save(pilot,out/"bridge.rvp");capturedBridge=true;}
   if(s[30]==2&&!capturedLake){save(pilot,out/"lake.rvp");capturedLake=true;}
-  if(s[31]&&s[11]>158400&&s[3]<30){arrived=true;break;}
+  // Arrival is a stopped vehicle inside the final 20 m, not the old brake's
+  // exact overshoot. C01 stops at about 1582 m instead of about 1584 m.
+  if(s[31]&&s[11]>=158000&&s[11]<160000&&s[3]<30){arrived=true;break;}
  }
  check(arrived&&sectors.size()==8,"pilot traverses all eight finite sectors and brakes at the road end");
  check(capturedFord,"pilot drives across the river ford");

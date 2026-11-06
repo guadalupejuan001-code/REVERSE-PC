@@ -6,7 +6,7 @@ campaña no presupone que una actualización nueva conserve ese resultado.
 
 | Ciclo | Trabajo | Estado |
 | --- | --- | --- |
-| C01 | Frenado prioritario, aceleración progresiva, seis marchas, freno motor, velocímetro y persistencia | Implementado; validación en curso |
+| C01 | Frenado prioritario, aceleración progresiva, seis marchas, freno motor, velocímetro y persistencia | Validado en Android; cierre de regresión nativa en curso |
 | C02 | Más objetos y vida del bosque: conjuntos locales variados, fauna y movimiento ambiental con presupuestos por perfil | Pendiente del siguiente ciclo |
 | C03 | Refinamiento de destinos, orillas, iluminación y detalles de materiales; revisar colisiones y legibilidad al conducir | Pendiente |
 | C04 | Campaña de estabilidad, rendimiento y recorrido completo; APK final de la campaña | Pendiente |
@@ -58,3 +58,9 @@ con los recursos 3.7. Los otros recursos mantienen la comparación exacta.
 
 Los ciclos siguientes se ejecutarán en orden cuando X pulse continuar; cada
 cierre conservará su commit, evidencias, limitaciones y enlace de entrega.
+
+La prueba de llegada del piloto usa ahora la zona final de 20 m y exige una
+parada real, los ocho sectores y cero contactos. El freno nuevo detiene el
+coche aproximadamente en 1582 m; el umbral anterior de 1584 m dependía del
+recorrido de frenado antiguo. El recorrido completo pasa 26.720 comprobaciones
+y 4.940 pasos; no se cambia el comportamiento del piloto para forzar el test.
