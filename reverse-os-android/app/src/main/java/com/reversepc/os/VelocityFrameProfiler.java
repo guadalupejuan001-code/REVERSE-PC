@@ -10,7 +10,7 @@ import java.util.Locale;
  */
 final class VelocityFrameProfiler {
     static final int CAPACITY=96;
-    private static final int XI=0,VERIFY=1,EXPAND=2,BITMAP=3,PRESENT=4,TOTAL=5,STAGES=6;
+    private static final int XI=0,VERIFY=1,EXPAND=2,BITMAP=3,PRESENT=4,TOTAL=5,SETUP=6,STAGES=7;
     private final Window normal=new Window(),native4k=new Window();
 
     void record(boolean nativeMode,long xi,long validation,long expand,long bitmap,
@@ -30,6 +30,9 @@ final class VelocityFrameProfiler {
             nanos[XI][next]=xi;nanos[VERIFY][next]=verify;
             nanos[EXPAND][next]=expand;nanos[BITMAP][next]=bitmap;
             nanos[PRESENT][next]=present;nanos[TOTAL][next]=total;
+            // Compute per frame, before quantiles. A difference of independently
+            // aggregated medians would not be a valid stage measurement.
+            nanos[SETUP][next]=Math.max(0,total-xi-verify-expand-bitmap-present);
             next=(next+1)%CAPACITY;used=Math.min(CAPACITY,used+1);
             lastPacketBytes=bytes;
         }
@@ -47,11 +50,11 @@ final class VelocityFrameProfiler {
                 " xiP50Ms=%.3f xiP95Ms=%.3f"+
                 " verifyP50Ms=%.3f expandP50Ms=%.3f"+
                 " bitmapP50Ms=%.3f presentP50Ms=%.3f"+
-                " totalP50Ms=%.3f totalP95Ms=%.3f",
+                " totalP50Ms=%.3f totalP95Ms=%.3f setupP50Ms=%.3f setupP95Ms=%.3f",
                 mode,used,lastPacketBytes,quantile(XI,.50),quantile(XI,.95),
                 quantile(VERIFY,.50),quantile(EXPAND,.50),
                 quantile(BITMAP,.50),quantile(PRESENT,.50),
-                quantile(TOTAL,.50),quantile(TOTAL,.95));
+                quantile(TOTAL,.50),quantile(TOTAL,.95),quantile(SETUP,.50),quantile(SETUP,.95));
             // Reset only the logical window; the fixed buffers are reused.
             used=0;next=0;return value;
         }
