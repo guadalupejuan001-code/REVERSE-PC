@@ -124,7 +124,7 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
             glVertexAttribIPointer(4,1,GL_UNSIGNED_INT,stride,8);
             for(int i=0;i<5;i++)glEnableVertexAttribArray(i);glBindVertexArray(0);
             glDisable(GL_CULL_FACE);checked("GPU initialization");failed=false;
-            Log.i("ReverseVelocity","GPU_SHADERS_READY owner=REgraphics execution=GPU_VIRTUAL geometry=XI_XFG4 vertexBytes=24 renderer="+glGetString(GL_RENDERER));
+            Log.i("ReverseVelocity","GPU_SHADERS_READY owner=REgraphics geometry=XI_XFG4 execution=GPU_VIRTUAL vertexBytes=24 renderer="+glGetString(GL_RENDERER));
         }catch(RuntimeException error){disable(error);}
     }
     @Override public void onSurfaceChanged(GL10 ignored,int w,int h){if(!failed){ready=true;invalidated.run();}}
@@ -223,7 +223,7 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
                     glReadPixels(0,y,w,rows,GL_RGBA,GL_UNSIGNED_BYTE,photoReadback);checked("GPU 4K readback");
                     photoReadback.rewind();digest.update(photoReadback);
                 }
-                StringBuilder hash=new StringBuilder();for(byte b:digest.digest())hash.append(String.format(java.util.Locale.ROOT,"%02x",b&255));Log.i("ReverseVelocity",(nativePhoto?"GPU_NATIVE_4K_PIXELS":"GPU_HD_PIXELS")+" source=XI_XFG4_GLSL width="+w+" height="+h+" pixels="+(w*h)+" readbackCapacityBytes="+photoReadback.capacity()+" sha256="+hash);}
+                StringBuilder hash=new StringBuilder();for(byte b:digest.digest())hash.append(String.format(java.util.Locale.ROOT,"%02x",b&255));Log.i("ReverseVelocity",(nativePhoto?"GPU_NATIVE_4K_PIXELS":"GPU_HD_PIXELS")+" source=XI_XFG4_GLSL width="+w+" height="+h+" pixels="+(w*h)+" sha256="+hash+" readbackCapacityBytes="+photoReadback.capacity());}
             catch(Exception error){throw new IllegalStateException("GPU pixel verification failed",error);}
             if(!nativePhoto)hdVerified=true;
         }

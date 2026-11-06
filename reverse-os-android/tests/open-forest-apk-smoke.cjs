@@ -274,6 +274,7 @@ try{
   const frozenReuse=frameRecords(logs()).some(s=>s.paused&&s.frames===0&&s.cacheHits>0&&s.xiRenders===0);
   check(frozenReuse,'paused world reuses posted pixels without executing XI or drawing again');
   check(/GPU_SHADERS_READY owner=REgraphics geometry=XI_XFG4/.test(logs()),'own REgraphics shaders compiled on Android GPU');
+  check(/GPU_SHADERS_READY .*execution=GPU_VIRTUAL vertexBytes=24/.test(logs()),'actual shared GPU-VIRTUAL compact vertex backend compiled');
   check(/GPU_FRAME_READY source=XI_XFG4 shaders=REgraphics/.test(logs()),'actual XI geometry rendered through GPU');
   tapNode(findText(ui,'Reversa R'));ui=waitText(/^Avance D$/);tapNode(findText(ui,'Avance D'));ui=waitText(/^Reversa R$/);
   check(true,'stationary reverse and forward selector work');
