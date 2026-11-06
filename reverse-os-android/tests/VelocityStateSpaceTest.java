@@ -24,7 +24,7 @@ public final class VelocityStateSpaceTest {
             String drive=Files.readString(assets.resolve("drive.xi")),header="#!reverse-pc-machine-v1\n";
             String reset=VelocityQssdNativeTrace.command(drive,true,false,false),step=VelocityQssdNativeTrace.command(drive,false,false,false);
             advance(live,reset);for(int i=0;i<200;i++)advance(live,step);
-            int[] viewValues={4,1,2,2,1,VelocityOrbitMath.pack(700,30),VelocityOrbitMath.pack(700,30),0,-1,4,255,1,0,0};
+            int[] viewValues={4,1,2,2,1,VelocityOrbitMath.pack(700,30),VelocityOrbitMath.pack(700,30),0,-1,4,255,1,0,0,3};
             VelocitySessionState view=new VelocitySessionState(viewValues,new long[]{Double.doubleToLongBits(700),Double.doubleToLongBits(30),0,1,20_000_000},123456);
             check(Arrays.equals(view.encode(),VelocitySessionState.decode(view.encode()).encode()),"all logical view fields round trip");
             NativeRuntime.sessionSetComponent(live,"view",view.encode());NativeRuntime.sessionSetComponent(live,"environment",new byte[]{0});
@@ -35,6 +35,7 @@ public final class VelocityStateSpaceTest {
             restored=NativeRuntime.sessionOpenSpace(archive);
             check(Arrays.equals(cpu,checkpoint(restored))&&Arrays.equals(output,NativeRuntime.sessionStateOutput(restored)),"full native CPU/output/RNG restoration");
             check(Arrays.equals(view.encode(),NativeRuntime.sessionGetComponent(restored,"view")),"complete component state restoration");
+            check(VelocitySessionState.decode(NativeRuntime.sessionGetComponent(restored,"view")).values[14]==3,"manual gear selector survives actual QSSD archive restoration");
             for(int i=0;i<names.length;i++)check(Arrays.equals(resources[i],NativeRuntime.sessionReadResource(restored,names[i])),"original resource bytes: "+names[i]);
             XiSharedGeometryPacket after=NativeRuntime.sessionObserveSharedGeometryView(restored,addresses,inputs,4,view.encode());
             check(after.publication==before.publication&&Arrays.equals(raw(after.frame),retainedBytes),"GPU frame/CPU publication restored exactly");
