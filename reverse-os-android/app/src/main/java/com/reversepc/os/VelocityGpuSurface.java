@@ -219,11 +219,11 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
         int filter=r.graphics.id<=1?GL_NEAREST:GL_LINEAR;
         if(filter!=atlasFilter){glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,filter);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,filter);atlasFilter=filter;}
         boolean atlasChanged=residentAtlas==null;
-        if(!atlasChanged)for(int i=0;i<2048;i++)if(residentAtlas[i]!=g.bytes[16+i]){atlasChanged=true;break;}
+        if(!atlasChanged)for(int i=0;i<2048;i++)if(residentAtlas[i]!=g.byteAt(16+i)){atlasChanged=true;break;}
         if(atlasChanged){
-            atlasBytes.clear();for(int y=0;y<16;y++)for(int tile=0;tile<8;tile++)for(int x=0;x<16;x++)atlasBytes.put(g.bytes[16+tile*256+y*16+x]);atlasBytes.flip();
+            atlasBytes.clear();for(int y=0;y<16;y++)for(int tile=0;tile<8;tile++)for(int x=0;x<16;x++)atlasBytes.put(g.byteAt(16+tile*256+y*16+x));atlasBytes.flip();
             glTexSubImage2D(GL_TEXTURE_2D,0,0,0,128,16,GL_RED,GL_UNSIGNED_BYTE,atlasBytes);
-            if(residentAtlas==null)residentAtlas=new byte[2048];System.arraycopy(g.bytes,16,residentAtlas,0,2048);textureUploadBytes+=2048;
+            if(residentAtlas==null)residentAtlas=new byte[2048];g.copyBytes(16,residentAtlas,0,2048);textureUploadBytes+=2048;
         }
         if(++resourceFrames>=60){
             Log.i("ReverseVelocity","GPU_VIRTUAL_RESOURCES frames="+resourceFrames+" vertexStride=24 stagingCapacityBytes="+vertices.capacityBytes()+" vboCapacityBytes="+vertexCapacity+" liveVertexBytes="+vertices.usedBytes()+" vertexUploadBytes="+vertexUploadBytes+" vertexUploadCalls="+vertexUploadCalls+" textureUploadBytes="+textureUploadBytes+" reusedGeometryFrames="+reusedGeometryFrames+" scope=geometry_transport_not_process_ram");

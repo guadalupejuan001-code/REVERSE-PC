@@ -83,8 +83,10 @@ final class VelocityXiEngine {
     private final String xiGpuRenderer;
     private final Object renderSourceLock=new Object();
     private String renderProgramCache,driveProgramCache;
-    private final XiGeometryDeltaDecoder gpuDelta=new XiGeometryDeltaDecoder();
+    private final Object gpuStateLock=new Object();
     private RegraphicsGeometry retainedGpuGeometry;
+    private long retainedGpuIdentity,retainedGpuRevision;
+    private long qssdFrames,qssdExecutions,qssdProjectionBytes,qssdGeometryBytes,qssdSharedDeliveries;
     private static final int[] GPU_ADDRESSES={200,201,202,203,204,205,206,207,141};
     private int renderProgramKey=-1,driveProgramKey=-1;
     private static final String XI_HEADER="#!reverse-pc-machine-v1\n";
@@ -229,25 +231,30 @@ final class VelocityXiEngine {
     Observation observeGpuFrame(int camera,int paint,int car,int yaw,int pitch)throws Exception{
         // Lifecycle replacement workers may briefly overlap while native work
         // finishes. Keep wire sequence + Java base atomic, without locking physics.
-        synchronized(gpuDelta){return observeGpuFrameLocked(camera,paint,car,yaw,pitch);}
+        synchronized(gpuStateLock){return observeGpuFrameLocked(camera,paint,car,yaw,pitch);}
     }
     private Observation observeGpuFrameLocked(int camera,int paint,int car,int yaw,int pitch)throws Exception{
         if(camera<0||camera>2||paint<0||paint>4||car<0||car>=3||yaw<0||yaw>=4096||pitch<0||pitch>=512)
             throw new IllegalArgumentException("XI GPU view controls outside range");
         final byte[] inputs={1,(byte)camera,(byte)paint,(byte)car,(byte)yaw,(byte)(yaw>>>8),(byte)pitch,(byte)(pitch>>>8),1};
         long start=System.nanoTime();
-        byte[] raw=NativeRuntime.sessionObservePreparedGeometry(liveSession,GPU_ADDRESSES,inputs);
+        XiSharedGeometryPacket packet=NativeRuntime.sessionObserveSharedGeometry(liveSession,GPU_ADDRESSES,inputs);
         long execute=System.nanoTime()-start;start=System.nanoTime();
-        XiObservationPacket packet=gpuDelta.parse(raw);
-        Snapshot state=observedState(packet);
-        RegraphicsGeometry geometry=retainedGpuGeometry!=null&&retainedGpuGeometry.bytes==packet.frame?
-            retainedGpuGeometry:RegraphicsGeometry.decodeOwned(packet.frame);
+        Snapshot state=observedState(packet.output,packet.publication);
+        RegraphicsGeometry geometry=retainedGpuGeometry!=null&&retainedGpuIdentity==packet.identity&&retainedGpuRevision==packet.revision?
+            retainedGpuGeometry:RegraphicsGeometry.decodeShared(packet.frame);
         retainedGpuGeometry=geometry;
+        retainedGpuIdentity=packet.identity;retainedGpuRevision=packet.revision;
         int[] colors=VelocityWorldLight.palette(palette,paletteDusk,paletteNight,state.dayPhase);
-        if(gpuDelta.frames%60==0)android.util.Log.i("ReverseVelocity","CPU_GPU_LINK frames="+gpuDelta.frames+
-            " deltaFrames="+gpuDelta.deltaFrames+" reusedFrames="+gpuDelta.reusedFrames+" unchangedFrames="+gpuDelta.unchangedFrames+" wireBytes="+gpuDelta.wireBytes+
-            " geometryBytes="+gpuDelta.geometryBytes+" retainedBases=1 encoding=exact_word_delta");
-        return new Observation(geometry,colors,state,execute,System.nanoTime()-start,raw.length);
+        qssdFrames++;qssdExecutions+=packet.executed?1:0;qssdProjectionBytes+=packet.materializedBytes;
+        qssdGeometryBytes+=packet.frame.limit();qssdSharedDeliveries+=packet.materializedBytes==0?1:0;
+        if(qssdFrames%60==0)android.util.Log.i("ReverseVelocity","QSSD_LINK frames="+qssdFrames+
+            " executions="+qssdExecutions+" sharedDeliveries="+qssdSharedDeliveries+" projectionBytes="+qssdProjectionBytes+
+            " geometryBytes="+qssdGeometryBytes+" deltaReconstructions=0 readOnly=true source=XI_XFG4");
+        // The numeric register observation is ASCII. Count its envelope and the
+        // explicit physical projection, rather than reporting fictional zero I/O.
+        int projected=(int)packet.materializedBytes+packet.output.length()+40;
+        return new Observation(geometry,colors,state,execute,System.nanoTime()-start,projected);
     }
     Observation observeFrame(int stride,int camera,int paint)throws Exception{
         return observeFrame(stride,camera,paint,0);
@@ -322,9 +329,12 @@ final class VelocityXiEngine {
     }
     synchronized void close(){if(!closed){closed=true;NativeRuntime.sessionClose(liveSession);}}
     private Snapshot observedState(XiObservationPacket packet)throws Exception{
+        return observedState(packet.output,packet.publication);
+    }
+    private Snapshot observedState(String output,long publication)throws Exception{
         Snapshot current=snapshot;
-        if(current!=null&&current.publication==packet.publication)return current;
-        Snapshot observed=parseState(packet.output);observed.publication=packet.publication;return observed;
+        if(current!=null&&current.publication==publication)return current;
+        Snapshot observed=parseState(output);observed.publication=publication;return observed;
     }
     int environmentMode(){return environmentMode;}
     Snapshot current(){return snapshot;}

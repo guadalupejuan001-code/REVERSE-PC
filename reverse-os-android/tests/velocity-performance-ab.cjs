@@ -41,12 +41,13 @@ function trial(name,apk,round){
  const physics=text.split(/\r?\n/).filter(l=>l.includes('PHYSICS_STATS ')).map(fields);
  const summarize=(rows,keys)=>Object.fromEntries(keys.filter(k=>rows.some(x=>Number.isFinite(x[k]))).map(k=>[k,med(rows.map(x=>x[k]).filter(Number.isFinite))]));
  const link=text.split(/\r?\n/).filter(l=>l.includes('CPU_GPU_LINK ')).map(fields);
+ const qssd=text.split(/\r?\n/).filter(l=>l.includes('QSSD_LINK ')).map(fields);
  const coordination=text.split(/\r?\n/).filter(l=>l.includes('CPU_GPU_COORDINATION ')).map(fields);
  if(name==='after'){
-  assert(link.length>0&&link.at(-1).deltaFrames>0&&link.at(-1).wireBytes<link.at(-1).geometryBytes,'candidate must execute exact reduced transport');
+  assert(qssd.length>0&&qssd.every(x=>x.readOnly===true&&x.deltaReconstructions===0&&x.projectionBytes>0&&x.projectionBytes<=x.geometryBytes&&x.executions>0),'candidate must use real bounded qSSD projections without delta reconstruction');
   assert(coordination.length>0&&coordination.every(x=>x.maxQueued===1&&x.queued<=1),'candidate preparation must stay bounded');
  }
- const result={name,round,activeWindows:active.length,frames,elapsedNanos:nanos,drawFps:frames*1e9/nanos,physicsHzMedian:med(active.map(x=>x.physicsHz)),width:960,height:540,memorySamples,link,coordination,
+ const result={name,round,activeWindows:active.length,frames,elapsedNanos:nanos,drawFps:frames*1e9/nanos,physicsHzMedian:med(active.map(x=>x.physicsHz)),width:960,height:540,memorySamples,link,qssd,coordination,
   gpuVirtualResources:text.split(/\r?\n/).filter(l=>l.includes('GPU_VIRTUAL_RESOURCES ')).map(fields),
   pipelineMedianOfWindowP50Ms:summarize(pipeline,['xiP50Ms','verifyP50Ms','presentP50Ms','totalP50Ms','setupP50Ms']),
   gpuMedianOfWindowMeansMs:summarize(gpu,['queueMeanMs','commandsMeanMs','swapMeanMs']),

@@ -1,10 +1,10 @@
 name: REVERSE VELOCITY REgraphics
 on:
   push:
-    branches: [feature/velocity-v30-open-forest-road-20261104, feature/velocity-v31-reverse-native-live-20261105, feature/velocity-v32-wetlands-gpu-20261105, feature/velocity-v33-open-terrain-20261105, feature/velocity-v34-trails-hd-20261105, feature/velocity-gpu-virtual-20261106, feature/velocity-v36-graphics-ui-20261106, feature/velocity-v37-cpu-gpu-20261106]
+    branches: [feature/velocity-v30-open-forest-road-20261104, feature/velocity-v31-reverse-native-live-20261105, feature/velocity-v32-wetlands-gpu-20261105, feature/velocity-v33-open-terrain-20261105, feature/velocity-v34-trails-hd-20261105, feature/velocity-gpu-virtual-20261106, feature/velocity-v36-graphics-ui-20261106, feature/velocity-v37-cpu-gpu-20261106, feature/velocity-v38-qssd-20261106]
   pull_request:
     branches: [feature/velocity-regraphics-20261030]
-    paths: ['reverse-os-android/**', 'scripts/**', '.github/workflows/velocity-xi-render.yml']
+    paths: ['reverse-os-android/**', 'scripts/**', 'src/**', 'docs/*INTEGRATION_LOCK.json', '.github/workflows/velocity-xi-render.yml']
 permissions: {contents: read}
 concurrency:
   group: velocity-regraphics-${{ github.head_ref || github.ref_name }}
@@ -27,9 +27,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: guadalupejuan001-code/GPU-VIRTUAL
-          ref: c69c99961ade8889253b73b0ba2c674a6918badc
+          ref: 6addb1b60cb825977ffa992127d5189086a9a6c8
           path: deps/gpu-virtual
           sparse-checkout: android-graphics/shared
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/Virtual-qSSD-
+          ref: 4ee7c5c8c391c0096867669681700c50aaafea1f
+          path: deps/qssd
+          sparse-checkout: include/qssd
           persist-credentials: false
       - uses: actions/setup-java@v4
         with: {distribution: 'temurin', java-version: '17'}
@@ -38,10 +45,16 @@ jobs:
           ref: 8389252a9014bdf2e46c7230289ead7a3d672984
           path: deps/velocity-baseline
           persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: 665742aa9310314242271ea51f9294d07a97b4c4
+          path: deps/velocity-qssd-baseline
+          persist-credentials: false
       - name: Verify XI ownership and reproducible finite world
         run: |
           node scripts/check-velocity-native-only.cjs
           node scripts/check-velocity-gpu-virtual.cjs deps/gpu-virtual
+          node scripts/check-velocity-qssd.cjs deps/qssd
           node scripts/open-forest-author-contract.cjs
           node scripts/forest-trails-contract.cjs build/open-forest
           node scripts/velocity-car-contract.cjs
@@ -97,6 +110,11 @@ jobs:
           javac -d build/open-forest/java reverse-os-android/app/src/main/java/com/reversepc/os/XiGeometryDeltaDecoder.java reverse-os-android/app/src/main/java/com/reversepc/os/XiObservationPacket.java reverse-os-android/app/src/main/java/com/reversepc/os/RegraphicsGeometry.java reverse-os-android/app/src/main/java/x/gpu/virtual/CompactTriangleStream.java reverse-os-android/tests/XiGeometryDeltaTest.java reverse-os-android/app/src/main/java/com/reversepc/os/VelocityFrameAhead.java reverse-os-android/tests/VelocityFrameAheadTest.java
           java -cp build/open-forest/java com.reversepc.os.XiGeometryDeltaTest build/open-forest/link/after
           java -cp build/open-forest/java com.reversepc.os.VelocityFrameAheadTest
+      - name: Compare actual qSSD JNI and GPU vertex bytes against released 3.7
+        run: |
+          python3 scripts/verify-velocity-qssd.py --baseline deps/velocity-qssd-baseline --output build/open-forest/qssd
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/velocity-qssd-guards.cpp -o build/open-forest/qssd-guards
+          build/open-forest/qssd-guards reverse-os-android/app/src/main/assets/velocity
       - name: Execute all sectors, reverse, time and real XI raster
         run: |
           build/open-forest/gameplay-test reverse-os-android/app/src/main/assets/velocity build/open-forest/gameplay

@@ -1,6 +1,7 @@
 #pragma once
 #include "rvpc2.hpp"
 #include "xi_geometry_delta.hpp"
+#include "qssd/shared_projection.hpp"
 #include <memory>
 #include <mutex>
 #include <utility>
@@ -57,13 +58,44 @@ class XiLiveSession {
   }
   void registerGeometryProgram(std::string source){
     if(source.empty()||source.size()>16U*1024U*1024U)throw std::length_error("XI registered geometry source budget");
-    std::lock_guard<std::mutex> stream(geometry_mutex_);geometry_source_=std::move(source);
+    std::lock_guard<std::mutex> stream(geometry_mutex_);
+    if(source!=geometry_source_){shared_geometry_.reset();shared_program_.reset();shared_inputs_.clear();}
+    geometry_source_=std::move(source);
   }
   std::vector<std::uint8_t> observePreparedGeometry(const Inputs& inputs={})const {
     if(inputs.size()>32)throw std::length_error("XI input mailbox budget");
     std::lock_guard<std::mutex> stream(geometry_mutex_);
     if(geometry_source_.empty())throw std::logic_error("XI geometry program is not registered");
     return geometryDeltaLocked(geometry_source_,inputs);
+  }
+  using SharedGeometry = qssd::SharedProjection<std::string>;
+  struct SharedObservation {
+    std::string output;
+    std::uint64_t generation;
+    SharedGeometry::Lease geometry;
+    bool executed;
+  };
+  // qSSD keeps the original XI observation by identity/version. A physical API
+  // projection is explicit; handing the immutable observation to CPU/SSD/GPU
+  // does not build an XGD1 packet or reconstruct another complete Java array.
+  SharedObservation observePreparedSharedGeometry(const Inputs& inputs={})const {
+    if(inputs.size()>32)throw std::length_error("XI input mailbox budget");
+    std::lock_guard<std::mutex> stream(geometry_mutex_);
+    if(geometry_source_.empty())throw std::logic_error("XI geometry program is not registered");
+    const auto retained=retain();
+    const auto parsed=shared_program_.lock();
+    if(parsed&&parsed->deterministic&&retained->generation==shared_generation_&&
+       parsed->source==geometry_source_&&inputs==shared_inputs_)
+      return {retained->output,retained->generation,shared_geometry_.acquire(qssd::ProjectionPort::GPU),false};
+    auto frame=retained->runtime.observe(geometry_source_,false,inputs);
+    if(frame.size()<2064||frame.size()>XiGeometryDelta::max_frame_bytes||frame.size()%4||frame.compare(0,4,"XFG4"))
+      throw std::length_error("XI shared geometry transport bounds");
+    auto lease=shared_geometry_.publish(std::move(frame));
+    const auto program=mundo_x::infinite_program_detail::machine_parse_cache_state().program;
+    if(program&&program->source==geometry_source_&&program->deterministic)shared_program_=program;
+    else shared_program_.reset();
+    shared_inputs_=inputs;shared_generation_=retained->generation;
+    return {retained->output,retained->generation,std::move(lease),true};
   }
   std::vector<std::uint8_t> checkpoint()const{return rvpc2::save(retain()->runtime);}
  private:
@@ -86,6 +118,10 @@ class XiLiveSession {
   std::shared_ptr<Publication> pending_;
   mutable std::mutex geometry_mutex_;
   mutable XiGeometryDelta geometry_delta_;
+  mutable SharedGeometry shared_geometry_;
+  mutable std::weak_ptr<const mundo_x::infinite_program_detail::MachineParsedProgram> shared_program_;
+  mutable Inputs shared_inputs_;
+  mutable std::uint64_t shared_generation_=0;
   mutable std::weak_ptr<const mundo_x::infinite_program_detail::MachineParsedProgram> geometry_program_;
   mutable Inputs geometry_inputs_;
   mutable std::uint64_t geometry_generation_=0;
