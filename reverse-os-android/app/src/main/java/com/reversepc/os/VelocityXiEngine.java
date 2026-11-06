@@ -17,11 +17,19 @@ import org.json.JSONObject;
  */
 final class VelocityXiEngine {
     static final class Snapshot {
+        // Assigned once before the immutable observation is published.
+        long publication;
         final long xCm,zCm,ticks,totalProgress;
         final int yaw4096,speedCmps,slideCmps,checkpoint,position,laps,trackS,segment,countdown;
-        final boolean finished,offRoad,wallContact;
+        final boolean finished,offRoad,wallContact,nitroActive,landingPulse;
+        final int nitroCharge,jumpHeightCm,airPulse,jumpCooldown;
+        final int driftScore,driftComboPct,surface;
+        final boolean drafting;
+        final boolean openWorld,roadEnd;
+        final int groundHeightCm,sector,dayPhase,ambientMode,biome;
+        final int waterDepthCm,wetness,splash;
         Snapshot(long[] values){
-            if(values==null||values.length!=16)throw new IllegalArgumentException("XI race output needs sixteen registers");
+            if(values==null||(values.length!=26&&values.length!=32&&values.length!=35))throw new IllegalArgumentException("XI output needs 26, 32 or 35 world registers");
             for(int i=2;i<values.length;i++)if(values[i]<Integer.MIN_VALUE||values[i]>Integer.MAX_VALUE)
                 throw new IllegalArgumentException("XI race register exceeds integer range");
             xCm=values[0];zCm=values[1];yaw4096=(int)values[2];
@@ -31,7 +39,29 @@ final class VelocityXiEngine {
             position=(int)values[9];laps=(int)values[10];trackS=(int)values[11];
             segment=(int)values[12];countdown=(int)values[13];wallContact=values[14]==1;
             totalProgress=values[15];
-            if(xCm< -1_500_000||xCm>1_500_000||zCm< -1_500_000||zCm>1_500_000||
+            nitroCharge=(int)values[16];nitroActive=values[17]==1;
+            jumpHeightCm=(int)values[18];airPulse=(int)values[19];
+            jumpCooldown=(int)values[20];landingPulse=values[21]==1;
+            driftScore=(int)values[22];driftComboPct=(int)values[23];
+            drafting=values[24]==1;surface=(int)values[25];
+            openWorld=values.length>=32;
+            groundHeightCm=openWorld?(int)values[26]:0;sector=openWorld?(int)values[27]:0;
+            dayPhase=openWorld?(int)values[28]:0;ambientMode=openWorld?(int)values[29]:0;
+            biome=openWorld?(int)values[30]:0;roadEnd=openWorld&&values[31]==1;
+            waterDepthCm=values.length>=35?(int)values[32]:0;
+            wetness=values.length>=35?(int)values[33]:0;splash=values.length>=35?(int)values[34]:0;
+            if(waterDepthCm<0||waterDepthCm>40||wetness<0||wetness>1000||splash<0||splash>255)
+                throw new IllegalArgumentException("XI wetland observation outside limits");
+            if(groundHeightCm<0||groundHeightCm>4096||sector<0||sector>7||dayPhase<0||dayPhase>=4096||ambientMode<0||ambientMode>2||biome<0||biome>5)
+                throw new IllegalArgumentException("XI world state outside limits");
+            if(driftScore<0||driftScore>9_999_999||driftComboPct<100||driftComboPct>400||
+                    values[24]<0||values[24]>1||surface<0||surface>4)
+                throw new IllegalArgumentException("XI drift/rebufo/surface state outside limits");
+            if(nitroCharge<0||nitroCharge>1000||values[17]<0||values[17]>1||
+                    jumpHeightCm<0||jumpHeightCm>600||airPulse<0||airPulse>30||
+                    jumpCooldown<0||jumpCooldown>90||values[21]<0||values[21]>1)
+                throw new IllegalArgumentException("XI air/nitro state outside physical bounds");
+            if(xCm< -1_000_000_000L||xCm>1_000_000_000L||zCm< -1_000_000_000L||zCm>1_000_000_000L||
                     yaw4096<0||yaw4096>=4096||speedCmps<0||speedCmps>6500||
                     slideCmps< -6500||slideCmps>6500||checkpoint<0||checkpoint>12||
                     ticks<0||ticks>Integer.MAX_VALUE||values[7]<0||values[7]>1||
@@ -41,47 +71,61 @@ final class VelocityXiEngine {
                 throw new IllegalArgumentException("XI game output beyond the bounded protocol");
         }
         int speedKmh(){return (int)Math.round(speedCmps*.036);}
+        int nitroPercent(){return nitroCharge/10;}
         long seconds(){return ticks/50;}
         int displayedLap(){return Math.min(3,laps+1);}
     }
 
-    private byte[] privateState;
+    private final long liveSession;
+    private volatile boolean closed;
     private final String driveXi;
     private final String xiRenderer;
-    private final String xiNative4KRenderer;
+    private final String xiGpuRenderer;
     private final Object renderSourceLock=new Object();
     private String renderProgramCache,driveProgramCache;
+    private final Object gpuStateLock=new Object();
+    private RegraphicsGeometry retainedGpuGeometry;
+    private long retainedGpuIdentity,retainedGpuRevision;
+    private long qssdFrames,qssdExecutions,qssdProjectionBytes,qssdGeometryBytes,qssdSharedDeliveries;
+    private static final int[] GPU_ADDRESSES={200,201,202,203,204,205,206,207,141};
     private int renderProgramKey=-1,driveProgramKey=-1;
-    private String native4KProgramCache;
-    private int native4KProgramKey=-1;
     private static final String XI_HEADER="#!reverse-pc-machine-v1\n";
     private final float[] worldPoints; // read-only XI generated geometry samples
-    private final int[] palette;
-    private Snapshot snapshot;
+    private final int[] palette,paletteDusk,paletteNight;
+    private final String environmentXi;
+    private volatile int environmentMode;
+    private volatile Snapshot snapshot;
     static final class Observation {
         final RegraphicsFrame frame;
         final Snapshot state;
         // Measured using the same monotonic Java clock as the display worker.
-        // executeNanos includes JNI, RVPC2 restore, XI runtime and returned
-        // pixels; decodeNanos covers validation and ownership transfer only.
+        // executeNanos includes native XI preparation and wire transport;
+        // decodeNanos covers exact reconstruction and geometry validation.
         final long executeNanos,decodeNanos;
         final int payloadBytes;
+        final RegraphicsGeometry geometry;
+        final int[] colors;
         Observation(RegraphicsFrame frame,Snapshot state,long executeNanos,
                     long decodeNanos,int payloadBytes){
             this.frame=frame;this.state=state;
             this.executeNanos=executeNanos;this.decodeNanos=decodeNanos;
             this.payloadBytes=payloadBytes;
+            geometry=null;colors=null;
+        }
+        Observation(RegraphicsGeometry geometry,int[] colors,Snapshot state,long executeNanos,long decodeNanos,int bytes){
+            frame=null;this.geometry=geometry;this.colors=colors;this.state=state;this.executeNanos=executeNanos;this.decodeNanos=decodeNanos;payloadBytes=bytes;
         }
     }
 
     VelocityXiEngine(Context context)throws Exception{
         driveXi=asset(context,"velocity/drive.xi");
         String world=asset(context,"velocity/world.xi");
-        xiRenderer=asset(context,"velocity/render.xi");
-        xiNative4KRenderer=asset(context,"velocity/render-native4k.xi");
+        xiRenderer=asset(context,"velocity/render-live.xi");
+        xiGpuRenderer=asset(context,"velocity/render4k.xi");
         palette=parsePalette(asset(context,"velocity/palette.txt"));
-        if(!xiNative4KRenderer.startsWith(XI_HEADER))
-            throw new IllegalStateException("XI native 4K source header missing");
+        paletteDusk=parsePalette(asset(context,"velocity/palette-dusk.txt"));
+        paletteNight=parsePalette(asset(context,"velocity/palette-night.txt"));
+        environmentXi=asset(context,"velocity/environment.xi");
         if(!xiRenderer.startsWith(XI_HEADER))
             throw new IllegalStateException("XI renderer source header missing");
         if(!driveXi.startsWith("#!reverse-pc-machine-v1\n")||
@@ -91,9 +135,12 @@ final class VelocityXiEngine {
         worldPoints=parseRoute(generated.output);
         // Preserve world.xi's 81 packed circuit vertices in this isolated RVPC2.
         // Reinitializing here would discard the renderer's only geometry source.
-        privateState=generated.state; // isolated from REVERSE Desktop/BBY Q
-        step(0,0,1,0,false,true);
-        if(snapshot.ticks!=0)throw new IllegalStateException("XI game reset consumed a tick");
+        liveSession=NativeRuntime.sessionOpen(generated.state);
+        try {
+            NativeRuntime.sessionSetGeometryProgram(liveSession,xiGpuRenderer);
+            step(0,0,1,0,false,true);
+            if(snapshot.ticks!=0)throw new IllegalStateException("XI game reset consumed a tick");
+        } catch(Exception failure) {close();throw failure;}
     }
 
     private static String asset(Context context,String path)throws Exception{
@@ -130,40 +177,48 @@ final class VelocityXiEngine {
     }
 
     private static Snapshot parseState(String output)throws Exception{
-        long[] observed=new long[16];int n=0;
+        long[] observed=new long[35];int n=0;
         for(String line:output.split("\n")){
             if(line.trim().isEmpty())continue;
-            if(n>=16)throw new IllegalArgumentException("XI game published too many registers");
+            if(n>=35)throw new IllegalArgumentException("XI game published too many registers");
             JSONObject row=new JSONObject(line);
             if(!"register".equals(row.getString("type"))||
-               !("r"+n).equals(row.getString("register")))
+               !("r"+(n%16)).equals(row.getString("register")))
                 throw new IllegalArgumentException("XI game register order mismatch");
             observed[n++]=row.getLong("value");
         }
-        if(n!=16)throw new IllegalArgumentException("Incomplete XI game observation");
-        return new Snapshot(observed);
+        if(n!=26&&n!=32&&n!=35)throw new IllegalArgumentException("Incomplete XI game observation");
+        return new Snapshot(java.util.Arrays.copyOf(observed,n));
     }
 
     synchronized Snapshot step(int gas,int brake,int steer,int drift,boolean reverse,boolean reset)throws Exception{
+        return step(gas,brake,steer,drift,false,false,reverse,reset);
+    }
+    synchronized Snapshot step(int gas,int brake,int steer,int drift,boolean nitro,boolean jump,boolean reverse,boolean reset)throws Exception{
+        return step(gas,brake,steer,drift,nitro,jump,reverse,reset,0);
+    }
+    synchronized Snapshot step(int gas,int brake,int steer,int drift,boolean nitro,boolean jump,boolean reverse,boolean reset,int assistMode)throws Exception{
+        return step(gas,brake,steer,drift,nitro,jump,reverse,reset,assistMode,255);
+    }
+    synchronized Snapshot step(int gas,int brake,int steer,int drift,boolean nitro,boolean jump,boolean reverse,boolean reset,int assistMode,int analog)throws Exception{
+        if(analog<0||(analog>200&&analog!=255))throw new IllegalArgumentException("Analog steering protocol");
+        if(assistMode<0||assistMode>2)throw new IllegalArgumentException("XI assistant mode outside 0..2");
         if(gas<0||gas>1||brake<0||brake>1||steer<0||steer>2||
            drift<0||drift>1)throw new IllegalArgumentException("XI physical control out of range");
         // Execute the XI source through the *existing* generic runtime.
         // There is no game-specific JNI/C++ renderer, physics or instruction API.
-        final int programKey=gas|(brake<<1)|(steer<<2)|(drift<<4)|(reset?32:0)|(reverse?64:0);
+        final int programKey=gas|(brake<<1)|(steer<<2)|(drift<<4)|(reset?32:0)|(reverse?64:0)|(nitro?128:0)|(jump?256:0)|(assistMode<<10)|(analog<<12);
         if(programKey!=driveProgramKey){
             driveProgramCache=XI_HEADER+
                 "store8 128 "+gas+"\nstore8 129 "+brake+
                 "\nstore8 130 "+steer+"\nstore8 131 "+drift+
-                "\nstore8 132 "+(reset?1:0)+"\nstore8 133 "+(reverse?1:0)+"\n"+
+                "\nstore8 132 "+(reset?1:0)+"\nstore8 133 "+(reverse?1:0)+
+                 "\nstore8 134 "+(nitro?1:0)+"\nstore8 135 "+(jump?1:0)+
+                 "\nstore8 136 "+assistMode+"\nstore8 138 "+analog+"\n"+
                 driveXi.substring(XI_HEADER.length());
             driveProgramKey=programKey;
         }
-        ResultPacket result=ResultPacket.parse(NativeRuntime.execute(privateState,driveProgramCache));
-        // Validate the observation BEFORE publishing the candidate snapshot.
-        Snapshot observed=parseState(result.output);
-        privateState=result.state;
-        snapshot=observed;
-        return observed;
+        return executeValidated(driveProgramCache);
     }
     /**
      * Execute the actual XI renderer on a private snapshot. No Java geometry,
@@ -173,62 +228,77 @@ final class VelocityXiEngine {
     RegraphicsFrame renderFrame(int stride,int camera,int paint)throws Exception{
         return observeFrame(stride,camera,paint).frame;
     }
+    Observation observeGpuFrame(int camera,int paint,int car,int yaw,int pitch)throws Exception{
+        // Lifecycle replacement workers may briefly overlap while native work
+        // finishes. Keep wire sequence + Java base atomic, without locking physics.
+        synchronized(gpuStateLock){return observeGpuFrameLocked(camera,paint,car,yaw,pitch);}
+    }
+    private Observation observeGpuFrameLocked(int camera,int paint,int car,int yaw,int pitch)throws Exception{
+        if(camera<0||camera>2||paint<0||paint>4||car<0||car>=3||yaw<0||yaw>=4096||pitch<0||pitch>=512)
+            throw new IllegalArgumentException("XI GPU view controls outside range");
+        final byte[] inputs={1,(byte)camera,(byte)paint,(byte)car,(byte)yaw,(byte)(yaw>>>8),(byte)pitch,(byte)(pitch>>>8),1};
+        long start=System.nanoTime();
+        XiSharedGeometryPacket packet=NativeRuntime.sessionObserveSharedGeometry(liveSession,GPU_ADDRESSES,inputs);
+        long execute=System.nanoTime()-start;start=System.nanoTime();
+        Snapshot state=observedState(packet.output,packet.publication);
+        RegraphicsGeometry geometry=retainedGpuGeometry!=null&&retainedGpuIdentity==packet.identity&&retainedGpuRevision==packet.revision?
+            retainedGpuGeometry:RegraphicsGeometry.decodeShared(packet.frame);
+        retainedGpuGeometry=geometry;
+        retainedGpuIdentity=packet.identity;retainedGpuRevision=packet.revision;
+        int[] colors=VelocityWorldLight.palette(palette,paletteDusk,paletteNight,state.dayPhase);
+        qssdFrames++;qssdExecutions+=packet.executed?1:0;qssdProjectionBytes+=packet.materializedBytes;
+        qssdGeometryBytes+=packet.frame.limit();qssdSharedDeliveries+=packet.materializedBytes==0?1:0;
+        if(qssdFrames%60==0)android.util.Log.i("ReverseVelocity","QSSD_LINK frames="+qssdFrames+
+            " executions="+qssdExecutions+" sharedDeliveries="+qssdSharedDeliveries+" projectionBytes="+qssdProjectionBytes+
+            " geometryBytes="+qssdGeometryBytes+" deltaReconstructions=0 readOnly=true source=XI_XFG4");
+        // The numeric register observation is ASCII. Count its envelope and the
+        // explicit physical projection, rather than reporting fictional zero I/O.
+        int projected=(int)packet.materializedBytes+packet.output.length()+40;
+        return new Observation(geometry,colors,state,execute,System.nanoTime()-start,projected);
+    }
     Observation observeFrame(int stride,int camera,int paint)throws Exception{
+        return observeFrame(stride,camera,paint,0);
+    }
+    Observation observeFrame(int stride,int camera,int paint,int car)throws Exception{
+        return observeFrame(stride,camera,paint,car,0,0);
+    }
+    Observation observeFrame(int stride,int camera,int paint,int car,int yaw,int pitch)throws Exception{
+        if(yaw<0||yaw>=4096||pitch<0||pitch>=512)
+            throw new IllegalArgumentException("XI camera orbit outside 4096-step circle");
+        if(car<0||car>=3)throw new IllegalArgumentException("Unknown XI car silhouette");
         if(stride!=1&&stride!=2&&stride!=4)throw new IllegalArgumentException("XI frame stride must be 1,2 or 4");
         if(camera<0||camera>2||paint<0||paint>4)throw new IllegalArgumentException("XI visual input out of range");
         final String source;
-        final int programKey=(stride*3+camera)*5+paint;
+        final int programKey=(((stride*3+camera)*5+paint)*3+car)*2097152+
+            yaw*512+pitch;
         // Cache one authored program, independently of the physics monitor.
         // Observations and state remain fresh on every execution.
         synchronized(renderSourceLock){
             if(programKey!=renderProgramKey){
                 renderProgramCache=XI_HEADER+"store8 200 "+stride+
-                    "\nstore8 201 "+camera+"\nstore8 202 "+paint+"\n"+
+                    "\nstore8 201 "+camera+"\nstore8 202 "+paint+
+                    "\nstore8 203 "+car+"\nstore16 204 "+yaw+
+                    "\nstore16 206 "+pitch+"\n"+
                     xiRenderer.substring(XI_HEADER.length());
                 renderProgramKey=programKey;
             }
             source=renderProgramCache;
         }
-        // No UTF-8 conversion or JSON records on the frame path.
-        // Returned RVPC2 is discarded: frames observe the private game state.
-        final byte[] observation;
-        final Snapshot observedState;
-        synchronized(this){observation=privateState.clone();observedState=snapshot;}
+        // Original binary frame plus a small coherent register observation.
+        // Compact RVPC2 is retained natively instead of crossing JNI per frame.
+
         // Native observations execute on a private immutable copy. The physics
         // transaction can advance independently while this image is produced.
         final long executeStart=System.nanoTime();
-        final byte[] frameBytes=NativeRuntime.observeFrame(observation,source);
+        final byte[] packetBytes=NativeRuntime.sessionObserve(liveSession,source,new int[0],new byte[0]);
         final long executeElapsed=System.nanoTime()-executeStart;
         final long decodeStart=System.nanoTime();
-        final RegraphicsFrame frame=RegraphicsFrame.decodeOwned(frameBytes,stride,palette);
+        final XiObservationPacket packet=XiObservationPacket.parse(packetBytes);
+        final Snapshot observedState=observedState(packet);
+        final byte[] frameBytes=packet.frame;
+        final RegraphicsFrame frame=RegraphicsFrame.decodeLiveNativeOwned(frameBytes,stride,VelocityWorldLight.palette(palette,paletteDusk,paletteNight,observedState.dayPhase));
         final long decodeElapsed=System.nanoTime()-decodeStart;
         return new Observation(frame,observedState,executeElapsed,decodeElapsed,frameBytes.length);
-    }
-    /** XI performs all native 4K rasterization; Android consumes only XFB5 pixels. */
-    Observation observeNative4KFrame(int camera,int paint)throws Exception{
-        if(camera<0||camera>2||paint<0||paint>4)
-            throw new IllegalArgumentException("Invalid XI native 4K visual input");
-        final String program;
-        final int key=camera*5+paint;
-        synchronized(renderSourceLock){
-            if(key!=native4KProgramKey){
-                native4KProgramCache=XI_HEADER+"store8 200 1\nstore8 201 "+camera+
-                    "\nstore8 202 "+paint+"\n"+
-                    xiNative4KRenderer.substring(XI_HEADER.length());
-                native4KProgramKey=key;
-            }
-            program=native4KProgramCache;
-        }
-        final byte[] observedState;
-        final Snapshot observed;
-        synchronized(this){observedState=privateState.clone();observed=snapshot;}
-        final long executeStart=System.nanoTime();
-        final byte[] frameBytes=NativeRuntime.observeFrame(observedState,program);
-        final long executeElapsed=System.nanoTime()-executeStart;
-        final long decodeStart=System.nanoTime();
-        final RegraphicsFrame frame=RegraphicsFrame.decodeNative4KOwned(frameBytes,palette);
-        final long decodeElapsed=System.nanoTime()-decodeStart;
-        return new Observation(frame,observed,executeElapsed,decodeElapsed,frameBytes.length);
     }
     private static int[] parsePalette(String source){
         String[] entries=source.trim().split("\n");
@@ -240,6 +310,33 @@ final class VelocityXiEngine {
         }
         return palette;
     }
-    synchronized Snapshot current(){return snapshot;}
+    synchronized Snapshot setEnvironmentMode(int mode)throws Exception{
+        if(mode<0||mode>3)throw new IllegalArgumentException("Unknown world time mode");
+        Snapshot candidate=executeValidated(XI_HEADER+"store8 137 "+mode+"\n"+
+            environmentXi.substring(XI_HEADER.length()));
+        environmentMode=mode;return candidate;
+    }
+    private Snapshot executeValidated(String source)throws Exception{
+        if(closed)throw new IllegalStateException("XI session closed");
+        byte[] output=NativeRuntime.sessionStage(liveSession,source);
+        try {
+            Snapshot candidate=parseState(new String(output,StandardCharsets.UTF_8));
+            candidate.publication=NativeRuntime.sessionCommit(liveSession);
+            snapshot=candidate;return candidate;
+        } catch(Exception rejected) {
+            NativeRuntime.sessionDiscard(liveSession);throw rejected;
+        }
+    }
+    synchronized void close(){if(!closed){closed=true;NativeRuntime.sessionClose(liveSession);}}
+    private Snapshot observedState(XiObservationPacket packet)throws Exception{
+        return observedState(packet.output,packet.publication);
+    }
+    private Snapshot observedState(String output,long publication)throws Exception{
+        Snapshot current=snapshot;
+        if(current!=null&&current.publication==publication)return current;
+        Snapshot observed=parseState(output);observed.publication=publication;return observed;
+    }
+    int environmentMode(){return environmentMode;}
+    Snapshot current(){return snapshot;}
     float[] track(){return worldPoints.clone();} // Read-only circuit samples for HUD.
 }

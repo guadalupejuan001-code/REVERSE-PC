@@ -1,0 +1,9 @@
+{
+  "repository": "guadalupejuan001-code/Virtual-qSSD-",
+  "commit": "4ee7c5c8c391c0096867669681700c50aaafea1f",
+  "upstreamPath": "include/qssd/shared_projection.hpp",
+  "vendoredPath": "src/qssd/shared_projection.hpp",
+  "baselineVelocityCommit": "665742aa9310314242271ea51f9294d07a97b4c4",
+  "scope": "C02 immutable observation sharing; original XI/Ether remains state authority; one explicit VM-owned JNI projection per changed/collected view",
+  "sha256": "0429bafc17ec9dfd346ef1e63376a479fcbd48d77a3751214ed00ef4f0290ad4"
+}

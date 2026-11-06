@@ -10,11 +10,14 @@ function unzip(args){
  assert.equal(p.status,0,String(p.stderr));return p.stdout;
 }
 const entries=unzip(['-Z1',apk]).toString('utf8').trim().split(/\r?\n/);
+assert(entries.filter(n=>/^classes\d*\.dex$/.test(n)).some(n=>unzip(['-p',apk,n]).includes(Buffer.from('Lx/gpu/virtual/CompactTriangleStream;'))),'the APK must package the actual shared GPU-VIRTUAL runtime');
+assert(entries.filter(n=>/^classes\d*\.dex$/.test(n)).some(n=>unzip(['-p',apk,n]).includes(Buffer.from('Lcom/reversepc/os/XiSharedGeometryPacket;'))),'APK must package the qSSD observation used by JNI');
 const nativeElf={};
 for(const abi of ['arm64-v8a','x86_64']){
  const name='lib/'+abi+'/libreverse_os.so';
  assert(entries.includes(name),'missing native ABI '+abi);
  const elf=unzip(['-p',apk,name]);
+ assert(elf.includes(Buffer.from('Java_com_reversepc_os_NativeRuntime_sessionObserveSharedGeometry')),'native qSSD JNI entry must be present');
  assert.equal(elf.subarray(0,4).toString('hex'),'7f454c46');
  assert.equal(elf[4],2,'ELF must be 64 bit');assert.equal(elf[5],1,'ELF must be little endian');
  assert.equal(elf.readUInt16LE(18),abi==='arm64-v8a'?183:62,'ELF machine must match packaged ABI');
@@ -31,8 +34,8 @@ for(const abi of ['arm64-v8a','x86_64']){
 }
 const text=fs.readFileSync(badging,'utf8');
 assert.match(text,/package: name='com\.reversepc\.velocity'/);
-assert.match(text,/versionCode='16'/,'car build must upgrade versionCode');
-assert.match(text,/versionName='1\.6\.0-predecoded-xi'/,'car build version mismatch');
+assert.match(text,/versionCode='40'/,'car build must upgrade versionCode');
+assert.match(text,/versionName='3\.8\.0-qssd'/,'car build version mismatch');
 assert.match(text,/launchable-activity: name='com\.reversepc\.os\.VelocityActivity'/);
 assert.match(text,/application-label:'REVERSE VELOCITY'/);
 assert.match(text,/sdkVersion:'29'/);
@@ -47,7 +50,7 @@ function sourceAssets(directory,prefix=''){
  }).sort();
 }
 const names=sourceAssets(assetRoot);
-for(const name of ['drive.xi','world.xi','render.xi'])assert(names.includes(name),'missing XI game source '+name);
+for(const name of ['drive.xi','world.xi','render.xi','render-live.xi'])assert(names.includes(name),'missing XI game source '+name);
 assert.deepEqual(entries.filter(name=>name.startsWith('assets/velocity/')&&!name.endsWith('/'))
  .map(name=>name.slice('assets/velocity/'.length)).sort(),names,'packaged game asset inventory differs');
 for(const name of names){
@@ -69,7 +72,7 @@ if(process.env.VELOCITY_EXPECTED_SIGNER_SHA256){
   'APK must keep the signer of the released 0.1 test build for in-place upgrades');
 }
 const report={passed:true,applicationId:'com.reversepc.velocity',launcher:'com.reversepc.os.VelocityActivity',minSdk:29,
- versionCode:16,versionName:'1.6.0-predecoded-xi',sourceCommit:process.env.GITHUB_SHA||null,
+ versionCode:40,versionName:'3.8.0-qssd',sourceCommit:process.env.GITHUB_SHA||null,
  signerCertificateSha256:expected,signerMatchesCachedIdentity:true,
  abis:['arm64-v8a','x86_64'],nativeElf,assets,apkBytes:fs.statSync(apk).size,
  apkSha256:crypto.createHash('sha256').update(fs.readFileSync(apk)).digest('hex')};

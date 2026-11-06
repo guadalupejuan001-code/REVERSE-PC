@@ -37,6 +37,35 @@ replacements['quantum_runtime.hpp']=[(
     '        candidate_core, &candidate_memory, program, require_matching_background);',
     '        candidate_core, &candidate_memory, program, require_matching_background);\n'
     '    candidate_core.program_candidate_ = false;')]
+# A bounded input mailbox belongs to the same private XI transaction. It avoids
+# serializing and reparsing an entire compact world merely to write view inputs.
+replacements['quantum_runtime.hpp'] += [(
+    '                      bool require_matching_background = false) {',
+    '                      bool require_matching_background = false,\n'
+    '                      const std::vector<std::pair<std::string, std::uint8_t>>& inputs = {}) {\n'
+    '    if (inputs.size() > 32) throw std::length_error("XI input mailbox budget");'),(
+    '    auto candidate_memory = memory_;',
+    '    auto candidate_memory = memory_;\n'
+    '    for (const auto& input : inputs)\n'
+    '      candidate_memory.store(input.first, input.second, candidate_core);')]
+# Read-only observers borrow the immutable publication and fork the two compact
+# authorities once. execute() keeps its original transactional commit behavior.
+replacements['quantum_runtime.hpp'].append((
+    '  std::string core_snapshot() const { return core_.snapshot(); }',
+    '''  std::string observe(const std::string& program,
+                      bool require_matching_background = false,
+                      const std::vector<std::pair<std::string, std::uint8_t>>& inputs = {}) const {
+    if (inputs.size() > 32) throw std::length_error("XI input mailbox budget");
+    auto candidate_core = core_;
+    candidate_core.program_candidate_ = true;
+    auto candidate_memory = memory_;
+    for (const auto& input : inputs)
+      candidate_memory.store(input.first, input.second, candidate_core);
+    return infinite_program_detail::run(candidate_core, &candidate_memory,
+        program, require_matching_background).output;
+  }
+
+  std::string core_snapshot() const { return core_.snapshot(); }'''))
 replacements['exact_t_experiment.hpp'] += [
     ('#include <array>', '#include <array>\n#include <memory>\n#include <mutex>\n#include "integration/state_io.hpp"'),
     ('  std::size_t n_;\n  std::size_t max_components_;', '#include "integration/reduced_state_extensions.inc"\n  std::size_t n_;\n  std::size_t max_components_;'),
