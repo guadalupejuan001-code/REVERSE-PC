@@ -10,6 +10,11 @@ const sleep=ms=>Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,ms);
 function run(args,timeout=30000){const r=cp.spawnSync(adb,args,{encoding:'utf8',timeout,maxBuffer:20*1024*1024});assert.ifError(r.error);assert.equal(r.status,0,String(r.stderr));return r.stdout;}
 function logs(){return run(['logcat','-d','-v','brief','ReverseVelocity:I','AndroidRuntime:E','*:S']);}
 function fields(line){return Object.fromEntries([...line.matchAll(/\b(\w+)=(-?\d+(?:\.\d+)?|true|false)\b/g)].map(m=>[m[1],m[2]==='true'?true:m[2]==='false'?false:Number(m[2])]));}
+function memory(name,round,phase){
+ const text=run(['shell','dumpsys','meminfo',pkg]);fs.writeFileSync(path.join(out,`${name}-${round}-${phase}-meminfo.txt`),text);
+ const pss=/TOTAL PSS:\s*(\d+)/.exec(text)||/^\s*TOTAL\s+(\d+)/m.exec(text);
+ return {phase,totalPssKiB:pss?Number(pss[1]):null};
+}
 const med=v=>{const a=[...v].sort((x,y)=>x-y);return a[Math.floor(a.length/2)];};
 function trial(name,apk,round){
  run(['shell','am','force-stop',pkg]);run(['install','-r','-d',path.resolve(apk)],60000);run(['logcat','-c']);
@@ -17,12 +22,13 @@ function trial(name,apk,round){
  let ready=false;const deadline=Date.now()+60000;
  while(Date.now()<deadline){const l=logs();assert(!/GPU_FALLBACK|Race worker failed|FATAL EXCEPTION/.test(l),'real APK failed during warm-up');if(/GPU_FRAME_READY .*width=1280 height=720/.test(l)&&/GPU_HD_PIXELS .*pixels=921600/.test(l)){ready=true;break;}sleep(500);}
  assert(ready,'actual HD GPU warm-up timed out');
+ const memorySamples=[memory(name,round,'warm')];
  // Fullscreen education was dismissed by the preceding functional smoke.
  // R is the actual restart control, and W is the actual accelerator. Shift
  // is an unbound companion because Android keycombination expects two keys.
  run(['shell','input','keyevent','KEYCODE_R']);sleep(1000);run(['logcat','-c']);
  run(['shell','input','keycombination','-t','14000','KEYCODE_W','KEYCODE_SHIFT_LEFT'],22000);
- sleep(1200);const text=logs();run(['shell','am','force-stop',pkg]);
+ sleep(1200);memorySamples.push(memory(name,round,'after-driving'));const text=logs();run(['shell','am','force-stop',pkg]);
  fs.writeFileSync(path.join(out,name+'-'+round+'.log'),text);
  assert(!/GPU_FALLBACK|Race worker failed|FATAL EXCEPTION/.test(text),'APK failed during sustained driving');
  const records=text.split(/\r?\n/).filter(l=>l.includes('FRAME_STATS ')).map(fields);
@@ -34,7 +40,8 @@ function trial(name,apk,round){
  const gpu=text.split(/\r?\n/).filter(l=>l.includes('GPU_PIPELINE ')).map(fields);
  const physics=text.split(/\r?\n/).filter(l=>l.includes('PHYSICS_STATS ')).map(fields);
  const summarize=(rows,keys)=>Object.fromEntries(keys.filter(k=>rows.some(x=>Number.isFinite(x[k]))).map(k=>[k,med(rows.map(x=>x[k]).filter(Number.isFinite))]));
- const result={name,round,activeWindows:active.length,frames,elapsedNanos:nanos,drawFps:frames*1e9/nanos,physicsHzMedian:med(active.map(x=>x.physicsHz)),width:1280,height:720,
+ const result={name,round,activeWindows:active.length,frames,elapsedNanos:nanos,drawFps:frames*1e9/nanos,physicsHzMedian:med(active.map(x=>x.physicsHz)),width:1280,height:720,memorySamples,
+  gpuVirtualResources:text.split(/\r?\n/).filter(l=>l.includes('GPU_VIRTUAL_RESOURCES ')).map(fields),
   pipelineMedianOfWindowP50Ms:summarize(pipeline,['xiP50Ms','verifyP50Ms','presentP50Ms','totalP50Ms','setupP50Ms']),
   gpuMedianOfWindowMeansMs:summarize(gpu,['queueMeanMs','commandsMeanMs','swapMeanMs']),
   physicsMedianOfWindowMeansMs:summarize(physics,['stepMeanMs','stepMaxMs']),frameStats:active};

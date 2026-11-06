@@ -476,7 +476,9 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                         }else fastFrames=0;
                     }
                 }
-                long remaining=(paused?100_000_000L:33_333_333L)-cost;
+                // GPU presentation supplies its own display pacing. Do not add
+                // a second 30 Hz limiter after a completed GPU presentation.
+                long remaining=(paused?100_000_000L:selectedGpu?0L:33_333_333L)-cost;
                 if(remaining>1_000_000L)Thread.sleep(remaining/1_000_000L);
             }
         }catch(InterruptedException interrupted){

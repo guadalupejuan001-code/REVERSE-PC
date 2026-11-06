@@ -12,6 +12,7 @@ import struct
 import sys
 import time
 import statistics
+import hashlib
 import numpy as np
 from PIL import Image
 
@@ -52,9 +53,10 @@ def program(vert,frag):
     for shader in shaders:gl('glDeleteShader',None,U)(shader)
     return p
 root=pathlib.Path(__file__).resolve().parents[1]/'reverse-os-android/app/src/main/assets/velocity'
-scene=program(root/'gpu-scene.vert',root/'gpu-scene.frag');post=program(root/'gpu-post.vert',root/'gpu-post.frag')
+compact=os.getenv('VELOCITY_COMPACT_VERTEX','0')=='1'
+scene=program(root/('gpu-compact.vert' if compact else 'gpu-scene.vert'),root/'gpu-scene.frag');post=program(root/'gpu-post.vert',root/'gpu-post.frag')
 prepass=os.getenv('VELOCITY_DEPTH_PREPASS','1')=='1'
-depthProgram=program(root/'gpu-depth.vert',root/'gpu-depth.frag') if prepass else None
+depthProgram=program(root/('gpu-compact-depth.vert' if compact else 'gpu-depth.vert'),root/'gpu-depth.frag') if prepass else None
 packet=pathlib.Path(sys.argv[1]).read_bytes();magic,width,height,revision,faces=struct.unpack_from('<4sHHII',packet)
 assert (magic,width,height,revision)==(b'XFG4',3840,2160,4) and len(packet)==2064+60*faces
 buckets=[[],[],[],[]];lamp=None
@@ -76,9 +78,17 @@ alpha_faces=[buckets[2][i:i+3] for i in range(0,len(buckets[2]),3)];alpha_faces.
 vertices=np.array([v for bucket in buckets for v in bucket],dtype=np.float32)
 vao=U();gl('glGenVertexArrays',None,I,P)(1,C.byref(vao));gl('glBindVertexArray',None,U)(vao)
 vbo=U();gl('glGenBuffers',None,I,P)(1,C.byref(vbo));gl('glBindBuffer',None,U,U)(0x8892,vbo)
-gl('glBufferData',None,U,C.c_ssize_t,P,U)(0x8892,vertices.nbytes,vertices.ctypes.data,0x88E4)
-for index,(size,offset) in enumerate([(3,0),(2,3),(1,5),(4,6),(1,10)]):
-    gl('glEnableVertexAttribArray',None,U)(index);gl('glVertexAttribPointer',None,U,I,U,B,I,P)(index,size,0x1406,0,44,P(offset*4))
+if compact:
+    packed=b''.join(struct.pack('<iiIhhf4B',int(v[0]),int(v[1]),int(v[2])|(int(v[10])<<20),int(v[3]),int(v[4]),v[5],*map(int,v[6:10])) for bucket in buckets for v in bucket)
+    payload=C.create_string_buffer(packed)
+    gl('glBufferData',None,U,C.c_ssize_t,P,U)(0x8892,len(packed),payload,0x88E4)
+    for index,size,kind,offset in [(0,2,0x1404,0),(1,2,0x1402,12),(2,1,0x1406,16),(3,4,0x1401,20)]:
+        gl('glEnableVertexAttribArray',None,U)(index);gl('glVertexAttribPointer',None,U,I,U,B,I,P)(index,size,kind,0,24,P(offset))
+    gl('glEnableVertexAttribArray',None,U)(4);gl('glVertexAttribIPointer',None,U,I,U,I,P)(4,1,0x1405,24,P(8))
+else:
+    gl('glBufferData',None,U,C.c_ssize_t,P,U)(0x8892,vertices.nbytes,vertices.ctypes.data,0x88E4)
+    for index,(size,offset) in enumerate([(3,0),(2,3),(1,5),(4,6),(1,10)]):
+        gl('glEnableVertexAttribArray',None,U)(index);gl('glVertexAttribPointer',None,U,I,U,B,I,P)(index,size,0x1406,0,44,P(offset*4))
 
 def texture(unit,internal,tw,th,form,pixels,nearest=False):
     gl('glActiveTexture',None,U)(0x84C0+unit);n=U();gl('glGenTextures',None,I,P)(1,C.byref(n));gl('glBindTexture',None,U,U)(0x0DE1,n)
@@ -148,8 +158,17 @@ for iteration in range(samples+2):
     start=time.perf_counter();draw_frame();elapsed=(time.perf_counter()-start)*1000
     if iteration>=2:timings.append(elapsed)
 pixels=(B*(w*h*4))();gl('glReadPixels',None,I,I,I,I,U,U,P)(0,0,w,h,0x1908,0x1401,pixels)
+stripes_verified=False
+if os.getenv('VELOCITY_VERIFY_STRIPES','0')=='1':
+    digest=hashlib.sha256();stripe=(B*(w*64*4))()
+    for row in range(0,h,64):
+        rows=min(64,h-row)
+        gl('glReadPixels',None,I,I,I,I,U,U,P)(0,row,w,rows,0x1908,0x1401,stripe)
+        digest.update(bytes(stripe)[:w*rows*4])
+    assert digest.digest()==hashlib.sha256(bytes(pixels)).digest(),'bounded readback must hash the exact complete image'
+    stripes_verified=True
 error=gl('glGetError',U)();assert error==0,hex(error)
 image=Image.frombytes('RGBA',(w,h),bytes(pixels)).transpose(Image.Transpose.FLIP_TOP_BOTTOM)
 output=pathlib.Path(sys.argv[3]);output.parent.mkdir(parents=True,exist_ok=True);image.save(output)
 renderer=gl('glGetString',C.c_char_p,U)(0x1F01).decode()
-print(json.dumps({'passed':True,'hostOnly':True,'renderer':renderer,'faces':faces,'width':w,'height':h,'depthPrepass':prepass,'samples':samples,'frameP50Ms':statistics.median(timings),'output':str(output)}))
+print(json.dumps({'passed':True,'hostOnly':True,'renderer':renderer,'faces':faces,'width':w,'height':h,'compactVertices':compact,'vertexBytes':len(packed) if compact else vertices.nbytes,'depthPrepass':prepass,'samples':samples,'frameP50Ms':statistics.median(timings),'stripedReadbackExact':stripes_verified,'rgbaSha256':hashlib.sha256(bytes(pixels)).hexdigest(),'output':str(output)}))

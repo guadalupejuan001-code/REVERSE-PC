@@ -12,7 +12,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.nio.FloatBuffer;
+import java.util.Arrays;
+import x.gpu.virtual.CompactTriangleStream;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.security.MessageDigest;
@@ -45,7 +46,11 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
     private int lastFx=-1;
     private long measuredFrom,measuredFrames,queueNanos,commandNanos,swapNanos;
     private ByteBuffer photoReadback;
-    private final FloatBuffer vertices=ByteBuffer.allocateDirect(RegraphicsGeometry.MAX_FACES*3*RegraphicsGeometry.FLOATS*4).order(ByteOrder.nativeOrder()).asFloatBuffer();
+    private final CompactTriangleStream vertices=new CompactTriangleStream();
+    private int vertexCapacity;
+    private int[] residentPalette;
+    private byte[] residentAtlas;
+    private long vertexUploadBytes,vertexUploadCalls,textureUploadBytes,resourceFrames;
     private final ByteBuffer paletteBytes=ByteBuffer.allocateDirect(1024),atlasBytes=ByteBuffer.allocateDirect(2048);
     static final class Request {
         final RegraphicsGeometry geometry;final Bitmap photo;final int[] palette;
@@ -102,18 +107,24 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
     @Override public void onSurfaceCreated(GL10 ignored,EGLConfig config){
         ready=false;firstFrame=false;hdVerified=false;framebuffer=colorTexture=depthBuffer=0;targetWidth=targetHeight=0;
         try{
-            sceneShaders[0]=new SceneShader(program("gpu-scene.vert","gpu-scene.frag"));
-            depthProgram=program("gpu-depth.vert","gpu-depth.frag");
+            sceneShaders[0]=new SceneShader(program("gpu-compact.vert","gpu-scene.frag"));
+            depthProgram=program("gpu-compact-depth.vert","gpu-depth.frag");
             depthProjection=uniform(depthProgram,"uProjection");depthAspect=uniform(depthProgram,"uAspect");
             postProgram=program("gpu-post.vert","gpu-post.frag");
             imageU=uniform(postProgram,"uImage");texelU=uniform(postProgram,"uTexel");photoU=uniform(postProgram,"uPhoto");
             paletteTexture=texture();glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA8,256,1,0,GL_RGBA,GL_UNSIGNED_BYTE,null);
             atlasTexture=texture();glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);glTexImage2D(GL_TEXTURE_2D,0,GL_R8,128,16,0,GL_RED,GL_UNSIGNED_BYTE,null);
-            photoTexture=texture();int[] id={0};glGenVertexArrays(1,id,0);vao=id[0];glBindVertexArray(vao);glGenBuffers(1,id,0);vbo=id[0];glBindBuffer(GL_ARRAY_BUFFER,vbo);glBufferData(GL_ARRAY_BUFFER,vertices.capacity()*4,null,GL_DYNAMIC_DRAW);
-            int stride=RegraphicsGeometry.FLOATS*4;int[] sizes={3,2,1,4,1},offsets={0,3,5,6,10};
-            for(int i=0;i<5;i++){glEnableVertexAttribArray(i);glVertexAttribPointer(i,sizes[i],GL_FLOAT,false,stride,offsets[i]*4);}glBindVertexArray(0);
+            photoTexture=texture();int[] id={0};glGenVertexArrays(1,id,0);vao=id[0];glBindVertexArray(vao);glGenBuffers(1,id,0);vbo=id[0];glBindBuffer(GL_ARRAY_BUFFER,vbo);glBufferData(GL_ARRAY_BUFFER,4,null,GL_DYNAMIC_DRAW);
+            vertexCapacity=4;vertices.invalidateGpuCopy();residentPalette=null;residentAtlas=null;
+            int stride=CompactTriangleStream.STRIDE;
+            glVertexAttribPointer(0,2,GL_INT,false,stride,0);
+            glVertexAttribPointer(1,2,GL_SHORT,false,stride,12);
+            glVertexAttribPointer(2,1,GL_FLOAT,false,stride,16);
+            glVertexAttribPointer(3,4,GL_UNSIGNED_BYTE,false,stride,20);
+            glVertexAttribIPointer(4,1,GL_UNSIGNED_INT,stride,8);
+            for(int i=0;i<5;i++)glEnableVertexAttribArray(i);glBindVertexArray(0);
             glDisable(GL_CULL_FACE);checked("GPU initialization");failed=false;
-            Log.i("ReverseVelocity","GPU_SHADERS_READY owner=REgraphics geometry=XI_XFG4 renderer="+glGetString(GL_RENDERER));
+            Log.i("ReverseVelocity","GPU_SHADERS_READY owner=REgraphics execution=GPU_VIRTUAL geometry=XI_XFG4 vertexBytes=24 renderer="+glGetString(GL_RENDERER));
         }catch(RuntimeException error){disable(error);}
     }
     @Override public void onSurfaceChanged(GL10 ignored,int w,int h){if(!failed){ready=true;invalidated.run();}}
@@ -159,12 +170,36 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
         boolean nativePhoto=r.width==3840;
         int w=nativePhoto?3840:Math.max(320,Math.min(1280,r.width)),h=nativePhoto?2160:w==1280?720:Math.max(360,Math.round(w*(float)getHeight()/Math.max(1,getWidth())));
         target(w,h);glBindFramebuffer(GL_FRAMEBUFFER,framebuffer);glViewport(0,0,w,h);glDepthMask(true);glClearColor(.08f,.12f,.14f,1);glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-        RegraphicsGeometry g=r.geometry;g.vertices(vertices);
+        RegraphicsGeometry g=r.geometry;g.compact(vertices);
         int fx=(r.state.nitroActive?1:0)|(r.state.airPulse>0?2:0)|(r.state.waterDepthCm>0?4:0);
         if(fx!=lastFx){lastFx=fx;Log.i("ReverseVelocity","GPU_FX_STATE nitro="+r.state.nitroActive+" air="+(r.state.airPulse>0)+" waterDepth="+r.state.waterDepthCm+" emittedNitro="+g.categoryFaces(5)+" emittedAir="+g.categoryFaces(4));}
-        glBindVertexArray(vao);glBindBuffer(GL_ARRAY_BUFFER,vbo);glBufferSubData(GL_ARRAY_BUFFER,0,vertices.remaining()*4,vertices);
-        paletteBytes.clear();for(int c:r.palette)paletteBytes.put((byte)(c>>16)).put((byte)(c>>8)).put((byte)c).put((byte)255);paletteBytes.flip();glActiveTexture(GL_TEXTURE0);glBindTexture(GL_TEXTURE_2D,paletteTexture);glTexSubImage2D(GL_TEXTURE_2D,0,0,0,256,1,GL_RGBA,GL_UNSIGNED_BYTE,paletteBytes);
-        atlasBytes.clear();for(int y=0;y<16;y++)for(int tile=0;tile<8;tile++)for(int x=0;x<16;x++)atlasBytes.put(g.bytes[16+tile*256+y*16+x]);atlasBytes.flip();glActiveTexture(GL_TEXTURE1);glBindTexture(GL_TEXTURE_2D,atlasTexture);glTexSubImage2D(GL_TEXTURE_2D,0,0,0,128,16,GL_RED,GL_UNSIGNED_BYTE,atlasBytes);
+        glBindVertexArray(vao);glBindBuffer(GL_ARRAY_BUFFER,vbo);
+        if(vertexCapacity<vertices.capacityBytes()){
+            vertexCapacity=vertices.capacityBytes();glBufferData(GL_ARRAY_BUFFER,vertexCapacity,null,GL_DYNAMIC_DRAW);
+        }
+        for(int i=0;i<vertices.uploadCount();i++){
+            int offset=vertices.uploadOffset(i),length=vertices.uploadLength(i);
+            glBufferSubData(GL_ARRAY_BUFFER,offset,length,vertices.view(offset,length));
+            vertexUploadBytes+=length;vertexUploadCalls++;
+        }
+        glActiveTexture(GL_TEXTURE0);glBindTexture(GL_TEXTURE_2D,paletteTexture);
+        if(!Arrays.equals(residentPalette,r.palette)){
+            paletteBytes.clear();for(int c:r.palette)paletteBytes.put((byte)(c>>16)).put((byte)(c>>8)).put((byte)c).put((byte)255);paletteBytes.flip();
+            glTexSubImage2D(GL_TEXTURE_2D,0,0,0,256,1,GL_RGBA,GL_UNSIGNED_BYTE,paletteBytes);
+            residentPalette=r.palette.clone();textureUploadBytes+=1024;
+        }
+        glActiveTexture(GL_TEXTURE1);glBindTexture(GL_TEXTURE_2D,atlasTexture);
+        boolean atlasChanged=residentAtlas==null;
+        if(!atlasChanged)for(int i=0;i<2048;i++)if(residentAtlas[i]!=g.bytes[16+i]){atlasChanged=true;break;}
+        if(atlasChanged){
+            atlasBytes.clear();for(int y=0;y<16;y++)for(int tile=0;tile<8;tile++)for(int x=0;x<16;x++)atlasBytes.put(g.bytes[16+tile*256+y*16+x]);atlasBytes.flip();
+            glTexSubImage2D(GL_TEXTURE_2D,0,0,0,128,16,GL_RED,GL_UNSIGNED_BYTE,atlasBytes);
+            if(residentAtlas==null)residentAtlas=new byte[2048];System.arraycopy(g.bytes,16,residentAtlas,0,2048);textureUploadBytes+=2048;
+        }
+        if(++resourceFrames>=60){
+            Log.i("ReverseVelocity","GPU_VIRTUAL_RESOURCES frames="+resourceFrames+" vertexStride=24 stagingCapacityBytes="+vertices.capacityBytes()+" vboCapacityBytes="+vertexCapacity+" liveVertexBytes="+vertices.usedBytes()+" vertexUploadBytes="+vertexUploadBytes+" vertexUploadCalls="+vertexUploadCalls+" textureUploadBytes="+textureUploadBytes+" scope=geometry_transport_not_process_ram");
+            resourceFrames=vertexUploadBytes=vertexUploadCalls=textureUploadBytes=0;
+        }
         // Resolve visibility with the exact same vertex transform before doing
         // material work. Sky and hidden opaque surfaces then cost no shading.
         glDisable(GL_BLEND);glEnable(GL_DEPTH_TEST);glDepthFunc(GL_LEQUAL);glDepthMask(true);
@@ -178,12 +213,22 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
         glBlendFunc(GL_SRC_ALPHA,GL_ONE);glDrawArrays(GL_TRIANGLES,g.starts[3],g.counts[3]);
         glDepthMask(true);glDisable(GL_BLEND);glDisable(GL_DEPTH_TEST);glBindVertexArray(0);
         if(nativePhoto||(!hdVerified&&w==1280&&h==720)){
-            if(photoReadback==null||photoReadback.capacity()<w*h*4)photoReadback=ByteBuffer.allocateDirect(w*h*4);
-            photoReadback.clear();photoReadback.limit(w*h*4);glReadPixels(0,0,w,h,GL_RGBA,GL_UNSIGNED_BYTE,photoReadback);checked("GPU 4K readback");photoReadback.rewind();
-            try{MessageDigest digest=MessageDigest.getInstance("SHA-256");digest.update(photoReadback);StringBuilder hash=new StringBuilder();for(byte b:digest.digest())hash.append(String.format(java.util.Locale.ROOT,"%02x",b&255));Log.i("ReverseVelocity",(nativePhoto?"GPU_NATIVE_4K_PIXELS":"GPU_HD_PIXELS")+" source=XI_XFG4_GLSL width="+w+" height="+h+" pixels="+(w*h)+" sha256="+hash);}
+            // Hash every original RGBA byte in row order using bounded scratch.
+            // A 4K photo no longer retains a 33 MB direct readback allocation.
+            int stripeRows=64,stripeBytes=w*stripeRows*4;
+            if(photoReadback==null||photoReadback.capacity()<stripeBytes)photoReadback=ByteBuffer.allocateDirect(stripeBytes);
+            try{MessageDigest digest=MessageDigest.getInstance("SHA-256");
+                for(int y=0;y<h;y+=stripeRows){
+                    int rows=Math.min(stripeRows,h-y);photoReadback.clear();photoReadback.limit(w*rows*4);
+                    glReadPixels(0,y,w,rows,GL_RGBA,GL_UNSIGNED_BYTE,photoReadback);checked("GPU 4K readback");
+                    photoReadback.rewind();digest.update(photoReadback);
+                }
+                StringBuilder hash=new StringBuilder();for(byte b:digest.digest())hash.append(String.format(java.util.Locale.ROOT,"%02x",b&255));Log.i("ReverseVelocity",(nativePhoto?"GPU_NATIVE_4K_PIXELS":"GPU_HD_PIXELS")+" source=XI_XFG4_GLSL width="+w+" height="+h+" pixels="+(w*h)+" readbackCapacityBytes="+photoReadback.capacity()+" sha256="+hash);}
             catch(Exception error){throw new IllegalStateException("GPU pixel verification failed",error);}
             if(!nativePhoto)hdVerified=true;
         }
+        // No later pass consumes scene depth. Let tile-based GPUs discard it.
+        glInvalidateFramebuffer(GL_FRAMEBUFFER,1,new int[]{GL_DEPTH_ATTACHMENT},0);
         glBindFramebuffer(GL_FRAMEBUFFER,0);glViewport(0,0,getWidth(),getHeight());
         if(nativePhoto||w==1280){float fit=Math.min((float)getWidth()/w,(float)getHeight()/h);int shownW=Math.round(w*fit),shownH=Math.round(h*fit);glClearColor(.025f,.04f,.06f,1);glClear(GL_COLOR_BUFFER_BIT);glViewport((getWidth()-shownW)/2,(getHeight()-shownH)/2,shownW,shownH);}
         post(colorTexture,w,h,false);

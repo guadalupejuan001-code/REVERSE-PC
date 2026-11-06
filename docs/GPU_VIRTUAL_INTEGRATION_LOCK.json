@@ -1,0 +1,11 @@
+{
+  "repository": "guadalupejuan001-code/GPU-VIRTUAL",
+  "commit": "c69c99961ade8889253b73b0ba2c674a6918badc",
+  "upstreamPath": "android-graphics/shared/x/gpu/virtual/CompactTriangleStream.java",
+  "vendoredPath": "reverse-os-android/app/src/main/java/x/gpu/virtual/CompactTriangleStream.java",
+  "sha256": "e7ed76e86b5d354fb1389a3cc28462f5b6b45f8d450a6d92b937ef69917395af",
+  "protocol": "XFG4 revision 4",
+  "gpuVertexBytes": 24,
+  "originalGpuVertexBytes": 44,
+  "quantization": false
+}

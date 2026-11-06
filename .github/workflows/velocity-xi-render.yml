@@ -1,7 +1,7 @@
 name: REVERSE VELOCITY REgraphics
 on:
   push:
-    branches: [feature/velocity-v30-open-forest-road-20261104, feature/velocity-v31-reverse-native-live-20261105, feature/velocity-v32-wetlands-gpu-20261105, feature/velocity-v33-open-terrain-20261105, feature/velocity-v34-trails-hd-20261105]
+    branches: [feature/velocity-v30-open-forest-road-20261104, feature/velocity-v31-reverse-native-live-20261105, feature/velocity-v32-wetlands-gpu-20261105, feature/velocity-v33-open-terrain-20261105, feature/velocity-v34-trails-hd-20261105, feature/velocity-gpu-virtual-20261106]
   pull_request:
     branches: [feature/velocity-regraphics-20261030]
     paths: ['reverse-os-android/**', 'scripts/**', '.github/workflows/velocity-xi-render.yml']
@@ -24,11 +24,19 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/GPU-VIRTUAL
+          ref: c69c99961ade8889253b73b0ba2c674a6918badc
+          path: deps/gpu-virtual
+          sparse-checkout: android-graphics/shared
+          persist-credentials: false
       - uses: actions/setup-java@v4
         with: {distribution: 'temurin', java-version: '17'}
       - name: Verify XI ownership and reproducible finite world
         run: |
           node scripts/check-velocity-native-only.cjs
+          node scripts/check-velocity-gpu-virtual.cjs deps/gpu-virtual
           node scripts/open-forest-author-contract.cjs
           node scripts/forest-trails-contract.cjs build/open-forest
           node scripts/velocity-car-contract.cjs
@@ -60,12 +68,18 @@ jobs:
           build/open-forest/open-terrain-test reverse-os-android/app/src/main/assets/velocity build/open-forest
           build/open-forest/gpu-observation reverse-os-android/app/src/main/assets/velocity build/open-forest
           mkdir -p build/open-forest/java
-          javac -d build/open-forest/java reverse-os-android/app/src/main/java/com/reversepc/os/VelocityOrbitMath.java reverse-os-android/app/src/main/java/com/reversepc/os/VelocityChaseCamera.java reverse-os-android/app/src/main/java/com/reversepc/os/RegraphicsGeometry.java reverse-os-android/tests/VelocityChaseCameraTest.java reverse-os-android/tests/RegraphicsGeometryTest.java
+          javac -d build/open-forest/java reverse-os-android/app/src/main/java/x/gpu/virtual/CompactTriangleStream.java reverse-os-android/tests/RegraphicsCompactTest.java reverse-os-android/app/src/main/java/com/reversepc/os/VelocityOrbitMath.java reverse-os-android/app/src/main/java/com/reversepc/os/VelocityChaseCamera.java reverse-os-android/app/src/main/java/com/reversepc/os/RegraphicsGeometry.java reverse-os-android/tests/VelocityChaseCameraTest.java reverse-os-android/tests/RegraphicsGeometryTest.java
           java -cp build/open-forest/java com.reversepc.os.VelocityChaseCameraTest
           java -cp build/open-forest/java com.reversepc.os.RegraphicsGeometryTest build/open-forest/gpu-0-0.xfg4
+          java -cp build/open-forest/java com.reversepc.os.RegraphicsCompactTest build/open-forest/*.xfg4
           javac -d build/open-forest/java reverse-os-android/app/src/main/java/com/reversepc/os/VelocityStateExchange.java reverse-os-android/app/src/main/java/com/reversepc/os/VelocityFrameProfiler.java reverse-os-android/tests/VelocityStateExchangeTest.java reverse-os-android/tests/VelocityFrameProfilerTest.java
           java -cp build/open-forest/java com.reversepc.os.VelocityStateExchangeTest
           java -cp build/open-forest/java com.reversepc.os.VelocityFrameProfilerTest
+      - name: Compare actual legacy and compact GPU pixels
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libegl1 libgl1-mesa-dri python3-pil python3-numpy
+          python3 scripts/verify-velocity-gpu-virtual.py build/open-forest build/open-forest/compact-gpu
       - name: Execute all sectors, reverse, time and real XI raster
         run: |
           build/open-forest/gameplay-test reverse-os-android/app/src/main/assets/velocity build/open-forest/gameplay

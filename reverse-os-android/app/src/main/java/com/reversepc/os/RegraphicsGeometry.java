@@ -1,6 +1,7 @@
 package com.reversepc.os;
 
 import java.nio.FloatBuffer;
+import x.gpu.virtual.CompactTriangleStream;
 
 /** Validated XI XFG4 triangles. This adapter never creates world geometry. */
 final class RegraphicsGeometry {
@@ -8,8 +9,17 @@ final class RegraphicsGeometry {
     final byte[] bytes;
     final int width,height,faces;
     final int[] starts=new int[4],counts=new int[4];
+    private final byte[] categories,passes;
+    private final int[] categoryCounts=new int[12];
+    private int lampFace=-1;
     private RegraphicsGeometry(byte[] bytes,int width,int height,int faces){
         this.bytes=bytes;this.width=width;this.height=height;this.faces=faces;
+        categories=new byte[faces];passes=new byte[faces];
+        for(int i=0;i<faces;i++){
+            int c=category(HEADER+ATLAS+i*FACE_BYTES);
+            categories[i]=(byte)c;passes[i]=(byte)pass(c);categoryCounts[c]++;
+            if(c==10&&lampFace<0)lampFace=i;
+        }
     }
     static int u16(byte[] b,int n){return (b[n]&255)|((b[n+1]&255)<<8);}
     static int i32(byte[] b,int n){return (b[n]&255)|((b[n+1]&255)<<8)|((b[n+2]&255)<<16)|(b[n+3]<<24);}
@@ -46,10 +56,14 @@ final class RegraphicsGeometry {
         if(base==56)return 5;
         return 1;
     }
-    int categoryFaces(int wanted){int n=0;for(int i=0;i<faces;i++)if(category(HEADER+ATLAS+i*FACE_BYTES)==wanted)n++;return n;}
+    int categoryFaces(int wanted){return wanted>=0&&wanted<categoryCounts.length?categoryCounts[wanted]:0;}
+    void compact(CompactTriangleStream stream){
+        stream.update(bytes,categories,passes);
+        System.arraycopy(stream.starts,0,starts,0,4);System.arraycopy(stream.counts,0,counts,0,4);
+    }
     private static int pass(int category){return category==10?-1:category==0?0:category==1||category==8?1:category==2||category==3||category==9?2:3;}
     boolean lightFrame(float[] frame){
-        for(int i=0;i<faces;i++){int at=HEADER+ATLAS+i*FACE_BYTES;if(category(at)!=10)continue;
+        if(lampFace>=0){int at=HEADER+ATLAS+lampFace*FACE_BYTES;
             for(int v=0;v<2;v++){float z=i32(bytes,at+v*12+8);frame[v*3]=(i32(bytes,at+v*12)-width*.5f)*z/(width*.85f)*.01f;frame[v*3+1]=(height*.5f-i32(bytes,at+v*12+4))*z/(width*.85f)*.01f;frame[v*3+2]=z*.01f;}return true;
         }return false;
     }
