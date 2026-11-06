@@ -60,6 +60,8 @@ int main(int argc,char**argv){try{
  const auto quantum=header+"h 77\n"+render.substr(header.size());retained.registerGeometryProgram(quantum);
  retained.observePreparedGeometry(otherView);
  check(retained.observePreparedGeometry(otherView)[36]!=2,"non-machine commands cannot authorize deterministic reuse");
+ retained.registerGeometryProgram(render+"\n#"+std::string(40*1024,'x')+"\n");
+ check(retained.observePreparedGeometry(otherView).size()>44,"valid sources beyond the parse-cache budget still execute");
  std::ofstream image(out/"live-session-geometry.xfg4",std::ios::binary);image.write(expected.data(),expected.size());
  // Race the generic publisher against a reader. The pair must always describe
  // one whole transaction, even when the writer commits during observation.

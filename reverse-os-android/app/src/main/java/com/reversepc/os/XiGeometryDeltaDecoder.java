@@ -36,12 +36,17 @@ final class XiGeometryDeltaDecoder {
             boolean unchanged=length==previous.length;
             for(int i=0;i<mask&&unchanged;i++)unchanged=packet[start+i]==0;
             frame=unchanged?previous:Arrays.copyOf(previous,length);int cursor=start+mask;
-            for(int word=0;word<words;word++){
+            for(int word=0;word<words;){
                 boolean changed=(packet[start+word/8]&(1<<(word%8)))!=0;
                 if(changed){
-                    require(cursor+4<=packet.length,"truncated changed word");
-                    System.arraycopy(packet,cursor,frame,word*4,4);cursor+=4;
-                }else require(word*4+4<=previous.length,"new words must be present");
+                    int first=word++;
+                    while(word<words&&(packet[start+word/8]&(1<<(word%8)))!=0)word++;
+                    int bytes=(word-first)*4;
+                    require(cursor+bytes<=packet.length,"truncated changed word");
+                    System.arraycopy(packet,cursor,frame,first*4,bytes);cursor+=bytes;
+                }else{
+                    require(word*4+4<=previous.length,"new words must be present");word++;
+                }
             }
             require(cursor==packet.length,"trailing changed words");
         }

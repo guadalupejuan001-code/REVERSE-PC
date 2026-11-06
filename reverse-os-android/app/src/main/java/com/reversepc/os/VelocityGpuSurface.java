@@ -41,6 +41,7 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
     }
     private final float[] lampFrame=new float[6];
     private volatile boolean firstFrame;
+    private volatile boolean independentGpu=true;
     private final boolean[] verifiedProfiles=new boolean[5];
     private VelocityGraphics lastGraphics=VelocityGraphics.fromId(2);
     private int lastFx=-1;
@@ -76,6 +77,7 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
         setContentDescription("Cámara 3D. Arrastra para inspeccionar el coche; vuelve automáticamente al conducir.");
     }
     boolean hasPresentedFrame(){return firstFrame;}
+    boolean canOverlapCpu(){return independentGpu;}
     boolean available(){return ready&&!failed&&!suspended;}
     void disable(Throwable why){
         failed=true;ready=false;cancel("GPU unavailable");
@@ -119,6 +121,9 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
     @Override public void onSurfaceCreated(GL10 ignored,EGLConfig config){
         ready=false;firstFrame=false;Arrays.fill(verifiedProfiles,false);framebuffer=colorTexture=depthBuffer=0;targetWidth=targetHeight=0;
         try{
+            String renderer=glGetString(GL_RENDERER).toLowerCase(java.util.Locale.ROOT);
+            independentGpu=!(renderer.contains("swiftshader")||renderer.contains("llvmpipe")||renderer.contains("softpipe")||renderer.contains("software rasterizer"));
+            Log.i("ReverseVelocity","CPU_GPU_EXECUTION overlap="+independentGpu+" policy="+(independentGpu?"independent_gpu":"shared_cpu_rasterizer"));
             Arrays.fill(sceneShaders,null);materialVariants=false;lastMaterialRoute=-1;
             sceneShaders[0]=new SceneShader(program("gpu-compact.vert","gpu-scene.frag"));
             try{

@@ -287,9 +287,10 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                 displayedOrbit=selectedOrbit;
                 final VelocityGpuSurface selectedGpuSurface=gpu;
                 final boolean selectedGpu=selectedGpuSurface!=null&&selectedGpuSurface.available();
+                final boolean overlapGpu=selectedGpu&&selectedGpuSurface.canOverlapCpu();
                 if(selectedGpu!=previousGpu){
                     frameReuse.invalidate();ahead.invalidate();previousGpu=selectedGpu;lastPreset=-1;
-                    if(selectedGpu)NativeRuntime.releaseThreadScratch();
+                    if(overlapGpu)NativeRuntime.releaseThreadScratch();
                 }
                 if(selectedOrbit!=lastCameraOrbit||selectedGraphics.id!=lastPreset)frameReuse.invalidate();
                 int selectedYaw=VelocityOrbitMath.yaw(selectedOrbit),selectedPitch=VelocityOrbitMath.xiPitch(selectedOrbit);
@@ -299,7 +300,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     cacheHits++;ahead.invalidate();
                 }else{
                     VelocityXiEngine.Observation observation;
-                    if(selectedGpu){
+                    if(overlapGpu){
                         // Camera/profile/pause changes discard the prepared view. The
                         // native producer retains one coherent XI publication per frame.
                         String key=selectedCamera+":"+selectedPaint+":"+selectedCar+":"+selectedOrbit+":"+
@@ -307,7 +308,8 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                         observation=ahead.acquire(key,()->game.observeGpuFrame(selectedCamera,selectedPaint,selectedCar,selectedYaw,selectedPitch));
                     }else{
                         ahead.invalidate();
-                        observation=game.observeFrame(stride,selectedCamera,selectedPaint,selectedCar,selectedYaw,selectedPitch);
+                        observation=selectedGpu?game.observeGpuFrame(selectedCamera,selectedPaint,selectedCar,selectedYaw,selectedPitch):
+                            game.observeFrame(stride,selectedCamera,selectedPaint,selectedCar,selectedYaw,selectedPitch);
                     }
                     xiRenders++;
                     if(selectedCamera!=cameraMode||selectedPaint!=paintId||selectedCar!=carId||
@@ -347,7 +349,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     }
                     if(presented){
                         frameReuse.framePosted(state,selectedCamera,selectedPaint,stride,false);frames++;
-                        if(selectedGpu)profiler.recordOverlapped(observation.executeNanos,observation.decodeNanos,
+                        if(overlapGpu)profiler.recordOverlapped(observation.executeNanos,observation.decodeNanos,
                             presentNanos,SystemClock.elapsedRealtimeNanos()-begin,observation.payloadBytes);
                         else profiler.record(false,observation.executeNanos,observation.decodeNanos,
                             expandNanos,bitmapNanos,presentNanos,SystemClock.elapsedRealtimeNanos()-begin,observation.payloadBytes);
@@ -380,7 +382,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     String timings=profiler.drain(false);if(!timings.isEmpty())Log.i("ReverseVelocity","FRAME_PIPELINE "+timings);
                     if(selectedGpu)Log.i("ReverseVelocity","CPU_GPU_COORDINATION acquired="+ahead.acquired+
                         " discarded="+ahead.discarded+" prepareWaitNanos="+ahead.waitNanos+
-                        " queued="+ahead.queued()+" maxQueued=1 completion=after_swap");
+                        " queued="+ahead.queued()+" maxQueued=1 overlap="+overlapGpu+" completion=after_swap");
                     frames=cacheHits=xiRenders=0;lastFps=now;
                 }
                 if(now-lastHud>=100_000_000L){lastHud=now;hud.update(state,paused,fps,width,height,error);}

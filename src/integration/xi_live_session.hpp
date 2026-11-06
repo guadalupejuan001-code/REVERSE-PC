@@ -56,7 +56,7 @@ class XiLiveSession {
     return geometryDeltaLocked(source,inputs);
   }
   void registerGeometryProgram(std::string source){
-    if(source.empty()||source.size()>512U*1024U)throw std::length_error("XI registered geometry source budget");
+    if(source.empty()||source.size()>16U*1024U*1024U)throw std::length_error("XI registered geometry source budget");
     std::lock_guard<std::mutex> stream(geometry_mutex_);geometry_source_=std::move(source);
   }
   std::vector<std::uint8_t> observePreparedGeometry(const Inputs& inputs={})const {

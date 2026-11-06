@@ -43,6 +43,14 @@ replacement workers serialize the native delta + Java base without blocking
 the independent physics writer. The idle old renderer's parsed scratch is
 released when work moves to the preparation worker.
 
+Known CPU rasterizers (SwiftShader, llvmpipe and softpipe) use the serial path:
+their presentation and XI preparation compete for CPU resources. Physical GPU
+drivers keep bounded overlap. Both paths use the same retained program, exact
+delta protocol and geometry residency. Delta reconstruction copies contiguous
+changed-word runs instead of making a separate array-copy call for every word.
+Registration preserves the original 16 MiB source budget; the smaller parsed
+instruction cache is an optional optimization, never a new program-size limit.
+
 FPS still counts only requests acknowledged after the actual GLSurfaceView
 swap. Preparation timings overlap presentation and are marked `cpuOverlap`;
 they must not be added as if they were sequential. One future observation,
