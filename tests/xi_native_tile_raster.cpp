@@ -38,6 +38,20 @@ int main(){
   check(u32(pixels,8)==5&&u32(pixels,12)==640*360&&pixels.size()==16+640*360,"native bytes");
   check(std::memcmp(pixels.data()+16,saved.data(),saved.size())==0,"same pixels as XI revision 2");
   check(wide.materials().size()==1,"strip-only z-buffer");
+  // The live path must use the exact same pixels at every adaptive size.
+  for(int width:{320,480,640}){
+    const int height=width*9/16;Mesh reference,live;
+    reference.begin(width,height,2,1);live.begin(width,height,5,1);
+    square(reference,width,height,1000,2);square(live,width,height,1000,2);
+    for(int i=0;i<160;i++){
+      const int x=i*71%width,y=i*37%height,z=10+i;
+      const Mesh::Vertex a{x,y,z},b{std::min(width,x+40),y,z},c{x,std::min(height,y+35),z};
+      reference.triangle(a,b,c,3+i%10);live.triangle(a,b,c,3+i%10);
+    }
+    const auto result=live.finish();const auto& expected=reference.materials();
+    check(result.size()==16+expected.size()&&std::memcmp(result.data()+16,expected.data(),expected.size())==0,"live parallel strips preserve every reference pixel");
+    check(live.native_workers_used()>=1&&live.native_workers_used()<=2,"live strip workers leave CPU room for physics");
+  }
   Mesh large;large.begin(3840,2160,5,0);
   large.vertex(16383,{1,1,100});
   square(large,3840,2160,100,5);

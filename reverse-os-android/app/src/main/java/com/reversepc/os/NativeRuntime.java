@@ -1,5 +1,16 @@
 package com.reversepc.os;
 public final class NativeRuntime {
+    // Generic compact XI sessions. Candidates commit only after validation.
+    public static native long sessionOpen(byte[] state);
+    public static native void sessionClose(long session);
+    public static native byte[] sessionStage(long session,String source);
+    public static native long sessionCommit(long session);
+    public static native void sessionDiscard(long session);
+    public static native byte[] sessionObserve(long session,String source,int[] addresses,byte[] values);
+    public static native byte[] sessionObserveGeometryDelta(long session,String source,int[] addresses,byte[] values);
+    public static native void sessionSetGeometryProgram(long session,String source);
+    public static native byte[] sessionObservePreparedGeometry(long session,int[] addresses,byte[] values);
+    public static native void releaseThreadScratch();
     static { System.loadLibrary("reverse_os"); }
     private NativeRuntime() {}
     public static native byte[] initialize();
@@ -11,6 +22,8 @@ public final class NativeRuntime {
      * owned-frame decoder without another 8.3 MiB defensive copy.
      */
     public static native byte[] observeFrame(byte[] state,String source);
+    /** XI-owned geometry on a private snapshot with at most 32 byte inputs. */
+    public static native byte[] observeGeometry(byte[] state,String source,int[] addresses,byte[] values);
     public static native String inspect(byte[] state);
     public static native byte[] compileRxe(byte[] sourceUtf8,byte[] titleUtf8);
     public static native byte[] inspectRxe(byte[] executable);

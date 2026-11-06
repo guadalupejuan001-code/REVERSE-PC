@@ -8,3 +8,5 @@
 /reverse-pc-results/
 *.pending
 __pycache__/
+
+/dist/

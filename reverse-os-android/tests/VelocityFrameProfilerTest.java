@@ -13,6 +13,7 @@ public final class VelocityFrameProfilerTest {
         check(normal.contains("xiP50Ms=2.000"),"lower median convention");
         check(normal.contains("xiP95Ms=4.000"),"p95 worst sample");
         check(normal.contains("payloadBytes=204"),"latest packet length");
+        check(normal.contains("setupP50Ms=12.000"),"setup residual is measured per frame before aggregation");
         check(p.drain(false).isEmpty(),"window drained");
         for(int i=0;i<110;i++)p.record(true,(i+1)*ms,ms,ms,ms,ms,ms,8294416);
         String four=p.drain(true);
