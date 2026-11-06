@@ -44,7 +44,7 @@ concurrency:
 jobs:
   apk:
     # Never expose the base branch's cached signing identity to outside PRs.
-    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && (github.head_ref == 'feature/velocity-v04-nitro-airjump-20261101' || github.head_ref == 'feature/velocity-v18-garage-photo-hud-20261101' || github.head_ref == 'feature/velocity-v19-orbit-textures-20261101' || github.head_ref == 'feature/velocity-v20-effects-drift-20261101' || github.head_ref == 'feature/velocity-v21-drive-skills-20261101' || github.head_ref == 'feature/velocity-v22-forest-assist-20261101' || github.head_ref == 'feature/velocity-v23-dynamics-materials-20261104' || github.head_ref == 'feature/velocity-v30-open-forest-road-20261104' || github.head_ref == 'feature/velocity-v31-reverse-native-live-20261105' || github.head_ref == 'feature/velocity-v32-wetlands-gpu-20261105' || github.head_ref == 'feature/velocity-v33-open-terrain-20261105' || github.head_ref == 'feature/velocity-v34-trails-hd-20261105' || github.head_ref == 'feature/velocity-gpu-virtual-20261106'))
+    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && (github.head_ref == 'feature/velocity-v04-nitro-airjump-20261101' || github.head_ref == 'feature/velocity-v18-garage-photo-hud-20261101' || github.head_ref == 'feature/velocity-v19-orbit-textures-20261101' || github.head_ref == 'feature/velocity-v20-effects-drift-20261101' || github.head_ref == 'feature/velocity-v21-drive-skills-20261101' || github.head_ref == 'feature/velocity-v22-forest-assist-20261101' || github.head_ref == 'feature/velocity-v23-dynamics-materials-20261104' || github.head_ref == 'feature/velocity-v30-open-forest-road-20261104' || github.head_ref == 'feature/velocity-v31-reverse-native-live-20261105' || github.head_ref == 'feature/velocity-v32-wetlands-gpu-20261105' || github.head_ref == 'feature/velocity-v33-open-terrain-20261105' || github.head_ref == 'feature/velocity-v34-trails-hd-20261105' || github.head_ref == 'feature/velocity-gpu-virtual-20261106' || github.head_ref == 'feature/velocity-v36-graphics-ui-20261106'))
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
@@ -116,30 +116,30 @@ jobs:
               exit 1
             }
           cp reverse-os-android/app/build/outputs/apk/velocity/debug/app-velocity-debug.apk \
-            dist/REVERSE-VELOCITY-3.5-GPU-VIRTUAL.apk
+            dist/REVERSE-VELOCITY-3.6-GRAFICOS.apk
       - uses: actions/cache/save@v4
         if: steps.velocity-signing.outputs.cache-hit != 'true'
         with:
           path: ${{ env.REVERSE_SIGNING_KEYSTORE }}
           key: reverse-velocity-development-signing-v1
-      - name: Fetch the exact previously measured 3.4.2 APK for comparison
+      - name: Fetch the released 3.5 APK for upgrade validation
         uses: actions/download-artifact@v4
         with:
           name: reverse-velocity-apk
-          run-id: 42087837610
+          run-id: 42170208691
           github-token: ${{ github.token }}
           path: build/velocity-baseline
       - name: Verify baseline APK bytes
         run: |
           python3 - <<'PY'
           import hashlib,pathlib
-          p=pathlib.Path('build/velocity-baseline/REVERSE-VELOCITY-3.4.2-LIVE-HD-XI.apk')
-          assert hashlib.sha256(p.read_bytes()).hexdigest()=='58017004668c6fe1772622e01aa23c5da7c84503699f0a222b830c8f61614701'
+          p=pathlib.Path('build/velocity-baseline/REVERSE-VELOCITY-3.5-GPU-VIRTUAL.apk')
+          assert hashlib.sha256(p.read_bytes()).hexdigest()=='ce21e6ab3626ee3def3e8e93ddfcb898f527d1d305122a9977bc9728af3a0993'
           PY
       - name: Verify native-XI APK identity, signature, alignment and source assets
         run: |
           set -euo pipefail
-          APK=dist/REVERSE-VELOCITY-3.5-GPU-VIRTUAL.apk
+          APK=dist/REVERSE-VELOCITY-3.6-GRAFICOS.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" \
             > build/velocity-apk/signature.txt
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 4 "$APK" \
@@ -159,7 +159,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: reverse-velocity-apk
-          path: dist/REVERSE-VELOCITY-3.5-GPU-VIRTUAL.apk
+          path: dist/REVERSE-VELOCITY-3.6-GRAFICOS.apk
           if-no-files-found: error
       - name: Install and exercise the game on Android 35
         timeout-minutes: 12
@@ -198,12 +198,10 @@ jobs:
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
           adb shell input keyevent 82
-          adb install -r dist/REVERSE-VELOCITY-3.5-GPU-VIRTUAL.apk \
+          adb install build/velocity-baseline/REVERSE-VELOCITY-3.5-GPU-VIRTUAL.apk > build/velocity-apk/baseline-install.txt
+          adb install -r dist/REVERSE-VELOCITY-3.6-GRAFICOS.apk \
             > build/velocity-apk/install.txt
-          node reverse-os-android/tests/open-forest-apk-smoke.cjs adb build/velocity-apk/smoke
-          node reverse-os-android/tests/velocity-performance-ab.cjs adb \
-            build/velocity-baseline/REVERSE-VELOCITY-3.4.2-LIVE-HD-XI.apk \
-            dist/REVERSE-VELOCITY-3.5-GPU-VIRTUAL.apk build/velocity-apk/performance
+          node reverse-os-android/tests/velocity-graphics-ui-smoke.cjs adb build/velocity-apk/graphics-ui
       - uses: actions/upload-artifact@v4
         if: always()
         with:

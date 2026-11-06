@@ -53,7 +53,7 @@ final class VelocityForestAtlas {
             p.setStyle(Paint.Style.STROKE);p.setColor(color);p.setStrokeWidth(width*density);p.setStrokeCap(Paint.Cap.ROUND);p.setPathEffect(dash?new DashPathEffect(new float[]{4*density,3*density},0):null);c.drawPath(path,p);p.setPathEffect(null);
         }
         @Override protected void onDraw(Canvas c){
-            super.onDraw(c);p.setStyle(Paint.Style.FILL);p.setColor(0xe614292a);c.drawRoundRect(0,0,getWidth(),getHeight(),10*density,10*density,p);c.save();c.clipRect(4,4,getWidth()-4,getHeight()-4);
+            super.onDraw(c);p.setStyle(Paint.Style.FILL);p.setColor(0xd9161e1d);c.drawRoundRect(0,0,getWidth(),getHeight(),10*density,10*density,p);c.save();c.clipRect(4,4,getWidth()-4,getHeight()-4);
             if(large){scale=Math.min((getWidth()-36*density)/1650f,(getHeight()-48*density)/480f);ox=18*density;oy=getHeight()*.48f;}
             else{scale=Math.min(getWidth(),getHeight())/180f;ox=getWidth()*.5f;oy=getHeight()*.52f;}
             // Muted contour bands communicate the raised valley sides.
@@ -63,7 +63,7 @@ final class VelocityForestAtlas {
             for(Trail t:trails)route(c,t.xy,0xffc09260,large?2.3f:1.8f,true);
             if(selected>=0){Place a=places.get(selected);route(c,new float[]{carX,carZ,a.x,a.z},0xff8ce6d6,1,true);}
             for(int i=0;i<places.size();i++){Place a=places.get(i);float px=x(a.x,a.z),py=y(a.x,a.z);p.setStyle(Paint.Style.FILL);p.setColor(i==selected?0xffffd78c:0xffb7c7af);c.drawCircle(px,py,(i==selected?4:2.8f)*density,p);if(large){p.setTextSize(9*density);p.setShadowLayer(2,0,1,0xff10191a);c.drawText(a.name,px+5*density,py+(a.kind.equals("view")?-7:12)*density,p);p.clearShadowLayer();}}
-            float px=x(carX,carZ),py=y(carX,carZ);p.setColor(0xff7ee8e2);path.reset();double a=yaw*Math.PI/2048;float dx=(float)Math.sin(a),dz=(float)Math.cos(a);float fx=large?dz:dx,fy=large?dx:-dz,r=6*density;path.moveTo(px+fx*r,py+fy*r);path.lineTo(px-fx*r*.6f-fy*r*.6f,py-fy*r*.6f+fx*r*.6f);path.lineTo(px-fx*r*.6f+fy*r*.6f,py-fy*r*.6f-fx*r*.6f);path.close();c.drawPath(path,p);
+            float px=x(carX,carZ),py=y(carX,carZ);p.setColor(0xffc4ef82);path.reset();double a=yaw*Math.PI/2048;float dx=(float)Math.sin(a),dz=(float)Math.cos(a);float fx=large?dz:dx,fy=large?dx:-dz,r=6*density;path.moveTo(px+fx*r,py+fy*r);path.lineTo(px-fx*r*.6f-fy*r*.6f,py-fy*r*.6f+fx*r*.6f);path.lineTo(px-fx*r*.6f+fy*r*.6f,py-fy*r*.6f-fx*r*.6f);path.close();c.drawPath(path,p);
             p.setTextSize((large?10:8)*density);p.setColor(0xffd7e7de);c.drawText(large?"N →   Asfalto ━  Tierra ···   Agua azul":"N ↑",8*density,12*density,p);
             if(!large&&selected>=0){p.setTextSize(8*density);c.drawText(Math.round(Math.hypot(carX-places.get(selected).x,carZ-places.get(selected).z))+" m",6*density,getHeight()-5*density,p);}
             c.restore();

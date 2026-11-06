@@ -122,6 +122,7 @@ angle=float(os.getenv('VELOCITY_VIEW_YAW','0')); sc=np.cos(angle);ss=np.sin(angl
 lamp=lamp or [0,0,0,0,0,1]
 for shader in scenePrograms:
     gl('glUseProgram',None,U)(shader)
+    gl('glUniform1i',None,I,I)(loc('uQuality',shader,False),int(os.getenv('VELOCITY_QUALITY','4')))
     for name,val in [('uTime',3.4),('uDay',.12 if 'night' in sys.argv[2] else .48 if 'dusk' in sys.argv[2] else 1),('uWet',.6),('uWaterDepth',float(os.getenv('VELOCITY_WATER_DEPTH','0'))),('uAspect',w/h)]:gl('glUniform1f',None,I,F)(loc(name,shader,False),val)
     gl('glUniform3f',None,I,F,F,F)(loc('uSunDirection',shader,False),(-.55*sc+.38*ss)*sn,.84*sn,(-.55*ss-.38*sc)*sn)
     for name,values in [('uLampOrigin',lamp[:3]),('uLampDirection',[lamp[3+i]-lamp[i] for i in range(3)])]:gl('glUniform3f',None,I,F,F,F)(loc(name,shader,False),*values)
@@ -166,7 +167,7 @@ def draw_frame():
     gl('glDisable',None,U)(0x0B71);gl('glDisable',None,U)(0x0BE2)
     gl('glUseProgram',None,U)(post);gl('glActiveTexture',None,U)(0x84C0)
     gl('glBindTexture',None,U,U)(0x0DE1,color)
-    gl('glUniform1i',None,I,I)(loc('uImage',post),0);gl('glUniform1i',None,I,I)(loc('uPhoto',post),0)
+    gl('glUniform1i',None,I,I)(loc('uQuality',post),int(os.getenv('VELOCITY_QUALITY','4')));gl('glUniform1i',None,I,I)(loc('uImage',post),0);gl('glUniform1i',None,I,I)(loc('uPhoto',post),0)
     gl('glUniform2f',None,I,F,F)(loc('uTexel',post),1/w,1/h)
     gl('glDrawArrays',None,U,I,I)(4,0,3)
     gl('glFinish',None)()

@@ -80,13 +80,10 @@ final class VelocityXiEngine {
     private volatile boolean closed;
     private final String driveXi;
     private final String xiRenderer;
-    private final String xiNative4KRenderer;
     private final String xiGpuRenderer;
     private final Object renderSourceLock=new Object();
     private String renderProgramCache,driveProgramCache;
     private int renderProgramKey=-1,driveProgramKey=-1;
-    private String native4KProgramCache;
-    private int native4KProgramKey=-1;
     private static final String XI_HEADER="#!reverse-pc-machine-v1\n";
     private final float[] worldPoints; // read-only XI generated geometry samples
     private final int[] palette,paletteDusk,paletteNight;
@@ -119,14 +116,11 @@ final class VelocityXiEngine {
         driveXi=asset(context,"velocity/drive.xi");
         String world=asset(context,"velocity/world.xi");
         xiRenderer=asset(context,"velocity/render-live.xi");
-        xiNative4KRenderer=asset(context,"velocity/render-native4k.xi");
         xiGpuRenderer=asset(context,"velocity/render4k.xi");
         palette=parsePalette(asset(context,"velocity/palette.txt"));
         paletteDusk=parsePalette(asset(context,"velocity/palette-dusk.txt"));
         paletteNight=parsePalette(asset(context,"velocity/palette-night.txt"));
         environmentXi=asset(context,"velocity/environment.xi");
-        if(!xiNative4KRenderer.startsWith(XI_HEADER))
-            throw new IllegalStateException("XI native 4K source header missing");
         if(!xiRenderer.startsWith(XI_HEADER))
             throw new IllegalStateException("XI renderer source header missing");
         if(!driveXi.startsWith("#!reverse-pc-machine-v1\n")||
@@ -285,43 +279,6 @@ final class VelocityXiEngine {
         final RegraphicsFrame frame=RegraphicsFrame.decodeLiveNativeOwned(frameBytes,stride,VelocityWorldLight.palette(palette,paletteDusk,paletteNight,observedState.dayPhase));
         final long decodeElapsed=System.nanoTime()-decodeStart;
         return new Observation(frame,observedState,executeElapsed,decodeElapsed,frameBytes.length);
-    }
-    /** XI performs all native 4K rasterization; Android consumes only XFB5 pixels. */
-    Observation observeNative4KFrame(int camera,int paint)throws Exception{
-        return observeNative4KFrame(camera,paint,0);
-    }
-    Observation observeNative4KFrame(int camera,int paint,int car)throws Exception{
-        return observeNative4KFrame(camera,paint,car,0,0);
-    }
-    Observation observeNative4KFrame(int camera,int paint,int car,int yaw,int pitch)throws Exception{
-        if(yaw<0||yaw>=4096||pitch<0||pitch>=512)
-            throw new IllegalArgumentException("Invalid XI 4K camera orbit");
-        if(car<0||car>=3)throw new IllegalArgumentException("Unknown XI native 4K car");
-        if(camera<0||camera>2||paint<0||paint>4)
-            throw new IllegalArgumentException("Invalid XI native 4K visual input");
-        final String program;
-        final int key=((camera*5+paint)*3+car)*2097152+yaw*512+pitch;
-        synchronized(renderSourceLock){
-            if(key!=native4KProgramKey){
-                native4KProgramCache=XI_HEADER+"store8 200 1\nstore8 201 "+camera+
-                    "\nstore8 202 "+paint+"\nstore8 203 "+car+
-                    "\nstore16 204 "+yaw+"\nstore16 206 "+pitch+"\n"+
-                    xiNative4KRenderer.substring(XI_HEADER.length());
-                native4KProgramKey=key;
-            }
-            program=native4KProgramCache;
-        }
-
-        final long executeStart=System.nanoTime();
-        final byte[] packetBytes=NativeRuntime.sessionObserve(liveSession,program,new int[0],new byte[0]);
-        final long executeElapsed=System.nanoTime()-executeStart;
-        final long decodeStart=System.nanoTime();
-        final XiObservationPacket packet=XiObservationPacket.parse(packetBytes);
-        final Snapshot observed=observedState(packet);
-        final byte[] frameBytes=packet.frame;
-        final RegraphicsFrame frame=RegraphicsFrame.decodeNative4KOwned(frameBytes,VelocityWorldLight.palette(palette,paletteDusk,paletteNight,observed.dayPhase));
-        final long decodeElapsed=System.nanoTime()-decodeStart;
-        return new Observation(frame,observed,executeElapsed,decodeElapsed,frameBytes.length);
     }
     private static int[] parsePalette(String source){
         String[] entries=source.trim().split("\n");

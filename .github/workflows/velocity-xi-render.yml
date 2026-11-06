@@ -1,7 +1,7 @@
 name: REVERSE VELOCITY REgraphics
 on:
   push:
-    branches: [feature/velocity-v30-open-forest-road-20261104, feature/velocity-v31-reverse-native-live-20261105, feature/velocity-v32-wetlands-gpu-20261105, feature/velocity-v33-open-terrain-20261105, feature/velocity-v34-trails-hd-20261105, feature/velocity-gpu-virtual-20261106]
+    branches: [feature/velocity-v30-open-forest-road-20261104, feature/velocity-v31-reverse-native-live-20261105, feature/velocity-v32-wetlands-gpu-20261105, feature/velocity-v33-open-terrain-20261105, feature/velocity-v34-trails-hd-20261105, feature/velocity-gpu-virtual-20261106, feature/velocity-v36-graphics-ui-20261106]
   pull_request:
     branches: [feature/velocity-regraphics-20261030]
     paths: ['reverse-os-android/**', 'scripts/**', '.github/workflows/velocity-xi-render.yml']
@@ -80,6 +80,7 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends libegl1 libgl1-mesa-dri python3-pil python3-numpy
           python3 scripts/verify-velocity-gpu-virtual.py build/open-forest build/open-forest/compact-gpu
+          python3 scripts/verify-velocity-presets.py build/open-forest build/open-forest/quality-profiles
       - name: Execute all sectors, reverse, time and real XI raster
         run: |
           build/open-forest/gameplay-test reverse-os-android/app/src/main/assets/velocity build/open-forest/gameplay

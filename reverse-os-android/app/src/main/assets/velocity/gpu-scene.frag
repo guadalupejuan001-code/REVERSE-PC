@@ -14,6 +14,7 @@ uniform sampler2D uAtlas;
 uniform float uTime,uDay,uWet,uWaterDepth;
 uniform vec3 uLampOrigin,uLampDirection,uSunDirection;
 uniform float uLampPower;
+uniform int uQuality;
 out vec4 color;
 vec3 palette(float index){return texelFetch(uPalette,ivec2(int(clamp(index,0.0,255.0)),0),0).rgb;}
 float hash(vec2 p){p=fract(p*vec2(.1031,.0973));p+=dot(p,p.yx+vec2(19.19,23.17));return fract(p.x*p.y*(p.x+p.y));}
@@ -28,13 +29,32 @@ vec3 environment(vec3 r){
 void main(){
     vec2 uv=vMaterial.w==4.0? vUv/vec2(64.0,16.0):vUv;
     float base=vMaterial.x,count=vMaterial.y,delta=0.0;
-    if(vMaterial.w>0.0){
+    if(vMaterial.w>0.0&&uQuality>0){
         vec2 tileUv=(vec2(vMaterial.z*16.0,0.0)+vec2(.5)+fract(uv/16.0)*15.0)/vec2(128.0,16.0);
         float texel=texture(uAtlas,tileUv).r*255.0;
         delta=(texel-8.0)*vMaterial.w/255.0;
     }
     float level=clamp(vShade+delta,0.0,1.0)*(count-1.0),low=floor(level);
     vec3 rgb=mix(palette(base+low),palette(base+min(low+1.0,count-1.0)),fract(level));
+    // Economy/basic modes retain the authored XI colors and event geometry,
+    // while avoiding derivative PBR, procedural sky and animated reflections.
+    if(uQuality<2){
+        float alpha=1.0;
+        if(vCategory<.5){color=vec4(rgb,1.0);return;}
+        if(vCategory==2.0)alpha=.10+vShade*.42;
+        else if(vCategory==3.0)alpha=.76;
+        else if(vCategory==9.0)alpha=.22;
+        else if(vCategory==11.0)alpha=uQuality==0?0.0:.014*uLampPower;
+        else if(vCategory>=4.0&&vCategory<8.0){
+            float side=sin(clamp(uv.x/16.0,0.0,1.0)*3.14159265);
+            alpha=max(0.0,side)*(.08+vShade*.42);
+            if(vCategory==5.0)rgb=vec3(.10,.55,1.0)*(1.0+vShade*.6);
+        }
+        if(base==224.0||base==225.0)rgb*=1.8;
+        float haze=max(0.0,vPosition.z-70.0)*.0036;
+        if(vCategory<4.0||vCategory==8.0||vCategory==9.0)rgb=mix(rgb,palette(4.0),haze/(1.0+haze)*.68);
+        color=vec4(max(rgb,vec3(0.0)),alpha);return;
+    }
 #if REGRAPHICS_CLASS == 1
     if(true){
 #elif REGRAPHICS_CLASS == 2
@@ -42,7 +62,7 @@ void main(){
 #else
     if(vCategory<.5){
 #endif
-        if(base<7.0){
+        if(base<7.0&&uQuality>=3){
             vec3 direction=normalize(vPosition);vec2 sky=direction.xz/max(.12,abs(direction.y));
             float clouds=smoothstep(.48,.78,noise(sky*.48+vec2(uTime*.003,0)))*smoothstep(-.02,.35,direction.y);
             rgb=mix(rgb,vec3(.77,.81,.79)*(.22+.78*uDay),clouds*.62);
@@ -62,9 +82,10 @@ void main(){
     if((base>=9.0&&base<24.0)||(base>=40.0&&base<56.0)){
 #endif
         vec3 groundNormal=cross(dFdx(vPosition),dFdy(vPosition));float groundLight=abs(dot(groundNormal,uSunDirection))*inversesqrt(max(1e-12,dot(groundNormal,groundNormal)));rgb*=.78+.22*groundLight;
-        if(base>=12.0&&base<20.0){float patches=noise(uv*.025);rgb*=.78+patches*.35+hash(floor(uv*1.6))*.055;}
+        if(base>=12.0&&base<20.0&&uQuality>=3){float patches=noise(uv*.025);rgb*=.78+patches*.35+hash(floor(uv*1.6))*.055;}
         if(base>=9.0&&base<12.0){
-            rgb*=.78+hash(floor(uv*3.7))*.12+noise(uv*.06)*.25;
+            if(uQuality>=3)rgb*=.78+hash(floor(uv*3.7))*.12+noise(uv*.06)*.25;
+            else rgb*=.9+hash(floor(uv*3.7))*.08;
             if(vMaterial.w==4.0){
                 float lateral=clamp(uv.x/16.0,0.0,1.0),edge=smoothstep(0.0,.14,lateral)*smoothstep(0.0,.14,1.0-lateral);
                 float ruts=(1.0-smoothstep(.01,.10,abs(lateral-.27)))+(1.0-smoothstep(.01,.10,abs(lateral-.73)));
@@ -84,7 +105,7 @@ void main(){
     bool paint=base>=64.0&&base<184.0,glass=base>=184.0&&base<208.0;
     bool metal=(base>=212.0&&base<224.0)||base==241.0;
     if(vCategory==9.0){rgb=mix(base==221.0?vec3(.65,.035,.055):vec3(.55,.77,.94),environment(R),.35)+vec3(.15)*fresnel;alpha=.22;}
-    else if(vCategory==11.0){rgb=vec3(.64,.83,1.0);alpha=.014*uLampPower*(1.0-smoothstep(2.0,22.0,length(vPosition-uLampOrigin)));}
+    else if(vCategory==11.0){rgb=vec3(.64,.83,1.0);alpha=uQuality>=3?.014*uLampPower*(1.0-smoothstep(2.0,22.0,length(vPosition-uLampOrigin))):0.0;}
     else if(paint||glass||metal){
         float rough=paint?mix(.24,.12,uWet):glass?.09:.19;
         float spec=pow(max(dot(N,normalize(L+V)),0.0),mix(24.0,160.0,1.0-rough));

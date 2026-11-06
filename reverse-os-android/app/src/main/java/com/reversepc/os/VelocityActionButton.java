@@ -21,7 +21,7 @@ final class VelocityActionButton extends Button {
         super(context);
         this.pneumatic=pneumatic;
         setText(label);setAllCaps(false);setTextColor(Color.WHITE);
-        setTextSize(12);setTypeface(Typeface.create("sans-serif-medium",Typeface.BOLD));
+        setTextSize(8);setGravity(android.view.Gravity.BOTTOM|android.view.Gravity.CENTER_HORIZONTAL);setTypeface(Typeface.create("sans-serif-medium",Typeface.BOLD));
         setMinWidth(0);setMinimumWidth(0);setMinHeight(0);setMinimumHeight(0);
         setPadding(0,0,0,0);setBackgroundColor(Color.TRANSPARENT);
         setContentDescription(pneumatic?"Saltar: impulso de aire comprimido desde las cuatro ruedas":
@@ -32,42 +32,22 @@ final class VelocityActionButton extends Button {
         if(clean==level&&operating==active)return;
         level=clean;operating=active;postInvalidateOnAnimation();
     }
-    @Override protected void onDraw(Canvas canvas){
-        float w=getWidth(),h=getHeight();if(w<=0||h<=0)return;
-        boolean held=isPressed()||isSelected();
-        int edge=pneumatic?0xffb7b9db:0xff48d4ec;
-        int base=pneumatic?0xff272c47:0xff0d3543;
-        frame.set(2,2,w-2,h-2);
-        ink.setStyle(Paint.Style.FILL);
-        ink.setShader(new LinearGradient(0,0,0,h,
-            held?0xff5c7789:0xff263748,base,Shader.TileMode.CLAMP));
-        canvas.drawRoundRect(frame,14,14,ink);
-        ink.setShader(null);
-        ink.setStyle(Paint.Style.STROKE);
-        ink.setStrokeWidth(held?3f:1.8f);
-        ink.setColor(held||operating?edge:0xff718c9b);
-        canvas.drawRoundRect(frame,14,14,ink);
-        ink.setStyle(Paint.Style.FILL);
-        // Mechanical pressure vent or turbine motif, not pixel particles.
-        ink.setColor(operating||held?edge:0xff7891a1);
-        float x=14,cy=h*.36f;
+    @Override protected void onDraw(Canvas c){
+        float w=getWidth(),h=getHeight(),cx=w*.5f,cy=h*.36f,r=Math.min(w*.42f,h*.32f);
+        boolean held=isPressed()||isSelected();int accent=pneumatic?0xffe3ece3:0xffc4ef82;
+        ink.setShader(null);ink.setStyle(Paint.Style.FILL);ink.setColor(held?0xdc354331:0xc9161d1e);c.drawCircle(cx,cy,r,ink);
+        ink.setStyle(Paint.Style.STROKE);ink.setStrokeWidth(2f*getResources().getDisplayMetrics().density);ink.setStrokeCap(Paint.Cap.ROUND);
+        ink.setColor(0xff435048);frame.set(cx-r,cy-r,cx+r,cy+r);c.drawArc(frame,-90,360,false,ink);
+        ink.setColor(accent);c.drawArc(frame,-90,360*level,false,ink);
+        ink.setStrokeWidth(Math.max(2,r*.12f));ink.setColor(operating||held?accent:0xffc1cbc2);
         if(pneumatic){
-            for(int i=0;i<3;i++)
-                canvas.drawRoundRect(x+i*5,cy-7-i*2,x+i*5+2,cy+5-i,1,1,ink);
+            c.drawLine(cx-r*.32f,cy+r*.2f,cx-r*.32f,cy-r*.25f,ink);
+            c.drawLine(cx,cy+r*.4f,cx,cy-r*.4f,ink);
+            c.drawLine(cx+r*.32f,cy+r*.2f,cx+r*.32f,cy-r*.25f,ink);
         }else{
-            android.graphics.Path rotor=new android.graphics.Path();
-            rotor.moveTo(x+10,cy-12);rotor.lineTo(x,cy+1);
-            rotor.lineTo(x+7,cy+1);rotor.lineTo(x+3,cy+12);
-            rotor.lineTo(x+18,cy-4);rotor.lineTo(x+10,cy-4);rotor.close();
-            canvas.drawPath(rotor,ink);
+            android.graphics.Path bolt=new android.graphics.Path();bolt.moveTo(cx+r*.15f,cy-r*.48f);bolt.lineTo(cx-r*.29f,cy+r*.03f);bolt.lineTo(cx+r*.05f,cy+r*.03f);bolt.lineTo(cx-r*.12f,cy+r*.48f);bolt.lineTo(cx+r*.31f,cy-r*.08f);
+            ink.setStyle(Paint.Style.FILL);c.drawPath(bolt,ink);
         }
-        ink.setColor(0x992b3a48);
-        meter.set(12,h-12,w-12,h-7);
-        canvas.drawRoundRect(meter,3,3,ink);
-        ink.setColor(edge);
-        meter.set(12,h-12,12+(w-24)*level,h-7);
-        if(level>0)canvas.drawRoundRect(meter,3,3,ink);
-        ink.setStyle(Paint.Style.FILL);
-        super.onDraw(canvas);
+        ink.setStyle(Paint.Style.FILL);super.onDraw(c);
     }
 }
