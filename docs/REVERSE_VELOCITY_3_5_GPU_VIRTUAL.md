@@ -21,6 +21,12 @@ Changes:
   still updates changed geometry; no invalid temporal visibility is reused.
 - Palette and atlas textures upload only on actual byte changes. Completed
   scene depth is discarded after its final use on tile-based GPUs.
+- The same material source also compiles specialized sky and terrain programs.
+  Only contiguous opaque spans use them, retaining the original face order and
+  equal-depth tie behavior. Transparency keeps the original generic program.
+  The generic route remains available if specialized compilation fails or a
+  scene would require more than 128 spans. This avoids removing materials,
+  lowering resolution or approximating lighting to reduce shader cost.
 - GPU presentation no longer has a second 30 Hz sleep limiter. Display refresh,
   scene preparation, actual GPU throughput and thermal behavior still constrain
   visible FPS. The software fallback keeps its existing pacing.

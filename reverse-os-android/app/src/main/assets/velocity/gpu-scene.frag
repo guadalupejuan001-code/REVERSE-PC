@@ -1,4 +1,7 @@
 #version 300 es
+#ifndef REGRAPHICS_CLASS
+#define REGRAPHICS_CLASS 0
+#endif
 precision highp float;
 precision highp int;
 in vec2 vUv;
@@ -32,7 +35,13 @@ void main(){
     }
     float level=clamp(vShade+delta,0.0,1.0)*(count-1.0),low=floor(level);
     vec3 rgb=mix(palette(base+low),palette(base+min(low+1.0,count-1.0)),fract(level));
+#if REGRAPHICS_CLASS == 1
+    if(true){
+#elif REGRAPHICS_CLASS == 2
+    if(false){
+#else
     if(vCategory<.5){
+#endif
         if(base<7.0){
             vec3 direction=normalize(vPosition);vec2 sky=direction.xz/max(.12,abs(direction.y));
             float clouds=smoothstep(.48,.78,noise(sky*.48+vec2(uTime*.003,0)))*smoothstep(-.02,.35,direction.y);
@@ -45,7 +54,13 @@ void main(){
         }color=vec4(rgb,1.0);return;
     }
     // Terrain and foliage use XI's authored light scalar. Save derivative PBR for the car and water.
+#if REGRAPHICS_CLASS == 2
+    if(true){
+#elif REGRAPHICS_CLASS == 1
+    if(false){
+#else
     if((base>=9.0&&base<24.0)||(base>=40.0&&base<56.0)){
+#endif
         vec3 groundNormal=cross(dFdx(vPosition),dFdy(vPosition));float groundLight=abs(dot(groundNormal,uSunDirection))*inversesqrt(max(1e-12,dot(groundNormal,groundNormal)));rgb*=.78+.22*groundLight;
         if(base>=12.0&&base<20.0){float patches=noise(uv*.025);rgb*=.78+patches*.35+hash(floor(uv*1.6))*.055;}
         if(base>=9.0&&base<12.0){

@@ -38,10 +38,12 @@ assert surface and context and ef('eglMakeCurrent',U,P,P,P,P)(display,surface,su
 def gl(name,result,*args):
     p=getproc(name.encode());assert p,name;return C.CFUNCTYPE(result,*args)(p)
 
-def program(vert,frag):
+def program(vert,frag,variant=0):
     shaders=[]
     for kind,path in [(0x8B31,vert),(0x8B30,frag)]:
-        shader=gl('glCreateShader',U,U)(kind);src=C.c_char_p(path.read_bytes())
+        shader=gl('glCreateShader',U,U)(kind);raw=path.read_bytes()
+        if variant and kind==0x8B30:raw=raw.replace(b'#version 300 es\n',b'#version 300 es\n#define REGRAPHICS_CLASS '+str(variant).encode()+b'\n',1)
+        src=C.c_char_p(raw)
         gl('glShaderSource',None,U,I,P,P)(shader,1,C.byref(src),None);gl('glCompileShader',None,U)(shader)
         ok=I();gl('glGetShaderiv',None,U,U,P)(shader,0x8B81,C.byref(ok))
         if not ok.value:
@@ -55,6 +57,8 @@ def program(vert,frag):
 root=pathlib.Path(__file__).resolve().parents[1]/'reverse-os-android/app/src/main/assets/velocity'
 compact=os.getenv('VELOCITY_COMPACT_VERTEX','0')=='1'
 scene=program(root/('gpu-compact.vert' if compact else 'gpu-scene.vert'),root/'gpu-scene.frag');post=program(root/'gpu-post.vert',root/'gpu-post.frag')
+variants=os.getenv('VELOCITY_SHADER_VARIANTS','0')=='1'
+scenePrograms=[scene]+[program(root/('gpu-compact.vert' if compact else 'gpu-scene.vert'),root/'gpu-scene.frag',variant) for variant in (1,2)] if variants else [scene]
 prepass=os.getenv('VELOCITY_DEPTH_PREPASS','1')=='1'
 depthProgram=program(root/('gpu-compact-depth.vert' if compact else 'gpu-depth.vert'),root/'gpu-depth.frag') if prepass else None
 packet=pathlib.Path(sys.argv[1]).read_bytes();magic,width,height,revision,faces=struct.unpack_from('<4sHHII',packet)
@@ -75,6 +79,11 @@ for i in range(faces):
     bucket=0 if category==0 else 1 if category in (1,8) else 2 if category in (2,3,9) else 3
     for v in range(3):buckets[bucket].append([*positions[v*3:v*3+3],*uv[v*2:v*2+2],shade[v]/65280,base,count,tile,strength,category])
 alpha_faces=[buckets[2][i:i+3] for i in range(0,len(buckets[2]),3)];alpha_faces.sort(key=lambda face:-sum(v[2] for v in face));buckets[2]=[v for face in alpha_faces for v in face]
+opaqueSpans=[]
+for offset in range(0,len(buckets[1]),3):
+    base=buckets[1][offset][6];kind=2 if 9<=base<24 or 40<=base<56 else 0
+    if opaqueSpans and opaqueSpans[-1][0]==kind:opaqueSpans[-1][2]+=3
+    else:opaqueSpans.append([kind,len(buckets[0])+offset,3])
 vertices=np.array([v for bucket in buckets for v in bucket],dtype=np.float32)
 vao=U();gl('glGenVertexArrays',None,I,P)(1,C.byref(vao));gl('glBindVertexArray',None,U)(vao)
 vbo=U();gl('glGenBuffers',None,I,P)(1,C.byref(vbo));gl('glBindBuffer',None,U,U)(0x8892,vbo)
@@ -107,16 +116,18 @@ gl('glGenRenderbuffers',None,I,P)(1,C.byref(depth));gl('glBindRenderbuffer',None
 gl('glFramebufferRenderbuffer',None,U,U,U,U)(0x8D40,0x8D00,0x8D41,depth)
 assert gl('glCheckFramebufferStatus',U,U)(0x8D40)==0x8CD5,'framebuffer'
 gl('glUseProgram',None,U)(scene)
-def loc(name,p=scene):
-    n=gl('glGetUniformLocation',I,U,C.c_char_p)(p,name.encode());assert n>=0,name;return n
-for name,val in [('uTime',3.4),('uDay',.12 if 'night' in sys.argv[2] else .48 if 'dusk' in sys.argv[2] else 1),('uWet',.6),('uWaterDepth',float(os.getenv('VELOCITY_WATER_DEPTH','0'))),('uAspect',w/h)]:gl('glUniform1f',None,I,F)(loc(name),val)
+def loc(name,p=scene,required=True):
+    n=gl('glGetUniformLocation',I,U,C.c_char_p)(p,name.encode());assert n>=0 or not required,name;return n
 angle=float(os.getenv('VELOCITY_VIEW_YAW','0')); sc=np.cos(angle);ss=np.sin(angle);sn=1/np.sqrt(1.1525)
-gl('glUniform3f',None,I,F,F,F)(loc('uSunDirection'),(-.55*sc+.38*ss)*sn,.84*sn,(-.55*ss-.38*sc)*sn)
 lamp=lamp or [0,0,0,0,0,1]
-for name,values in [('uLampOrigin',lamp[:3]),('uLampDirection',[lamp[3+i]-lamp[i] for i in range(3)])]:gl('glUniform3f',None,I,F,F,F)(loc(name),*values)
-gl('glUniform1f',None,I,F)(loc('uLampPower'),1 if 'night' in sys.argv[2] else .6 if 'dusk' in sys.argv[2] else 0)
-gl('glUniform2f',None,I,F,F)(loc('uProjection'),width,height)
-for name,val in [('uPalette',0),('uAtlas',1)]:gl('glUniform1i',None,I,I)(loc(name),val)
+for shader in scenePrograms:
+    gl('glUseProgram',None,U)(shader)
+    for name,val in [('uTime',3.4),('uDay',.12 if 'night' in sys.argv[2] else .48 if 'dusk' in sys.argv[2] else 1),('uWet',.6),('uWaterDepth',float(os.getenv('VELOCITY_WATER_DEPTH','0'))),('uAspect',w/h)]:gl('glUniform1f',None,I,F)(loc(name,shader,False),val)
+    gl('glUniform3f',None,I,F,F,F)(loc('uSunDirection',shader,False),(-.55*sc+.38*ss)*sn,.84*sn,(-.55*ss-.38*sc)*sn)
+    for name,values in [('uLampOrigin',lamp[:3]),('uLampDirection',[lamp[3+i]-lamp[i] for i in range(3)])]:gl('glUniform3f',None,I,F,F,F)(loc(name,shader,False),*values)
+    gl('glUniform1f',None,I,F)(loc('uLampPower',shader,False),1 if 'night' in sys.argv[2] else .6 if 'dusk' in sys.argv[2] else 0)
+    gl('glUniform2f',None,I,F,F)(loc('uProjection',shader,False),width,height)
+    for name,val in [('uPalette',0),('uAtlas',1)]:gl('glUniform1i',None,I,I)(loc(name,shader,False),val)
 def draw_frame():
     gl('glBindFramebuffer',None,U,U)(0x8D40,fbo);gl('glBindVertexArray',None,U)(vao)
     gl('glViewport',None,I,I,I,I)(0,0,w,h);gl('glDepthMask',None,B)(1)
@@ -144,7 +155,13 @@ def draw_frame():
             gl('glDepthFunc',None,U)(0x0203);gl('glDepthMask',None,B)(0)
             gl('glEnable',None,U)(0x0BE2);gl('glBlendFunc',None,U,U)(0x0302,0x0303)
         if index==3:gl('glBlendFunc',None,U,U)(0x0302,1)
-        gl('glDrawArrays',None,U,I,I)(4,start,len(bucket));start+=len(bucket)
+        if variants and len(opaqueSpans)<=128 and index==1:
+            for kind,first,count in opaqueSpans:
+                gl('glUseProgram',None,U)(scenePrograms[kind]);gl('glDrawArrays',None,U,I,I)(4,first,count)
+        else:
+            gl('glUseProgram',None,U)(scenePrograms[1] if variants and len(opaqueSpans)<=128 and index==0 else scene)
+            gl('glDrawArrays',None,U,I,I)(4,start,len(bucket))
+        start+=len(bucket)
     gl('glBindFramebuffer',None,U,U)(0x8D40,0);gl('glBindVertexArray',None,U)(0)
     gl('glDisable',None,U)(0x0B71);gl('glDisable',None,U)(0x0BE2)
     gl('glUseProgram',None,U)(post);gl('glActiveTexture',None,U)(0x84C0)
@@ -171,4 +188,4 @@ error=gl('glGetError',U)();assert error==0,hex(error)
 image=Image.frombytes('RGBA',(w,h),bytes(pixels)).transpose(Image.Transpose.FLIP_TOP_BOTTOM)
 output=pathlib.Path(sys.argv[3]);output.parent.mkdir(parents=True,exist_ok=True);image.save(output)
 renderer=gl('glGetString',C.c_char_p,U)(0x1F01).decode()
-print(json.dumps({'passed':True,'hostOnly':True,'renderer':renderer,'faces':faces,'width':w,'height':h,'compactVertices':compact,'vertexBytes':len(packed) if compact else vertices.nbytes,'depthPrepass':prepass,'samples':samples,'frameP50Ms':statistics.median(timings),'stripedReadbackExact':stripes_verified,'rgbaSha256':hashlib.sha256(bytes(pixels)).hexdigest(),'output':str(output)}))
+print(json.dumps({'passed':True,'hostOnly':True,'renderer':renderer,'faces':faces,'width':w,'height':h,'compactVertices':compact,'shaderVariants':variants,'opaqueSpans':len(opaqueSpans),'vertexBytes':len(packed) if compact else vertices.nbytes,'depthPrepass':prepass,'samples':samples,'frameP50Ms':statistics.median(timings),'stripedReadbackExact':stripes_verified,'rgbaSha256':hashlib.sha256(bytes(pixels)).hexdigest(),'output':str(output)}))

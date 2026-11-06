@@ -28,7 +28,8 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
     private volatile boolean ready,failed,suspended;
     private Request queued,active;
     private int postProgram,depthProgram,depthProjection,depthAspect,vao,vbo,paletteTexture,atlasTexture,photoTexture;
-    private final SceneShader[] sceneShaders=new SceneShader[1];
+    private final SceneShader[] sceneShaders=new SceneShader[3];
+    private boolean materialVariants;
     private int framebuffer,colorTexture,depthBuffer,targetWidth,targetHeight;
     private int imageU,texelU,photoU;
     private static final class SceneShader {
@@ -44,6 +45,7 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
     private volatile boolean firstFrame;
     private boolean hdVerified;
     private int lastFx=-1;
+    private int lastMaterialRoute=-1;
     private long measuredFrom,measuredFrames,queueNanos,commandNanos,swapNanos;
     private ByteBuffer photoReadback;
     private final CompactTriangleStream vertices=new CompactTriangleStream();
@@ -100,14 +102,34 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
         }catch(Exception error){throw new IllegalStateException("REgraphics shader missing: "+name,error);}
     }
     private int shader(int kind,String source){int shader=glCreateShader(kind);glShaderSource(shader,source);glCompileShader(shader);int[] ok={0};glGetShaderiv(shader,GL_COMPILE_STATUS,ok,0);if(ok[0]==0){String why=glGetShaderInfoLog(shader);glDeleteShader(shader);throw new IllegalStateException(why);}return shader;}
-    private int program(String vertex,String fragment){int v=shader(GL_VERTEX_SHADER,asset(vertex)),f=shader(GL_FRAGMENT_SHADER,asset(fragment)),p=glCreateProgram();try{glAttachShader(p,v);glAttachShader(p,f);glLinkProgram(p);int[] ok={0};glGetProgramiv(p,GL_LINK_STATUS,ok,0);if(ok[0]==0)throw new IllegalStateException(glGetProgramInfoLog(p));return p;}finally{glDeleteShader(v);glDeleteShader(f);}}
+    private int program(String vertex,String fragment){return program(vertex,fragment,0);}
+    private int program(String vertex,String fragment,int variant){
+        int v=0,f=0,p=0;
+        try{
+            String source=asset(fragment);
+            if(variant!=0){int line=source.indexOf('\n')+1;source=source.substring(0,line)+"#define REGRAPHICS_CLASS "+variant+"\n"+source.substring(line);}
+            v=shader(GL_VERTEX_SHADER,asset(vertex));f=shader(GL_FRAGMENT_SHADER,source);p=glCreateProgram();
+            glAttachShader(p,v);glAttachShader(p,f);glLinkProgram(p);int[] ok={0};glGetProgramiv(p,GL_LINK_STATUS,ok,0);
+            if(ok[0]==0)throw new IllegalStateException(glGetProgramInfoLog(p));return p;
+        }catch(RuntimeException failure){if(p!=0)glDeleteProgram(p);throw failure;}
+        finally{if(v!=0)glDeleteShader(v);if(f!=0)glDeleteShader(f);}
+    }
     private static void checked(String stage){int error=glGetError();if(error!=GL_NO_ERROR)throw new IllegalStateException(stage+" GLES 0x"+Integer.toHexString(error));}
     private static int uniform(int p,String name){int n=glGetUniformLocation(p,name);if(n<0)throw new IllegalStateException("Missing shader uniform "+name);return n;}
     private static int texture(){int[] id={0};glGenTextures(1,id,0);glBindTexture(GL_TEXTURE_2D,id[0]);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);return id[0];}
     @Override public void onSurfaceCreated(GL10 ignored,EGLConfig config){
         ready=false;firstFrame=false;hdVerified=false;framebuffer=colorTexture=depthBuffer=0;targetWidth=targetHeight=0;
         try{
+            Arrays.fill(sceneShaders,null);materialVariants=false;lastMaterialRoute=-1;
             sceneShaders[0]=new SceneShader(program("gpu-compact.vert","gpu-scene.frag"));
+            try{
+                sceneShaders[1]=new SceneShader(program("gpu-compact.vert","gpu-scene.frag",1));
+                sceneShaders[2]=new SceneShader(program("gpu-compact.vert","gpu-scene.frag",2));
+                materialVariants=true;
+            }catch(RuntimeException specializationFailure){
+                for(int i=1;i<3;i++){if(sceneShaders[i]!=null)glDeleteProgram(sceneShaders[i].program);sceneShaders[i]=null;}
+                Log.w("ReverseVelocity","GPU_MATERIAL_GENERIC reason="+specializationFailure.getMessage());
+            }
             depthProgram=program("gpu-compact-depth.vert","gpu-depth.frag");
             depthProjection=uniform(depthProgram,"uProjection");depthAspect=uniform(depthProgram,"uAspect");
             postProgram=program("gpu-post.vert","gpu-post.frag");
@@ -124,7 +146,7 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
             glVertexAttribIPointer(4,1,GL_UNSIGNED_INT,stride,8);
             for(int i=0;i<5;i++)glEnableVertexAttribArray(i);glBindVertexArray(0);
             glDisable(GL_CULL_FACE);checked("GPU initialization");failed=false;
-            Log.i("ReverseVelocity","GPU_SHADERS_READY owner=REgraphics geometry=XI_XFG4 execution=GPU_VIRTUAL vertexBytes=24 renderer="+glGetString(GL_RENDERER));
+            Log.i("ReverseVelocity","GPU_SHADERS_READY owner=REgraphics geometry=XI_XFG4 execution=GPU_VIRTUAL vertexBytes=24 materialPrograms="+(materialVariants?3:1)+" renderer="+glGetString(GL_RENDERER));
         }catch(RuntimeException error){disable(error);}
     }
     @Override public void onSurfaceChanged(GL10 ignored,int w,int h){if(!failed){ready=true;invalidated.run();}}
@@ -206,8 +228,25 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
         glUseProgram(depthProgram);glUniform2f(depthProjection,g.width,g.height);glUniform1f(depthAspect,(float)w/h);
         glColorMask(false,false,false,false);glDrawArrays(GL_TRIANGLES,g.starts[1],g.counts[1]);
         glColorMask(true,true,true,true);glDepthMask(false);
-        useScene(sceneShaders[0],r,g,w,h);glDrawArrays(GL_TRIANGLES,g.starts[0],g.counts[0]);
-        glDepthFunc(GL_EQUAL);glDrawArrays(GL_TRIANGLES,g.starts[1],g.counts[1]);
+        // Specialize material work without sorting opaque faces. Equal-depth
+        // ties, alpha order, attributes and the depth prepass stay unchanged.
+        boolean specialized=materialVariants&&g.opaqueRunCount()<=128;
+        if(lastMaterialRoute!=(specialized?1:0)){
+            lastMaterialRoute=specialized?1:0;
+            Log.i("ReverseVelocity","GPU_MATERIAL_ROUTE specialized="+specialized+" opaqueRuns="+g.opaqueRunCount()+" order=original");
+        }
+        useScene(sceneShaders[0],r,g,w,h);
+        if(specialized){useScene(sceneShaders[1],r,g,w,h);useScene(sceneShaders[2],r,g,w,h);}
+        glUseProgram(sceneShaders[specialized?1:0].program);glDrawArrays(GL_TRIANGLES,g.starts[0],g.counts[0]);
+        glDepthFunc(GL_EQUAL);
+        if(specialized){
+            int previous=0;
+            for(int run=0;run<g.opaqueRunCount();run++){
+                int end=g.opaqueRunEnd(run);glUseProgram(sceneShaders[g.opaqueRunShader(run)].program);
+                glDrawArrays(GL_TRIANGLES,g.starts[1]+previous,end-previous);previous=end;
+            }
+        }else{glUseProgram(sceneShaders[0].program);glDrawArrays(GL_TRIANGLES,g.starts[1],g.counts[1]);}
+        glUseProgram(sceneShaders[0].program);
         glDepthFunc(GL_LEQUAL);glEnable(GL_BLEND);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);
         glDrawArrays(GL_TRIANGLES,g.starts[2],g.counts[2]);
         glBlendFunc(GL_SRC_ALPHA,GL_ONE);glDrawArrays(GL_TRIANGLES,g.starts[3],g.counts[3]);

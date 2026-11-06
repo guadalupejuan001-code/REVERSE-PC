@@ -20,7 +20,7 @@ try:
         images=[];results=[]
         for compact in [False,True]:
             png=out/f'{index:02d}-{int(compact)}.png'
-            env=dict(os.environ,VELOCITY_COMPACT_VERTEX=str(int(compact)),VELOCITY_VERIFY_STRIPES='1',VELOCITY_BENCH_SAMPLES='3')
+            env=dict(os.environ,VELOCITY_COMPACT_VERTEX=str(int(compact)),VELOCITY_SHADER_VARIANTS=str(int(compact)),VELOCITY_VERIFY_STRIPES='1',VELOCITY_BENCH_SAMPLES='3')
             result=subprocess.run([sys.executable,str(root/'scripts/velocity-gpu-preview.py'),str(fixture),str(assets/palette),str(png),str(w),str(h)],env=env,check=True,text=True,capture_output=True)
             results.append(json.loads(result.stdout.strip().splitlines()[-1]));images.append(Image.open(png).tobytes())
         assert images[0]==images[1],f'GPU pixels differ for {fixture.name} at {w}x{h}'

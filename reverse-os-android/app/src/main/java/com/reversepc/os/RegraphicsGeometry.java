@@ -1,6 +1,7 @@
 package com.reversepc.os;
 
 import java.nio.FloatBuffer;
+import java.util.Arrays;
 import x.gpu.virtual.CompactTriangleStream;
 
 /** Validated XI XFG4 triangles. This adapter never creates world geometry. */
@@ -12,13 +13,25 @@ final class RegraphicsGeometry {
     private final byte[] categories,passes;
     private final int[] categoryCounts=new int[12];
     private int lampFace=-1;
+    private int[] opaqueRuns=new int[16];
+    private int opaqueRunCount;
     private RegraphicsGeometry(byte[] bytes,int width,int height,int faces){
         this.bytes=bytes;this.width=width;this.height=height;this.faces=faces;
         categories=new byte[faces];passes=new byte[faces];
+        int opaqueVertices=0;
         for(int i=0;i<faces;i++){
-            int c=category(HEADER+ATLAS+i*FACE_BYTES);
+            int at=HEADER+ATLAS+i*FACE_BYTES,c=category(at);
             categories[i]=(byte)c;passes[i]=(byte)pass(c);categoryCounts[c]++;
             if(c==10&&lampFace<0)lampFace=i;
+            if(passes[i]==1){
+                int base=bytes[at+54]&255,kind=(base>=9&&base<24)||(base>=40&&base<56)?1:0;
+                opaqueVertices+=3;
+                if(opaqueRunCount>0&&(opaqueRuns[opaqueRunCount-1]&1)==kind)opaqueRuns[opaqueRunCount-1]=(opaqueVertices<<1)|kind;
+                else{
+                    if(opaqueRunCount==opaqueRuns.length)opaqueRuns=Arrays.copyOf(opaqueRuns,opaqueRuns.length*2);
+                    opaqueRuns[opaqueRunCount++]=(opaqueVertices<<1)|kind;
+                }
+            }
         }
     }
     static int u16(byte[] b,int n){return (b[n]&255)|((b[n+1]&255)<<8);}
@@ -57,6 +70,9 @@ final class RegraphicsGeometry {
         return 1;
     }
     int categoryFaces(int wanted){return wanted>=0&&wanted<categoryCounts.length?categoryCounts[wanted]:0;}
+    int opaqueRunCount(){return opaqueRunCount;}
+    int opaqueRunEnd(int run){return opaqueRuns[run]>>>1;}
+    int opaqueRunShader(int run){return (opaqueRuns[run]&1)==0?0:2;}
     void compact(CompactTriangleStream stream){
         stream.update(bytes,categories,passes);
         System.arraycopy(stream.starts,0,starts,0,4);System.arraycopy(stream.counts,0,counts,0,4);

@@ -27,6 +27,16 @@ public final class RegraphicsCompactTest {
                 same(reference.get(),(float)(zc>>>20));
             }
             check(!reference.hasRemaining(),"all reference attributes consumed");
+            int previous=0;
+            for(int run=0;run<g.opaqueRunCount();run++){
+                int end=g.opaqueRunEnd(run);check(end>previous&&end%3==0,"bounded contiguous opaque span");
+                for(int v=previous;v<end;v++){
+                    int base=packed.get((g.starts[1]+v)*24+20)&255;
+                    int shader=(base>=9&&base<24)||(base>=40&&base<56)?2:0;
+                    check(shader==g.opaqueRunShader(run),"specialization matches original material branch");
+                }previous=end;
+            }
+            check(previous==g.counts[1],"opaque specialization covers the original order exactly once");
             g.compact(compact);check(compact.uploadedBytes==0,"unchanged scene leaves GPU geometry resident");
             cases++;
         }
