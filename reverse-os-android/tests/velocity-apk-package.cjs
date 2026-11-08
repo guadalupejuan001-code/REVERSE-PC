@@ -18,6 +18,7 @@ for(const abi of ['arm64-v8a','x86_64']){
  assert(entries.includes(name),'missing native ABI '+abi);
  const elf=unzip(['-p',apk,name]);
  assert(elf.includes(Buffer.from('Java_com_reversepc_os_NativeRuntime_sessionObserveSharedGeometry')),'native qSSD JNI entry must be present');
+ assert(elf.includes(Buffer.from('Java_com_reversepc_os_NativeRuntime_velocityC12Frame')),'original GPU C12 per-frame JNI entry must be compiled into APK');
  for(const method of ['sessionCheckpointSpace','sessionOpenSpace','sessionRegisterResources','sessionForkSpace'])assert(elf.includes(Buffer.from('Java_com_reversepc_os_NativeRuntime_'+method)),'full-state JNI entry absent: '+method);
  assert.equal(elf.subarray(0,4).toString('hex'),'7f454c46');
  assert.equal(elf[4],2,'ELF must be 64 bit');assert.equal(elf[5],1,'ELF must be little endian');
