@@ -127,7 +127,7 @@ function finishScene(content,options={}){
  if(28*11+8*rockFaces.length+4*grassFaces.length!==436)
   throw Error('Forest triangle budget is not bounded');
  const full=['label emit_tree','localget r0 3120','mod r0 10','cmp r0 7','je nature_emit_rock','cmp r0 8',
-   'je nature_emit_rock','cmp r0 9','je nature_emit_grass',
+   'je nature_emit_rock','cmp r0 9','je nature_emit_rock',
    ...canopyFaces,'localget r0 112','sub r0 1000000','cmp r0 12000','jgt next_actor',...groveFaces.slice(5),'jmp next_actor','label nature_emit_rock',
    ...rockFaces,'jmp next_actor','label nature_emit_grass',
    ...grassFaces].join('\n');
