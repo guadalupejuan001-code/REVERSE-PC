@@ -27625,7 +27625,7 @@ je nature_emit_rock
 cmp r0 8
 je nature_emit_rock
 cmp r0 9
-je nature_emit_grass
+je nature_emit_rock
 meshfacegradienttex 3600 3601 3602 12 8 6 2 r9 r10 r11 60
 meshfacegradienttex 3600 3602 3603 12 8 6 2 r9 r10 r11 60
 meshfacegradienttex 3600 3603 3604 12 8 6 2 r9 r10 r11 60
