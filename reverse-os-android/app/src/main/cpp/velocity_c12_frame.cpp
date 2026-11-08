@@ -9,11 +9,10 @@ namespace velocity_c12 {
 namespace {
 using Op=xgpu::StateOp;
 xgpu::Kernel materials(){
-  // C12Window retains the complete 10-word qSSD field domain. The upper five
-  // lanes explicitly finish with zero; only lanes 0..4 read multipliers 5..9.
-  return {{ {Op::BranchIndexLess,0,0,0,5,4},
-            {Op::Constant,6}, {Op::Output,6}, {Op::Halt},
-            {Op::Index,0}, {Op::LoadGlobal,1,0},
+  // C12Window preserves the 10-word source domain. Two groups of five
+  // share the same local indices; each group reads source words 0..4 and
+  // multipliers 5..9. All lanes finish without divergent control or expansion.
+  return {{ {Op::LocalIndex,0}, {Op::LoadGlobal,1,0},
             {Op::FloatFromUnsigned,2,1},
             {Op::Constant,3,0,0,0,5}, {Op::Add,4,0,3},
             {Op::LoadGlobal,5,4}, {Op::FloatMultiply,6,2,5},
