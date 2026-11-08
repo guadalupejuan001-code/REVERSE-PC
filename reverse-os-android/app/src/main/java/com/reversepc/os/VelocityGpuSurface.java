@@ -51,20 +51,23 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
     private long measuredFrom,measuredFrames,queueNanos,commandNanos,swapNanos;
     private ByteBuffer presetReadback;
     private final CompactTriangleStream vertices=new CompactTriangleStream();
+    // The immutable native qSSD projection is the only GLES resource authority.
+    private final VelocityQssdGraphicsBridge qssd=new VelocityQssdGraphicsBridge();
     private int vertexCapacity;
     private int atlasFilter=-1;
-    private int[] residentPalette;
-    private byte[] residentAtlas;
-    private RegraphicsGeometry residentGeometry;
     private long reusedGeometryFrames;
     private long vertexUploadBytes,vertexUploadCalls,textureUploadBytes,resourceFrames;
     private final ByteBuffer paletteBytes=ByteBuffer.allocateDirect(1024),atlasBytes=ByteBuffer.allocateDirect(2048);
     static final class Request {
+        final VelocityQssdGraphicsBridge.Frame resources;
         final RegraphicsGeometry geometry;final int[] palette;final VelocityGraphics graphics;
         final VelocityXiEngine.Snapshot state;final int yaw,width;
         final long submittedNanos=System.nanoTime();
         final CountDownLatch done=new CountDownLatch(1);volatile RuntimeException error;
-        Request(RegraphicsGeometry g,int[] palette,VelocityXiEngine.Snapshot s,int yaw,VelocityGraphics graphics){this.geometry=g;this.palette=palette;state=s;this.yaw=yaw;this.graphics=graphics;this.width=graphics.width;}
+        Request(VelocityQssdGraphicsBridge.Frame lease,VelocityXiEngine.Snapshot s,int yaw,VelocityGraphics graphics){
+            resources=lease;geometry=lease.geometry;palette=lease.palette;
+            state=s;this.yaw=yaw;this.graphics=graphics;this.width=graphics.width;
+        }
     }
     static boolean supported(Context context){
         ActivityManager manager=(ActivityManager)context.getSystemService(Context.ACTIVITY_SERVICE);
@@ -89,8 +92,12 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
     private void cancel(String why){synchronized(mailbox){for(Request r:new Request[]{queued,active})if(r!=null){r.error=new IllegalStateException(why);r.done.countDown();}queued=null;}}
     @Override public void onPause(){suspended=true;ready=false;cancel("GPU suspended");super.onPause();}
     @Override public void onResume(){suspended=false;super.onResume();invalidated.run();requestRender();}
-    void draw(RegraphicsGeometry geometry,int[] palette,VelocityXiEngine.Snapshot state,int yaw,VelocityGraphics graphics)throws InterruptedException{
-        submit(new Request(geometry,palette,state,yaw,graphics));
+    void draw(VelocityXiEngine.Observation observed,VelocityXiEngine.Snapshot state,int yaw,VelocityGraphics graphics)throws InterruptedException{
+        if(observed.geometry==null||observed.colors==null)
+            throw new IllegalArgumentException("Missing validated XI/qSSD XFG4 observation");
+        VelocityQssdGraphicsBridge.Frame lease=qssd.publish(
+            observed.geometry,observed.colors,observed.qssdIdentity,observed.qssdRevision);
+        submit(new Request(lease,state,yaw,graphics));
     }
     private void submit(Request request)throws InterruptedException{
         if(!available())throw new IllegalStateException("GPU surface is not ready");
@@ -142,7 +149,7 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
             paletteTexture=texture();glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA8,256,1,0,GL_RGBA,GL_UNSIGNED_BYTE,null);
             atlasTexture=texture();glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);glTexImage2D(GL_TEXTURE_2D,0,GL_R8,128,16,0,GL_RED,GL_UNSIGNED_BYTE,null);
             int[] id={0};glGenVertexArrays(1,id,0);vao=id[0];glBindVertexArray(vao);glGenBuffers(1,id,0);vbo=id[0];glBindBuffer(GL_ARRAY_BUFFER,vbo);glBufferData(GL_ARRAY_BUFFER,4,null,GL_DYNAMIC_DRAW);
-            vertexCapacity=4;vertices.invalidateGpuCopy();residentPalette=null;residentAtlas=null;residentGeometry=null;atlasFilter=-1;
+            vertexCapacity=4;vertices.invalidateGpuCopy();qssd.contextLost();atlasFilter=-1;
             int stride=CompactTriangleStream.STRIDE;
             glVertexAttribPointer(0,2,GL_INT,false,stride,0);
             glVertexAttribPointer(1,2,GL_SHORT,false,stride,12);
@@ -202,38 +209,67 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
             throw new IllegalStateException("XGPU-C12 frame dispatch failed");
         int w=r.graphics.width,h=r.graphics.height;
         target(w,h);glBindFramebuffer(GL_FRAMEBUFFER,framebuffer);glViewport(0,0,w,h);glDepthMask(true);glClearColor(.08f,.12f,.14f,1);glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-        RegraphicsGeometry g=r.geometry;boolean geometryChanged=g!=residentGeometry;
+        // REgraphics -> native qSSD versioned geometry -> resource bus -> GLES.
+        VelocityQssdGraphicsBridge.Plan plan=qssd.plan(r.resources);
+        RegraphicsGeometry g=plan.frame.geometry;
+        boolean geometryChanged=plan.geometryDirty;
         if(geometryChanged)g.compact(vertices);else reusedGeometryFrames++;
         int fx=(r.state.nitroActive?1:0)|(r.state.airPulse>0?2:0)|(r.state.waterDepthCm>0?4:0);
         if(fx!=lastFx){lastFx=fx;Log.i("ReverseVelocity","GPU_FX_STATE nitro="+r.state.nitroActive+" air="+(r.state.airPulse>0)+" waterDepth="+r.state.waterDepthCm+" emittedNitro="+g.categoryFaces(5)+" emittedAir="+g.categoryFaces(4));}
         glBindVertexArray(vao);glBindBuffer(GL_ARRAY_BUFFER,vbo);
         if(vertexCapacity<vertices.capacityBytes()){
-            vertexCapacity=vertices.capacityBytes();glBufferData(GL_ARRAY_BUFFER,vertexCapacity,null,GL_DYNAMIC_DRAW);
+            vertexCapacity=vertices.capacityBytes();
+            glBufferData(GL_ARRAY_BUFFER,vertexCapacity,null,GL_DYNAMIC_DRAW);
+            // A GL storage replacement requires every resident page to be uploaded.
+            vertices.invalidateGpuCopy();g.compact(vertices);geometryChanged=true;
         }
         for(int i=0;geometryChanged&&i<vertices.uploadCount();i++){
             int offset=vertices.uploadOffset(i),length=vertices.uploadLength(i);
             glBufferSubData(GL_ARRAY_BUFFER,offset,length,vertices.view(offset,length));
             vertexUploadBytes+=length;vertexUploadCalls++;
         }
-        residentGeometry=g;
         glActiveTexture(GL_TEXTURE0);glBindTexture(GL_TEXTURE_2D,paletteTexture);
-        if(!Arrays.equals(residentPalette,r.palette)){
-            paletteBytes.clear();for(int c:r.palette)paletteBytes.put((byte)(c>>16)).put((byte)(c>>8)).put((byte)c).put((byte)255);paletteBytes.flip();
-            glTexSubImage2D(GL_TEXTURE_2D,0,0,0,256,1,GL_RGBA,GL_UNSIGNED_BYTE,paletteBytes);
-            residentPalette=r.palette.clone();textureUploadBytes+=1024;
+        // qSSD supplies granular palette texels and 128x1 atlas row deltas.
+        for(int range=0;range<plan.paletteRanges.length;range+=2){
+            int first=plan.paletteRanges[range],size=plan.paletteRanges[range+1];
+            paletteBytes.clear();
+            for(int j=first;j<first+size;j++){
+                int color=plan.frame.palette[j];
+                paletteBytes.put((byte)(color>>16)).put((byte)(color>>8))
+                    .put((byte)color).put((byte)255);
+            }
+            paletteBytes.flip();
+            glTexSubImage2D(GL_TEXTURE_2D,0,first,0,size,1,
+                GL_RGBA,GL_UNSIGNED_BYTE,paletteBytes);
+            textureUploadBytes+=4L*size;
         }
         glActiveTexture(GL_TEXTURE1);glBindTexture(GL_TEXTURE_2D,atlasTexture);
         int filter=r.graphics.id<=1?GL_NEAREST:GL_LINEAR;
-        if(filter!=atlasFilter){glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,filter);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,filter);atlasFilter=filter;}
-        boolean atlasChanged=residentAtlas==null;
-        if(!atlasChanged)for(int i=0;i<2048;i++)if(residentAtlas[i]!=g.byteAt(16+i)){atlasChanged=true;break;}
-        if(atlasChanged){
-            atlasBytes.clear();for(int y=0;y<16;y++)for(int tile=0;tile<8;tile++)for(int x=0;x<16;x++)atlasBytes.put(g.byteAt(16+tile*256+y*16+x));atlasBytes.flip();
-            glTexSubImage2D(GL_TEXTURE_2D,0,0,0,128,16,GL_RED,GL_UNSIGNED_BYTE,atlasBytes);
-            if(residentAtlas==null)residentAtlas=new byte[2048];g.copyBytes(16,residentAtlas,0,2048);textureUploadBytes+=2048;
+        if(filter!=atlasFilter){
+            glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,filter);
+            glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,filter);atlasFilter=filter;
         }
+        for(int row=0;row<16;row++){
+            if((plan.atlasRowsMask&(1<<row))==0)continue;
+            atlasBytes.clear();atlasBytes.put(plan.frame.atlas,row*128,128);atlasBytes.flip();
+            glTexSubImage2D(GL_TEXTURE_2D,0,0,row,128,1,GL_RED,GL_UNSIGNED_BYTE,atlasBytes);
+            textureUploadBytes+=128;
+        }
+        checked("QSSD resource delta uploads");
+        qssd.confirm(plan); // Commit only after the GL driver accepts all resources.
+        if(resourceFrames==0)
+            Log.i("ReverseVelocity","QSSD_GPU_BRIDGE_ACTIVE source=XI_XFG4 identity="+plan.frame.sourceIdentity+
+                " revision="+plan.frame.sourceRevision+" paletteVersion="+plan.frame.paletteRevision+
+                " atlasVersion="+plan.frame.atlasRevision+" route=REgraphics_QSSD_GLES");
         if(++resourceFrames>=60){
             Log.i("ReverseVelocity","GPU_VIRTUAL_RESOURCES frames="+resourceFrames+" vertexStride=24 stagingCapacityBytes="+vertices.capacityBytes()+" vboCapacityBytes="+vertexCapacity+" liveVertexBytes="+vertices.usedBytes()+" vertexUploadBytes="+vertexUploadBytes+" vertexUploadCalls="+vertexUploadCalls+" textureUploadBytes="+textureUploadBytes+" reusedGeometryFrames="+reusedGeometryFrames+" scope=geometry_transport_not_process_ram");
+            Log.i("ReverseVelocity","QSSD_RENDER_BUS frames="+resourceFrames+
+                " sourceIdentity="+plan.frame.sourceIdentity+" sourceRevision="+plan.frame.sourceRevision+
+                " serial="+plan.frame.serial+" gpuUploadCommits="+qssd.uploadCommits()+
+                " reusedPublications="+qssd.reusedPublications()+
+                " geometryDirty="+plan.geometryDirty+" paletteDirtyTexels="+plan.changedPaletteTexels()+
+                " atlasDirtyRows="+plan.changedAtlasRows()+" vboBytes="+vertexUploadBytes+
+                " textureBytes="+textureUploadBytes+" route=REgraphics_QSSD_GLES");
             resourceFrames=vertexUploadBytes=vertexUploadCalls=textureUploadBytes=reusedGeometryFrames=0;
         }
         // Resolve visibility with the exact same vertex transform before doing

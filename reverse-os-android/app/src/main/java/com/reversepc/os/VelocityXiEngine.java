@@ -112,15 +112,16 @@ final class VelocityXiEngine {
         final int payloadBytes;
         final RegraphicsGeometry geometry;
         final int[] colors;
+        final long qssdIdentity,qssdRevision; // Exact native XFG4 SharedProjection revision.
         Observation(RegraphicsFrame frame,Snapshot state,long executeNanos,
                     long decodeNanos,int payloadBytes){
             this.frame=frame;this.state=state;
             this.executeNanos=executeNanos;this.decodeNanos=decodeNanos;
             this.payloadBytes=payloadBytes;
-            geometry=null;colors=null;
+            geometry=null;colors=null;qssdIdentity=0;qssdRevision=0;
         }
-        Observation(RegraphicsGeometry geometry,int[] colors,Snapshot state,long executeNanos,long decodeNanos,int bytes){
-            frame=null;this.geometry=geometry;this.colors=colors;this.state=state;this.executeNanos=executeNanos;this.decodeNanos=decodeNanos;payloadBytes=bytes;
+        Observation(RegraphicsGeometry geometry,int[] colors,Snapshot state,long executeNanos,long decodeNanos,int bytes,long identity,long revision){
+            frame=null;this.geometry=geometry;this.colors=colors;this.state=state;this.executeNanos=executeNanos;this.decodeNanos=decodeNanos;payloadBytes=bytes;qssdIdentity=identity;qssdRevision=revision;
         }
     }
 
@@ -292,7 +293,7 @@ final class VelocityXiEngine {
         // The numeric register observation is ASCII. Count its envelope and the
         // explicit physical projection, rather than reporting fictional zero I/O.
         int projected=(int)packet.materializedBytes+packet.output.length()+40;
-        return new Observation(geometry,colors,state,execute,System.nanoTime()-start,projected);
+        return new Observation(geometry,colors,state,execute,System.nanoTime()-start,projected,packet.identity,packet.revision);
     }
     Observation observeFrame(int stride,int camera,int paint)throws Exception{
         return observeFrame(stride,camera,paint,0);
