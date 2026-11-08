@@ -2,7 +2,7 @@
 'use strict';
 // Real installed APK, native UI input, completed GPU target readbacks and live XI driving.
 const cp=require('node:child_process'),fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
-const [adb='adb',out='build/velocity-ui']=process.argv.slice(2),pkg='com.reversepc.velocity',component=pkg+'/com.reversepc.os.VelocityActivity';
+const [adb='adb',out='build/velocity-ui']=process.argv.slice(2),pkg='com.reversepc.velocity.c02',component=pkg+'/com.reversepc.os.VelocityActivity';
 fs.mkdirSync(out,{recursive:true});const deadline=Date.now()+420000,children=[];
 let stage='launch',lastXml='',checks=0,menuControl=null,worldControl=null;
 const report={passed:false,emulator:true,physicalPhoneVerified:false,checks:[],profiles:[],screens:[]};
