@@ -41,6 +41,14 @@ final class RegraphicsGeometry {
     static int i32(byte[] b,int n){return (b[n]&255)|((b[n+1]&255)<<8)|((b[n+2]&255)<<16)|(b[n+3]<<24);}
     static void require(boolean ok,String why){if(!ok)throw new IllegalArgumentException("REgraphics XFG4: "+why);}
     byte byteAt(int at){return source.get(at);}
+    /** Exact atlas comparison in the original XI layout; geometry may differ. */
+    boolean sameAtlas(RegraphicsGeometry other){
+        if(this==other)return true;
+        if(other==null)return false;
+        for(int at=HEADER;at<HEADER+ATLAS;at+=8)
+            if(source.getLong(at)!=other.source.getLong(at))return false;
+        return true;
+    }
     void copyBytes(int from,byte[] target,int offset,int length){
         ByteBuffer view=source.duplicate();view.position(from);view.limit(from+length);view.get(target,offset,length);
     }

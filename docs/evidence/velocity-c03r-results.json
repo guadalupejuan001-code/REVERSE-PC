@@ -1,0 +1,951 @@
+{
+  "repair": "C03R",
+  "sourceHeadCommit": "8300f41c11e14872251d951e65ca7a927b9c2f1a",
+  "sourceTree": "05fe2050fbaa3f824e6ffb6cf1e8e382485e3ea1",
+  "baseline": {
+    "sourceHeadCommit": "cb7903bd596f1f0c382d3ba880e47086dfc37014",
+    "workflowRun": 42460861055,
+    "apkSha256": "b6ddfce4f966e60b69b3113fc09bef92a5d2bce5604a80a2d2ae1d747bb6fde2"
+  },
+  "workflowRuns": {
+    "apk": {
+      "runId": 42467454708,
+      "jobId": 128690246471,
+      "conclusion": "success",
+      "url": "https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/42467454708"
+    },
+    "completeNativeAndGraphics": {
+      "runId": 42467454678,
+      "jobId": 128690181995,
+      "conclusion": "success",
+      "url": "https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/42467454678"
+    },
+    "components": {
+      "runId": 42467454653,
+      "jobId": 128690173179,
+      "conclusion": "success",
+      "url": "https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/42467454653"
+    }
+  },
+  "localVerification": {
+    "qssdBridgeChecks": 6348,
+    "c12BitExactCases": 600,
+    "c12InvalidCases": 8,
+    "c12ConcurrentCalls": 512,
+    "c12ActualJniSequentialCalls": 65,
+    "c12ActualJniInvalidCalls": 12,
+    "c12ActualJniConcurrentCalls": 256,
+    "pixelEquivalentPairs": 16,
+    "fullCheckpointResources": 20
+  },
+  "limitations": [
+    "Android execution uses an x86_64 emulator with SwiftShader; no physical ARM64 phone measurement.",
+    "C12 executes five material scalar uniforms on the host CPU. GLES rasterizes.",
+    "Pinned qSSD C06 is consumed through the state/projection ABI; C12Window and Bell protocols do not execute per frame.",
+    "New geometry revisions still require a full JNI copy; this is not a zero-copy pipeline.",
+    "The A/B consists of freely evolving driving trials, not identical-pose replay; no statistical significance is claimed.",
+    "P95 aggregates are medians of window quantiles, not a pooled p95 of all frames.",
+    "Context invalidation is covered by bridge tests; Android lifecycle smoke is not forced in-session EGL context destruction."
+  ],
+  "apk": {
+    "filename": "REVERSE-VELOCITY-4.0-C03R.apk",
+    "bytes": 5125106,
+    "sha256": "3ba8da4fdec9c888071a6a527dafe363107718714a8555fe779fa73d97917e7a"
+  },
+  "artifacts": {
+    "apk": {
+      "id": 13611584756,
+      "zipSha256": "b195385ed4d8aa1b75d3d973202a4e7f6f73d9c5d3cc0405ee15998b557491f5"
+    },
+    "androidEvidence": {
+      "id": 13612690892,
+      "zipSha256": "abcc1714318d0bc1bde93b6ea208666eedc1fabe9cfdf524564c1a951f135e3f"
+    },
+    "nativeAndGraphicsEvidence": {
+      "id": 13612247934,
+      "zipSha256": "2dc82cf25cddd556621f31351e02ca04b4d3f4eefffc7ac006c43fcf1efa6f81"
+    },
+    "componentEvidence": {
+      "id": 13612665413,
+      "zipSha256": "64bf6a4cc1d45bbb76bdaf66f336b5a1a5cb46a718374846422a6c505eb3e57b"
+    }
+  },
+  "recordedAt": "2026-11-08T09:44:44.232320+00:00",
+  "passed": true,
+  "package": {
+    "passed": true,
+    "applicationId": "com.reversepc.velocity.c02",
+    "launcher": "com.reversepc.os.VelocityActivity",
+    "minSdk": 29,
+    "versionCode": 46,
+    "versionName": "4.0.0-c03r-pipeline",
+    "sourceCommit": "e3f029d4ecba213e23c23714f0ac2ffe2438b33a",
+    "sourceHeadCommit": "8300f41c11e14872251d951e65ca7a927b9c2f1a",
+    "sourceTree": "05fe2050fbaa3f824e6ffb6cf1e8e382485e3ea1",
+    "dependencies": {
+      "mundoX": "1f925786522aba91f72707ad1638a8edcdd31a8f",
+      "gpuVirtual": "4cdd47f487cfadbca559dd8c2f5abc0448cd77a7",
+      "qssd": "9fe72bbf0d972d0baad9300971dfaabab5691447"
+    },
+    "workflowRun": "42467454708",
+    "signerCertificateSha256": "cc980acd8a8925b7ea27a6e5d1afc3ee08c23f156565c6eae8f3d21d5d3cc454",
+    "signerVerifiedAgainstBuildCertificate": true,
+    "signerMatchesDeliveredC03": true,
+    "inPlaceUpgradeVerified": true,
+    "upgradeVerification": "upgrade-result.json: actual C03 to C03R adb install -r",
+    "abis": [
+      "arm64-v8a",
+      "x86_64"
+    ],
+    "nativeElf": {
+      "arm64-v8a": {
+        "bytes": 1956808,
+        "loadSegmentAlignments": [
+          16384,
+          16384,
+          16384
+        ]
+      },
+      "x86_64": {
+        "bytes": 2020920,
+        "loadSegmentAlignments": [
+          16384,
+          16384,
+          16384
+        ]
+      }
+    },
+    "assets": {
+      "drive.xi": {
+        "bytes": 45588,
+        "sha256": "2c5e926f78c4c2d824560b854dbf96fbdff7fd0d876627a4febb060c43c43daa"
+      },
+      "environment.xi": {
+        "bytes": 1859,
+        "sha256": "1db01215dc4270d151690902d95e5ae1f25daa4e074721ab235528717ac7038a"
+      },
+      "forest-atlas.txt": {
+        "bytes": 1004,
+        "sha256": "19ee5cf2e6fd78ed191a7ffaae4fa094a39bed4728bd8a32c909f97633275a58"
+      },
+      "gpu-compact-depth.vert": {
+        "bytes": 600,
+        "sha256": "ed42471225d7d4adb3ea90c1b38aea0f98f67d05db147a39b83bdd1e2c1d06b2"
+      },
+      "gpu-compact.vert": {
+        "bytes": 1044,
+        "sha256": "f7f26e2370fcfb19ba0db152178f04c0aff6d435ebe72af3b547150d29db91db"
+      },
+      "gpu-depth.frag": {
+        "bytes": 87,
+        "sha256": "a9a3eae51e2eede9361d4405d9bfc4b1107af94bc2221bc7f9cd102b84c7f5f7"
+      },
+      "gpu-depth.vert": {
+        "bytes": 492,
+        "sha256": "83f6b45b8c333cdba87657c37636d8fcdf55c8f3cf7bcc4dcc348eb00a1b6240"
+      },
+      "gpu-post.frag": {
+        "bytes": 1001,
+        "sha256": "c504091883420227eecdc601b5c61bf669b5e96a60fbc3c102ab1fea1a880c2c"
+      },
+      "gpu-post.vert": {
+        "bytes": 169,
+        "sha256": "11c957f81c4c5cd11315f1bbeee4845939e25ff20f5a00aa5dc221f6afe842c0"
+      },
+      "gpu-scene.frag": {
+        "bytes": 8821,
+        "sha256": "a2bc95c9c3cc7822091359c91eb8ded729de1e3b1649197d593c073566796670"
+      },
+      "gpu-scene.vert": {
+        "bytes": 932,
+        "sha256": "b5bd1e5f71e89842bc96e78b8bc7b1ed38641fa59ce12b6e18c18e17dc3c620d"
+      },
+      "palette-day.txt": {
+        "bytes": 1792,
+        "sha256": "956c84e907492004a649824f8b06cff5652c567ed33111393131ace017f3e991"
+      },
+      "palette-dusk.txt": {
+        "bytes": 1792,
+        "sha256": "ca529a47e13a167c014c727d53a2753f063a16558f363aaa5106fe24c7804f72"
+      },
+      "palette-night.txt": {
+        "bytes": 1792,
+        "sha256": "71ba7240ba8c164f9f4ca60798fad9e6a040e85b622429411a26d1bf4473a2e4"
+      },
+      "palette.txt": {
+        "bytes": 1792,
+        "sha256": "956c84e907492004a649824f8b06cff5652c567ed33111393131ace017f3e991"
+      },
+      "render-live.xi": {
+        "bytes": 486118,
+        "sha256": "e08eea892cba7ff8eec5abbaa8bb58b115ea4ef48cb0d82aae13e458bacc5559"
+      },
+      "render-native4k.xi": {
+        "bytes": 486142,
+        "sha256": "f0be3acc3144968bd4df2037628ab9ef78ad07df416610cd367c90a55cafa211"
+      },
+      "render.xi": {
+        "bytes": 486118,
+        "sha256": "f201fc455d46a85181270408bfe1e6778827d27a537d220eb529df40dbb733d2"
+      },
+      "render4k.xi": {
+        "bytes": 486142,
+        "sha256": "d09d91857bd61469f7392ed530a79515747ec602aa25697b6c59bc7ed7a57e37"
+      },
+      "world.xi": {
+        "bytes": 223742,
+        "sha256": "54e68d2992d9cfe6bb8fd22d1faa33bb3d92472e596078f86a1e1956857a67fd"
+      }
+    },
+    "apkBytes": 5125106,
+    "apkSha256": "3ba8da4fdec9c888071a6a527dafe363107718714a8555fe779fa73d97917e7a"
+  },
+  "upgrade": {
+    "passed": true,
+    "applicationId": "com.reversepc.velocity.c02",
+    "installArguments": [
+      "install",
+      "-r"
+    ],
+    "fromVersionCode": 45,
+    "toVersionCode": 46,
+    "sameSigner": true,
+    "baselineApkSha256": "b6ddfce4f966e60b69b3113fc09bef92a5d2bce5604a80a2d2ae1d747bb6fde2",
+    "candidateApkSha256": "3ba8da4fdec9c888071a6a527dafe363107718714a8555fe779fa73d97917e7a"
+  },
+  "androidGraphics": {
+    "passed": true,
+    "emulator": true,
+    "physicalPhoneVerified": false,
+    "checks": [
+      "original XGPU-C12 per-frame material kernel is active",
+      "GLES presents qSSD leased geometry and material resources",
+      "Reverse Velocity brand is visible",
+      "driving view has at most nine essential buttons including two gear paddles",
+      "both manual gear paddles are accessible",
+      "real speedometer and XI transmission telemetry are accessible",
+      "secondary tools are hidden while driving",
+      "old graphics/photo controls are absent",
+      "opening the menu pauses real XI physics",
+      "driving buttons are hidden behind the modal menu",
+      "actual Ahorro GPU pixels are hashed",
+      "quality page offers no 4K mode",
+      "sustained Ahorro driving retains its real resolution",
+      "XI physics advances independently in Ahorro",
+      "Ahorro obeys its 30 FPS ceiling",
+      "actual Bajos GPU pixels are hashed",
+      "quality page offers no 4K mode",
+      "sustained Bajos driving retains its real resolution",
+      "XI physics advances independently in Bajos",
+      "Ahorro obeys its 30 FPS ceiling",
+      "actual Medio GPU pixels are hashed",
+      "quality page offers no 4K mode",
+      "sustained Medio driving retains its real resolution",
+      "XI physics advances independently in Medio",
+      "Ahorro obeys its 30 FPS ceiling",
+      "actual Alto GPU pixels are hashed",
+      "quality page offers no 4K mode",
+      "sustained Alto driving retains its real resolution",
+      "XI physics advances independently in Alto",
+      "Ahorro obeys its 30 FPS ceiling",
+      "actual Ultra GPU pixels are hashed",
+      "quality page offers no 4K mode",
+      "sustained Ultra driving retains its real resolution",
+      "XI physics advances independently in Ultra",
+      "Ahorro obeys its 30 FPS ceiling",
+      "C12 keeps executing real material dispatches with a reused output buffer while driving",
+      "qSSD revisions and accepted GPU resource publications keep advancing while driving",
+      "graphics preference survives process restart",
+      "selected preset is restored in the settings",
+      "real accelerator touch moves the car",
+      "analog wheel is accessible",
+      "analog input turns and recenters after release",
+      "manual inputs change the actual XI transmission",
+      "service brake stops real driving despite held gas and nitro",
+      "garage selects the real second car",
+      "map still contains all trails and destinations",
+      "world camera remains accessible",
+      "gear request reaches the real gearbox",
+      "car physically reverses by over one metre",
+      "menu stops simulation time",
+      "paused menu reuses the presented scene",
+      "game and graphics survive activity pause/resume"
+    ],
+    "profiles": [
+      {
+        "id": 0,
+        "name": "Ahorro",
+        "width": 480,
+        "height": 270,
+        "frames": 87,
+        "elapsedNanos": 6246248103,
+        "fps": 13.928361244282774,
+        "physicsHz": [
+          51,
+          50,
+          50,
+          50,
+          50,
+          49
+        ],
+        "pssKiB": 86238
+      },
+      {
+        "id": 1,
+        "name": "Bajos",
+        "width": 640,
+        "height": 360,
+        "frames": 71,
+        "elapsedNanos": 6388159840,
+        "fps": 11.114311754603811,
+        "physicsHz": [
+          50,
+          51,
+          50,
+          50,
+          50,
+          50
+        ],
+        "pssKiB": 87055
+      },
+      {
+        "id": 2,
+        "name": "Medio",
+        "width": 960,
+        "height": 540,
+        "frames": 43,
+        "elapsedNanos": 6442674262,
+        "fps": 6.674247098541267,
+        "physicsHz": [
+          51,
+          50,
+          50,
+          50,
+          50,
+          50
+        ],
+        "pssKiB": 87384
+      },
+      {
+        "id": 3,
+        "name": "Alto",
+        "width": 1280,
+        "height": 720,
+        "frames": 24,
+        "elapsedNanos": 6453541776,
+        "fps": 3.7188881443757467,
+        "physicsHz": [
+          51,
+          50,
+          50,
+          50,
+          50,
+          50
+        ],
+        "pssKiB": 89832
+      },
+      {
+        "id": 4,
+        "name": "Ultra",
+        "width": 1920,
+        "height": 1080,
+        "frames": 12,
+        "elapsedNanos": 5704713236,
+        "fps": 2.103523788763499,
+        "physicsHz": [
+          49,
+          50,
+          50,
+          50
+        ],
+        "pssKiB": 87148
+      }
+    ],
+    "screens": [
+      "01-driving-medium.png",
+      "02-graphics-ahorro.png",
+      "03-graphics-ultra.png",
+      "04-effects.png",
+      "05-map.png",
+      "06-reverse.png",
+      "07-menu.png"
+    ],
+    "integrationContinuity": {
+      "c12Samples": [
+        {
+          "frames": 1,
+          "steps": 9,
+          "relationNodes": 7,
+          "qssdPublication": 91,
+          "dispatchNanos": 89708
+        },
+        {
+          "frames": 120,
+          "steps": 9,
+          "relationNodes": 7,
+          "qssdPublication": 1182,
+          "dispatchNanos": 95348
+        },
+        {
+          "frames": 240,
+          "steps": 9,
+          "relationNodes": 7,
+          "qssdPublication": 1688,
+          "dispatchNanos": 78566
+        },
+        {
+          "frames": 360,
+          "steps": 9,
+          "relationNodes": 7,
+          "qssdPublication": 2189,
+          "dispatchNanos": 72886
+        }
+      ],
+      "qssdSamples": [
+        {
+          "frames": 60,
+          "sourceIdentity": 2,
+          "sourceRevision": 60,
+          "serial": 60,
+          "gpuUploadCommits": 60,
+          "reusedPublications": 0,
+          "geometryDirty": true,
+          "paletteDirtyTexels": 0,
+          "atlasDirtyRows": 0,
+          "vboBytes": 3291312,
+          "textureBytes": 3072,
+          "textureUploadCalls": 2
+        },
+        {
+          "frames": 60,
+          "sourceIdentity": 2,
+          "sourceRevision": 120,
+          "serial": 120,
+          "gpuUploadCommits": 120,
+          "reusedPublications": 0,
+          "geometryDirty": true,
+          "paletteDirtyTexels": 0,
+          "atlasDirtyRows": 0,
+          "vboBytes": 3139032,
+          "textureBytes": 0,
+          "textureUploadCalls": 0
+        },
+        {
+          "frames": 60,
+          "sourceIdentity": 2,
+          "sourceRevision": 179,
+          "serial": 179,
+          "gpuUploadCommits": 180,
+          "reusedPublications": 1,
+          "geometryDirty": true,
+          "paletteDirtyTexels": 0,
+          "atlasDirtyRows": 0,
+          "vboBytes": 4135464,
+          "textureBytes": 0,
+          "textureUploadCalls": 0
+        },
+        {
+          "frames": 60,
+          "sourceIdentity": 2,
+          "sourceRevision": 239,
+          "serial": 239,
+          "gpuUploadCommits": 240,
+          "reusedPublications": 1,
+          "geometryDirty": true,
+          "paletteDirtyTexels": 0,
+          "atlasDirtyRows": 0,
+          "vboBytes": 9436536,
+          "textureBytes": 0,
+          "textureUploadCalls": 0
+        },
+        {
+          "frames": 60,
+          "sourceIdentity": 2,
+          "sourceRevision": 298,
+          "serial": 298,
+          "gpuUploadCommits": 300,
+          "reusedPublications": 2,
+          "geometryDirty": true,
+          "paletteDirtyTexels": 0,
+          "atlasDirtyRows": 0,
+          "vboBytes": 9214680,
+          "textureBytes": 0,
+          "textureUploadCalls": 0
+        },
+        {
+          "frames": 60,
+          "sourceIdentity": 2,
+          "sourceRevision": 357,
+          "serial": 357,
+          "gpuUploadCommits": 360,
+          "reusedPublications": 3,
+          "geometryDirty": false,
+          "paletteDirtyTexels": 0,
+          "atlasDirtyRows": 0,
+          "vboBytes": 9421416,
+          "textureBytes": 0,
+          "textureUploadCalls": 0
+        },
+        {
+          "frames": 60,
+          "sourceIdentity": 2,
+          "sourceRevision": 416,
+          "serial": 416,
+          "gpuUploadCommits": 420,
+          "reusedPublications": 4,
+          "geometryDirty": true,
+          "paletteDirtyTexels": 0,
+          "atlasDirtyRows": 0,
+          "vboBytes": 9116592,
+          "textureBytes": 0,
+          "textureUploadCalls": 0
+        }
+      ]
+    },
+    "checkCount": 52
+  },
+  "androidPersistence": {
+    "passed": true,
+    "emulator": true,
+    "checks": [
+      "actual game authority contains all 20 resources",
+      "save contains the driven native world and complete resources",
+      "published save uses the complete QSB3 archive",
+      "native simulation time is identical after process death and restore",
+      "cold restore contains resource and component graph",
+      "graphics policy restores from the complete state",
+      "restored world continues through the original XI physics and GPU"
+    ],
+    "processRestart": true,
+    "saved": {
+      "bytes": 2714825,
+      "ticks": 331
+    },
+    "sha256": "17a1ab33bf7c04cd46b9ce393975d24f0d91e96088466de0189ee573b488c636"
+  },
+  "androidPerformance": {
+    "passed": true,
+    "emulator": true,
+    "physicalPhoneVerified": false,
+    "smoothnessVerified": false,
+    "functional": {
+      "passed": true,
+      "trialCount": 6,
+      "actualDriving": true,
+      "continuedC12AndQssd": true
+    },
+    "performance": {
+      "evaluated": true,
+      "gatePassed": true,
+      "toleranceFraction": 0.05,
+      "criterion": "candidate median completed-draw FPS must be at least 95% of C03; median of window p95 frame time must not exceed 110% of C03",
+      "status": "inconclusive_within_tolerance",
+      "medianFpsRatio": 1.0138165193434812,
+      "relativeChangePercent": 1.381651934348116,
+      "fpsRegression": false,
+      "latencyRegression": false,
+      "latencyToleranceFraction": 0.1,
+      "medianOfWindowP95Ratio": 1.0027980826842424,
+      "statisticalSignificanceEstablished": false,
+      "physicalPhoneVerified": false,
+      "uncertainty": "three alternating trials of freely evolving driving states on one emulator; FPS differences within 5% and p95 differences within 10% are inconclusive; not a stutter-free or phone certification"
+    },
+    "scope": "same AVD and actual Medio 960x540 target, alternating APK order; free-running driving states, not identical-pose replay, causal isolation or thermal-phone certification",
+    "deterministicEqualityScope": "separate host JNI/geometry/checkpoint and shader tests; this APK probe does not establish deterministic equality",
+    "sources": {
+      "before": {
+        "apkFile": "REVERSE-VELOCITY-4.0-C03-QSSD-GPU.apk",
+        "apkSha256": "b6ddfce4f966e60b69b3113fc09bef92a5d2bce5604a80a2d2ae1d747bb6fde2",
+        "apkBytes": 5125070,
+        "applicationId": "com.reversepc.velocity.c02",
+        "versionCode": 45,
+        "versionName": "4.0.0-c03-qssd",
+        "launcher": "com.reversepc.os.VelocityActivity",
+        "signerCertificateSha256": "cc980acd8a8925b7ea27a6e5d1afc3ee08c23f156565c6eae8f3d21d5d3cc454",
+        "sourceCommit": "6ef42b66b4a55b20582949c19d9a5ed3e65da98f",
+        "sourceHeadCommit": "cb7903bd596f1f0c382d3ba880e47086dfc37014",
+        "sourceTree": null,
+        "workflowRun": "42460861055",
+        "dependencies": {
+          "mundoX": "1f925786522aba91f72707ad1638a8edcdd31a8f",
+          "gpuVirtual": "4cdd47f487cfadbca559dd8c2f5abc0448cd77a7",
+          "qssd": "9fe72bbf0d972d0baad9300971dfaabab5691447"
+        },
+        "identityVerifiedFromApk": true
+      },
+      "after": {
+        "apkFile": "REVERSE-VELOCITY-4.0-C03R.apk",
+        "apkSha256": "3ba8da4fdec9c888071a6a527dafe363107718714a8555fe779fa73d97917e7a",
+        "apkBytes": 5125106,
+        "applicationId": "com.reversepc.velocity.c02",
+        "versionCode": 46,
+        "versionName": "4.0.0-c03r-pipeline",
+        "launcher": "com.reversepc.os.VelocityActivity",
+        "signerCertificateSha256": "cc980acd8a8925b7ea27a6e5d1afc3ee08c23f156565c6eae8f3d21d5d3cc454",
+        "sourceCommit": "e3f029d4ecba213e23c23714f0ac2ffe2438b33a",
+        "sourceHeadCommit": "8300f41c11e14872251d951e65ca7a927b9c2f1a",
+        "sourceTree": "05fe2050fbaa3f824e6ffb6cf1e8e382485e3ea1",
+        "workflowRun": "42467454708",
+        "dependencies": {
+          "mundoX": "1f925786522aba91f72707ad1638a8edcdd31a8f",
+          "gpuVirtual": "4cdd47f487cfadbca559dd8c2f5abc0448cd77a7",
+          "qssd": "9fe72bbf0d972d0baad9300971dfaabab5691447"
+        },
+        "identityVerifiedFromApk": true
+      }
+    },
+    "device": {
+      "model": "Android SDK built for x86_64",
+      "sdk": "35",
+      "hardware": "ranchu",
+      "qemu": "1"
+    },
+    "beforeMedianFps": 6.663863137097533,
+    "afterMedianFps": 6.755934531033553,
+    "medianFpsRatio": 1.0138165193434812,
+    "beforeMedianPssKiB": 85413,
+    "beforePhysicsHzMedian": 50,
+    "beforeMedianOfTrialWindowP50Ms": 148.704,
+    "beforeMedianOfTrialWindowP95Ms": 166.89999999999998,
+    "beforeMaximumWindowP95Ms": 316.453,
+    "afterMedianPssKiB": 83433,
+    "afterPhysicsHzMedian": 50,
+    "afterMedianOfTrialWindowP50Ms": 148.1895,
+    "afterMedianOfTrialWindowP95Ms": 167.36700000000002,
+    "afterMaximumWindowP95Ms": 341.755,
+    "functionalDrivingProbePassed": true,
+    "emulatorMedianAtLeast30Fps": false
+  },
+  "androidPerformanceTrials": [
+    {
+      "name": "before",
+      "round": 0,
+      "drawFps": 6.663863137097533,
+      "frames": 171,
+      "elapsedNanos": 25660791118,
+      "physicsHzMedian": 50,
+      "pipelineMedianOfWindowP50Ms": {
+        "xiP50Ms": 20.790999999999997,
+        "verifyP50Ms": 2.802,
+        "presentP50Ms": 122.746,
+        "totalP50Ms": 148.704,
+        "setupP50Ms": 0.087
+      },
+      "pipelineMedianOfWindowP95Ms": {
+        "xiP95Ms": 32.9305,
+        "totalP95Ms": 168.98000000000002,
+        "setupP95Ms": 0.1255
+      },
+      "memorySamples": [
+        {
+          "phase": "warm",
+          "totalPssKiB": 74111
+        },
+        {
+          "phase": "after-driving",
+          "totalPssKiB": 81949
+        }
+      ]
+    },
+    {
+      "name": "after",
+      "round": 0,
+      "drawFps": 6.755934531033553,
+      "frames": 174,
+      "elapsedNanos": 25755134127,
+      "physicsHzMedian": 50,
+      "pipelineMedianOfWindowP50Ms": {
+        "xiP50Ms": 20.5785,
+        "verifyP50Ms": 2.834,
+        "presentP50Ms": 120.99000000000001,
+        "totalP50Ms": 148.1895,
+        "setupP50Ms": 0.085
+      },
+      "pipelineMedianOfWindowP95Ms": {
+        "xiP95Ms": 31.239,
+        "totalP95Ms": 167.36700000000002,
+        "setupP95Ms": 0.124
+      },
+      "memorySamples": [
+        {
+          "phase": "warm",
+          "totalPssKiB": 97256
+        },
+        {
+          "phase": "after-driving",
+          "totalPssKiB": 83413
+        }
+      ]
+    },
+    {
+      "name": "after",
+      "round": 1,
+      "drawFps": 6.655870818768786,
+      "frames": 171,
+      "elapsedNanos": 25691604398,
+      "physicsHzMedian": 50,
+      "pipelineMedianOfWindowP50Ms": {
+        "xiP50Ms": 20.704,
+        "verifyP50Ms": 2.9405,
+        "presentP50Ms": 124.8175,
+        "totalP50Ms": 149.71800000000002,
+        "setupP50Ms": 0.08499999999999999
+      },
+      "pipelineMedianOfWindowP95Ms": {
+        "xiP95Ms": 34.038,
+        "totalP95Ms": 167.878,
+        "setupP95Ms": 0.129
+      },
+      "memorySamples": [
+        {
+          "phase": "warm",
+          "totalPssKiB": 73131
+        },
+        {
+          "phase": "after-driving",
+          "totalPssKiB": 83433
+        }
+      ]
+    },
+    {
+      "name": "before",
+      "round": 1,
+      "drawFps": 6.578129388232672,
+      "frames": 168,
+      "elapsedNanos": 25539175362,
+      "physicsHzMedian": 50,
+      "pipelineMedianOfWindowP50Ms": {
+        "xiP50Ms": 20.4295,
+        "verifyP50Ms": 2.9505,
+        "presentP50Ms": 125.60050000000001,
+        "totalP50Ms": 152.36700000000002,
+        "setupP50Ms": 0.0835
+      },
+      "pipelineMedianOfWindowP95Ms": {
+        "xiP95Ms": 32.542,
+        "totalP95Ms": 166.89999999999998,
+        "setupP95Ms": 0.1175
+      },
+      "memorySamples": [
+        {
+          "phase": "warm",
+          "totalPssKiB": 74035
+        },
+        {
+          "phase": "after-driving",
+          "totalPssKiB": 85413
+        }
+      ]
+    },
+    {
+      "name": "before",
+      "round": 2,
+      "drawFps": 6.7910842714639275,
+      "frames": 171,
+      "elapsedNanos": 25180073338,
+      "physicsHzMedian": 50,
+      "pipelineMedianOfWindowP50Ms": {
+        "xiP50Ms": 20.13,
+        "verifyP50Ms": 2.8635,
+        "presentP50Ms": 123.24549999999999,
+        "totalP50Ms": 148.5775,
+        "setupP50Ms": 0.084
+      },
+      "pipelineMedianOfWindowP95Ms": {
+        "xiP95Ms": 30.054000000000002,
+        "totalP95Ms": 161.58749999999998,
+        "setupP95Ms": 0.11649999999999999
+      },
+      "memorySamples": [
+        {
+          "phase": "warm",
+          "totalPssKiB": 97166
+        },
+        {
+          "phase": "after-driving",
+          "totalPssKiB": 86075
+        }
+      ]
+    },
+    {
+      "name": "after",
+      "round": 2,
+      "drawFps": 6.795733767938667,
+      "frames": 173,
+      "elapsedNanos": 25457147956,
+      "physicsHzMedian": 50,
+      "pipelineMedianOfWindowP50Ms": {
+        "xiP50Ms": 21.049999999999997,
+        "verifyP50Ms": 2.7824999999999998,
+        "presentP50Ms": 118.072,
+        "totalP50Ms": 147.712,
+        "setupP50Ms": 0.084
+      },
+      "pipelineMedianOfWindowP95Ms": {
+        "xiP95Ms": 34.239999999999995,
+        "totalP95Ms": 162.18349999999998,
+        "setupP95Ms": 0.1195
+      },
+      "memorySamples": [
+        {
+          "phase": "warm",
+          "totalPssKiB": 96138
+        },
+        {
+          "phase": "after-driving",
+          "totalPssKiB": 83811
+        }
+      ]
+    }
+  ],
+  "hostComponentComparison": {
+    "passed": true,
+    "hostOnly": true,
+    "physicalPhoneVerified": false,
+    "fpsMeasured": false,
+    "scope": "desktop JVM publish/plan/confirm using prebuilt geometry; excludes native XI, JNI, GLES, drawing and phone FPS",
+    "sources": {
+      "before": "cb7903bd596f1f0c382d3ba880e47086dfc37014",
+      "after": "e3f029d4ecba213e23c23714f0ac2ffe2438b33a",
+      "benchmarkSha256": "afa328161c0bb776e7fd96737d779a8b1cbce4045f2d766f9dd696721f05b7ba"
+    },
+    "medianOfTrials": {
+      "before": {
+        "unchanged": {
+          "wallNsPerFrame": 130.866,
+          "threadCpuNsPerFrame": 133.73,
+          "allocatedBytesPerFrame": 2112.018
+        },
+        "moving_vertices": {
+          "wallNsPerFrame": 1793.022,
+          "threadCpuNsPerFrame": 1238.439,
+          "allocatedBytesPerFrame": 4248.005
+        },
+        "palette_changes": {
+          "wallNsPerFrame": 355.306,
+          "threadCpuNsPerFrame": 355.488,
+          "allocatedBytesPerFrame": 3240.0
+        },
+        "atlas_changes": {
+          "wallNsPerFrame": 1872.548,
+          "threadCpuNsPerFrame": 1839.143,
+          "allocatedBytesPerFrame": 4248.0
+        }
+      },
+      "after": {
+        "unchanged": {
+          "wallNsPerFrame": 61.849,
+          "threadCpuNsPerFrame": 64.211,
+          "allocatedBytesPerFrame": 0.018
+        },
+        "moving_vertices": {
+          "wallNsPerFrame": 712.054,
+          "threadCpuNsPerFrame": 135.766,
+          "allocatedBytesPerFrame": 128.005
+        },
+        "palette_changes": {
+          "wallNsPerFrame": 616.69,
+          "threadCpuNsPerFrame": 616.931,
+          "allocatedBytesPerFrame": 1200.0
+        },
+        "atlas_changes": {
+          "wallNsPerFrame": 2274.077,
+          "threadCpuNsPerFrame": 2273.251,
+          "allocatedBytesPerFrame": 2192.0
+        }
+      }
+    }
+  },
+  "nativeAndGraphics": {
+    "pixelEquivalence": {
+      "passed": true,
+      "hostOnly": true,
+      "physicalPhoneFpsMeasured": false,
+      "artifactFile": "compact-gpu/gpu-virtual-pixel-equivalence.json",
+      "identicalPixelPairs": 16
+    },
+    "qssdJniEquivalence": {
+      "passed": true,
+      "original_source": "665742aa9310314242271ea51f9294d07a97b4c4",
+      "hostOnly": true,
+      "physicalPhoneMeasured": false,
+      "unchanged_assets_relative_to": "cb7903bd596f1f0c382d3ba880e47086dfc37014",
+      "both_implementations_use_same_current_assets": true,
+      "scope": "same XI driving and view trace; all geometry, shader state, native RVPC2 and packed GPU bytes exact; host CPU/JNI stages, not drawing FPS",
+      "artifactFile": "qssd/qssd-equivalence.json"
+    },
+    "qssdCheckpoint": {
+      "passed": true,
+      "checks": 31,
+      "resources": 20,
+      "checkpointBytes": 2707915,
+      "artifactFile": "qssd/complete-state/state-space-jni.json"
+    },
+    "gameplay": {
+      "passed": true,
+      "checks": 26720,
+      "sectors": 8,
+      "traversalTicks": 4940,
+      "contacts": 0,
+      "offroadTicks": 0,
+      "roadLengthM": 1600,
+      "roadWidthM": 3.6,
+      "reverseModes": 3,
+      "bridgeSides": 2,
+      "androidDeviceMeasured": false,
+      "artifactFile": "gameplay/results.json"
+    },
+    "reliability": {
+      "passed": true,
+      "poses": 60,
+      "physicsTicks": 2880,
+      "pixelComparisons": 60,
+      "unsigned16Failures": 0,
+      "phoneMeasured": false,
+      "artifactFile": "reliability-results.json"
+    },
+    "trailDriving": {
+      "inputDriver": "closed-loop analog and pedals; Manual; no movement injection after spawn",
+      "passed": true,
+      "ticks": 13981,
+      "contacts": 0,
+      "physicalPhoneMeasured": false,
+      "artifactFile": "trail-driving-results.json"
+    },
+    "powertrain": {
+      "passed": true,
+      "fixture": "XI straight asphalt dynamometer, 50 Hz",
+      "old0to100Seconds": 2.72,
+      "new0to100Seconds": 6.12,
+      "oldSpeedAfter1sKmh": 37.368,
+      "newSpeedAfter1sKmh": 14.796,
+      "automaticGears": 6,
+      "checks": 25265,
+      "physicalPhoneMeasured": false,
+      "artifactFile": "powertrain/powertrain-results.json"
+    },
+    "concurrentSession": {
+      "passed": true,
+      "hostOnly": true,
+      "phoneFpsMeasured": false,
+      "pairedTicks": 90,
+      "concurrentReads": 500,
+      "checkpointBytes": 290014,
+      "rvpc2Exact": true,
+      "geometryExact": true,
+      "beforeTransactionP50Ms": 21.6654,
+      "afterTransactionP50Ms": 1.01575,
+      "beforeGeometryP50Ms": 36.2553,
+      "afterGeometryP50Ms": 8.0575,
+      "artifactFile": "live-session-ab.json"
+    },
+    "shaderProfiles": {
+      "passed": true,
+      "hostOnly": true,
+      "fixedWidth": 640,
+      "fixedHeight": 360,
+      "artifactFile": "quality-profiles/shader-profiles.json",
+      "profileCount": 5
+    }
+  }
+}
