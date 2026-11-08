@@ -82,7 +82,20 @@ void main(){
     if((base>=9.0&&base<24.0)||(base>=40.0&&base<56.0)){
 #endif
         vec3 groundNormal=cross(dFdx(vPosition),dFdy(vPosition));float groundLight=abs(dot(groundNormal,uSunDirection))*inversesqrt(max(1e-12,dot(groundNormal,groundNormal)));rgb*=.78+.22*groundLight;
-        if(base>=12.0&&base<20.0&&uQuality>=3){float patches=noise(uv*.025);rgb*=.78+patches*.35+hash(floor(uv*1.6))*.055;}
+        // C02: fixed meadow regions anchored to authored XI terrain UVs.
+        // No player-following grass meshes, and no per-frame grass allocation.
+        if(base>=12.0&&base<20.0){
+            float region=fbm(uv*.008+vec2(11.7,-5.3));
+            float meadow=smoothstep(.37,.68,region);
+            float fine=uQuality>=3?noise(uv*.13)*.12:0.0;
+            vec3 moss=rgb*vec3(.68,.90,.58);
+            vec3 grass=rgb*vec3(.83,1.08,.72);
+            rgb=mix(rgb,mix(moss,grass,noise(uv*.035)),meadow*(.24+fine));
+            if(uQuality>=4){
+                float blades=hash(floor(uv*.9));
+                rgb*=.94+.11*blades*meadow;
+            }
+        }
         if(base>=9.0&&base<12.0){
             if(uQuality>=3)rgb*=.78+hash(floor(uv*3.7))*.12+noise(uv*.06)*.25;
             else rgb*=.9+hash(floor(uv*3.7))*.08;

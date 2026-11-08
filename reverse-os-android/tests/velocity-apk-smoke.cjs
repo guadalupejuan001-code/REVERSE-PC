@@ -8,7 +8,7 @@ const assert=require('node:assert/strict');
 assert(process.argv.length===4,'velocity-apk-smoke.cjs ADB OUTPUT_DIRECTORY');
 const adb=process.argv[2].includes('/')?path.resolve(process.argv[2]):process.argv[2];
 const out=path.resolve(process.argv[3]);
-const pkg='com.reversepc.velocity',component=pkg+'/com.reversepc.os.VelocityActivity';
+const pkg='com.reversepc.velocity.c02',component=pkg+'/com.reversepc.os.VelocityActivity';
 const begin=Date.now(),deadline=begin+240000;
 fs.mkdirSync(out,{recursive:true});
 let checks=0,stage='initial',lastXml='',lastLogs='',initialMarker='',resumedMarker='';

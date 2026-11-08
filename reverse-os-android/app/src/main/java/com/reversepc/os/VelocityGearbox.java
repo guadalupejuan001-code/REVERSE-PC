@@ -34,8 +34,10 @@ final class VelocityGearbox {
     /** Bits 0..6 retain pedal input; bit 7 publishes the selected direction. */
     synchronized int prepare(int rawInput,int observedSpeedCmps){
         settle(observedSpeedCmps);
-        // A request made while moving holds the actual XI brake until stopped.
-        // Holding the accelerator cannot counteract this requested gear change.
+        // An intentional accelerator press cancels a queued direction change.
+        // Never silently keep the brake locked while the driver asks to move.
+        // Reverse still requires an actual stop; gas does not engage reverse.
+        if(requested>=0 && (rawInput&1)!=0 && (rawInput&2)==0)requested=-1;
         int controls=requested<0?rawInput:(rawInput&12)|2;
         return (controls&127)|(reverse?128:0);
     }

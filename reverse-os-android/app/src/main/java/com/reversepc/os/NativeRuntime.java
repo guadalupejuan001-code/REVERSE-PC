@@ -24,6 +24,8 @@ public final class NativeRuntime {
     public static native void sessionBookmark(long session,String name);
     public static native long sessionRewind(long session,String name);
     public static native void releaseThreadScratch();
+    /** Original XGPU-C12 kernel produces GLSL material uniforms once per GLES frame. */
+    static native float[] velocityC12Frame(int wetness,int waterDepthCm,int ticks,int ambientMode,long qssdPublication);
     static { System.loadLibrary("reverse_os"); }
     private NativeRuntime() {}
     public static native byte[] initialize();

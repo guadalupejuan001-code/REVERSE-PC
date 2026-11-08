@@ -1,10 +1,10 @@
 {
   "repository": "guadalupejuan001-code/Virtual-qSSD-",
-  "commit": "c9dc0ebf3370a4468e14df92fcebb2a90954c448",
+  "commit": "9fe72bbf0d972d0baad9300971dfaabab5691447",
   "upstreamPath": "include/qssd/shared_projection.hpp",
   "vendoredPath": "src/qssd/shared_projection.hpp",
   "baselineVelocityCommit": "bd2e74779f0fc57e4bb730d32f64bd59e73c6385",
-  "scope": "C03 complete native CPU/resource/component/GPU-dependency state authority, version history, bookmarks, forks and QSB3 archives; JNI projections remain explicit",
+  "scope": "C03 complete native CPU/resource/component/GPU-dependency state authority, version history, bookmarks, forks and QSB3 archives; JNI projections remain explicit; C06 GPU C12 verified upstream and original C05 Bell available, gameplay currently uses pinned C03 projection ABI",
   "sha256": "0429bafc17ec9dfd346ef1e63376a479fcbd48d77a3751214ed00ef4f0290ad4",
   "files": [
     {

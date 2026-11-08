@@ -2,7 +2,7 @@
 'use strict';
 // Real installed APK, native UI input, completed GPU target readbacks and live XI driving.
 const cp=require('node:child_process'),fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
-const [adb='adb',out='build/velocity-ui']=process.argv.slice(2),pkg='com.reversepc.velocity',component=pkg+'/com.reversepc.os.VelocityActivity';
+const [adb='adb',out='build/velocity-ui']=process.argv.slice(2),pkg='com.reversepc.velocity.c02',component=pkg+'/com.reversepc.os.VelocityActivity';
 fs.mkdirSync(out,{recursive:true});const deadline=Date.now()+420000,children=[];
 let stage='launch',lastXml='',checks=0,menuControl=null,worldControl=null;
 const report={passed:false,emulator:true,physicalPhoneVerified:false,checks:[],profiles:[],screens:[]};
@@ -69,6 +69,8 @@ function hold(n,ms){const [x,y]=point(n);run(['shell','input','swipe',String(x),
 try{
  run(['shell','am','force-stop',pkg]);run(['logcat','-c']);run(['shell','am','start','-W','-n',component]);
  waitFor(()=>/GPU_PRESET_PIXELS preset=2 .*width=960 height=540/.test(logs())&&/GPU_FRAME_READY source=XI_XFG4/.test(logs()),'default medium pixels',60000);
+ waitFor(()=>/GPU_C12_EXECUTED frames=1 profile=C12 host=CPU steps=[1-9][0-9]* .*qssdPublication=[0-9]+ output=material_uniforms GLES=presenter/.test(logs()),'real XGPU-C12 interpreter runs in installed Android renderer',60000);
+ check(true,'original XGPU-C12 per-frame material kernel is active');
  sleep(600); // Let Android finish presenting its first immersive-mode window.
  key('KEYCODE_P');let nodes=ui();
  menuControl=nodes.find(n=>n['content-desc']==='Abrir menú');worldControl=nodes.find(n=>n['content-desc']?.startsWith('Cámara 3D'));
@@ -137,6 +139,12 @@ try{
  waitFor(()=>/ORBIT_INPUT yaw=/.test(logs()),'physical orbit gesture');key('KEYCODE_C');
  stage='reverse';key('KEYCODE_R');run(['shell','input','keycombination','-t','4500','KEYCODE_W','KEYCODE_SHIFT_LEFT'],false,12000);key('KEYCODE_G');
  check(/GEAR_REQUEST reverse=true/.test(logs()),'gear request reaches the real gearbox');
+ // C02: throttle intentionally cancels a pending D/R request so the car never
+ // feels immobilized. Brake to a real stop to engage R, then accelerate.
+ const reverseBrakeMark=logs().length;
+ run(['shell','input','keycombination','-t','2700','KEYCODE_S','KEYCODE_SHIFT_LEFT'],false,10000);sleep(600);
+ waitFor(()=>frames(logs().slice(reverseBrakeMark)).some(x=>x.reverse&&x.speed===0),
+         'reverse engages only after braking to a real stop');
  const mark=logs().length;run(['shell','input','keycombination','-t','12000','KEYCODE_W','KEYCODE_SHIFT_LEFT'],false,22000);sleep(1000);
  const reverse=frames(logs().slice(mark)).filter(x=>x.reverse&&x.speed>0);
  check(reverse.length>=2&&Math.max(...reverse.map(x=>x.zCm))-reverse.at(-1).zCm>100,'car physically reverses by over one metre');

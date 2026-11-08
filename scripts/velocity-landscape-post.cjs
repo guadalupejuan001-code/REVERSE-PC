@@ -89,7 +89,7 @@ function finishScene(content,options={}){
    'XI vertex metadata extension');
  // Dense roadside grove: 32 cedars, 4 boulders and 4 underbrush clusters.
  const choose=['localget r0 3120','mod r0 10','cmp r0 7','je nature_rock_model','cmp r0 8','je nature_rock_model',
-   'cmp r0 9','je nature_grass_model',
+   'cmp r0 9','je nature_rock_model',
    'set r0 '+TREE_START,'mov r9 r0','localset 132 r9',
    'set r0 '+ROCK_START,'mov r9 r0','localset 134 r9','jmp nature_model_ready',
    'label nature_rock_model',
@@ -127,7 +127,7 @@ function finishScene(content,options={}){
  if(28*11+8*rockFaces.length+4*grassFaces.length!==436)
   throw Error('Forest triangle budget is not bounded');
  const full=['label emit_tree','localget r0 3120','mod r0 10','cmp r0 7','je nature_emit_rock','cmp r0 8',
-   'je nature_emit_rock','cmp r0 9','je nature_emit_grass',
+   'je nature_emit_rock','cmp r0 9','je nature_emit_rock',
    ...canopyFaces,'localget r0 112','sub r0 1000000','cmp r0 12000','jgt next_actor',...groveFaces.slice(5),'jmp next_actor','label nature_emit_rock',
    ...rockFaces,'jmp next_actor','label nature_emit_grass',
    ...grassFaces].join('\n');

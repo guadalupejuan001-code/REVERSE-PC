@@ -1,0 +1,66 @@
+name: Velocity C02 - gearbox, meadow and core locks
+on:
+  push:
+    branches: [feature/velocity-c02-qssd-c12-pastures-drivability-20261107]
+  pull_request:
+    branches: [feature/velocity-c01-driving-20261106]
+permissions: {contents: read}
+jobs:
+  c02:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/GPU-VIRTUAL
+          ref: 4cdd47f487cfadbca559dd8c2f5abc0448cd77a7
+          path: deps/gpu-virtual
+          sparse-checkout: include
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '17'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Validate emulator smoke harness syntax
+        run: |
+          node --check reverse-os-android/tests/velocity-graphics-ui-smoke.cjs
+          node --check reverse-os-android/tests/velocity-state-space-smoke.cjs
+          node --check reverse-os-android/tests/velocity-performance-ab.cjs
+      - name: Compile and exercise real gearbox logic
+        run: |
+          mkdir -p build/velocity-c02
+          javac -d build/velocity-c02 \
+            reverse-os-android/app/src/main/java/com/reversepc/os/VelocityGearbox.java \
+            reverse-os-android/tests/VelocityGearboxTest.java
+          java -cp build/velocity-c02 com.reversepc.os.VelocityGearboxTest
+      - name: Verify generated XI grass retirement and shader zones
+        run: |
+          node - <<'JS'
+          const fs=require('fs'),assert=require('assert');
+          const base='reverse-os-android/app/src/main/assets/velocity/';
+          for(const name of ['render.xi','render4k.xi','render-live.xi','render-native4k.xi']){
+            const xi=fs.readFileSync(base+name,'utf8');
+            assert(xi.includes('cmp r0 9\nje nature_rock_model'));
+            assert(!xi.includes('cmp r0 9\nje nature_grass_model'));
+            assert(!xi.includes('je nature_emit_grass'),'unset grass mesh must never be selected');
+          }
+          const shader=fs.readFileSync(base+'gpu-scene.frag','utf8');
+          for(const token of ['fixed meadow regions','fbm(uv*.008','uQuality>=4','vec3 moss','vec3 grass'])
+            assert(shader.includes(token),'Missing shader feature: '+token);
+          const script=fs.readFileSync('scripts/velocity-landscape-post.cjs','utf8');
+          assert(script.includes("'je nature_rock_model'"));
+          console.log('VELOCITY_C02_MEADOW_PASS');
+          JS
+      - name: Verify exact vendored GPU C12 / qSSD C06 transport ABI
+        run: |
+          node scripts/check-velocity-gpu-virtual.cjs
+          node scripts/check-velocity-qssd.cjs
+
+      - name: Execute real XGPU-C12 material kernel against independent float32 reference
+        run: |
+          g++ -std=c++20 -O2 -Wall -Wextra -pedantic -I deps/gpu-virtual/include \
+            -I reverse-os-android/app/src/main/cpp \
+            reverse-os-android/app/src/main/cpp/velocity_c12_frame.cpp \
+            reverse-os-android/tests/velocity-c12-frame.cpp \
+            -o build/velocity-c02/velocity-c12-frame
+          build/velocity-c02/velocity-c12-frame
