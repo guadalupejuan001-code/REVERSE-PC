@@ -5,7 +5,7 @@
 const cp=require('node:child_process'),fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 assert(process.argv.length===6,'velocity-performance-ab.cjs ADB BASELINE_APK CANDIDATE_APK OUTPUT');
 const [adb,before,after,out]=process.argv.slice(2);
-const packageFor=name=>name==='before'?'com.reversepc.velocity':'com.reversepc.velocity.c02';
+const packageFor=name=>name==='before'?'com.reversepc.velocity':'com.reversepc.velocity.c04';
 fs.mkdirSync(out,{recursive:true});
 const sleep=ms=>Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,ms);
 function run(args,timeout=30000){const r=cp.spawnSync(adb,args,{encoding:'utf8',timeout,maxBuffer:20*1024*1024});assert.ifError(r.error);assert.equal(r.status,0,String(r.stderr));return r.stdout;}

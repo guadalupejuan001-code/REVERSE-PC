@@ -17,6 +17,7 @@ int main(){
         for(auto ambient:{0u,1u,2u}){
           auto frame=velocity_c12::evaluate({wet,water,ticks,ambient});
           assert(frame.steps>=9 && frame.relation_nodes>0);
+          assert(frame.shared_source && frame.qssd_revision>0);
           close_to(frame.values[0],float(wet)*.001f);
           close_to(frame.values[1],float(water));
           close_to(frame.values[2],float(ticks)*.02f);
@@ -29,5 +30,8 @@ int main(){
   assert(rejected);
   assert(velocity_c12::evaluate({0,0,200,0}).values[0]!=
          velocity_c12::evaluate({1000,0,200,0}).values[0]);
+  const auto once=velocity_c12::evaluate({777,17,333,1});
+  const auto twice=velocity_c12::evaluate({777,17,333,1});
+  assert(twice.reused && once.qssd_revision==twice.qssd_revision && once.values==twice.values);
   std::cout<<"VELOCITY_C12_REAL_EXECUTION_PASS cases="<<cases<<" profile=C12\n";
 }

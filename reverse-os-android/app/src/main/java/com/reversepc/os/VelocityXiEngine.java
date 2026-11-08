@@ -93,6 +93,8 @@ final class VelocityXiEngine {
     private final Object gpuStateLock=new Object();
     private RegraphicsGeometry retainedGpuGeometry;
     private long retainedGpuIdentity,retainedGpuRevision;
+    private int retainedPalettePhase=-1;
+    private int[] retainedPalette;
     private long qssdFrames,qssdExecutions,qssdProjectionBytes,qssdGeometryBytes,qssdSharedDeliveries;
     private static final int[] GPU_ADDRESSES={200,201,202,203,204,205,206,207,141};
     private int renderProgramKey=-1,driveProgramKey=-1;
@@ -285,7 +287,11 @@ final class VelocityXiEngine {
             retainedGpuGeometry:RegraphicsGeometry.decodeShared(packet.frame);
         retainedGpuGeometry=geometry;
         retainedGpuIdentity=packet.identity;retainedGpuRevision=packet.revision;
-        int[] colors=VelocityWorldLight.palette(palette,paletteDusk,paletteNight,state.dayPhase);
+        if(retainedPalette==null||retainedPalettePhase!=state.dayPhase){
+            retainedPalette=VelocityWorldLight.palette(palette,paletteDusk,paletteNight,state.dayPhase);
+            retainedPalettePhase=state.dayPhase;
+        }
+        int[] colors=retainedPalette;
         qssdFrames++;qssdExecutions+=packet.executed?1:0;qssdProjectionBytes+=packet.materializedBytes;
         qssdGeometryBytes+=packet.frame.limit();qssdSharedDeliveries+=packet.materializedBytes==0?1:0;
         if(qssdFrames%60==0)android.util.Log.i("ReverseVelocity","QSSD_LINK frames="+qssdFrames+

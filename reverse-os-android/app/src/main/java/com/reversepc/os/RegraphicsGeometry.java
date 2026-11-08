@@ -40,6 +40,7 @@ final class RegraphicsGeometry {
     static int u16(byte[] b,int n){return (b[n]&255)|((b[n+1]&255)<<8);}
     static int i32(byte[] b,int n){return (b[n]&255)|((b[n+1]&255)<<8)|((b[n+2]&255)<<16)|(b[n+3]<<24);}
     static void require(boolean ok,String why){if(!ok)throw new IllegalArgumentException("REgraphics XFG4: "+why);}
+    ByteBuffer qssdSourceView(){return source.asReadOnlyBuffer().order(ByteOrder.LITTLE_ENDIAN);}
     byte byteAt(int at){return source.get(at);}
     void copyBytes(int from,byte[] target,int offset,int length){
         ByteBuffer view=source.duplicate();view.position(from);view.limit(from+length);view.get(target,offset,length);

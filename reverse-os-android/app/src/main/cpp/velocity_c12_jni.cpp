@@ -20,13 +20,14 @@ Java_com_reversepc_os_NativeRuntime_velocityC12Frame(
     if(env->ExceptionCheck())return nullptr;
     static std::atomic<std::uint64_t> frames{0};
     auto count=++frames;
-    if(count==1||count%120==0)
+    if(!result.reused && (count==1||count%120==0))
       __android_log_print(ANDROID_LOG_INFO,"ReverseVelocity",
-        "GPU_C12_EXECUTED frames=%llu profile=C12 host=CPU steps=%llu relationNodes=%llu qssdPublication=%lld output=material_uniforms GLES=presenter",
+        "GPU_C12_EXECUTED frames=%llu profile=C12 host=CPU steps=%llu relationNodes=%llu qssdPublication=%lld output=material_uniforms GLES=presenter qssdSourceShared=%s qssdFieldRevision=%llu",
         static_cast<unsigned long long>(count),
         static_cast<unsigned long long>(result.steps),
         static_cast<unsigned long long>(result.relation_nodes),
-        static_cast<long long>(publication));
+        static_cast<long long>(publication), result.shared_source?"true":"false",
+        static_cast<unsigned long long>(result.qssd_revision));
     return array;
   }catch(const std::exception& failure){
     if(!env->ExceptionCheck()){

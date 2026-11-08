@@ -9,7 +9,7 @@ assert(surface.includes('game.observeGpuFrame(')&&surface.includes('ahead.acquir
 assert(gpu.includes('g.compact(vertices)')&&gpu.includes('gpu-scene.frag')&&gpu.includes('x.gpu.virtual.CompactTriangleStream'),'GPU-VIRTUAL shared exact transport and own REgraphics shaders consume XI triangles');
 const bus=read('VelocityQssdGraphicsBridge.java');
 assert(gpu.includes('qssd.publish(')&&gpu.includes('qssd.plan(')&&gpu.includes('qssd.confirm(plan)')&&
-       gpu.includes('glTexSubImage2D(')&&bus.includes('sourceRevision')&&bus.includes('contextLost()'),
+       gpu.includes('glTexSubImage2D(')&&bus.includes('nativePublish(')&&bus.includes('nativePlan(')&&bus.includes('contextLost()'),
        'qSSD versioned bridge must own all geometry, palette and atlas GLES transfers');
 assert(geometry.includes('XFG4')&&geometry.includes('face budget or length')&&geometry.includes('vertex bounds'),'strict bounded geometry validation required');
 assert(!/threejs|three\.js|babylon|UnityPlayer|Unreal|filament/i.test(engine+surface+gpu),'no external game engine replaces REgraphics/XI');

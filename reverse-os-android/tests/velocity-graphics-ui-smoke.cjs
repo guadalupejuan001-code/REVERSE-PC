@@ -2,7 +2,7 @@
 'use strict';
 // Real installed APK, native UI input, completed GPU target readbacks and live XI driving.
 const cp=require('node:child_process'),fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
-const [adb='adb',out='build/velocity-ui']=process.argv.slice(2),pkg='com.reversepc.velocity.c02',component=pkg+'/com.reversepc.os.VelocityActivity';
+const [adb='adb',out='build/velocity-ui']=process.argv.slice(2),pkg='com.reversepc.velocity.c04',component=pkg+'/com.reversepc.os.VelocityActivity';
 fs.mkdirSync(out,{recursive:true});const deadline=Date.now()+420000,children=[];
 let stage='launch',lastXml='',checks=0,menuControl=null,worldControl=null;
 const report={passed:false,emulator:true,physicalPhoneVerified:false,checks:[],profiles:[],screens:[]};
@@ -74,6 +74,8 @@ try{
  waitFor(()=>/QSSD_GPU_BRIDGE_ACTIVE source=XI_XFG4 identity=[0-9]+ revision=[0-9]+ .*route=REgraphics_QSSD_GLES/.test(logs()),
          'qSSD versioned graphics bridge is active in the installed Android renderer',60000);
  check(true,'GLES presents qSSD leased geometry and material resources');
+ check(/component=QSSD_NATIVE adapter=JNI/.test(logs()),'native original QSSD owns the graphics port');
+ check(/qssdSourceShared=true/.test(logs()),'C12Window consumes the QSSD pointer');
  sleep(600); // Let Android finish presenting its first immersive-mode window.
  key('KEYCODE_P');let nodes=ui();
  menuControl=nodes.find(n=>n['content-desc']==='Abrir menú');worldControl=nodes.find(n=>n['content-desc']?.startsWith('Cámara 3D'));
