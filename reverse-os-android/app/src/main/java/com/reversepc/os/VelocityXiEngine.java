@@ -112,16 +112,16 @@ final class VelocityXiEngine {
         final int payloadBytes;
         final RegraphicsGeometry geometry;
         final int[] colors;
-        final long qssdIdentity,qssdRevision; // Exact native XFG4 SharedProjection revision.
+        final long qssdIdentity,qssdRevision,qssdSession; // Native lease plus session epoch.
         Observation(RegraphicsFrame frame,Snapshot state,long executeNanos,
                     long decodeNanos,int payloadBytes){
             this.frame=frame;this.state=state;
             this.executeNanos=executeNanos;this.decodeNanos=decodeNanos;
             this.payloadBytes=payloadBytes;
-            geometry=null;colors=null;qssdIdentity=0;qssdRevision=0;
+            geometry=null;colors=null;qssdIdentity=0;qssdRevision=0;qssdSession=0;
         }
-        Observation(RegraphicsGeometry geometry,int[] colors,Snapshot state,long executeNanos,long decodeNanos,int bytes,long identity,long revision){
-            frame=null;this.geometry=geometry;this.colors=colors;this.state=state;this.executeNanos=executeNanos;this.decodeNanos=decodeNanos;payloadBytes=bytes;qssdIdentity=identity;qssdRevision=revision;
+        Observation(RegraphicsGeometry geometry,int[] colors,Snapshot state,long executeNanos,long decodeNanos,int bytes,long identity,long revision,long session){
+            frame=null;this.geometry=geometry;this.colors=colors;this.state=state;this.executeNanos=executeNanos;this.decodeNanos=decodeNanos;payloadBytes=bytes;qssdIdentity=identity;qssdRevision=revision;qssdSession=session;
         }
     }
 
@@ -277,7 +277,8 @@ final class VelocityXiEngine {
             throw new IllegalArgumentException("XI GPU view controls outside range");
         final byte[] inputs={1,(byte)camera,(byte)paint,(byte)car,(byte)yaw,(byte)(yaw>>>8),(byte)pitch,(byte)(pitch>>>8),1};
         long start=System.nanoTime();
-        XiSharedGeometryPacket packet=NativeRuntime.sessionObserveSharedGeometryView(liveSession,GPU_ADDRESSES,inputs,quality,viewState);
+        long sessionHandle=liveSession;
+        XiSharedGeometryPacket packet=NativeRuntime.sessionObserveSharedGeometryView(sessionHandle,GPU_ADDRESSES,inputs,quality,viewState);
         long execute=System.nanoTime()-start;start=System.nanoTime();
         Snapshot state=observedState(packet.output,packet.publication);
         RegraphicsGeometry geometry=retainedGpuGeometry!=null&&retainedGpuIdentity==packet.identity&&retainedGpuRevision==packet.revision?
@@ -293,7 +294,7 @@ final class VelocityXiEngine {
         // The numeric register observation is ASCII. Count its envelope and the
         // explicit physical projection, rather than reporting fictional zero I/O.
         int projected=(int)packet.materializedBytes+packet.output.length()+40;
-        return new Observation(geometry,colors,state,execute,System.nanoTime()-start,projected,packet.identity,packet.revision);
+        return new Observation(geometry,colors,state,execute,System.nanoTime()-start,projected,packet.identity,packet.revision,sessionHandle);
     }
     Observation observeFrame(int stride,int camera,int paint)throws Exception{
         return observeFrame(stride,camera,paint,0);

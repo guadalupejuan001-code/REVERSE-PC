@@ -25,7 +25,7 @@ public final class VelocityQssdGraphicsBridgeTest {
         VelocityQssdGraphicsBridge bus=new VelocityQssdGraphicsBridge();
         RegraphicsGeometry firstGeometry=geometry(100,2);
         int[] colors=new int[256];Arrays.fill(colors,0x335577);
-        VelocityQssdGraphicsBridge.Frame first=bus.publish(firstGeometry,colors,10,1);
+        VelocityQssdGraphicsBridge.Frame first=bus.publish(firstGeometry,colors,100,10,1);
         colors[5]=0xabcdef;
         check(first.palette[5]==0x335577,"qSSD palette was not immutable");
         VelocityQssdGraphicsBridge.Plan p=bus.plan(first);
@@ -36,9 +36,9 @@ public final class VelocityQssdGraphicsBridgeTest {
         bus.confirm(p);
         check(bus.plan(first).paletteRanges.length==0&&!bus.plan(first).geometryDirty,"identical frame uploaded twice");
         int[] same=new int[256];Arrays.fill(same,0x335577);
-        check(bus.publish(firstGeometry,same,10,1)==first,"unchanged qSSD lease not reused");
+        check(bus.publish(firstGeometry,same,100,10,1)==first,"unchanged qSSD lease not reused");
         same[5]=0x776655;same[6]=0x123456;same[15]=0x005522;
-        VelocityQssdGraphicsBridge.Frame changed=bus.publish(firstGeometry,same,10,1);
+        VelocityQssdGraphicsBridge.Frame changed=bus.publish(firstGeometry,same,100,10,1);
         p=bus.plan(changed);
         check(!p.geometryDirty&&p.changedPaletteTexels()==3&&p.paletteRanges.length==4,"palette partial ranges incorrect");
         check(p.paletteRanges[0]==5&&p.paletteRanges[1]==2&&p.paletteRanges[2]==15&&p.paletteRanges[3]==1,
@@ -46,7 +46,7 @@ public final class VelocityQssdGraphicsBridgeTest {
         check(p.changedAtlasRows()==0,"palette changes re-uploaded atlas");
         bus.confirm(p);
         RegraphicsGeometry changedGeometry=geometry(110,3);
-        VelocityQssdGraphicsBridge.Frame next=bus.publish(changedGeometry,same,10,2);
+        VelocityQssdGraphicsBridge.Frame next=bus.publish(changedGeometry,same,100,10,2);
         p=bus.plan(next);
         check(p.geometryDirty&&p.paletteRanges.length==0&&p.changedAtlasRows()==1&&
               (p.atlasRowsMask&(1<<4))!=0,"atlas row delta did not follow qSSD revision");
@@ -59,9 +59,17 @@ public final class VelocityQssdGraphicsBridgeTest {
               bus.plan(next).changedPaletteTexels()==256,"context reset failed to force re-upload");
         bus.confirm(bus.plan(next));
         boolean stale=false;
-        try{bus.publish(firstGeometry,same,10,1);}catch(IllegalArgumentException expected){stale=true;}
+        try{bus.publish(firstGeometry,same,100,10,1);}catch(IllegalArgumentException expected){stale=true;}
         check(stale,"stale native qSSD revision was accepted");
-        check(bus.uploadCommits()==4,"unexpected GLES upload commit accounting");
+        RegraphicsGeometry restored=geometry(110,3);
+        VelocityQssdGraphicsBridge.Frame resumed=bus.publish(restored,same,101,10,1);
+        VelocityQssdGraphicsBridge.Plan afterRestart=bus.plan(resumed);
+        check(afterRestart.geometryDirty,"new qSSD session reused stale GPU resources");
+        bus.confirm(afterRestart);
+        boolean oldSession=false;
+        try{bus.publish(changedGeometry,same,100,10,3);}catch(IllegalArgumentException expected){oldSession=true;}
+        check(oldSession,"qSSD accepted an obsolete native session after restore");
+        check(bus.uploadCommits()==5,"unexpected GLES upload commit accounting");
         System.out.println("QSSD_GLES_BRIDGE_PASS paletteDeltas=3 atlasRows=1 rollback=PASS contextReset=PASS revisions=PASS");
     }
 }

@@ -11,13 +11,13 @@ import java.util.Arrays;
 final class VelocityQssdGraphicsBridge {
     private static final int PALETTE=256,ATLAS_ROWS=16,ATLAS_ROW=128;
     static final class Frame {
-        final long serial,sourceIdentity,sourceRevision,paletteRevision,atlasRevision;
+        final long serial,sourceSession,sourceIdentity,sourceRevision,paletteRevision,atlasRevision;
         final RegraphicsGeometry geometry;
         final int[] palette;
         final byte[] atlas; // 128 x 16 texels, unlike XI's tile-major layout.
-        private Frame(long serial,long identity,long revision,long paletteRevision,long atlasRevision,
+        private Frame(long serial,long session,long identity,long revision,long paletteRevision,long atlasRevision,
                       RegraphicsGeometry geometry,int[] palette,byte[] atlas) {
-            this.serial=serial;sourceIdentity=identity;sourceRevision=revision;
+            this.serial=serial;sourceSession=session;sourceIdentity=identity;sourceRevision=revision;
             this.paletteRevision=paletteRevision;this.atlasRevision=atlasRevision;
             this.geometry=geometry;this.palette=palette;this.atlas=atlas;
         }
@@ -49,15 +49,16 @@ final class VelocityQssdGraphicsBridge {
         return result;
     }
     /** Only a validated qSSD geometry lease may be published to GLES. */
-    synchronized Frame publish(RegraphicsGeometry geometry,int[] palette,long identity,long revision){
+    synchronized Frame publish(RegraphicsGeometry geometry,int[] palette,long session,long identity,long revision){
         need(geometry!=null&&palette!=null&&palette.length==PALETTE,"invalid resource bundle");
-        need(identity>0&&revision>0,"missing native qSSD source identity/revision");
-        if(head!=null&&identity==head.sourceIdentity){
+        need(session>0&&identity>0&&revision>0,"missing native qSSD source session/identity/revision");
+        if(head!=null)need(session>=head.sourceSession,"stale native session after restore");
+        if(head!=null&&session==head.sourceSession&&identity==head.sourceIdentity){
             need(revision>=head.sourceRevision,"source revision moved backwards");
             need(revision!=head.sourceRevision||geometry==head.geometry,
                  "same qSSD geometry revision has different backing");
         }
-        boolean newGeometry=head==null||identity!=head.sourceIdentity||revision!=head.sourceRevision;
+        boolean newGeometry=head==null||session!=head.sourceSession||identity!=head.sourceIdentity||revision!=head.sourceRevision;
         int[] colors=head!=null&&Arrays.equals(palette,head.palette)?head.palette:palette.clone();
         byte[] atlas=newGeometry?atlasLayout(geometry):head.atlas;
         if(head!=null&&newGeometry&&Arrays.equals(atlas,head.atlas))atlas=head.atlas;
@@ -65,7 +66,7 @@ final class VelocityQssdGraphicsBridge {
             identical++;return head;
         }
         need(publications<Long.MAX_VALUE,"publication counter exhausted");
-        head=new Frame(++publications,identity,revision,
+        head=new Frame(++publications,session,identity,revision,
                 head==null?1:head.paletteRevision+(colors!=head.palette?1:0),
                 head==null?1:head.atlasRevision+(atlas!=head.atlas?1:0),
                 geometry,colors,atlas);
@@ -75,7 +76,7 @@ final class VelocityQssdGraphicsBridge {
     /** Compare against what the GL driver actually accepted, not just head. */
     synchronized Plan plan(Frame lease){
         need(lease!=null&&lease.serial>0&&lease.serial<=publications,"invalid qSSD lease");
-        boolean vertexDirty=uploaded==null||lease.sourceIdentity!=uploaded.sourceIdentity||
+        boolean vertexDirty=uploaded==null||lease.sourceSession!=uploaded.sourceSession||lease.sourceIdentity!=uploaded.sourceIdentity||
                 lease.sourceRevision!=uploaded.sourceRevision;
         int[] ranges=new int[PALETTE*2];int n=0;
         if(uploaded==null||lease.paletteRevision!=uploaded.paletteRevision){

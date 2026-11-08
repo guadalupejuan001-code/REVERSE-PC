@@ -96,7 +96,7 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
         if(observed.geometry==null||observed.colors==null)
             throw new IllegalArgumentException("Missing validated XI/qSSD XFG4 observation");
         VelocityQssdGraphicsBridge.Frame lease=qssd.publish(
-            observed.geometry,observed.colors,observed.qssdIdentity,observed.qssdRevision);
+            observed.geometry,observed.colors,observed.qssdSession,observed.qssdIdentity,observed.qssdRevision);
         submit(new Request(lease,state,yaw,graphics));
     }
     private void submit(Request request)throws InterruptedException{
@@ -259,7 +259,7 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
         qssd.confirm(plan); // Commit only after the GL driver accepts all resources.
         if(resourceFrames==0)
             Log.i("ReverseVelocity","QSSD_GPU_BRIDGE_ACTIVE source=XI_XFG4 identity="+plan.frame.sourceIdentity+
-                " revision="+plan.frame.sourceRevision+" paletteVersion="+plan.frame.paletteRevision+
+                " revision="+plan.frame.sourceRevision+" session="+plan.frame.sourceSession+" paletteVersion="+plan.frame.paletteRevision+
                 " atlasVersion="+plan.frame.atlasRevision+" route=REgraphics_QSSD_GLES");
         if(++resourceFrames>=60){
             Log.i("ReverseVelocity","GPU_VIRTUAL_RESOURCES frames="+resourceFrames+" vertexStride=24 stagingCapacityBytes="+vertices.capacityBytes()+" vboCapacityBytes="+vertexCapacity+" liveVertexBytes="+vertices.usedBytes()+" vertexUploadBytes="+vertexUploadBytes+" vertexUploadCalls="+vertexUploadCalls+" textureUploadBytes="+textureUploadBytes+" reusedGeometryFrames="+reusedGeometryFrames+" scope=geometry_transport_not_process_ram");
