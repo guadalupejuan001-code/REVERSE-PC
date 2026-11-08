@@ -1,114 +1,80 @@
 package com.reversepc.os;
 
-import java.util.Arrays;
+import java.nio.ByteBuffer;
 
-/**
- * qSSD graphics bus between immutable REgraphics/XFG4 observations and GLES.
- * The XI native qSSD projection owns geometry identity/revision. This bridge
- * owns resource versions and only publishes explicit immutable GPU leases.
- * It never generates geometry, changes physics, or calls the GLES driver.
- */
-final class VelocityQssdGraphicsBridge {
-    private static final int PALETTE=256,ATLAS_ROWS=16,ATLAS_ROW=128;
+/** Thin JNI projection of the original qSSD component, not a Java resource manager. */
+final class VelocityQssdGraphicsBridge implements AutoCloseable {
+    static { System.loadLibrary("reverse_os"); }
     static final class Frame {
         final long serial,sourceSession,sourceIdentity,sourceRevision,paletteRevision,atlasRevision;
         final RegraphicsGeometry geometry;
         final int[] palette;
-        final byte[] atlas; // 128 x 16 texels, unlike XI's tile-major layout.
-        private Frame(long serial,long session,long identity,long revision,long paletteRevision,long atlasRevision,
-                      RegraphicsGeometry geometry,int[] palette,byte[] atlas) {
-            this.serial=serial;sourceSession=session;sourceIdentity=identity;sourceRevision=revision;
-            this.paletteRevision=paletteRevision;this.atlasRevision=atlasRevision;
+        final byte[] atlas;
+        private final long owner;
+        private Frame(long owner,long[] receipt,RegraphicsGeometry geometry,int[] palette,byte[] atlas,
+                      long session,long identity,long revision){
+            this.owner=owner;serial=receipt[0];paletteRevision=receipt[1];atlasRevision=receipt[2];
             this.geometry=geometry;this.palette=palette;this.atlas=atlas;
+            sourceSession=session;sourceIdentity=identity;sourceRevision=revision;
         }
     }
     static final class Plan {
         final Frame frame;
         final boolean geometryDirty;
-        final int[] paletteRanges; // [texelStart,texelCount] pairs
-        final int atlasRowsMask;    // row bits, 0..15
-        private Plan(Frame frame,boolean geometryDirty,int[] paletteRanges,int atlasRowsMask){
-            this.frame=frame;this.geometryDirty=geometryDirty;
-            this.paletteRanges=paletteRanges;this.atlasRowsMask=atlasRowsMask;
+        final int[] paletteRanges;
+        final int atlasRowsMask;
+        private final long context;
+        private Plan(Frame frame,long[] nativePlan){
+            this.frame=frame;context=nativePlan[0];geometryDirty=nativePlan[1]!=0;
+            atlasRowsMask=(int)nativePlan[2];int count=(int)nativePlan[3];
+            if(count<0||count>256||nativePlan.length!=4+count*2)
+                throw new IllegalArgumentException("Invalid qSSD native upload plan");
+            paletteRanges=new int[count*2];
+            for(int i=0;i<paletteRanges.length;i++)paletteRanges[i]=(int)nativePlan[4+i];
         }
         int changedPaletteTexels(){int n=0;for(int i=1;i<paletteRanges.length;i+=2)n+=paletteRanges[i];return n;}
         int changedAtlasRows(){return Integer.bitCount(atlasRowsMask);}
     }
-
-    private Frame head,uploaded;
-    private long publications,identical,applied;
-    private static void need(boolean ok,String reason){
-        if(!ok)throw new IllegalArgumentException("QSSD graphics bridge: "+reason);
-    }
-    private static byte[] atlasLayout(RegraphicsGeometry geometry){
-        byte[] result=new byte[ATLAS_ROWS*ATLAS_ROW];
-        for(int row=0;row<ATLAS_ROWS;row++)
-            for(int tile=0;tile<8;tile++)
-                for(int col=0;col<16;col++)
-                    result[row*ATLAS_ROW+tile*16+col]=geometry.byteAt(16+tile*256+row*16+col);
-        return result;
-    }
-    /** Only a validated qSSD geometry lease may be published to GLES. */
+    private long handle=nativeOpen();
+    // Transport objects only. No head/uploaded state, revision calculations,
+    // atlas conversion, or dirty-resource decisions are maintained in Java.
+    private Frame projection;
+    private long confirmations,reused;
+    private void requireOpen(){if(handle==0)throw new IllegalStateException("qSSD graphics port is closed");}
     synchronized Frame publish(RegraphicsGeometry geometry,int[] palette,long session,long identity,long revision){
-        need(geometry!=null&&palette!=null&&palette.length==PALETTE,"invalid resource bundle");
-        need(session>0&&identity>0&&revision>0,"missing native qSSD source session/identity/revision");
-        if(head!=null)need(session>=head.sourceSession,"stale native session after restore");
-        if(head!=null&&session==head.sourceSession&&identity==head.sourceIdentity){
-            need(revision>=head.sourceRevision,"source revision moved backwards");
-            need(revision!=head.sourceRevision||geometry==head.geometry,
-                 "same qSSD geometry revision has different backing");
-        }
-        boolean newGeometry=head==null||session!=head.sourceSession||identity!=head.sourceIdentity||revision!=head.sourceRevision;
-        int[] colors=head!=null&&Arrays.equals(palette,head.palette)?head.palette:palette.clone();
-        byte[] atlas=newGeometry?atlasLayout(geometry):head.atlas;
-        if(head!=null&&newGeometry&&Arrays.equals(atlas,head.atlas))atlas=head.atlas;
-        if(head!=null&&!newGeometry&&colors==head.palette){
-            identical++;return head;
-        }
-        need(publications<Long.MAX_VALUE,"publication counter exhausted");
-        head=new Frame(++publications,session,identity,revision,
-                head==null?1:head.paletteRevision+(colors!=head.palette?1:0),
-                head==null?1:head.atlasRevision+(atlas!=head.atlas?1:0),
-                geometry,colors,atlas);
-        return head;
+        requireOpen();
+        if(geometry==null||palette==null||palette.length!=256)
+            throw new IllegalArgumentException("Invalid REgraphics resource projection");
+        long[] receipt=nativePublish(handle,session,identity,revision,geometry.qssdSourceView(),palette);
+        if(receipt==null||receipt.length!=4)throw new IllegalStateException("Missing qSSD native receipt");
+        reused=receipt[3];
+        if(projection!=null&&projection.serial==receipt[0])return projection;
+        int[] colors=projection!=null&&projection.paletteRevision==receipt[1]?projection.palette:palette.clone();
+        byte[] atlas=projection!=null&&projection.atlasRevision==receipt[2]?projection.atlas:nativeAtlas(handle,receipt[0]);
+        projection=new Frame(handle,receipt,geometry,colors,atlas,session,identity,revision);
+        return projection;
     }
-
-    /** Compare against what the GL driver actually accepted, not just head. */
-    synchronized Plan plan(Frame lease){
-        need(lease!=null&&lease.serial>0&&lease.serial<=publications,"invalid qSSD lease");
-        boolean vertexDirty=uploaded==null||lease.sourceSession!=uploaded.sourceSession||lease.sourceIdentity!=uploaded.sourceIdentity||
-                lease.sourceRevision!=uploaded.sourceRevision;
-        int[] ranges=new int[PALETTE*2];int n=0;
-        if(uploaded==null||lease.paletteRevision!=uploaded.paletteRevision){
-            for(int i=0;i<PALETTE;){
-                if(uploaded!=null&&lease.palette[i]==uploaded.palette[i]){i++;continue;}
-                int start=i++;
-                while(i<PALETTE&&(uploaded==null||lease.palette[i]!=uploaded.palette[i]))i++;
-                ranges[n++]=start;ranges[n++]=i-start;
-            }
-        }
-        int rows=0;
-        if(uploaded==null||lease.atlasRevision!=uploaded.atlasRevision)
-            for(int row=0;row<ATLAS_ROWS;row++){
-                int from=row*ATLAS_ROW;
-                boolean dirty=uploaded==null;
-                for(int x=0;!dirty&&x<ATLAS_ROW;x++)
-                    if(lease.atlas[from+x]!=uploaded.atlas[from+x])dirty=true;
-                if(dirty)rows|=1<<row;
-            }
-        return new Plan(lease,vertexDirty,Arrays.copyOf(ranges,n),rows);
+    synchronized Plan plan(Frame frame){
+        requireOpen();
+        if(frame==null||frame.owner!=handle)throw new IllegalArgumentException("Foreign qSSD graphics projection");
+        return new Plan(frame,nativePlan(handle,frame.serial));
     }
-
-    /** A GL context reset invalidates only physical residency, not qSSD state. */
-    synchronized void contextLost(){uploaded=null;}
-
-    /** Called after successful glBufferSubData/glTexSubImage2D and glGetError. */
     synchronized void confirm(Plan plan){
-        need(plan!=null&&plan.frame.serial<=publications,"invalid acknowledged upload");
-        need(uploaded==null||plan.frame.serial>=uploaded.serial,"out-of-order GLES acknowledgment");
-        uploaded=plan.frame;applied++;
+        requireOpen();
+        if(plan==null||plan.frame.owner!=handle)throw new IllegalArgumentException("Foreign qSSD receipt");
+        confirmations=nativeConfirm(handle,plan.frame.serial,plan.context);
     }
-    synchronized long uploadCommits(){return applied;}
-    synchronized long reusedPublications(){return identical;}
-    synchronized long sourceSerial(){return head==null?0:head.serial;}
+    synchronized void contextLost(){requireOpen();nativeInvalidate(handle);}
+    synchronized void contextCreated(){if(handle==0)handle=nativeOpen();nativeInvalidate(handle);}
+    synchronized long uploadCommits(){return confirmations;}
+    synchronized long reusedPublications(){return reused;}
+    synchronized long sourceSerial(){return projection==null?0:projection.serial;}
+    @Override public synchronized void close(){if(handle!=0){nativeClose(handle);handle=0;projection=null;}}
+    private static native long nativeOpen();
+    private static native void nativeClose(long handle);
+    private static native long[] nativePublish(long handle,long session,long identity,long revision,ByteBuffer geometry,int[] palette);
+    private static native byte[] nativeAtlas(long handle,long serial);
+    private static native long[] nativePlan(long handle,long serial);
+    private static native long nativeConfirm(long handle,long serial,long context);
+    private static native void nativeInvalidate(long handle);
 }

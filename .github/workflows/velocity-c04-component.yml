@@ -1,0 +1,73 @@
+name: Velocity C04 original QSSD source integration
+on:
+  push:
+    branches: [feature/velocity-c04-qssd-component-20261108]
+    paths:
+      - .github/workflows/velocity-c04-component.yml
+      - scripts/apply-velocity-c04.py
+      - scripts/test-velocity-c04-native.sh
+permissions:
+  contents: write
+concurrency:
+  group: velocity-c04-source-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/velocity-c04-qssd-component-20261108
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/Virtual-qSSD-
+          ref: 376b1334dd2dde6093a2988ee12325590941573d
+          path: deps/qssd
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/GPU-VIRTUAL
+          ref: 4cdd47f487cfadbca559dd8c2f5abc0448cd77a7
+          path: deps/gpu-virtual
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: 1f925786522aba91f72707ad1638a8edcdd31a8f
+          path: deps/mundo-x
+          sparse-checkout: native/include
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '17'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Apply reviewed integration and execute real component tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git branch --show-current)" = feature/velocity-c04-qssd-component-20261108
+          python3 scripts/apply-velocity-c04.py
+          git diff --check
+          mkdir -p build/velocity-c04
+          bash scripts/test-velocity-c04-native.sh 2>&1 | tee build/velocity-c04/native-results.txt
+          node scripts/check-velocity-native-only.cjs
+          node --check reverse-os-android/tests/velocity-graphics-ui-smoke.cjs
+      - name: Retain tested source on the isolated C04 branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add -u
+          if ! git diff --cached --quiet; then
+            git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'fix(velocity): connect original native QSSD and C12Window, retain tested C04 integration'
+            git push origin HEAD:refs/heads/feature/velocity-c04-qssd-component-20261108
+          fi
+          git rev-parse HEAD > build/velocity-c04/source-commit.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: velocity-c04-native-component-evidence
+          path: |
+            build/velocity-c04/native-results.txt
+            build/velocity-c04/source-commit.txt
+          if-no-files-found: error
