@@ -57,9 +57,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git add -u
+          # This token may write source, not workflows. Workflow changes are
+          # retained below for a separately authorized repository update.
+          git diff -- .github/workflows > build/velocity-c04/workflow-changes.patch
+          git add -u -- . ':!.github/workflows'
           if ! git diff --cached --quiet; then
             git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -m 'fix(velocity): connect original native QSSD and C12Window, retain tested C04 integration'
+            git rev-parse HEAD > build/velocity-c04/source-commit.txt
             git push origin HEAD:refs/heads/feature/velocity-c04-qssd-component-20261108
           fi
           git rev-parse HEAD > build/velocity-c04/source-commit.txt
@@ -70,4 +74,5 @@ jobs:
           path: |
             build/velocity-c04/native-results.txt
             build/velocity-c04/source-commit.txt
+            build/velocity-c04/workflow-changes.patch
           if-no-files-found: error
