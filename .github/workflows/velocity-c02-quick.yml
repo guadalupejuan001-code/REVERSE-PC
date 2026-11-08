@@ -27,10 +27,11 @@ jobs:
           node - <<'JS'
           const fs=require('fs'),assert=require('assert');
           const base='reverse-os-android/app/src/main/assets/velocity/';
-          for(const name of ['render.xi','render4k.xi']){
+          for(const name of ['render.xi','render4k.xi','render-live.xi','render-native4k.xi']){
             const xi=fs.readFileSync(base+name,'utf8');
             assert(xi.includes('cmp r0 9\nje nature_rock_model'));
             assert(!xi.includes('cmp r0 9\nje nature_grass_model'));
+            assert(!xi.includes('je nature_emit_grass'),'unset grass mesh must never be selected');
           }
           const shader=fs.readFileSync(base+'gpu-scene.frag','utf8');
           for(const token of ['fixed meadow regions','fbm(uv*.008','uQuality>=4','vec3 moss','vec3 grass'])
