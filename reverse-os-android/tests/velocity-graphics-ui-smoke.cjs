@@ -139,9 +139,9 @@ try{
  check(/GEAR_REQUEST reverse=true/.test(logs()),'gear request reaches the real gearbox');
  // C02: throttle intentionally cancels a pending D/R request so the car never
  // feels immobilized. Brake to a real stop to engage R, then accelerate.
- const brakingMark=logs().length;
+ const reverseBrakeMark=logs().length;
  run(['shell','input','keycombination','-t','2700','KEYCODE_S','KEYCODE_SHIFT_LEFT'],false,10000);sleep(600);
- waitFor(()=>frames(logs().slice(brakingMark)).some(x=>x.reverse&&x.speed===0),
+ waitFor(()=>frames(logs().slice(reverseBrakeMark)).some(x=>x.reverse&&x.speed===0),
          'reverse engages only after braking to a real stop');
  const mark=logs().length;run(['shell','input','keycombination','-t','12000','KEYCODE_W','KEYCODE_SHIFT_LEFT'],false,22000);sleep(1000);
  const reverse=frames(logs().slice(mark)).filter(x=>x.reverse&&x.speed>0);
