@@ -15,7 +15,7 @@ El antiguo actor de hierba (`nature_grass_model`) se regeneraba cerca de la cám
 ## Tres componentes y limitaciones
 
 - **CPU**: XI de REVERSE-PC sigue ejecutando física, mundo y escena.
-- **GPU**: dependencia oficial `GPU-VIRTUAL C12` fijada en el workflow. El juego conserva su transporte compacto XFG4 de 24 bytes por vértice y la presentación física GLES. La ejecución de kernels C12 de cálculo y sus operaciones float32 ya están probadas en QSSD C06, pero **no se afirma que ejecuten cada fotograma del juego**.
+- **GPU**: dependencia oficial `GPU-VIRTUAL C12` fijada en el workflow. La corrección C02R ejecuta un kernel C12 sobre CPU anfitriona en cada fotograma GLES para cinco parámetros de materiales. Conserva XFG4 y la presentación GPU física por GLES; C12 no sustituye todo el rasterizador.
 - **QSSD**: dependencia fijada al commit C06, conservando el mismo código de proyección C03 que usa la ruta de juego. El bus de estados y los checkpoints continúan funcionando. El traslado Bell simulado C05 se conserva en QSSD; no sustituye la comunicación con la GPU física.
 
 ## Validación
