@@ -4,19 +4,21 @@
 // frame counter, resolution override or screenshot-derived FPS measurement.
 const cp=require('node:child_process'),fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 assert(process.argv.length===6,'velocity-performance-ab.cjs ADB BASELINE_APK CANDIDATE_APK OUTPUT');
-const [adb,before,after,out]=process.argv.slice(2),pkg='com.reversepc.velocity';
+const [adb,before,after,out]=process.argv.slice(2);
+const packageFor=name=>name==='before'?'com.reversepc.velocity':'com.reversepc.velocity.c02';
 fs.mkdirSync(out,{recursive:true});
 const sleep=ms=>Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,ms);
 function run(args,timeout=30000){const r=cp.spawnSync(adb,args,{encoding:'utf8',timeout,maxBuffer:20*1024*1024});assert.ifError(r.error);assert.equal(r.status,0,String(r.stderr));return r.stdout;}
 function logs(){return run(['logcat','-d','-v','brief','ReverseVelocity:I','AndroidRuntime:E','*:S']);}
 function fields(line){return Object.fromEntries([...line.matchAll(/\b(\w+)=(-?\d+(?:\.\d+)?|true|false)\b/g)].map(m=>[m[1],m[2]==='true'?true:m[2]==='false'?false:Number(m[2])]));}
 function memory(name,round,phase){
- const text=run(['shell','dumpsys','meminfo',pkg]);fs.writeFileSync(path.join(out,`${name}-${round}-${phase}-meminfo.txt`),text);
+ const text=run(['shell','dumpsys','meminfo',packageFor(name)]);fs.writeFileSync(path.join(out,`${name}-${round}-${phase}-meminfo.txt`),text);
  const pss=/TOTAL PSS:\s*(\d+)/.exec(text)||/^\s*TOTAL\s+(\d+)/m.exec(text);
  return {phase,totalPssKiB:pss?Number(pss[1]):null};
 }
 const med=v=>{const a=[...v].sort((x,y)=>x-y);return a[Math.floor(a.length/2)];};
 function trial(name,apk,round){
+ const pkg=packageFor(name);
  run(['shell','am','force-stop',pkg]);run(['install','-r','-d',path.resolve(apk)],60000);run(['logcat','-c']);
  run(['shell','am','start','-W','-n',pkg+'/com.reversepc.os.VelocityActivity']);
  let ready=false;const deadline=Date.now()+60000;
