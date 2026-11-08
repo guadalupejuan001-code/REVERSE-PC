@@ -15337,7 +15337,7 @@ je nature_rock_model
 cmp r0 8
 je nature_rock_model
 cmp r0 9
-je nature_grass_model
+je nature_rock_model
 set r0 1552
 mov r9 r0
 localset 132 r9
