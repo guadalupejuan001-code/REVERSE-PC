@@ -31,7 +31,7 @@ on:
   # branch. A feature-branch push cannot, and must never silently sign an
   # incompatible update with an unrelated newly generated certificate.
   pull_request:
-    branches: [feature/velocity-regraphics-20261030, feature/velocity-v04-nitro-airjump-20261101]
+    branches: [feature/velocity-regraphics-20261030, feature/velocity-v04-nitro-airjump-20261101, feature/velocity-c01-driving-20261106]
     paths:
       - '.github/workflows/velocity-apk.yml'
       - 'reverse-os-android/**'
@@ -44,7 +44,7 @@ concurrency:
 jobs:
   apk:
     # Never expose the base branch's cached signing identity to outside PRs.
-    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && (github.head_ref == 'feature/velocity-v04-nitro-airjump-20261101' || github.head_ref == 'feature/velocity-v18-garage-photo-hud-20261101' || github.head_ref == 'feature/velocity-v19-orbit-textures-20261101' || github.head_ref == 'feature/velocity-v20-effects-drift-20261101' || github.head_ref == 'feature/velocity-v21-drive-skills-20261101' || github.head_ref == 'feature/velocity-v22-forest-assist-20261101' || github.head_ref == 'feature/velocity-v23-dynamics-materials-20261104' || github.head_ref == 'feature/velocity-v30-open-forest-road-20261104' || github.head_ref == 'feature/velocity-v31-reverse-native-live-20261105' || github.head_ref == 'feature/velocity-v32-wetlands-gpu-20261105' || github.head_ref == 'feature/velocity-v33-open-terrain-20261105' || github.head_ref == 'feature/velocity-v34-trails-hd-20261105' || github.head_ref == 'feature/velocity-gpu-virtual-20261106' || github.head_ref == 'feature/velocity-v36-graphics-ui-20261106' || github.head_ref == 'feature/velocity-v37-cpu-gpu-20261106' || github.head_ref == 'feature/velocity-v38-qssd-20261106' || github.head_ref == 'feature/velocity-v39-state-bus-20261106' || github.head_ref == 'feature/velocity-c01-driving-20261106'))
+    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && (github.head_ref == 'feature/velocity-v04-nitro-airjump-20261101' || github.head_ref == 'feature/velocity-v18-garage-photo-hud-20261101' || github.head_ref == 'feature/velocity-v19-orbit-textures-20261101' || github.head_ref == 'feature/velocity-v20-effects-drift-20261101' || github.head_ref == 'feature/velocity-v21-drive-skills-20261101' || github.head_ref == 'feature/velocity-v22-forest-assist-20261101' || github.head_ref == 'feature/velocity-v23-dynamics-materials-20261104' || github.head_ref == 'feature/velocity-v30-open-forest-road-20261104' || github.head_ref == 'feature/velocity-v31-reverse-native-live-20261105' || github.head_ref == 'feature/velocity-v32-wetlands-gpu-20261105' || github.head_ref == 'feature/velocity-v33-open-terrain-20261105' || github.head_ref == 'feature/velocity-v34-trails-hd-20261105' || github.head_ref == 'feature/velocity-gpu-virtual-20261106' || github.head_ref == 'feature/velocity-v36-graphics-ui-20261106' || github.head_ref == 'feature/velocity-v37-cpu-gpu-20261106' || github.head_ref == 'feature/velocity-v38-qssd-20261106' || github.head_ref == 'feature/velocity-v39-state-bus-20261106' || github.head_ref == 'feature/velocity-c01-driving-20261106' || github.head_ref == 'feature/velocity-c02-qssd-c12-pastures-drivability-20261107'))
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
@@ -62,14 +62,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: guadalupejuan001-code/GPU-VIRTUAL
-          ref: 6addb1b60cb825977ffa992127d5189086a9a6c8
+          ref: 4cdd47f487cfadbca559dd8c2f5abc0448cd77a7
           path: deps/gpu-virtual
           sparse-checkout: android-graphics/shared
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
           repository: guadalupejuan001-code/Virtual-qSSD-
-          ref: c9dc0ebf3370a4468e14df92fcebb2a90954c448
+          ref: 9fe72bbf0d972d0baad9300971dfaabab5691447
           path: deps/qssd
           sparse-checkout: include/qssd
           persist-credentials: false
@@ -125,7 +125,7 @@ jobs:
               exit 1
             }
           cp reverse-os-android/app/build/outputs/apk/velocity/debug/app-velocity-debug.apk \
-            dist/REVERSE-VELOCITY-4.0-C01-CONDUCCION.apk
+            dist/REVERSE-VELOCITY-4.0-C02-PASTIZALES.apk
       - uses: actions/cache/save@v4
         if: steps.velocity-signing.outputs.cache-hit != 'true'
         with:
@@ -148,7 +148,7 @@ jobs:
       - name: Verify native-XI APK identity, signature, alignment and source assets
         run: |
           set -euo pipefail
-          APK=dist/REVERSE-VELOCITY-4.0-C01-CONDUCCION.apk
+          APK=dist/REVERSE-VELOCITY-4.0-C02-PASTIZALES.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" \
             > build/velocity-apk/signature.txt
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 4 "$APK" \
@@ -168,7 +168,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: reverse-velocity-apk
-          path: dist/REVERSE-VELOCITY-4.0-C01-CONDUCCION.apk
+          path: dist/REVERSE-VELOCITY-4.0-C02-PASTIZALES.apk
           if-no-files-found: error
       - name: Install and exercise the game on Android 35
         timeout-minutes: 18
@@ -208,13 +208,13 @@ jobs:
           adb shell settings put global animator_duration_scale 0
           adb shell input keyevent 82
           adb install build/velocity-baseline/REVERSE-VELOCITY-3.9-ESTADOS.apk > build/velocity-apk/baseline-install.txt
-          adb install -r dist/REVERSE-VELOCITY-4.0-C01-CONDUCCION.apk \
+          adb install -r dist/REVERSE-VELOCITY-4.0-C02-PASTIZALES.apk \
             > build/velocity-apk/install.txt
           node reverse-os-android/tests/velocity-graphics-ui-smoke.cjs adb build/velocity-apk/graphics-ui
           node reverse-os-android/tests/velocity-state-space-smoke.cjs adb build/velocity-apk/state-space
           node reverse-os-android/tests/velocity-performance-ab.cjs adb \
             build/velocity-baseline/REVERSE-VELOCITY-3.9-ESTADOS.apk \
-            dist/REVERSE-VELOCITY-4.0-C01-CONDUCCION.apk build/velocity-apk/qssd-ab
+            dist/REVERSE-VELOCITY-4.0-C02-PASTIZALES.apk build/velocity-apk/qssd-ab
       - uses: actions/upload-artifact@v4
         if: always()
         with:
