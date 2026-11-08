@@ -34,11 +34,11 @@ for(const abi of ['arm64-v8a','x86_64']){
  assert(load.length>0,'ELF lacks load segments');nativeElf[abi]={bytes:elf.length,loadSegmentAlignments:load};
 }
 const text=fs.readFileSync(badging,'utf8');
-assert.match(text,/package: name='com\.reversepc\.velocity'/);
-assert.match(text,/versionCode='42'/,'car build must upgrade versionCode');
-assert.match(text,/versionName='4\.0\.0-c01-driving'/,'car build version mismatch');
+assert.match(text,/package: name='com\.reversepc\.velocity\.c02'/);
+assert.match(text,/versionCode='43'/,'C02 lab versionCode');
+assert.match(text,/versionName='4\.0\.0-c02-pastizales'/,'C02 lab versionName');
 assert.match(text,/launchable-activity: name='com\.reversepc\.os\.VelocityActivity'/);
-assert.match(text,/application-label:'REVERSE VELOCITY'/);
+assert.match(text,/application-label:'REVERSE VELOCITY C02'/);
 assert.match(text,/sdkVersion:'29'/);
 assert(!text.includes("uses-permission: name='android.permission.INTERNET'"),'game flavor unexpectedly requests Internet');
 const assets={};
@@ -72,9 +72,9 @@ if(process.env.VELOCITY_EXPECTED_SIGNER_SHA256){
  assert.equal(expected,process.env.VELOCITY_EXPECTED_SIGNER_SHA256,
   'APK must keep the signer of the released 0.1 test build for in-place upgrades');
 }
-const report={passed:true,applicationId:'com.reversepc.velocity',launcher:'com.reversepc.os.VelocityActivity',minSdk:29,
- versionCode:42,versionName:'4.0.0-c01-driving',sourceCommit:process.env.GITHUB_SHA||null,
- signerCertificateSha256:expected,signerMatchesCachedIdentity:true,
+const report={passed:true,applicationId:'com.reversepc.velocity.c02',launcher:'com.reversepc.os.VelocityActivity',minSdk:29,
+ versionCode:43,versionName:'4.0.0-c02-pastizales',sourceCommit:process.env.GITHUB_SHA||null,
+ signerCertificateSha256:expected,signerVerifiedAgainstBuildCertificate:true,inPlaceUpgradeCompatible:false,
  abis:['arm64-v8a','x86_64'],nativeElf,assets,apkBytes:fs.statSync(apk).size,
  apkSha256:crypto.createHash('sha256').update(fs.readFileSync(apk)).digest('hex')};
 fs.mkdirSync(path.dirname(output),{recursive:true});fs.writeFileSync(output,JSON.stringify(report,null,2)+'\n');
