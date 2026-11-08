@@ -69,6 +69,9 @@ conservan los bytes de C03; no se reduce calidad para obtener una medida.
 
 ## Ruta y límites de integración
 
+La tabla describe la ruta GLES activa. Si el presentador falla, el respaldo
+XI de software deja de ejecutar C12 y el puente de residencia GLES por frame.
+
 | Componente | Trabajo ejecutado en esta APK |
 | --- | --- |
 | CPU XI/Ether | Mundo, física, estado, programas REgraphics y geometría XFG4. |
@@ -83,6 +86,12 @@ ABI de estado/proyección C03. El adaptador de campos `C12Window` y los
 protocolos Bell del laboratorio no pasan a ejecutarse por fotograma por
 actualizar una referencia. Esta reparación no introduce esa afirmación ni
 equipara una referencia compartida con transferencia cuántica física.
+
+Cada revisión nueva de geometría todavía se copia íntegra a un buffer Java
+en JNI. La lease nativa de qSSD no mantiene por sí sola la memoria viva para
+todas las vistas Java retenidas: eliminar esa copia exige un contrato de
+propiedad y liberación entre JNI y Java. Esta reparación no lo modifica ni
+afirma haber medido aisladamente el coste de esa copia.
 
 ## Validación y entrega
 
@@ -113,6 +122,56 @@ evolucionan libremente: este A/B no es una reproducción de poses idénticas
 ni demuestra significación estadística o rendimiento en el teléfono físico.
 
 El artefacto instalable se publica al terminar los controles Android y la
-comparación. Los resultados finales, sus commits y ejecuciones se registran
-en `docs/evidence/velocity-c03r-results.json` cuando concluyen. La PR permanece
-sin fusionar.
+comparación. La prueba JVM de transferencia interrumpida cubre una subida
+sin confirmar y su invalidación; no inyecta fallos en un controlador GLES
+real. La pausa Android conserva el contexto EGL: tampoco equivale a forzar
+su destrucción durante la sesión.
+
+## Resultado medido de C03R
+
+Código compilado y probado: `8300f41c11e14872251d951e65ca7a927b9c2f1a`;
+merge usado por CI: `e3f029d4ecba213e23c23714f0ac2ffe2438b33a`;
+árbol exacto: `05fe2050fbaa3f824e6ffb6cf1e8e382485e3ea1`.
+Este registro posterior solo añade documentación y evidencia.
+
+Las tres ejecuciones de esa revisión terminaron correctamente:
+
+- [APK y Android 35 — 42467454708](https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/42467454708).
+- [Suite nativa y REgraphics — 42467454678](https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/42467454678).
+- [Componentes C12/qSSD — 42467454653](https://github.com/guadalupejuan001-code/REVERSE-PC/actions/runs/42467454653).
+
+Android completó 52 controles funcionales, lectura real de los cinco perfiles,
+actividad continuada de C12/qSSD y siete controles de guardado/recuperación
+tras cerrar el proceso. Se verificó la actualización real de versión 45 a 46
+con el mismo paquete y firmante. La suite nativa confirmó 16 pares de píxeles
+idénticos hasta 4K y el estado JNI con sus 20 recursos. Estos casos a 4K son
+pruebas del transporte gráfico; los perfiles del juego siguen llegando a 1080p.
+
+Tres ensayos alternados por versión, Medio 960×540, en el mismo emulador:
+
+| Medida | C03 entregada | C03R |
+| --- | ---: | ---: |
+| Mediana de FPS presentados | 6,6639 | 6,7559 |
+| Mediana de P95 por ventanas | 166,900 ms | 167,367 ms |
+| PSS mediana después de conducir | 85.413 KiB | 83.433 KiB |
+| Frecuencia mediana de física | 50 Hz | 50 Hz |
+
+El cambio de FPS es **+1,38 %**, clasificado como
+`inconclusive_within_tolerance`. La medida P95 aumenta **0,28 %**. Superar los
+márgenes de no regresión no demuestra una mejora global de fluidez ni 30 FPS.
+La PSS es una observación de estos ensayos y varía con el proceso y el GC.
+No hay una medición de rendimiento, temperatura o estabilidad sostenida en
+un teléfono ARM64 físico.
+
+El microbenchmark CI del puente, separado del juego, confirma una reducción
+de unas 4.248 a 128 bytes asignados por frame al mover vértices con atlas fijo.
+En cambios de paleta y atlas también se asignan menos bytes, aunque su tiempo
+CPU local aumenta; no se generaliza la mejora temporal a todos los casos.
+
+Archivo: `REVERSE-VELOCITY-4.0-C03R.apk`, 5.125.106 bytes,
+versión `46 / 4.0.0-c03r-pipeline`, ARM64 y x86_64, Android 10 o posterior.
+SHA-256: `3ba8da4fdec9c888071a6a527dafe363107718714a8555fe779fa73d97917e7a`.
+
+Los resultados completos y sus identidades están en
+[`docs/evidence/velocity-c03r-results.json`](evidence/velocity-c03r-results.json).
+La PR #224 permanece sin fusionar.
