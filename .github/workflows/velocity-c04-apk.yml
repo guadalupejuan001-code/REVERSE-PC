@@ -85,11 +85,14 @@ jobs:
           node scripts/author-velocity-forest.cjs
           node scripts/author-velocity-scene.cjs
           git diff --exit-code -- reverse-os-android/app/src/main/assets/velocity
-      - name: Build actual ARM64 and x86_64 C04 APK
+      - name: Clean rebuild ARM64 and x86_64 C04 APK without cached task outputs
         shell: bash
         run: |
           set -euo pipefail
-          gradle -p reverse-os-android --no-daemon :app:assembleVelocityDebug > build/velocity-apk/gradle.log 2>&1 || { tail -180 build/velocity-apk/gradle.log; exit 1; }
+          # Recompile the original C04 source; never repackage an earlier APK.
+          # Keep the existing signing identity and all pinned component versions.
+          rm -rf reverse-os-android/app/.cxx reverse-os-android/app/build
+          gradle -p reverse-os-android --no-daemon --no-build-cache --rerun-tasks :app:clean :app:assembleVelocityDebug > build/velocity-apk/gradle.log 2>&1 || { tail -180 build/velocity-apk/gradle.log; exit 1; }
           cp reverse-os-android/app/build/outputs/apk/velocity/debug/app-velocity-debug.apk dist/REVERSE-VELOCITY-4.0-C04-NATIVE-QSSD.apk
       - uses: actions/cache/save@v4
         if: steps.signing.outputs.cache-hit != 'true'
