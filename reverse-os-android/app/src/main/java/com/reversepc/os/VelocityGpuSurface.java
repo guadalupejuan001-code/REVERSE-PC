@@ -45,6 +45,7 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
     private volatile boolean firstFrame;
     private volatile boolean independentGpu=true;
     private final boolean[] verifiedProfiles=new boolean[5];
+    private volatile int verifiedProfileMask;
     private VelocityGraphics lastGraphics=VelocityGraphics.fromId(2);
     private int lastFx=-1;
     private int lastMaterialRoute=-1;
@@ -102,9 +103,14 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
     }
     private void submit(Request request)throws InterruptedException{
         if(!available())throw new IllegalStateException("GPU surface is not ready");
+        // A newly selected quality profile performs its first full pixel readback
+        // and may compile driver shader variants. Keep that one-time deadline
+        // distinct from the normal frame watchdog; never skip validation.
+        final boolean firstUse=!firstFrame||(verifiedProfileMask&(1<<request.graphics.id))==0;
+        final int waitSeconds=firstUse?30:8;
         synchronized(mailbox){if(queued!=null)throw new IllegalStateException("GPU mailbox already occupied");queued=request;}
         requestRender();
-        if(!request.done.await(!firstFrame?15:8,TimeUnit.SECONDS))throw new IllegalStateException("GPU frame timed out");
+        if(!request.done.await(waitSeconds,TimeUnit.SECONDS))throw new IllegalStateException("GPU frame timed out preset="+request.graphics.id+" initialValidation="+firstUse);
         if(request.error!=null)throw request.error;
     }
     private String asset(String name){
@@ -128,7 +134,7 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
     private static int uniform(int p,String name){int n=glGetUniformLocation(p,name);if(n<0)throw new IllegalStateException("Missing shader uniform "+name);return n;}
     private static int texture(){int[] id={0};glGenTextures(1,id,0);glBindTexture(GL_TEXTURE_2D,id[0]);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);return id[0];}
     @Override public void onSurfaceCreated(GL10 ignored,EGLConfig config){
-        ready=false;firstFrame=false;Arrays.fill(verifiedProfiles,false);framebuffer=colorTexture=depthBuffer=0;targetWidth=targetHeight=0;
+        ready=false;firstFrame=false;verifiedProfileMask=0;Arrays.fill(verifiedProfiles,false);framebuffer=colorTexture=depthBuffer=0;targetWidth=targetHeight=0;
         try{
             String renderer=glGetString(GL_RENDERER).toLowerCase(java.util.Locale.ROOT);
             independentGpu=!(renderer.contains("swiftshader")||renderer.contains("llvmpipe")||renderer.contains("softpipe")||renderer.contains("software rasterizer"));
@@ -322,6 +328,7 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
                 StringBuilder hash=new StringBuilder();for(byte b:digest.digest())hash.append(String.format(java.util.Locale.ROOT,"%02x",b&255));Log.i("ReverseVelocity","GPU_PRESET_PIXELS preset="+r.graphics.id+" source=XI_XFG4_GLSL width="+w+" height="+h+" pixels="+(w*h)+" sha256="+hash+" readbackCapacityBytes="+presetReadback.capacity());}
             catch(Exception error){throw new IllegalStateException("GPU pixel verification failed",error);}
             verifiedProfiles[r.graphics.id]=true;
+            verifiedProfileMask|=1<<r.graphics.id;
         }
         // No later pass consumes scene depth. Let tile-based GPUs discard it.
         glInvalidateFramebuffer(GL_FRAMEBUFFER,1,new int[]{GL_DEPTH_ATTACHMENT},0);
