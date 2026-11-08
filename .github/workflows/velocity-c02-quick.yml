@@ -15,6 +15,11 @@ jobs:
         with: {distribution: temurin, java-version: '17'}
       - uses: actions/setup-node@v4
         with: {node-version: '22'}
+      - name: Validate emulator smoke harness syntax
+        run: |
+          node --check reverse-os-android/tests/velocity-graphics-ui-smoke.cjs
+          node --check reverse-os-android/tests/velocity-state-space-smoke.cjs
+          node --check reverse-os-android/tests/velocity-performance-ab.cjs
       - name: Compile and exercise real gearbox logic
         run: |
           mkdir -p build/velocity-c02
