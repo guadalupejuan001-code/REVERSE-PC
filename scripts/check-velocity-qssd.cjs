@@ -3,11 +3,11 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),crypto=require('node:crypto');
 const lock=JSON.parse(fs.readFileSync('docs/QSSD_INTEGRATION_LOCK.json','utf8'));
 assert.equal(lock.repository,'guadalupejuan001-code/Virtual-qSSD-');
-assert.equal(lock.commit,'c9dc0ebf3370a4468e14df92fcebb2a90954c448');
+assert.equal(lock.commit,'9fe72bbf0d972d0baad9300971dfaabab5691447');
 for(const entry of lock.files){
  const value=fs.readFileSync(entry.vendoredPath);
  assert.equal(crypto.createHash('sha256').update(value).digest('hex'),entry.sha256,'qSSD complete-state source differs');
- if(process.argv[2])assert(value.equals(fs.readFileSync(path.join(process.argv[2],entry.upstreamPath))),'exact upstream C03 state bus must execute');
+ if(process.argv[2])assert(value.equals(fs.readFileSync(path.join(process.argv[2],entry.upstreamPath))),'byte-identical C03 game ABI retained in QSSD C06');
 }
 const source=fs.readFileSync(lock.vendoredPath);
 assert.equal(crypto.createHash('sha256').update(source).digest('hex'),lock.sha256,'qSSD source differs from upstream pin');
