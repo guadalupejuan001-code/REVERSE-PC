@@ -69,6 +69,8 @@ function hold(n,ms){const [x,y]=point(n);run(['shell','input','swipe',String(x),
 try{
  run(['shell','am','force-stop',pkg]);run(['logcat','-c']);run(['shell','am','start','-W','-n',component]);
  waitFor(()=>/GPU_PRESET_PIXELS preset=2 .*width=960 height=540/.test(logs())&&/GPU_FRAME_READY source=XI_XFG4/.test(logs()),'default medium pixels',60000);
+ waitFor(()=>/GPU_C12_EXECUTED frames=1 profile=C12 host=CPU steps=[1-9][0-9]* .*qssdPublication=[0-9]+ output=material_uniforms GLES=presenter/.test(logs()),'real XGPU-C12 interpreter runs in installed Android renderer',60000);
+ check(true,'original XGPU-C12 per-frame material kernel is active');
  sleep(600); // Let Android finish presenting its first immersive-mode window.
  key('KEYCODE_P');let nodes=ui();
  menuControl=nodes.find(n=>n['content-desc']==='Abrir menú');worldControl=nodes.find(n=>n['content-desc']?.startsWith('Cámara 3D'));
