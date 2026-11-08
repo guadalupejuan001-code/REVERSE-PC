@@ -1,0 +1,154 @@
+name: Velocity C04 native QSSD Android acceptance
+on:
+  push:
+    branches: [feature/velocity-c04-qssd-component-20261108]
+    paths: ['.github/workflows/velocity-c04-apk.yml', 'reverse-os-android/**', 'scripts/**', 'docs/QSSD_INTEGRATION_LOCK.json']
+  pull_request:
+    branches: [feature/velocity-c03-qssd-renderbus-20261108]
+    paths: ['.github/workflows/velocity-c04-apk.yml', 'reverse-os-android/**', 'scripts/**', 'docs/QSSD_INTEGRATION_LOCK.json']
+  workflow_dispatch:
+permissions: {contents: read}
+concurrency:
+  group: velocity-c04-acceptance-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  android:
+    if: github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'feature/velocity-c04-qssd-component-20261108')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      REVERSE_SIGNING_KEYSTORE: ${{ github.workspace }}/build-signing/velocity-c04.jks
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: 1f925786522aba91f72707ad1638a8edcdd31a8f
+          path: deps/mundo-x
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/GPU-VIRTUAL
+          ref: 4cdd47f487cfadbca559dd8c2f5abc0448cd77a7
+          path: deps/gpu-virtual
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/Virtual-qSSD-
+          ref: 376b1334dd2dde6093a2988ee12325590941573d
+          path: deps/qssd
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with: {distribution: temurin, java-version: '17'}
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - uses: gradle/actions/setup-gradle@v4
+        with: {gradle-version: '8.9'}
+      - name: Test original QSSD component, real JNI, C12Window and preserved controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/velocity-c04 build/velocity-apk dist build-signing
+          git rev-parse HEAD > build/velocity-apk/source-commit.txt
+          bash scripts/test-velocity-c04-native.sh 2>&1 | tee build/velocity-apk/native-tests.txt
+          node scripts/check-velocity-native-only.cjs
+          node scripts/check-velocity-gpu-virtual.cjs deps/gpu-virtual
+          node scripts/check-velocity-qssd.cjs deps/qssd
+          javac -d build/velocity-c04 reverse-os-android/app/src/main/java/com/reversepc/os/VelocityGearbox.java reverse-os-android/tests/VelocityGearboxTest.java
+          java -cp build/velocity-c04 com.reversepc.os.VelocityGearboxTest
+          node --check reverse-os-android/tests/velocity-graphics-ui-smoke.cjs
+          node --check reverse-os-android/tests/velocity-state-space-smoke.cjs
+      - uses: actions/cache@v4
+        id: signing
+        with:
+          path: ${{ env.REVERSE_SIGNING_KEYSTORE }}
+          key: reverse-velocity-c04-native-signing-v1
+      - name: Prepare Android SDK and separate C04 signing identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          if [[ ! -f "$REVERSE_SIGNING_KEYSTORE" ]]; then
+            keytool -genkeypair -keystore "$REVERSE_SIGNING_KEYSTORE" -storetype JKS -storepass android -keypass android -alias reverse-desktop -keyalg RSA -keysize 2048 -validity 10000 -dname 'CN=REVERSE Velocity C04 Development'
+          fi
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1' platform-tools emulator 'system-images;android-35;default;x86_64' > build/velocity-apk/sdk.log
+      - name: Verify unchanged XI scene and gameplay assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/open-forest-author-contract.cjs
+          node scripts/forest-trails-contract.cjs build/velocity-apk
+          node scripts/velocity-car-contract.cjs
+          node scripts/velocity-textures-contract.cjs
+          node scripts/author-velocity-powertrain.cjs
+          node scripts/author-velocity-forest.cjs
+          node scripts/author-velocity-scene.cjs
+          git diff --exit-code -- reverse-os-android/app/src/main/assets/velocity
+      - name: Build actual ARM64 and x86_64 C04 APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          gradle -p reverse-os-android --no-daemon :app:assembleVelocityDebug > build/velocity-apk/gradle.log 2>&1 || { tail -180 build/velocity-apk/gradle.log; exit 1; }
+          cp reverse-os-android/app/build/outputs/apk/velocity/debug/app-velocity-debug.apk dist/REVERSE-VELOCITY-4.0-C04-NATIVE-QSSD.apk
+      - uses: actions/cache/save@v4
+        if: steps.signing.outputs.cache-hit != 'true'
+        with:
+          path: ${{ env.REVERSE_SIGNING_KEYSTORE }}
+          key: reverse-velocity-c04-native-signing-v1
+      - name: Verify package, original native QSSD symbols, signature and 16 KB alignment
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=dist/REVERSE-VELOCITY-4.0-C04-NATIVE-QSSD.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" > build/velocity-apk/signature.txt
+          "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 4 "$APK" > build/velocity-apk/alignment.txt
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" > build/velocity-apk/badging.txt
+          keytool -exportcert -keystore "$REVERSE_SIGNING_KEYSTORE" -storepass android -alias reverse-desktop -file build/velocity-apk/expected-signer.der
+          node reverse-os-android/tests/velocity-apk-package.cjs "$APK" build/velocity-apk/badging.txt build/velocity-apk/package-results.json build/velocity-apk/signature.txt build/velocity-apk/expected-signer.der
+          sha256sum "$APK" > build/velocity-apk/apk-sha256.txt
+      - name: Installed Android five-profile driving and complete-state recovery acceptance
+        timeout-minutes: 18
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PATH="$ANDROID_HOME/platform-tools:$PATH"
+          sudo chmod a+rw /dev/kvm
+          export ANDROID_AVD_HOME="$(mktemp -d /tmp/velocity-c04.XXXXXX)"
+          printf 'no\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --force -n velocity -p "$ANDROID_AVD_HOME/velocity.avd" -k 'system-images;android-35;default;x86_64'
+          python3 - <<'PY'
+          import os,pathlib
+          p=pathlib.Path(os.environ['ANDROID_AVD_HOME'])/'velocity.avd/config.ini'
+          values={'hw.lcd.width':'720','hw.lcd.height':'1280','hw.lcd.density':'240','hw.cpu.ncore':'4'}
+          lines=[line for line in p.read_text().splitlines() if line.split('=',1)[0].strip() not in values]
+          p.write_text('\n'.join(lines+[key+'='+value for key,value in values.items()])+'\n')
+          PY
+          "$ANDROID_HOME/emulator/emulator" -avd velocity -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader -feature -Vulkan -cores 4 -memory 4096 > build/velocity-apk/emulator.log 2>&1 &
+          EMULATOR_PID=$!
+          trap 'adb logcat -d > build/velocity-apk/logcat.txt 2>/dev/null || true; kill "$EMULATOR_PID" 2>/dev/null || true' EXIT
+          ready=false
+          for i in $(seq 1 100); do
+            if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == 1 ]]; then ready=true; break; fi
+            sleep 2
+          done
+          "$ready"
+          sleep 5
+          adb shell settings put global window_animation_scale 0
+          adb shell settings put global transition_animation_scale 0
+          adb shell settings put global animator_duration_scale 0
+          adb shell input keyevent 82
+          adb install dist/REVERSE-VELOCITY-4.0-C04-NATIVE-QSSD.apk > build/velocity-apk/install.txt
+          node reverse-os-android/tests/velocity-graphics-ui-smoke.cjs adb build/velocity-apk/graphics-ui
+          node reverse-os-android/tests/velocity-state-space-smoke.cjs adb build/velocity-apk/state-space
+      - name: Publish APK only after installed-Android acceptance
+        uses: actions/upload-artifact@v4
+        with:
+          name: reverse-velocity-c04-native-qssd-apk
+          path: dist/REVERSE-VELOCITY-4.0-C04-NATIVE-QSSD.apk
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: velocity-c04-android-evidence
+          path: build/velocity-apk
+          if-no-files-found: error
