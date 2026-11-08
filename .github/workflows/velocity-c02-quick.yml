@@ -1,9 +1,9 @@
-name: Velocity C02 - gearbox, meadow and core locks
+name: Velocity C03 - graphics qSSD bridge, C12 and driving
 on:
   push:
-    branches: [feature/velocity-c02-qssd-c12-pastures-drivability-20261107]
+    branches: [feature/velocity-c02-qssd-c12-pastures-drivability-20261107, feature/velocity-c03-qssd-renderbus-20261108]
   pull_request:
-    branches: [feature/velocity-c01-driving-20261106]
+    branches: [feature/velocity-c01-driving-20261106, feature/velocity-c02-qssd-c12-pastures-drivability-20261107]
 permissions: {contents: read}
 jobs:
   c02:
@@ -64,3 +64,12 @@ jobs:
             reverse-os-android/tests/velocity-c12-frame.cpp \
             -o build/velocity-c02/velocity-c12-frame
           build/velocity-c02/velocity-c12-frame
+
+      - name: Execute qSSD GPU revision, partial resource and recovery tests
+        run: |
+          javac -d build/velocity-c02 \
+            reverse-os-android/app/src/main/java/x/gpu/virtual/CompactTriangleStream.java \
+            reverse-os-android/app/src/main/java/com/reversepc/os/RegraphicsGeometry.java \
+            reverse-os-android/app/src/main/java/com/reversepc/os/VelocityQssdGraphicsBridge.java \
+            reverse-os-android/tests/VelocityQssdGraphicsBridgeTest.java
+          java -cp build/velocity-c02 com.reversepc.os.VelocityQssdGraphicsBridgeTest

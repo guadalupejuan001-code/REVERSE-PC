@@ -12,6 +12,7 @@ function unzip(args){
 const entries=unzip(['-Z1',apk]).toString('utf8').trim().split(/\r?\n/);
 assert(entries.filter(n=>/^classes\d*\.dex$/.test(n)).some(n=>unzip(['-p',apk,n]).includes(Buffer.from('Lx/gpu/virtual/CompactTriangleStream;'))),'the APK must package the actual shared GPU-VIRTUAL runtime');
 assert(entries.filter(n=>/^classes\d*\.dex$/.test(n)).some(n=>unzip(['-p',apk,n]).includes(Buffer.from('Lcom/reversepc/os/XiSharedGeometryPacket;'))),'APK must package the qSSD observation used by JNI');
+assert(entries.filter(n=>/^classes\\d*\\.dex$/.test(n)).some(n=>unzip(['-p',apk,n]).includes(Buffer.from('Lcom/reversepc/os/VelocityQssdGraphicsBridge;'))),'APK must package the qSSD GLES resource bridge');
 const nativeElf={};
 for(const abi of ['arm64-v8a','x86_64']){
  const name='lib/'+abi+'/libreverse_os.so';
@@ -36,10 +37,10 @@ for(const abi of ['arm64-v8a','x86_64']){
 }
 const text=fs.readFileSync(badging,'utf8');
 assert.match(text,/package: name='com\.reversepc\.velocity\.c02'/);
-assert.match(text,/versionCode='43'/,'C02 lab versionCode');
-assert.match(text,/versionName='4\.0\.0-c02-pastizales'/,'C02 lab versionName');
+assert.match(text,/versionCode='45'/,'C02 lab versionCode');
+assert.match(text,/versionName='4\.0\.0-c03-qssd'/,'C02 lab versionName');
 assert.match(text,/launchable-activity: name='com\.reversepc\.os\.VelocityActivity'/);
-assert.match(text,/application-label:'REVERSE VELOCITY C02'/);
+assert.match(text,/application-label:'REVERSE VELOCITY C03'/);
 assert.match(text,/sdkVersion:'29'/);
 assert(!text.includes("uses-permission: name='android.permission.INTERNET'"),'game flavor unexpectedly requests Internet');
 const assets={};
@@ -74,7 +75,7 @@ if(process.env.VELOCITY_EXPECTED_SIGNER_SHA256){
   'APK must keep the signer of the released 0.1 test build for in-place upgrades');
 }
 const report={passed:true,applicationId:'com.reversepc.velocity.c02',launcher:'com.reversepc.os.VelocityActivity',minSdk:29,
- versionCode:43,versionName:'4.0.0-c02-pastizales',sourceCommit:process.env.GITHUB_SHA||null,
+ versionCode:45,versionName:'4.0.0-c03-qssd',sourceCommit:process.env.GITHUB_SHA||null,
  signerCertificateSha256:expected,signerVerifiedAgainstBuildCertificate:true,inPlaceUpgradeCompatible:false,
  abis:['arm64-v8a','x86_64'],nativeElf,assets,apkBytes:fs.statSync(apk).size,
  apkSha256:crypto.createHash('sha256').update(fs.readFileSync(apk)).digest('hex')};
