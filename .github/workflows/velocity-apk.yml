@@ -49,7 +49,7 @@ jobs:
     timeout-minutes: 35
     env:
       REVERSE_SIGNING_KEYSTORE: ${{ github.workspace }}/build-signing/reverse-velocity.jks
-      VELOCITY_EXPECTED_SIGNER_SHA256: 061c28614fffecdc9a53a5661c4acf8c4d1173b631095aaaee8a98070abdf0d7
+      # C02 uses its own package ID: never install it over the original signed app.
     steps:
       - uses: actions/checkout@v4
         with: {persist-credentials: false}
@@ -83,7 +83,7 @@ jobs:
         id: velocity-signing
         with:
           path: ${{ env.REVERSE_SIGNING_KEYSTORE }}
-          key: reverse-velocity-development-signing-v1
+          key: reverse-velocity-c02-lab-signing-v1
       # C02 verification must retain the original cached signer for upgrades.
       - name: Prepare fixed native dependency, SDK and signing identity
         run: |
@@ -131,7 +131,7 @@ jobs:
         if: steps.velocity-signing.outputs.cache-hit != 'true'
         with:
           path: ${{ env.REVERSE_SIGNING_KEYSTORE }}
-          key: reverse-velocity-development-signing-v1
+          key: reverse-velocity-c02-lab-signing-v1
       - name: Fetch the released 3.9 APK for upgrade validation
         uses: actions/download-artifact@v4
         with:
@@ -165,7 +165,7 @@ jobs:
           sha256sum "$APK" > build/velocity-apk/apk-sha256.txt
       # The user can install immediately once the package/signature/source hashes
       # pass, while the slower emulator smoke continues in the same job.
-      - name: Publish cryptographically verified upgrade APK
+      - name: Publish cryptographically verified standalone C02 APK
         uses: actions/upload-artifact@v4
         with:
           name: reverse-velocity-apk
