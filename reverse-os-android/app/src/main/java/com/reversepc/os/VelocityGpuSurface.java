@@ -92,6 +92,7 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
     private void cancel(String why){synchronized(mailbox){for(Request r:new Request[]{queued,active})if(r!=null){r.error=new IllegalStateException(why);r.done.countDown();}queued=null;}}
     @Override public void onPause(){suspended=true;ready=false;cancel("GPU suspended");super.onPause();}
     @Override public void onResume(){suspended=false;super.onResume();invalidated.run();requestRender();}
+    @Override protected void onDetachedFromWindow(){super.onDetachedFromWindow();qssd.close();}
     void draw(VelocityXiEngine.Observation observed,VelocityXiEngine.Snapshot state,int yaw,VelocityGraphics graphics)throws InterruptedException{
         if(observed.geometry==null||observed.colors==null)
             throw new IllegalArgumentException("Missing validated XI/qSSD XFG4 observation");
@@ -149,7 +150,7 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
             paletteTexture=texture();glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA8,256,1,0,GL_RGBA,GL_UNSIGNED_BYTE,null);
             atlasTexture=texture();glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);glTexImage2D(GL_TEXTURE_2D,0,GL_R8,128,16,0,GL_RED,GL_UNSIGNED_BYTE,null);
             int[] id={0};glGenVertexArrays(1,id,0);vao=id[0];glBindVertexArray(vao);glGenBuffers(1,id,0);vbo=id[0];glBindBuffer(GL_ARRAY_BUFFER,vbo);glBufferData(GL_ARRAY_BUFFER,4,null,GL_DYNAMIC_DRAW);
-            vertexCapacity=4;vertices.invalidateGpuCopy();qssd.contextLost();atlasFilter=-1;
+            vertexCapacity=4;vertices.invalidateGpuCopy();qssd.contextCreated();atlasFilter=-1;
             int stride=CompactTriangleStream.STRIDE;
             glVertexAttribPointer(0,2,GL_INT,false,stride,0);
             glVertexAttribPointer(1,2,GL_SHORT,false,stride,12);
@@ -198,7 +199,10 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
                 if(!firstFrame&&r.geometry!=null){firstFrame=true;Log.i("ReverseVelocity","GPU_FRAME_READY source=XI_XFG4 shaders=REgraphics faces="+r.geometry.faces+" width="+targetWidth+" height="+targetHeight);}
                 r.done.countDown();synchronized(mailbox){if(active==r)active=null;}
             });
-        }catch(RuntimeException error){r.error=error;r.done.countDown();disable(error);}
+        }catch(RuntimeException error){
+            vertices.invalidateGpuCopy();qssd.contextLost();
+            r.error=error;r.done.countDown();disable(error);
+        }
     }
     private void scene(Request r){
         // Native C12 must execute for every submitted GLES frame; no fake
@@ -249,18 +253,21 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
             glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,filter);
             glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,filter);atlasFilter=filter;
         }
-        for(int row=0;row<16;row++){
-            if((plan.atlasRowsMask&(1<<row))==0)continue;
-            atlasBytes.clear();atlasBytes.put(plan.frame.atlas,row*128,128);atlasBytes.flip();
-            glTexSubImage2D(GL_TEXTURE_2D,0,0,row,128,1,GL_RED,GL_UNSIGNED_BYTE,atlasBytes);
-            textureUploadBytes+=128;
+        // Adjacent dirty rows share one API upload; initial atlas uses one call.
+        for(int row=0;row<16;){
+            if((plan.atlasRowsMask&(1<<row))==0){row++;continue;}
+            int first=row++;while(row<16&&(plan.atlasRowsMask&(1<<row))!=0)row++;
+            int count=row-first;
+            atlasBytes.clear();atlasBytes.put(plan.frame.atlas,first*128,count*128);atlasBytes.flip();
+            glTexSubImage2D(GL_TEXTURE_2D,0,0,first,128,count,GL_RED,GL_UNSIGNED_BYTE,atlasBytes);
+            textureUploadBytes+=128L*count;
         }
         checked("QSSD resource delta uploads");
         qssd.confirm(plan); // Commit only after the GL driver accepts all resources.
         if(resourceFrames==0)
             Log.i("ReverseVelocity","QSSD_GPU_BRIDGE_ACTIVE source=XI_XFG4 identity="+plan.frame.sourceIdentity+
                 " revision="+plan.frame.sourceRevision+" session="+plan.frame.sourceSession+" paletteVersion="+plan.frame.paletteRevision+
-                " atlasVersion="+plan.frame.atlasRevision+" route=REgraphics_QSSD_GLES");
+                " atlasVersion="+plan.frame.atlasRevision+" route=REgraphics_QSSD_GLES component=QSSD_NATIVE adapter=JNI");
         if(++resourceFrames>=60){
             Log.i("ReverseVelocity","GPU_VIRTUAL_RESOURCES frames="+resourceFrames+" vertexStride=24 stagingCapacityBytes="+vertices.capacityBytes()+" vboCapacityBytes="+vertexCapacity+" liveVertexBytes="+vertices.usedBytes()+" vertexUploadBytes="+vertexUploadBytes+" vertexUploadCalls="+vertexUploadCalls+" textureUploadBytes="+textureUploadBytes+" reusedGeometryFrames="+reusedGeometryFrames+" scope=geometry_transport_not_process_ram");
             Log.i("ReverseVelocity","QSSD_RENDER_BUS frames="+resourceFrames+

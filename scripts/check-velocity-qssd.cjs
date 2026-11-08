@@ -3,7 +3,7 @@
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),crypto=require('node:crypto');
 const lock=JSON.parse(fs.readFileSync('docs/QSSD_INTEGRATION_LOCK.json','utf8'));
 assert.equal(lock.repository,'guadalupejuan001-code/Virtual-qSSD-');
-assert.equal(lock.commit,'9fe72bbf0d972d0baad9300971dfaabab5691447');
+assert.equal(lock.commit,'376b1334dd2dde6093a2988ee12325590941573d');
 for(const entry of lock.files){
  const value=fs.readFileSync(entry.vendoredPath);
  assert.equal(crypto.createHash('sha256').update(value).digest('hex'),entry.sha256,'qSSD complete-state source differs');
@@ -26,3 +26,13 @@ assert(engine.includes('NativeRuntime.sessionRegisterResources(')&&engine.includ
 assert(read(java+'VelocityGpuSurface.java').includes('game.resourceText(name)'),'GPU shaders must be consumed from the same state bus');
 assert(engine.includes('NativeRuntime.sessionCheckpointSpace(')&&engine.includes('NativeRuntime.sessionOpenSpace('),'complete persistence must execute in the game');
 console.log('VELOCITY_QSSD_LOCK_PASS '+JSON.stringify({commit:lock.commit,sha256:lock.sha256,baseline:lock.baselineVelocityCommit,projection:'VM-owned read-only buffer'}));
+
+if(process.argv[2])for(const item of lock.componentFiles){
+ const raw=fs.readFileSync(path.join(process.argv[2],item.path));
+ assert.equal(crypto.createHash('sha256').update(raw).digest('hex'),item.sha256,'original QSSD component differs: '+item.path);
+}
+const bridge=read(java+'VelocityQssdGraphicsBridge.java');
+assert(bridge.includes('nativePublish(')&&bridge.includes('nativePlan(')&&bridge.includes('nativeConfirm('),'Java must delegate to QSSD');
+assert(!bridge.includes('private Frame head,uploaded')&&!bridge.includes('atlasLayout('),'Java cannot duplicate the component');
+const materials=read('reverse-os-android/app/src/main/cpp/velocity_c12_frame.cpp');
+assert(materials.includes('qssd::Space component')&&materials.includes('qssd::C12Window window(source)')&&materials.includes('window.source_pointer_preserved()'),'original shared-source C12 integration is required');

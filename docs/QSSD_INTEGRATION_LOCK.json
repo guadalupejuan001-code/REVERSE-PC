@@ -1,10 +1,10 @@
 {
   "repository": "guadalupejuan001-code/Virtual-qSSD-",
-  "commit": "9fe72bbf0d972d0baad9300971dfaabab5691447",
+  "commit": "376b1334dd2dde6093a2988ee12325590941573d",
   "upstreamPath": "include/qssd/shared_projection.hpp",
   "vendoredPath": "src/qssd/shared_projection.hpp",
   "baselineVelocityCommit": "bd2e74779f0fc57e4bb730d32f64bd59e73c6385",
-  "scope": "C03 complete native CPU/resource/component/GPU-dependency state authority, version history, bookmarks, forks and QSB3 archives; JNI projections remain explicit; C06 GPU C12 verified upstream and original C05 Bell available, gameplay currently uses pinned C03 projection ABI",
+  "scope": "Original native QSSD GraphicsPort/StateBus plus producer Field via Space and C12Window; Java is only JNI.",
   "sha256": "0429bafc17ec9dfd346ef1e63376a479fcbd48d77a3751214ed00ef4f0290ad4",
   "files": [
     {
@@ -23,5 +23,19 @@
       "sha256": "fc94842e89776eeef68eee6d016f9f4c2e57435603466fb7eb855cd864ffdd5c"
     }
   ],
-  "nativeEquivalenceBaseline": "665742aa9310314242271ea51f9294d07a97b4c4"
+  "nativeEquivalenceBaseline": "665742aa9310314242271ea51f9294d07a97b4c4",
+  "componentFiles": [
+    {
+      "path": "include/qssd/graphics_port.hpp",
+      "sha256": "845d3429c9aa6ac882095d78da83e3d4e6313b2e6c612e4dd3a6fa168bbf1bd7"
+    },
+    {
+      "path": "include/qssd/state_space.hpp",
+      "sha256": "91b766b86c762ebf803d21782b76133ad01c2a029609722cbcee0b5cf5d9e616"
+    },
+    {
+      "path": "include/qssd/c12_bridge.hpp",
+      "sha256": "d6e1ecb3eb2ca39ce0a7f16d709ecbfa9810f7ab09be0bf8f99fd2d4ff2f3693"
+    }
+  ]
 }

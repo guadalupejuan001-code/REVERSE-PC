@@ -2,7 +2,7 @@
 'use strict';
 // Operates the actual installed game: save, kill, restart, restore and drive.
 const cp=require('node:child_process'),fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict'),crypto=require('node:crypto');
-const [adb='adb',out='build/velocity-state-space']=process.argv.slice(2),pkg='com.reversepc.velocity.c02';
+const [adb='adb',out='build/velocity-state-space']=process.argv.slice(2),pkg='com.reversepc.velocity.c04';
 fs.mkdirSync(out,{recursive:true});const report={passed:false,emulator:true,checks:[],processRestart:false};
 const sleep=ms=>Atomics.wait(new Int32Array(new SharedArrayBuffer(4)),0,0,ms);
 function run(args,binary=false,timeout=30000){const r=cp.spawnSync(adb,args,{encoding:binary?null:'utf8',timeout,maxBuffer:80*1024*1024});assert.ifError(r.error);assert.equal(r.status,0,String(r.stderr));return r.stdout;}

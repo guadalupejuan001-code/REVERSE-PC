@@ -20,6 +20,7 @@ for(const abi of ['arm64-v8a','x86_64']){
  const elf=unzip(['-p',apk,name]);
  assert(elf.includes(Buffer.from('Java_com_reversepc_os_NativeRuntime_sessionObserveSharedGeometry')),'native qSSD JNI entry must be present');
  assert(elf.includes(Buffer.from('Java_com_reversepc_os_NativeRuntime_velocityC12Frame')),'original GPU C12 per-frame JNI entry must be compiled into APK');
+ for(const fn of ['nativePublish','nativePlan','nativeConfirm','nativeInvalidate'])assert(elf.includes(Buffer.from('Java_com_reversepc_os_VelocityQssdGraphicsBridge_'+fn)),'original QSSD native entry missing: '+fn);
  for(const method of ['sessionCheckpointSpace','sessionOpenSpace','sessionRegisterResources','sessionForkSpace'])assert(elf.includes(Buffer.from('Java_com_reversepc_os_NativeRuntime_'+method)),'full-state JNI entry absent: '+method);
  assert.equal(elf.subarray(0,4).toString('hex'),'7f454c46');
  assert.equal(elf[4],2,'ELF must be 64 bit');assert.equal(elf[5],1,'ELF must be little endian');
@@ -36,11 +37,11 @@ for(const abi of ['arm64-v8a','x86_64']){
  assert(load.length>0,'ELF lacks load segments');nativeElf[abi]={bytes:elf.length,loadSegmentAlignments:load};
 }
 const text=fs.readFileSync(badging,'utf8');
-assert.match(text,/package: name='com\.reversepc\.velocity\.c02'/);
-assert.match(text,/versionCode='45'/,'C02 lab versionCode');
-assert.match(text,/versionName='4\.0\.0-c03-qssd'/,'C02 lab versionName');
+assert.match(text,/package: name='com\.reversepc\.velocity\.c04'/);
+assert.match(text,/versionCode='46'/,'C02 lab versionCode');
+assert.match(text,/versionName='4\.0\.0-c04-native-qssd'/,'C02 lab versionName');
 assert.match(text,/launchable-activity: name='com\.reversepc\.os\.VelocityActivity'/);
-assert.match(text,/application-label:'REVERSE VELOCITY C03'/);
+assert.match(text,/application-label:'REVERSE VELOCITY C04'/);
 assert.match(text,/sdkVersion:'29'/);
 assert(!text.includes("uses-permission: name='android.permission.INTERNET'"),'game flavor unexpectedly requests Internet');
 const assets={};
@@ -74,8 +75,8 @@ if(process.env.VELOCITY_EXPECTED_SIGNER_SHA256){
  assert.equal(expected,process.env.VELOCITY_EXPECTED_SIGNER_SHA256,
   'APK must keep the signer of the released 0.1 test build for in-place upgrades');
 }
-const report={passed:true,applicationId:'com.reversepc.velocity.c02',launcher:'com.reversepc.os.VelocityActivity',minSdk:29,
- versionCode:45,versionName:'4.0.0-c03-qssd',sourceCommit:process.env.GITHUB_SHA||null,
+const report={passed:true,applicationId:'com.reversepc.velocity.c04',launcher:'com.reversepc.os.VelocityActivity',minSdk:29,
+ versionCode:46,versionName:'4.0.0-c04-native-qssd',sourceCommit:process.env.GITHUB_SHA||null,
  signerCertificateSha256:expected,signerVerifiedAgainstBuildCertificate:true,inPlaceUpgradeCompatible:false,
  abis:['arm64-v8a','x86_64'],nativeElf,assets,apkBytes:fs.statSync(apk).size,
  apkSha256:crypto.createHash('sha256').update(fs.readFileSync(apk)).digest('hex')};
