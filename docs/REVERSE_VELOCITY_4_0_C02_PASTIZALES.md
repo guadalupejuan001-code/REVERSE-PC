@@ -23,3 +23,12 @@ El antiguo actor de hierba (`nature_grass_model`) se regeneraba cerca de la cám
 La PR activa la construcción de APK Android en GitHub Actions, compara los archivos XI regenerados, verifica los SHA de componentes originales, ejecuta pruebas de conducción, comprueba firma y actualización sobre la APK 3.9 y realiza pruebas de arranque y persistencia en emulador. No se atribuyen FPS reales de teléfono sin medición del dispositivo.
 
 Siguiente ciclo: conectar un despacho C12 real a la generación de materiales/geométrica por fotograma, con comparación A/B y una ruta de recuperación segura si empeora la latencia. La PR C04 de crecimiento QSSD sigue independiente.
+
+## Firma de compatibilidad Android
+
+La aplicación mantiene el identificador `com.reversepc.velocity`. Las compilaciones
+se aceptan para actualización sobre la instalación anterior únicamente si el
+certificado SHA-256 coincide con `061c28614fffecdc9a53a5661c4acf8c4d1173b631095aaaee8a98070abdf0d7`.
+No se debe distribuir como actualización un binario firmado con una clave
+nueva generada en la rama de experimentos; conservar los datos del usuario
+tiene prioridad. La validación requiere el certificado de la rama de liberación.
