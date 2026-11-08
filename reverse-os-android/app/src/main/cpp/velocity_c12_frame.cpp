@@ -39,7 +39,9 @@ FrameOutput evaluate(const FrameInput& input){
   xgpu::Field field(10);
   for(xgpu::Index i=0;i<words.size();++i)
     if(words[static_cast<std::size_t>(i)]!=0)
-      field=field.patched(i,words[static_cast<std::size_t>(i)]);
+      // This unpublished field belongs only to this call. The upstream setter
+      // avoids copying all previous patches; initialize_global validates it.
+      xgpu::set_field_word(field,i,words[static_cast<std::size_t>(i)]);
   xgpu::Execution runtime(10,{},xgpu::ExecutionProfile::C12);
   runtime.initialize_global(std::move(field));
   const auto job=runtime.enqueue(materials(),5,5);

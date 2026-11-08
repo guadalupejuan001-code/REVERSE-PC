@@ -15,6 +15,9 @@ on:
       - 'src/rxe.hpp'
       - 'reverse-os-android/tests/velocity-apk-smoke.cjs'
       - 'reverse-os-android/tests/velocity-apk-package.cjs'
+      - 'reverse-os-android/tests/velocity-performance-ab.cjs'
+      - 'reverse-os-android/tests/velocity-graphics-ui-smoke.cjs'
+      - 'reverse-os-android/tests/velocity-state-space-smoke.cjs'
       - 'scripts/author-velocity-scene.cjs'
       - 'scripts/author-velocity-forest.cjs'
       - 'scripts/check-velocity-native-only.cjs'
@@ -49,7 +52,9 @@ jobs:
     timeout-minutes: 35
     env:
       REVERSE_SIGNING_KEYSTORE: ${{ github.workspace }}/build-signing/reverse-velocity.jks
-      # C02 uses its own package ID: never install it over the original signed app.
+      VELOCITY_EXPECTED_SIGNER_SHA256: cc980acd8a8925b7ea27a6e5d1afc3ee08c23f156565c6eae8f3d21d5d3cc454
+      VELOCITY_SOURCE_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      # C03R updates the delivered C03 package and must keep its exact signer.
     steps:
       - uses: actions/checkout@v4
         with: {persist-credentials: false}
@@ -81,23 +86,30 @@ jobs:
         with: {node-version: '22'}
       - uses: gradle/actions/setup-gradle@v4
         with: {gradle-version: '8.9'}
-      - uses: actions/cache@v4
+      - uses: actions/cache/restore@v4
         id: velocity-signing
         with:
           path: ${{ env.REVERSE_SIGNING_KEYSTORE }}
           key: reverse-velocity-c02-lab-signing-v1
-      # C02 verification must retain the original cached signer for upgrades.
+      # An unavailable signing key is a release blocker, never a reason to
+      # silently create a replacement certificate for the same package ID.
       - name: Prepare fixed native dependency, SDK and signing identity
         run: |
           set -euo pipefail
           umask 077
           mkdir -p dist build/velocity-apk build/ether-compat build-signing
           if [[ ! -f "$REVERSE_SIGNING_KEYSTORE" ]]; then
-            keytool -genkeypair -keystore "$REVERSE_SIGNING_KEYSTORE" -storetype JKS \
-              -storepass android -keypass android -alias reverse-desktop \
-              -keyalg RSA -keysize 2048 -validity 10000 \
-              -dname 'CN=REVERSE Velocity Development'
+            echo '::error::The delivered C03 signing key is unavailable. Restore the existing key; do not generate a new signer.'
+            exit 1
           fi
+          keytool -exportcert -keystore "$REVERSE_SIGNING_KEYSTORE" \
+            -storepass android -alias reverse-desktop \
+            -file build/velocity-apk/expected-signer.der
+          python3 - <<'PY'
+          import hashlib,os,pathlib
+          actual=hashlib.sha256(pathlib.Path('build/velocity-apk/expected-signer.der').read_bytes()).hexdigest()
+          assert actual==os.environ['VELOCITY_EXPECTED_SIGNER_SHA256'], 'Cached key is not the delivered C03 signer; refusing an incompatible update'
+          PY
           python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
             'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' \
@@ -128,56 +140,64 @@ jobs:
               exit 1
             }
           cp reverse-os-android/app/build/outputs/apk/velocity/debug/app-velocity-debug.apk \
-            dist/REVERSE-VELOCITY-4.0-C03-QSSD-GPU.apk
-      - uses: actions/cache/save@v4
-        if: steps.velocity-signing.outputs.cache-hit != 'true'
-        with:
-          path: ${{ env.REVERSE_SIGNING_KEYSTORE }}
-          key: reverse-velocity-c02-lab-signing-v1
-      - name: Fetch the released 3.9 APK for upgrade validation
+            dist/REVERSE-VELOCITY-4.0-C03R.apk
+      - name: Fetch the exact delivered C03 APK for update and performance comparison
         uses: actions/download-artifact@v4
         with:
           name: reverse-velocity-apk
-          run-id: 42277293195
+          run-id: 42460861055
           github-token: ${{ github.token }}
           path: build/velocity-baseline
-      - name: Verify baseline APK bytes
+      - name: Verify C03 baseline bytes, package, version and signing certificate
         run: |
           python3 - <<'PY'
-          import hashlib,pathlib
-          p=pathlib.Path('build/velocity-baseline/REVERSE-VELOCITY-3.9-ESTADOS.apk')
-          assert hashlib.sha256(p.read_bytes()).hexdigest()=='ca3157659e5455efb271f0becf19e88f3f79833e8a90e1088c1aeed6bc1626c7'
+          import hashlib,json,os,pathlib,re,subprocess
+          p=pathlib.Path('build/velocity-baseline/REVERSE-VELOCITY-4.0-C03-QSSD-GPU.apk')
+          digest=hashlib.sha256(p.read_bytes()).hexdigest()
+          assert digest=='b6ddfce4f966e60b69b3113fc09bef92a5d2bce5604a80a2d2ae1d747bb6fde2', 'The baseline must be the delivered C03 APK'
+          tools=pathlib.Path(os.environ['ANDROID_HOME'])/'build-tools/35.0.0'
+          badging=subprocess.check_output([str(tools/'aapt'),'dump','badging',str(p)],text=True)
+          signed=subprocess.check_output([str(tools/'apksigner'),'verify','--verbose','--print-certs',str(p)],text=True)
+          pathlib.Path('build/velocity-apk/baseline-badging.txt').write_text(badging)
+          pathlib.Path('build/velocity-apk/baseline-signature.txt').write_text(signed)
+          package=re.search(r"^package: name='([^']+)' versionCode='(\d+)' versionName='([^']+)'",badging,re.M)
+          launcher=re.search(r"^launchable-activity: name='([^']+)'",badging,re.M)
+          signer=re.search(r'Signer #1 certificate SHA-256 digest:\s*([0-9a-f]{64})',signed,re.I)
+          assert package and package.groups()==('com.reversepc.velocity.c02','45','4.0.0-c03-qssd')
+          assert launcher and launcher[1]=='com.reversepc.os.VelocityActivity'
+          assert re.search(r'^Verifies\s*$',signed,re.M) and 'Number of signers: 1' in signed
+          assert signer and signer[1].lower()==os.environ['VELOCITY_EXPECTED_SIGNER_SHA256']
+          identity={'passed':True,'applicationId':package[1],'versionCode':int(package[2]),'versionName':package[3],
+                    'launcher':launcher[1],'apkBytes':p.stat().st_size,'apkSha256':digest,
+                    'signerCertificateSha256':signer[1].lower(),'workflowRun':'42460861055',
+                    'sourceCommit':'6ef42b66b4a55b20582949c19d9a5ed3e65da98f',
+                    'sourceHeadCommit':'cb7903bd596f1f0c382d3ba880e47086dfc37014',
+                    'dependencies':{'mundoX':'1f925786522aba91f72707ad1638a8edcdd31a8f',
+                                    'gpuVirtual':'4cdd47f487cfadbca559dd8c2f5abc0448cd77a7',
+                                    'qssd':'9fe72bbf0d972d0baad9300971dfaabab5691447'}}
+          pathlib.Path('build/velocity-apk/baseline-package-results.json').write_text(json.dumps(identity,indent=2)+'\n')
           PY
       - name: Verify native-XI APK identity, signature, alignment and source assets
         run: |
           set -euo pipefail
-          APK=dist/REVERSE-VELOCITY-4.0-C03-QSSD-GPU.apk
+          APK=dist/REVERSE-VELOCITY-4.0-C03R.apk
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" \
             > build/velocity-apk/signature.txt
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -P 16 4 "$APK" \
             > build/velocity-apk/alignment.txt
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" \
             > build/velocity-apk/badging.txt
-          keytool -exportcert -keystore "$REVERSE_SIGNING_KEYSTORE" \
-            -storepass android -alias reverse-desktop \
-            -file build/velocity-apk/expected-signer.der
           node reverse-os-android/tests/velocity-apk-package.cjs "$APK" \
             build/velocity-apk/badging.txt build/velocity-apk/package-results.json \
             build/velocity-apk/signature.txt build/velocity-apk/expected-signer.der
           sha256sum "$APK" > build/velocity-apk/apk-sha256.txt
-      # The user can install immediately once the package/signature/source hashes
-      # pass, while the slower emulator smoke continues in the same job.
-      - name: Publish cryptographically verified standalone C03 qSSD APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: reverse-velocity-apk
-          path: dist/REVERSE-VELOCITY-4.0-C03-QSSD-GPU.apk
-          if-no-files-found: error
       - name: Install and exercise the game on Android 35
         timeout-minutes: 18
         run: |
           set -euo pipefail
           export PATH="$ANDROID_HOME/platform-tools:$PATH"
+          export VELOCITY_AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          export VELOCITY_APKSIGNER="$ANDROID_HOME/build-tools/35.0.0/apksigner"
           sudo chmod a+rw /dev/kvm
           export ANDROID_AVD_HOME="$(mktemp -d /tmp/velocity-avd.XXXXXX)"
           printf 'no\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd \
@@ -210,14 +230,45 @@ jobs:
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
           adb shell input keyevent 82
-          adb install build/velocity-baseline/REVERSE-VELOCITY-3.9-ESTADOS.apk > build/velocity-apk/baseline-install.txt
-          adb install -r dist/REVERSE-VELOCITY-4.0-C03-QSSD-GPU.apk \
+          adb install build/velocity-baseline/REVERSE-VELOCITY-4.0-C03-QSSD-GPU.apk > build/velocity-apk/baseline-install.txt
+          adb shell dumpsys package com.reversepc.velocity.c02 > build/velocity-apk/installed-before.txt
+          adb install -r dist/REVERSE-VELOCITY-4.0-C03R.apk \
             > build/velocity-apk/install.txt
+          adb shell dumpsys package com.reversepc.velocity.c02 > build/velocity-apk/installed-after.txt
+          python3 - <<'PY'
+          import json,pathlib,re
+          root=pathlib.Path('build/velocity-apk')
+          baseline=json.loads((root/'baseline-package-results.json').read_text())
+          candidate=json.loads((root/'package-results.json').read_text())
+          assert baseline['applicationId']==candidate['applicationId']=='com.reversepc.velocity.c02'
+          assert baseline['signerCertificateSha256']==candidate['signerCertificateSha256']
+          assert 'Success' in (root/'baseline-install.txt').read_text()
+          assert 'Success' in (root/'install.txt').read_text()
+          assert re.search(r'\bversionCode=45\b',(root/'installed-before.txt').read_text())
+          assert re.search(r'\bversionCode=46\b',(root/'installed-after.txt').read_text())
+          assert 'versionName=4.0.0-c03r-pipeline' in (root/'installed-after.txt').read_text()
+          result={'passed':True,'applicationId':candidate['applicationId'],'installArguments':['install','-r'],
+                  'fromVersionCode':45,'toVersionCode':46,'sameSigner':True,
+                  'baselineApkSha256':baseline['apkSha256'],'candidateApkSha256':candidate['apkSha256']}
+          (root/'upgrade-result.json').write_text(json.dumps(result,indent=2)+'\n')
+          candidate['inPlaceUpgradeVerified']=True
+          candidate['upgradeVerification']='upgrade-result.json: actual C03 to C03R adb install -r'
+          (root/'package-results.json').write_text(json.dumps(candidate,indent=2)+'\n')
+          PY
           node reverse-os-android/tests/velocity-graphics-ui-smoke.cjs adb build/velocity-apk/graphics-ui
           node reverse-os-android/tests/velocity-state-space-smoke.cjs adb build/velocity-apk/state-space
           node reverse-os-android/tests/velocity-performance-ab.cjs adb \
-            build/velocity-baseline/REVERSE-VELOCITY-3.9-ESTADOS.apk \
-            dist/REVERSE-VELOCITY-4.0-C03-QSSD-GPU.apk build/velocity-apk/qssd-ab
+            build/velocity-baseline/REVERSE-VELOCITY-4.0-C03-QSSD-GPU.apk \
+            dist/REVERSE-VELOCITY-4.0-C03R.apk build/velocity-apk/qssd-ab \
+            build/velocity-apk/baseline-package-results.json build/velocity-apk/package-results.json
+      # An installable artifact becomes available only after the actual upgrade,
+      # Android functionality and explicit no-regression comparison have passed.
+      - name: Publish C03R APK after Android functionality and performance gates
+        uses: actions/upload-artifact@v4
+        with:
+          name: reverse-velocity-apk
+          path: dist/REVERSE-VELOCITY-4.0-C03R.apk
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         if: always()
         with:

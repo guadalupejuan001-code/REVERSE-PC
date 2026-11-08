@@ -160,7 +160,8 @@ public final class VelocityActivity extends Activity {
         surface.setGraphics(VelocityGraphics.fromId(preferences.getInt("graphics",2)));
         root.addView(surface,new FrameLayout.LayoutParams(-1,-1));
         if(VelocityGpuSurface.supported(this)){
-            gpu=new VelocityGpuSurface(this,()->surface.invalidateGpu(),game);gpu.setOnTouchListener((v,e)->surface.onTouchEvent(e));
+            gpu=new VelocityGpuSurface(this,()->surface.invalidateGpu(),game,
+                getIntent().getBooleanExtra("velocity_verify_pixels",false));gpu.setOnTouchListener((v,e)->surface.onTouchEvent(e));
             surface.attachGpu(gpu);root.addView(gpu,new FrameLayout.LayoutParams(-1,-1));
         }
         hudLayer=new FrameLayout(this);hudLayer.setMotionEventSplittingEnabled(true);

@@ -1,4 +1,4 @@
-name: Velocity C03 - graphics qSSD bridge, C12 and driving
+name: Velocity C03R - graphics qSSD bridge, C12 buffers and driving
 on:
   push:
     branches: [feature/velocity-c02-qssd-c12-pastures-drivability-20261107, feature/velocity-c03-qssd-renderbus-20261108]
@@ -16,7 +16,23 @@ jobs:
           repository: guadalupejuan001-code/GPU-VIRTUAL
           ref: 4cdd47f487cfadbca559dd8c2f5abc0448cd77a7
           path: deps/gpu-virtual
-          sparse-checkout: include
+          sparse-checkout: |
+            android-graphics/shared
+            include
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/Virtual-qSSD-
+          ref: 9fe72bbf0d972d0baad9300971dfaabab5691447
+          path: deps/qssd
+          sparse-checkout: include/qssd
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: cb7903bd596f1f0c382d3ba880e47086dfc37014
+          path: deps/velocity-c03-baseline
+          sparse-checkout: reverse-os-android/app/src/main/java
+          persist-credentials: false
       - uses: actions/setup-java@v4
         with: {distribution: temurin, java-version: '17'}
       - uses: actions/setup-node@v4
@@ -26,6 +42,7 @@ jobs:
           node --check reverse-os-android/tests/velocity-graphics-ui-smoke.cjs
           node --check reverse-os-android/tests/velocity-state-space-smoke.cjs
           node --check reverse-os-android/tests/velocity-performance-ab.cjs
+          node --check reverse-os-android/tests/velocity-apk-package.cjs
       - name: Compile and exercise real gearbox logic
         run: |
           mkdir -p build/velocity-c02
@@ -53,12 +70,12 @@ jobs:
           JS
       - name: Verify exact vendored GPU C12 / qSSD C06 transport ABI
         run: |
-          node scripts/check-velocity-gpu-virtual.cjs
-          node scripts/check-velocity-qssd.cjs
+          node scripts/check-velocity-gpu-virtual.cjs deps/gpu-virtual
+          node scripts/check-velocity-qssd.cjs deps/qssd
 
       - name: Execute real XGPU-C12 material kernel against independent float32 reference
         run: |
-          g++ -std=c++20 -O2 -Wall -Wextra -pedantic -I deps/gpu-virtual/include \
+          g++ -std=c++20 -O2 -pthread -Wall -Wextra -pedantic -I deps/gpu-virtual/include \
             -I reverse-os-android/app/src/main/cpp \
             reverse-os-android/app/src/main/cpp/velocity_c12_frame.cpp \
             reverse-os-android/tests/velocity-c12-frame.cpp \
@@ -73,3 +90,51 @@ jobs:
             reverse-os-android/app/src/main/java/com/reversepc/os/VelocityQssdGraphicsBridge.java \
             reverse-os-android/tests/VelocityQssdGraphicsBridgeTest.java
           java -cp build/velocity-c02 com.reversepc.os.VelocityQssdGraphicsBridgeTest
+
+      - name: Compare actual qSSD bridge JVM allocation and time against C03
+        run: |
+          set -euo pipefail
+          for variant in before after; do
+            source=.
+            if [[ "$variant" == before ]]; then source=deps/velocity-c03-baseline; fi
+            javac -d "build/velocity-c02/bridge-$variant" \
+              "$source/reverse-os-android/app/src/main/java/x/gpu/virtual/CompactTriangleStream.java" \
+              "$source/reverse-os-android/app/src/main/java/com/reversepc/os/RegraphicsGeometry.java" \
+              "$source/reverse-os-android/app/src/main/java/com/reversepc/os/VelocityQssdGraphicsBridge.java" \
+              reverse-os-android/tests/VelocityQssdGraphicsBridgeBenchmark.java
+          done
+          for round in 0 1 2; do
+            order='before after'
+            if [[ "$round" == 1 ]]; then order='after before'; fi
+            for variant in $order; do
+              java -Xbatch -cp "build/velocity-c02/bridge-$variant" \
+                com.reversepc.os.VelocityQssdGraphicsBridgeBenchmark 20000 \
+                > "build/velocity-c02/bridge-$variant-$round.json"
+            done
+          done
+          python3 - <<'PY'
+          import hashlib,json,pathlib,statistics,subprocess
+          root=pathlib.Path('build/velocity-c02')
+          trials={variant:[json.loads((root/f'bridge-{variant}-{n}.json').read_text()) for n in range(3)]
+                  for variant in ('before','after')}
+          for n in range(3):
+              before=trials['before'][n]['samples'];after=trials['after'][n]['samples']
+              assert len(before)==len(after)==4
+              assert [(s['trace'],s['checksum']) for s in before]==[(s['trace'],s['checksum']) for s in after], 'resource-plan semantics differ from C03'
+          summary={variant:{sample['trace']:{key:statistics.median(trial['samples'][i][key] for trial in group)
+                    for key in ('wallNsPerFrame','threadCpuNsPerFrame','allocatedBytesPerFrame')}
+                    for i,sample in enumerate(group[0]['samples'])} for variant,group in trials.items()}
+          result={'passed':True,'hostOnly':True,'physicalPhoneVerified':False,'fpsMeasured':False,
+                  'scope':'desktop JVM publish/plan/confirm using prebuilt geometry; excludes native XI, JNI, GLES, drawing and phone FPS',
+                  'sources':{'before':'cb7903bd596f1f0c382d3ba880e47086dfc37014',
+                             'after':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
+                             'benchmarkSha256':hashlib.sha256(pathlib.Path('reverse-os-android/tests/VelocityQssdGraphicsBridgeBenchmark.java').read_bytes()).hexdigest()},
+                  'medianOfTrials':summary,'trials':trials}
+          (root/'bridge-host-comparison.json').write_text(json.dumps(result,indent=2)+'\n')
+          print('QSSD_BRIDGE_HOST_COMPARISON '+json.dumps(summary))
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: velocity-c03r-component-evidence
+          path: build/velocity-c02/*.json

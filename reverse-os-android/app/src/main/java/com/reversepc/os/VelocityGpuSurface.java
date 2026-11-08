@@ -23,6 +23,7 @@ import static android.opengl.GLES30.*;
 final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Renderer {
     private final Runnable invalidated;
     private final VelocityXiEngine game;
+    private final boolean verifyPixels;
     private final Object mailbox=new Object();
     private volatile boolean ready,failed,suspended;
     private Request queued,active;
@@ -41,7 +42,9 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
         }
     }
     private final float[] lampFrame=new float[6];
-    private float[] c12Frame; // Original C12 output is consumed by all three shader variants.
+    private final float[] c12Frame=new float[5]; // Reused only on the GL thread.
+    private static final int[] DEPTH_ATTACHMENTS={GL_DEPTH_ATTACHMENT};
+    private float sunX,sunY,sunZ,frameLampPower;
     private volatile boolean firstFrame;
     private volatile boolean independentGpu=true;
     private final boolean[] verifiedProfiles=new boolean[5];
@@ -56,7 +59,7 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
     private int vertexCapacity;
     private int atlasFilter=-1;
     private long reusedGeometryFrames;
-    private long vertexUploadBytes,vertexUploadCalls,textureUploadBytes,resourceFrames;
+    private long vertexUploadBytes,vertexUploadCalls,textureUploadBytes,textureUploadCalls,resourceFrames;
     private final ByteBuffer paletteBytes=ByteBuffer.allocateDirect(1024),atlasBytes=ByteBuffer.allocateDirect(2048);
     static final class Request {
         final VelocityQssdGraphicsBridge.Frame resources;
@@ -73,8 +76,8 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
         ActivityManager manager=(ActivityManager)context.getSystemService(Context.ACTIVITY_SERVICE);
         return manager!=null&&manager.getDeviceConfigurationInfo().reqGlEsVersion>=0x30000;
     }
-    VelocityGpuSurface(Context context,Runnable invalidated,VelocityXiEngine game){
-        super(context);this.invalidated=invalidated;this.game=game;
+    VelocityGpuSurface(Context context,Runnable invalidated,VelocityXiEngine game,boolean verifyPixels){
+        super(context);this.invalidated=invalidated;this.game=game;this.verifyPixels=verifyPixels;
         setEGLContextClientVersion(3);setEGLConfigChooser(8,8,8,8,24,0);
         setPreserveEGLContextOnPause(true);setZOrderMediaOverlay(true);
         setRenderer(this);setRenderMode(RENDERMODE_WHEN_DIRTY);
@@ -92,12 +95,13 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
     private void cancel(String why){synchronized(mailbox){for(Request r:new Request[]{queued,active})if(r!=null){r.error=new IllegalStateException(why);r.done.countDown();}queued=null;}}
     @Override public void onPause(){suspended=true;ready=false;cancel("GPU suspended");super.onPause();}
     @Override public void onResume(){suspended=false;super.onResume();invalidated.run();requestRender();}
-    void draw(VelocityXiEngine.Observation observed,VelocityXiEngine.Snapshot state,int yaw,VelocityGraphics graphics)throws InterruptedException{
+    void draw(VelocityXiEngine.Observation observed,int yaw,VelocityGraphics graphics)throws InterruptedException{
         if(observed.geometry==null||observed.colors==null)
             throw new IllegalArgumentException("Missing validated XI/qSSD XFG4 observation");
         VelocityQssdGraphicsBridge.Frame lease=qssd.publish(
             observed.geometry,observed.colors,observed.qssdSession,observed.qssdIdentity,observed.qssdRevision);
-        submit(new Request(lease,state,yaw,graphics));
+        // Geometry and shader state must come from the same retained CPU publication.
+        submit(new Request(lease,observed.state,yaw,graphics));
     }
     private void submit(Request request)throws InterruptedException{
         if(!available())throw new IllegalStateException("GPU surface is not ready");
@@ -159,6 +163,7 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
             for(int i=0;i<5;i++)glEnableVertexAttribArray(i);glBindVertexArray(0);
             glDisable(GL_CULL_FACE);checked("GPU initialization");failed=false;
             Log.i("ReverseVelocity","GPU_SHADERS_READY owner=REgraphics geometry=XI_XFG4 execution=GPU_VIRTUAL vertexBytes=24 materialPrograms="+(materialVariants?3:1)+" renderer="+glGetString(GL_RENDERER));
+            Log.i("ReverseVelocity","GPU_READBACK_POLICY enabled="+verifyPixels+" scope=explicit_pixel_validation");
         }catch(RuntimeException error){disable(error);}
     }
     @Override public void onSurfaceChanged(GL10 ignored,int w,int h){if(!failed){ready=true;invalidated.run();}}
@@ -198,15 +203,18 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
                 if(!firstFrame&&r.geometry!=null){firstFrame=true;Log.i("ReverseVelocity","GPU_FRAME_READY source=XI_XFG4 shaders=REgraphics faces="+r.geometry.faces+" width="+targetWidth+" height="+targetHeight);}
                 r.done.countDown();synchronized(mailbox){if(active==r)active=null;}
             });
-        }catch(RuntimeException error){r.error=error;r.done.countDown();disable(error);}
+        }catch(RuntimeException error){
+            // Preparation updates the CPU staging copy before the driver accepts it.
+            // A failed partial upload therefore invalidates both residency records.
+            vertices.invalidateGpuCopy();qssd.contextLost();
+            r.error=error;r.done.countDown();disable(error);
+        }
     }
     private void scene(Request r){
         // Native C12 must execute for every submitted GLES frame; no fake
         // Java result when the dependency is absent. XI fallback is separate.
-        c12Frame=NativeRuntime.velocityC12Frame(r.state.wetness,r.state.waterDepthCm,
-            (int)r.state.ticks,r.state.ambientMode,r.state.publication);
-        if(c12Frame==null||c12Frame.length!=5)
-            throw new IllegalStateException("XGPU-C12 frame dispatch failed");
+        NativeRuntime.velocityC12Frame(r.state.wetness,r.state.waterDepthCm,
+            (int)r.state.ticks,r.state.ambientMode,r.state.publication,c12Frame);
         int w=r.graphics.width,h=r.graphics.height;
         target(w,h);glBindFramebuffer(GL_FRAMEBUFFER,framebuffer);glViewport(0,0,w,h);glDepthMask(true);glClearColor(.08f,.12f,.14f,1);glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
         // REgraphics -> native qSSD versioned geometry -> resource bus -> GLES.
@@ -241,7 +249,7 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
             paletteBytes.flip();
             glTexSubImage2D(GL_TEXTURE_2D,0,first,0,size,1,
                 GL_RGBA,GL_UNSIGNED_BYTE,paletteBytes);
-            textureUploadBytes+=4L*size;
+            textureUploadBytes+=4L*size;textureUploadCalls++;
         }
         glActiveTexture(GL_TEXTURE1);glBindTexture(GL_TEXTURE_2D,atlasTexture);
         int filter=r.graphics.id<=1?GL_NEAREST:GL_LINEAR;
@@ -249,11 +257,14 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
             glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,filter);
             glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,filter);atlasFilter=filter;
         }
-        for(int row=0;row<16;row++){
-            if((plan.atlasRowsMask&(1<<row))==0)continue;
-            atlasBytes.clear();atlasBytes.put(plan.frame.atlas,row*128,128);atlasBytes.flip();
-            glTexSubImage2D(GL_TEXTURE_2D,0,0,row,128,1,GL_RED,GL_UNSIGNED_BYTE,atlasBytes);
-            textureUploadBytes+=128;
+        for(int row=0;row<16;){
+            if((plan.atlasRowsMask&(1<<row))==0){row++;continue;}
+            int first=row++;
+            while(row<16&&(plan.atlasRowsMask&(1<<row))!=0)row++;
+            int rows=row-first,bytes=rows*128;
+            atlasBytes.clear();atlasBytes.put(plan.frame.atlas,first*128,bytes);atlasBytes.flip();
+            glTexSubImage2D(GL_TEXTURE_2D,0,0,first,128,rows,GL_RED,GL_UNSIGNED_BYTE,atlasBytes);
+            textureUploadBytes+=bytes;textureUploadCalls++;
         }
         checked("QSSD resource delta uploads");
         qssd.confirm(plan); // Commit only after the GL driver accepts all resources.
@@ -269,8 +280,8 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
                 " reusedPublications="+qssd.reusedPublications()+
                 " geometryDirty="+plan.geometryDirty+" paletteDirtyTexels="+plan.changedPaletteTexels()+
                 " atlasDirtyRows="+plan.changedAtlasRows()+" vboBytes="+vertexUploadBytes+
-                " textureBytes="+textureUploadBytes+" route=REgraphics_QSSD_GLES");
-            resourceFrames=vertexUploadBytes=vertexUploadCalls=textureUploadBytes=reusedGeometryFrames=0;
+                " textureBytes="+textureUploadBytes+" textureUploadCalls="+textureUploadCalls+" route=REgraphics_QSSD_GLES");
+            resourceFrames=vertexUploadBytes=vertexUploadCalls=textureUploadBytes=textureUploadCalls=reusedGeometryFrames=0;
         }
         // Resolve visibility with the exact same vertex transform before doing
         // material work. Sky and hidden opaque surfaces then cost no shading.
@@ -285,6 +296,10 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
             lastMaterialRoute=specialized?1:0;
             Log.i("ReverseVelocity","GPU_MATERIAL_ROUTE specialized="+specialized+" opaqueRuns="+g.opaqueRunCount()+" order=original");
         }
+        boolean lamp=g.lightFrame(lampFrame);frameLampPower=lamp?c12Frame[4]:0;
+        double sunAngle=(r.state.yaw4096+r.yaw)*(Math.PI/2048);
+        float sunCos=(float)Math.cos(sunAngle),sunSin=(float)Math.sin(sunAngle),sunNorm=(float)(1/Math.sqrt(1.1525));
+        sunX=(-.55f*sunCos+.38f*sunSin)*sunNorm;sunY=.84f*sunNorm;sunZ=(-.55f*sunSin-.38f*sunCos)*sunNorm;
         useScene(sceneShaders[0],r,g,w,h);
         if(specialized){useScene(sceneShaders[1],r,g,w,h);useScene(sceneShaders[2],r,g,w,h);}
         glUseProgram(sceneShaders[specialized?1:0].program);glDrawArrays(GL_TRIANGLES,g.starts[0],g.counts[0]);
@@ -301,7 +316,7 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
         glDrawArrays(GL_TRIANGLES,g.starts[2],g.counts[2]);
         glBlendFunc(GL_SRC_ALPHA,GL_ONE);glDrawArrays(GL_TRIANGLES,g.starts[3],g.counts[3]);
         glDepthMask(true);glDisable(GL_BLEND);glDisable(GL_DEPTH_TEST);glBindVertexArray(0);
-        if(!verifiedProfiles[r.graphics.id]){
+        if(verifyPixels&&!verifiedProfiles[r.graphics.id]){
             // Hash every original RGBA byte in row order using bounded scratch.
             // Scratch remains below 0.5 MB through the maximum 1080p preset.
             int stripeRows=64,stripeBytes=w*stripeRows*4;
@@ -317,13 +332,13 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
             verifiedProfiles[r.graphics.id]=true;
         }
         // No later pass consumes scene depth. Let tile-based GPUs discard it.
-        glInvalidateFramebuffer(GL_FRAMEBUFFER,1,new int[]{GL_DEPTH_ATTACHMENT},0);
+        glInvalidateFramebuffer(GL_FRAMEBUFFER,1,DEPTH_ATTACHMENTS,0);
         glBindFramebuffer(GL_FRAMEBUFFER,0);glViewport(0,0,getWidth(),getHeight());
         {float fit=Math.min((float)getWidth()/w,(float)getHeight()/h);int shownW=Math.round(w*fit),shownH=Math.round(h*fit);glClearColor(.025f,.04f,.06f,1);glClear(GL_COLOR_BUFFER_BIT);glViewport((getWidth()-shownW)/2,(getHeight()-shownH)/2,shownW,shownH);}
         lastGraphics=r.graphics;post(colorTexture,w,h,r.graphics.id);
     }
     private void useScene(SceneShader shader,Request r,RegraphicsGeometry g,int w,int h){
-        glUseProgram(shader.program);glUniform1i(shader.quality,r.graphics.id);boolean lamp=g.lightFrame(lampFrame);glUniform3f(shader.lampOrigin,lampFrame[0],lampFrame[1],lampFrame[2]);glUniform3f(shader.lampDirection,lampFrame[3]-lampFrame[0],lampFrame[4]-lampFrame[1],lampFrame[5]-lampFrame[2]);glUniform1f(shader.lampPower,lamp?c12Frame[4]:0);glUniform2f(shader.projection,g.width,g.height);glUniform1f(shader.aspect,(float)w/h);glUniform1f(shader.time,c12Frame[2]);glUniform1f(shader.day,c12Frame[3]);double sunAngle=(r.state.yaw4096+r.yaw)*(Math.PI/2048);float sunCos=(float)Math.cos(sunAngle),sunSin=(float)Math.sin(sunAngle),sunNorm=(float)(1/Math.sqrt(1.1525));glUniform3f(shader.sun,(-.55f*sunCos+.38f*sunSin)*sunNorm,.84f*sunNorm,(-.55f*sunSin-.38f*sunCos)*sunNorm);glUniform1f(shader.wet,c12Frame[0]);glUniform1f(shader.water,c12Frame[1]);
+        glUseProgram(shader.program);glUniform1i(shader.quality,r.graphics.id);glUniform3f(shader.lampOrigin,lampFrame[0],lampFrame[1],lampFrame[2]);glUniform3f(shader.lampDirection,lampFrame[3]-lampFrame[0],lampFrame[4]-lampFrame[1],lampFrame[5]-lampFrame[2]);glUniform1f(shader.lampPower,frameLampPower);glUniform2f(shader.projection,g.width,g.height);glUniform1f(shader.aspect,(float)w/h);glUniform1f(shader.time,c12Frame[2]);glUniform1f(shader.day,c12Frame[3]);glUniform3f(shader.sun,sunX,sunY,sunZ);glUniform1f(shader.wet,c12Frame[0]);glUniform1f(shader.water,c12Frame[1]);
         glUniform1i(shader.palette,0);glUniform1i(shader.atlas,1);
     }
     private void post(int texture,int w,int h,int quality){glUseProgram(postProgram);glActiveTexture(GL_TEXTURE0);glBindTexture(GL_TEXTURE_2D,texture);glUniform1i(imageU,0);glUniform2f(texelU,1f/w,1f/h);glUniform1i(photoU,0);glUniform1i(postQualityU,quality);glDrawArrays(GL_TRIANGLES,0,3);}

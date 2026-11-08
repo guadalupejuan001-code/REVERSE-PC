@@ -1,9 +1,9 @@
 name: REVERSE VELOCITY REgraphics
 on:
   push:
-    branches: [feature/velocity-v30-open-forest-road-20261104, feature/velocity-v31-reverse-native-live-20261105, feature/velocity-v32-wetlands-gpu-20261105, feature/velocity-v33-open-terrain-20261105, feature/velocity-v34-trails-hd-20261105, feature/velocity-gpu-virtual-20261106, feature/velocity-v36-graphics-ui-20261106, feature/velocity-v37-cpu-gpu-20261106, feature/velocity-v38-qssd-20261106, feature/velocity-v39-state-bus-20261106]
+    branches: [feature/velocity-v30-open-forest-road-20261104, feature/velocity-v31-reverse-native-live-20261105, feature/velocity-v32-wetlands-gpu-20261105, feature/velocity-v33-open-terrain-20261105, feature/velocity-v34-trails-hd-20261105, feature/velocity-gpu-virtual-20261106, feature/velocity-v36-graphics-ui-20261106, feature/velocity-v37-cpu-gpu-20261106, feature/velocity-v38-qssd-20261106, feature/velocity-v39-state-bus-20261106, feature/velocity-c03-qssd-renderbus-20261108]
   pull_request:
-    branches: [feature/velocity-regraphics-20261030]
+    branches: [feature/velocity-regraphics-20261030, feature/velocity-c02-qssd-c12-pastures-drivability-20261107]
     paths: ['reverse-os-android/**', 'scripts/**', 'src/**', 'docs/*INTEGRATION_LOCK.json', '.github/workflows/velocity-xi-render.yml']
 permissions: {contents: read}
 concurrency:
@@ -27,14 +27,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: guadalupejuan001-code/GPU-VIRTUAL
-          ref: 6addb1b60cb825977ffa992127d5189086a9a6c8
+          ref: 4cdd47f487cfadbca559dd8c2f5abc0448cd77a7
           path: deps/gpu-virtual
-          sparse-checkout: android-graphics/shared
+          sparse-checkout: |
+            android-graphics/shared
+            include
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
           repository: guadalupejuan001-code/Virtual-qSSD-
-          ref: c9dc0ebf3370a4468e14df92fcebb2a90954c448
+          ref: 9fe72bbf0d972d0baad9300971dfaabab5691447
           path: deps/qssd
           sparse-checkout: include/qssd
           persist-credentials: false
@@ -54,6 +56,11 @@ jobs:
         with:
           ref: c8c224002335586f82343ce6aa0082be008d09e7
           path: deps/velocity-c01-baseline
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: cb7903bd596f1f0c382d3ba880e47086dfc37014
+          path: deps/velocity-c03-baseline
           persist-credentials: false
       - name: Verify XI ownership and reproducible finite world
         run: |
@@ -118,7 +125,7 @@ jobs:
           java -cp build/open-forest/java com.reversepc.os.VelocityFrameAheadTest
       - name: Compare actual qSSD JNI and GPU vertex bytes against released 3.7
         run: |
-          python3 scripts/verify-velocity-qssd.py --baseline deps/velocity-qssd-baseline --output build/open-forest/qssd
+          python3 scripts/verify-velocity-qssd.py --baseline deps/velocity-qssd-baseline --asset-baseline deps/velocity-c03-baseline --output build/open-forest/qssd
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/velocity-qssd-guards.cpp -o build/open-forest/qssd-guards
           build/open-forest/qssd-guards reverse-os-android/app/src/main/assets/velocity
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc reverse-os-android/tests/velocity-complete-space.cpp -o build/open-forest/complete-state

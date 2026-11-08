@@ -67,7 +67,7 @@ function selectProfile(id){
 function continueDriving(){tap(waitFor(()=>textNode('Continuar'),'continue'));sleep(150);}
 function hold(n,ms){const [x,y]=point(n);run(['shell','input','swipe',String(x),String(y),String(x),String(y),String(ms)],false,ms+10000);}
 try{
- run(['shell','am','force-stop',pkg]);run(['logcat','-c']);run(['shell','am','start','-W','-n',component]);
+ run(['shell','am','force-stop',pkg]);run(['logcat','-c']);run(['shell','am','start','-W','-n',component,'--ez','velocity_verify_pixels','true']);
  waitFor(()=>/GPU_PRESET_PIXELS preset=2 .*width=960 height=540/.test(logs())&&/GPU_FRAME_READY source=XI_XFG4/.test(logs()),'default medium pixels',60000);
  waitFor(()=>/GPU_C12_EXECUTED frames=1 profile=C12 host=CPU steps=[1-9][0-9]* .*qssdPublication=[0-9]+ output=material_uniforms GLES=presenter/.test(logs()),'real XGPU-C12 interpreter runs in installed Android renderer',60000);
  check(true,'original XGPU-C12 per-frame material kernel is active');
@@ -105,7 +105,18 @@ try{
   const mem=run(['shell','dumpsys','meminfo',pkg]);fs.writeFileSync(path.join(out,'memory-'+id+'.txt'),mem);
   report.profiles.push({id,name,width:w,height:h,frames:count,elapsedNanos:nanos,fps,physicsHz:rows.map(x=>x.physicsHz),pssKiB:Number((/TOTAL PSS:\s*(\d+)/.exec(mem)||[])[1])||null});
  }
- stage='persist selection';run(['shell','am','force-stop',pkg]);run(['logcat','-c']);run(['shell','am','start','-W','-n',component]);
+ const integratedLog=logs();
+ const c12Samples=integratedLog.split('\n').filter(l=>l.includes('GPU_C12_EXECUTED '));
+ const c12Progress=c12Samples.map(fields);
+ check(c12Progress.length>=2&&c12Progress.at(-1).frames>c12Progress[0].frames&&
+       c12Progress.every(x=>x.steps>0&&x.dispatchNanos>0)&&c12Samples.every(l=>l.includes('outputBuffer=reused')),
+       'C12 keeps executing real material dispatches with a reused output buffer while driving');
+ const busProgress=integratedLog.split('\n').filter(l=>l.includes('QSSD_RENDER_BUS ')).map(fields);
+ check(busProgress.length>=2&&busProgress.at(-1).sourceRevision>busProgress[0].sourceRevision&&
+       busProgress.at(-1).gpuUploadCommits>busProgress[0].gpuUploadCommits,
+       'qSSD revisions and accepted GPU resource publications keep advancing while driving');
+ report.integrationContinuity={c12Samples:c12Progress,qssdSamples:busProgress};
+ stage='persist selection';run(['shell','am','force-stop',pkg]);run(['logcat','-c']);run(['shell','am','start','-W','-n',component,'--ez','velocity_verify_pixels','true']);
  waitFor(()=>/GPU_PRESET_PIXELS preset=4 .*width=1920 height=1080/.test(logs())&&/GPU_FRAME_READY source=XI_XFG4/.test(logs()),'saved Ultra after relaunch',60000);
  sleep(600);key('KEYCODE_P');nodes=ui();
  // A new Activity enters immersive mode only after its first GPU presentation.
@@ -155,7 +166,7 @@ try{
  stage='menu physics freeze';openMenu();sleep(1200);const frozen=frames().filter(x=>x.paused).at(-1);sleep(1300);const frozen2=frames().filter(x=>x.paused).at(-1);
  check(frozen&&frozen2&&frozen.ticks===frozen2.ticks,'menu stops simulation time');
  check(frozen2.cacheHits>0&&frozen2.xiRenders===0,'paused menu reuses the presented scene');screenshot('07-menu');continueDriving();
- stage='lifecycle';key('KEYCODE_HOME');sleep(800);run(['shell','am','start','-W','-n',component]);
+ stage='lifecycle';key('KEYCODE_HOME');sleep(800);run(['shell','am','start','-W','-n',component,'--ez','velocity_verify_pixels','true']);
  key('KEYCODE_P');waitFor(()=>byDesc('Abrir menú'),'resumed driving UI');healthy();check(true,'game and graphics survive activity pause/resume');
  report.passed=true;report.checkCount=checks;console.log('VELOCITY_GRAPHICS_UI_PASS '+JSON.stringify({checks,profiles:report.profiles}));
 }catch(error){report.error=String(error.stack||error);report.failedStage=stage;try{screenshot('failure-'+stage.replace(/\W+/g,'-'));}catch{};throw error;

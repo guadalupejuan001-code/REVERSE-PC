@@ -37,10 +37,10 @@ for(const abi of ['arm64-v8a','x86_64']){
 }
 const text=fs.readFileSync(badging,'utf8');
 assert.match(text,/package: name='com\.reversepc\.velocity\.c02'/);
-assert.match(text,/versionCode='45'/,'C02 lab versionCode');
-assert.match(text,/versionName='4\.0\.0-c03-qssd'/,'C02 lab versionName');
+assert.match(text,/versionCode='46'/,'C03R versionCode');
+assert.match(text,/versionName='4\.0\.0-c03r-pipeline'/,'C03R versionName');
 assert.match(text,/launchable-activity: name='com\.reversepc\.os\.VelocityActivity'/);
-assert.match(text,/application-label:'REVERSE VELOCITY C03'/);
+assert.match(text,/application-label:'REVERSE VELOCITY C03R'/);
 assert.match(text,/sdkVersion:'29'/);
 assert(!text.includes("uses-permission: name='android.permission.INTERNET'"),'game flavor unexpectedly requests Internet');
 const assets={};
@@ -69,14 +69,29 @@ assert.match(signed,/Number of signers: 1/,'unexpected APK signer count');
 const signer=(/Signer #1 certificate SHA-256 digest:\s*([0-9a-f]{64})/i.exec(signed)||[])[1];
 const expected=new crypto.X509Certificate(fs.readFileSync(expectedSigner)).fingerprint256.replaceAll(':','').toLowerCase();
 assert.equal(signer&&signer.toLowerCase(),expected,'APK signer differs from cached development identity');
-if(process.env.VELOCITY_EXPECTED_SIGNER_SHA256){
- assert.match(process.env.VELOCITY_EXPECTED_SIGNER_SHA256,/^[0-9a-f]{64}$/,'invalid pinned signer identity');
- assert.equal(expected,process.env.VELOCITY_EXPECTED_SIGNER_SHA256,
-  'APK must keep the signer of the released 0.1 test build for in-place upgrades');
+const c03Signer='cc980acd8a8925b7ea27a6e5d1afc3ee08c23f156565c6eae8f3d21d5d3cc454';
+assert.equal(expected,c03Signer,'C03R must retain the delivered C03 signer; generating a replacement key is forbidden');
+function gitValue(directory,ref){
+ const result=cp.spawnSync('git',['-C',directory,'rev-parse',ref],{encoding:'utf8',timeout:10000});
+ assert.equal(result.status,0,String(result.stderr));const value=result.stdout.trim();
+ assert.match(value,/^[0-9a-f]{40}$/,'exact source identity required');return value;
 }
+const sourceCommit=gitValue('.','HEAD'),sourceTree=gitValue('.','HEAD^{tree}');
+const sourceHeadCommit=process.env.VELOCITY_SOURCE_HEAD_SHA||sourceCommit;
+assert.match(sourceHeadCommit,/^[0-9a-f]{40}$/,'exact PR head identity required');
+const dependencies={
+ mundoX:gitValue('deps/mundo-x','HEAD'),
+ gpuVirtual:gitValue('deps/gpu-virtual','HEAD'),
+ qssd:gitValue('deps/qssd','HEAD')
+};
+assert.equal(dependencies.mundoX,'1f925786522aba91f72707ad1638a8edcdd31a8f');
+assert.equal(dependencies.gpuVirtual,'4cdd47f487cfadbca559dd8c2f5abc0448cd77a7');
+assert.equal(dependencies.qssd,'9fe72bbf0d972d0baad9300971dfaabab5691447');
 const report={passed:true,applicationId:'com.reversepc.velocity.c02',launcher:'com.reversepc.os.VelocityActivity',minSdk:29,
- versionCode:45,versionName:'4.0.0-c03-qssd',sourceCommit:process.env.GITHUB_SHA||null,
- signerCertificateSha256:expected,signerVerifiedAgainstBuildCertificate:true,inPlaceUpgradeCompatible:false,
+ versionCode:46,versionName:'4.0.0-c03r-pipeline',sourceCommit,sourceHeadCommit,sourceTree,dependencies,
+ workflowRun:process.env.GITHUB_RUN_ID||null,
+ signerCertificateSha256:expected,signerVerifiedAgainstBuildCertificate:true,signerMatchesDeliveredC03:true,
+ inPlaceUpgradeVerified:false,upgradeVerification:'pending actual adb install -r over pinned C03; see upgrade-result.json',
  abis:['arm64-v8a','x86_64'],nativeElf,assets,apkBytes:fs.statSync(apk).size,
  apkSha256:crypto.createHash('sha256').update(fs.readFileSync(apk)).digest('hex')};
 fs.mkdirSync(path.dirname(output),{recursive:true});fs.writeFileSync(output,JSON.stringify(report,null,2)+'\n');

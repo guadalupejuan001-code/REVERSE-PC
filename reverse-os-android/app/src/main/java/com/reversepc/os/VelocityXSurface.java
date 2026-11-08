@@ -356,7 +356,7 @@ final class VelocityXSurface extends SurfaceView implements SurfaceHolder.Callba
                     state=observation.state;
                     if(selectedGpu){
                         long start=System.nanoTime();
-                        try{selectedGpuSurface.draw(observation,state,selectedYaw,selectedGraphics);}
+                        try{selectedGpuSurface.draw(observation,selectedYaw,selectedGraphics);}
                         catch(RuntimeException gpuFailure){
                             if(lifecycle.shouldRun()&&selectedGpuSurface.available())selectedGpuSurface.disable(gpuFailure);
                             frameReuse.invalidate();continue;

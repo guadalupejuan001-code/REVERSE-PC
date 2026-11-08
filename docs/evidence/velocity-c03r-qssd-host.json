@@ -1,0 +1,293 @@
+{
+  "baselineCommit": "cb7903bd596f1f0c382d3ba880e47086dfc37014",
+  "scope": "Host JVM publish/plan/confirm only. Excludes geometry production/decoding, JNI, GLES, Android, physical-device FPS. Three independent alternating JVM trials per variant.",
+  "java": "openjdk version \"17.0.20\" 2026-07-21\nOpenJDK Runtime Environment (build 17.0.20+8-1-24.04-Ubuntu)\nOpenJDK 64-Bit Server VM (build 17.0.20+8-1-24.04-Ubuntu, mixed mode, sharing)",
+  "candidateFiles": {
+    "reverse-os-android/app/src/main/java/com/reversepc/os/RegraphicsGeometry.java": "6e881b3ec5aee470b2284792fc4823f4873875f4e6e6d3ece1bceaaa027ba319",
+    "reverse-os-android/app/src/main/java/com/reversepc/os/VelocityQssdGraphicsBridge.java": "c659a7dacf064dcbf253d29f4aa74a3342ef3a1eb9a1a5aa6fc940d270a92b23",
+    "reverse-os-android/tests/VelocityQssdGraphicsBridgeBenchmark.java": "afa328161c0bb776e7fd96737d779a8b1cbce4045f2d766f9dd696721f05b7ba"
+  },
+  "candidateRetainedScratchBytes": 1024,
+  "candidateScratchPolicy": "Lazy private 256-int array, at most once per bridge. Plans receive exact immutable range copies.",
+  "summary": {
+    "baseline": {
+      "unchanged": {
+        "wallNsPerFrame": 163.415,
+        "threadCpuNsPerFrame": 121.938,
+        "allocatedBytesPerFrame": 2112.015
+      },
+      "moving_vertices": {
+        "wallNsPerFrame": 1344.794,
+        "threadCpuNsPerFrame": 1215.845,
+        "allocatedBytesPerFrame": 4248.0
+      },
+      "palette_changes": {
+        "wallNsPerFrame": 409.424,
+        "threadCpuNsPerFrame": 342.088,
+        "allocatedBytesPerFrame": 3240.0
+      },
+      "atlas_changes": {
+        "wallNsPerFrame": 1913.491,
+        "threadCpuNsPerFrame": 1850.549,
+        "allocatedBytesPerFrame": 4248.0
+      }
+    },
+    "candidate": {
+      "unchanged": {
+        "wallNsPerFrame": 53.047,
+        "threadCpuNsPerFrame": 54.867,
+        "allocatedBytesPerFrame": 0.015
+      },
+      "moving_vertices": {
+        "wallNsPerFrame": 241.175,
+        "threadCpuNsPerFrame": 241.118,
+        "allocatedBytesPerFrame": 128.0
+      },
+      "palette_changes": {
+        "wallNsPerFrame": 581.971,
+        "threadCpuNsPerFrame": 546.899,
+        "allocatedBytesPerFrame": 1200.0
+      },
+      "atlas_changes": {
+        "wallNsPerFrame": 2034.742,
+        "threadCpuNsPerFrame": 1986.5,
+        "allocatedBytesPerFrame": 2192.0
+      }
+    }
+  },
+  "trials": [
+    {
+      "benchmark": "qssd_bridge_host_jvm",
+      "iterations": 30000,
+      "warmup": 20000,
+      "allocationSupported": true,
+      "samples": [
+        {
+          "trace": "unchanged",
+          "wallNsPerFrame": 164.958,
+          "threadCpuNsPerFrame": 119.119,
+          "allocatedBytesPerFrame": 2112.015,
+          "checksum": 60000
+        },
+        {
+          "trace": "moving_vertices",
+          "wallNsPerFrame": 1344.794,
+          "threadCpuNsPerFrame": 1249.208,
+          "allocatedBytesPerFrame": 4248.0,
+          "checksum": 2100090000
+        },
+        {
+          "trace": "palette_changes",
+          "wallNsPerFrame": 409.424,
+          "threadCpuNsPerFrame": 342.088,
+          "allocatedBytesPerFrame": 3240.0,
+          "checksum": 1050195000
+        },
+        {
+          "trace": "atlas_changes",
+          "wallNsPerFrame": 2070.594,
+          "threadCpuNsPerFrame": 1982.488,
+          "allocatedBytesPerFrame": 4248.0,
+          "checksum": 2100090000
+        }
+      ],
+      "variant": "baseline",
+      "trial": 1
+    },
+    {
+      "benchmark": "qssd_bridge_host_jvm",
+      "iterations": 30000,
+      "warmup": 20000,
+      "allocationSupported": true,
+      "samples": [
+        {
+          "trace": "unchanged",
+          "wallNsPerFrame": 59.313,
+          "threadCpuNsPerFrame": 61.245,
+          "allocatedBytesPerFrame": 0.015,
+          "checksum": 60000
+        },
+        {
+          "trace": "moving_vertices",
+          "wallNsPerFrame": 236.747,
+          "threadCpuNsPerFrame": 237.01,
+          "allocatedBytesPerFrame": 128.0,
+          "checksum": 2100090000
+        },
+        {
+          "trace": "palette_changes",
+          "wallNsPerFrame": 594.844,
+          "threadCpuNsPerFrame": 553.863,
+          "allocatedBytesPerFrame": 1200.0,
+          "checksum": 1050195000
+        },
+        {
+          "trace": "atlas_changes",
+          "wallNsPerFrame": 2180.402,
+          "threadCpuNsPerFrame": 2141.289,
+          "allocatedBytesPerFrame": 2192.0,
+          "checksum": 2100090000
+        }
+      ],
+      "variant": "candidate",
+      "trial": 1
+    },
+    {
+      "benchmark": "qssd_bridge_host_jvm",
+      "iterations": 30000,
+      "warmup": 20000,
+      "allocationSupported": true,
+      "samples": [
+        {
+          "trace": "unchanged",
+          "wallNsPerFrame": 46.749,
+          "threadCpuNsPerFrame": 49.128,
+          "allocatedBytesPerFrame": 0.015,
+          "checksum": 60000
+        },
+        {
+          "trace": "moving_vertices",
+          "wallNsPerFrame": 320.889,
+          "threadCpuNsPerFrame": 321.088,
+          "allocatedBytesPerFrame": 128.0,
+          "checksum": 2100090000
+        },
+        {
+          "trace": "palette_changes",
+          "wallNsPerFrame": 581.971,
+          "threadCpuNsPerFrame": 546.899,
+          "allocatedBytesPerFrame": 1200.0,
+          "checksum": 1050195000
+        },
+        {
+          "trace": "atlas_changes",
+          "wallNsPerFrame": 2016.324,
+          "threadCpuNsPerFrame": 1986.5,
+          "allocatedBytesPerFrame": 2192.0,
+          "checksum": 2100090000
+        }
+      ],
+      "variant": "candidate",
+      "trial": 2
+    },
+    {
+      "benchmark": "qssd_bridge_host_jvm",
+      "iterations": 30000,
+      "warmup": 20000,
+      "allocationSupported": true,
+      "samples": [
+        {
+          "trace": "unchanged",
+          "wallNsPerFrame": 158.898,
+          "threadCpuNsPerFrame": 121.938,
+          "allocatedBytesPerFrame": 2112.015,
+          "checksum": 60000
+        },
+        {
+          "trace": "moving_vertices",
+          "wallNsPerFrame": 1306.561,
+          "threadCpuNsPerFrame": 1215.845,
+          "allocatedBytesPerFrame": 4248.0,
+          "checksum": 2100090000
+        },
+        {
+          "trace": "palette_changes",
+          "wallNsPerFrame": 405.932,
+          "threadCpuNsPerFrame": 323.878,
+          "allocatedBytesPerFrame": 3240.0,
+          "checksum": 1050195000
+        },
+        {
+          "trace": "atlas_changes",
+          "wallNsPerFrame": 1905.081,
+          "threadCpuNsPerFrame": 1850.549,
+          "allocatedBytesPerFrame": 4248.0,
+          "checksum": 2100090000
+        }
+      ],
+      "variant": "baseline",
+      "trial": 2
+    },
+    {
+      "benchmark": "qssd_bridge_host_jvm",
+      "iterations": 30000,
+      "warmup": 20000,
+      "allocationSupported": true,
+      "samples": [
+        {
+          "trace": "unchanged",
+          "wallNsPerFrame": 163.415,
+          "threadCpuNsPerFrame": 123.105,
+          "allocatedBytesPerFrame": 2112.015,
+          "checksum": 60000
+        },
+        {
+          "trace": "moving_vertices",
+          "wallNsPerFrame": 1346.61,
+          "threadCpuNsPerFrame": 1215.462,
+          "allocatedBytesPerFrame": 4248.0,
+          "checksum": 2100090000
+        },
+        {
+          "trace": "palette_changes",
+          "wallNsPerFrame": 572.712,
+          "threadCpuNsPerFrame": 468.691,
+          "allocatedBytesPerFrame": 3240.0,
+          "checksum": 1050195000
+        },
+        {
+          "trace": "atlas_changes",
+          "wallNsPerFrame": 1913.491,
+          "threadCpuNsPerFrame": 1844.951,
+          "allocatedBytesPerFrame": 4248.0,
+          "checksum": 2100090000
+        }
+      ],
+      "variant": "baseline",
+      "trial": 3
+    },
+    {
+      "benchmark": "qssd_bridge_host_jvm",
+      "iterations": 30000,
+      "warmup": 20000,
+      "allocationSupported": true,
+      "samples": [
+        {
+          "trace": "unchanged",
+          "wallNsPerFrame": 53.047,
+          "threadCpuNsPerFrame": 54.867,
+          "allocatedBytesPerFrame": 0.015,
+          "checksum": 60000
+        },
+        {
+          "trace": "moving_vertices",
+          "wallNsPerFrame": 241.175,
+          "threadCpuNsPerFrame": 241.118,
+          "allocatedBytesPerFrame": 128.0,
+          "checksum": 2100090000
+        },
+        {
+          "trace": "palette_changes",
+          "wallNsPerFrame": 560.49,
+          "threadCpuNsPerFrame": 534.271,
+          "allocatedBytesPerFrame": 1200.0,
+          "checksum": 1050195000
+        },
+        {
+          "trace": "atlas_changes",
+          "wallNsPerFrame": 2034.742,
+          "threadCpuNsPerFrame": 1986.391,
+          "allocatedBytesPerFrame": 2192.0,
+          "checksum": 2100090000
+        }
+      ],
+      "variant": "candidate",
+      "trial": 3
+    }
+  ],
+  "priorTwoScanPaletteDiagnostic": {
+    "wallNsPerFrame": 697.736,
+    "threadCpuNsPerFrame": 667.909,
+    "allocatedBytesPerFrame": 1200.0
+  }
+}
