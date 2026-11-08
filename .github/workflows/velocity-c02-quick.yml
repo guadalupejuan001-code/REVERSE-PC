@@ -11,6 +11,12 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/GPU-VIRTUAL
+          ref: 4cdd47f487cfadbca559dd8c2f5abc0448cd77a7
+          path: deps/gpu-virtual
+          sparse-checkout: include
       - uses: actions/setup-java@v4
         with: {distribution: temurin, java-version: '17'}
       - uses: actions/setup-node@v4
@@ -49,3 +55,12 @@ jobs:
         run: |
           node scripts/check-velocity-gpu-virtual.cjs
           node scripts/check-velocity-qssd.cjs
+
+      - name: Execute real XGPU-C12 material kernel against independent float32 reference
+        run: |
+          g++ -std=c++20 -O2 -Wall -Wextra -pedantic -I deps/gpu-virtual/include \
+            -I reverse-os-android/app/src/main/cpp \
+            reverse-os-android/app/src/main/cpp/velocity_c12_frame.cpp \
+            reverse-os-android/tests/velocity-c12-frame.cpp \
+            -o build/velocity-c02/velocity-c12-frame
+          build/velocity-c02/velocity-c12-frame

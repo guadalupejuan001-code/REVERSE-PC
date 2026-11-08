@@ -41,6 +41,7 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
         }
     }
     private final float[] lampFrame=new float[6];
+    private float[] c12Frame; // Original C12 output is consumed by all three shader variants.
     private volatile boolean firstFrame;
     private volatile boolean independentGpu=true;
     private final boolean[] verifiedProfiles=new boolean[5];
@@ -193,6 +194,12 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
         }catch(RuntimeException error){r.error=error;r.done.countDown();disable(error);}
     }
     private void scene(Request r){
+        // Native C12 must execute for every submitted GLES frame; no fake
+        // Java result when the dependency is absent. XI fallback is separate.
+        c12Frame=NativeRuntime.velocityC12Frame(r.state.wetness,r.state.waterDepthCm,
+            (int)r.state.ticks,r.state.ambientMode,r.state.publication);
+        if(c12Frame==null||c12Frame.length!=5)
+            throw new IllegalStateException("XGPU-C12 frame dispatch failed");
         int w=r.graphics.width,h=r.graphics.height;
         target(w,h);glBindFramebuffer(GL_FRAMEBUFFER,framebuffer);glViewport(0,0,w,h);glDepthMask(true);glClearColor(.08f,.12f,.14f,1);glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
         RegraphicsGeometry g=r.geometry;boolean geometryChanged=g!=residentGeometry;
@@ -280,7 +287,7 @@ final class VelocityGpuSurface extends GLSurfaceView implements GLSurfaceView.Re
         lastGraphics=r.graphics;post(colorTexture,w,h,r.graphics.id);
     }
     private void useScene(SceneShader shader,Request r,RegraphicsGeometry g,int w,int h){
-        glUseProgram(shader.program);glUniform1i(shader.quality,r.graphics.id);boolean lamp=g.lightFrame(lampFrame);glUniform3f(shader.lampOrigin,lampFrame[0],lampFrame[1],lampFrame[2]);glUniform3f(shader.lampDirection,lampFrame[3]-lampFrame[0],lampFrame[4]-lampFrame[1],lampFrame[5]-lampFrame[2]);glUniform1f(shader.lampPower,lamp?(r.state.ambientMode==0?0:r.state.ambientMode==1?.6f:1):0);glUniform2f(shader.projection,g.width,g.height);glUniform1f(shader.aspect,(float)w/h);glUniform1f(shader.time,r.state.ticks*.02f);glUniform1f(shader.day,r.state.ambientMode==0?1:r.state.ambientMode==1?.48f:.12f);double sunAngle=(r.state.yaw4096+r.yaw)*(Math.PI/2048);float sunCos=(float)Math.cos(sunAngle),sunSin=(float)Math.sin(sunAngle),sunNorm=(float)(1/Math.sqrt(1.1525));glUniform3f(shader.sun,(-.55f*sunCos+.38f*sunSin)*sunNorm,.84f*sunNorm,(-.55f*sunSin-.38f*sunCos)*sunNorm);glUniform1f(shader.wet,r.state.wetness/1000f);glUniform1f(shader.water,r.state.waterDepthCm);
+        glUseProgram(shader.program);glUniform1i(shader.quality,r.graphics.id);boolean lamp=g.lightFrame(lampFrame);glUniform3f(shader.lampOrigin,lampFrame[0],lampFrame[1],lampFrame[2]);glUniform3f(shader.lampDirection,lampFrame[3]-lampFrame[0],lampFrame[4]-lampFrame[1],lampFrame[5]-lampFrame[2]);glUniform1f(shader.lampPower,lamp?c12Frame[4]:0);glUniform2f(shader.projection,g.width,g.height);glUniform1f(shader.aspect,(float)w/h);glUniform1f(shader.time,c12Frame[2]);glUniform1f(shader.day,c12Frame[3]);double sunAngle=(r.state.yaw4096+r.yaw)*(Math.PI/2048);float sunCos=(float)Math.cos(sunAngle),sunSin=(float)Math.sin(sunAngle),sunNorm=(float)(1/Math.sqrt(1.1525));glUniform3f(shader.sun,(-.55f*sunCos+.38f*sunSin)*sunNorm,.84f*sunNorm,(-.55f*sunSin-.38f*sunCos)*sunNorm);glUniform1f(shader.wet,c12Frame[0]);glUniform1f(shader.water,c12Frame[1]);
         glUniform1i(shader.palette,0);glUniform1i(shader.atlas,1);
     }
     private void post(int texture,int w,int h,int quality){glUseProgram(postProgram);glActiveTexture(GL_TEXTURE0);glBindTexture(GL_TEXTURE_2D,texture);glUniform1i(imageU,0);glUniform2f(texelU,1f/w,1f/h);glUniform1i(photoU,0);glUniform1i(postQualityU,quality);glDrawArrays(GL_TRIANGLES,0,3);}

@@ -24,3 +24,24 @@ target_compile_options(reverse_os PRIVATE -O2 -fexceptions -frtti -Wall -Wextra 
 target_link_options(reverse_os PRIVATE "-Wl,-z,max-page-size=16384")
 find_library(LOG_LIBRARY log)
 target_link_libraries(reverse_os PRIVATE ${LOG_LIBRARY})
+
+# Velocity C02R: C12 is required for the game flavor, optional elsewhere.
+# Compile the upstream C++20 executor separately from the C++17 XI runtime.
+option(VELOCITY_REQUIRE_C12 "Require pinned XGPU-C12 in Velocity APK" OFF)
+set(GPU_C12_ROOT "${REPO_ROOT}/deps/gpu-virtual")
+if(EXISTS "${GPU_C12_ROOT}/include/ejecucion_gpu.hpp")
+  execute_process(COMMAND git rev-parse HEAD WORKING_DIRECTORY "${GPU_C12_ROOT}"
+    OUTPUT_VARIABLE GPU_C12_SHA OUTPUT_STRIP_TRAILING_WHITESPACE
+    RESULT_VARIABLE GPU_C12_STATUS ERROR_QUIET)
+  if(GPU_C12_STATUS EQUAL 0 AND GPU_C12_SHA STREQUAL "4cdd47f487cfadbca559dd8c2f5abc0448cd77a7")
+    add_library(velocity_c12 OBJECT velocity_c12_frame.cpp velocity_c12_jni.cpp)
+    target_compile_features(velocity_c12 PRIVATE cxx_std_20)
+    target_include_directories(velocity_c12 PRIVATE "${GPU_C12_ROOT}/include")
+    target_compile_options(velocity_c12 PRIVATE -O2 -Wall -Wextra -Wpedantic)
+    target_sources(reverse_os PRIVATE $<TARGET_OBJECTS:velocity_c12>)
+  elseif(VELOCITY_REQUIRE_C12)
+    message(FATAL_ERROR "Velocity requires exact GPU-VIRTUAL C12 commit")
+  endif()
+elseif(VELOCITY_REQUIRE_C12)
+  message(FATAL_ERROR "Velocity requires pinned original GPU-VIRTUAL C12 include/ headers")
+endif()

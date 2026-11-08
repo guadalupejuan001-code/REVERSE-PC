@@ -8,5 +8,5 @@
   "gpuVertexBytes": 24,
   "originalGpuVertexBytes": 44,
   "quantization": false,
-  "executionCore": "C12 verified separately; Android rendering uses XFG4 shared compact geometry transport"
+  "executionCore": "Original C12 interpreter required at build, executed on host once per GLES frame for five material uniforms; XFG4/GLES still rasterize"
 }

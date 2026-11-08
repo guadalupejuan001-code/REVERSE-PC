@@ -22,7 +22,7 @@ El antiguo actor de hierba (`nature_grass_model`) se regeneraba cerca de la cám
 
 La PR activa la construcción de APK Android en GitHub Actions, compara los archivos XI regenerados, verifica los SHA de componentes originales, ejecuta pruebas de conducción, comprueba firma y actualización sobre la APK 3.9 y realiza pruebas de arranque y persistencia en emulador. No se atribuyen FPS reales de teléfono sin medición del dispositivo.
 
-Siguiente ciclo: conectar un despacho C12 real a la generación de materiales/geométrica por fotograma, con comparación A/B y una ruta de recuperación segura si empeora la latencia. La PR C04 de crecimiento QSSD sigue independiente.
+Siguiente ciclo: ampliar C12 desde los materiales a geometría compacta solo tras medir latencia y FPS A/B en Android. La PR C04 de crecimiento QSSD sigue independiente.
 
 ## Firma de compatibilidad Android
 
@@ -32,3 +32,28 @@ certificado SHA-256 coincide con `061c28614fffecdc9a53a5661c4acf8c4d1173b631095a
 No se debe distribuir como actualización un binario firmado con una clave
 nueva generada en la rama de experimentos; conservar los datos del usuario
 tiene prioridad. La validación requiere el certificado de la rama de liberación.
+
+## C02R: el ejecutor faltante
+
+El error de PR #223 fue un checkout parcial: la APK descargaba solamente
+`GPU-VIRTUAL/android-graphics/shared`, es decir, **XFG4**. El núcleo
+`include/ejecucion_gpu.hpp` no estaba disponible al compilar Android.
+Por eso las dependencias C12/C06 estaban fijadas pero no se ejecutaba C12.
+
+Ahora la variante Velocity exige el SHA C12 original y compila un módulo
+nativo C++20 (sin reescribir el núcleo). En **cada nuevo fotograma GLES**
+se ejecuta un despacho XGPU-C12 real de cinco lanes, con operaciones
+`LoadGlobal`, `FloatFromUnsigned` y `FloatMultiply`.
+Sus resultados controlan parámetros visibles del shader: humedad, agua,
+tiempo, luz de día y faros. El estado llega de la observación coherente
+XI/QSSD e incluye la publicación de origen. No se modifica el protocolo
+XFG4 ni los checkpoints o la autoridad de física.
+
+Es una primera conexión **real y acotada**, no un reemplazo de toda
+la rasterización: CPU XI sigue calculando geometría y dinámica; GLES
+sigue dibujando en la GPU física. C12 ejecuta su propio intérprete en
+la CPU anfitriona. QSSD C06 permanece fijado y el juego conserva su
+proyección C03; las puertas Bell de C05 no se ejecutan por frame.
+El registro `GPU_C12_EXECUTED` acredita llamadas, pasos y publicación.
+El host prueba 240 estados contra float32; las mejoras de FPS siguen
+pendientes de medir en hardware físico.

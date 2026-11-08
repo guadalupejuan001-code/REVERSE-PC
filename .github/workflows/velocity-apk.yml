@@ -64,7 +64,9 @@ jobs:
           repository: guadalupejuan001-code/GPU-VIRTUAL
           ref: 4cdd47f487cfadbca559dd8c2f5abc0448cd77a7
           path: deps/gpu-virtual
-          sparse-checkout: android-graphics/shared
+          sparse-checkout: |
+            android-graphics/shared
+            include
           persist-credentials: false
       - uses: actions/checkout@v4
         with:
