@@ -84,6 +84,7 @@ jobs:
         with:
           path: ${{ env.REVERSE_SIGNING_KEYSTORE }}
           key: reverse-velocity-development-signing-v1
+      # C02 verification must retain the original cached signer for upgrades.
       - name: Prepare fixed native dependency, SDK and signing identity
         run: |
           set -euo pipefail
