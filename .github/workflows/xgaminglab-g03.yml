@@ -1,0 +1,49 @@
+name: XGamingLab G03 build
+on:
+  workflow_dispatch:
+  push:
+    branches: [feature/xgaminglab-g03-build-20261109]
+    paths:
+      - 'xgaminglab-g03/**'
+      - '.github/workflows/xgaminglab-g03.yml'
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconstruct exact source
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat xgaminglab-g03/source.part* | base64 -d > /tmp/xgaminglab-g03.tar.gz
+          mkdir -p /tmp/xgaminglab
+          tar -xzf /tmp/xgaminglab-g03.tar.gz -C /tmp/xgaminglab
+      - name: Ensure Android toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0" "ndk;27.3.13750724"
+      - name: Host tests and APK
+        shell: bash
+        working-directory: /tmp/xgaminglab
+        env:
+          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+          ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/27.3.13750724
+        run: |
+          set -euo pipefail
+          chmod +x tests/*.sh scripts/*.py || true
+          bash tests/run-frame-stats.sh
+          bash tests/run-campaign-analysis.sh
+          bash tests/run-vsync-gate.sh
+          python3 scripts/build_apk.py
+          python3 scripts/package_source.py
+          sha256sum dist/X-Gaming-Lab-3.0.0.apk | tee evidence/X-Gaming-Lab-3.0.0.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: xgaminglab-g03
+          path: |
+            /tmp/xgaminglab/dist/X-Gaming-Lab-3.0.0.apk
+            /tmp/xgaminglab/dist/X-Gaming-Lab-3.0.0-source.zip
+            /tmp/xgaminglab/evidence/
