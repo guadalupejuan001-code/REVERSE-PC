@@ -42,14 +42,13 @@ jobs:
           ./shadow_delta_probe | tee evidence/shadow-delta-test.txt
       - name: Build signed APK
         shell: bash
-        env:
-          ANDROID_SDK_ROOT: ${{ env.ANDROID_HOME }}
-          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.2.12479018
-          ANDROID_BUILD_TOOLS: ${{ env.ANDROID_HOME }}/build-tools/35.0.0
-          ANDROID_JAR: ${{ env.ANDROID_HOME }}/platforms/android-35/android.jar
         run: |
           set -euo pipefail
           cd xlab-build/src
+          export ANDROID_SDK_ROOT="$ANDROID_HOME"
+          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/27.2.12479018"
+          export ANDROID_BUILD_TOOLS="$ANDROID_HOME/build-tools/35.0.0"
+          export ANDROID_JAR="$ANDROID_HOME/platforms/android-35/android.jar"
           python3 scripts/build_apk.py | tee evidence/build-output.txt
           test -s dist/X-Gaming-Lab-G02.apk
           "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/X-Gaming-Lab-G02.apk > evidence/signature-g02.txt
