@@ -1,0 +1,63 @@
+name: XGamingLab GPU Virtual PWR
+
+on:
+  pull_request:
+    paths:
+      - '.xgaminglab-source/**'
+      - '.github/workflows/xgaminglab-pwr.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK/NDK
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;27.3.13750724"
+      - name: Reconstruct exact XGamingLab source
+        shell: bash
+        run: |
+          cat .xgaminglab-source/part* > "$RUNNER_TEMP/xgaminglab.tar.gz"
+          mkdir -p "$RUNNER_TEMP/xgaminglab"
+          tar -xzf "$RUNNER_TEMP/xgaminglab.tar.gz" -C "$RUNNER_TEMP/xgaminglab"
+      - name: Host unit tests
+        shell: bash
+        working-directory: ${{ runner.temp }}/xgaminglab
+        run: |
+          ./tests/run-frame-stats.sh
+          ./tests/run-vsync-gate.sh
+          ./tests/run-campaign-analysis.sh
+      - name: Build signed APK from exact source
+        shell: bash
+        working-directory: ${{ runner.temp }}/xgaminglab
+        env:
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_HOME }}
+          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.3.13750724
+          ANDROID_BUILD_TOOLS: ${{ env.ANDROID_HOME }}/build-tools/35.0.0
+          ANDROID_JAR: ${{ env.ANDROID_HOME }}/platforms/android-35/android.jar
+        run: |
+          python3 scripts/build_apk.py
+          sha256sum dist/X-Gaming-Lab-3.0.0.apk | tee evidence/X-Gaming-Lab-3.0.0.sha256
+      - name: Upload APK and evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: XGamingLab-3.0.0-GPU-Virtual-PWR
+          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/xgaminglab/dist/X-Gaming-Lab-3.0.0.apk
+            ${{ runner.temp }}/xgaminglab/evidence/apk-validation.json
+            ${{ runner.temp }}/xgaminglab/evidence/apk-package.txt
+            ${{ runner.temp }}/xgaminglab/evidence/apk-signature.txt
+            ${{ runner.temp }}/xgaminglab/evidence/X-Gaming-Lab-3.0.0.sha256
