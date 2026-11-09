@@ -1,0 +1,136 @@
+name: XGamingLab 3.0 complete integration
+on:
+  push:
+    branches: [feature/xgaminglab-3-complete-20261109]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: xgaminglab-3-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Reconstruct reviewed XGamingLab 3.0 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/xlab3
+          tar -xzf xgaminglab-3/source.tar.gz -C /tmp/xlab3
+          cd /tmp/xlab3
+          python3 scripts/prepare_vendor.py
+          mkdir -p evidence
+          sha256sum "$GITHUB_WORKSPACE/xgaminglab-3/source.tar.gz" | tee evidence/ci-source-tar.sha256
+      - name: Install official Android toolchain
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018'
+      - name: GPU Virtual and QSSD authority tests
+        working-directory: /tmp/xlab3
+        shell: bash
+        run: |
+          set -euo pipefail
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Ivendor/gpu/include tests/physical_work_probe.cpp -o /tmp/pwr
+          /tmp/pwr | tee evidence/physical-work-authority.txt
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Ivendor/qssd/include -Ivendor/gpu/include tests/graphics_work_memory_probe.cpp -o /tmp/qssd-work
+          /tmp/qssd-work | tee evidence/graphics-work-memory.txt
+      - name: Metric campaign and frame-pacing regression tests
+        working-directory: /tmp/xlab3
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash tests/run-frame-stats.sh | tee evidence/frame-stats-3.txt
+          bash tests/run-campaign-analysis.sh | tee evidence/campaign-analysis-3.txt
+          bash tests/run-vsync-gate.sh | tee evidence/vsync-gate-3.txt
+      - name: Ether XI backend and 1000-qubit component regressions
+        working-directory: /tmp/xlab3
+        timeout-minutes: 28
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 900 bash tests/run_backend_tests.sh | tee evidence/backend-suite-3.txt
+          timeout 1000 bash tests/run_component_tests.sh | tee evidence/component-suite-3.txt
+      - name: Build signed Android APK and exact source bundle
+        working-directory: /tmp/xlab3
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ANDROID_SDK_ROOT="$ANDROID_HOME"
+          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/27.2.12479018"
+          export ANDROID_BUILD_TOOLS="$ANDROID_HOME/build-tools/35.0.0"
+          export ANDROID_JAR="$ANDROID_HOME/platforms/android-35/android.jar"
+          python3 scripts/build_apk.py | tee evidence/build-apk-3.txt
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/X-Gaming-Lab-3.0.0.apk | tee evidence/apksigner-3.txt
+          sha256sum dist/X-Gaming-Lab-3.0.0.apk | tee evidence/apk-3.sha256
+          python3 scripts/package_source.py | tee evidence/package-source-3.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: XGamingLab-3.0-build
+          path: |
+            /tmp/xlab3/dist/X-Gaming-Lab-3.0.0.apk
+            /tmp/xlab3/dist/X-Gaming-Lab-3.0.0-source.zip
+            /tmp/xlab3/evidence/**
+          retention-days: 30
+          if-no-files-found: warn
+  android-smoke:
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: XGamingLab-3.0-build
+          path: /tmp/artifact
+      - name: Install emulator image
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" platform-tools emulator 'system-images;android-35;default;x86_64'
+      - name: Install and launch XGamingLab 3.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          export PATH="$ANDROID_HOME/platform-tools:$PATH"
+          sudo chmod a+rw /dev/kvm || true
+          export ANDROID_AVD_HOME="$(mktemp -d /tmp/xlab-avd.XXXXXX)"
+          printf 'no\n' | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd --force -n xlab3 -p "$ANDROID_AVD_HOME/xlab3.avd" -k 'system-images;android-35;default;x86_64'
+          "$ANDROID_HOME/emulator/emulator" -avd xlab3 -no-window -no-audio -no-boot-anim -no-snapshot -gpu swiftshader_indirect -memory 2048 > /tmp/emulator.log 2>&1 &
+          pid=$!
+          trap 'adb logcat -d > /tmp/xlab-logcat.txt 2>/dev/null || true; adb exec-out screencap -p > /tmp/xlab-screen.png 2>/dev/null || true; kill "$pid" 2>/dev/null || true' EXIT
+          ready=false
+          for i in $(seq 1 120); do if [[ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" == 1 ]]; then ready=true; break; fi; sleep 2; done
+          test "$ready" = true
+          apk="$(find /tmp/artifact -name X-Gaming-Lab-3.0.0.apk -print -quit)"
+          test -s "$apk"
+          adb install -r "$apk"
+          adb logcat -c
+          adb shell am start -W -n x.lab.gaming/.MainActivity | tee /tmp/xlab-am-start.txt
+          sleep 5
+          adb shell pidof x.lab.gaming | tee /tmp/xlab-pid.txt
+          test -s /tmp/xlab-pid.txt
+          adb shell dumpsys activity activities | grep -m1 'x.lab.gaming/.MainActivity' | tee /tmp/xlab-activity.txt
+          adb logcat -d > /tmp/xlab-logcat.txt
+          if grep -A15 -B3 -E 'FATAL EXCEPTION|Process: x\.lab\.gaming' /tmp/xlab-logcat.txt | grep -q .; then exit 1; fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: XGamingLab-3.0-android-smoke
+          path: |
+            /tmp/xlab-*.txt
+            /tmp/xlab-screen.png
+            /tmp/emulator.log
+          retention-days: 30
+          if-no-files-found: warn
