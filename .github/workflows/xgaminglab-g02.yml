@@ -1,0 +1,66 @@
+name: XGamingLab G02 APK
+on:
+  push:
+    branches: [feature/xgaminglab-g02-apk-20261109]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install Android SDK and NDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"             'platforms;android-35'             'build-tools;35.0.0'             'ndk;27.2.12479018'
+      - name: Reconstruct exact G02 source payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p xlab-build
+          cat xgaminglab-g02/source.chunk.* | base64 -d > xlab-build/source.tar.gz
+          echo '7a86e217e30abfa06c80a18621cd028ced82a879d1687f70618813c4355a48e3  xlab-build/source.tar.gz' | sha256sum -c -
+          mkdir -p xlab-build/src
+          tar -xzf xlab-build/source.tar.gz -C xlab-build/src
+          mkdir -p xlab-build/src/evidence
+      - name: Verify shadow delta logic
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd xlab-build/src
+          g++ -std=c++17 -O2 -Wall -Wextra -Werror -Inative tests/shadow_delta_probe.cpp -o shadow_delta_probe
+          ./shadow_delta_probe | tee evidence/shadow-delta-test.txt
+      - name: Build signed APK
+        shell: bash
+        env:
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_HOME }}
+          ANDROID_NDK_HOME: ${{ env.ANDROID_HOME }}/ndk/27.2.12479018
+          ANDROID_BUILD_TOOLS: ${{ env.ANDROID_HOME }}/build-tools/35.0.0
+          ANDROID_JAR: ${{ env.ANDROID_HOME }}/platforms/android-35/android.jar
+        run: |
+          set -euo pipefail
+          cd xlab-build/src
+          python3 scripts/build_apk.py | tee evidence/build-output.txt
+          test -s dist/X-Gaming-Lab-G02.apk
+          "${ANDROID_HOME}/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/X-Gaming-Lab-G02.apk > evidence/signature-g02.txt
+          sha256sum dist/X-Gaming-Lab-G02.apk | tee evidence/apk-sha256.txt
+      - name: Publish APK and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: XGamingLab-G02-APK
+          path: |
+            xlab-build/src/dist/X-Gaming-Lab-G02.apk
+            xlab-build/src/evidence/**
+          retention-days: 30
+          if-no-files-found: warn
