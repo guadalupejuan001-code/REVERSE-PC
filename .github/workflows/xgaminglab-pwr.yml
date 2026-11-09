@@ -43,9 +43,9 @@ jobs:
         shell: bash
         working-directory: ${{ runner.temp }}/xgaminglab
         run: |
-          ./tests/run-frame-stats.sh
-          ./tests/run-vsync-gate.sh
-          ./tests/run-campaign-analysis.sh
+          bash tests/run-frame-stats.sh
+          bash tests/run-vsync-gate.sh
+          bash tests/run-campaign-analysis.sh
       - name: Build signed APK from exact source
         shell: bash
         working-directory: ${{ runner.temp }}/xgaminglab
