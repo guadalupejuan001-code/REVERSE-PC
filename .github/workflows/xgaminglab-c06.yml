@@ -62,9 +62,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cat .xgaminglab-c06/patch.b64.part* | base64 -d | gzip -dc > "$RUNNER_TEMP/c06.patch"
+          python3 .xgaminglab-c06/apply.py "$RUNNER_TEMP/xgaminglab"
           cd "$RUNNER_TEMP/xgaminglab"
-          patch -p1 --forward --batch < "$RUNNER_TEMP/c06.patch"
           grep -q 'GPU Virtual + REgraphics C06 · Balance' src/x/lab/gaming/RunConfig.java
           grep -q 'displayPaced(selected)' src/x/lab/gaming/FrameLoop.java
           grep -q 'gpu_virtual_regraphics_balanced' native/scene_renderer.cpp
