@@ -1,0 +1,50 @@
+name: X MARKET Laplace Lab (XI)
+on:
+  pull_request:
+    paths:
+      - "experiments/x-market-laplace/**"
+      - "tests/x_market_laplace.sh"
+      - "tests/x_market_predictor.js"
+      - ".github/workflows/x-market-laplace.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  xi-experiment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: e2778d962af22f6f1a0794058dd4685fc2573966
+          path: deps/mundo-x
+          persist-credentials: false
+      - name: Validate pinned Ether
+        run: |
+          test "$(git -C deps/mundo-x rev-parse HEAD)" = e2778d962af22f6f1a0794058dd4685fc2573966
+      - name: Compile REVERSE-PC original XI runtime
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+          cmake --build build --target reverse_pc --parallel 2
+      - name: Exact closed-world oracle vs unknown external input
+        run: bash tests/x_market_laplace.sh ./build/reverse_pc
+      - name: Native XI causal forecasting across sealed time steps
+        run: |
+          mkdir -p dist
+          node --check tests/x_market_predictor.js
+          node tests/x_market_predictor.js ./build/reverse_pc --ci | tee dist/laplace-x-causal-results.json
+      - name: Package the original XI experiment and causal model as RXE executables
+        run: |
+          mkdir -p dist
+          ./build/reverse_pc compile experiments/x-market-laplace/closed_world.xi dist/X-MARKET-LAPLACE.rxe "X MARKET Laplace Lab"
+          ./build/reverse_pc compile experiments/x-market-laplace/forecast-one.xi dist/LAPLACE-X-FORECASTER.rxe "Laplace X Forecast Research"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LAPLACE-X-XI-RXE-EVIDENCE
+          path: dist/
+          retention-days: 30
+          if-no-files-found: error
