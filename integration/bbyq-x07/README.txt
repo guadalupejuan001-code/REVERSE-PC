@@ -1,0 +1,19 @@
+BBY Q X07 — P13, P14 y ampliación del entrenamiento
+
+Esta revisión une el agente X06 con 448 hechos en 224 conceptos de F001/F002/F003. Añade enseñanza explícita, fuentes, revisión, corrección y olvido; reglas numéricas aprendidas y un formulario Aprender. El banco tiene capacidad para 512 conceptos. No es entrenamiento de pesos neuronales ni comprensión autónoma del PDF.
+
+P13: integración compilada en REVERSE 2.9.0-X07. Usa el transporte nativo v2, entrada UTF-8 de 16384 bytes, salida de 65536, persistencia atómica de memoria/historial y el coordinador XI con revisión. El despacho se guarda antes de ejecutar; si esa escritura falla, no se ejecuta. Se conserva la sesión anterior y las migraciones se publican después de completar todas las fases. Si una migración se rechaza, conserva el ejecutable anterior y ofrece BBY-Q-Completo-X07 como alternativa independiente. La aplicación usa el mismo paquete y certificado que la instalación 2.8.1 recuperada. P13 requiere todavía ejecución y medidas en Android y teléfono.
+
+Se corrigió una colisión real entre el indicador temporal E029 del archivo antiguo y la cabecera X06: @ctx o una afirmación archivada podían borrar la marca de planificación e impedir el siguiente turno. Tres operandos XI del código heredado se reubican a memoria temporal propiedad de X07. No cambió C++ ni el contenido del banco entrenado.
+
+P14: las evaluaciones se separan por capacidad. La consulta del currículo, el aprendizaje nuevo, la aritmética, el transporte, la revisión de código, la migración y los fallos de publicación tienen pruebas locales. Audio, imágenes, comparadores externos, interfaz visual real, Activity, proceso y recursos de Android siguen sin evaluación ejecutada. No se afirma paridad con ChatGPT o Claude.
+
+Los ocho problemas abiertos del libro son regresiones conocidas, no una evaluación reservada. Dos ejercicios numéricos funcionan con reglas declaradas; seis respuestas contextuales no cumplen el objetivo. La declaración «Entonces comprar casa siempre es mejor que alquilar» todavía se archiva como afirmación en el módulo heredado. No modifica el banco nuevo de entrenamiento. Esa política queda en P15 para una tarea posterior.
+
+Pruebas y alcance de las versiones: la primera cápsula X07 completó las 224 consultas compuestas que recuperan 448 relaciones. Esa ejecución completa falló después en una expectativa del propio test: generar un programa no lo ejecuta. Se corrigió el test para pedir explícitamente creación y ejecución, sin cambiar esa política del motor. La primera ampliación de pruebas detectó después la colisión E029/X06. La cápsula final solo cambia los tres operandos documentados; conserva idénticos módulo de entrenamiento, modelo, roles y reglas. Las pruebas finales vuelven a ejecutar enseñanza, transporte, cálculos, código, migraciones, muestras del currículo y planificación. Los resultados de versiones preliminares están identificados y no se presentan como pruebas completas de la cápsula final.
+
+La prueba JNI usa el C++ original recompilado en Linux y la misma clase Java del APK. Sus latencias y RSS pertenecen a ese entorno e incluyen el transporte. No son medidas de teléfono, del modelo aislado ni una comparación de plataformas. Las verificaciones de igualdad de memoria incluyen miles de comparaciones de bytes; no representan miles de problemas independientes.
+
+La APK se verificó por firma, CRC y alineación. Conserva sin cambios las dos bibliotecas ARM64/x86_64 y 128 recursos ajenos a esta integración. No se conectó un dispositivo Android durante esta tarea. PHONE-ACCEPTANCE.txt especifica lo necesario para cerrar P13.
+
+Entrenamiento: consulta en Chat «de dónde sabes CONCEPTO» para obtener la revisión antes de corregir. La consulta del concepto es exacta con normalización ASCII, no una búsqueda semántica libre. Los campos y operaciones admitidos están descritos en las fuentes y en el protocolo.

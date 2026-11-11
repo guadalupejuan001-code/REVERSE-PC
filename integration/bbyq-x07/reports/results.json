@@ -1,0 +1,122 @@
+{
+  "version": "X07-Knowledge-Android-1",
+  "native_app_sha256": "0e76be1dd41adedbce86e7467a56c0291af777aac0e9a3639972e710ce97c03e",
+  "model_sha256": "d9800e677553c8f0abb909821c9a0845329a41da229da415ebbd082ac1afb40e",
+  "apk": {
+    "file": "REVERSE-2.9.0-X07.apk",
+    "bytes": 36142469,
+    "sha256": "3c7bb96c2af45a8bc52511ece0ecc47069dcc6b2ca6c7719fae1a6a7e86b707e",
+    "version": "2.9.0-X07",
+    "version_code": 290,
+    "package": "com.reversepc.complete.workbench",
+    "certificate_sha256": "cd76d2fef0c238b19b7ad679606f3dbecf44affd93fd585cc1a5bcf057d05a7d",
+    "signature_verified": true,
+    "zip_crc": true,
+    "alignment_16kb": true,
+    "resources_arsc_stored": true,
+    "unchanged_native_libraries": [
+      "lib/arm64-v8a/libreverse_os.so",
+      "lib/x86_64/libreverse_os.so"
+    ],
+    "unchanged_baseline_assets": 128,
+    "bbyq_sha256": "0e76be1dd41adedbce86e7467a56c0291af777aac0e9a3639972e710ce97c03e",
+    "device_tested": false,
+    "alignment_entries": [
+      {
+        "file": "resources.arsc",
+        "offset": 2508,
+        "alignment": 4
+      },
+      {
+        "file": "lib/arm64-v8a/libreverse_os.so",
+        "offset": 16384,
+        "alignment": 16384
+      },
+      {
+        "file": "lib/x86_64/libreverse_os.so",
+        "offset": 1605632,
+        "alignment": 16384
+      }
+    ]
+  },
+  "P13": {
+    "state": "integrated_compiled_local_validation_passed_android_execution_pending",
+    "jni_linux": {
+      "passed": true,
+      "assertions": 35629,
+      "turns": 78,
+      "curriculum_concepts": 0,
+      "curriculum_relations": 0,
+      "native_backend": "unchanged C++ JNI on Linux JVM",
+      "android_device_tested": false,
+      "latency_ms_p50": 928,
+      "latency_ms_p95": 1721,
+      "native_compilations": 2
+    },
+    "previous_shipped_state_retained": true,
+    "x06_personal_name_retained": true,
+    "physical_device": false,
+    "android_emulator": false,
+    "android_latency_rss_battery": "not_measured"
+  },
+  "P14": {
+    "state": "independent_evaluations_partially_executed",
+    "final_native_turns": 181,
+    "jni_linux_turns": 78,
+    "x06_focused_turns": 79,
+    "additional_turns": 24,
+    "frontend": {
+      "passed": true,
+      "checks": 9,
+      "alternative_x07_path": true,
+      "correct_revision_frame": true,
+      "html_inert": true,
+      "utf8_byte_limit": 16384,
+      "visual_layout_tested": false
+    },
+    "known_book_open_probes": {
+      "passed": 2,
+      "total": 8,
+      "held_out": false
+    },
+    "chatgpt_comparison": "not_run",
+    "claude_comparison": "not_run",
+    "audio": "unsupported_unexecuted",
+    "image": "unsupported_unexecuted",
+    "concurrency_power_loss": "not_validated"
+  },
+  "training": {
+    "concepts": 224,
+    "relations": 448,
+    "rules": 2,
+    "concept_capacity": 512,
+    "new_explicit_learning": true,
+    "expected_revision_corrections": true,
+    "forget": true,
+    "source_pages": true,
+    "new_bank_implicit_writes_on_eight_probes": 0,
+    "legacy_archive_implicit_writes_on_eight_probes": 1,
+    "neural_training": false,
+    "pdf_autonomous_comprehension": false
+  },
+  "preliminary_evidence": {
+    "capsule_sha256": "cc2dc47f0d478da2219ef46e635a39b62ec991c7d363e09e13a8a19f48e3cf8d",
+    "full_curriculum_section": {
+      "concept_queries_completed": 224,
+      "relations_retrieved": 448,
+      "full_invocation_passed": false,
+      "failure": "Test expected generation alone to execute; later tests use an explicit execution request."
+    },
+    "additional_suite_failure": "Legacy archive overwrote X06 header; fixed by relocating exactly three legacy operands.",
+    "model_module_and_roles_identical_to_final": true
+  },
+  "corrected_issue": "Legacy E029 ACK flag collided with X06 ownership byte. Final code relocates only its three operands to X07 scratch.",
+  "remaining": [
+    "P07 translation",
+    "P08 writing/summarization",
+    "P13 Android execution and resources",
+    "P14 external comparators, modalities, concurrency and independent held-out evaluation",
+    "P15 explicit consent for legacy archive",
+    "P16 contextual/general training and book reasoning"
+  ]
+}

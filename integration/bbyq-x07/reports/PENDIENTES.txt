@@ -1,0 +1,82 @@
+PENDIENTES BBY Q — DESPUÉS DE X07
+
+Se trabajaron P13, P14 y la integración/ampliación F002/F003. P13 está integrado y compilado, con validación local; sigue pendiente ejecutarlo en Android. P14 tiene evaluaciones parciales independientes. P07 y P08 siguen pendientes. Los límites de los módulos anteriores se conservan.
+
+P01 — Conversación abierta y explicaciones útiles
+Estado: implementado_acotado
+Implementado: Marcos de ayuda con tema nuevo, referencias a una fuente, solicitudes de aclaración y ejemplos explícitos; dos entradas de enseñanza declaradas.
+Falta: Conversación libre, reformulación general y cobertura arbitraria de expresiones siguen pendientes.
+
+P02 — Seguir instrucciones y formatos
+Estado: implementado_acotado
+Implementado: Texto literal, JSON de hasta cuatro campos, listas explícitas o enseñadas, y límite de palabras sobre definiciones enseñadas.
+Falta: Formato libre y paráfrasis general siguen abiertos. Las respuestas LF ya se entregan por la interfaz v2 de X06; el adaptador C++ app-turn antiguo conserva su restricción.
+
+P03 — Memoria personal consultable en lenguaje normal
+Estado: implementado_acotado
+Implementado: Atributos personales sencillos, hasta dos afirmaciones por turno, consultas, fuentes, contradicciones, correcciones, olvido e idempotencia.
+Falta: No es extracción de párrafos libres ni resolución arbitraria de referencias; se conserva la gramática explícita descrita.
+
+P04 — Comprensión de textos largos y recuperación de contexto
+Estado: implementado_acotado
+Implementado: Importación UTF-8 por partes, agrupación de documentos, búsqueda léxica reanudable y citas de fragmentos; máximo ensayado 13.760 bytes.
+Falta: Comprensión semántica libre, respuestas que requieren relaciones a mayor distancia, resúmenes y consulta con sinónimos no están demostrados.
+
+P05 — Razonamiento abierto de varios pasos
+Estado: implementado_acotado
+Implementado: Premisas de inclusión con pruebas citadas, comparaciones transitivas de altura, rechazo atómico de ciclos, extremos de órdenes parciales y series aritméticas o geométricas declaradas.
+Falta: Razonamiento libre, negación general, cuantificadores, conjunciones, contraposición y acertijos causales como interruptores y lámpara siguen pendientes.
+
+P06 — Matemáticas fuera de las gramáticas actuales
+Estado: implementado_acotado
+Implementado: Expresiones con precedencia y paréntesis, racionales exactos, decimales, signos, ecuaciones lineales en x y dos marcos de problemas de cantidades con validación de unidades.
+Falta: Potencias, raíces, funciones, ecuaciones no lineales, sistemas, conversiones y problemas verbales libres; numerador y denominador reducidos limitados a 1.000.000.000.
+
+P07 — Traducción y gramática
+Estado: pendiente
+Falta: Mantener el contenido y la intención entre idiomas con exámenes reservados.
+
+P08 — Redacción, resumen y comparación
+Estado: pendiente
+Falta: Generar respuestas nuevas, fieles al texto de entrada y a sus restricciones.
+
+P09 — Programación general en XI
+Estado: implementado_acotado
+Implementado: Generación XI de aritmética entera, sumas con bucle, factorial, MCD, ordenación de listas y detección de divisor cero; compilación/ejecución RXE aislada y reparación de un fallo canónico con diagnóstico original QdU.
+Falta: Síntesis general de programas, funciones arbitrarias, edición de proyectos, reparación de múltiples fallos y aprendizaje autónomo de algoritmos siguen pendientes.
+
+P10 — Herramientas desde lenguaje libre
+Estado: implementado_acotado
+Implementado: Nuevas peticiones naturales hacia W4u, consumo de permisos nativos, compilación y ejecución aislada, revisión de salidas e identidad de tarea/fuente/intento; prueba del escritorio con funciones originales y XI real.
+Implementación X07: coordinador X05 conectado al transporte Java de la APK y probado con JNI real en Linux; autorización guardada antes de compilar y revisión nativa del recibo.
+Falta: Ejecutarlo en Android y teléfono; ampliar lenguaje y herramientas externas. Navegador, web y banca no están habilitados.
+
+P11 — Planificación flexible
+Estado: implementado_acotado
+Implementado: Plan persistente de hasta 16 tareas declaradas con tiempos, prioridades, dependencias, criterios de finalización, ciclos, bloqueos transitivos, correcciones y replanificación; presupuesto comprobado y confirmaciones explícitas.
+Falta: Descomposición automática de objetivos libres, estimación de tiempos, varias personas, recursos, calendarios, incertidumbre y optimización general siguen pendientes.
+
+P12 — Transporte de mensajes multilínea
+Estado: implementado_acotado
+Implementado: Interfaz nativa de texto v2: entrada UTF-8 completa de hasta 16.384 bytes, LF/CRLF/TAB y Unicode exactos, errores tipados, salida multilínea y publicación atómica; los nuevos consumidores son planificación y texto literal. Se recuperan también las salidas multilínea de módulos antiguos.
+Implementación X07: interfaz v2 integrada y compilada en la APK; 16384 bytes y Unicode probados mediante el JNI original en Linux. Se corrigió la colisión del indicador E029 con la cabecera X06.
+Falta: Validación de ejecución real en Android corresponde a P13. Los módulos anteriores conservan sus gramáticas y su entrada de 255 bytes; un texto largo sin consumidor compatible se rechaza expresamente. Se observaron fallos intermitentes en pruebas concurrentes de adaptadores heredados, incluida pérdida de avances del importador X03; la causa no se aisló. La entrega se valida en serie. Estrés multiproceso y cortes de alimentación siguen pendientes.
+
+P13 — Validación en la APK y en el teléfono
+Estado: integrado_compilado_validación_android_pendiente
+Implementado: APK 2.9.0-X07, mismo paquete/certificado que 2.8.1, chat v2, entrenamiento, coordinador nativo, historial/memoria atómicos, conservación del estado original y migración local desde la APK entregada. Firma, CRC, alineación y bibliotecas verificadas. 181 turnos nativos finales en pruebas locales.
+Falta: Instalación y ejecución en teléfono/emulador Android, interfaz visual/teclado, Activity y proceso, tickets de escritorio y recursos/batería. No se probó un teléfono. La recuperación de una sesión X06 ya dañada por la colisión anterior requiere análisis separado; ante un rechazo se conserva la sesión y se ofrece una alternativa X07.
+
+P14 — Evaluaciones independientes
+Estado: realizadas_parcialmente
+Implementado: Pruebas separadas de transporte, aprendizaje, correcciones, aritmética, código, propiedad de memoria, migración y persistencia; protocolo y evidencia por versión. Ocho problemas abiertos conocidos del libro: 2/8 resueltos numéricamente, 6/8 sin la respuesta contextual necesaria. Se conservaron los fallos preliminares y el alcance de cada resultado.
+Falta: Comparaciones ejecutadas con versiones identificadas de ChatGPT y Claude, evaluación reservada y ciega de calidad, audio/imágenes con interfaces reales, medidas de Android y concurrencia/cortes de alimentación. No hay paridad demostrada con ChatGPT/Claude.
+
+P15 — Consentimiento del archivo heredado
+Estado: pendiente
+Hallazgo: «Entonces comprar casa siempre es mejor que alquilar» añade una afirmación al archivo antiguo. El banco nuevo exige enseñanza explícita y no se modifica, pero esa política heredada necesita una tarea propia.
+
+P16 — Entrenamiento y comprensión general
+Estado: pendiente
+Implementado acotado en X07: 224 conceptos/448 hechos iniciales, 512 conceptos de capacidad, enseñanza explícita, fuentes/páginas, revisión, corrección y olvido; reglas numéricas de ahorro/reparto con tasas aprendidas y cálculo exacto en centavos; formulario Aprender.
+Falta: Paráfrasis semántica general, explicación y razonamiento contextual sobre el libro, extracción autónoma de PDFs, aprendizaje autónomo, importación de correcciones de perfiles F003 ajenos al currículo y pruebas de agotamiento/revisión máxima. No se entrenaron pesos neuronales.

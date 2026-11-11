@@ -1,0 +1,13 @@
+P13 — PRUEBA PENDIENTE EN ANDROID
+
+La APK 2.9.0-X07 está compilada y firmada. No hay teléfono o emulador conectado a esta sesión; no se afirma que esté instalada o validada allí.
+
+Condiciones para cerrar P13:
+1. Actualizar una instalación con paquete com.reversepc.complete.workbench y el mismo certificado, sin desinstalar ni borrar datos. Comprobar que conserva los archivos y la conversación anteriores.
+2. Abrir BBY Q, consultar «que es pagarte primero», y comprobar que aparece Aprender. Enseñar una lección nueva, cerrar la aplicación, volver a abrir y consultar esa lección y su fuente.
+3. Corregir con la revisión actual y comprobar que una revisión antigua se rechaza. Olvidar la lección y comprobar que las demás siguen disponibles.
+4. Pegar un mensaje multilínea, probar texto Unicode y un plan de varias tareas. Verificar que no se recorta y que el teclado y el desplazamiento funcionan en pantalla pequeña.
+5. Escribir «Crea y ejecuta un programa en XI que multiplique 12 por 7.» Comprobar 84, la revisión de w4U y que restaurar la ventana no repite la ejecución.
+6. Probar una orden de escritorio, recreación de Activity y cierre del proceso. Verificar tickets antiguos y memoria coherente. Medir latencia, RSS y batería en ARM64 y x86_64.
+
+La firma, CRC, alineación de resources.arsc a 4 bytes y bibliotecas a 16 KiB se comprueban en el paquete. Esto no sustituye los seis pasos anteriores.
