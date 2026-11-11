@@ -7,6 +7,10 @@ on:
     paths:
       - '.xgaminglab-c04/**'
       - '.github/workflows/xgaminglab-c04.yml'
+  pull_request:
+    paths:
+      - '.xgaminglab-c04/**'
+      - '.github/workflows/xgaminglab-c04.yml'
   workflow_dispatch:
 
 permissions:
