@@ -6,5 +6,7 @@
 /evidence/
 /resultados/
 /reverse-pc-results/
+/android-compat-input/
+/android-compat-results/
 *.pending
 __pycache__/

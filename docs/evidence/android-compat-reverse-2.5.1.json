@@ -1,0 +1,101 @@
+{
+  "schema": "reverse-android-compat-v1",
+  "scope": "provided_files_only",
+  "apks": [
+    {
+      "name": "REVERSE-v2.5.1.apk",
+      "bytes": 4716707,
+      "sha256": "62c35d9020b2ad497983544775546c399bdcff46affe89a1c615e62add692aa2",
+      "native_libraries": [
+        {
+          "path": "lib/arm64-v8a/libreverse_os.so",
+          "abi": "arm64-v8a",
+          "bytes": 1471976,
+          "sha256": "1f3cddcce14bb09ede388c6ecaa909755f972395338111697b23df8e37a6aa13",
+          "embedded_graphics_library_names": [],
+          "elf": {
+            "bits": 64,
+            "machine": 183,
+            "needed": [
+              "libc.so",
+              "libdl.so",
+              "liblog.so",
+              "libm.so"
+            ],
+            "graphics_imports": [],
+            "dynamic_lookup_imports": [],
+            "inspection": "static_readelf"
+          }
+        },
+        {
+          "path": "lib/x86_64/libreverse_os.so",
+          "abi": "x86_64",
+          "bytes": 1495808,
+          "sha256": "1388778cb778dba79c657c2fad5f86ab1621e5531261f6470a9fb4f4609a8923",
+          "embedded_graphics_library_names": [],
+          "elf": {
+            "bits": 64,
+            "machine": 62,
+            "needed": [
+              "libc.so",
+              "libdl.so",
+              "liblog.so",
+              "libm.so"
+            ],
+            "graphics_imports": [],
+            "dynamic_lookup_imports": [],
+            "inspection": "static_readelf"
+          }
+        }
+      ],
+      "dex_files": [
+        {
+          "name": "classes.dex",
+          "bytes": 1348
+        },
+        {
+          "name": "classes2.dex",
+          "bytes": 367120
+        }
+      ],
+      "errors": [],
+      "manifest": {
+        "encoding": "android_binary_xml",
+        "package": "com.reversepc.control.workbench",
+        "version_code": 251,
+        "version_code_major": 0,
+        "version_name": "2.5.1-control",
+        "split": null,
+        "config_for_split": null,
+        "is_feature_split": null,
+        "uses_splits": [],
+        "sdk": {
+          "minSdkVersion": 29,
+          "targetSdkVersion": 35,
+          "maxSdkVersion": null
+        },
+        "gles_requirements": [],
+        "debuggable": true,
+        "application_name": null
+      }
+    }
+  ],
+  "errors": [],
+  "runtime_graphics_backend": "not_observed",
+  "renderer_replacement": "not_implemented",
+  "wild_rift_execution": "not_tested",
+  "performance": "not_measured",
+  "limitations": [
+    "Static references do not establish which graphics API runs on a device.",
+    "Only standard lib/<abi>/*.so entries are inspected; other native payloads may exist.",
+    "Libraries may be loaded dynamically or supplied after installation.",
+    "Java/DEX implementations and runtime graphics calls are not decoded or traced.",
+    "Package metadata does not prove all required splits/assets are present.",
+    "Input signatures are not verified; SHA-256 identifies bytes, not provenance."
+  ],
+  "packages": [
+    "com.reversepc.control.workbench"
+  ],
+  "expected_package": "com.reversepc.control.workbench",
+  "status": "static_inventory_complete"
+}

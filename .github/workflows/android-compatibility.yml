@@ -1,0 +1,21 @@
+name: Android compatibility inventory
+on:
+  pull_request:
+    paths: ['tools/android_compat.py', 'tests/test_android_compat.py', 'docs/WILD_RIFT_COMPATIBILITY.md', 'docs/evidence/android-compat-reverse-2.5.1.json', '.github/workflows/android-compatibility.yml']
+  push:
+    branches: [main]
+    paths: ['tools/android_compat.py', 'tests/test_android_compat.py', '.github/workflows/android-compatibility.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.10'}
+      - name: Verify binary parsing, real ELF imports and read-only collection commands
+        run: python3 -m unittest discover -s tests -p test_android_compat.py -v
