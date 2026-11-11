@@ -57,12 +57,13 @@ jobs:
         run: |
           python3 scripts/build_apk.py
           sha256sum dist/X-Gaming-Lab-3.0.0.apk | tee evidence/X-Gaming-Lab-3.0.0.sha256
-      - name: Upload APK and evidence
+      - name: Upload APK, evidence and exact source archive
         uses: actions/upload-artifact@v4
         with:
           name: XGamingLab-3.0.0-GPU-Virtual-PWR
           if-no-files-found: error
           path: |
+            ${{ runner.temp }}/xgaminglab.tar.gz
             ${{ runner.temp }}/xgaminglab/dist/X-Gaming-Lab-3.0.0.apk
             ${{ runner.temp }}/xgaminglab/evidence/apk-validation.json
             ${{ runner.temp }}/xgaminglab/evidence/apk-package.txt
