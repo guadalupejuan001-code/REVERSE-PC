@@ -1,0 +1,135 @@
+name: XGamingLab C07 369B Scale
+
+on:
+  push:
+    branches:
+      - feature/xgaminglab-c07-369b-20261111
+    paths:
+      - '.xgaminglab-c07/**'
+      - '.github/workflows/xgaminglab-c07.yml'
+  pull_request:
+    paths:
+      - '.xgaminglab-c07/**'
+      - '.github/workflows/xgaminglab-c07.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android SDK and NDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ANDROID_HOME="/usr/local/lib/android/sdk"
+          export ANDROID_SDK_ROOT="$ANDROID_HOME"
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -1)"
+          fi
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" "ndk;27.3.13750724"
+
+      - name: Reconstruct XGamingLab C06
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .xgaminglab-source/part* > "$RUNNER_TEMP/xgaminglab-3.0.0.tar.gz"
+          mkdir -p "$RUNNER_TEMP/xgaminglab"
+          tar -xzf "$RUNNER_TEMP/xgaminglab-3.0.0.tar.gz" -C "$RUNNER_TEMP/xgaminglab"
+          cat .xgaminglab-overlay/patch.b64.part* | base64 -d | gzip -dc > "$RUNNER_TEMP/31.patch"
+          cat .xgaminglab-c04/patch.b64.part* | base64 -d | gzip -dc > "$RUNNER_TEMP/c04.patch"
+          cat .xgaminglab-c04-final/patch.b64.part* | base64 -d | gzip -dc > "$RUNNER_TEMP/c04-final.patch"
+          cat .xgaminglab-c05/patch.b64.part* | base64 -d | gzip -dc > "$RUNNER_TEMP/c05.patch"
+          cd "$RUNNER_TEMP/xgaminglab"
+          patch -p1 --forward --batch < "$RUNNER_TEMP/31.patch"
+          patch -p1 --forward --batch < "$RUNNER_TEMP/c04.patch"
+          patch -p1 --forward --batch < "$RUNNER_TEMP/c04-final.patch"
+          patch -p1 --forward --batch < "$RUNNER_TEMP/c05.patch"
+          python3 "$GITHUB_WORKSPACE/.xgaminglab-c06/apply.py" "$RUNNER_TEMP/xgaminglab"
+          grep -q '3.4.0-c06-balanced' AndroidManifest.xml
+
+      - name: Apply C07 369B scale
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .xgaminglab-c07/patch.b64.part* | base64 -d | gzip -dc > "$RUNNER_TEMP/c07.patch"
+          cd "$RUNNER_TEMP/xgaminglab"
+          patch -p1 --forward --batch < "$RUNNER_TEMP/c07.patch"
+          grep -q 'COMPACT_EFFECTS_FIELD=3' native/lab_api.hpp
+          grep -q '369000000000ULL' native/x_backend.cpp
+          grep -q 'GPU Virtual + REgraphics C07 · 369B' src/x/lab/gaming/RunConfig.java
+          grep -q '3.5.0-c07-369b' AndroidManifest.xml
+
+      - name: Host regressions and C07 scale gate
+        shell: bash
+        working-directory: ${{ runner.temp }}/xgaminglab
+        run: |
+          set -euo pipefail
+          bash tests/run-frame-stats.sh
+          bash tests/run-vsync-gate.sh
+          bash tests/run-campaign-analysis.sh
+          bash tests/run-gpu-virtual-graphics.sh
+          bash tests/run-regraphics-c05.sh | tee evidence/regraphics-c05-host.txt
+          bash tests/run-regraphics-c06.sh | tee evidence/regraphics-c06-host.txt
+          bash tests/run-regraphics-c07.sh | tee evidence/regraphics-c07-host.txt
+          grep -q '"logical":369000000000' evidence/regraphics-c07-host.txt
+          grep -q '"anchors":1024' evidence/regraphics-c07-host.txt
+
+      - name: Build signed Android APK
+        shell: bash
+        working-directory: ${{ runner.temp }}/xgaminglab
+        env:
+          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+          ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/27.3.13750724
+          ANDROID_BUILD_TOOLS: /usr/local/lib/android/sdk/build-tools/35.0.0
+          ANDROID_JAR: /usr/local/lib/android/sdk/platforms/android-35/android.jar
+        run: |
+          set -euo pipefail
+          python3 scripts/build_apk.py
+          test -f dist/X-Gaming-Lab-C07-369B.apk
+          sha256sum dist/X-Gaming-Lab-C07-369B.apk | tee evidence/X-Gaming-Lab-C07-369B.sha256
+          grep -q '"signatureVerified": true' evidence/apk-validation.json
+          grep -q '"nativeLoadAlignment16KiB": true' evidence/apk-validation.json
+
+      - name: Verify compiled C07 identity
+        shell: bash
+        working-directory: ${{ runner.temp }}/xgaminglab
+        run: |
+          set -euo pipefail
+          for abi in arm64-v8a x86_64; do
+            unzip -p dist/X-Gaming-Lab-C07-369B.apk "lib/$abi/libxgaminglab.so" > "$RUNNER_TEMP/$abi-libxgaminglab.so"
+            strings "$RUNNER_TEMP/$abi-libxgaminglab.so" | grep -q 'gpu_virtual_regraphics_c07_population_field'
+            strings "$RUNNER_TEMP/$abi-libxgaminglab.so" | grep -q 'c07_logical_population_extreme'
+            strings "$RUNNER_TEMP/$abi-libxgaminglab.so" | grep -q '369000000000'
+          done
+
+      - name: Archive exact C07 source
+        shell: bash
+        run: |
+          tar -czf "$RUNNER_TEMP/xgaminglab-c07-369b-source.tar.gz" -C "$RUNNER_TEMP/xgaminglab" --exclude='./build' --exclude='./dist' .
+
+      - name: Upload C07
+        uses: actions/upload-artifact@v4
+        with:
+          name: XGamingLab-C07-369B
+          if-no-files-found: error
+          retention-days: 90
+          path: |
+            ${{ runner.temp }}/xgaminglab/dist/X-Gaming-Lab-C07-369B.apk
+            ${{ runner.temp }}/xgaminglab/evidence/X-Gaming-Lab-C07-369B.sha256
+            ${{ runner.temp }}/xgaminglab/evidence/apk-validation.json
+            ${{ runner.temp }}/xgaminglab/evidence/regraphics-c05-host.txt
+            ${{ runner.temp }}/xgaminglab/evidence/regraphics-c06-host.txt
+            ${{ runner.temp }}/xgaminglab/evidence/regraphics-c07-host.txt
+            ${{ runner.temp }}/xgaminglab-c07-369b-source.tar.gz
