@@ -12,6 +12,8 @@ const server=createServer((req,res)=>{try{const path=req.url==='/'?'/index.html'
  let saved=null,fail=false,checks=0;const errors=[],calls=[];
  const fixedTime=Math.floor(Date.now()/300000)*300000+120000,end=Math.floor(fixedTime/300000)*300,start=end-14*86400;
  let v=80000;const bars=Array.from({length:4032},(_,i)=>{const o=v;v*=Math.exp(.0005*Math.sin(i/7)-.00001);return [start+i*300,Math.min(o,v)*.9998,Math.max(o,v)*1.0002,o,v,10+i%20]});
+ const historical=(step,n)=>{const end=Math.floor(fixedTime/(step*1000))*step;return Array.from({length:n},(_,i)=>{const t=end-(n-i)*step,p=80000*Math.exp(.00009*i+.004*Math.sin(i/13));return [t,p*.997,p*1.003,p*.999,p,100+i%19]})};
+ const hourBars=historical(3600,1080),dailyBars=historical(86400,1000);
  const stockBars=bars.slice(-1200).map((b,i)=>{const p=500*Math.exp(.0006*Math.sin(i/9)+i*.00002),o=p/Math.exp(.0006*Math.sin(i/9)+i*.00002);return [b[0],Math.min(o,p)*.9998,Math.max(o,p)*1.0002,o,p,1000+i%50]});
  const stockChart={chart:{result:[{meta:{currency:'USD',exchangeName:'NMS',exchangeTimezoneName:'America/New_York'},timestamp:stockBars.map(b=>b[0]),indicators:{quote:[{low:stockBars.map(b=>b[1]),high:stockBars.map(b=>b[2]),open:stockBars.map(b=>b[3]),close:stockBars.map(b=>b[4]),volume:stockBars.map(b=>b[5])}]}}],error:null}};
  const canonical=value=>{if(value===null||typeof value==='string'||typeof value==='boolean')return JSON.stringify(value);if(typeof value==='number'&&Number.isFinite(value))return JSON.stringify(value);if(Array.isArray(value))return '['+value.map(canonical).join(',')+']';if(value&&Object.getPrototypeOf(value)===Object.prototype)return '{'+Object.keys(value).sort().map(k=>JSON.stringify(k)+':'+canonical(value[k])).join(',')+'}';throw Error('non-json');};
@@ -24,7 +26,7 @@ const server=createServer((req,res)=>{try{const path=req.url==='/'?'/index.html'
   if(operation==='native_u002')return {ok:true,result:{schema:'laplace-u002-native-xi-v1',backend:'XI/Ether · NativeRuntime',records:369,materialized_bytes:11824,inverse_memory_overrides:9300,active_qubits:0,exact_roundtrip:true,snapshot_sha256:p.universal_state.snapshot_sha256,capture_sha256:p.capture_sha256,encoded_sha256:'b'.repeat(64),elapsed_ns:234567,prediction_generated:false,isolated:true}};
   if(operation!=='public')return {ok:false,error:'Operación desconocida'};if(fail&&p.source==='candles')return {ok:false,error:'Fallo de fuente inducido'};
   await new Promise(ok=>setTimeout(ok,15));let value;
-  if(p.source==='candles')value=bars.filter(b=>b[0]>=p.params.start&&b[0]<=p.params.end);
+  if(p.source==='candles'){const raw=p.params.step===3600?hourBars:p.params.step===86400?dailyBars:bars;value=raw.filter(b=>b[0]>=p.params.start&&b[0]+p.params.step<=p.params.end);}
   else if(p.source==='ticker')value={price:String(v),time:new Date(fixedTime).toISOString()};
   else if(p.source==='stock')value=stockChart;
   else if(p.source==='book')value={bids:Array.from({length:12},(_,i)=>[String(v-1-i),'1',1]),asks:Array.from({length:12},(_,i)=>[String(v+1+i),'2',1])};
@@ -43,9 +45,15 @@ const server=createServer((req,res)=>{try{const path=req.url==='/'?'/index.html'
   assert.equal(await page.inputValue('#activo'),'BTC-USD');checks++;
   await page.getByRole('button',{name:'Consultar ahora',exact:true}).click();await page.waitForFunction(()=>!document.getElementById('actualizar').disabled,{},{timeout:30000});
   assert.ok(saved);const btc=JSON.parse(saved);assert.equal(btc.schema,'laplace-reverse-v2');checks++;assert.equal(btc.market.asset,'BTC-USD');checks++;assert.equal(btc.predictions.length,6);checks++;assert.equal(btc.native_direction.schema,'laplace-xn01-native-xi-v1');checks++;
+  assert.equal(btc.fusion.schema,'laplace-fusion-temporal-f001-v1');checks++;
+  assert.equal(btc.fusion.horizons.length,14);checks++;
+  assert.equal(btc.fusion.context.usable,369);checks++;
+  assert.deepEqual([...new Set(calls.filter(x=>x.operation==='public'&&x.p.source==='candles').map(x=>x.p.params.step))].sort((a,b)=>a-b),[300,3600,86400]);checks++;
   await page.getByRole('button',{name:'Flujo',exact:true}).click();assert.equal(await page.locator('.nodo').count(),7);checks++;
   await page.getByRole('button',{name:'Resumen',exact:true}).click();assert.match(await page.locator('#resultadoEtiqueta').innerText(),/PRECIO CALCULADO/);checks++;
   await page.selectOption('#horizonte','60');assert.match(await page.locator('#objetivo').innerText(),/\d/);checks++;
+  await page.selectOption('#horizonte','129600');assert.match(await page.locator('#objetivo').innerText(),/\d/);checks++;
+  assert.equal(await page.locator('#modeloChip').innerText(),'F001 + XI');checks++;
   await page.locator('#exportar').click();assert.equal(JSON.parse(await page.evaluate(()=>window.exported)).market.asset,'BTC-USD');checks++;
   await page.selectOption('#activo','SPY');assert.equal(await page.inputValue('#horizonte'),'5');checks++;
   assert.equal(await page.locator('#candidato').innerText(),'—');checks++;

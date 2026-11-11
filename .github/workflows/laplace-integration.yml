@@ -49,8 +49,9 @@ jobs:
           node laplace-android/verify.mjs | tee evidencia-laplace/integracion.json
           set -o pipefail
           node --check reverse-os-android/app/src/main/assets/laplace/app.mjs
+          node --check reverse-os-android/app/src/main/assets/laplace/fusion-temporal.mjs
           node --check reverse-os-android/app/src/main/assets/laplace/x001.mjs
-          node --test laplace-android/tests/modelo.test.mjs laplace-android/tests/x001.test.mjs | tee evidencia-laplace/pruebas-modelo.txt
+          node --test laplace-android/tests/modelo.test.mjs laplace-android/tests/x001.test.mjs laplace-android/tests/fusion-f001.test.mjs | tee evidencia-laplace/pruebas-modelo.txt
           git rev-parse HEAD > evidencia-laplace/commit.txt
       - name: Ejecutar XN01 en el reverse_pc real
         run: |
