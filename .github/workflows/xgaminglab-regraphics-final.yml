@@ -60,10 +60,12 @@ jobs:
           tar -xzf "$SOURCE_TAR" -C "$RUNNER_TEMP/xgaminglab"
           base64 -d .xgaminglab-final/consolidate.py.gz.b64 | gzip -dc > "$RUNNER_TEMP/consolidate.py"
           python3 "$RUNNER_TEMP/consolidate.py" "$RUNNER_TEMP/xgaminglab"
+          python3 .xgaminglab-final/finalize_render.py "$RUNNER_TEMP/xgaminglab"
           grep -q 'GPU Virtual + REgraphics · Final' "$RUNNER_TEMP/xgaminglab/src/x/lab/gaming/RunConfig.java"
           grep -q 'gpu_virtual_regraphics_final' "$RUNNER_TEMP/xgaminglab/native/scene_renderer.cpp"
           grep -q 'COMPACT_EFFECTS_FIELD)?2:1' "$RUNNER_TEMP/xgaminglab/native/scene_renderer.cpp"
-          grep -q '3.6.0-regraphics-final' "$RUNNER_TEMP/xgaminglab/AndroidManifest.xml"
+          grep -q '3.6.1-regraphics-final' "$RUNNER_TEMP/xgaminglab/AndroidManifest.xml"
+          grep -Fq 'packet.compact_groups[gi].program==COMPACT_EFFECTS||packet.compact_groups[gi].program==COMPACT_EFFECTS_FIELD' "$RUNNER_TEMP/xgaminglab/native/scene_renderer.cpp"
 
       - name: Host regressions and color gate
         shell: bash
@@ -76,6 +78,7 @@ jobs:
           bash tests/run-gpu-virtual-graphics.sh
           bash tests/run-regraphics-c05.sh | tee evidence/regraphics-fast-path.txt
           bash tests/run-regraphics-final.sh | tee evidence/regraphics-final.txt
+          bash tests/run-regraphics-final-render.sh | tee evidence/regraphics-final-render.txt
           grep -q '"physical":903' evidence/regraphics-fast-path.txt
           grep -q '"unique_rgb":154' evidence/regraphics-final.txt
           grep -q '"nonzero_alpha":1024' evidence/regraphics-final.txt
@@ -128,5 +131,6 @@ jobs:
             ${{ runner.temp }}/xgaminglab/evidence/apk-validation.json
             ${{ runner.temp }}/xgaminglab/evidence/regraphics-fast-path.txt
             ${{ runner.temp }}/xgaminglab/evidence/regraphics-final.txt
+            ${{ runner.temp }}/xgaminglab/evidence/regraphics-final-render.txt
             ${{ runner.temp }}/xgaminglab-regraphics-final-source.tar.gz
             ${{ runner.temp }}/xgaminglab-regraphics-final-source.sha256
