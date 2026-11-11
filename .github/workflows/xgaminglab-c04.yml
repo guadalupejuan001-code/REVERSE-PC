@@ -1,0 +1,123 @@
+name: XGamingLab REgraphics C04 APK
+
+on:
+  push:
+    branches:
+      - feature/xgaminglab-regraphics-c04-20261111
+    paths:
+      - '.xgaminglab-c04/**'
+      - '.github/workflows/xgaminglab-c04.yml'
+  pull_request:
+    paths:
+      - '.xgaminglab-c04/**'
+      - '.github/workflows/xgaminglab-c04.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android SDK and NDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ANDROID_HOME="/usr/local/lib/android/sdk"
+          export ANDROID_SDK_ROOT="$ANDROID_HOME"
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -1)"
+          fi
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" "ndk;27.3.13750724"
+
+      - name: Reconstruct XGamingLab 3.1 exactly
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .xgaminglab-source/part* > "$RUNNER_TEMP/xgaminglab-3.0.0.tar.gz"
+          mkdir -p "$RUNNER_TEMP/xgaminglab"
+          tar -xzf "$RUNNER_TEMP/xgaminglab-3.0.0.tar.gz" -C "$RUNNER_TEMP/xgaminglab"
+          cat .xgaminglab-overlay/patch.b64.part* | base64 -d | gzip -dc > "$RUNNER_TEMP/gpu-virtual-resolved-3.1.patch"
+          cd "$RUNNER_TEMP/xgaminglab"
+          patch -p1 --forward --batch < "$RUNNER_TEMP/gpu-virtual-resolved-3.1.patch"
+          grep -q 'gpu_virtual_resolved_stream' native/scene_renderer.cpp
+          grep -q 'X-Gaming-Lab-3.1.0.apk' scripts/build_apk.py
+
+      - name: Apply REgraphics C04 physical-work patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .xgaminglab-c04/patch.b64.part* | base64 -d | gzip -dc > "$RUNNER_TEMP/regraphics-c04.patch"
+          cd "$RUNNER_TEMP/xgaminglab"
+          patch -p1 --forward --batch < "$RUNNER_TEMP/regraphics-c04.patch"
+          grep -q 'effect_screen_program' native/scene_renderer.cpp
+          grep -q 'effect_divisor_policy' native/scene_renderer.cpp
+          grep -q 'effect_base_retention' native/scene_renderer.cpp
+          grep -q 'GPU Virtual + REgraphics C04' src/x/lab/gaming/RunConfig.java
+          grep -q 'X-Gaming-Lab-C04.apk' scripts/build_apk.py
+          grep -q 'versionName="3.2.0-c04"' AndroidManifest.xml
+
+      - name: Host regression tests
+        shell: bash
+        working-directory: ${{ runner.temp }}/xgaminglab
+        run: |
+          bash tests/run-frame-stats.sh
+          bash tests/run-vsync-gate.sh
+          bash tests/run-campaign-analysis.sh
+          bash tests/run-gpu-virtual-graphics.sh
+
+      - name: Build signed Android APK
+        shell: bash
+        working-directory: ${{ runner.temp }}/xgaminglab
+        env:
+          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+          ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/27.3.13750724
+          ANDROID_BUILD_TOOLS: /usr/local/lib/android/sdk/build-tools/35.0.0
+          ANDROID_JAR: /usr/local/lib/android/sdk/platforms/android-35/android.jar
+        run: |
+          set -euo pipefail
+          python3 scripts/build_apk.py
+          test -f dist/X-Gaming-Lab-C04.apk
+          sha256sum dist/X-Gaming-Lab-C04.apk | tee evidence/X-Gaming-Lab-C04.sha256
+          grep -q '"signatureVerified": true' evidence/apk-validation.json
+          grep -q '"nativeLoadAlignment16KiB": true' evidence/apk-validation.json
+
+      - name: Verify compiled C04 symbols and strings
+        shell: bash
+        working-directory: ${{ runner.temp }}/xgaminglab
+        run: |
+          set -euo pipefail
+          for abi in arm64-v8a x86_64; do
+            unzip -p dist/X-Gaming-Lab-C04.apk "lib/$abi/libxgaminglab.so" > "$RUNNER_TEMP/$abi-libxgaminglab.so"
+            strings "$RUNNER_TEMP/$abi-libxgaminglab.so" | grep -q 'regraphics_c04_effect_layer'
+            strings "$RUNNER_TEMP/$abi-libxgaminglab.so" | grep -q 'effect_divisor_policy'
+          done
+
+      - name: Archive exact C04 source
+        shell: bash
+        run: |
+          tar -czf "$RUNNER_TEMP/xgaminglab-c04-source.tar.gz" -C "$RUNNER_TEMP/xgaminglab" --exclude='./build' --exclude='./dist' .
+
+      - name: Upload XGamingLab C04
+        uses: actions/upload-artifact@v4
+        with:
+          name: XGamingLab-C04-GPUVirtual-REgraphics
+          if-no-files-found: error
+          retention-days: 90
+          path: |
+            ${{ runner.temp }}/xgaminglab/dist/X-Gaming-Lab-C04.apk
+            ${{ runner.temp }}/xgaminglab/evidence/X-Gaming-Lab-C04.sha256
+            ${{ runner.temp }}/xgaminglab/evidence/apk-validation.json
+            ${{ runner.temp }}/xgaminglab/evidence/apk-package.txt
+            ${{ runner.temp }}/xgaminglab/evidence/apk-signature.txt
+            ${{ runner.temp }}/xgaminglab-c04-source.tar.gz
