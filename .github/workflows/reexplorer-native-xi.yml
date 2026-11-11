@@ -1,0 +1,51 @@
+name: REexplorer independent native XI/Ether RXE streaming core
+on:
+  pull_request:
+    branches: [main, feature/reverse-portrait-landscape-20261028]
+    paths:
+      - 'apps/reexplorer/**'
+      - '.github/workflows/reexplorer-native-xi.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: reexplorer-xi-native-${{ github.head_ref || github.ref }}
+  cancel-in-progress: false
+jobs:
+  native-rxe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: e2778d962af22f6f1a0794058dd4685fc2573966
+          path: deps/mundo-x
+          persist-credentials: false
+      - name: Build original REVERSE-PC XI and RXE runtime
+        run: |
+          set -euo pipefail
+          mkdir -p build evidence/reexplorer-native
+          python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc src/reverse_pc.cpp -o build/reverse_pc
+      - name: Compile REexplorer native RXE without BBY-Q
+        run: |
+          set -euo pipefail
+          node apps/reexplorer/build.mjs build/reverse_pc evidence/reexplorer-native
+          node --check apps/reexplorer/tests/native-stream.mjs
+      - name: Native streaming and document isolation regression
+        run: |
+          set -euo pipefail
+          node apps/reexplorer/tests/native-stream.mjs build/reverse_pc evidence/reexplorer-native evidence/reexplorer-native/test
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: REexplorer-independent-XI-RXE
+          path: |
+            evidence/reexplorer-native/REexplorer-Q-Stream.rxe
+            evidence/reexplorer-native/build.json
+            evidence/reexplorer-native/test/native-stream-results.json
+          retention-days: 14
