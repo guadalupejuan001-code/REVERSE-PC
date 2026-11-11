@@ -1,0 +1,87 @@
+name: XGamingLab GPU Virtual PWR
+
+on:
+  pull_request:
+    paths:
+      - '.xgaminglab-source/**'
+      - '.xgaminglab-overlay/**'
+      - '.github/workflows/xgaminglab-pwr.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Install Android SDK/NDK
+        shell: bash
+        run: |
+          export ANDROID_HOME="/usr/local/lib/android/sdk"
+          export ANDROID_SDK_ROOT="$ANDROID_HOME"
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -1)"; fi
+          test -x "$SDKMANAGER"
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" "ndk;27.3.13750724"
+          test -f "$ANDROID_HOME/platforms/android-35/android.jar"
+          test -x "$ANDROID_HOME/build-tools/35.0.0/aapt2"
+          test -x "$ANDROID_HOME/ndk/27.3.13750724/toolchains/llvm/prebuilt/linux-x86_64/bin/clang-18"
+      - name: Reconstruct exact XGamingLab 3.0 source
+        shell: bash
+        run: |
+          cat .xgaminglab-source/part* > "$RUNNER_TEMP/xgaminglab-3.0.0.tar.gz"
+          mkdir -p "$RUNNER_TEMP/xgaminglab"
+          tar -xzf "$RUNNER_TEMP/xgaminglab-3.0.0.tar.gz" -C "$RUNNER_TEMP/xgaminglab"
+      - name: Apply GPU Virtual 3.1 resolved-stream patch
+        shell: bash
+        run: |
+          cat .xgaminglab-overlay/patch.b64.part* | base64 -d | gzip -dc > "$RUNNER_TEMP/gpu-virtual-resolved-3.1.patch"
+          cd "$RUNNER_TEMP/xgaminglab"
+          patch -p1 --forward --batch < "$RUNNER_TEMP/gpu-virtual-resolved-3.1.patch"
+          grep -q 'aResolved0' native/lab_shaders.hpp
+          grep -q 'gpu_virtual_resolved_stream' native/scene_renderer.cpp
+          grep -q 'X-Gaming-Lab-3.1.0.apk' scripts/build_apk.py
+      - name: Host unit tests
+        shell: bash
+        working-directory: ${{ runner.temp }}/xgaminglab
+        run: |
+          bash tests/run-frame-stats.sh
+          bash tests/run-vsync-gate.sh
+          bash tests/run-campaign-analysis.sh
+          bash tests/run-gpu-virtual-graphics.sh
+      - name: Build signed APK from patched source
+        shell: bash
+        working-directory: ${{ runner.temp }}/xgaminglab
+        env:
+          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+          ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/27.3.13750724
+          ANDROID_BUILD_TOOLS: /usr/local/lib/android/sdk/build-tools/35.0.0
+          ANDROID_JAR: /usr/local/lib/android/sdk/platforms/android-35/android.jar
+        run: |
+          python3 scripts/build_apk.py
+          test -f dist/X-Gaming-Lab-3.1.0.apk
+          sha256sum dist/X-Gaming-Lab-3.1.0.apk | tee evidence/X-Gaming-Lab-3.1.0.sha256
+      - name: Archive exact patched source
+        shell: bash
+        run: |
+          tar -czf "$RUNNER_TEMP/xgaminglab-3.1.0-source.tar.gz" -C "$RUNNER_TEMP/xgaminglab" --exclude='./build' --exclude='./dist' .
+      - name: Upload APK, evidence and exact patched source
+        uses: actions/upload-artifact@v4
+        with:
+          name: XGamingLab-3.1.0-GPU-Virtual-Resolved
+          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/xgaminglab-3.1.0-source.tar.gz
+            ${{ runner.temp }}/xgaminglab/dist/X-Gaming-Lab-3.1.0.apk
+            ${{ runner.temp }}/xgaminglab/evidence/apk-validation.json
+            ${{ runner.temp }}/xgaminglab/evidence/apk-package.txt
+            ${{ runner.temp }}/xgaminglab/evidence/apk-signature.txt
+            ${{ runner.temp }}/xgaminglab/evidence/X-Gaming-Lab-3.1.0.sha256
