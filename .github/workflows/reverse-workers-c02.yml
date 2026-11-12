@@ -36,14 +36,26 @@ jobs:
           python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
       - name: Build C02 RVPC2 real workers
         run: |
-          cmake -S tests/workers -B build/workers -DCMAKE_BUILD_TYPE=Release
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            export CXX=""
+            for compiler in /c/msys64/ucrt64/bin/g++.exe /c/msys64/mingw64/bin/g++.exe; do
+              if [[ -x "$compiler" ]]; then export CXX="$compiler"; break; fi
+            done
+            if [[ -z "$CXX" ]]; then
+              echo "Original REVERSE GNU extensions need Windows MinGW GCC" >&2
+              exit 1
+            fi
+            cmake -S tests/workers -B build/workers -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER="$CXX"
+          else
+            cmake -S tests/workers -B build/workers -DCMAKE_BUILD_TYPE=Release
+          fi
           cmake --build build/workers --config Release --parallel 2
       - name: Test isolation, transactional commits, aging and memory
         run: |
           ctest --test-dir build/workers -C Release --output-on-failure
           mkdir -p evidence
           if [[ "${{ runner.os }}" == "Windows" ]]; then
-            build/workers/Release/reverse_workers_c02.exe > evidence/c02-rvpc2.json
+            build/workers/reverse_workers_c02.exe > evidence/c02-rvpc2.json
           else
             build/workers/reverse_workers_c02 > evidence/c02-rvpc2.json
           fi
