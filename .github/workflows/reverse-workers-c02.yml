@@ -1,0 +1,51 @@
+name: REVERSE original RVPC2 C02 scheduler
+on:
+  push:
+    branches: [feature/reverse-pc-rvpc2-workers-c02-20261112]
+    paths: ['src/fabric/reverse_workers.hpp','tests/reverse_workers.cpp','tests/workers/**','.github/workflows/reverse-workers-c02.yml']
+  pull_request:
+    branches: [main, feature/reverse-pc-unified-fabric-c01-20261112]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix: {os: [ubuntu-latest,windows-latest]}
+    defaults:
+      run: {shell: bash}
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: e2778d962af22f6f1a0794058dd4685fc2573966
+          path: deps/mundo-x
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Verify immutable RVPC2 source
+        run: |
+          test "$(git -C deps/mundo-x rev-parse HEAD)" = "e2778d962af22f6f1a0794058dd4685fc2573966"
+          mkdir -p build
+          python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+      - name: Build C02 RVPC2 real workers
+        run: |
+          cmake -S tests/workers -B build/workers -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/workers --config Release --parallel 2
+      - name: Test isolation, transactional commits, aging and memory
+        run: |
+          ctest --test-dir build/workers -C Release --output-on-failure
+          mkdir -p evidence
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            build/workers/Release/reverse_workers_c02.exe > evidence/c02-rvpc2.json
+          else
+            build/workers/reverse_workers_c02 > evidence/c02-rvpc2.json
+          fi
+          cat evidence/c02-rvpc2.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: {name: reverse-workers-c02-${{ matrix.os }}, path: evidence/}
