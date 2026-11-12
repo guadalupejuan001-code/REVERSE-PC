@@ -36,6 +36,7 @@ import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -49,6 +50,7 @@ public final class WorkbenchActivity extends Activity {
     private final Handler ui=new Handler(Looper.getMainLooper());
     private volatile boolean closed;
     private SessionStore store;
+    private long fabricHandle = 0;
     private WorkbenchPrograms programs;
     private WebView web;
     private ValueCallback<Uri[]> chooser;
@@ -192,7 +194,8 @@ public final class WorkbenchActivity extends Activity {
             .put("logical_processors",Runtime.getRuntime().availableProcessors()).put("ram_total_bytes",memory.totalMem).put("ram_available_bytes",memory.availMem)
             .put("process_pss_kib",Debug.getPss()).put("process_cpu_ms",android.os.Process.getElapsedCpuTime()).put("pid",android.os.Process.myPid());
         JSONObject result=new JSONObject().put("ok",true).put("mode","android-native").put("core",core).put("android",host).put("state_bytes",state.length)
-            .put("package",getPackageName()).put("profile_bytes",profileFile().getBaseFile().length()).put("captured_at_ms",System.currentTimeMillis());
+            .put("package",getPackageName()).put("profile_bytes",profileFile().getBaseFile().length()).put("captured_at_ms",System.currentTimeMillis())
+            .put("reverse_fabric_available",NativeFabric.available());
         try(InputStream input=getAssets().open("workbench/build-info.json")){java.io.ByteArrayOutputStream bytes=new java.io.ByteArrayOutputStream();byte[] part=new byte[2048];int count;while((count=input.read(part))!=-1)bytes.write(part,0,count);result.put("build",new JSONObject(new String(bytes.toByteArray(),StandardCharsets.UTF_8)));}
         return result;
     }
@@ -208,6 +211,7 @@ public final class WorkbenchActivity extends Activity {
                     if("inspect".equals(operation))result=WorkbenchActivity.this.inspect();
                     else if("calculate".equals(operation))result=calculateNative(payload);
                     else if("execute".equals(operation))result=executeNative(payload);
+                    else if("fabric".equals(operation))result=fabricNative(payload);
                     else if("experiment".equals(operation))result=experimentNative(payload);
                     else if("saveProfile".equals(operation))result=saveProfile(payload);
                     else if("listApps".equals(operation))result=programs().catalog();
@@ -287,6 +291,27 @@ public final class WorkbenchActivity extends Activity {
         s.writeState(result.state);
         return new JSONObject().put("ok",true).put("output",result.output).put("elapsed_ns",SystemClock.elapsedRealtimeNanos()-start).put("core",new JSONObject(NativeRuntime.inspect(result.state))).put("source","NativeRuntime.execute · XI/Ether · RVPC2");
     }
+    private JSONObject fabricNative(String request)throws Exception{
+        if (!NativeFabric.available())
+            throw new IllegalStateException("La compilación actual no incluye Mundo X PC + GPU Virtual + QSSD");
+        JSONObject input = new JSONObject(request);
+        String action = input.getString("action");
+        String program = input.optString("program","");
+        if (action.length()>64 || program.getBytes(StandardCharsets.UTF_8).length>256*1024)
+            throw new IllegalArgumentException("La solicitud supera el presupuesto del puente");
+        if (fabricHandle==0) {
+            fabricHandle=NativeFabric.create();
+            if(fabricHandle==0)throw new IllegalStateException("No se pudo iniciar REVERSE Fabric");
+        }
+        SessionStore s=session();
+        byte[] previous=s.loadState();
+        ResultPacket done=ResultPacket.parse(NativeFabric.apply(fabricHandle,previous,action,program));
+        // SessionStore remains the only persistent RVPC2 authority.
+        // Errors never publish an unverified replacement checkpoint.
+        if(!Arrays.equals(previous,done.state))s.writeState(done.state);
+        return new JSONObject(done.output).put("rvpc2_state_saved",true);
+    }
+
     private JSONObject calculateNative(String expression)throws Exception{
         if(expression==null||expression.length()>256)throw new IllegalArgumentException("Expresión demasiado larga");
         SessionStore s=session();String program=new CalculatorCompiler().compile(expression);
@@ -323,7 +348,8 @@ public final class WorkbenchActivity extends Activity {
     @Override public void onWindowFocusChanged(boolean focused){super.onWindowFocusChanged(focused);if(focused)immersive(this);}
     @Override protected void onPause(){if(web!=null){web.evaluateJavascript("document.body&&(document.body.dataset.appPaused='true')",null);web.onPause();}super.onPause();}
     @Override protected void onResume(){super.onResume();immersive(this);if(web!=null){web.onResume();web.evaluateJavascript("document.body&&(document.body.dataset.appPaused='false')",null);}}
-    @Override protected void onDestroy(){closed=true;if(chooser!=null){chooser.onReceiveValue(null);chooser=null;}if(web!=null){web.removeJavascriptInterface("ReverseNative");web.destroy();}super.onDestroy();}
+    @Override protected void onDestroy(){closed=true;
+        if(fabricHandle!=0){NativeFabric.destroy(fabricHandle);fabricHandle=0;}if(chooser!=null){chooser.onReceiveValue(null);chooser=null;}if(web!=null){web.removeJavascriptInterface("ReverseNative");web.destroy();}super.onDestroy();}
     // Used only by the in-repository Android instrumentation tests.
     public WebView testingWebView(){return web;}
 }
