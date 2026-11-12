@@ -1,0 +1,33 @@
+{
+  "schema": "reverse-fabric-component-pins-v1",
+  "owner": "REVERSE-PC",
+  "base_pr": 236,
+  "dependencies": {
+    "mundo-x-c03": {
+      "repository": "guadalupejuan001-code/mundo-X",
+      "commit": "fd66d20a4ef040d31d529300c5fd46a2d4ec57ed",
+      "component": "PC x86/x64 + InfiniteCore C01/C02/C03",
+      "scope": "PC and XI guest device code; RVPC2 source of truth remains in REVERSE"
+    },
+    "gpu-virtual-c08": {
+      "repository": "guadalupejuan001-code/GPU-VIRTUAL",
+      "commit": "dd89b4c2ba8cb7908bb8f0bb9eb8f20b75ead7d9",
+      "component": "PhysicalWorkAuthority original",
+      "scope": "VGA physical work planning"
+    },
+    "qssd-c08": {
+      "repository": "guadalupejuan001-code/Virtual-qSSD-",
+      "commit": "5555f1cfc95e50d60df5d7481317380a6c5891d8",
+      "component": "GraphicsWorkMemory original",
+      "scope": "Versioned immutable plan on StateBus"
+    },
+    "mundo-x-legacy": {
+      "repository": "guadalupejuan001-code/mundo-X",
+      "commit": "e2778d962af22f6f1a0794058dd4685fc2573966",
+      "component": "REVERSE's pinned original QuantumRuntime",
+      "scope": "Never replaced; RVPC2/BBY Q/XI"
+    }
+  },
+  "excluded": "Neither reverseAndroid Android boot nor Vulkan driver; no overwrite of XR/XRE/W4u/RXE",
+  "auto_merge": false
+}
