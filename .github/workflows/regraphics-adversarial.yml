@@ -1,0 +1,60 @@
+name: REgraphics Adversarial Visual Fidelity
+
+on:
+  push:
+    branches: [feature/regraphics-three-cycles-20261111]
+    paths:
+      - '.xgaminglab-three/regraphics_adversarial.cpp.gz.b64'
+      - '.github/workflows/regraphics-adversarial.yml'
+      - 'docs/REGRAPHICS_BREAKPOINTS.md'
+  pull_request:
+    paths:
+      - '.xgaminglab-three/regraphics_adversarial.cpp.gz.b64'
+      - '.github/workflows/regraphics-adversarial.yml'
+      - 'docs/REGRAPHICS_BREAKPOINTS.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  reproduce-counterexamples:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download exact C03 canonical source
+        uses: actions/download-artifact@v4
+        with:
+          name: REgraphics-C03-Final-APK-and-Source
+          path: ${{ runner.temp }}/c03
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 43142478902
+      - name: Compile original C03 field and adversarial renderer reference
+        shell: bash
+        run: |
+          set -euo pipefail
+          tarball="$(find "$RUNNER_TEMP/c03" -name 'regraphics-c03-canonical-source.tar.gz' -print -quit)"
+          test -n "$tarball"
+          mkdir -p "$RUNNER_TEMP/src" "$RUNNER_TEMP/results"
+          tar -xzf "$tarball" -C "$RUNNER_TEMP/src"
+          base64 -d .xgaminglab-three/regraphics_adversarial.cpp.gz.b64 | gzip -dc > "$RUNNER_TEMP/adversarial.cpp"
+          printf '%s  %s\n' '5bca977e523a9b03522bf7674fdb711ceed64a139c8d3fc7c670fa55935cfb6b' "$RUNNER_TEMP/adversarial.cpp" | sha256sum -c -
+          g++ -std=c++20 -O2 -Wall -Wextra -Werror \
+            -I"$RUNNER_TEMP/src/native" -I"$RUNNER_TEMP/src/vendor/gpu/include" \
+            "$RUNNER_TEMP/adversarial.cpp" -o "$RUNNER_TEMP/adversarial"
+          "$RUNNER_TEMP/adversarial" | tee "$RUNNER_TEMP/results/counterexamples.jsonl"
+          grep -q '"counterexamples_confirmed":4' "$RUNNER_TEMP/results/counterexamples.jsonl"
+          grep -q '"scenario":"different_colors_opaque_depth_order"' "$RUNNER_TEMP/results/counterexamples.jsonl"
+          grep -q '"scenario":"transparent_depth_order"' "$RUNNER_TEMP/results/counterexamples.jsonl"
+          grep -q '"scenario":"two_thin_objects_one_cell"' "$RUNNER_TEMP/results/counterexamples.jsonl"
+          grep -q '"scenario":"fbo_quarter_resolution_pointsize"' "$RUNNER_TEMP/results/counterexamples.jsonl"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: REgraphics-Visual-Breakpoints-Host-Only
+          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/results/counterexamples.jsonl
+            docs/REGRAPHICS_BREAKPOINTS.md

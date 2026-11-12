@@ -1,0 +1,156 @@
+name: REgraphics C03 Final - Shader Cache + Game Render
+
+on:
+  push:
+    branches: [feature/regraphics-three-cycles-20261111]
+    paths:
+      - '.xgaminglab-three/c03-*'
+      - '.github/workflows/xgaminglab-regraphics-c03.yml'
+      - 'docs/REGRAPHICS_THREE_CYCLES.md'
+  pull_request:
+    paths:
+      - '.xgaminglab-three/c03-*'
+      - '.github/workflows/xgaminglab-regraphics-c03.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android SDK and NDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ANDROID_HOME="/usr/local/lib/android/sdk"
+          export ANDROID_SDK_ROOT="$ANDROID_HOME"
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -1)"; fi
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" "ndk;27.3.13750724"
+      - name: Install Khronos EGL and GLES host libraries
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq libegl1-mesa-dev libgles2-mesa-dev
+
+      - name: Download C01 verified source (no C01 APK)
+        uses: actions/download-artifact@v4
+        with:
+          name: REgraphics-C01-Source-Only
+          path: ${{ runner.temp }}/c01-source
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 43136476049
+
+      - name: Materialize canonical C03 code once
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE="$(find "$RUNNER_TEMP/c01-source" -name 'regraphics-c01-source-only.tar.gz' -print -quit)"
+          test -n "$SOURCE"
+          mkdir -p "$RUNNER_TEMP/xgaminglab"
+          tar -xzf "$SOURCE" -C "$RUNNER_TEMP/xgaminglab"
+          cat .xgaminglab-three/c03-part* | base64 -d | gzip -dc > "$RUNNER_TEMP/regraphics-c03.patch"
+          cd "$RUNNER_TEMP/xgaminglab"
+          patch -p1 --forward --batch < "$RUNNER_TEMP/regraphics-c03.patch"
+          grep -q 'versionName="3.9.0-regraphics-c03"' AndroidManifest.xml
+          grep -q 'shader_binary_cache_supported' native/scene_renderer.cpp
+          grep -q 'uMaterialTex' native/lab_shaders.hpp
+          grep -q 'c02_damage_swaps' native/android_bridge.cpp
+
+      - name: Host C01 C02 C03 regression suite
+        shell: bash
+        working-directory: ${{ runner.temp }}/xgaminglab
+        run: |
+          set -euo pipefail
+          mkdir -p evidence
+          bash tests/run-regraphics-c03.sh | tee evidence/regraphics-c03-host.txt
+          bash tests/run-frame-stats.sh
+          bash tests/run-vsync-gate.sh
+          bash tests/run-campaign-analysis.sh
+          bash tests/run-gpu-virtual-graphics.sh
+          grep -q '"visual_parity":true' evidence/regraphics-c03-host.txt
+          grep -q '"corruption_fallback":true' evidence/regraphics-c03-host.txt
+          grep -q '"alpha_nonzero":815' evidence/regraphics-c01-field.txt
+
+      - name: Actual GLES2 scene, color and context tests (Mesa host)
+        shell: bash
+        working-directory: ${{ runner.temp }}/xgaminglab
+        env:
+          XLAB_GL_HEADERS: /usr/include
+          CPATH: ${{ runner.temp }}/xgaminglab/vendor/gpu/include
+          EGL_PLATFORM: surfaceless
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          set -euo pipefail
+          bash scripts/test-renderer.sh
+          bash scripts/test-backend-renderer.sh
+          test -s build/graphics-probe/renderer-shadow.ppm
+          grep -q '"passed":true' build/graphics-probe/result.json
+          grep -q '"passed":true' build/graphics-probe/backend-render-result.json
+
+      - name: Compile signed Android C03
+        shell: bash
+        working-directory: ${{ runner.temp }}/xgaminglab
+        env:
+          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+          ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/27.3.13750724
+          ANDROID_BUILD_TOOLS: /usr/local/lib/android/sdk/build-tools/35.0.0
+          ANDROID_JAR: /usr/local/lib/android/sdk/platforms/android-35/android.jar
+        run: |
+          set -euo pipefail
+          python3 scripts/build_apk.py
+          test -f dist/X-Gaming-Lab-REgraphics-C03.apk
+          sha256sum dist/X-Gaming-Lab-REgraphics-C03.apk | tee evidence/X-Gaming-Lab-REgraphics-C03.sha256
+          grep -q '"signatureVerified": true' evidence/apk-validation.json
+          grep -q '"nativeLoadAlignment16KiB": true' evidence/apk-validation.json
+          grep -q '3.9.0-regraphics-c03' evidence/apk-package.txt
+
+      - name: Verify C03 native libraries
+        shell: bash
+        working-directory: ${{ runner.temp }}/xgaminglab
+        run: |
+          set -euo pipefail
+          for abi in arm64-v8a x86_64; do
+            unzip -p dist/X-Gaming-Lab-REgraphics-C03.apk "lib/$abi/libxgaminglab.so" > "$RUNNER_TEMP/$abi.so"
+            strings "$RUNNER_TEMP/$abi.so" | grep -q 'shader_binary_cache_hits'
+            strings "$RUNNER_TEMP/$abi.so" | grep -q 'gpu_virtual_regraphics_final'
+            strings "$RUNNER_TEMP/$abi.so" | grep -q 'egl_swap_damage_supported'
+          done
+
+      - name: Archive canonical C03 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -czf "$RUNNER_TEMP/regraphics-c03-canonical-source.tar.gz" -C "$RUNNER_TEMP/xgaminglab" --exclude='./build' --exclude='./dist' .
+          sha256sum "$RUNNER_TEMP/regraphics-c03-canonical-source.tar.gz" > "$RUNNER_TEMP/regraphics-c03-source.sha256"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: REgraphics-C03-Final-APK-and-Source
+          if-no-files-found: error
+          retention-days: 90
+          path: |
+            ${{ runner.temp }}/xgaminglab/dist/X-Gaming-Lab-REgraphics-C03.apk
+            ${{ runner.temp }}/xgaminglab/evidence/X-Gaming-Lab-REgraphics-C03.sha256
+            ${{ runner.temp }}/xgaminglab/evidence/apk-validation.json
+            ${{ runner.temp }}/xgaminglab/evidence/regraphics-c03-host.txt
+            ${{ runner.temp }}/xgaminglab/evidence/apk-package.txt
+            ${{ runner.temp }}/xgaminglab/docs/REGRAPHICS_C03_GAME_INTEGRATION.md
+            ${{ runner.temp }}/xgaminglab/build/graphics-probe/renderer-shadow.ppm
+            ${{ runner.temp }}/xgaminglab/build/graphics-probe/result.json
+            ${{ runner.temp }}/xgaminglab/build/graphics-probe/backend-render-result.json
+            ${{ runner.temp }}/regraphics-c03-canonical-source.tar.gz
+            ${{ runner.temp }}/regraphics-c03-source.sha256

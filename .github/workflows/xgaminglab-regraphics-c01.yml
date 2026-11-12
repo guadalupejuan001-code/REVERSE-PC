@@ -1,0 +1,64 @@
+name: REgraphics C01/C02 source-only gates
+
+on:
+  push:
+    branches: [feature/regraphics-three-cycles-20261111]
+    paths:
+      - '.xgaminglab-three/**'
+      - '.github/workflows/xgaminglab-regraphics-c01.yml'
+      - 'docs/REGRAPHICS_THREE_CYCLES.md'
+  pull_request:
+    paths:
+      - '.xgaminglab-three/**'
+      - '.github/workflows/xgaminglab-regraphics-c01.yml'
+      - 'docs/REGRAPHICS_THREE_CYCLES.md'
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  host-tests-source-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Obtain verified REgraphics Final source (no APK build)
+        uses: actions/download-artifact@v4
+        with:
+          name: XGamingLab-REgraphics-Final
+          path: ${{ runner.temp }}/previous-source
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 43122518735
+      - name: Materialize C01
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE="$(find "$RUNNER_TEMP/previous-source" -name xgaminglab-regraphics-final-source.tar.gz -print -quit)"
+          test -n "$SOURCE"
+          mkdir -p "$RUNNER_TEMP/xgaminglab"
+          tar -xzf "$SOURCE" -C "$RUNNER_TEMP/xgaminglab"
+          base64 -d .xgaminglab-three/c01_apply.py.gz.b64 | gzip -dc > "$RUNNER_TEMP/c01_apply.py"
+          python3 "$RUNNER_TEMP/c01_apply.py" "$RUNNER_TEMP/xgaminglab"
+      - name: Host gates and source export
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd "$RUNNER_TEMP/xgaminglab"
+          bash tests/run-regraphics-c01.sh
+          bash tests/run-frame-stats.sh
+          bash tests/run-vsync-gate.sh
+          bash tests/run-regraphics-final.sh
+          bash tests/run-regraphics-final-render.sh
+          g++ -std=c++20 -O2 -Inative -Ivendor/gpu/include "$GITHUB_WORKSPACE/.xgaminglab-three/regraphics_c01_visual_diff.cpp" -o "$RUNNER_TEMP/c01-diff"
+          "$RUNNER_TEMP/c01-diff" | tee evidence/regraphics-c01-diff.txt
+          tar -czf "$RUNNER_TEMP/regraphics-c01-source-only.tar.gz" --exclude='./build' --exclude='./dist' -C "$RUNNER_TEMP/xgaminglab" .
+          sha256sum "$RUNNER_TEMP/regraphics-c01-source-only.tar.gz" > "$RUNNER_TEMP/regraphics-c01-source-only.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: REgraphics-C01-Source-Only
+          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/regraphics-c01-source-only.tar.gz
+            ${{ runner.temp }}/regraphics-c01-source-only.sha256
