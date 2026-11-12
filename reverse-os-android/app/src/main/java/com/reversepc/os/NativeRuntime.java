@@ -8,6 +8,9 @@ public final class NativeRuntime {
     /** Direct, no-measurement bridge for Mundo X PC Ether aperture into original RVPC2. */
     public static native int fabricReadByte(byte[] state,long logicalAddress);
     public static native byte[] fabricWriteByte(byte[] state,long logicalAddress,int value);
+    /** Original RVPC2 XI workers C02: private copies or optimistic commits on the same authority. */
+    public static native byte[] executeWorkers(byte[] canonicalRvpc2,String[] programs,
+                                                int workers,boolean transactional,long hostAvailableBytes);
     public static native byte[] compileRxe(byte[] sourceUtf8,byte[] titleUtf8);
     public static native byte[] inspectRxe(byte[] executable);
     public static native byte[] executeRxe(byte[] state,byte[] executable);
