@@ -34,6 +34,7 @@ jobs:
         with:
           msystem: UCRT64
           update: false
+          cache: false
           install: >-
             mingw-w64-ucrt-x86_64-gcc
             mingw-w64-ucrt-x86_64-cmake
@@ -43,31 +44,31 @@ jobs:
           test "$(git -C deps/mundo-x rev-parse HEAD)" = "e2778d962af22f6f1a0794058dd4685fc2573966"
           mkdir -p build
           python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
-      - name: Build C02 RVPC2 real workers
+      - name: Build original REVERSE C02 workers on Ubuntu
+        if: runner.os != 'Windows'
         run: |
-          if [[ "${{ runner.os }}" == "Windows" ]]; then
-            export CXX=""
-            for compiler in /c/msys64/ucrt64/bin/g++.exe /c/msys64/mingw64/bin/g++.exe; do
-              if [[ -x "$compiler" ]]; then export CXX="$compiler"; break; fi
-            done
-            if [[ -z "$CXX" ]]; then
-              echo "Original REVERSE GNU extensions need Windows MinGW GCC" >&2
-              exit 1
-            fi
-            cmake -S tests/workers -B build/workers -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER="$CXX"
-          else
-            cmake -S tests/workers -B build/workers -DCMAKE_BUILD_TYPE=Release
-          fi
-          cmake --build build/workers --config Release --parallel 2
-      - name: Test isolation, transactional commits, aging and memory
+          cmake -S tests/workers -B build/workers -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/workers --parallel 2
+      - name: Build original REVERSE C02 workers on Windows UCRT64
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
         run: |
-          ctest --test-dir build/workers -C Release --output-on-failure
+          cmake -S tests/workers -B build/workers -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER="$(command -v g++)"
+          cmake --build build/workers --parallel 2
+      - name: Test original XI isolation and RVPC2 commits on Ubuntu
+        if: runner.os != 'Windows'
+        run: |
+          ctest --test-dir build/workers --output-on-failure
           mkdir -p evidence
-          if [[ "${{ runner.os }}" == "Windows" ]]; then
-            build/workers/reverse_workers_c02.exe > evidence/c02-rvpc2.json
-          else
-            build/workers/reverse_workers_c02 > evidence/c02-rvpc2.json
-          fi
+          build/workers/reverse_workers_c02 > evidence/c02-rvpc2.json
+          cat evidence/c02-rvpc2.json
+      - name: Test original XI isolation and RVPC2 commits on Windows
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: |
+          ctest --test-dir build/workers --output-on-failure
+          mkdir -p evidence
+          build/workers/reverse_workers_c02.exe > evidence/c02-rvpc2.json
           cat evidence/c02-rvpc2.json
       - uses: actions/upload-artifact@v4
         if: always()
