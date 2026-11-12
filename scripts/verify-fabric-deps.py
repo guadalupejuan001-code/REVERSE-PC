@@ -9,6 +9,8 @@ lock = json.loads((ROOT / "docs/fabric-component-lock.json").read_text())
 assert lock["schema"] == "reverse-fabric-component-pins-v1"
 for key, value in lock["dependencies"].items():
     repo = ROOT / "deps" / key
+    if key == "mundo-x-legacy" and not (repo / ".git").exists():
+        repo = ROOT / "deps" / "mundo-x"
     if not (repo / ".git").exists():
         raise SystemExit("Missing pinned dependency: " + str(repo))
     sha = subprocess.check_output(["git", "-C", str(repo), "rev-parse", "HEAD"], text=True).strip()
