@@ -4,7 +4,7 @@ on:
     branches: [main, codex/prisma-rhythm-20261028]
     paths: ['reverse-os-android/**', 'bbyq-interface/**', 'src/**', 'scripts/**', 'apps/prisma/**', 'tests/prisma-*.mjs', '.github/workflows/workbench-android.yml']
   pull_request:
-    branches: [main, feature/regraphics-adaptive-fidelity-20261112]
+    branches: [main, feature/regraphics-adaptive-fidelity-20261112, feature/reverse-pc-unified-fabric-c01-20261112]
     paths: ['reverse-os-android/**', 'bbyq-interface/**', 'src/**', 'scripts/**', '.github/workflows/workbench-android.yml']
   workflow_dispatch:
 permissions:
@@ -98,6 +98,10 @@ jobs:
           cmake --build build/fabric-host --parallel 2
           ctest --test-dir build/fabric-host --output-on-failure | tee evidence/fabric-host-tests.log
           python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+          g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 \
+            -Isrc -Ibuild/ether-compat -Ideps/mundo-x/native/include \
+            tests/reverse_workers.cpp -o build/reverse-workers-c02
+          build/reverse-workers-c02 > evidence/reverse-workers-c02.json
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc src/reverse_pc.cpp -o build/reverse_pc
           g++ -std=c++17 -O2 -Wall -Wextra -Wpedantic -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tests/prisma_xrender.cpp -o build/test-prisma-xrender
           build/test-prisma-xrender > evidence/prisma-xrender-exact.json
