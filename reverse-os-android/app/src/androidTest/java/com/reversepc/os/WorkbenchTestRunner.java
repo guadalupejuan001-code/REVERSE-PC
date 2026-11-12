@@ -537,8 +537,10 @@ public final class WorkbenchTestRunner extends Instrumentation {
                 "GPU Virtual candidate list did not collapse into one real WebGL drawElements call");
         require(gpuDraw.getInt("pixels")>0 && gpuDraw.getDouble("elapsed_ms")>=0,
                 "WebGL GPU framebuffer was not read back after gl.finish");
-        require(js("window.reverseFabricReport.gpu_qssd.submitted_webgl").equals("true"),
+        require(js("window.reverseFabricReport.gpu_qssd.submitted_graphics").equals("true"),
                 "QSSD did not advance the version after verified physical submission");
+        require(js("window.reverseFabricReport.gpu_qssd.submitted_egl || window.reverseFabricReport.gpu_qssd.submitted_webgl").equals("true"),
+                "Neither native GLES2 nor WebGL confirmed the actual pixel submission");
         require(js("window.reverseFabricReport.gpu_qssd.completed_physical_revision>0").equals("true"),
                 "QSSD still reports an unmaterialized graphics plan");
         require(js("document.querySelector('[data-reverse-vga-gpu]')?.hidden===false").equals("true"),
@@ -600,9 +602,9 @@ public final class WorkbenchTestRunner extends Instrumentation {
             stream.write(new JSONObject().put("status","pass")
               .put("actual_x86",true).put("rvpc2_state",true)
               .put("gpu_physical_work_planned",true).put("qssd_versioned",true)
-              .put("gpu_webgl_drawn",true).put("gpu_webgl_readback_pixels",gpuDraw.getInt("pixels"))
-              .put("gpu_webgl_draw_calls",gpuDraw.getInt("draw_calls"))
-              .put("gpu_webgl_backend",gpuDraw.getString("backend"))
+              .put("gpu_physical_drawn",true).put("gpu_readback_pixels",gpuDraw.getInt("pixels"))
+              .put("gpu_draw_calls",gpuDraw.getInt("draw_calls"))
+              .put("gpu_backend",gpuDraw.getString("backend"))
               .put("physical_gpu_raster_acceleration_claimed",false)
               .put("original_bbyq_replaced",false)
               .put("gpu",run.getJSONObject("gpu_qssd"))
