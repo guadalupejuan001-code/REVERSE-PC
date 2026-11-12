@@ -54,19 +54,21 @@ class Fabric final {
   // Large LOGICAL video/guest aperture; sparse physical pages are bounded.
   Fabric() : pc_(std::size_t(2048)*1024*1024,
                  std::size_t(384)*1024*1024) {
-    pc_.cpu.in_hook = [this](std::uint16_t port, unsigned width) {
+    auto original_input = std::move(pc_.cpu.in_hook);
+    auto original_output = std::move(pc_.cpu.out_hook);
+    pc_.cpu.in_hook = [this, original_input=std::move(original_input)](std::uint16_t port, unsigned width) {
       if (port == cosmic_pc::PcQuantumDevice::data_port ||
           port == cosmic_pc::PcQuantumDevice::control_port)
         return std::optional<std::uint32_t>(port_input(port, width));
-      return pc_.input(port,width);
+      return original_input(port,width);
     };
-    pc_.cpu.out_hook = [this](std::uint16_t port,unsigned width,std::uint32_t value) {
+    pc_.cpu.out_hook = [this, original_output=std::move(original_output)](std::uint16_t port,unsigned width,std::uint32_t value) {
       if (port == cosmic_pc::PcQuantumDevice::data_port ||
           port == cosmic_pc::PcQuantumDevice::control_port) {
         port_output(port,width,value);
         return true;
       }
-      return pc_.output(port,width,value);
+      return original_output(port,width,value);
     };
     if (pc_.cpu.memory.has_window()) {
       pc_.cpu.memory.attach_window(cosmic_pc::PcMachine::kEtherMemoryPhysicalBase,
