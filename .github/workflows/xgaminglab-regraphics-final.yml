@@ -1,121 +1,17 @@
-name: XGamingLab REgraphics C01
+name: REgraphics C03 APK gate (disabled until C03)
 
+# Deliberately disabled at C02: source-only tests are defined in xgaminglab-regraphics-c01.yml.
+# A signed APK must NOT be built or uploaded before C03 is complete.
 on:
-  push:
-    branches:
-      - feature/regraphics-three-cycles-20261111
-    paths:
-      - '.xgaminglab-three/**'
-      - '.github/workflows/xgaminglab-regraphics-final.yml'
-      - 'docs/REGRAPHICS_THREE_CYCLES.md'
   workflow_dispatch:
 
 permissions:
   contents: read
-  actions: read
 
 jobs:
-  build-and-verify:
+  no-apk-before-c03:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-      - name: Install Android SDK and NDK
-        shell: bash
+      - name: Assert APK phase is reserved for C03
         run: |
-          set -euo pipefail
-          export ANDROID_HOME="/usr/local/lib/android/sdk"
-          export ANDROID_SDK_ROOT="$ANDROID_HOME"
-          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
-          if [ ! -x "$SDKMANAGER" ]; then SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -1)"; fi
-          yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" "ndk;27.3.13750724"
-      - name: Download canonical REgraphics Final 3.6.1 source
-        uses: actions/download-artifact@v4
-        with:
-          name: XGamingLab-REgraphics-Final
-          path: ${{ runner.temp }}/final-artifact
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          repository: ${{ github.repository }}
-          run-id: 43122518735
-      - name: Apply C01 visual field
-        shell: bash
-        run: |
-          set -euo pipefail
-          SOURCE_TAR="$(find "$RUNNER_TEMP/final-artifact" -name 'xgaminglab-regraphics-final-source.tar.gz' -print -quit)"
-          test -n "$SOURCE_TAR"
-          mkdir -p "$RUNNER_TEMP/xgaminglab"
-          tar -xzf "$SOURCE_TAR" -C "$RUNNER_TEMP/xgaminglab"
-          base64 -d .xgaminglab-three/c01_apply.py.gz.b64 | gzip -dc > "$RUNNER_TEMP/c01_apply.py"
-          python3 "$RUNNER_TEMP/c01_apply.py" "$RUNNER_TEMP/xgaminglab"
-          grep -q '3.7.0-regraphics-c01' "$RUNNER_TEMP/xgaminglab/AndroidManifest.xml"
-          grep -q 'visual_field_c01' "$RUNNER_TEMP/xgaminglab/native/scene_renderer.cpp"
-          grep -q 'visual_tile_vertex' "$RUNNER_TEMP/xgaminglab/native/lab_shaders.hpp"
-      - name: C01 host gates
-        shell: bash
-        working-directory: ${{ runner.temp }}/xgaminglab
-        run: |
-          set -euo pipefail
-          bash tests/run-frame-stats.sh
-          bash tests/run-vsync-gate.sh
-          bash tests/run-gpu-virtual-graphics.sh
-          bash tests/run-regraphics-final.sh
-          bash tests/run-regraphics-final-render.sh
-          bash tests/run-regraphics-c01.sh
-          g++ -std=c++20 -O2 -Inative -Ivendor/gpu/include "$GITHUB_WORKSPACE/.xgaminglab-three/regraphics_c01_visual_diff.cpp" -o /tmp/regraphics-c01-diff
-          /tmp/regraphics-c01-diff | tee evidence/regraphics-c01-diff.txt
-          grep -q '"tiles":815' evidence/regraphics-c01-field.txt
-          grep -q '"mae":0.00101864' evidence/regraphics-c01-diff.txt
-          grep -q '"unique_rgb":154' evidence/regraphics-c01-field.txt
-          grep -q '"alpha_nonzero":815' evidence/regraphics-c01-field.txt
-      - name: Build signed C01 APK
-        shell: bash
-        working-directory: ${{ runner.temp }}/xgaminglab
-        env:
-          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
-          ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/27.3.13750724
-          ANDROID_BUILD_TOOLS: /usr/local/lib/android/sdk/build-tools/35.0.0
-          ANDROID_JAR: /usr/local/lib/android/sdk/platforms/android-35/android.jar
-        run: |
-          set -euo pipefail
-          python3 scripts/build_apk.py
-          test -f dist/X-Gaming-Lab-REgraphics-C01.apk
-          sha256sum dist/X-Gaming-Lab-REgraphics-C01.apk | tee evidence/X-Gaming-Lab-REgraphics-C01.sha256
-          grep -q '"signatureVerified": true' evidence/apk-validation.json
-          grep -q '"nativeLoadAlignment16KiB": true' evidence/apk-validation.json
-      - name: Verify compiled C01 identity
-        shell: bash
-        working-directory: ${{ runner.temp }}/xgaminglab
-        run: |
-          set -euo pipefail
-          for abi in arm64-v8a x86_64; do
-            unzip -p dist/X-Gaming-Lab-REgraphics-C01.apk "lib/$abi/libxgaminglab.so" > "$RUNNER_TEMP/$abi-libxgaminglab.so"
-            strings "$RUNNER_TEMP/$abi-libxgaminglab.so" | grep -q 'visual_field_c01'
-            strings "$RUNNER_TEMP/$abi-libxgaminglab.so" | grep -q 'clip_xy+depth+size_px+rgba8'
-            strings "$RUNNER_TEMP/$abi-libxgaminglab.so" | grep -q '369000000000'
-          done
-      - name: Archive C01 canonical source
-        shell: bash
-        run: |
-          set -euo pipefail
-          tar -czf "$RUNNER_TEMP/xgaminglab-regraphics-c01-source.tar.gz" -C "$RUNNER_TEMP/xgaminglab" --exclude='./build' --exclude='./dist' .
-          sha256sum "$RUNNER_TEMP/xgaminglab-regraphics-c01-source.tar.gz" > "$RUNNER_TEMP/xgaminglab-regraphics-c01-source.sha256"
-      - name: Upload C01 artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: XGamingLab-REgraphics-C01
-          if-no-files-found: error
-          retention-days: 90
-          path: |
-            ${{ runner.temp }}/xgaminglab/dist/X-Gaming-Lab-REgraphics-C01.apk
-            ${{ runner.temp }}/xgaminglab/evidence/X-Gaming-Lab-REgraphics-C01.sha256
-            ${{ runner.temp }}/xgaminglab/evidence/apk-validation.json
-            ${{ runner.temp }}/xgaminglab/evidence/regraphics-c01-field.txt
-            ${{ runner.temp }}/xgaminglab/evidence/regraphics-c01-diff.txt
-            ${{ runner.temp }}/xgaminglab/docs/REGRAPHICS_C01_VISUAL_FIELD.md
-            ${{ runner.temp }}/xgaminglab-regraphics-c01-source.tar.gz
-            ${{ runner.temp }}/xgaminglab-regraphics-c01-source.sha256
+          echo "C02: source and host gates only; no Android SDK, NDK, signing, or APK artifacts."
