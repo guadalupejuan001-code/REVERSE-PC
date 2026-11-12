@@ -53,7 +53,10 @@ jobs:
         if: runner.os == 'Windows'
         shell: msys2 {0}
         run: |
-          cmake -S tests/workers -B build/workers -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER="$(command -v g++)"
+          compiler="$(cygpath -m "$(command -v g++)")"
+          case "$compiler" in *.exe) ;; *) compiler="${compiler}.exe";; esac
+          test -f "$compiler"
+          cmake -S tests/workers -B build/workers -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER="$compiler"
           cmake --build build/workers --parallel 2
       - name: Test original XI isolation and RVPC2 commits on Ubuntu
         if: runner.os != 'Windows'
