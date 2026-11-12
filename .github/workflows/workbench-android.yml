@@ -220,6 +220,17 @@ jobs:
           timeout 210s adb shell am instrument -w -e mode fabric com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee evidence/android-reverse-fabric.txt
           grep 'WORKBENCH_TESTS_OK mode=fabric' evidence/android-reverse-fabric.txt
           adb exec-out run-as com.reversepc.control.workbench cat files/reverse-fabric-android.json > evidence/reverse-fabric-android.json
+          adb exec-out run-as com.reversepc.control.workbench cat files/reverse-pc-gpu-webgl.png > evidence/reverse-pc-gpu-webgl.png
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('evidence/reverse-fabric-android.json').read_text())
+          assert r.get('gpu_webgl_drawn') is True, r
+          assert r.get('gpu_webgl_draw_calls') == 1, r
+          assert r.get('gpu_webgl_readback_pixels',0) > 0, r
+          assert Path('evidence/reverse-pc-gpu-webgl.png').read_bytes().startswith(b'\x89PNG\r\n\x1a\n')
+          print('REVERSE_GPU_WEBGL_QSSD_PASSED')
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
