@@ -48,4 +48,7 @@ jobs:
           cat evidence/c02-rvpc2.json
       - uses: actions/upload-artifact@v4
         if: always()
-        with: {name: reverse-workers-c02-${{ matrix.os }}, path: evidence/}
+        with:
+          name: "reverse-workers-c02-${{ matrix.os }}"
+          path: evidence/
+          if-no-files-found: warn
