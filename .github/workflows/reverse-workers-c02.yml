@@ -29,6 +29,15 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@v5
         with: {python-version: '3.12'}
+      - uses: msys2/setup-msys2@v2
+        if: runner.os == 'Windows'
+        with:
+          msystem: UCRT64
+          update: false
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
       - name: Verify immutable RVPC2 source
         run: |
           test "$(git -C deps/mundo-x rev-parse HEAD)" = "e2778d962af22f6f1a0794058dd4685fc2573966"
