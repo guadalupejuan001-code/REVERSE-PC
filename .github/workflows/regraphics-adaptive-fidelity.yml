@@ -1,0 +1,87 @@
+name: REgraphics 4.0 Adaptive Fidelity (source + GLES)
+
+on:
+  push:
+    branches:
+      - feature/regraphics-adaptive-fidelity-20261112
+    paths:
+      - '.xgaminglab-four/**'
+      - '.github/workflows/regraphics-adaptive-fidelity.yml'
+      - 'docs/REGRAPHICS_4_0_ADAPTIVE.md'
+  pull_request:
+    paths:
+      - '.xgaminglab-four/**'
+      - '.github/workflows/regraphics-adaptive-fidelity.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  verify-source-and-render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download pinned C03 canonical source (no APK)
+        uses: actions/download-artifact@v4
+        with:
+          name: REgraphics-C03-Final-APK-and-Source
+          path: ${{ runner.temp }}/c03
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 43142478902
+      - name: Apply original 4.0 patch with SHA protection
+        shell: bash
+        run: |
+          set -euo pipefail
+          ARCHIVE="$(find "$RUNNER_TEMP/c03" -name 'regraphics-c03-canonical-source.tar.gz' -print -quit)"
+          test -n "$ARCHIVE"
+          echo "00b5f78d1bebfa223de4f92e930f7e943d65414b628652d53a0ba88b0887ecd8  .xgaminglab-four/adaptive-fidelity.patch" | sha256sum -c -
+          bash .xgaminglab-four/apply.sh "$ARCHIVE" "$RUNNER_TEMP/regraphics4"
+      - name: Host validation (four visual counterexamples and 100k splats)
+        shell: bash
+        working-directory: ${{ runner.temp }}/regraphics4
+        run: |
+          set -euo pipefail
+          bash tests/run-adaptive-fidelity.sh
+          bash tests/run-frame-stats.sh
+          bash tests/run-vsync-gate.sh
+          bash tests/run-gpu-virtual-graphics.sh
+      - name: Install Mesa EGL/GLES development headers
+        run: |
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq libegl1-mesa-dev libgles2-mesa-dev
+      - name: Real GLES software rendering parity (not Mali)
+        shell: bash
+        working-directory: ${{ runner.temp }}/regraphics4
+        env:
+          XLAB_GL_HEADERS: /usr/include
+          CPATH: ${{ runner.temp }}/regraphics4/vendor/gpu/include
+          EGL_PLATFORM: surfaceless
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: |
+          set -euo pipefail
+          bash scripts/test-adaptive-gles.sh
+          grep -q '"passed":true' build/graphics-probe/adaptive-gles-result.json
+      - name: Archive validated 4.0 source without signing keys or APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -czf "$RUNNER_TEMP/regraphics4-source.tar.gz" \
+            --exclude='./signing' --exclude='./build' --exclude='./dist' \
+            -C "$RUNNER_TEMP/regraphics4" .
+          sha256sum "$RUNNER_TEMP/regraphics4-source.tar.gz" > "$RUNNER_TEMP/regraphics4-source.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: REgraphics-4.0-Adaptive-Source-and-Tests
+          if-no-files-found: error
+          retention-days: 90
+          path: |
+            ${{ runner.temp }}/regraphics4-source.tar.gz
+            ${{ runner.temp }}/regraphics4-source.sha256
+            ${{ runner.temp }}/regraphics4/evidence/adaptive-host.jsonl
+            ${{ runner.temp }}/regraphics4/evidence/adaptive-damage-host.json
+            ${{ runner.temp }}/regraphics4/evidence/adaptive-stress.json
+            ${{ runner.temp }}/regraphics4/build/graphics-probe/adaptive-gles-result.json
