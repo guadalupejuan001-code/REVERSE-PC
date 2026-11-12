@@ -2,7 +2,14 @@ package com.reversepc.os;
 
 /** Integrated Mundo X PC, GPU-VIRTUAL and qSSD through REVERSE's existing RVPC2 owner. */
 public final class NativeFabric {
-    static { System.loadLibrary("reverse_fabric"); }
+    private static final boolean AVAILABLE;
+    static {
+        boolean ready;
+        try { System.loadLibrary("reverse_fabric"); ready = true; }
+        catch (UnsatisfiedLinkError error) { ready = false; }
+        AVAILABLE = ready;
+    }
+    public static boolean available() { return AVAILABLE; }
     private NativeFabric() {}
     public static native long create();
     public static native void destroy(long handle);
