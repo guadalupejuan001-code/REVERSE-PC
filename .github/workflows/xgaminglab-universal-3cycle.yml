@@ -1,0 +1,146 @@
+name: XGamingLab Universal 3-Cycle
+
+on:
+  push:
+    branches:
+      - feature/xgaminglab-universal-3cycle-20261111
+    paths:
+      - '.xgaminglab-universal/**'
+      - '.github/workflows/xgaminglab-universal-3cycle.yml'
+  pull_request:
+    paths:
+      - '.xgaminglab-universal/**'
+      - '.github/workflows/xgaminglab-universal-3cycle.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  build-and-verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android SDK and NDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          export ANDROID_HOME="/usr/local/lib/android/sdk"
+          export ANDROID_SDK_ROOT="$ANDROID_HOME"
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | sort -V | tail -1)"
+          fi
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0" "ndk;27.3.13750724"
+
+      - name: Download canonical REgraphics Final 3.6.1 source
+        uses: actions/download-artifact@v4
+        with:
+          name: XGamingLab-REgraphics-Final
+          path: ${{ runner.temp }}/canonical
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.repository }}
+          run-id: 43122518735
+
+      - name: Materialize Universal source after exactly three cycles
+        shell: bash
+        run: |
+          set -euo pipefail
+          SOURCE_TAR="$(find "$RUNNER_TEMP/canonical" -name 'xgaminglab-regraphics-final-source.tar.gz' -print -quit)"
+          test -n "$SOURCE_TAR"
+          mkdir -p "$RUNNER_TEMP/xgaminglab"
+          tar -xzf "$SOURCE_TAR" -C "$RUNNER_TEMP/xgaminglab"
+          base64 -d .xgaminglab-universal/universal-3cycle-overlay.tar.gz.b64 > "$RUNNER_TEMP/universal-overlay.tar.gz"
+          echo "3a66ccbfb323defcfc079acb6daea849bf64820663c30b63f318d17827d27df4  $RUNNER_TEMP/universal-overlay.tar.gz" | sha256sum -c -
+          tar -xzf "$RUNNER_TEMP/universal-overlay.tar.gz" -C "$RUNNER_TEMP/xgaminglab"
+          grep -q '3.7.0-universal-3cycle' "$RUNNER_TEMP/xgaminglab/AndroidManifest.xml"
+          grep -q 'GPU Virtual + REgraphics · Universal' "$RUNNER_TEMP/xgaminglab/src/x/lab/gaming/RunConfig.java"
+
+      - name: Cycle 1 gate — Visual State
+        shell: bash
+        working-directory: ${{ runner.temp }}/xgaminglab
+        run: |
+          set -euo pipefail
+          bash tests/run-universal-cycle1.sh
+          bash tests/run-gpu-virtual-graphics.sh
+
+      - name: Cycle 2 gate — Visual Field
+        shell: bash
+        working-directory: ${{ runner.temp }}/xgaminglab
+        run: |
+          set -euo pipefail
+          bash tests/run-universal-cycle2.sh | tee evidence/universal-cycle2.txt
+          grep -q '"physical":576' evidence/universal-cycle2.txt
+          grep -q '"logical":369000000000' evidence/universal-cycle2.txt
+          bash tests/run-regraphics-c05.sh
+
+      - name: Cycle 3 gate — Sparse Present
+        shell: bash
+        working-directory: ${{ runner.temp }}/xgaminglab
+        run: |
+          set -euo pipefail
+          bash tests/run-universal-cycle3.sh
+          bash tests/run-regraphics-final.sh
+          bash tests/run-regraphics-final-render.sh
+          bash tests/run-frame-stats.sh
+          bash tests/run-vsync-gate.sh
+          bash tests/run-campaign-analysis.sh
+
+      - name: Build signed Android APK
+        shell: bash
+        working-directory: ${{ runner.temp }}/xgaminglab
+        env:
+          ANDROID_SDK_ROOT: /usr/local/lib/android/sdk
+          ANDROID_NDK_HOME: /usr/local/lib/android/sdk/ndk/27.3.13750724
+          ANDROID_BUILD_TOOLS: /usr/local/lib/android/sdk/build-tools/35.0.0
+          ANDROID_JAR: /usr/local/lib/android/sdk/platforms/android-35/android.jar
+        run: |
+          set -euo pipefail
+          python3 scripts/build_apk.py
+          test -f dist/X-Gaming-Lab-Universal-3Cycle.apk
+          sha256sum dist/X-Gaming-Lab-Universal-3Cycle.apk | tee evidence/X-Gaming-Lab-Universal-3Cycle.sha256
+          grep -q '"signatureVerified": true' evidence/apk-validation.json
+          grep -q '"nativeLoadAlignment16KiB": true' evidence/apk-validation.json
+
+      - name: Verify final native architecture in both ABIs
+        shell: bash
+        working-directory: ${{ runner.temp }}/xgaminglab
+        run: |
+          set -euo pipefail
+          for abi in arm64-v8a x86_64; do
+            unzip -p dist/X-Gaming-Lab-Universal-3Cycle.apk "lib/$abi/libxgaminglab.so" > "$RUNNER_TEMP/$abi-libxgaminglab.so"
+            strings "$RUNNER_TEMP/$abi-libxgaminglab.so" | grep -q 'gpu_virtual_regraphics_final'
+            strings "$RUNNER_TEMP/$abi-libxgaminglab.so" | grep -q 'preprojected-ndc-rgba8-premultiplied'
+            strings "$RUNNER_TEMP/$abi-libxgaminglab.so" | grep -q 'sparse_effect_composite'
+            strings "$RUNNER_TEMP/$abi-libxgaminglab.so" | grep -q 'EGL_KHR_swap_buffers_with_damage'
+            strings "$RUNNER_TEMP/$abi-libxgaminglab.so" | grep -q '369000000000'
+          done
+
+      - name: Archive new canonical source
+        shell: bash
+        run: |
+          set -euo pipefail
+          tar -czf "$RUNNER_TEMP/xgaminglab-universal-3cycle-source.tar.gz" -C "$RUNNER_TEMP/xgaminglab" --exclude='./build' --exclude='./dist' .
+          sha256sum "$RUNNER_TEMP/xgaminglab-universal-3cycle-source.tar.gz" > "$RUNNER_TEMP/xgaminglab-universal-3cycle-source.sha256"
+
+      - name: Upload Universal APK and canonical source
+        uses: actions/upload-artifact@v4
+        with:
+          name: XGamingLab-Universal-3Cycle
+          if-no-files-found: error
+          retention-days: 90
+          path: |
+            ${{ runner.temp }}/xgaminglab/dist/X-Gaming-Lab-Universal-3Cycle.apk
+            ${{ runner.temp }}/xgaminglab/evidence/X-Gaming-Lab-Universal-3Cycle.sha256
+            ${{ runner.temp }}/xgaminglab/evidence/apk-validation.json
+            ${{ runner.temp }}/xgaminglab/evidence/universal-cycle2.txt
+            ${{ runner.temp }}/xgaminglab-universal-3cycle-source.tar.gz
+            ${{ runner.temp }}/xgaminglab-universal-3cycle-source.sha256
