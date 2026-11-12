@@ -66,7 +66,10 @@ jobs:
           bash tests/run-regraphics-final.sh
           bash tests/run-regraphics-final-render.sh
           bash tests/run-regraphics-c01.sh
+          g++ -std=c++20 -O2 -Inative -Ivendor/gpu/include "$GITHUB_WORKSPACE/.xgaminglab-three/regraphics_c01_visual_diff.cpp" -o /tmp/regraphics-c01-diff
+          /tmp/regraphics-c01-diff | tee evidence/regraphics-c01-diff.txt
           grep -q '"tiles":815' evidence/regraphics-c01-field.txt
+          grep -q '"mae":0.00101864' evidence/regraphics-c01-diff.txt
           grep -q '"unique_rgb":154' evidence/regraphics-c01-field.txt
           grep -q '"alpha_nonzero":815' evidence/regraphics-c01-field.txt
       - name: Build signed C01 APK
@@ -112,6 +115,7 @@ jobs:
             ${{ runner.temp }}/xgaminglab/evidence/X-Gaming-Lab-REgraphics-C01.sha256
             ${{ runner.temp }}/xgaminglab/evidence/apk-validation.json
             ${{ runner.temp }}/xgaminglab/evidence/regraphics-c01-field.txt
+            ${{ runner.temp }}/xgaminglab/evidence/regraphics-c01-diff.txt
             ${{ runner.temp }}/xgaminglab/docs/REGRAPHICS_C01_VISUAL_FIELD.md
             ${{ runner.temp }}/xgaminglab-regraphics-c01-source.tar.gz
             ${{ runner.temp }}/xgaminglab-regraphics-c01-source.sha256
