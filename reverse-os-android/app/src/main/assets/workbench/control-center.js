@@ -104,8 +104,8 @@ function reversePcHTML(w){
     +'<div class="diagnostic-table">'
     +'<div class="diagnostic-row"><span>GPU Virtual</span><strong>'+Number(gpu.camera_candidates||0)+' trabajos · '+Number(gpu.planned_vertex_invocations||0)+' vértices planeados</strong></div>'
     +'<div class="diagnostic-row"><span>qSSD</span><strong>Revisión '+Number(gpu.qssd_serial||0)+' · reutilizados '+Number(gpu.reused_objects||0)+'</strong></div>'
-    +'<div class="diagnostic-row"><span>Render físico</span><strong>'+(!data?'Sin ejecutar':gpu.submitted_webgl?'WebGL presentado y registrado por qSSD':'WebGL pendiente de confirmación; GLES nativo no reclamado')+'</strong></div>'
-    +'</div><p class="control-note">XI y la memoria Ether del huésped utilizan el mismo RVPC2 que tus programas .rxe. Los checkpoints del escritorio, BBY Q y la apariencia se conservan. GPU Virtual decide la lista de glifos y el render WebGL usa exactamente esa selección. QSSD publica la revisión una vez confirmada la lectura real del framebuffer. En el emulador Android WebGL puede usar SwiftShader; la aceleración de la GPU física del teléfono requiere mediciones propias.</p>';
+    +'<div class="diagnostic-row"><span>Render físico</span><strong>'+(!data?'Sin ejecutar':gpu.submitted_graphics?'GPU presentada y registrada por qSSD':'GPU pendiente de presentación; WebGL o EGL/GLES según soporte')+'</strong></div>'
+    +'</div><p class="control-note">XI y la memoria Ether del huésped utilizan el mismo RVPC2 que tus programas .rxe. Los checkpoints del escritorio, BBY Q y la apariencia se conservan. GPU Virtual decide qué dibujar. WebGL usa ese trabajo si está disponible; cuando WebView bloquea WebGL, el componente EGL/GLES2 nativo dibuja la misma selección y devuelve sus píxeles. QSSD confirma la revisión solo tras la lectura del framebuffer. El FPS físico del teléfono requiere medirlo en el dispositivo.</p>';
 }
 function controlHTML(w){
   const tab=['apps','appearance','system','pc','backup'].includes(w.tab)?w.tab:'apps';w.tab=tab;
