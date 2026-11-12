@@ -524,6 +524,37 @@ public final class WorkbenchTestRunner extends Instrumentation {
                 "Original QSSD StateBus must hold real VGA-derived graphics revisions");
         require(run.getJSONObject("gpu_qssd").getLong("planned_vertex_invocations")>0,
                 "Original GPU-VIRTUAL must plan concrete visible glyph geometry");
+        // Connect the exact GPU-VIRTUAL-selected camera indices to the
+        // REVERSE WebGL canvas. Require actual drawElements + readPixels before
+        // qSSD accepts the completion receipt; never count CPU-only plans.
+        require(js("typeof window.ReverseGpuPhysical==='object'").equals("true"),
+                "Physical GPU-VIRTUAL WebGL renderer was not packaged");
+        js("window.reverseFabricReport=window.fabricRun;"+
+           "renderWindowContent(state.windows.find(w=>w.app==='control'&&w.tab==='pc'));true");
+        final JSONObject gpuDraw=new JSONObject(waitJs("(()=>{const s=window.ReverseGpuPhysical.status();"+
+           "return s.qssd_confirmed&&s.pixels>0 ? JSON.stringify(s):null})()"));
+        require(gpuDraw.getInt("glyphs")>1 && gpuDraw.getInt("draw_calls")==1,
+                "GPU Virtual candidate list did not collapse into one real WebGL drawElements call");
+        require(gpuDraw.getInt("pixels")>0 && gpuDraw.getDouble("elapsed_ms")>=0,
+                "WebGL GPU framebuffer was not read back after gl.finish");
+        require(js("window.reverseFabricReport.gpu_qssd.submitted_graphics").equals("true"),
+                "QSSD did not advance the version after verified physical submission");
+        require(js("window.reverseFabricReport.gpu_qssd.submitted_egl || window.reverseFabricReport.gpu_qssd.submitted_webgl").equals("true"),
+                "Neither native GLES2 nor WebGL confirmed the actual pixel submission");
+        require(js("window.reverseFabricReport.gpu_qssd.completed_physical_revision>0").equals("true"),
+                "QSSD still reports an unmaterialized graphics plan");
+        require(js("document.querySelector('[data-reverse-vga-gpu]')?.hidden===false").equals("true"),
+                "Real GPU canvas is not displayed in original REVERSE PC desktop");
+        // The unmodified text renderer remains a fallback if WebGL is missing.
+        require(js("document.querySelector('[data-reverse-vga-fallback]')?.hidden===true").equals("true"),
+                "VGA fallback remained visible after real GPU presentation");
+        final Bitmap gpuScreenshot=getUiAutomation().takeScreenshot();
+        if(gpuScreenshot!=null){
+            try(FileOutputStream pixels=new FileOutputStream(dataFile("reverse-pc-gpu-webgl.png"))){
+                gpuScreenshot.compress(Bitmap.CompressFormat.PNG,100,pixels);
+            }finally{gpuScreenshot.recycle();}
+        }
+
 
         JSONObject quantum=op("fabric","{\"action\":\"boot_quantum\",\"program\":\"\"}","fabricQuantum");
         require(quantum.getBoolean("ok"),"Real native quantum guest boot");
@@ -571,6 +602,9 @@ public final class WorkbenchTestRunner extends Instrumentation {
             stream.write(new JSONObject().put("status","pass")
               .put("actual_x86",true).put("rvpc2_state",true)
               .put("gpu_physical_work_planned",true).put("qssd_versioned",true)
+              .put("gpu_physical_drawn",true).put("gpu_readback_pixels",gpuDraw.getInt("pixels"))
+              .put("gpu_draw_calls",gpuDraw.getInt("draw_calls"))
+              .put("gpu_backend",gpuDraw.getString("backend"))
               .put("physical_gpu_raster_acceleration_claimed",false)
               .put("original_bbyq_replaced",false)
               .put("gpu",run.getJSONObject("gpu_qssd"))

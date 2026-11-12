@@ -1,10 +1,10 @@
 name: REVERSE Fabric real components — PC CPU GPU qSSD
 on:
   push:
-    branches: [feature/reverse-pc-unified-fabric-c01-20261112]
+    branches: [feature/reverse-pc-unified-fabric-c01-20261112, feature/reverse-pc-gpu-physical-c03-20261112]
     paths: ['src/fabric/**','tests/fabric/**','tests/reverse_fabric_integration.cpp','docs/fabric-component-lock.json','scripts/verify-fabric-deps.py','.github/workflows/reverse-fabric.yml']
   pull_request:
-    branches: [main, feature/regraphics-adaptive-fidelity-20261112]
+    branches: [main, feature/regraphics-adaptive-fidelity-20261112, feature/reverse-pc-rvpc2-workers-c02-20261112]
     paths: ['src/fabric/**','tests/fabric/**','tests/reverse_fabric_integration.cpp','docs/fabric-component-lock.json','scripts/verify-fabric-deps.py','.github/workflows/reverse-fabric.yml']
   workflow_dispatch:
 permissions:

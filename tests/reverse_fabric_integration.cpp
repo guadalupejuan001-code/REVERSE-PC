@@ -14,6 +14,14 @@ void check(bool yes,const char* message){
 bool has(const std::string& s,const std::string& fragment){
   return s.find(fragment)!=std::string::npos;
 }
+std::uint64_t number(const std::string& text,const std::string& field) {
+  const auto key="\""+field+"\":";
+  const auto found=text.find(key);
+  if(found==std::string::npos)throw std::runtime_error("missing native GPU field "+field);
+  const auto start=found+key.size();
+  const auto end=text.find_first_not_of("0123456789",start);
+  return std::stoull(text.substr(start,end-start));
+}
 } // namespace
 
 int main(){
@@ -53,6 +61,44 @@ int main(){
   check(has(after,"\"source_objects\":")&&has(after,"\"qssd_authority\":"),
         "GPU workload indexed by genuine qSSD component");
   check(xi_calls==0,"ordinary x86 BIOS path does not forge quantum XI traffic");
+  check(has(screen,"\"vga_plan\":{\"width\":640"),"GPU-VIRTUAL camera indices are exported to a real render consumer");
+  const auto candidates=number(screen,"camera_candidates");
+  const auto selected=number(screen,"planned_vertex_invocations");
+  check(candidates>0 && selected==candidates*6,
+        "selected original VGA glyphs have exactly the original six-index quad workload");
+  check(has(screen,"\"submitted_webgl\":false"),
+        "original GPU planning never falsely completes a physical draw");
+  const auto serial=number(screen,"qssd_serial");
+  bool rejected=false;
+  try{pc.apply("gpu_presented",std::to_string(serial-1)+":"+std::to_string(candidates)+":1:200",authority);}
+  catch(const std::runtime_error&){rejected=true;}
+  check(rejected,"stale source revision cannot complete another QSSD plan");
+  rejected=false;
+  try{pc.apply("gpu_presented",std::to_string(serial)+":"+std::to_string(candidates-1)+":1:200",authority);}
+  catch(const std::runtime_error&){rejected=true;}
+  check(rejected,"incorrect index count cannot be presented");
+  // Native host tests validate only revision/receipt enforcement. The Android
+  // WebGL instrumentation checks real drawElements, finish and readPixels.
+  const auto ack=pc.apply("gpu_presented",std::to_string(serial)+":"+
+      std::to_string(candidates)+":1:200",authority);
+  check(has(ack,"\"submitted_webgl\":true"),
+        "a complete serial-matched physical receipt is stored in QSSD");
+  check(number(ack,"completed_physical_revision")>0 &&
+        number(ack,"webgl_draw_calls")==1,"one batched draw call is recorded");
+  check(number(ack,"qssd_serial")==serial+1,
+        "acknowledgement publishes a new immutable QSSD revision");
+  // Native host test checks EGL receipt parsing/serial authorization; the
+  // Android test actually draws into an EGL pbuffer and reads its pixels.
+  const auto egl=pc.apply("gpu_presented",std::to_string(serial+1)+":"+
+      std::to_string(candidates)+":1:200:egl",authority);
+  check(has(egl,"\"submitted_egl\":true")&&has(egl,"\"submitted_webgl\":false"),
+        "native GLES and browser WebGL are reported distinctly");
+  check(has(egl,"\"direct_gles_submission\":true")&&
+        number(egl,"physical_draw_calls")==1,
+        "native EGL receipt records physical draw work on the QSSD authority");
+
+  check(xi_calls==0,"a graphics completion cannot modify original RVPC2 XI");
+
 
   pc.apply("boot_quantum","",authority);
   const auto quantum=pc.apply("run","",authority);

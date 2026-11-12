@@ -120,6 +120,8 @@ class Fabric final {
       last_output_ = authority.execute_xi(argument);
     } else if (action == "plan_gpu_qssd") {
       plan_video();
+    } else if (action == "gpu_presented") {
+      confirm_gpu_submission(argument);
     } else {
       throw std::invalid_argument("Unknown REVERSE Fabric action");
     }
@@ -204,9 +206,62 @@ class Fabric final {
     // First consume the original GPU-VIRTUAL work plan; then publish it into
     // QSSD's shared StateBus. This is the actual REVERSE display's VGA input.
     const auto plan=gpu_.plan(objects,{6},++video_revision_,true,true,true);
+    // GPU-VIRTUAL selects the actual glyphs that the browser GPU will draw.
+    // This array is derived EXCLUSIVELY from its returned camera indices,
+    // never from a separately guessed/duplicated visibility calculation.
+    std::vector<std::array<unsigned,3>> selected;
+    selected.reserve(plan.camera_indices.size());
+    for(const auto index:plan.camera_indices) {
+      if(index>=objects.size())throw std::logic_error("GPU work index outside original VGA candidates");
+      const auto cell=objects[index].id;
+      if(cell>=2000)throw std::logic_error("GPU work points outside VGA memory");
+      selected.push_back({static_cast<unsigned>(cell),
+                          static_cast<unsigned>(video[2*cell]),
+                          static_cast<unsigned>(video[2*cell+1])});
+    }
     graphics_.publish(plan,video_revision_,0);
+    selected_cells_.swap(selected);
+    last_draw_calls_=0;
+    last_backend_.clear();
     previous_video_hash_=hash;
     have_video_=true;
+  }
+
+  void confirm_gpu_submission(const std::string& receipt) {
+    // A verified GL client submits serial/count/draw-calls/readback-pixels.
+    // WebGL is the legacy path; :egl denotes native Android EGL/GLES2.
+    // This is a client receipt, not cryptographic hardware attestation.
+    std::string text=receipt,backend="webgl";
+    if(text.size()>=4 && text.compare(text.size()-4,4,":egl")==0) {
+      backend="egl";text.resize(text.size()-4);
+    } else if(text.size()>=6 && text.compare(text.size()-6,6,":webgl")==0) {
+      text.resize(text.size()-6);
+    }
+    std::array<std::uint64_t,4> values{};
+    std::size_t cursor=0;
+    for(std::size_t i=0;i<values.size();++i) {
+      auto end=text.find(':',cursor);
+      if(i==values.size()-1 ? end!=std::string::npos : end==std::string::npos)
+        throw std::invalid_argument("invalid WebGL completion receipt");
+      const auto number=text.substr(cursor,end==std::string::npos?end:end-cursor);
+      if(number.empty()||number.find_first_not_of("0123456789")!=std::string::npos)
+        throw std::invalid_argument("WebGL completion receipt is not decimal");
+      values[i]=std::stoull(number);
+      if(end!=std::string::npos)cursor=end+1;
+    }
+    const auto lease=graphics_.snapshot();
+    if(values[0]!=lease->serial)throw std::runtime_error("stale GPU work revision: no QSSD completion");
+    const auto& plan=lease->value->plan;
+    if(plan.revision==0 || values[1]!=selected_cells_.size() ||
+       (values[1]>0 && (values[2]!=1 || values[3]==0)) ||
+       (values[1]==0 && values[2]!=0))
+      throw std::runtime_error("physical WebGL receipt does not match the GPU-VIRTUAL plan");
+    // A color-bearing framebuffer and exact selected glyph count were read
+    // after submission. qSSD's completed_revision now reflects that receipt.
+    graphics_.publish(plan,lease->value->dependency_revision,plan.revision);
+    last_draw_calls_=static_cast<std::size_t>(values[2]);
+    last_visible_pixels_=values[3];
+    last_backend_=backend;
   }
 
   std::string report(const std::string& action) const {
@@ -233,6 +288,7 @@ class Fabric final {
         << "\"qssd_authority\":"<<lease->authority
         << ",\"qssd_serial\":"<<lease->serial
         << ",\"dependency_revision\":"<<lease->value->dependency_revision
+        << ",\"plan_revision\":"<<plan.revision
         << ",\"source_objects\":"<<plan.source_objects
         << ",\"camera_candidates\":"<<plan.camera_candidates
         << ",\"reused_objects\":"<<plan.reused_objects
@@ -241,7 +297,22 @@ class Fabric final {
         << ",\"baseline_instance_bytes\":"<<plan.baseline_instance_bytes
         << ",\"planned_vertex_invocations\":"<<plan.planned_vertex_invocations
         << ",\"completed_physical_revision\":"<<lease->value->completed_revision
-        << ",\"direct_gles_submission\":false}}";
+        << ",\"vga_plan\":{\"width\":640,\"height\":400,\"cols\":80,\"rows\":25,\"cells\":[";
+    for(std::size_t i=0;i<selected_cells_.size();++i) {
+      if(i)out<<',';
+      const auto& cell=selected_cells_[i];
+      out<<'['<<cell[0]<<','<<cell[1]<<','<<cell[2]<<']';
+    }
+    const bool presented=lease->value->completed_revision==plan.revision && plan.revision!=0;
+    out<<"]},\"submitted_graphics\":"<<(presented?"true":"false")
+       << ",\"submitted_webgl\":"<<(presented&&last_backend_=="webgl"?"true":"false")
+       << ",\"submitted_egl\":"<<(presented&&last_backend_=="egl"?"true":"false")
+       << ",\"physical_draw_calls\":"<<last_draw_calls_
+       << ",\"physical_readback_pixels\":"<<last_visible_pixels_
+       << ",\"physical_backend\":"<<json_string(last_backend_)
+       << ",\"webgl_draw_calls\":"<<(last_backend_=="webgl"?last_draw_calls_:0)
+       << ",\"webgl_nonblack_pixels\":"<<(last_backend_=="webgl"?last_visible_pixels_:0)
+       << ",\"direct_gles_submission\":"<<(presented&&last_backend_=="egl"?"true":"false")<<"}}";
     return out.str();
   }
 
@@ -252,6 +323,10 @@ class Fabric final {
   Authority* authority_=nullptr;
   bool have_video_=false;
   std::uint64_t previous_video_hash_=0,video_revision_=0;
+  std::vector<std::array<unsigned,3>> selected_cells_;
+  std::size_t last_draw_calls_=0;
+  std::uint64_t last_visible_pixels_=0;
+  std::string last_backend_;
   std::string last_output_;
 };
 } // namespace reverse_fabric

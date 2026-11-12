@@ -212,6 +212,7 @@ public final class WorkbenchActivity extends Activity {
                     else if("calculate".equals(operation))result=calculateNative(payload);
                     else if("execute".equals(operation))result=executeNative(payload);
                     else if("fabric".equals(operation))result=fabricNative(payload);
+                    else if("fabricGpu".equals(operation))result=fabricGpuNative(payload);
                     else if("fabricWorkers".equals(operation))result=fabricWorkersNative(payload);
                     else if("experiment".equals(operation))result=experimentNative(payload);
                     else if("saveProfile".equals(operation))result=saveProfile(payload);
@@ -311,6 +312,42 @@ public final class WorkbenchActivity extends Activity {
         // Errors never publish an unverified replacement checkpoint.
         if(!Arrays.equals(previous,done.state))s.writeState(done.state);
         return new JSONObject(done.output).put("rvpc2_state_saved",true);
+    }
+
+    private JSONObject fabricGpuNative(String request)throws Exception{
+        if(!NativeFabric.available())throw new IllegalStateException("REVERSE Fabric no disponible");
+        if(fabricHandle==0)throw new IllegalStateException("Inicializa el huésped REVERSE antes del render");
+        JSONObject input=new JSONObject(request);
+        long serial=input.getLong("serial");
+        org.json.JSONArray selected=input.getJSONArray("cells");
+        if(selected.length()>2000)throw new IllegalArgumentException("Selección GPU Virtual inválida");
+        // Reject any client-selected geometry that is not the exact original
+        // camera_indices projection currently held by QSSD.
+        SessionStore s=session();
+        byte[] state=s.loadState();
+        ResultPacket probe=ResultPacket.parse(NativeFabric.apply(fabricHandle,state,"inspect",""));
+        JSONObject actual=new JSONObject(probe.output).getJSONObject("gpu_qssd");
+        if(actual.getLong("qssd_serial")!=serial ||
+           !selected.toString().equals(actual.getJSONObject("vga_plan").getJSONArray("cells").toString()))
+            throw new IllegalStateException("GPU Virtual/QSSD cambió antes del envío; actualiza la pantalla");
+        if(actual.optBoolean("submitted_graphics",false))
+            throw new IllegalStateException("Esa revisión GPU ya fue presentada");
+        JSONObject pixels=ReverseGpuNative.render(selected);
+        int drawn=pixels.getInt("draw_calls"),count=pixels.getInt("pixels");
+        String receipt=serial+":"+selected.length()+":"+drawn+":"+count+":egl";
+        ResultPacket confirmed=ResultPacket.parse(NativeFabric.apply(
+                fabricHandle,state,"gpu_presented",receipt));
+        JSONObject answer=new JSONObject(confirmed.output);
+        JSONObject graphics=answer.getJSONObject("gpu_qssd");
+        if(!graphics.getBoolean("submitted_graphics")||!graphics.getBoolean("submitted_egl"))
+            throw new IllegalStateException("QSSD rechazó confirmación EGL/GLES2");
+        if(!Arrays.equals(state,confirmed.state))
+            throw new IllegalStateException("El presentador GLES alteró RVPC2");
+        return answer.put("png",pixels.getString("png"))
+                .put("backend",pixels.getString("backend"))
+                .put("pixels",count).put("glyphs",pixels.getInt("glyphs"))
+                .put("draw_calls",drawn).put("uploaded_bytes",pixels.getLong("uploaded_bytes"))
+                .put("rvpc2_state_saved",true);
     }
 
     private JSONObject fabricWorkersNative(String request)throws Exception{
