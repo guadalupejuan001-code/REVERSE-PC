@@ -89,6 +89,8 @@ function reversePcHTML(w){
   const button=(name,title,primary=false)=>'<button class="'+(primary?'primary-button':'secondary-button')+'" data-fabric-action="'+name+'" '+(busy||!ready?'disabled':'')+'>'+title+'</button>';
   const status=data?'CPU '+esc(pc.cpu_mode||'—')+' · '+esc(pc.status||'—')+' · '+Number(pc.instructions||0).toLocaleString('es')+' instrucciones':'Sin sesión activa';
   const screen=String(data?.screen||'').trimEnd();
+  if(data && typeof window.ReverseGpuPhysical!=='undefined' && ready)
+    window.ReverseGpuPhysical.schedule(data);
   return '<div class="control-heading"><div><span class="eyebrow">COMPUTADORA REVERSE</span><h2>REVERSE-PC</h2><p>Tu escritorio es el anfitrión. Mundo X aporta x86/x64; XI escribe en el RVPC2 original; GPU Virtual planifica y QSSD conserva las revisiones.</p></div></div>'
     +'<div class="system-boundary">'+icon('desktop')+'<span>'+(ready?'Componentes nativos enlazados · una autoridad XI/RVPC2': 'Esta APK no contiene los componentes nativos modernos; no se simulan resultados.')+'</span></div>'
     +'<div class="system-actions">'+button('boot_x86','Arrancar x86',true)+button('boot_x64','Arrancar x64')+button('boot_quantum','Prueba huésped XI')+button('boot_video','Arranque vídeo VBE')+'</div>'
@@ -96,12 +98,14 @@ function reversePcHTML(w){
     +'<div class="system-actions"><button class="secondary-button" data-fabric-workers="rvpc2" '+(busy||!ready?'disabled':'')+'>Medir C02 · 1/2/4 workers RVPC2</button></div>'
     +(window.reverseWorkerTrials?'<div class="diagnostic-table">'+window.reverseWorkerTrials.map(t=>'<div class="diagnostic-row"><span>'+t.workers+' workers · '+t.jobs+' trabajos XI</span><strong>'+t.jobsPerSecond.toFixed(1)+' tareas/s · '+t.peak_active+' simultáneos</strong></div>').join('')+'</div>':'')
     +'<div class="diagnostic-row"><strong>'+status+'</strong><small>Estado de la CPU huésped real, no el teléfono</small></div>'
-    +'<pre class="xi-output" aria-label="Pantalla VGA de REVERSE-PC" style="min-height:140px;max-height:250px;overflow:auto;white-space:pre;font-size:11px">'+esc(screen||'Arranca una prueba para ver la salida VGA del huésped.')+'</pre>'
+    +'<canvas data-reverse-vga-gpu width="640" height="400" aria-label="Pantalla VGA renderizada desde GPU Virtual C08 en WebGL" hidden style="display:block;width:100%;height:auto;max-height:260px;object-fit:contain;image-rendering:pixelated;border-radius:8px;background:#040608"></canvas>'
+    +'<pre data-reverse-vga-fallback class="xi-output" aria-label="Pantalla VGA de REVERSE-PC" style="min-height:140px;max-height:250px;overflow:auto;white-space:pre;font-size:11px">'+esc(screen||'Arranca una prueba para ver la salida VGA del huésped.')+'</pre>'
+    +'<p data-reverse-gpu-status class="control-note">GPU Virtual prepara los glifos seleccionados. WebGL ejecuta el dibujo físico; qSSD confirma al comprobar los píxeles.</p>'
     +'<div class="diagnostic-table">'
     +'<div class="diagnostic-row"><span>GPU Virtual</span><strong>'+Number(gpu.camera_candidates||0)+' trabajos · '+Number(gpu.planned_vertex_invocations||0)+' vértices planeados</strong></div>'
     +'<div class="diagnostic-row"><span>qSSD</span><strong>Revisión '+Number(gpu.qssd_serial||0)+' · reutilizados '+Number(gpu.reused_objects||0)+'</strong></div>'
-    +'<div class="diagnostic-row"><span>Render físico</span><strong>'+(!data?'Sin ejecutar':gpu.direct_gles_submission?'Conectado':'Trabajo planeado; sin envío GLES directo')+'</strong></div>'
-    +'</div><p class="control-note">XI y la memoria Ether del huésped utilizan el mismo RVPC2 que tus programas .rxe. Los checkpoints del escritorio, BBY Q y la apariencia se conservan. GPU Virtual/QSSD planifican revisiones reales; el trabajo físico sigue siendo responsabilidad del renderizador.</p>';
+    +'<div class="diagnostic-row"><span>Render físico</span><strong>'+(!data?'Sin ejecutar':gpu.submitted_webgl?'WebGL presentado y registrado por qSSD':'WebGL pendiente de confirmación; GLES nativo no reclamado')+'</strong></div>'
+    +'</div><p class="control-note">XI y la memoria Ether del huésped utilizan el mismo RVPC2 que tus programas .rxe. Los checkpoints del escritorio, BBY Q y la apariencia se conservan. GPU Virtual decide la lista de glifos y el render WebGL usa exactamente esa selección. QSSD publica la revisión una vez confirmada la lectura real del framebuffer. En el emulador Android WebGL puede usar SwiftShader; la aceleración de la GPU física del teléfono requiere mediciones propias.</p>';
 }
 function controlHTML(w){
   const tab=['apps','appearance','system','pc','backup'].includes(w.tab)?w.tab:'apps';w.tab=tab;
