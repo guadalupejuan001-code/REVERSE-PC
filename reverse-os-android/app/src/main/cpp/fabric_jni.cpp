@@ -34,7 +34,7 @@ std::vector<std::uint8_t> byte_array(JNIEnv* env,jbyteArray value){
   const jsize n=env->GetArrayLength(value);
   if(n<0||std::size_t(n)>32*1024*1024+29)
     throw std::length_error("RVPC2 state exceeds REVERSE budget");
-  std::vector<std::uint8_t> out(std::size_t(n));
+  std::vector<std::uint8_t> out(static_cast<std::size_t>(n));
   if(n)env->GetByteArrayRegion(value,0,n,reinterpret_cast<jbyte*>(out.data()));
   if(env->ExceptionCheck())throw std::runtime_error("unable to read RVPC2 state");
   return out;
