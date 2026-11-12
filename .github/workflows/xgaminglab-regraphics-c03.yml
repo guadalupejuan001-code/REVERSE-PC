@@ -90,6 +90,7 @@ jobs:
         working-directory: ${{ runner.temp }}/xgaminglab
         env:
           XLAB_GL_HEADERS: /usr/include
+          CPATH: ${{ runner.temp }}/xgaminglab/vendor/gpu/include
           EGL_PLATFORM: surfaceless
           LIBGL_ALWAYS_SOFTWARE: '1'
         run: |
