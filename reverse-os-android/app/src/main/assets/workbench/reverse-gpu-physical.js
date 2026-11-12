@@ -139,17 +139,66 @@ window.ReverseGpuPhysical=(()=>{
     }
     return true;
   }
+  async function nativePresentation(report) {
+    const gpu=report?.gpu_qssd,plan=gpu?.vga_plan;
+    if(!plan || !Number(gpu.plan_revision))return false;
+    const serial=Number(gpu.qssd_serial);
+    if(!Number.isSafeInteger(serial)||serial<1)throw Error('QSSD serial inválido');
+    if(pending.has('egl:'+serial))return false;
+    pending.add('egl:'+serial);
+    try {
+      // A native GLES pbuffer remains available even if the Android System
+      // WebView blocklists WebGL. Verify the full C08 plan natively first.
+      const result=await nativeRequest('fabricGpu',JSON.stringify({
+        serial,cells:plan.cells
+      }));
+      if(result?.gpu_qssd?.submitted_egl!==true||
+         result?.gpu_qssd?.submitted_graphics!==true||
+         result?.pixels<=0||result?.draw_calls!==1||
+         !String(result?.png||'').startsWith('data:image/png;base64,'))
+        throw Error('El renderizador EGL no devolvió píxeles confirmados');
+      const image=new Image();
+      image.src=result.png;
+      await image.decode();
+      const canvas=document.querySelector('.window [data-reverse-vga-gpu]');
+      if(!canvas)return false;
+      const context=canvas.getContext('2d',{alpha:false});
+      if(!context)throw Error('No se pudo presentar la imagen GLES en REVERSE');
+      context.clearRect(0,0,W,H);
+      context.drawImage(image,0,0,W,H);
+      canvas.hidden=false;
+      const fallback=canvas.closest('.window')?.querySelector('[data-reverse-vga-fallback]');
+      if(fallback)fallback.hidden=true;
+      window.reverseFabricReport=result;
+      last={status:'submitted-native',serial,glyphs:result.glyphs,
+            draw_calls:result.draw_calls,pixels:result.pixels,
+            elapsed_ms:0,backend:result.backend,uploaded_bytes:result.uploaded_bytes,
+            qssd_confirmed:true};
+      status(canvas,last.glyphs+' glifos · '+last.draw_calls+' GLES draw · '+
+           last.pixels+' píxeles · QSSD confirmado');
+      return true;
+    } finally {
+      pending.delete('egl:'+serial);
+    }
+  }
   function schedule(report){
     requestAnimationFrame(()=>{
-      try{present(report);}
-      catch(e){
-        last={status:'failed',error:errorText(e)};
-        const canvas=document.querySelector('.window [data-reverse-vga-gpu]');
-        if(canvas){
-          canvas.hidden=true;
-          const fallback=canvas.closest('.window')?.querySelector('[data-reverse-vga-fallback]');
-          if(fallback)fallback.hidden=false;
-          status(canvas,'Sin presentación GPU: '+last.error);
+      try { present(report); }
+      catch(error) {
+        if(typeof nativeRequest==='function'&&
+           report?.gpu_qssd?.plan_revision>0){
+          nativePresentation(report).catch(failure=>{
+            last={status:'failed',error:errorText(error)+'; EGL: '+errorText(failure)};
+            const canvas=document.querySelector('.window [data-reverse-vga-gpu]');
+            if(canvas){
+              canvas.hidden=true;
+              const fallback=canvas.closest('.window')?.querySelector('[data-reverse-vga-fallback]');
+              if(fallback)fallback.hidden=false;
+              status(canvas,'GPU no disponible: '+last.error);
+            }
+          });
+        } else {
+          last={status:'failed',error:errorText(error)};
         }
       }
     });
