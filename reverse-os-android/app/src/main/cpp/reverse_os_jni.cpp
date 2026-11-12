@@ -2,6 +2,7 @@
 #include "rxe.hpp"
 #include "rxe_app.hpp"
 #include "rxe_graphics.hpp"
+#include "fabric/reverse_workers.hpp"
 #include <jni.h>
 #include <exception>
 #include <limits>
@@ -135,5 +136,39 @@ Java_com_reversepc_os_NativeRuntime_fabricWriteByte(JNIEnv* e,jclass,jbyteArray 
     rt.execute("mem_store "+std::to_string(std::uint64_t(addr))+" "+
                std::to_string(static_cast<unsigned>(value))+"\n");
     return output(e,reverse_os::save(rt));
+  }catch(const std::exception& ex){throw_java(e,ex);return nullptr;}
+}
+
+
+// Adapt Mundo X C02 scheduling decisions to the ORIGINAL REVERSE RVPC2 runtime.
+// The UI's RuntimeExecutor serializes this entire call with other persisted
+// desktop/RXE mutations; each native job executes on an independent RVPC2 copy.
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_executeWorkers(JNIEnv* e,jclass,jbyteArray state,
+  jobjectArray programs,jint workers,jboolean transactional,jlong available_ram){
+  try {
+    if(!programs)throw std::invalid_argument("RVPC2 worker programs missing");
+    const jsize n=e->GetArrayLength(programs);
+    if(n<1||n>1024||workers<1||workers>64||available_ram<0)
+      throw std::invalid_argument("RVPC2 C02 invalid jobs/workers/RAM");
+    std::vector<reverse_pc::fabric_workers::Job> jobs;
+    jobs.reserve(std::size_t(n));
+    for(jsize i=0;i<n;++i){
+      auto input=static_cast<jstring>(e->GetObjectArrayElement(programs,i));
+      if(!input)throw std::invalid_argument("RVPC2 C02 missing program");
+      const char* raw=e->GetStringUTFChars(input,nullptr);
+      if(!raw)throw std::runtime_error("RVPC2 C02 input string unavailable");
+      std::string source(raw);
+      e->ReleaseStringUTFChars(input,raw);
+      e->DeleteLocalRef(input);
+      jobs.push_back({std::move(source),
+        reverse_pc::fabric_workers::Priority::Normal});
+    }
+    reverse_pc::fabric_workers::Options limits;
+    limits.workers=std::size_t(workers);
+    const auto result=reverse_pc::fabric_workers::execute(
+        bytes(e,state),jobs,transactional==JNI_TRUE,limits,
+        static_cast<std::uint64_t>(available_ram));
+    return output(e,reverse_os::packet(result.json(),result.state));
   }catch(const std::exception& ex){throw_java(e,ex);return nullptr;}
 }

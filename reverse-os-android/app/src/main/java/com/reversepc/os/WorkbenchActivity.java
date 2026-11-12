@@ -212,6 +212,7 @@ public final class WorkbenchActivity extends Activity {
                     else if("calculate".equals(operation))result=calculateNative(payload);
                     else if("execute".equals(operation))result=executeNative(payload);
                     else if("fabric".equals(operation))result=fabricNative(payload);
+                    else if("fabricWorkers".equals(operation))result=fabricWorkersNative(payload);
                     else if("experiment".equals(operation))result=experimentNative(payload);
                     else if("saveProfile".equals(operation))result=saveProfile(payload);
                     else if("listApps".equals(operation))result=programs().catalog();
@@ -310,6 +311,35 @@ public final class WorkbenchActivity extends Activity {
         // Errors never publish an unverified replacement checkpoint.
         if(!Arrays.equals(previous,done.state))s.writeState(done.state);
         return new JSONObject(done.output).put("rvpc2_state_saved",true);
+    }
+
+    private JSONObject fabricWorkersNative(String request)throws Exception{
+        JSONObject args=new JSONObject(request);
+        String mode=args.optString("mode","isolated");
+        if(!mode.equals("isolated")&&!mode.equals("transactional"))
+            throw new IllegalArgumentException("Solo isolated o transactional");
+        boolean transactional=mode.equals("transactional");
+        if(transactional&&!args.optBoolean("confirmCommit",false))
+            throw new IllegalArgumentException("Las tareas transaccionales requieren confirmación explícita");
+        int count=args.getInt("workers");
+        if(count<1||count>64)throw new IllegalArgumentException("Número de workers fuera de rango");
+        org.json.JSONArray array=args.getJSONArray("programs");
+        if(array.length()<1||array.length()>1024)
+            throw new IllegalArgumentException("Número de tareas fuera de rango");
+        String[] programs=new String[array.length()];
+        for(int i=0;i<programs.length;i++){
+            programs[i]=array.getString(i);
+            if(programs[i].getBytes(StandardCharsets.UTF_8).length>16*1024*1024)
+                throw new IllegalArgumentException("Programa XI supera 16 MiB");
+        }
+        ActivityManager.MemoryInfo memory=new ActivityManager.MemoryInfo();
+        ((ActivityManager)getSystemService(ACTIVITY_SERVICE)).getMemoryInfo(memory);
+        SessionStore s=session();
+        byte[] before=s.loadState();
+        ResultPacket result=ResultPacket.parse(NativeRuntime.executeWorkers(
+                before,programs,count,transactional,memory.availMem));
+        if(!Arrays.equals(before,result.state))s.writeState(result.state);
+        return new JSONObject(result.output).put("ok",true).put("rvpc2_state_saved",true).put("host_available_bytes",memory.availMem);
     }
 
     private JSONObject calculateNative(String expression)throws Exception{

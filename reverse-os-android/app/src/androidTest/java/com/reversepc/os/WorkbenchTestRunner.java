@@ -536,6 +536,36 @@ public final class WorkbenchTestRunner extends Instrumentation {
         require(after.getJSONObject("core").getString("state_format").equals("RVPC2"),
                 "Fabric replaced canonical RVPC2 snapshot format");
 
+        // C02 workers operate on the SAME original RVPC2 representation as XI
+        // Studio, not the private modern Mundo X InfiniteSession.
+        final byte[] rvpcBefore=Files.readAllBytes(dataFile("session.rvp").toPath());
+        String[] tasks=new String[12];
+        Arrays.fill(tasks,"x 6789\nprobz 6789\n");
+        ResultPacket privateBatch=ResultPacket.parse(
+          NativeRuntime.executeWorkers(rvpcBefore,tasks,4,false,4L*1024*1024*1024));
+        JSONObject privateReport=new JSONObject(privateBatch.output);
+        require(privateReport.getInt("completed")==12&&privateReport.getInt("failed")==0,
+                "C02 private tasks must complete in the original RVPC2 interpreter");
+        require(Arrays.equals(rvpcBefore,privateBatch.state),
+                "Independent C02 workers cannot alter even one byte of shared RVPC2");
+        String[] writers={"x 7001\n","x 7002\n","x 7003\n","mem_store 1000000000004 19\n"};
+        ResultPacket committedBatch=ResultPacket.parse(
+          NativeRuntime.executeWorkers(rvpcBefore,writers,4,true,4L*1024*1024*1024));
+        JSONObject committedReport=new JSONObject(committedBatch.output);
+        require(committedReport.getInt("completed")==4&&committedReport.getInt("failed")==0,
+                "C02 optimistic commits must preserve all independent writes");
+        require(!Arrays.equals(committedBatch.state,rvpcBefore),
+                "C02 transactions must produce a genuine updated RVPC2 snapshot");
+        require(NativeRuntime.fabricReadByte(committedBatch.state,1000000000004L)==19,
+                "C02 transaction also commits InverseMemory instead of only qubits");
+        require(Arrays.equals(rvpcBefore,Files.readAllBytes(dataFile("session.rvp").toPath())),
+                "Android test must not publish experimental worker writes into user desktop");
+        JSONObject viaWorkbench=op("fabricWorkers",
+          new JSONObject().put("workers",2).put("mode","isolated")
+            .put("programs",new JSONArray(tasks)).toString(),"fabricWorkersResult");
+        require(viaWorkbench.getInt("failed")==0&&viaWorkbench.getInt("completed")==12,
+                "REVERSE Workbench bridge must serve real XI C02 workers");
+
         File report=new File(getTargetContext().getFilesDir(),"reverse-fabric-android.json");
         try(FileOutputStream stream=new FileOutputStream(report)){
             stream.write(new JSONObject().put("status","pass")

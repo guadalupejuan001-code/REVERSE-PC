@@ -93,6 +93,8 @@ function reversePcHTML(w){
     +'<div class="system-boundary">'+icon('desktop')+'<span>'+(ready?'Componentes nativos enlazados · una autoridad XI/RVPC2': 'Esta APK no contiene los componentes nativos modernos; no se simulan resultados.')+'</span></div>'
     +'<div class="system-actions">'+button('boot_x86','Arrancar x86',true)+button('boot_x64','Arrancar x64')+button('boot_quantum','Prueba huésped XI')+button('boot_video','Arranque vídeo VBE')+'</div>'
     +'<div class="system-actions">'+button('run','Ejecutar CPU',true)+button('step','Un paso')+button('plan_gpu_qssd','GPU + QSSD')+button('inspect','Actualizar')+'</div>'
+    +'<div class="system-actions"><button class="secondary-button" data-fabric-workers="rvpc2" '+(busy||!ready?'disabled':'')+'>Medir C02 · 1/2/4 workers RVPC2</button></div>'
+    +(window.reverseWorkerTrials?'<div class="diagnostic-table">'+window.reverseWorkerTrials.map(t=>'<div class="diagnostic-row"><span>'+t.workers+' workers · '+t.jobs+' trabajos XI</span><strong>'+t.jobsPerSecond.toFixed(1)+' tareas/s · '+t.peak_active+' simultáneos</strong></div>').join('')+'</div>':'')
     +'<div class="diagnostic-row"><strong>'+status+'</strong><small>Estado de la CPU huésped real, no el teléfono</small></div>'
     +'<pre class="xi-output" aria-label="Pantalla VGA de REVERSE-PC" style="min-height:140px;max-height:250px;overflow:auto;white-space:pre;font-size:11px">'+esc(screen||'Arranca una prueba para ver la salida VGA del huésped.')+'</pre>'
     +'<div class="diagnostic-table">'

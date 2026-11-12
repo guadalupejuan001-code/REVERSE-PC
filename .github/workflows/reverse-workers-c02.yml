@@ -1,0 +1,81 @@
+name: REVERSE original RVPC2 C02 scheduler
+on:
+  push:
+    branches: [feature/reverse-pc-rvpc2-workers-c02-20261112]
+    paths: ['src/fabric/reverse_workers.hpp','tests/reverse_workers.cpp','tests/workers/**','.github/workflows/reverse-workers-c02.yml']
+  pull_request:
+    branches: [main, feature/reverse-pc-unified-fabric-c01-20261112]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix: {os: [ubuntu-latest,windows-latest]}
+    defaults:
+      run: {shell: bash}
+    steps:
+      - name: Preserve canonical source bytes (Windows CRLF disabled)
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: e2778d962af22f6f1a0794058dd4685fc2573966
+          path: deps/mundo-x
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - uses: msys2/setup-msys2@v2
+        if: runner.os == 'Windows'
+        with:
+          msystem: UCRT64
+          update: false
+          cache: false
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+      - name: Verify immutable RVPC2 source
+        run: |
+          test "$(git -C deps/mundo-x rev-parse HEAD)" = "e2778d962af22f6f1a0794058dd4685fc2573966"
+          mkdir -p build
+          python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
+      - name: Build original REVERSE C02 workers on Ubuntu
+        if: runner.os != 'Windows'
+        run: |
+          cmake -S tests/workers -B build/workers -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/workers --parallel 2
+      - name: Build original REVERSE C02 workers on Windows UCRT64
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: |
+          compiler="$(cygpath -m "$(command -v g++)")"
+          case "$compiler" in *.exe) ;; *) compiler="${compiler}.exe";; esac
+          test -f "$compiler"
+          cmake -S tests/workers -B build/workers -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER="$compiler"
+          cmake --build build/workers --parallel 2
+      - name: Test original XI isolation and RVPC2 commits on Ubuntu
+        if: runner.os != 'Windows'
+        run: |
+          ctest --test-dir build/workers --output-on-failure
+          mkdir -p evidence
+          build/workers/reverse_workers_c02 > evidence/c02-rvpc2.json
+          cat evidence/c02-rvpc2.json
+      - name: Test original XI isolation and RVPC2 commits on Windows
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: |
+          ctest --test-dir build/workers --output-on-failure
+          mkdir -p evidence
+          build/workers/reverse_workers_c02.exe > evidence/c02-rvpc2.json
+          cat evidence/c02-rvpc2.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: "reverse-workers-c02-${{ matrix.os }}"
+          path: evidence/
+          if-no-files-found: warn
