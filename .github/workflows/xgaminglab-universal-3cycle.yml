@@ -58,9 +58,11 @@ jobs:
           test -n "$SOURCE_TAR"
           mkdir -p "$RUNNER_TEMP/xgaminglab"
           tar -xzf "$SOURCE_TAR" -C "$RUNNER_TEMP/xgaminglab"
-          base64 -d .xgaminglab-universal/universal-3cycle-overlay.tar.gz.b64 > "$RUNNER_TEMP/universal-overlay.tar.gz"
-          echo "3a66ccbfb323defcfc079acb6daea849bf64820663c30b63f318d17827d27df4  $RUNNER_TEMP/universal-overlay.tar.gz" | sha256sum -c -
-          tar -xzf "$RUNNER_TEMP/universal-overlay.tar.gz" -C "$RUNNER_TEMP/xgaminglab"
+          cat .xgaminglab-universal/patch.part* | base64 -d > "$RUNNER_TEMP/universal-3cycle.patch.gz"
+          echo "bf2147eb0e55271e8517cd36ab0be14e0f7798863d1d4a5f3f39431e55c60f61  $RUNNER_TEMP/universal-3cycle.patch.gz" | sha256sum -c -
+          gzip -dc "$RUNNER_TEMP/universal-3cycle.patch.gz" > "$RUNNER_TEMP/universal-3cycle.patch"
+          cd "$RUNNER_TEMP/xgaminglab"
+          patch -p1 --forward --batch < "$RUNNER_TEMP/universal-3cycle.patch"
           grep -q '3.7.0-universal-3cycle' "$RUNNER_TEMP/xgaminglab/AndroidManifest.xml"
           grep -q 'GPU Virtual + REgraphics · Universal' "$RUNNER_TEMP/xgaminglab/src/x/lab/gaming/RunConfig.java"
 
