@@ -41,7 +41,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/src" "$RUNNER_TEMP/results"
           tar -xzf "$tarball" -C "$RUNNER_TEMP/src"
           base64 -d .xgaminglab-three/regraphics_adversarial.cpp.gz.b64 | gzip -dc > "$RUNNER_TEMP/adversarial.cpp"
-          printf '%s  %s\\n' '5bca977e523a9b03522bf7674fdb711ceed64a139c8d3fc7c670fa55935cfb6b' "$RUNNER_TEMP/adversarial.cpp" | sha256sum -c -
+          printf '%s  %s\n' '5bca977e523a9b03522bf7674fdb711ceed64a139c8d3fc7c670fa55935cfb6b' "$RUNNER_TEMP/adversarial.cpp" | sha256sum -c -
           g++ -std=c++20 -O2 -Wall -Wextra -Werror \
             -I"$RUNNER_TEMP/src/native" -I"$RUNNER_TEMP/src/vendor/gpu/include" \
             "$RUNNER_TEMP/adversarial.cpp" -o "$RUNNER_TEMP/adversarial"
