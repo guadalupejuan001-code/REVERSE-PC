@@ -280,6 +280,7 @@ class Fabric final {
         << "\"qssd_authority\":"<<lease->authority
         << ",\"qssd_serial\":"<<lease->serial
         << ",\"dependency_revision\":"<<lease->value->dependency_revision
+        << ",\"plan_revision\":"<<plan.revision
         << ",\"source_objects\":"<<plan.source_objects
         << ",\"camera_candidates\":"<<plan.camera_candidates
         << ",\"reused_objects\":"<<plan.reused_objects
