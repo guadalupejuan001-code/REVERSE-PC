@@ -121,7 +121,7 @@ class Fabric final {
     } else if (action == "plan_gpu_qssd") {
       plan_video();
     } else if (action == "gpu_presented") {
-      confirm_webgl_submission(argument);
+      confirm_gpu_submission(argument);
     } else {
       throw std::invalid_argument("Unknown REVERSE Fabric action");
     }
@@ -222,14 +222,21 @@ class Fabric final {
     graphics_.publish(plan,video_revision_,0);
     selected_cells_.swap(selected);
     last_draw_calls_=0;
+    last_backend_.clear();
     previous_video_hash_=hash;
     have_video_=true;
   }
 
-  void confirm_webgl_submission(const std::string& text) {
-    // Format: <qssd-serial>:<selected-count>:<draw-calls>:<nonblack-pixels>.
-    // Ack comes from the trusted packaged WebView only after gl.finish,
-    // gl.getError and framebuffer readback; it is not hardware attestation.
+  void confirm_gpu_submission(const std::string& receipt) {
+    // A verified GL client submits serial/count/draw-calls/readback-pixels.
+    // WebGL is the legacy path; :egl denotes native Android EGL/GLES2.
+    // This is a client receipt, not cryptographic hardware attestation.
+    std::string text=receipt,backend="webgl";
+    if(text.size()>=4 && text.compare(text.size()-4,4,":egl")==0) {
+      backend="egl";text.resize(text.size()-4);
+    } else if(text.size()>=6 && text.compare(text.size()-6,6,":webgl")==0) {
+      text.resize(text.size()-6);
+    }
     std::array<std::uint64_t,4> values{};
     std::size_t cursor=0;
     for(std::size_t i=0;i<values.size();++i) {
@@ -254,6 +261,7 @@ class Fabric final {
     graphics_.publish(plan,lease->value->dependency_revision,plan.revision);
     last_draw_calls_=static_cast<std::size_t>(values[2]);
     last_visible_pixels_=values[3];
+    last_backend_=backend;
   }
 
   std::string report(const std::string& action) const {
@@ -295,10 +303,16 @@ class Fabric final {
       const auto& cell=selected_cells_[i];
       out<<'['<<cell[0]<<','<<cell[1]<<','<<cell[2]<<']';
     }
-    out<<"]},\"submitted_webgl\":"<<(lease->value->completed_revision==plan.revision && plan.revision!=0?"true":"false")
-       << ",\"webgl_draw_calls\":"<<last_draw_calls_
-       << ",\"webgl_nonblack_pixels\":"<<last_visible_pixels_
-       << ",\"webgl_backend\":\"browser-WebGL; native-GLES-not-claimed\",\"direct_gles_submission\":false}}";
+    const bool presented=lease->value->completed_revision==plan.revision && plan.revision!=0;
+    out<<"]},\"submitted_graphics\":"<<(presented?"true":"false")
+       << ",\"submitted_webgl\":"<<(presented&&last_backend_=="webgl"?"true":"false")
+       << ",\"submitted_egl\":"<<(presented&&last_backend_=="egl"?"true":"false")
+       << ",\"physical_draw_calls\":"<<last_draw_calls_
+       << ",\"physical_readback_pixels\":"<<last_visible_pixels_
+       << ",\"physical_backend\":"<<json_string(last_backend_)
+       << ",\"webgl_draw_calls\":"<<(last_backend_=="webgl"?last_draw_calls_:0)
+       << ",\"webgl_nonblack_pixels\":"<<(last_backend_=="webgl"?last_visible_pixels_:0)
+       << ",\"direct_gles_submission\":"<<(presented&&last_backend_=="egl"?"true":"false")<<"}}";
     return out.str();
   }
 
@@ -312,6 +326,7 @@ class Fabric final {
   std::vector<std::array<unsigned,3>> selected_cells_;
   std::size_t last_draw_calls_=0;
   std::uint64_t last_visible_pixels_=0;
+  std::string last_backend_;
   std::string last_output_;
 };
 } // namespace reverse_fabric
