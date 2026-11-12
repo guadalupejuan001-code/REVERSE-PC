@@ -87,6 +87,7 @@ window.ReverseGpuPhysical=(()=>{
     if(!canvas||!plan)return false;
     if(plan.width!==W||plan.height!==H||plan.cols!==80||plan.rows!==25)
       throw Error('VGA dimensions disagree with physical plan');
+    if(!Number(gpu.plan_revision))return false; // No initial native VGA plan to draw or acknowledge.
     const serial=Number(gpu.qssd_serial),cells=plan.cells;
     if(!Number.isSafeInteger(serial)||serial<1||!Array.isArray(cells)||
        cells.length!==Number(gpu.camera_candidates)||
