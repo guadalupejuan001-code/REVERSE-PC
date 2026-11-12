@@ -339,7 +339,7 @@ public final class WorkbenchActivity extends Activity {
         ResultPacket result=ResultPacket.parse(NativeRuntime.executeWorkers(
                 before,programs,count,transactional,memory.availMem));
         if(!Arrays.equals(before,result.state))s.writeState(result.state);
-        return new JSONObject(result.output).put("rvpc2_state_saved",true);
+        return new JSONObject(result.output).put("ok",true).put("rvpc2_state_saved",true).put("host_available_bytes",memory.availMem);
     }
 
     private JSONObject calculateNative(String expression)throws Exception{
