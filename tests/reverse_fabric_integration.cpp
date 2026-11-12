@@ -87,6 +87,16 @@ int main(){
         number(ack,"webgl_draw_calls")==1,"one batched draw call is recorded");
   check(number(ack,"qssd_serial")==serial+1,
         "acknowledgement publishes a new immutable QSSD revision");
+  // Native host test checks EGL receipt parsing/serial authorization; the
+  // Android test actually draws into an EGL pbuffer and reads its pixels.
+  const auto egl=pc.apply("gpu_presented",std::to_string(serial+1)+":"+
+      std::to_string(candidates)+":1:200:egl",authority);
+  check(has(egl,"\"submitted_egl\":true")&&has(egl,"\"submitted_webgl\":false"),
+        "native GLES and browser WebGL are reported distinctly");
+  check(has(egl,"\"direct_gles_submission\":true")&&
+        number(egl,"physical_draw_calls")==1,
+        "native EGL receipt records physical draw work on the QSSD authority");
+
   check(xi_calls==0,"a graphics completion cannot modify original RVPC2 XI");
 
 
