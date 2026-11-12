@@ -4,7 +4,7 @@ on:
     branches: [main, codex/prisma-rhythm-20261028]
     paths: ['reverse-os-android/**', 'bbyq-interface/**', 'src/**', 'scripts/**', 'apps/prisma/**', 'tests/prisma-*.mjs', '.github/workflows/workbench-android.yml']
   pull_request:
-    branches: [main]
+    branches: [main, feature/regraphics-adaptive-fidelity-20261112]
     paths: ['reverse-os-android/**', 'bbyq-interface/**', 'src/**', 'scripts/**', '.github/workflows/workbench-android.yml']
   workflow_dispatch:
 permissions:
@@ -46,6 +46,26 @@ jobs:
           ref: e2778d962af22f6f1a0794058dd4685fc2573966
           path: deps/mundo-x
           persist-credentials: false
+      # Additive components for real REVERSE Fabric. The legacy RVPC2 pin above
+      # is NOT replaced by the modern Mundo PC code.
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: fd66d20a4ef040d31d529300c5fd46a2d4ec57ed
+          path: deps/mundo-x-c03
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/GPU-VIRTUAL
+          ref: dd89b4c2ba8cb7908bb8f0bb9eb8f20b75ead7d9
+          path: deps/gpu-virtual-c08
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/Virtual-qSSD-
+          ref: 5555f1cfc95e50d60df5d7481317380a6c5891d8
+          path: deps/qssd-c08
+          persist-credentials: false
       - uses: actions/checkout@v4
         with:
           repository: guadalupejuan001-code/BBY-Q
@@ -73,6 +93,10 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p build dist evidence build-signing
+          python3 scripts/verify-fabric-deps.py > evidence/fabric-pins.log
+          cmake -S tests/fabric -B build/fabric-host -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/fabric-host --parallel 2
+          ctest --test-dir build/fabric-host --output-on-failure | tee evidence/fabric-host-tests.log
           python3 scripts/prepare-ether-compat.py deps/mundo-x build/ether-compat
           g++ -std=c++17 -O2 -pthread -DREVERSE_PC_HAVE_BOUNDED_PRODUCT_IMPORT=1 -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc src/reverse_pc.cpp -o build/reverse_pc
           g++ -std=c++17 -O2 -Wall -Wextra -Wpedantic -Ibuild/ether-compat -Ideps/mundo-x/native/include -Isrc tests/prisma_xrender.cpp -o build/test-prisma-xrender
@@ -129,6 +153,15 @@ jobs:
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" 'platforms;android-35' 'build-tools;35.0.0' 'ndk;27.2.12479018' 'cmake;3.22.1' platform-tools emulator 'system-images;android-35;default;x86_64' > evidence/sdk.log
           gradle -p reverse-os-android --no-daemon :app:assembleControlDebug :app:assembleControlDebugAndroidTest > evidence/gradle.log 2>&1 || { tail -180 evidence/gradle.log; exit 1; }
           cp reverse-os-android/app/build/outputs/apk/control/debug/app-control-debug.apk dist/REVERSE-PRISMA-2.3.0-cycle6-ci.apk
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          apk='dist/REVERSE-PRISMA-2.3.0-cycle6-ci.apk'
+          with ZipFile(apk) as z:
+              for arch in ('arm64-v8a','x86_64'):
+                  assert 'lib/'+arch+'/libreverse_fabric.so' in z.namelist(), arch
+                  assert 'lib/'+arch+'/libreverse_os.so' in z.namelist(), arch
+          print('REVERSE_FABRIC_APK_NATIVE_CONNECTED')
+          PY
           cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" dist/apksigner.jar
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs dist/REVERSE-PRISMA-2.3.0-cycle6-ci.apk > evidence/ci-signature.txt
           "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c -p 4 dist/REVERSE-PRISMA-2.3.0-cycle6-ci.apk > evidence/alignment.txt
@@ -179,6 +212,10 @@ jobs:
           timeout 120s adb shell am instrument -w -e mode laplace com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee evidence/android-laplace.txt
           grep 'WORKBENCH_TESTS_OK mode=laplace' evidence/android-laplace.txt
           adb exec-out run-as com.reversepc.control.workbench cat files/laplace-auditoria.png > evidence/android-laplace.png
+          adb shell am force-stop com.reversepc.control.workbench
+          timeout 210s adb shell am instrument -w -e mode fabric com.reversepc.control.workbench.test/com.reversepc.os.WorkbenchTestRunner | tee evidence/android-reverse-fabric.txt
+          grep 'WORKBENCH_TESTS_OK mode=fabric' evidence/android-reverse-fabric.txt
+          adb exec-out run-as com.reversepc.control.workbench cat files/reverse-fabric-android.json > evidence/reverse-fabric-android.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:

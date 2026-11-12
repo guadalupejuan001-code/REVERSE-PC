@@ -27,3 +27,37 @@ target_compile_options(reverse_os PRIVATE -O2 -fexceptions -frtti -Wall -Wextra 
 find_library(LOG_LIBRARY log)
 find_library(GLES_LIBRARY GLESv3)
 target_link_libraries(reverse_os PRIVATE ${LOG_LIBRARY} ${GLES_LIBRARY})
+
+# Modern components are consumed as dependencies; the canonical RVPC2 binary
+# stays untouched. The Mundo C03 PC is compiled in a separate shared library.
+set(MUNDO_PC_C03 "${REPO_ROOT}/deps/mundo-x-c03")
+set(GPU_C08 "${REPO_ROOT}/deps/gpu-virtual-c08")
+set(QSSD_C08 "${REPO_ROOT}/deps/qssd-c08")
+set(FABRIC_HEADERS
+  "${MUNDO_PC_C03}/pc-android/native/pc_machine.hpp"
+  "${MUNDO_PC_C03}/native/include/mundo_x/autonomous_core_c02.hpp"
+  "${GPU_C08}/include/trabajo_fisico.hpp"
+  "${QSSD_C08}/include/qssd/graphics_work_state.hpp")
+set(FABRIC_READY TRUE)
+foreach(P IN LISTS FABRIC_HEADERS)
+  if(NOT EXISTS "${P}")
+    set(FABRIC_READY FALSE)
+  endif()
+endforeach()
+if(FABRIC_READY)
+  add_library(reverse_fabric SHARED fabric_jni.cpp)
+  target_include_directories(reverse_fabric PRIVATE
+    "${REPO_ROOT}/src/fabric" "${MUNDO_PC_C03}/pc-android/native"
+    "${MUNDO_PC_C03}/native/include" "${GPU_C08}/include" "${QSSD_C08}/include")
+  target_compile_features(reverse_fabric PRIVATE cxx_std_17)
+  target_compile_options(reverse_fabric PRIVATE -O2 -fexceptions -frtti -Wall -Wextra -Wpedantic)
+  find_library(FABRIC_LOG_LIBRARY log)
+  target_link_libraries(reverse_fabric PRIVATE "${FABRIC_LOG_LIBRARY}")
+  target_link_options(reverse_fabric PRIVATE "-Wl,-z,max-page-size=16384")
+  message(STATUS "REVERSE Fabric: Mundo PC C03 + GPU C08 + QSSD C08 enabled")
+else()
+  message(STATUS "REVERSE Fabric not packaged: missing modern pinned components")
+  if(DEFINED REVERSE_FABRIC_REQUIRED AND REVERSE_FABRIC_REQUIRED)
+    message(FATAL_ERROR "REVERSE Fabric requires all pinned component checkouts")
+  endif()
+endif()

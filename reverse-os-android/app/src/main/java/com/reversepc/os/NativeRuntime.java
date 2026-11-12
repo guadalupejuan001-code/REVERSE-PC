@@ -5,6 +5,9 @@ public final class NativeRuntime {
     public static native byte[] initialize();
     public static native byte[] execute(byte[] state,String source);
     public static native String inspect(byte[] state);
+    /** Direct, no-measurement bridge for Mundo X PC Ether aperture into original RVPC2. */
+    public static native int fabricReadByte(byte[] state,long logicalAddress);
+    public static native byte[] fabricWriteByte(byte[] state,long logicalAddress,int value);
     public static native byte[] compileRxe(byte[] sourceUtf8,byte[] titleUtf8);
     public static native byte[] inspectRxe(byte[] executable);
     public static native byte[] executeRxe(byte[] state,byte[] executable);

@@ -1,0 +1,75 @@
+name: REVERSE Fabric real components — PC CPU GPU qSSD
+on:
+  push:
+    branches: [feature/reverse-pc-unified-fabric-c01-20261112]
+    paths: ['src/fabric/**','tests/fabric/**','tests/reverse_fabric_integration.cpp','docs/fabric-component-lock.json','scripts/verify-fabric-deps.py','.github/workflows/reverse-fabric.yml']
+  pull_request:
+    branches: [main, feature/regraphics-adaptive-fidelity-20261112]
+    paths: ['src/fabric/**','tests/fabric/**','tests/reverse_fabric_integration.cpp','docs/fabric-component-lock.json','scripts/verify-fabric-deps.py','.github/workflows/reverse-fabric.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native:
+    name: REVERSE Fabric / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: fd66d20a4ef040d31d529300c5fd46a2d4ec57ed
+          path: deps/mundo-x-c03
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/GPU-VIRTUAL
+          ref: dd89b4c2ba8cb7908bb8f0bb9eb8f20b75ead7d9
+          path: deps/gpu-virtual-c08
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/Virtual-qSSD-
+          ref: 5555f1cfc95e50d60df5d7481317380a6c5891d8
+          path: deps/qssd-c08
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          repository: guadalupejuan001-code/mundo-X
+          ref: e2778d962af22f6f1a0794058dd4685fc2573966
+          path: deps/mundo-x-legacy
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - name: Verify immutable original versions
+        run: |
+          mkdir -p fabric-evidence
+          python scripts/verify-fabric-deps.py | tee fabric-evidence/pins.log
+      - name: Build actual CPU/GPU/qSSD integration
+        run: |
+          cmake -S tests/fabric -B fabric-build -DCMAKE_BUILD_TYPE=Release
+          cmake --build fabric-build --config Release --parallel 2 | tee fabric-evidence/build.log
+      - name: Execute original-component contract
+        run: |
+          ctest --test-dir fabric-build -C Release --output-on-failure | tee fabric-evidence/tests.log
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            fabric-build/Release/reverse_fabric_integration.exe > fabric-evidence/result.json
+          else
+            fabric-build/reverse_fabric_integration > fabric-evidence/result.json
+          fi
+          cat fabric-evidence/result.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: reverse-fabric-${{ matrix.os }}
+          path: fabric-evidence/
+          if-no-files-found: warn

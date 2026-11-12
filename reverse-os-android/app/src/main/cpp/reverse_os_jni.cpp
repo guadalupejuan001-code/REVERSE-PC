@@ -109,3 +109,31 @@ Java_com_reversepc_os_NativeRuntime_graphicsTurn(JNIEnv* e,jclass,jbyteArray sta
   try{const auto result=reverse_pc::rxe_graphics::turn(bytes(e,program),bytes(e,state),unsigned(kind),unsigned(quality));return output(e,reverse_os::packet(result.text,result.state));}
   catch(const std::exception& x){throw_java(e,x);return nullptr;}
 }
+
+
+// The modern Mundo X x86 Ether aperture has exactly ONE authority: existing
+// REVERSE RVPC2. The bridge never constructs or updates another quantum core.
+// Quantum handles cannot be silently sampled as classical memory bytes.
+extern "C" JNIEXPORT jint JNICALL
+Java_com_reversepc_os_NativeRuntime_fabricReadByte(JNIEnv* e,jclass,jbyteArray state,jlong addr){
+  try {
+    if(addr<0)throw std::invalid_argument("negative fabric address");
+    const auto rt=reverse_os::restore(bytes(e,state));
+    const auto read=rt.memory().read(std::to_string(std::uint64_t(addr)),rt.core());
+    if(!read.deterministic)throw std::runtime_error("RVPC2 quantum byte requires an explicit measurement");
+    return static_cast<jint>(read.value);
+  }catch(const std::exception& ex){throw_java(e,ex);return -1;}
+}
+
+extern "C" JNIEXPORT jbyteArray JNICALL
+Java_com_reversepc_os_NativeRuntime_fabricWriteByte(JNIEnv* e,jclass,jbyteArray state,jlong addr,jint value){
+  try {
+    if(addr<0||value<0||value>255)throw std::invalid_argument("invalid fabric byte/address");
+    auto rt=reverse_os::restore(bytes(e,state));
+    // The original XI interpreter owns validation, quantum binding checks,
+    // atomic rollback and state revision updates.
+    rt.execute("mem_store "+std::to_string(std::uint64_t(addr))+" "+
+               std::to_string(static_cast<unsigned>(value))+"\n");
+    return output(e,reverse_os::save(rt));
+  }catch(const std::exception& ex){throw_java(e,ex);return nullptr;}
+}

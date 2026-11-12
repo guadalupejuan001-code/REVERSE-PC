@@ -496,6 +496,58 @@ public final class WorkbenchTestRunner extends Instrumentation {
         JSONObject after=op("inspect","","graphicsCoreAfter");
         for(String key:new String[]{"memory_revision","memory_overrides","core_revision"})require(before.getJSONObject("core").getLong(key)==after.getJSONObject("core").getLong(key),"Game altered desktop authority: "+key);
     }
+    private void reverseFabricWorkflow(JSONObject before)throws Exception{
+        require(before.getBoolean("reverse_fabric_available"),
+                "GPU/QSSD/Mundo PC native DSO was not packaged");
+        require(js("typeof window.reversePcHTML==='function'").equals("true"),
+                "REVERSE desktop lost its PC control center UI");
+        js("createWindow('control',{tab:'pc'});true");
+        require(js("!!document.querySelector('[data-fabric-action=boot_x86]')").equals("true"),
+                "Real PC controls are not part of original REVERSE desktop");
+        final long logical=1000000000000L;
+        byte[] initial=NativeRuntime.initialize();
+        require(NativeRuntime.fabricReadByte(initial,logical)==0,
+                "RVPC2 original unbound logical byte must be zero");
+        byte[] modified=NativeRuntime.fabricWriteByte(initial,logical,42);
+        require(NativeRuntime.fabricReadByte(modified,logical)==42,
+                "Original REVERSE InverseMemory write/read roundtrip");
+        require(NativeRuntime.fabricReadByte(initial,logical)==0,
+                "Original RVPC2 snapshot was not modified by candidate write");
+
+        JSONObject boot=op("fabric","{\"action\":\"boot_x86\",\"program\":\"\"}","fabricBoot");
+        require(boot.getBoolean("ok") && boot.getJSONObject("pc").getString("boot_kind").contains("demo"),
+                "Boot did not execute original Mundo X x86 PC engine");
+        JSONObject run=op("fabric","{\"action\":\"run\",\"program\":\"\"}","fabricRun");
+        require(run.getString("screen").contains("ALU + RAM + lectura de disco: OK"),
+                "Mundo X x86 must execute real BIOS/video instructions");
+        require(run.getJSONObject("gpu_qssd").getLong("qssd_serial")>1,
+                "Original QSSD StateBus must hold real VGA-derived graphics revisions");
+        require(run.getJSONObject("gpu_qssd").getLong("planned_vertex_invocations")>0,
+                "Original GPU-VIRTUAL must plan concrete visible glyph geometry");
+
+        JSONObject quantum=op("fabric","{\"action\":\"boot_quantum\",\"program\":\"\"}","fabricQuantum");
+        require(quantum.getBoolean("ok"),"Real native quantum guest boot");
+        JSONObject quantumRun=op("fabric","{\"action\":\"run\",\"program\":\"\"}","fabricQuantumRun");
+        require(quantumRun.getLong("guest_xi_requests")>=1,
+                "Guest x86 ports did not reach actual REVERSE XI runtime");
+        JSONObject after=op("inspect","","fabricAfter");
+        require(after.getJSONObject("core").getLong("active_qubits")>0,
+                "Guest XI results never reached persistent original RVPC2");
+        require(after.getJSONObject("core").getString("state_format").equals("RVPC2"),
+                "Fabric replaced canonical RVPC2 snapshot format");
+
+        File report=new File(getTargetContext().getFilesDir(),"reverse-fabric-android.json");
+        try(FileOutputStream stream=new FileOutputStream(report)){
+            stream.write(new JSONObject().put("status","pass")
+              .put("actual_x86",true).put("rvpc2_state",true)
+              .put("gpu_physical_work_planned",true).put("qssd_versioned",true)
+              .put("physical_gpu_raster_acceleration_claimed",false)
+              .put("original_bbyq_replaced",false)
+              .put("gpu",run.getJSONObject("gpu_qssd"))
+              .toString(2).getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
     @Override public void onStart(){
         Bundle result=new Bundle();
         try{
@@ -521,6 +573,11 @@ public final class WorkbenchTestRunner extends Instrumentation {
             require(snapshot.getJSONObject("android").getLong("ram_total_bytes")>0,"No native RAM reading");
             require(snapshot.getJSONObject("core").getString("state_format").equals("RVPC2"),"Wrong checkpoint format");
             require(snapshot.getJSONObject("build").getString("source_commit").matches("[a-f0-9]{40}"),"Missing build provenance");
+            if(requested.equals("fabric")){
+                reverseFabricWorkflow(snapshot);
+                result.putString("stream","WORKBENCH_TESTS_OK mode=fabric real_x86=1 rvpc2=1 gpu=1 qssd=1\n");
+                result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
+            }
             if(requested.equals("graphics")){
                 graphicsWorkflow(snapshot);result.putString("stream","WORKBENCH_TESTS_OK mode=graphics native=XI renderer=Ether-Render-X-CPU presenter=GLES3 touch=verified isolation=verified\n");result.putBoolean("passed",true);finish(Activity.RESULT_OK,result);return;
             }

@@ -1,6 +1,9 @@
 'use strict';
 const nativeAvailable=typeof window.ReverseNative!=='undefined';
 let androidSnapshot=null,androidError=null,androidReading=false,androidReadAt=0,nativeSerial=0;
+window.reverseFabricAvailable=false;
+window.reverseFabricReport=null;
+window.reverseFabricBusy=false;
 const nativePending=new Map();
 let nativeProfileSequence=0,nativeProfileAcknowledged=0;
 window.ReverseAndroid={complete(id,response){const pending=nativePending.get(id);if(!pending)return;nativePending.delete(id);clearTimeout(pending.timeout);if(response.ok)pending.resolve(response);else pending.reject(Error(response.error||'El núcleo rechazó la operación.'));}};
@@ -27,7 +30,13 @@ async function refreshAndroid(force=false){
   androidReading=true;
   try{androidSnapshot=await nativeRequest('inspect');androidError=null;androidReadAt=Date.now();}
   catch(error){androidError=error.message;androidSnapshot=null;androidReadAt=Date.now();}
-  finally{androidReading=false;systemSnapshot=null;for(const w of state.windows.filter(w=>w.app==='control'&&w.tab==='system'))renderWindowContent(w);}
+  finally{
+    androidReading=false;
+    window.reverseFabricAvailable=Boolean(androidSnapshot?.reverse_fabric_available);
+    systemSnapshot=null;
+    for(const w of state.windows.filter(w=>w.app==='control'&&(w.tab==='system'||w.tab==='pc')))
+      renderWindowContent(w);
+  }
 }
 function collectSystemInfo(){
   const report=collectWebSystemInfo(!nativeAvailable);if(!nativeAvailable)return report;
@@ -82,6 +91,23 @@ document.addEventListener('input',e=>{if(e.target.matches('[data-xi-source]')){c
 document.addEventListener('click',async e=>{
   const button=e.target.closest('button');if(!button)return;
   if(button.dataset.ui==='refresh-system')refreshAndroid(true);
+  if(button.dataset.fabricAction){
+    if(window.reverseFabricBusy || !nativeAvailable)return;
+    const selection=getWindow(button.closest('.window')?.dataset.id);
+    if(!window.reverseFabricAvailable){toast('La APK no incluye REVERSE Fabric nativo.');return;}
+    window.reverseFabricBusy=true;
+    const command=button.dataset.fabricAction;
+    try{
+      const response=await nativeRequest('fabric',JSON.stringify({action:command,program:''}));
+      window.reverseFabricReport=response;
+      refreshAndroid(true);
+    }catch(error){toast('REVERSE-PC: '+error.message,'help');}
+    finally{
+      window.reverseFabricBusy=false;
+      if(selection && selection.app==='control' && selection.tab==='pc')renderWindowContent(selection);
+    }
+    return;
+  }
   const action=button.dataset.native,w=getWindow(button.closest('.window')?.dataset.id);
   if(action==='run-xi'&&w){if(w.xiBusy)return;w.xiBusy=true;button.disabled=true;w.xiStatus='Ejecutando en el núcleo nativo…';$('.xi-status',$('#'+w.id)).textContent=w.xiStatus;
     try{const result=await nativeRequest('execute',w.xiSource);w.xiOutput=result.output;w.xiStatus='Estado guardado · '+(result.elapsed_ns/1e6).toFixed(2)+' ms · '+result.source;refreshAndroid(true);}
