@@ -4,6 +4,7 @@ let androidSnapshot=null,androidError=null,androidReading=false,androidReadAt=0,
 window.reverseFabricAvailable=false;
 window.reverseFabricReport=null;
 window.reverseFabricBusy=false;
+window.reverseWorkerTrials=null;
 const nativePending=new Map();
 let nativeProfileSequence=0,nativeProfileAcknowledged=0;
 window.ReverseAndroid={complete(id,response){const pending=nativePending.get(id);if(!pending)return;nativePending.delete(id);clearTimeout(pending.timeout);if(response.ok)pending.resolve(response);else pending.reject(Error(response.error||'El núcleo rechazó la operación.'));}};
@@ -91,6 +92,39 @@ document.addEventListener('input',e=>{if(e.target.matches('[data-xi-source]')){c
 document.addEventListener('click',async e=>{
   const button=e.target.closest('button');if(!button)return;
   if(button.dataset.ui==='refresh-system')refreshAndroid(true);
+  if(button.dataset.fabricWorkers){
+    if(window.reverseFabricBusy||!nativeAvailable||!window.reverseFabricAvailable)return;
+    const pane=getWindow(button.closest('.window')?.dataset.id);
+    window.reverseFabricBusy=true;
+    try{
+      const xiPane=state.windows.find(w=>w.app==='xi');
+      const program=(xiPane?.xiSource&&xiPane.xiSource.length<=4096)
+        ? xiPane.xiSource : 'h 200\nprobz 200\n';
+      const programs=Array.from({length:12},()=>program);
+      const observations=[];
+      for(const workers of [1,2,4]){
+        const report=await nativeRequest('fabricWorkers',
+          JSON.stringify({workers,mode:'isolated',programs}));
+        if(report.failed||report.completed!==programs.length)
+          throw Error('XI workers returned failures; no speedup reported');
+        observations.push({
+          workers,jobs:report.jobs,
+          peak_active:report.peak_active,
+          jobsPerSecond:report.elapsed_us>0
+            ? (report.jobs*1e6/report.elapsed_us):0
+        });
+      }
+      window.reverseWorkerTrials=observations;
+      await refreshAndroid(true);
+    }catch(error){
+      window.reverseWorkerTrials=null;
+      toast('C02 RVPC2: '+error.message,'help');
+    }finally{
+      window.reverseFabricBusy=false;
+      if(pane&&pane.app==='control'&&pane.tab==='pc')renderWindowContent(pane);
+    }
+    return;
+  }
   if(button.dataset.fabricAction){
     if(window.reverseFabricBusy || !nativeAvailable)return;
     const selection=getWindow(button.closest('.window')?.dataset.id);
