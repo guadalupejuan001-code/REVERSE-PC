@@ -41,7 +41,8 @@ class GuestRenderer {
   }
 
   GuestRenderReceipt render(const xgpu::GuestTrianglePlan& plan, unsigned width, unsigned height,
-                            std::uint32_t clear_rgba, std::vector<std::uint8_t>& bgrx) {
+                            std::uint32_t clear_rgba, std::vector<std::uint8_t>& bgra,
+                            bool preserve_alpha = false) {
     using Clock = std::chrono::steady_clock;
     if (width == 0 || height == 0 || width > 1920 || height > 1080)
       throw std::invalid_argument("REgraphics guest target dimensions");
@@ -90,7 +91,7 @@ class GuestRenderer {
 
     const auto pitch = std::size_t(width) * 4;
     rgba_.resize(pitch * height);
-    bgrx.resize(rgba_.size());
+    bgra.resize(rgba_.size());
     glPixelStorei(GL_PACK_ALIGNMENT, 4);
     glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, rgba_.data());
     check_gl("read guest color attachment");
@@ -110,12 +111,12 @@ class GuestRenderer {
     }
     for (unsigned y = 0; y < height; ++y) {
       const auto* source = rgba_.data() + (height - y - 1) * pitch;
-      auto* destination = bgrx.data() + y * pitch;
+      auto* destination = bgra.data() + y * pitch;
       for (std::size_t x = 0; x < pitch; x += 4) {
         destination[x] = source[x + 2];
         destination[x + 1] = source[x + 1];
         destination[x + 2] = source[x];
-        destination[x + 3] = 0; // VBE's fourth byte is reserved.
+        destination[x + 3] = preserve_alpha ? source[x + 3] : 0; // VBE reserves the fourth byte.
       }
     }
     return {static_cast<std::uint64_t>(
