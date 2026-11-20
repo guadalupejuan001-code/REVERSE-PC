@@ -33,12 +33,18 @@ class GuestRenderer {
   GuestRenderer(const GuestRenderer&) = delete;
   GuestRenderer& operator=(const GuestRenderer&) = delete;
   ~GuestRenderer() {
-    if (display_ == EGL_NO_DISPLAY || !initialized_) return;
-    eglMakeCurrent(display_, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+    if (display_ == EGL_NO_DISPLAY) return;
     if (surface_ != EGL_NO_SURFACE) eglDestroySurface(display_, surface_);
     if (context_ != EGL_NO_CONTEXT) eglDestroyContext(display_, context_);
-    eglTerminate(display_);
   }
+
+  void prepare() {
+    if (program_) return;
+    const ScopedBinding binding;
+    bind_target(1, 1);
+  }
+  const std::string& renderer_name() const noexcept { return name_; }
+  bool hardware_reported() const noexcept { return hardware_reported_; }
 
   GuestRenderReceipt render(const xgpu::GuestTrianglePlan& plan, unsigned width, unsigned height,
                             std::uint32_t clear_rgba, std::vector<std::uint8_t>& bgra,
@@ -49,13 +55,8 @@ class GuestRenderer {
     if (plan.vertices.size() > xgpu::GuestTriangleWork::max_vertices || plan.vertices.size() % 3)
       throw std::invalid_argument("REgraphics guest vertex count");
     const auto started = Clock::now();
-    open(width, height);
-    require(eglMakeCurrent(display_, surface_, surface_, context_), "bind guest target");
-    struct Unbind {
-      EGLDisplay display;
-      ~Unbind() { eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT); }
-    } unbind{display_};
-    if (!program_) initialize_program();
+    const ScopedBinding binding;
+    bind_target(width, height);
 
     glViewport(0, 0, width, height);
     glUseProgram(program_);
@@ -129,7 +130,7 @@ class GuestRenderer {
   EGLContext context_ = EGL_NO_CONTEXT;
   EGLSurface surface_ = EGL_NO_SURFACE;
   EGLConfig config_{};
-  bool initialized_ = false, hardware_reported_ = false;
+  bool hardware_reported_ = false;
   unsigned width_ = 0, height_ = 0;
   GLuint program_ = 0, buffer_ = 0, timer_ = 0;
   PFNGLBEGINQUERYEXTPROC begin_ = nullptr;
@@ -147,13 +148,52 @@ class GuestRenderer {
   }
   static void check_gl(const char* operation) { require(glGetError() == GL_NO_ERROR, operation); }
 
-  void open(unsigned width, unsigned height) {
-    if (!initialized_) {
-      display_ = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-      require(display_ != EGL_NO_DISPLAY && eglInitialize(display_, nullptr, nullptr), "initialize EGL");
-      initialized_ = true;
+  // EGL bindings are local to a thread and client API. Startup and the first
+  // draw can run on different threads and can share a caller's EGL display.
+  class ScopedBinding {
+   public:
+    ScopedBinding() : api_(eglQueryAPI()) {
+      require(eglBindAPI(EGL_OPENGL_ES_API), "select guest GLES API");
+      context_ = eglGetCurrentContext();
+      display_ = eglGetCurrentDisplay();
+      draw_ = eglGetCurrentSurface(EGL_DRAW);
+      read_ = eglGetCurrentSurface(EGL_READ);
     }
-    require(eglBindAPI(EGL_OPENGL_ES_API), "bind GLES API");
+    ~ScopedBinding() {
+      const auto current = eglGetCurrentDisplay();
+      if (context_ != EGL_NO_CONTEXT)
+        eglMakeCurrent(display_, draw_, read_, context_);
+      else if (current != EGL_NO_DISPLAY)
+        eglMakeCurrent(current, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+      if (api_ != EGL_OPENGL_ES_API) eglBindAPI(api_);
+    }
+    ScopedBinding(const ScopedBinding&) = delete;
+    ScopedBinding& operator=(const ScopedBinding&) = delete;
+   private:
+    EGLenum api_;
+    EGLContext context_;
+    EGLDisplay display_;
+    EGLSurface draw_, read_;
+  };
+
+  void bind_target(unsigned width, unsigned height) {
+    open(width, height);
+    require(eglMakeCurrent(display_, surface_, surface_, context_), "bind guest target");
+    if (!program_) initialize_program();
+  }
+
+  void open(unsigned width, unsigned height) {
+    if (display_ == EGL_NO_DISPLAY) {
+      // EGL_DEFAULT_DISPLAY is shared with the Android UI and other VMs.
+      // Reuse one initialization per process. Each renderer owns only its
+      // context and surfaces, so its destruction cannot terminate this display.
+      static const EGLDisplay shared = [] {
+        const auto display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+        require(display != EGL_NO_DISPLAY && eglInitialize(display, nullptr, nullptr), "initialize EGL");
+        return display;
+      }();
+      display_ = shared;
+    }
     if (context_ == EGL_NO_CONTEXT) {
       const EGLint attributes[]{EGL_SURFACE_TYPE, EGL_PBUFFER_BIT, EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
           EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_BLUE_SIZE, 8, EGL_ALPHA_SIZE, 8,
