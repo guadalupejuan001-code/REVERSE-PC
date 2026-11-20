@@ -33,10 +33,9 @@ class GuestRenderer {
   GuestRenderer(const GuestRenderer&) = delete;
   GuestRenderer& operator=(const GuestRenderer&) = delete;
   ~GuestRenderer() {
-    if (display_ == EGL_NO_DISPLAY || !initialized_) return;
+    if (display_ == EGL_NO_DISPLAY) return;
     if (surface_ != EGL_NO_SURFACE) eglDestroySurface(display_, surface_);
     if (context_ != EGL_NO_CONTEXT) eglDestroyContext(display_, context_);
-    eglTerminate(display_);
   }
 
   void prepare() {
@@ -131,7 +130,7 @@ class GuestRenderer {
   EGLContext context_ = EGL_NO_CONTEXT;
   EGLSurface surface_ = EGL_NO_SURFACE;
   EGLConfig config_{};
-  bool initialized_ = false, hardware_reported_ = false;
+  bool hardware_reported_ = false;
   unsigned width_ = 0, height_ = 0;
   GLuint program_ = 0, buffer_ = 0, timer_ = 0;
   PFNGLBEGINQUERYEXTPROC begin_ = nullptr;
@@ -184,10 +183,16 @@ class GuestRenderer {
   }
 
   void open(unsigned width, unsigned height) {
-    if (!initialized_) {
-      display_ = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-      require(display_ != EGL_NO_DISPLAY && eglInitialize(display_, nullptr, nullptr), "initialize EGL");
-      initialized_ = true;
+    if (display_ == EGL_NO_DISPLAY) {
+      // EGL_DEFAULT_DISPLAY is shared with the Android UI and other VMs.
+      // Reuse one initialization per process. Each renderer owns only its
+      // context and surfaces, so its destruction cannot terminate this display.
+      static const EGLDisplay shared = [] {
+        const auto display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+        require(display != EGL_NO_DISPLAY && eglInitialize(display, nullptr, nullptr), "initialize EGL");
+        return display;
+      }();
+      display_ = shared;
     }
     if (context_ == EGL_NO_CONTEXT) {
       const EGLint attributes[]{EGL_SURFACE_TYPE, EGL_PBUFFER_BIT, EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
